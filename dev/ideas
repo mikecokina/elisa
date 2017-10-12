@@ -1,4 +1,82 @@
-Intro
+class System(object):
+    """
+    abstract class
+    """
+    
+    methos:
+        compute_lc()
+        get_info()
+    
+    attributes:
+        name
+        
+    class BinarySystem(System):
+        """
+        
+        """
+        attributes:
+            orbit (dict)
+    
+    class SingleSystem(System):
+        """
+        
+        """
+        
+    class PlanetarySystem(System):
+        """
+        members of binary system imported as kwargs
+        """
+
+class Body(object):
+    """
+    abstract class
+    """
+    
+    methods:
+        get_info()
 
 
+    attributes:
+        name
+        mass
+        t_eff
+        vertices
+        faces
+        normals
+        temperature (array)
+        intensity (array)
+        
+
+        class Star():
+            """
+            
+            """
+            
+            methods:
+                
+            
+            attributes:
+        
+
+        class Planet(Body):
+            """
+            
+            """
+            
+            methods:
+                
+            
+            attributes:
+        
+class Observer(object):
+    """
+    
+    """
+    
+    methods:
+        
+            
+    attributes:
+        passband
+        limb_darkening???
 
