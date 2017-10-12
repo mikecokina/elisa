@@ -1,3 +1,4 @@
+
 class System(object):
     """
     abstract class
