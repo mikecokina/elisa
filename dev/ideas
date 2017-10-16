@@ -10,6 +10,9 @@ class System(object):
     
     attributes:
         name
+        gamma #radial velocity
+        magnitude?
+        distance?
         
     class BinarySystem(System):
         """
