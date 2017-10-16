@@ -9,7 +9,7 @@ class System(object):
     
     attributes:
         name
-        radial velocity
+        center_radial_velocity
 
     class BinarySystem(System):
         """
