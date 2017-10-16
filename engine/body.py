@@ -1,3 +1,8 @@
 
 class Body(object):
-    pass
+    """
+    abstract class
+    """
+    def name(self,):
+        # return self.
+        pass
