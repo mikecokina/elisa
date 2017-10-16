@@ -1,5 +1,6 @@
 from engine.system import System
 
+
 class BinarySystem(System):
 
     def __init__(self, inclination=None, name=None):
@@ -9,3 +10,6 @@ class BinarySystem(System):
     @property
     def inclination(self):
         return self._inclination
+
+    def compute_lc(self):
+        pass

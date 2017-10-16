@@ -1,8 +1,12 @@
+from abc import ABCMeta, abstractmethod
+
 
 class System(object):
     """
     Abstract class defined System
     """
+
+    __metaclass__ = ABCMeta
 
     ID = 1
 
@@ -20,3 +24,8 @@ class System(object):
     @name.setter
     def name(self, value):
         self._name = value
+
+    @abstractmethod
+    def compute_lc(self):
+        pass
+
