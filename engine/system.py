@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class System(object):
+class System(object, metaclass=ABCMeta):
     """
     Abstract class defined System
     """
