@@ -1,4 +1,3 @@
-
 class System(object):
     """
     abstract class
@@ -10,9 +9,13 @@ class System(object):
     
     attributes:
         name
+<<<<<<< HEAD
         gamma #radial velocity
         magnitude?
         distance?
+=======
+        radial_velocity
+>>>>>>> bed3c02705c81d7a8f05d31a50317cd80da917eb
         
     class BinarySystem(System):
         """
