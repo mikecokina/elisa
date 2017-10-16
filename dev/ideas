@@ -9,6 +9,7 @@ class System(object):
     
     attributes:
         name
+        radial_velocity
         
     class BinarySystem(System):
         """
@@ -79,4 +80,16 @@ class Observer(object):
     attributes:
         passband
         limb_darkening??
+
+
+
+
+
+
+
+
+
+
+
+
 
