@@ -7,31 +7,29 @@ class Body(object, metaclass=ABCMeta):
     Abstract class defining bodies that can be modelled by this software
     see https://docs.python.org/3.5/library/abc.html for more informations
     """
-
     __metaclass__ = ABCMeta
+
+    ID = 1
 
     def __init__(self, name=None):
         """
-        parameters of abstract class Body except 'name' will be defined later independetly 
-        after initialization of the instance None will be their default value
-        name of the body is required, otherwise exception will rise
+        Parameters of abstract class Body
         """
         if name is None:
-            raise NameError('Name of the body not found. Please name the body during initialization: xy = Body(name=\'Name\')')
+            self._name = str(Body.ID)
+            Body.ID += 1
         else:
             self._name = str(name)
 
-        #initializing other parameters to None
+        # initializing other parameters to None
         self._mass = None
         self._t_eff = None
 
-        #setting default unit
+        # setting default unit
         self._mass_default_unit = u.solMass
         self._temperature_default_unit = u.K
 
-
-    #Getters and setters
-    #____________________________________________________________________
+    # Getters and setters
     @property
     def name(self):
         """
@@ -41,14 +39,13 @@ class Body(object, metaclass=ABCMeta):
         return self._name
 
     @name.setter
-    def name(self, name=None):
+    def name(self, name):
         """
         name setter
         call this by xy.name = new_name
         """
         self._name = name
 
-    #..........................................................................................
     @property
     def mass(self):
         """
@@ -58,7 +55,7 @@ class Body(object, metaclass=ABCMeta):
         return self._mass
 
     @mass.setter
-    def mass(self, mass=None):
+    def mass(self, mass):
         """
         mass setter
         call this by xy.mass = new_mass * unit
@@ -88,10 +85,9 @@ class Body(object, metaclass=ABCMeta):
         """
 
         if mass_default_unit is not None:
-            mass_default_unit.to(u.solMass) #check if new default unit is unit of mass
+            mass_default_unit.to(u.solMass)  # check if new default unit is unit of mass
             self._mass_default_unit = mass_default_unit
 
-    #.........................................................................................
     @property
     def t_eff(self):
         """
@@ -119,7 +115,6 @@ class Body(object, metaclass=ABCMeta):
         else:
             raise TypeError('Make sure that input value is int, float or unit.Quantity object')
 
-    # .........................................................................................
     @property
     def vertices(self):
         """
@@ -140,8 +135,3 @@ class Body(object, metaclass=ABCMeta):
         :return:
         """
         pass
-
-
-
-    #..............................................................................................
-

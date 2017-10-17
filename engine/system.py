@@ -27,6 +27,9 @@ class System(object, metaclass=ABCMeta):
     def name(self, value):
         self._name = value
 
+
+
+
     @abstractmethod
     def compute_lc(self):
         pass

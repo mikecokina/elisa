@@ -3,7 +3,7 @@ class System(object):
     abstract class
     """
     
-    methos:
+    methods:
         compute_lc()
         get_info()
     
