@@ -9,7 +9,18 @@ class BinarySystem(System):
 
     @property
     def inclination(self):
+        """
+        inclination of binary star system
+        :return:
+        """
         return self._inclination
 
+    @inclination.setter
+    def inclination(self, inclination):
+        self._inclination = inclination
+
     def compute_lc(self):
+        pass
+
+    def get_info(self):
         pass

@@ -1,4 +1,4 @@
-from engine.binary_system import BinarySystem
-import numpy as np
+# from engine.binary_system import BinarySystem
+# system = BinarySystem(inclination=87)
 
-system = BinarySystem(inclination=87)
+from astropy import units

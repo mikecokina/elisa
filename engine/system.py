@@ -5,7 +5,6 @@ class System(object, metaclass=ABCMeta):
     """
     Abstract class defining System
     see https://docs.python.org/3.5/library/abc.html for more infromations
-
     """
 
     __metaclass__ = ABCMeta
@@ -19,18 +18,38 @@ class System(object, metaclass=ABCMeta):
         else:
             self._name = str(name)
 
+        # Default values of properties
+        self._gamma = None
+
     @property
     def name(self):
+        """
+        name of object initialized on base of this abstract class
+        :return: str
+        """
         return self._name
 
     @name.setter
-    def name(self, value):
-        self._name = value
+    def name(self, name):
+        self._name = str(name)
 
+    @property
+    def gamma(self):
+        """
+        system center of mass radial velocity
+        :return:
+        """
+        return self._gamma
 
-
+    @gamma.setter
+    def gamma(self, gamma):
+        self._gamma = gamma
 
     @abstractmethod
     def compute_lc(self):
+        pass
+
+    @abstractmethod
+    def get_info(self):
         pass
 
