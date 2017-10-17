@@ -3,7 +3,9 @@ from abc import ABCMeta, abstractmethod
 
 class System(object, metaclass=ABCMeta):
     """
-    Abstract class defined System
+    Abstract class defining System
+    see https://docs.python.org/3.5/library/abc.html for more infromations
+
     """
 
     __metaclass__ = ABCMeta

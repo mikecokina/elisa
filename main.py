@@ -1,5 +1,5 @@
 from engine.binary_system import BinarySystem
 import numpy as np
 
-system = BinarySystem(inclination=2)
+system = BinarySystem(inclination=87)
 print(system.name)
