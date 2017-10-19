@@ -103,7 +103,6 @@ class Body(object, metaclass=ABCMeta):
         call this by xy.t_eff = new_t_eff * unit
         this function accepts only Kelvins, if your input is without unit, function assumes that value is in Kelvins
         """
-
         _tp = type(t_eff)
         if _tp is u.quantity.Quantity:
             if t_eff.unit is u.K:
