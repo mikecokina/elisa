@@ -41,11 +41,11 @@ class Body(object):
         name
         mass
         t_eff
-        vertices
-        faces
-        normals
-        temperature (array)
-        intensity (array)
+        vertices (dict)
+        faces   (dict)
+        normals  (dict)
+        temperature (dict)
+        intensity (dict)
         
 
         class Star():
