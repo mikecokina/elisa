@@ -119,7 +119,8 @@ class Body(object, metaclass=ABCMeta):
         """
         effective temperature setter
         usage: xy.t_eff = new_t_eff
-        this function accepts only Kelvins, if your input is without unit, function assumes that value is in Kelvins
+        this function accepts value in any temperature unit, if your input is without unit, function assumes that value
+        is in Kelvins
 
         :param t_eff: int, np.int, float, np.float, astropy.unit.quantity.Quantity
         """
@@ -297,3 +298,7 @@ class Body(object, metaclass=ABCMeta):
         :return: astropy.unit.quantity.Quantity
         """
         return self._time_unit
+
+    @abstractmethod
+    def get_info(self):
+        pass
