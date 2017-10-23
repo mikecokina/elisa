@@ -9,7 +9,8 @@ class System(object):
     
     attributes:
         name
-        center_radial_velocity
+        gamma (center_radial_velocity)
+        inclination (pri SingleStar to bude sklon rotacneho polu)
 
     class BinarySystem(System):
         """
@@ -18,7 +19,7 @@ class System(object):
         attributes:
             orbit (dict)
     
-    class SingleSystem(System):
+    class SingleStar(System):
         """
         
         """
@@ -41,12 +42,13 @@ class Body(object):
         name
         mass
         t_eff
-        vertices (dict)
+        vertices numpy.array
         faces   (dict)
         normals  (dict)
         temperature (dict)
         intensity (dict)
-        
+        synchronicity
+        albedo
 
         class Star():
             """

@@ -16,7 +16,8 @@ class BinarySystem(System):
 
         # values of properties
         for kwarg in BinarySystem.KWARGS:
-            setattr(self, kwarg, kwargs[kwarg])
+            if kwarg in kwargs:
+                setattr(self, kwarg, kwargs[kwarg])
 
     @property
     def inclination(self):

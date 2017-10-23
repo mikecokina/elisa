@@ -18,7 +18,7 @@ class System(object, metaclass=ABCMeta):
     __DISTANCE_UNIT = u.m
     __TIME_UNIT = u.s
     __VELOCITY_UNIT = __DISTANCE_UNIT / __TIME_UNIT
-    __ARCH_UNIT = u.rad
+    __ARC_UNIT = u.rad
 
     def __init__(self, name=None, **kwargs):
         if name is None:
@@ -29,7 +29,8 @@ class System(object, metaclass=ABCMeta):
 
         # values of properties
         for kwarg in self.KWARGS:
-            setattr(self, kwarg, kwargs[kwarg])
+            if kwarg in kwargs:
+                setattr(self, kwarg, kwargs[kwarg])
 
     @property
     def name(self):
@@ -56,6 +57,7 @@ class System(object, metaclass=ABCMeta):
         """
         system center of mass velocity
         expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised
+        if quantity is not specified, default velocity unit is assumed
 
         :param gamma: numpy.float/numpy.int/astropy.units.quantity.Quantity
         :return: None
@@ -63,7 +65,7 @@ class System(object, metaclass=ABCMeta):
         if isinstance(gamma, u.quantity.Quantity):
             self._gamma = np.float64(gamma.to(self.__VELOCITY_UNIT))
         elif isinstance(gamma, (int, np.int, float, np.float)):
-            self._gamma = np.float64(gamma * self.__VELOCITY_UNIT)
+            self._gamma = np.float64(gamma)
         else:
             raise TypeError('Value of variable `gamma` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -78,8 +80,8 @@ class System(object, metaclass=ABCMeta):
         return cls.__TIME_UNIT
 
     @classmethod
-    def get_arch_unit(cls):
-        return cls.__ARCH_UNIT
+    def get_arc_unit(cls):
+        return cls.__ARC_UNIT
 
     @classmethod
     def get_velocity_unit(cls):
@@ -89,7 +91,6 @@ class System(object, metaclass=ABCMeta):
     def compute_lc(self):
         pass
 
-    @abstractmethod
     def get_info(self):
         pass
 

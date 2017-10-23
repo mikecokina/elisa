@@ -13,8 +13,16 @@ class Body(object, metaclass=ABCMeta):
     __metaclass__ = ABCMeta
 
     ID = 1
+    KWARGS = []
 
-    def __init__(self, name=None):
+    # Units
+    __MASS_UNIT = u.kg
+    __TEMPERATURE_UNIT = u.K
+    __DISTANCE_UNIT = u.m
+    __TIME_UNIT = u.s
+    __ARC_UNIT = u.rad
+
+    def __init__(self, name=None, **kwargs):
         """
         Parameters of abstract class Body
         """
@@ -27,16 +35,19 @@ class Body(object, metaclass=ABCMeta):
         # initializing other parameters to None
         self._mass = None  # float64
         self._t_eff = None  # float64
-        self._vertices = None  # dict
+        self._vertices = None  # numpy.array of float64
         self._faces = None  # dict
         self._normals = None  # dict
         self._temperatures = None  # dict
+        # self._intensity = None # dict
+        self._synchronicity = None  # float64
+        self._albedo = None  # float64
+        self._polar_radius = None # float64
 
-        # setting default unit
-        self._mass_unit = u.kg
-        self._temperature_unit = u.K
-        self._distance_unit = u.m
-        self._time_unit = u.s
+        # values of properties
+        for kwarg in self.KWARGS:
+            if kwarg in kwargs:
+                setattr(self, kwarg, kwargs[kwarg])
 
     # Getters and setters
     @property
@@ -67,7 +78,7 @@ class Body(object, metaclass=ABCMeta):
 
         :return: np.float64
         """
-        # return self._mass * self._mass_unit.to(u.solMass) * u.solMass
+        # return self._mass * self.__MASS_UNIT.to(u.solMass) * u.solMass
         return self._mass
 
     @mass.setter
@@ -82,27 +93,11 @@ class Body(object, metaclass=ABCMeta):
         :param mass: int, np.int, float, np.float, astropy.unit.quantity.Quantity
         """
         if isinstance(mass, u.quantity.Quantity):
-            self._mass = np.float64(mass.to(self._mass_unit))
+            self._mass = np.float64(mass.to(self.__MASS_UNIT))
         elif isinstance(mass, (int, np.int, float, np.float)):
             self._mass = np.float64(mass * u.solMass.to(u.kg))
         else:
             raise TypeError('Your input is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity instance.')
-
-    # podla mna je pouzivatela chuj po tom jaku jednotku my interne pouzivame
-    # @mass_unit.setter
-    # def mass_unit(self, mass_unit):
-    #     """
-    #     mass default unit setter
-    #     call this by xy.mass_default_unit = new_mass_default_unit
-    #     you can change it to any mass unit but we recommend to leave it set to current value
-    #     make sure to use correct astropy.units notation,
-    #     see http://docs.astropy.org/en/v0.2.1/units/index.html
-    #
-    #     :param mass_unit: astropy.unit.quantity.Quantity
-    #     """
-    #
-    #     mass_unit.to(self._mass_unit)  # check if new default unit is unit of mass
-    #     self._mass_unit = mass_unit
 
     @property
     def t_eff(self):
@@ -125,11 +120,11 @@ class Body(object, metaclass=ABCMeta):
         :param t_eff: int, np.int, float, np.float, astropy.unit.quantity.Quantity
         """
         if isinstance(t_eff, u.quantity.Quantity):
-            self._t_eff = np.float64(t_eff.to(self._temperature_unit))
+            self._t_eff = np.float64(t_eff.to(self.__TEMPERATURE_UNIT))
         elif isinstance(t_eff, (int, np.int, float, np.float)):
             self._t_eff = np.float64(t_eff)
         else:
-            raise TypeError('Your input is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity instance.')
+            raise TypeError('Value of `t_eff` is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity instance.')
 
     @property
     def vertices(self):
@@ -147,31 +142,28 @@ class Body(object, metaclass=ABCMeta):
         """
         vertices setter
         usage: xy.vertices = new_vertices
-        setting dictionary of points that form surface of Body
+        setting numpy array of points that form surface of Body
         input dictionary has to be in shape:
-        vertices = {vertice_ID_1: np.array([x1, y1, z1]),
-                    vertice_ID_2: np.array([x2, y2, z2]),
-                    ...
-                    vertice_ID_N: np.array([xN, yN, zN])}
-        where vertice_name_i is unique integer ID of vertice
-        and xi, yi, zi are cartesian coordinates of vertice i
+        vertices = numpy.array([[x1 y1 z1]
+                                [x2 y2 z2],
+                                ...
+                                [xN yN zN]])
+        where xi, yi, zi are cartesian coordinates of vertice i
 
-
-        :param vertices: dict
-        vertice_name_i: int?
+        :param vertices: numpy.array
         xi, yi, zi: float64
         """
-        self._vertices = {np.uint32(xx): np.array([np.float64(yy) for yy in vertices[xx]]) for xx in vertices}
+        self._vertices = np.array(vertices)
 
     @property
     def faces(self):
         """
         returns dictionary of triangles that will create surface of body
-        triangles are stored as list of keys of vertices
+        triangles are stored as list of indices of vertices
         usage: xy.faces
 
         :return: dict
-        shape: vertices = {face_ID_1: np.array([vertice_ID_k, vertice_ID_l, vertice_ID_m]),
+        shape: vertices = {face_ID_1: np.array([vertice_index_k, vertice_index_l, vertice_index_m]),
                            face_ID_2: np.array([...]),
                            ...
                            face_ID_n: np.array([...])}
@@ -184,7 +176,7 @@ class Body(object, metaclass=ABCMeta):
         faces setter
         usage: xy.faces = new_faces
         faces dictionary has to be in shape:
-        vertices = {face_ID_1: np.array([vertice_ID_k, vertice_ID_l, vertice_ID_m]),
+        vertices = {face_ID_1: np.array([vertice_index_k, vertice_index_l, vertice_index_m]),
                     face_ID_2: np.array([...]),
                     ...
                     face_ID_n: np.array([...])}
@@ -259,6 +251,83 @@ class Body(object, metaclass=ABCMeta):
         self._temperatures = {np.uint32(xx): np.float32(xx) for xx in temperatures}
         # self._temperatures = temperatures
 
+    # @property
+    # def intensity(self):
+    #     return self._intensity
+
+    @property
+    def synchronicity(self):
+        """
+        returns synchronicity parameter F = omega_rot/omega_orb
+        usage: xy.synchronicity
+
+        :return: numpy.float64
+        """
+        return self._synchronicity
+
+    @synchronicity.setter
+    def synchronicity(self, synchronicity):
+        """
+        object synchronicity (F = omega_rot/omega_orb) setter, expects number input convertible to numpy float64
+        usage: xy.synchronicity = new_synchronicity
+
+        :param synchronicity: numpy.float64
+        """
+        self._synchronicity = np.float64(synchronicity)
+
+    @property
+    def albedo(self):
+        """
+        returns bolometric albedo of an object (reradiated energy/ irradiance energy)
+        usage: xy.albedo
+
+        :return: float64
+        """
+        return self._albedo
+
+    @albedo.setter
+    def albedo(self, albedo):
+        """
+        setter for bolometric albedo (reradiated energy/ irradiance energy)
+        accepts value of albedo in range (0,1)
+        usage xy.albedo = new_albedo
+
+        :param albedo: float64
+        """
+        if 0 <= albedo <= 1:
+            self._albedo = np.float64(albedo)
+        else:
+            raise ValueError('Parameter albedo = {} is out of range (0, 1)'.format(albedo))
+
+    @property
+    def polar_radius(self):
+        """
+        returns value polar radius of an object in default unit
+        usage: xy.polar_radius
+
+        :return: float64
+        """
+        return self._polar_radius
+
+    @polar_radius.setter
+    def polar_radius(self, polar_radius):
+        """
+        setter for polar radius of body
+        expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised
+        if quantity is not specified, default distance unit is assumed
+
+        :param polar_radius:
+        :return:
+        """
+        if isinstance(polar_radius, u.quantity.Quantity):
+            self._polar_radius = np.float64(polar_radius.to(self.__DISTANCE_UNIT))
+        elif isinstance(polar_radius, (int, np.int, float, np.float)):
+            self._polar_radius = np.float64(polar_radius)
+        else:
+            raise TypeError('Value of variable `polar radius` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
+
     @property
     def mass_unit(self):
         """
@@ -267,7 +336,7 @@ class Body(object, metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return self._mass_unit
+        return self.__MASS_UNIT
 
     @property
     def temperature_unit(self):
@@ -277,7 +346,7 @@ class Body(object, metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return self._temperature_unit
+        return self.__TEMPERATURE_UNIT
 
     @property
     def distance_unit(self):
@@ -287,7 +356,7 @@ class Body(object, metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return self._distance_unit
+        return self.__DISTANCE_UNIT
 
     @property
     def time_unit(self):
@@ -297,8 +366,17 @@ class Body(object, metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return self._time_unit
+        return self.__TIME_UNIT
 
-    @abstractmethod
+    @property
+    def arc_unit(self):
+        """
+        returns default unit of time
+        usage: xy.arc_unit
+
+        :return: astropy.unit.quantity.Quantity
+        """
+        return self.__ARC_UNIT
+
     def get_info(self):
         pass
