@@ -17,6 +17,7 @@ class System(object, metaclass=ABCMeta):
     # Units
     __DISTANCE_UNIT = u.m
     __TIME_UNIT = u.s
+    __PERIOD_UNIT = u.d
     __VELOCITY_UNIT = __DISTANCE_UNIT / __TIME_UNIT
     __ARC_UNIT = u.rad
 
@@ -86,6 +87,10 @@ class System(object, metaclass=ABCMeta):
     @classmethod
     def get_velocity_unit(cls):
         return cls.__VELOCITY_UNIT
+
+    @classmethod
+    def get_period_unit(cls):
+        return cls.__PERIOD_UNIT
 
     @abstractmethod
     def compute_lc(self):

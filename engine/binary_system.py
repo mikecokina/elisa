@@ -5,7 +5,7 @@ import numpy as np
 
 class BinarySystem(System):
 
-    KWARGS = ['gamma', 'inclination']
+    KWARGS = ['gamma', 'inclination', 'period']
 
     def __init__(self, name=None, **kwargs):
         self.is_property(kwargs)
@@ -13,11 +13,31 @@ class BinarySystem(System):
 
         # default values of properties
         self._inclination = None
+        self._period = None
 
         # values of properties
         for kwarg in BinarySystem.KWARGS:
             if kwarg in kwargs:
                 setattr(self, kwarg, kwargs[kwarg])
+
+    @property
+    def period(self):
+        """
+        binarys system period
+
+        :return:
+        """
+        return self._period
+
+    @period.setter
+    def period(self, period):
+        if isinstance(period, u.quantity.Quantity):
+            self._period = np.float64(period.to(self.get_period_unit()))
+        elif isinstance(period, (int, np.int, float, np.float)):
+            self._inclination = np.float64(period * self.get_period_unit())
+        else:
+            raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
 
     @property
     def inclination(self):
@@ -31,9 +51,9 @@ class BinarySystem(System):
     @inclination.setter
     def inclination(self, inclination):
         if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(self.get_arch_unit()))
+            self._inclination = np.float64(inclination.to(self.get_arc_unit()))
         elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64(inclination * self.get_arch_unit())
+            self._inclination = np.float64(inclination * self.get_arc_unit())
         else:
             raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
