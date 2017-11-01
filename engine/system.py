@@ -1,9 +1,11 @@
 from abc import ABCMeta, abstractmethod
 from astropy import units as u
 import numpy as np
+import logging
 
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
-class System(object, metaclass=ABCMeta):
+class System(object):
     """
     Abstract class defining System
     see https://docs.python.org/3.5/library/abc.html for more infromations
@@ -22,16 +24,14 @@ class System(object, metaclass=ABCMeta):
     __ARC_UNIT = u.rad
 
     def __init__(self, name=None, **kwargs):
+        self._logger = logging.getLogger(System.__name__)
+
         if name is None:
             self._name = str(System.ID)
+            self._logger.debug("Name of class instance {} set to {}".format(System.__name__, self._name))
             System.ID += 1
         else:
             self._name = str(name)
-
-        # values of properties
-        for kwarg in self.KWARGS:
-            if kwarg in kwargs:
-                setattr(self, kwarg, kwargs[kwarg])
 
     @property
     def name(self):

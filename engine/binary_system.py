@@ -1,6 +1,9 @@
 from engine.system import System
 from astropy import units as u
 import numpy as np
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 
 class BinarySystem(System):
@@ -18,6 +21,8 @@ class BinarySystem(System):
         # values of properties
         for kwarg in BinarySystem.KWARGS:
             if kwarg in kwargs:
+                self._logger.debug("Setting property {} "
+                                   "of class instance {} to {}".format(kwarg, BinarySystem.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
 
     @property

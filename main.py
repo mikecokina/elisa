@@ -1,6 +1,5 @@
 from engine.binary_system import BinarySystem
 
-bs = BinarySystem()
-
+bs = BinarySystem(gamma=25)
 print(bs.gamma)
-print(bs.inclination)
+
