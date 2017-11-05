@@ -4,7 +4,8 @@ from engine.binary_system import BinarySystem
 class TestBinarySystem(unittest.TestCase):
 
     def test_orbit_change(self):
-        bs = BinarySystem(period=15)
+        bs = BinarySystem()
+
         bs.period = 10.0
         self.assertEqual(bs.orbit.period, 10)
 

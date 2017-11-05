@@ -142,7 +142,7 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        self.init_orbit()
+        self.orbit.periastron = self.periastron
 
     def compute_lc(self):
         pass
