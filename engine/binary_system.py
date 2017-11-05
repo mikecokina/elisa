@@ -38,8 +38,7 @@ class BinarySystem(System):
     def init_orbit(self):
         self._logger.debug("Re/Initializing orbit in class instance {} ".format(BinarySystem.__name__))
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
-        # self._orbit = Orbit(**orbit_kwargs)
-        print(orbit_kwargs)
+        self._orbit = Orbit(**orbit_kwargs)
 
     @property
     def orbit(self):
@@ -69,6 +68,7 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+        self.init_orbit()
 
     @property
     def inclination(self):
@@ -94,6 +94,7 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+        self.init_orbit()
 
     @property
     def eccentricity(self):
@@ -115,6 +116,7 @@ class BinarySystem(System):
         if eccentricity < 0 or eccentricity > 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
             raise TypeError('Input of variable `eccentricity` is not (np.)int or (np.)float or it is out of boundaries.')
         self._eccentricity = eccentricity
+        self.init_orbit()
 
     @property
     def periastron(self):
@@ -140,6 +142,7 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+        self.init_orbit()
 
     def compute_lc(self):
         pass
