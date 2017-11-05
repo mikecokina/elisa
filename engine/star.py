@@ -5,10 +5,8 @@ import numpy as np
 
 class Star(Body):
 
-    KWARGS = ['mass', 't_eff', 'vertices',
-              'faces', 'normals', 'temperatures',
-              'synchronicity', 'albedo', 'polar_radius',
-              'surface_potential', 'backward_radius', 'gravity_darkening']
+    KWARGS = ['mass', 't_eff', 'vertices', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
+              'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening']
 
     def __init__(self, name=None, **kwargs):
         self.is_property(kwargs)
