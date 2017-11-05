@@ -1,4 +1,5 @@
 from engine.system import System
+from engine.orbit import Orbit
 from astropy import units as u
 import numpy as np
 import logging
@@ -17,6 +18,9 @@ class BinarySystem(System):
         # default values of properties
         self._inclination = None
         self._period = None
+        self._eccentricity = None
+        self._periastron = None
+        self._orbit = None
 
         # values of properties
         for kwarg in BinarySystem.KWARGS:
@@ -25,21 +29,39 @@ class BinarySystem(System):
                                    "of class instance {} to {}".format(kwarg, BinarySystem.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
 
+        # orbit initialisation
+        self.init_orbit()
+
+    def init_orbit(self):
+        orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
+        # self._orbit = Orbit(**orbit_kwargs)
+        print(orbit_kwargs)
+
+    @property
+    def orbit(self):
+        return self._orbit
+
     @property
     def period(self):
         """
         binarys system period
 
-        :return:
+        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         """
         return self._period
 
     @period.setter
     def period(self, period):
+        """
+        set orbital period of bonary star system
+
+        :param period: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
         if isinstance(period, u.quantity.Quantity):
             self._period = np.float64(period.to(self.get_period_unit()))
         elif isinstance(period, (int, np.int, float, np.float)):
-            self._inclination = np.float64(period * self.get_period_unit())
+            self._period = np.float64(period * self.get_period_unit())
         else:
             raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -49,18 +71,64 @@ class BinarySystem(System):
         """
         inclination of binary star system
 
-        :return:
+        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         """
         return self._inclination
 
     @inclination.setter
     def inclination(self, inclination):
+        """
+        set orbit inclination of binary star system
+
+        :param inclination: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
         if isinstance(inclination, u.quantity.Quantity):
             self._inclination = np.float64(inclination.to(self.get_arc_unit()))
         elif isinstance(inclination, (int, np.int, float, np.float)):
             self._inclination = np.float64(inclination * self.get_arc_unit())
         else:
             raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
+    @property
+    def eccentricity(self):
+        """
+        eccentricity of orbit of binary star system
+
+        :return: (np.)int, (np.)float
+        """
+        return self._eccentricity
+
+    @eccentricity.setter
+    def eccentricity(self, eccentricity):
+        """
+        set eccentricity
+
+        :param eccentricity: (np.)int, (np.)float
+        :return:
+        """
+        if eccentricity < 0 or eccentricity > 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
+            raise TypeError('Input of variable `eccentricity` is not (np.)int or (np.)float or it is out of boundaries.')
+        self._eccentricity = eccentricity
+
+    @property
+    def periastron(self):
+        """
+        argument of periastron
+
+        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        """
+        return self._periastron
+
+    @periastron.setter
+    def periastron(self, periastron):
+        if isinstance(periastron, u.quantity.Quantity):
+            self._inclination = np.float64(periastron.to(self.get_arc_unit()))
+        elif isinstance(periastron, (int, np.int, float, np.float)):
+            self._inclination = np.float64(periastron * self.get_arc_unit())
+        else:
+            raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
     def compute_lc(self):
