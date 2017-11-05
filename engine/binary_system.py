@@ -36,7 +36,7 @@ class BinarySystem(System):
         self.init_orbit()
 
     def init_orbit(self):
-        self._logger.debug("Initializing orbit in class instance {} ".format(BinarySystem.__name__))
+        self._logger.debug("Re/Initializing orbit in class instance {} ".format(BinarySystem.__name__))
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
         # self._orbit = Orbit(**orbit_kwargs)
         print(orbit_kwargs)
