@@ -1,14 +1,18 @@
+import logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
+
 class Orbit(object):
 
     KWARGS = ['period', 'inclination', 'eccentricity', 'periastron']
 
     def __init__(self, **kwargs):
 
+        self._logger = logging.getLogger(Orbit.__name__)
+
         self._period = None
         self._inclination = None
         self._eccentricity = None
         self._periastron = None
-
 
     @property
     def period(self):
