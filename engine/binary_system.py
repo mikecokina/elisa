@@ -127,6 +127,12 @@ class BinarySystem(System):
 
     @periastron.setter
     def periastron(self, periastron):
+        """
+        set argumnt of periastron
+
+        :param periastron: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
         if isinstance(periastron, u.quantity.Quantity):
             self._inclination = np.float64(periastron.to(self.get_arc_unit()))
         elif isinstance(periastron, (int, np.int, float, np.float)):
