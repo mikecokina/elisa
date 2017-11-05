@@ -136,9 +136,9 @@ class BinarySystem(System):
         :return:
         """
         if isinstance(periastron, u.quantity.Quantity):
-            self._inclination = np.float64(periastron.to(self.get_arc_unit()))
+            self._periastron = np.float64(periastron.to(self.get_arc_unit()))
         elif isinstance(periastron, (int, np.int, float, np.float)):
-            self._inclination = np.float64(periastron * self.get_arc_unit())
+            self._periastron = np.float64(periastron * self.get_arc_unit())
         else:
             raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
