@@ -15,6 +15,9 @@ class BinarySystem(System):
         self.is_property(kwargs)
         super(BinarySystem, self).__init__(name=name, **kwargs)
 
+        # get logger
+        self._logger = logging.getLogger(BinarySystem.__name__)
+
         # default values of properties
         self._inclination = None
         self._period = None
@@ -33,6 +36,7 @@ class BinarySystem(System):
         self.init_orbit()
 
     def init_orbit(self):
+        self._logger.debug("Initializing orbit in class instance {} ".format(BinarySystem.__name__))
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
         # self._orbit = Orbit(**orbit_kwargs)
         print(orbit_kwargs)
