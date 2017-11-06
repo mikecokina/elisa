@@ -11,6 +11,7 @@ class Orbit(object):
         self.is_property(kwargs)
         self._logger = logging.getLogger(Orbit.__name__)
 
+        # default valeus of properties
         self._period = None
         self._inclination = None
         self._eccentricity = None
@@ -19,9 +20,10 @@ class Orbit(object):
         # values of properties
         for kwarg in Orbit.KWARGS:
             if kwarg in kwargs:
-                self._logger.debug("Setting property {} "
-                                   "of class instance {} to {}".format(kwarg, Orbit.__name__, kwargs[kwarg]))
-                setattr(self, kwarg, kwargs[kwarg])
+                if kwargs[kwarg] is not None:
+                    self._logger.debug("Setting property {} "
+                                       "of class instance {} to {}".format(kwarg, Orbit.__name__, kwargs[kwarg]))
+                    setattr(self, kwarg, kwargs[kwarg])
 
     @property
     def period(self):

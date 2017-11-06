@@ -70,7 +70,7 @@ class BinarySystem(System):
                             'nor astropy.unit.quantity.Quantity instance.')
         self.orbit._period = self._period
         self._logger.debug("Setting property period "
-                           "of class instance {} and {} to {}".format(BinarySystem.__name__, Orbit.__name__, self._period))
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._period))
 
     @property
     def inclination(self):
@@ -98,7 +98,7 @@ class BinarySystem(System):
                             'nor astropy.unit.quantity.Quantity instance.')
         self.orbit._inclination = self._inclination
         self._logger.debug("Setting property inclination "
-                           "of class instance {} and {} to {}".format(BinarySystem.__name__, Orbit.__name__, self._inclination))
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._inclination))
 
     @property
     def eccentricity(self):
@@ -122,7 +122,7 @@ class BinarySystem(System):
         self._eccentricity = eccentricity
         self.orbit._eccentricity = self._eccentricity
         self._logger.debug("Setting property eccentricity "
-                           "of class instance {} and {} to {}".format(BinarySystem.__name__, Orbit.__name__, self._eccentricity))
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._eccentricity))
 
     @property
     def periastron(self):
@@ -150,7 +150,7 @@ class BinarySystem(System):
                             'nor astropy.unit.quantity.Quantity instance.')
         self.orbit.periastron = self.periastron
         self._logger.debug("Setting property periastron "
-                           "of class instance {} and {} to {}".format(BinarySystem.__name__, Orbit.__name__, self._periastron))
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._periastron))
 
     def compute_lc(self):
         pass

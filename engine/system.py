@@ -27,14 +27,15 @@ class System(object):
     def __init__(self, name=None, **kwargs):
         self._logger = logging.getLogger(System.__name__)
 
+        # default params
+        self._gamma = None
+
         if name is None:
             self._name = str(System.ID)
             self._logger.debug("Name of class instance {} set to {}".format(System.__name__, self._name))
             System.ID += 1
         else:
             self._name = str(name)
-
-        self.gamma = None
 
     @property
     def name(self):
