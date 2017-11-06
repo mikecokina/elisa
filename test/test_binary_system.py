@@ -25,16 +25,19 @@ class TestBinarySystem(unittest.TestCase):
         self.assertEqual(bs.inclination, 0.25)
 
         bs.inclination = 90 * u.deg
-        self.assertEqual(bs.orbit.inclination, 0.5*np.pi)
-        self.assertEqual(bs.inclination, 0.5*np.pi)
+        self.assertEqual(bs.orbit.inclination, 0.5 * np.pi)
+        self.assertEqual(bs.inclination, 0.5 * np.pi)
 
         bs.periastron = 1.289
         self.assertEqual(bs.orbit.periastron, 1.289)
         self.assertEqual(bs.periastron, 1.289)
 
-        bs.periastron = 180*u.deg
+        bs.periastron = 180 * u.deg
         self.assertEqual(bs.orbit.periastron, np.pi)
         self.assertEqual(bs.periastron, np.pi)
+
+    def test_binary_change(self):
+        bs = BinarySystem()
 
         bs.gamma = 2.5
         self.assertEqual(bs.gamma, 2.5)
