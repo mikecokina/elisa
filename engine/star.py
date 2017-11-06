@@ -33,7 +33,7 @@ class Star(Body):
         return self._surface_potential
 
     @surface_potential.setter
-    def surface_potential(self,potential):
+    def surface_potential(self, potential):
         """
         setter for surface potential
         usage: xy.surface_potential = new_potential
@@ -82,7 +82,7 @@ class Star(Body):
         :param gravity_darkening: float64
         """
         if 0 <= gravity_darkening <= 1:
-            self._gravity_darkenings = np.float64(gravity_darkening)
+            self._gravity_darkening = np.float64(gravity_darkening)
         else:
             raise ValueError('Parameter gravity darkening = {} is out of range (0, 1)'.format(gravity_darkening))
 

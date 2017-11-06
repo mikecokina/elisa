@@ -1,6 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from astropy import units as u
 import numpy as np
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 
 class Body(object, metaclass=ABCMeta):
@@ -26,8 +29,11 @@ class Body(object, metaclass=ABCMeta):
         """
         Parameters of abstract class Body
         """
+        self._logger = logging.getLogger(Body.__name__)
+
         if name is None:
             self._name = str(Body.ID)
+            self._logger.debug("Name of class instance {} set to {}".format(Body.__name__, self._name))
             Body.ID += 1
         else:
             self._name = str(name)
@@ -45,6 +51,7 @@ class Body(object, metaclass=ABCMeta):
         self._polar_radius = None # float64
 
         # values of properties
+        # toto tu uz byt nemusi?
         for kwarg in self.KWARGS:
             if kwarg in kwargs:
                 setattr(self, kwarg, kwargs[kwarg])
@@ -187,7 +194,8 @@ class Body(object, metaclass=ABCMeta):
                face_ID_i: uint32
                vertice_ID_j: uint32
         """
-        self._faces = {np.uint32(xx): np.array([np.uint32(yy) for yy in faces[xx]]) for xx in faces}
+        # self._faces = {np.uint32(xx): np.array([np.uint32(yy) for yy in faces[xx]]) for xx in faces}
+        self._faces = faces
 
     @property
     def normals(self):
@@ -223,7 +231,8 @@ class Body(object, metaclass=ABCMeta):
                face_ID_i: uint32
                normal_xyzj: float64
         """
-        self._normals = {np.uint32(xx): np.array([np.uint32(yy) for yy in normals[xx]]) for xx in normals}
+        # self._normals = {np.uint32(xx): np.array([np.uint32(yy) for yy in normals[xx]]) for xx in normals}
+        self._normals = normals
 
     @property
     def temperatures(self):
@@ -248,8 +257,8 @@ class Body(object, metaclass=ABCMeta):
 
         :param temperatures: dict
         """
-        self._temperatures = {np.uint32(xx): np.float32(xx) for xx in temperatures}
-        # self._temperatures = temperatures
+        # self._temperatures = {np.uint32(xx): np.float32(xx) for xx in temperatures}
+        self._temperatures = temperatures
 
     # @property
     # def intensity(self):

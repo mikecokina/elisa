@@ -1,0 +1,7 @@
+ - preco mame __TIME_UNIT a __PERIOD_UNIT osobitne zadefinovane s navyse inymi defaultnymi jednotkami? nebude mismas?
+
+ - v Body je cast kodu:
+         for kwarg in self.KWARGS:
+            if kwarg in kwargs:
+                setattr(self, kwarg, kwargs[kwarg])
+   ale ty ju v System uz nemas, to znamena ze uz naplanujeme aby pouzivatel inicializoval abstraktne triedy System a Body ale len ich potomkov?

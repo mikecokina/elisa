@@ -5,6 +5,7 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
+
 class System(object):
     """
     Abstract class defining System
@@ -33,6 +34,8 @@ class System(object):
         else:
             self._name = str(name)
 
+        self.gamma = None
+
     @property
     def name(self):
         """
@@ -58,7 +61,7 @@ class System(object):
         """
         system center of mass velocity
         expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised
-        if quantity is not specified, default velocity unit is assumed
+        if unit is not specified, default velocity unit is assumed
 
         :param gamma: numpy.float/numpy.int/astropy.units.quantity.Quantity
         :return: None
@@ -98,4 +101,3 @@ class System(object):
 
     def get_info(self):
         pass
-
