@@ -44,3 +44,4 @@ class TestBinarySystem(unittest.TestCase):
 
         bs.gamma = 2.5 * u.km / u.s
         self.assertEqual(bs.gamma, 2500)
+
