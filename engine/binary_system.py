@@ -1,4 +1,5 @@
 from engine.system import System
+from engine.star import Star
 from engine.orbit import Orbit
 from astropy import units as u
 import numpy as np
@@ -11,12 +12,24 @@ class BinarySystem(System):
 
     KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'periastron']
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, primary, secondary, name=None, **kwargs):
+        # get logger
+        self._logger = logging.getLogger(BinarySystem.__name__)
+
         self.is_property(kwargs)
         super(BinarySystem, self).__init__(name=name, **kwargs)
 
-        # get logger
-        self._logger = logging.getLogger(BinarySystem.__name__)
+        # assign components to binary system
+        if not isinstance(primary, Star):
+            raise TypeError("Primary component is not instance of class {}".format(Star.__name__))
+
+        if not isinstance(secondary, Star):
+            raise TypeError("Secondary component is not instance of class {}".format(Star.__name__))
+
+        self._logger.debug("Setting property components "
+                           "of class instance {}".format(BinarySystem.__name__))
+        self._primary = primary
+        self._secondary = secondary
 
         # default values of properties
         self._inclination = None
@@ -39,6 +52,14 @@ class BinarySystem(System):
         self._logger.debug("Re/Initializing orbit in class instance {} ".format(BinarySystem.__name__))
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
         self._orbit = Orbit(**orbit_kwargs)
+
+    @property
+    def primary(self):
+        return self._primary
+
+    @property
+    def secondary(self):
+        return self._secondary
 
     @property
     def orbit(self):
