@@ -31,6 +31,14 @@ class BinarySystem(System):
         self._primary = primary
         self._secondary = secondary
 
+        # physical properties check
+        self._mass_ratio = self.secondary.mass / self.primary.mass
+
+
+
+
+
+
         # default values of properties
         self._inclination = None
         self._period = None
@@ -52,6 +60,14 @@ class BinarySystem(System):
         self._logger.debug("Re/Initializing orbit in class instance {} ".format(BinarySystem.__name__))
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
         self._orbit = Orbit(**orbit_kwargs)
+
+    @property
+    def mass_ratio(self):
+        return self._mass_ratio
+
+    @mass_ratio.setter
+    def mass_ratio(self, value):
+        raise Exception("Property ``mass_ratio`` is read-only.")
 
     @property
     def primary(self):

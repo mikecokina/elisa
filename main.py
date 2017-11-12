@@ -8,11 +8,3 @@ primary = Star(mass=2.0, surface_potential=5.0)
 secondary = Star(mass=1.0, surface_potential=5.0)
 
 bs = BinarySystem(primary=primary, secondary=secondary)
-
-
-# dt - dt
-print(bs.primary.mass)
-primary.mass = 3.0
-
-# sd - dt
-print(bs.primary.mass)

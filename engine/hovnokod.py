@@ -24,9 +24,18 @@ class B(object):
 
         print("Init")
 
+
+class C(object):
+    def __init__(self, a):
+        self._a = a
+
+
 x = A(a=3)
 x.a = 11
 y = B(obj=x)
 x.a = 10
+
+z = C(10)
+print(z._a)
 
 
