@@ -41,19 +41,27 @@ class System(object):
     def name(self):
         """
         name of object initialized on base of this abstract class
+
         :return: str
         """
         return self._name
 
     @name.setter
     def name(self, name):
+        """
+        setter for name of system
+
+        :param name: str
+        :return:
+        """
         self._name = str(name)
 
     @property
     def gamma(self):
         """
-        system center of mass radial velocity
-        :return:
+        system center of mass radial velocity in default velocity unit
+
+        :return: numpy.float
         """
         return self._gamma
 
@@ -78,22 +86,47 @@ class System(object):
     # getters for protected variables
     @classmethod
     def get_distance_unit(cls):
+        """
+        returns default distance unit in astropy.units.quantity.Quantity format
+
+        :return: astropy.units.quantity.Quantity
+        """
         return cls.__DISTANCE_UNIT
 
     @classmethod
     def get_time_unit(cls):
+        """
+        returns default time unit in astropy.units.quantity.Quantity format
+
+        :return: astropy.units.quantity.Quantity
+        """
         return cls.__TIME_UNIT
 
     @classmethod
     def get_arc_unit(cls):
+        """
+        returns default arc unit in astropy.units.quantity.Quantity format
+
+        :return: astropy.units.quantity.Quantity
+        """
         return cls.__ARC_UNIT
 
     @classmethod
     def get_velocity_unit(cls):
+        """
+        returns default velocity unit in astropy.units.quantity.Quantity format
+
+        :return: astropy.units.quantity.Quantity
+        """
         return cls.__VELOCITY_UNIT
 
     @classmethod
     def get_period_unit(cls):
+        """
+        returns default period unit in astropy.units.quantity.Quantity format
+
+        :return: astropy.units.quantity.Quantity
+        """
         return cls.__PERIOD_UNIT
 
     @abstractmethod

@@ -1,6 +1,9 @@
 from engine.body import Body
 from astropy import units as u
 import numpy as np
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 
 class Star(Body):
@@ -9,6 +12,9 @@ class Star(Body):
               'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening']
 
     def __init__(self, name=None, **kwargs):
+        # get logger
+        self._logger = logging.getLogger(Star.__name__)
+
         self.is_property(kwargs)
         super(Star, self).__init__(name=name, **kwargs)
 
@@ -20,6 +26,8 @@ class Star(Body):
         # values of properties
         for kwarg in Star.KWARGS:
             if kwarg in kwargs:
+                self._logger.debug("Setting property {} "
+                                   "of class instance {} to {}".format(kwarg, Star.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
 
     @property
@@ -88,6 +96,12 @@ class Star(Body):
 
     @classmethod
     def is_property(cls, kwargs):
+        """
+        method for checking if keyword arguments are valid properties of this class
+
+        :param kwargs: dict
+        :return:
+        """
         is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))

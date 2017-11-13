@@ -10,7 +10,7 @@ class Body(object, metaclass=ABCMeta):
     """
     Abstract class defining bodies that can be modelled by this software
     see https://docs.python.org/3.5/library/abc.html for more informations
-    internal units are imported from astropy.units module
+    units are imported from astropy.units module
     see documentation http://docs.astropy.org/en/stable/units/
     """
     __metaclass__ = ABCMeta
