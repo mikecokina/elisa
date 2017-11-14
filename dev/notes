@@ -1,7 +1,10 @@
- - preco mame __TIME_UNIT a __PERIOD_UNIT osobitne zadefinovane s navyse inymi defaultnymi jednotkami? nebude mismas?
+- majme zadefinovanu suradnicovu sustavu: - os z smeruje k pozorovatelovi
+                                          - os x je orientovana tak, ze dlzka vystupneho uzla je 0, tj, drahu sklaname
+                                          rotovanim okolo osi x
+                                          - primárna zlozka je v zaciatku ss
 
- - v Body je cast kodu:
-         for kwarg in self.KWARGS:
-            if kwarg in kwargs:
-                setattr(self, kwarg, kwargs[kwarg])
-   ale ty ju v System uz nemas, to znamena ze uz naplanujeme aby pouzivatel inicializoval abstraktne triedy System a Body ale len ich potomkov?
+- to znamená: - primárny zákryt nastane pre argument periastra + pravá anomália : 90°; pre i<90°
+                                                                                  270°; pre i>90°
+              - zákryty nastaávajú vtedy ked sekundárna zlozka pretne rovinu yz
+
+- treba doinstalovat python3-tk koli matplotlibu
