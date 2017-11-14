@@ -194,11 +194,12 @@ class Orbit(object):
         try:
             solution = scipy.optimize.newton(cls.mean_anomaly_fn, 1.0, args=(mean_anomaly, eccentricity), tol=1e-10)
             if not np.isnan(solution):
-                if solution < 0: solution += 2.0 * np.pi
+                if solution < 0:
+                    solution += 2.0 * np.pi
                 return solution
             else:
                 return False
-        except:
+        except Exception as e:
             return False
 
     @classmethod
