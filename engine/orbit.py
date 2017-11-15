@@ -167,32 +167,29 @@ class Orbit(object):
         """
         return 2.0 * np.pi * phase
 
-    @classmethod
-    def mean_anomaly_fn(cls, eccentric_anomaly=None, *args):
-        """
-        definition of Kepler equation for scipy solver
 
-        :param eccentric_anomaly: numpy.arrray
-        :param args: mean_anomally: numpy_array
-                    eccentricity: numpy.float
-        :return: numpy.array
+    def mean_anomaly_fn(self, eccentric_anomaly=None, *args):
         """
-        mean_anomaly, eccentricity = args
-        return (eccentric_anomaly - eccentricity * np.sin(eccentric_anomaly)) - mean_anomaly
+        definition of Kepler equation for scipy solver in Orbit.eccentric_anomaly
 
-    @classmethod
-    def eccentric_anomaly(cls, mean_anomaly=None, eccentricity=None):
+        :param eccentric_anomaly: numpy.float
+        :param args: mean_anomaly: numpy.float
+        :return: numpy.float
         """
-        solves Kepler equation for eccentric anomaly usin mean anomaly and eccentricity as input
+        mean_anomaly, = args
+        return (eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly)) - mean_anomaly
+
+    def eccentric_anomaly(self, mean_anomaly=None):
+        """
+        solves Kepler equation for eccentric anomaly via mean anomaly
 
         :param mean_anomaly: numpy.float
-        :param eccentricity: numpy.float
         :return: numpy.float
         """
         import scipy.optimize
-
         try:
-            solution = scipy.optimize.newton(cls.mean_anomaly_fn, 1.0, args=(mean_anomaly, eccentricity), tol=1e-10)
+            solution = scipy.optimize.newton(self.mean_anomaly_fn, 1.0, args=(mean_anomaly,),
+                                             tol=1e-10)
             if not np.isnan(solution):
                 if solution < 0:
                     solution += 2.0 * np.pi
@@ -200,41 +197,45 @@ class Orbit(object):
             else:
                 return False
         except Exception as e:
+            self._logger.debug("Solver scipy.optimize.newton in function Orbit.eccentric_anomaly did not provide "
+                               "solution.\n Reason: {}".format(e))
             return False
 
-    @classmethod
-    def true_anomaly(cls, eccentric_anomaly=None, eccentricity=None):
+    def true_anomaly(self, eccentric_anomaly=None):
         """
         returns true anomaly as a function of eccentric anomaly and eccentricity
-        :param eccentricity: numpy.float
+
         :param eccentric_anomaly: numpy.array
         :return: numpy.array
         """
         true_anomaly = 2.0 * np.arctan(
-            np.sqrt((1.0 + eccentricity) / (1.0 - eccentricity)) * np.tan(eccentric_anomaly / 2.0))
+            np.sqrt((1.0 + self.eccentricity) / (1.0 - self.eccentricity)) * np.tan(eccentric_anomaly / 2.0))
         true_anomaly[true_anomaly < 0] += 2.0 * np.pi
         return true_anomaly
 
-    @classmethod
-    def radius(cls, true_anomaly=None, eccentricity=None):
-        return (1.0 - eccentricity ** 2) / (1.0 + eccentricity * np.cos(true_anomaly))
+    def relative_radius(self, true_anomaly=None):
+        """
+        calculates the length of radius vector of elipse where a=1
 
-    @classmethod
-    def true_anomaly_to_azimuth(cls, true_anomaly=None, argument_of_periastron=None):
-        azimut = true_anomaly + argument_of_periastron
+        :param true_anomaly: numpy.array
+        :return: numpy.array
+        """
+        return (1.0 - self.eccentricity ** 2) / (1.0 + self.eccentricity * np.cos(true_anomaly))
+
+    def true_anomaly_to_azimuth(self, true_anomaly=None):
+        azimut = true_anomaly + self.periastron
         azimut %= 2.0 * np.pi
         return azimut
 
-    @classmethod
-    def orbital_motion(cls, phase=None, eccentricity=None, argument_of_periastron=None, phase_shift=None):
-        true_phase = cls.true_phase(phase=phase, phase_shift=phase_shift)
-        mean_anomaly = cls.mean_anomaly(phase=true_phase)
-        eccentric_anomaly = np.array([cls.eccentric_anomaly(mean_anomaly=xx, eccentricity=eccentricity)
+    def orbital_motion(self, phase=None):
+        true_phase = self.true_phase(phase=phase, phase_shift=self.phase_shift)  # phase shift of photometric phase and
+        # orbital phase(mean anomaly)
+        mean_anomaly = self.mean_anomaly(phase=true_phase)
+        eccentric_anomaly = np.array([self.eccentric_anomaly(mean_anomaly=xx)
                                       for xx in mean_anomaly])
-        true_anomaly = cls.true_anomaly(eccentric_anomaly=eccentric_anomaly, eccentricity=eccentricity)
-        distance = cls.radius(true_anomaly=true_anomaly, eccentricity=eccentricity)
-        azimut_angle = cls.true_anomaly_to_azimuth(true_anomaly=true_anomaly,
-                                                   argument_of_periastron=argument_of_periastron)
+        true_anomaly = self.true_anomaly(eccentric_anomaly=eccentric_anomaly)
+        distance = self.relative_radius(true_anomaly=true_anomaly)
+        azimut_angle = self.true_anomaly_to_azimuth(true_anomaly=true_anomaly)
 
         position = np.column_stack((distance, azimut_angle, true_anomaly, phase))
         return position

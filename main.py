@@ -17,10 +17,7 @@ bs.eccentricity = 0.4
 bs.periastron = 0
 bs.phase_shift = 0.2
 phs = np.linspace(0, 1, 100)
-position = bs.orbit.orbital_motion(phase=phs,
-                                   eccentricity=bs.eccentricity,
-                                   argument_of_periastron=bs.periastron,
-                                   phase_shift=bs.phase_shift)
+position = bs.orbit.orbital_motion(phase=phs)
 
 theta = position[:, 1]
 r = position[:, 0]
