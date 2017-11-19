@@ -249,8 +249,9 @@ class Orbit(object):
 
         :return: dict(dict)
         """
+
+        conjunction_quantities = {}
         for alpha, idx in list(zip([c.PI / 2.0, 3.0 * c.PI / 2.0], [0, 1])):
-            conjunction_quantities = {}
             # true anomaly of conjunction (measured from periastron counter-clokwise)
             true_anomaly_of_conjuction = (alpha - self.argument_of_periastron) % c.FULL_ARC  # \nu_{con}
 
