@@ -37,6 +37,7 @@ class BinarySystem(System):
     def __init__(self, primary, secondary, name=None, **kwargs):
         # get logger
         self._logger = logging.getLogger(BinarySystem.__name__)
+        self._logger.info("Initialising object {}".format(BinarySystem.__name__))
 
         self.is_property(kwargs)
         super(BinarySystem, self).__init__(name=name, **kwargs)
