@@ -133,5 +133,6 @@ class System(object):
     def compute_lc(self):
         pass
 
+    @abstractmethod
     def get_info(self):
         pass
