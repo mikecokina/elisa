@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 
 class BinarySystem(System):
 
-    KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'periastron', 'T0', 'phase_shift']
+    KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'T0', 'phase_shift']
 
     def __init__(self, primary, secondary, name=None, **kwargs):
         # get logger
@@ -60,7 +60,7 @@ class BinarySystem(System):
         self._inclination = None
         self._period = None
         self._eccentricity = None
-        self._periastron = None
+        self._argument_of_periastron = None
         self._orbit = None
         self._T0 = None
         self._phase_shift = None
@@ -212,33 +212,34 @@ class BinarySystem(System):
                            "of class instance {} to {}".format(BinarySystem.__name__, self._eccentricity))
 
     @property
-    def periastron(self):
+    def argument_of_periastron(self):
         """
         argument of periastron
 
         :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         """
-        return self._periastron
+        return self._argument_of_periastron
 
-    @periastron.setter
-    def periastron(self, periastron):
+    @argument_of_periastron.setter
+    def argument_of_periastron(self, argument_of_periastron):
         """
         setter for argument of periastron
 
-        :param periastron: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :param argument_of_periastron: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
         """
-        if isinstance(periastron, u.quantity.Quantity):
-            self._periastron = np.float64(periastron.to(self.get_arc_unit()))
-        elif isinstance(periastron, (int, np.int, float, np.float)):
-            self._periastron = np.float64(periastron)
+        if isinstance(argument_of_periastron, u.quantity.Quantity):
+            self._argument_of_periastron = np.float64(argument_of_periastron.to(self.get_arc_unit()))
+        elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
+            self._argument_of_periastron = np.float64(argument_of_periastron)
         else:
             raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        self.orbit.periastron = self.periastron
-        self._logger.debug("Setting property periastron "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._periastron))
+        self.init_orbit()
 
+    # fixme; premenovat, ak to chces mat v orbite, tak treba doplnit na konci settera self.init_orbit()
+    # fixme: nateraz odstranene z Orbit()
+    # fixme: nechcem vidiet pomenovavanie velkymi pismenami, ani funkciu ani premenne
     @property
     def T0(self):
         """
@@ -249,7 +250,7 @@ class BinarySystem(System):
         return self._T0
 
     @T0.setter
-    def T0(self,T0):
+    def T0(self, T0):
         """
         setter for time of primary minima
 
@@ -266,6 +267,7 @@ class BinarySystem(System):
         self._logger.debug("Setting property T0 "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._T0))
 
+    # fixme: odstranene z vlastnosti Orbit()
     @property
     def phase_shift(self):
         """

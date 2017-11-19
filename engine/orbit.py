@@ -1,12 +1,13 @@
 import logging
 import numpy as np
+from engine import const as c
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 
 class Orbit(object):
 
-    KWARGS = ['period', 'inclination', 'eccentricity', 'periastron', 'phase_shift']
+    KWARGS = ['period', 'inclination', 'eccentricity', 'argument_of_periastron']
 
     def __init__(self, **kwargs):
         self.is_property(kwargs)
@@ -16,8 +17,7 @@ class Orbit(object):
         self._period = None
         self._inclination = None
         self._eccentricity = None
-        self._periastron = None
-        self._phase_shift = None
+        self._argument_of_periastron = None
 
         # values of properties
         for kwarg in Orbit.KWARGS:
@@ -91,26 +91,28 @@ class Orbit(object):
                            "of class instance {} to {}".format(Orbit.__name__, self._eccentricity))
 
     @property
-    def periastron(self):
+    def argument_of_periastron(self):
         """
         returns argument of periastron of binary system orbit
 
         :return: numpy.float
         """
-        return self._periastron
+        return self._argument_of_periastron
 
-    @periastron.setter
-    def periastron(self, periastron):
+    @argument_of_periastron.setter
+    def argument_of_periastron(self, argument_of_periastron):
         """
         setter for argument of periastron of binary system orbit
 
-        :param periastron: numpy.float
+        :param argument_of_periastron: numpy.float
         :return:
         """
-        self._periastron = periastron
+        self._argument_of_periastron = argument_of_periastron
         self._logger.debug("Setting property periastron "
-                           "of class instance {} to {}".format(Orbit.__name__, self._periastron))
+                           "of class instance {} to {}".format(Orbit.__name__, self._argument_of_periastron))
 
+    # fixme: kedze sa nejedna o pahse shift, ktory si si povodne myslel budeme to musiet zmenit a ten shift doplnit
+    # fixme: proste sa musime stretnut a toto dohodnut
     @property
     def phase_shift(self):
         """
@@ -165,8 +167,7 @@ class Orbit(object):
         :param phase: numpy.array
         :return: numpy.array
         """
-        return 2.0 * np.pi * phase
-
+        return c.FULL_ARC * phase
 
     def mean_anomaly_fn(self, eccentric_anomaly=None, *args):
         """
@@ -192,7 +193,7 @@ class Orbit(object):
                                              tol=1e-10)
             if not np.isnan(solution):
                 if solution < 0:
-                    solution += 2.0 * np.pi
+                    solution += c.FULL_ARC
                 return solution
             else:
                 return False
@@ -210,7 +211,7 @@ class Orbit(object):
         """
         true_anomaly = 2.0 * np.arctan(
             np.sqrt((1.0 + self.eccentricity) / (1.0 - self.eccentricity)) * np.tan(eccentric_anomaly / 2.0))
-        true_anomaly[true_anomaly < 0] += 2.0 * np.pi
+        true_anomaly[true_anomaly < 0] += c.FULL_ARC
         return true_anomaly
 
     def relative_radius(self, true_anomaly=None):
@@ -223,8 +224,8 @@ class Orbit(object):
         return (1.0 - self.eccentricity ** 2) / (1.0 + self.eccentricity * np.cos(true_anomaly))
 
     def true_anomaly_to_azimuth(self, true_anomaly=None):
-        azimut = true_anomaly + self.periastron
-        azimut %= 2.0 * np.pi
+        azimut = true_anomaly + self.argument_of_periastron
+        azimut %= c.FULL_ARC
         return azimut
 
     def orbital_motion(self, phase=None):
@@ -237,5 +238,38 @@ class Orbit(object):
         distance = self.relative_radius(true_anomaly=true_anomaly)
         azimut_angle = self.true_anomaly_to_azimuth(true_anomaly=true_anomaly)
 
-        position = np.column_stack((distance, azimut_angle, true_anomaly, phase))
-        return position
+        return np.column_stack((distance, azimut_angle, true_anomaly, phase))
+
+    def get_conjuction(self):
+        """
+        compute and return photometric phase of conjunction (eclipses)
+
+        we assume that primary object is situated in center of coo system and observation unit
+        vector is [-1, 0, 0]
+
+        :return: dict(dict)
+        """
+        for alpha, idx in list(zip([c.PI / 2.0, 3.0 * c.PI / 2.0], [0, 1])):
+            conjunction_quantities = {}
+            # true anomaly of conjunction (measured from periastron counter-clokwise)
+            true_anomaly_of_conjuction = (alpha - self.argument_of_periastron) % c.FULL_ARC  # \nu_{con}
+
+            # eccentric anomaly of conjunction (measured from apse line)
+            eccentric_anomaly_of_conjunction = (2.0 * np.arctan(
+                np.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) *
+                np.tan(true_anomaly_of_conjuction / 2.0))) % c.FULL_ARC
+
+            # mean anomaly of conjunction (measured from apse line)
+            mean_anomaly_of_conjunction = (eccentric_anomaly_of_conjunction -
+                                           self.eccentricity * np.sin(eccentric_anomaly_of_conjunction)) % c.FULL_ARC
+
+            # true phase of conjunction (measured from apse line)
+            true_phase_of_conjunction = (mean_anomaly_of_conjunction / c.FULL_ARC) % 1.0
+
+            conjunction_quantities[idx] = {}
+            conjunction_quantities[idx]["true_anomaly"] = true_anomaly_of_conjuction
+            conjunction_quantities[idx]["eccentric_anomaly"] = eccentric_anomaly_of_conjunction
+            conjunction_quantities[idx]["mean_anomaly"] = mean_anomaly_of_conjunction
+            conjunction_quantities[idx]["true_phase"] = true_phase_of_conjunction
+
+        return conjunction_quantities

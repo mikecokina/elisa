@@ -4,11 +4,10 @@ from engine.binary_system import BinarySystem
 from engine.system import System
 from astropy import units as u
 
-
 class TestBinarySystemProperties(unittest.TestCase):
 
     def test_orbit_change(self):
-        bs = BinarySystem()
+        bs = BinarySystem(primary=None, secondary=None)
 
         bs.period = 10.0
         self.assertEqual(bs.orbit.period, 10)
@@ -23,7 +22,7 @@ class TestBinarySystemProperties(unittest.TestCase):
         self.assertEqual(bs.orbit.periastron, 0.2345)
 
     def test_binary_system_unit(self):
-        bs = BinarySystem()
+        bs = BinarySystem(primary=None, secondary=None)
 
         bs.period = 432000 * u.s
         self.assertEqual(bs.period, 5)
@@ -44,7 +43,7 @@ class TestBinarySystemProperties(unittest.TestCase):
         # add all
 
     def test_binary_change(self):
-        bs = BinarySystem()
+        bs = BinarySystem(primary=None, secondary=None)
 
         bs.period = 12.0
         self.assertEqual(bs.period, 12)
