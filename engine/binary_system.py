@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 
 class BinarySystem(System):
 
-    KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'T0', 'phase_shift']
+    KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'primary_minimum_time', 'phase_shift']
 
     def __init__(self, primary, secondary, name=None, **kwargs):
         # get logger
@@ -63,7 +63,7 @@ class BinarySystem(System):
         self._eccentricity = None
         self._argument_of_periastron = None
         self._orbit = None
-        self._T0 = None
+        self._primary_minimum_time = None
         self._phase_shift = None
 
         # orbit initialisation
@@ -242,31 +242,31 @@ class BinarySystem(System):
     # fixme: nateraz odstranene z Orbit()
     # fixme: nechcem vidiet pomenovavanie velkymi pismenami, ani funkciu ani premenne
     @property
-    def T0(self):
+    def primary_minimum_time(self):
         """
         returns time of primary minimum in default period unit
 
         :return: numpy.float
         """
-        return self._T0
+        return self._primary_minimum_time
 
-    @T0.setter
-    def T0(self, T0):
+    @primary_minimum_time.setter
+    def primary_minimum_time(self, primary_minimum_time):
         """
         setter for time of primary minima
 
-        :param T0: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :param primary_minimum_time: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
         """
-        if isinstance(T0, u.quantity.Quantity):
-            self._T0 = np.float64(T0.to(self.get_period_unit()))
-        elif isinstance(T0, (int, np.int, float, np.float)):
-            self._T0 = np.float64(T0)
+        if isinstance(primary_minimum_time, u.quantity.Quantity):
+            self._primary_minimum_time = np.float64(primary_minimum_time.to(self.get_period_unit()))
+        elif isinstance(primary_minimum_time, (int, np.int, float, np.float)):
+            self._primary_minimum_time = np.float64(primary_minimum_time)
         else:
-            raise TypeError('Input of variable `T0` is not (np.)int or (np.)float '
+            raise TypeError('Input of variable `primary_minimum_time` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug("Setting property T0 "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._T0))
+        self._logger.debug("Setting property primary_minimum_time "
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._primary_minimum_time))
 
     # fixme: odstranene z vlastnosti Orbit()
     @property
