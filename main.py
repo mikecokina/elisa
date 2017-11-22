@@ -12,4 +12,3 @@ secondary = Star(mass=1.0, surface_potential=5.0)
 ur_anus = Planet(mass=500.2)
 
 bs = BinarySystem(primary=primary, secondary=secondary)
-

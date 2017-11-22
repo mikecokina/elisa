@@ -18,6 +18,7 @@ class Orbit(object):
         self._inclination = None
         self._eccentricity = None
         self._argument_of_periastron = None
+        self._periastron_distance = None
 
         # values of properties
         for kwarg in Orbit.KWARGS:
@@ -274,3 +275,19 @@ class Orbit(object):
             conjunction_quantities[idx]["true_phase"] = true_phase_of_conjunction
 
         return conjunction_quantities
+
+    @property
+    def periastron_distance(self):
+        """
+        return periastron distance
+
+        :return:
+        """
+        return self._periastron_distance
+
+    def compute_periastron_distance(self):
+        """
+
+        :return:
+        """
+        pass
