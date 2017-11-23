@@ -26,6 +26,7 @@ from engine.orbit import Orbit
 from astropy import units as u
 import numpy as np
 import logging
+from engine import const as c
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -156,7 +157,7 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        self.orbit.period = self._period
+        self.init_orbit()
         self._logger.debug("Setting property period "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._period))
 
@@ -177,6 +178,7 @@ class BinarySystem(System):
         :param inclination: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
         """
+
         if isinstance(inclination, u.quantity.Quantity):
             self._inclination = np.float64(inclination.to(self.get_arc_unit()))
         elif isinstance(inclination, (int, np.int, float, np.float)):
@@ -184,7 +186,11 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        self.orbit.inclination = self._inclination
+
+        if not 0 <= self.inclination <= c.PI:
+            raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
+
+        self.init_orbit()
         self._logger.debug("Setting property inclination "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._inclination))
 
@@ -208,7 +214,7 @@ class BinarySystem(System):
         if eccentricity < 0 or eccentricity > 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
             raise TypeError('Input of variable `eccentricity` is not (np.)int or (np.)float or it is out of boundaries.')
         self._eccentricity = eccentricity
-        self.orbit.eccentricity = self._eccentricity
+        self.init_orbit()
         self._logger.debug("Setting property eccentricity "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._eccentricity))
 
@@ -238,9 +244,6 @@ class BinarySystem(System):
                             'nor astropy.unit.quantity.Quantity instance.')
         self.init_orbit()
 
-    # fixme; premenovat, ak to chces mat v orbite, tak treba doplnit na konci settera self.init_orbit()
-    # fixme: nateraz odstranene z Orbit()
-    # fixme: nechcem vidiet pomenovavanie velkymi pismenami, ani funkciu ani premenne
     @property
     def primary_minimum_time(self):
         """
@@ -268,7 +271,6 @@ class BinarySystem(System):
         self._logger.debug("Setting property primary_minimum_time "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._primary_minimum_time))
 
-    # fixme: odstranene z vlastnosti Orbit()
     @property
     def phase_shift(self):
         """

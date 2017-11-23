@@ -113,7 +113,7 @@ class Orbit(object):
                            "of class instance {} to {}".format(Orbit.__name__, self._argument_of_periastron))
 
     # fixme: kedze sa nejedna o pahse shift, ktory si si povodne myslel budeme to musiet zmenit a ten shift doplnit
-    # fixme: proste sa musime stretnut a toto dohodnut
+
     @property
     def phase_shift(self):
         """
@@ -230,8 +230,8 @@ class Orbit(object):
         return azimut
 
     def orbital_motion(self, phase=None):
-        true_phase = self.true_phase(phase=phase, phase_shift=self.phase_shift)  # phase shift of photometric phase and
-        # orbital phase(mean anomaly)
+        true_phase = self.true_phase(phase=phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
+
         mean_anomaly = self.mean_anomaly(phase=true_phase)
         eccentric_anomaly = np.array([self.eccentric_anomaly(mean_anomaly=xx)
                                       for xx in mean_anomaly])
@@ -245,14 +245,27 @@ class Orbit(object):
         """
         compute and return photometric phase of conjunction (eclipses)
 
-        we assume that primary object is situated in center of coo system and observation unit
+        we assume that primary component is situated in center of coo system and observation unit
         vector is [-1, 0, 0]
+
+        return dictionary is in shape {type_of_eclipse: {'true_phase': ,
+                                                         'true_anomaly': ,
+                                                         'mean_anomaly': ,
+                                                         eccentric_anomaly: }, ...}
 
         :return: dict(dict)
         """
+        # determining order of eclipses
+        try:
+            if 0 <= self.inclination <= c.PI/2:
+                conjuction_arc_list = [c.PI / 2.0, 3.0 * c.PI / 2.0]
+            elif c.PI/2 < self.inclination <= c.PI:
+                conjuction_arc_list = [3.0 * c.PI / 2.0, c.PI / 2.0]
+        except:
+            raise TypeError('Invalid type of {0}.inclination.'.format(Orbit.__name__))
 
         conjunction_quantities = {}
-        for alpha, idx in list(zip([c.PI / 2.0, 3.0 * c.PI / 2.0], [0, 1])):
+        for alpha, idx in list(zip(conjuction_arc_list, ['primary_eclipse', 'secondary_eclipse'])):
             # true anomaly of conjunction (measured from periastron counter-clokwise)
             true_anomaly_of_conjuction = (alpha - self.argument_of_periastron) % c.FULL_ARC  # \nu_{con}
 
