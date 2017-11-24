@@ -67,15 +67,41 @@ class BinarySystem(System):
         self._primary_minimum_time = None
         self._phase_shift = None
 
+        # testing if parameters were initialized
+        missing_kwargs = []
+        for kwarg in BinarySystem.KWARGS:
+            if kwarg not in kwargs:
+                missing_kwargs.append("`{}`".format(kwarg))
+                self._logger.error("Property {} "
+                                   "of class instance {} was not initialized".format(kwarg, BinarySystem.__name__))
+            else:
+                setattr(self, kwarg, kwargs[kwarg])
+
+        if len(missing_kwargs) != 0:
+            raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs), BinarySystem.__name__))
+
         # orbit initialisation
         self.init_orbit()
 
-        # values of properties
-        for kwarg in BinarySystem.KWARGS:
-            if kwarg in kwargs:
-                self._logger.debug("Setting property {} "
-                                   "of class instance {} to {}".format(kwarg, BinarySystem.__name__, kwargs[kwarg]))
-                setattr(self, kwarg, kwargs[kwarg])
+    def init(self):
+        """
+        function to reinitialize BinarySystem class instance after changing parameter(s) of binary system using setters
+
+        :return:
+        """
+        self.__init__(primary=self.primary, secondary=self.secondary, **self._kwargs_serialize())
+
+    def _kwargs_serialize(self):
+        """
+        creating dictionary of keyword arguments of BinarySystem class in order to be able to reinitialize the class
+        instance in init()
+
+        :return: dict
+        """
+        serialized_kwargs = {}
+        for kwarg in self.KWARGS:
+            serialized_kwargs[kwarg] = getattr(self, kwarg)
+        return serialized_kwargs
 
     def init_orbit(self):
         """
@@ -157,7 +183,6 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        self.init_orbit()
         self._logger.debug("Setting property period "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._period))
 
@@ -190,7 +215,6 @@ class BinarySystem(System):
         if not 0 <= self.inclination <= c.PI:
             raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
 
-        self.init_orbit()
         self._logger.debug("Setting property inclination "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._inclination))
 
@@ -214,7 +238,6 @@ class BinarySystem(System):
         if eccentricity < 0 or eccentricity > 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
             raise TypeError('Input of variable `eccentricity` is not (np.)int or (np.)float or it is out of boundaries.')
         self._eccentricity = eccentricity
-        self.init_orbit()
         self._logger.debug("Setting property eccentricity "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._eccentricity))
 
@@ -242,7 +265,6 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        self.init_orbit()
 
     @property
     def primary_minimum_time(self):
@@ -291,7 +313,6 @@ class BinarySystem(System):
         :return:
         """
         self._phase_shift = phase_shift
-        self.orbit.phase_shift = self._phase_shift
         self._logger.debug("Setting property phase_shift "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._phase_shift))
 

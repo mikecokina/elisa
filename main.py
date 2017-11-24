@@ -4,6 +4,8 @@ from engine.planet import Planet
 from astropy import units as u
 import numpy as np
 import matplotlib.pyplot as plt
+from engine import utils
+from engine import const as c
 
 # bs = BinarySystem(gamma=25, period=10.0, eccentricity=0.2)
 
@@ -11,24 +13,33 @@ primary = Star(mass=2.0, surface_potential=5.0)
 secondary = Star(mass=1.0, surface_potential=5.0)
 ur_anus = Planet(mass=500.2)
 
-bs = BinarySystem(primary=primary, secondary=secondary)
-bs.argument_of_periastron = 45*u.deg
+bs = BinarySystem(primary=primary,
+                  secondary=secondary,
+                  argument_of_periastron=0*u.deg,
+                  gamma=0*u.km/u.s,
+                  period=1.0*u.d,
+                  eccentricity=0.6,
+                  inclination=85*u.deg,
+                  primary_minimum_time=0.0*u.d,
+                  phase_shift=0.0)
+
+bs.argument_of_periastron = 135*u.deg
 bs.eccentricity = 0.3
 bs.inclination = 85*u.deg
+bs.init()
 
-print(bs.orbit.get_conjuction()['primary_eclipse'])
-
-phases = np.linspace(0,0.9,100)
+phases = np.linspace(0.0,1.0,100)
 ellipse = bs.orbit.orbital_motion(phase=phases)
 radius = ellipse[:, 0]
 azimut = ellipse[:, 1]
+x,y = utils.polar_to_cartesian(radius=radius, phi=azimut-c.PI/2)
 
-ax = plt.subplot(111, projection='polar')
-ax.plot(azimut, radius)
-ax.scatter(azimut[0], radius[0], color='r')
-ax.set_rmax(2)
-ax.set_rticks([0.5, 1, 1.5, 2])  # less radial ticks
-ax.set_rlabel_position(-22.5)  # get radial labels away from plotted line
-ax.grid(True)
+f = plt.figure()
+ax = f.add_subplot(111)
+ax.plot(x,y)
+ax.scatter(x[0], y[0], c='r')
+ax.scatter(0, 0, c='b')
+ax.set_aspect('equal')
+ax.grid()
 
 plt.show()

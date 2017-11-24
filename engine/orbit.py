@@ -28,6 +28,8 @@ class Orbit(object):
                                        "of class instance {} to {}".format(kwarg, Orbit.__name__, kwargs[kwarg]))
                     setattr(self, kwarg, kwargs[kwarg])
 
+        self._periastron_distance = self.compute_periastron_distance()
+
     @property
     def period(self):
         """
@@ -46,8 +48,6 @@ class Orbit(object):
         :return:
         """
         self._period = period
-        self._logger.debug("Setting property period "
-                           "of class instance {} to {}".format(Orbit.__name__, self._period))
 
     @property
     def inclination(self):
@@ -67,8 +67,6 @@ class Orbit(object):
         :return:
         """
         self._inclination = inclination
-        self._logger.debug("Setting property inclination "
-                           "of class instance {} to {}".format(Orbit.__name__, self._inclination))
 
     @property
     def eccentricity(self):
@@ -88,8 +86,6 @@ class Orbit(object):
         :return:
         """
         self._eccentricity = eccentricity
-        self._logger.debug("Setting property eccentricity "
-                           "of class instance {} to {}".format(Orbit.__name__, self._eccentricity))
 
     @property
     def argument_of_periastron(self):
@@ -109,33 +105,6 @@ class Orbit(object):
         :return:
         """
         self._argument_of_periastron = argument_of_periastron
-        self._logger.debug("Setting property periastron "
-                           "of class instance {} to {}".format(Orbit.__name__, self._argument_of_periastron))
-
-    # fixme: kedze sa nejedna o pahse shift, ktory si si povodne myslel budeme to musiet zmenit a ten shift doplnit
-
-    @property
-    def phase_shift(self):
-        """
-        returns phase shift of the primary eclipse minimum with respect to ephemeris
-        true_phase is used during calculations, where: true_phase = phase + phase_shift
-
-        :return: numpy.float
-        """
-        return self._phase_shift
-
-    @phase_shift.setter
-    def phase_shift(self, phase_shift):
-        """
-        setter for phase shift of the primary eclipse minimum with respect to ephemeris
-        this will cause usage of true_phase during calculations, true_phase = phase + phase_shift
-
-        :param phase_shift: numpy.float
-        :return:
-        """
-        self._phase_shift = phase_shift
-        self._logger.debug("Setting property phase_shift "
-                           "of class instance {} to {}".format(Orbit.__name__, self._phase_shift))
 
     @classmethod
     def is_property(cls, kwargs):
@@ -300,7 +269,13 @@ class Orbit(object):
 
     def compute_periastron_distance(self):
         """
+        calculates relative periastron distance in SMA units
 
-        :return:
+        :return: float
         """
-        pass
+        periastron_distance = self.relative_radius(true_anomaly=np.array([.0])[0])
+        self._logger.debug("Setting property {} "
+                           "of class instance {} to {}".format('periastron_distance', Orbit.__name__,
+                                                               periastron_distance))
+        return periastron_distance
+
