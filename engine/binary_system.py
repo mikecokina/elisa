@@ -36,12 +36,12 @@ class BinarySystem(System):
     KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'primary_minimum_time', 'phase_shift']
 
     def __init__(self, primary, secondary, name=None, **kwargs):
+        self.is_property(kwargs)
+        super(BinarySystem, self).__init__(name=name, **kwargs)
+
         # get logger
         self._logger = logging.getLogger(BinarySystem.__name__)
         self._logger.info("Initialising object {}".format(BinarySystem.__name__))
-
-        self.is_property(kwargs)
-        super(BinarySystem, self).__init__(name=name, **kwargs)
 
         # assign components to binary system
         if not isinstance(primary, Star):
@@ -78,10 +78,14 @@ class BinarySystem(System):
                 setattr(self, kwarg, kwargs[kwarg])
 
         if len(missing_kwargs) != 0:
-            raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs), BinarySystem.__name__))
+            raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
+                                                                                  BinarySystem.__name__))
 
         # orbit initialisation
         self.init_orbit()
+
+
+
 
     def init(self):
         """
@@ -333,3 +337,31 @@ class BinarySystem(System):
         is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
+
+    def primary_potential_derivative_x(self, x, *args):
+        """
+        derivative of potential function perspective of primary component
+
+        :param x: (np.)float
+        :param args: tuple ((np.)float, (np.)float); (components distance, synchronicity of primary component)
+        :return:
+        """
+        d, synchronicity = args
+        r_sqr, rw_sqr = x ** 2, (d - x) ** 2
+        return - (x / r_sqr ** (3.0 / 2.0)) + (
+            (self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) + synchronicity ** 2 * (
+            self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+
+    def secondary_potential_derivative_x(self, x, *args):
+        """
+        derivative of potential function perspective of secondary component
+
+        :param x: (np.)float
+        :param args: tuple ((np.)float, (np.)float); (components distance, synchronicity of secondary component)
+        :return:
+        """
+        d, synchronicity = args
+        r_sqr, rw_sqr = x ** 2, (d - x) ** 2
+        return - (x / r_sqr ** (3.0 / 2.0)) + (
+            (self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) - synchronicity ** 2 * (
+            self.mass_ratio + 1) * (1 - x) + (1.0 / d ** 2)

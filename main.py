@@ -23,23 +23,30 @@ bs = BinarySystem(primary=primary,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
-bs.argument_of_periastron = 135*u.deg
-bs.eccentricity = 0.3
-bs.inclination = 85*u.deg
-bs.init()
+# bs.argument_of_periastron = 135*u.deg
+# bs.eccentricity = 0.3
+# bs.inclination = 85*u.deg
+# bs.init()
+#
+# phases = np.linspace(0.0,1.0,100)
+# ellipse = bs.orbit.orbital_motion(phase=phases)
+# radius = ellipse[:, 0]
+# azimut = ellipse[:, 1]
+# x, y = utils.polar_to_cartesian(radius=radius, phi=azimut-c.PI/2)
+#
+# f = plt.figure()
+# ax = f.add_subplot(111)
+# ax.plot(x,y)
+# ax.scatter(x[0], y[0], c='r')
+# ax.scatter(0, 0, c='b')
+# ax.set_aspect('equal')
+# ax.grid()
+#
+# plt.show()
 
-phases = np.linspace(0.0,1.0,100)
-ellipse = bs.orbit.orbital_motion(phase=phases)
-radius = ellipse[:, 0]
-azimut = ellipse[:, 1]
-x,y = utils.polar_to_cartesian(radius=radius, phi=azimut-c.PI/2)
-
-f = plt.figure()
-ax = f.add_subplot(111)
-ax.plot(x,y)
-ax.scatter(x[0], y[0], c='r')
-ax.scatter(0, 0, c='b')
-ax.set_aspect('equal')
-ax.grid()
-
+xs = np.arange(-1, 1, 0.001)
+ys = [[x, bs.secondary_potential_derivation_x(x, *(1.0, 1.0))] for x in xs
+      if abs(bs.secondary_potential_derivation_x(x, *(1.0, 1.0))) < 100]
+plt.scatter(list(zip(*ys))[0], list(zip(*ys))[1])
 plt.show()
+
