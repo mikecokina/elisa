@@ -227,9 +227,9 @@ class Orbit(object):
         # determining order of eclipses
         conjuction_arc_list = []
         try:
-            if 0 <= self.inclination <= c.PI/2:
+            if 0 <= self.inclination <= c.PI / 2.0:
                 conjuction_arc_list = [c.PI / 2.0, 3.0 * c.PI / 2.0]
-            elif c.PI/2 < self.inclination <= c.PI:
+            elif c.PI / 2.0 < self.inclination <= c.PI:
                 conjuction_arc_list = [3.0 * c.PI / 2.0, c.PI / 2.0]
         except:
             raise TypeError('Invalid type of {0}.inclination.'.format(Orbit.__name__))
