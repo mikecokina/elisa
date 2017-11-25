@@ -27,6 +27,7 @@ from astropy import units as u
 import numpy as np
 import logging
 from engine import const as c
+from scipy.optimize import newton
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -344,7 +345,7 @@ class BinarySystem(System):
 
         :param x: (np.)float
         :param args: tuple ((np.)float, (np.)float); (components distance, synchronicity of primary component)
-        :return:
+        :return: (np.)float
         """
         d, synchronicity = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
@@ -358,10 +359,51 @@ class BinarySystem(System):
 
         :param x: (np.)float
         :param args: tuple ((np.)float, (np.)float); (components distance, synchronicity of secondary component)
-        :return:
+        :return: (np.)float
         """
         d, synchronicity = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + (
             (self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) - synchronicity ** 2 * (
             self.mass_ratio + 1) * (1 - x) + (1.0 / d ** 2)
+
+    def critical_potential(self, target, component_distance):
+        """
+        return a critical potential for target component
+
+        :param target: str; define target component to compute critical potential; `primary` or `secondary`
+        :param component_distance: (np.)float
+        :return: (np.)float
+        """
+
+        # nedokncene, dokoncim
+        if target == "primary":
+            args = (component_distance, self.primary.synchronicity)
+            solution = newton(self.primary_potential_derivative_x, 0.001, args=args)
+        elif target == "secondary":
+            args = (component_distance, self.secondary.synchronicity)
+            solution = newton(self.secondary_potential_derivative_x, 0.001, args=args)
+        else:
+            raise ValueError("Parameter `target` has incorrect value. Use `primary` or `secondary`.")
+
+        print(solution)
+
+        # if t_object == "primary":
+        #     args = (actual_distance, self.primary.synchronicity_parameter)
+        #     solution = scipy.optimize.newton(self.primary_potential_derivation_x, 0.001, args=args)
+        # if t_object == "secondary":
+        #     args = (actual_distance, self.secondary.synchronicity_parameter)
+        #     solution = scipy.optimize.newton(self.secondary_potential_derivation_x, 0.001, args=args)
+        # if not np.isnan(solution):
+        #     if t_object == "primary":
+        #         args = (actual_distance, solution, 0.0, np.pi / 2.)
+        #         return abs(self.potential_value(*args))
+        #     if t_object == "secondary":
+        #         args = (actual_distance, actual_distance - solution, 0.0, np.pi / 2.)
+        #         return abs(self.inverted_potential_value(*args))
+        # else:
+        #     if self.verbose:
+        #         print(Fn.color_string(color="error",
+        #                               string="ValueError: ") + "In class: Binary, function: critical_potential(), line: " + str(
+        #             Fn.lineno()) + ". Wrong value has been encoutered.")
+        #     return False

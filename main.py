@@ -9,8 +9,8 @@ from engine import const as c
 
 # bs = BinarySystem(gamma=25, period=10.0, eccentricity=0.2)
 
-primary = Star(mass=2.0, surface_potential=5.0)
-secondary = Star(mass=1.0, surface_potential=5.0)
+primary = Star(mass=2.0, surface_potential=5.0, synchronicity=1.0)
+secondary = Star(mass=1.0, surface_potential=5.0, synchronicity=1.0)
 ur_anus = Planet(mass=500.2)
 
 bs = BinarySystem(primary=primary,
@@ -44,9 +44,11 @@ bs = BinarySystem(primary=primary,
 #
 # plt.show()
 
-xs = np.arange(-1, 1, 0.001)
-ys = [[x, bs.secondary_potential_derivation_x(x, *(1.0, 1.0))] for x in xs
-      if abs(bs.secondary_potential_derivation_x(x, *(1.0, 1.0))) < 100]
-plt.scatter(list(zip(*ys))[0], list(zip(*ys))[1])
-plt.show()
+# xs = np.arange(-1, 1, 0.001)
+# ys = [[x, bs.secondary_potential_derivation_x(x, *(1.0, 1.0))] for x in xs
+#       if abs(bs.secondary_potential_derivation_x(x, *(1.0, 1.0))) < 100]
+# plt.scatter(list(zip(*ys))[0], list(zip(*ys))[1])
+# plt.show()
+
+bs.critical_potential(target='primary', component_distance=1.0)
 
