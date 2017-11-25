@@ -136,3 +136,7 @@ class System(object):
     @abstractmethod
     def get_info(self):
         pass
+
+    @abstractmethod
+    def init(self):
+        pass

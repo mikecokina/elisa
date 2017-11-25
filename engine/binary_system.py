@@ -304,7 +304,7 @@ class BinarySystem(System):
         return self._phase_shift
 
     @phase_shift.setter
-    def phase_shift(self,phase_shift):
+    def phase_shift(self, phase_shift):
         """
         setter for phase shift of the primary eclipse minimum with respect to ephemeris
         this will cause usage of true_phase during calculations, where: true_phase = phase + phase_shift
