@@ -225,6 +225,7 @@ class Orbit(object):
         :return: dict(dict)
         """
         # determining order of eclipses
+        conjuction_arc_list = []
         try:
             if 0 <= self.inclination <= c.PI/2:
                 conjuction_arc_list = [c.PI / 2.0, 3.0 * c.PI / 2.0]
