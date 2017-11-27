@@ -347,10 +347,10 @@ class BinarySystem(System):
         :param args: tuple ((np.)float, (np.)float); (components distance, synchronicity of primary component)
         :return: (np.)float
         """
-        d, synchronicity = args
+        d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + (
-            (self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) + synchronicity ** 2 * (
+            (self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) + self.primary.synchronicity ** 2 * (
             self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
     def secondary_potential_derivative_x(self, x, *args):
@@ -361,11 +361,45 @@ class BinarySystem(System):
         :param args: tuple ((np.)float, (np.)float); (components distance, synchronicity of secondary component)
         :return: (np.)float
         """
-        d, synchronicity = args
+        d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + (
-            (self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) - synchronicity ** 2 * (
+            (self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (
             self.mass_ratio + 1) * (1 - x) + (1.0 / d ** 2)
+
+    def potential_value_primary(self, radius, *args):
+        d, phi, theta = args
+
+        # block of function
+        block_a = (1.0 / radius)
+        block_b = (self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
+            2.0 * radius * (np.cos(phi) * np.sin(theta)) * d))))
+        block_c = ((self.mass_ratio * radius * (np.cos(phi) * np.sin(theta))) / (np.power(d, 2)))
+        block_d = (
+            0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * np.power(radius, 2) * (
+                1 - np.power(np.cos(theta), 2)))
+        # /block of function
+        return - (block_a + block_b - block_c + block_d)
+
+    def potential_value_secondary(self, radius, *args):
+        d, phi, theta = args
+        inverted_mass_ratio = 1.0 / self.mass_ratio
+
+        # block of function
+        block_a = (1. / radius)
+        block_b = (inverted_mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
+            2 * radius * (np.cos(phi) * np.sin(theta)) * d))))
+        block_c = ((inverted_mass_ratio * radius * (np.cos(phi) * np.sin(theta))) / (np.power(d, 2)))
+        block_d = (
+            0.5 * np.power(self.secondary.synchronicity, 2) * (1 + inverted_mass_ratio) * np.power(
+                radius,
+                2) * (
+                1 - np.power(np.cos(theta), 2)))
+        # /block of function
+        inverse_potential = (block_a + block_b - block_c + block_d) / inverted_mass_ratio + (
+            0.5 * ((inverted_mass_ratio - 1) / inverted_mass_ratio))
+        # /block of function
+        return - inverse_potential
 
     def critical_potential(self, target, component_distance):
         """
@@ -376,34 +410,34 @@ class BinarySystem(System):
         :return: (np.)float
         """
 
-        # nedokncene, dokoncim
+
+        """
+        vyzaduje testovanie pre excentricke orbity s parematrmi synchronicity pre primarnu a sekundarnu zlozku
+        roznymi od 1.0
+
+        otestovat pomocou grafickeho zobrazenia,
+
+        napisat resp. vytuningovat funkciu ktora je v starom programe na zobrazovanie prierezu v xy (tusim sa to vola
+        daco_equipotential_xy)
+        to co vrati kriticky potencial po nastaveni na zlozku musi pri vykresleni vratit zlozku ktora vyplna
+        rosheho lalok.
+        """
+
         if target == "primary":
-            args = (component_distance, self.primary.synchronicity)
+            args = component_distance,
             solution = newton(self.primary_potential_derivative_x, 0.001, args=args)
         elif target == "secondary":
-            args = (component_distance, self.secondary.synchronicity)
+            args = component_distance,
             solution = newton(self.secondary_potential_derivative_x, 0.001, args=args)
         else:
             raise ValueError("Parameter `target` has incorrect value. Use `primary` or `secondary`.")
 
-        print(solution)
-
-        # if t_object == "primary":
-        #     args = (actual_distance, self.primary.synchronicity_parameter)
-        #     solution = scipy.optimize.newton(self.primary_potential_derivation_x, 0.001, args=args)
-        # if t_object == "secondary":
-        #     args = (actual_distance, self.secondary.synchronicity_parameter)
-        #     solution = scipy.optimize.newton(self.secondary_potential_derivation_x, 0.001, args=args)
-        # if not np.isnan(solution):
-        #     if t_object == "primary":
-        #         args = (actual_distance, solution, 0.0, np.pi / 2.)
-        #         return abs(self.potential_value(*args))
-        #     if t_object == "secondary":
-        #         args = (actual_distance, actual_distance - solution, 0.0, np.pi / 2.)
-        #         return abs(self.inverted_potential_value(*args))
-        # else:
-        #     if self.verbose:
-        #         print(Fn.color_string(color="error",
-        #                               string="ValueError: ") + "In class: Binary, function: critical_potential(), line: " + str(
-        #             Fn.lineno()) + ". Wrong value has been encoutered.")
-        #     return False
+        if not np.isnan(solution):
+            if target == "primary":
+                args = component_distance, 0.0, np.pi / 2.0
+                return abs(self.potential_value_primary(solution, *args))
+            else:
+                args = (component_distance, 0.0, np.pi / 2.)
+                return abs(self.potential_value_secondary(component_distance - solution, *args))
+        else:
+            raise ValueError("Iteration process to solve critical potentianl seems to lead nowhere.")

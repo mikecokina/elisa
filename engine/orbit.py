@@ -107,18 +107,6 @@ class Orbit(object):
         self._argument_of_periastron = argument_of_periastron
 
     @classmethod
-    def is_property(cls, kwargs):
-        """
-        method for checking if keyword arguments are valid properties of this class
-
-        :param kwargs: dict
-        :return:
-        """
-        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
-        if is_not:
-            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
-
-    @classmethod
     def true_phase(cls, phase=None, phase_shift=None):
         """
         returns shifted phase of the orbit by the amount phase_shift
@@ -279,4 +267,16 @@ class Orbit(object):
                            "of class instance {} to {}".format('periastron_distance', Orbit.__name__,
                                                                periastron_distance))
         return periastron_distance
+
+    @classmethod
+    def is_property(cls, kwargs):
+        """
+        method for checking if keyword arguments are valid properties of this class
+
+        :param kwargs: dict
+        :return:
+        """
+        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
+        if is_not:
+            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
 
