@@ -423,7 +423,6 @@ class BinarySystem(System):
         :return: (np.)float
         """
 
-
         """
         vyzaduje testovanie pre excentricke orbity s parematrmi synchronicity pre primarnu a sekundarnu zlozku
         roznymi od 1.0
