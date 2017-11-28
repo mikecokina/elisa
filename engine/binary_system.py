@@ -416,7 +416,7 @@ class BinarySystem(System):
 
         :param radius: (np.)float; spherical variable
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
-        :return: (np.)float
+        :return:
         """
         return self.potential_value_primary(radius, *args) - self.primary.surface_potential
 
@@ -426,7 +426,7 @@ class BinarySystem(System):
 
         :param radius: (np.)float; spherical variable
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
-        :return: (np.)float
+        :return:
         """
         return self.potential_value_secondary(radius, *args) - self.secondary.surface_potential
 
