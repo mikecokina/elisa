@@ -390,7 +390,6 @@ class BinarySystem(System):
     def potential_value_secondary(self, radius, *args):
         """
 
-
         :param radius: (np.)float; spherical variable
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
         :return: (np.)float
@@ -413,6 +412,26 @@ class BinarySystem(System):
             0.5 * ((inverted_mass_ratio - 1) / inverted_mass_ratio))
         # /block of function
         return - inverse_potential
+
+    def potential_primary_fn(self, radius, *args):
+        """
+        implicit potential function from perspective of primary component
+
+        :param radius: (np.)float; spherical variable
+        :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
+        :return: (np.)float
+        """
+        return self.potential_value_primary(radius, *args) - self.primary.surface_potential
+
+    def potential_secondary_fn(self, radius, *args):
+        """
+        implicit potential function from perspective of secondary component
+
+        :param radius: (np.)float; spherical variable
+        :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
+        :return: (np.)float
+        """
+        return self.potential_value_secondary(radius, *args) - self.secondary.surface_potential
 
     def critical_potential(self, target, component_distance):
         """
