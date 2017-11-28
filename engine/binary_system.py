@@ -390,6 +390,7 @@ class BinarySystem(System):
     def potential_value_secondary(self, radius, *args):
         """
 
+
         :param radius: (np.)float; spherical variable
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
         :return: (np.)float
