@@ -388,6 +388,12 @@ class BinarySystem(System):
         return - (block_a + block_b - block_c + block_d)
 
     def potential_value_secondary(self, radius, *args):
+        """
+
+        :param radius: (np.)float; spherical variable
+        :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
+        :return: (np.)float
+        """
         d, phi, theta = args
         inverted_mass_ratio = 1.0 / self.mass_ratio
 
