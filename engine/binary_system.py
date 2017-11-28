@@ -85,9 +85,6 @@ class BinarySystem(System):
         # orbit initialisation
         self.init_orbit()
 
-
-
-
     def init(self):
         """
         function to reinitialize BinarySystem class instance after changing parameter(s) of binary system using setters
