@@ -368,6 +368,12 @@ class BinarySystem(System):
             self.mass_ratio + 1) * (1 - x) + (1.0 / d ** 2)
 
     def potential_value_primary(self, radius, *args):
+        """
+
+        :param radius: (np.)float; spherical variable
+        :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
+        :return: (np.)float
+        """
         d, phi, theta = args
 
         # block of function
