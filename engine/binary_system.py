@@ -28,6 +28,7 @@ import numpy as np
 import logging
 from engine import const as c
 from scipy.optimize import newton
+from engine import graphics
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -373,7 +374,6 @@ class BinarySystem(System):
         """
         d, phi, theta = args
 
-        # block of function
         block_a = (1.0 / radius)
         block_b = (self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
             2.0 * radius * (np.cos(phi) * np.sin(theta)) * d))))
@@ -381,7 +381,7 @@ class BinarySystem(System):
         block_d = (
             0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * np.power(radius, 2) * (
                 1 - np.power(np.cos(theta), 2)))
-        # /block of function
+
         return - (block_a + block_b - block_c + block_d)
 
     def potential_value_secondary(self, radius, *args):
@@ -394,20 +394,17 @@ class BinarySystem(System):
         d, phi, theta = args
         inverted_mass_ratio = 1.0 / self.mass_ratio
 
-        # block of function
         block_a = (1. / radius)
         block_b = (inverted_mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
             2 * radius * (np.cos(phi) * np.sin(theta)) * d))))
         block_c = ((inverted_mass_ratio * radius * (np.cos(phi) * np.sin(theta))) / (np.power(d, 2)))
         block_d = (
             0.5 * np.power(self.secondary.synchronicity, 2) * (1 + inverted_mass_ratio) * np.power(
-                radius,
-                2) * (
-                1 - np.power(np.cos(theta), 2)))
-        # /block of function
+                radius, 2) * (1 - np.power(np.cos(theta), 2)))
+
         inverse_potential = (block_a + block_b - block_c + block_d) / inverted_mass_ratio + (
             0.5 * ((inverted_mass_ratio - 1) / inverted_mass_ratio))
-        # /block of function
+
         return - inverse_potential
 
     def potential_primary_fn(self, radius, *args):
@@ -468,4 +465,20 @@ class BinarySystem(System):
                 args = (component_distance, 0.0, np.pi / 2.)
                 return abs(self.potential_value_secondary(component_distance - solution, *args))
         else:
-            raise ValueError("Iteration process to solve critical potentianl seems to lead nowhere.")
+            raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
+                             "solver has failed).")
+
+    def plot(self, descriptor=None, **kwargs):
+        """
+        universal plotting interface for binary system class
+
+        :param descriptor: str (defines type of plot)
+        :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
+        :return:
+        """
+        method_to_call = getattr(graphics, descriptor)
+        method_to_call(**kwargs)
+        try:
+            method_to_call(**kwargs)
+        except:
+            print('daco plano')
