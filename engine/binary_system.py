@@ -87,6 +87,10 @@ class BinarySystem(System):
         # orbit initialisation
         self.init_orbit()
 
+        # compute and assing to all radii values to both components
+
+
+
     def init(self):
         """
         function to reinitialize BinarySystem class instance after changing parameter(s) of binary system using setters

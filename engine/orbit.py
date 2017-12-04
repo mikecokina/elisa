@@ -262,7 +262,7 @@ class Orbit(object):
 
         :return: float
         """
-        periastron_distance = self.relative_radius(true_anomaly=np.array([.0])[0])
+        periastron_distance = self.relative_radius(true_anomaly=np.array([0])[0])
         self._logger.debug("Setting property {} "
                            "of class instance {} to {}".format('periastron_distance', Orbit.__name__,
                                                                periastron_distance))
@@ -279,4 +279,3 @@ class Orbit(object):
         is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
-
