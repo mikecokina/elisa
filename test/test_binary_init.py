@@ -39,8 +39,8 @@ class TestBinarySystemProperties(unittest.TestCase):
                               primary_minimum_time=combo["primary_minimum_time"],
                               phase_shift=combo["phase_shift"])
 
-            primary_cp = bs.critical_potential(target="primary", component_distance=bs.orbit.periastron_distance)
-            secondary_cp = bs.critical_potential(target="secondary", component_distance=bs.orbit.periastron_distance)
+            primary_cp = bs.critical_potential(component="primary", component_distance=bs.orbit.periastron_distance)
+            secondary_cp = bs.critical_potential(component="secondary", component_distance=bs.orbit.periastron_distance)
 
             obtained_potentials.append([round(primary_cp, 10), round(secondary_cp, 10)])
 
