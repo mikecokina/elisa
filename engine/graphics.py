@@ -15,20 +15,17 @@ def orbit(**kwargs):
                                                                astropy.units format, default unit is solar radius
     :return:
     """
-    x = kwargs['x_data']
-    y = kwargs['y_data']
+    x, y = kwargs['x_data'], kwargs['y_data']
     unit = str(kwargs['axis_unit'])
-    x_label = r'x/' + unit
-    y_label = r'y/' + unit
+    x_label, y_label = r'x/' + unit, r'y/' + unit
 
     f = plt.figure()
     ax = f.add_subplot(111)
-    ax.plot(x,y)
-    #ax.scatter(x[0], y[0], c='r')
-    ax.scatter(0, 0, c='b')
+    ax.plot(x, y)
+    # ax.scatter(x[0], y[0], c='r')
+    ax.scatter([0], [0], c='b')
     ax.set_aspect('equal')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
     ax.grid()
-
     plt.show()

@@ -93,8 +93,6 @@ class BinarySystem(System):
 
         # compute and assing to all radii values to both components
 
-
-
     def init(self):
         """
         function to reinitialize BinarySystem class instance after changing parameter(s) of binary system using setters
@@ -484,7 +482,7 @@ class BinarySystem(System):
                 args = component_distance, 0.0, np.pi / 2.0
                 return abs(self.potential_value_primary(solution, *args))
             else:
-                args = (component_distance, 0.0, np.pi / 2.)
+                args = (component_distance, 0.0, np.pi / 2.0)
                 return abs(self.potential_value_secondary(component_distance - solution, *args))
         else:
             raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
@@ -501,18 +499,10 @@ class BinarySystem(System):
         method_to_call = getattr(graphics, descriptor)
 
         if descriptor == 'orbit':
-            if 'start_phase' not in kwargs:
-                start_phase = 0
-            else:
-                start_phase = kwargs['start_phase']
-            if 'stop_phase' not in kwargs:
-                stop_phase = 1.0
-            else:
-                stop_phase = kwargs['stop_phase']
-            if 'number_of_points' not in kwargs:
-                number_of_points = 300
-            else:
-                number_of_points = kwargs['number_of_points']
+            start_phase = 0 if 'start_phase' not in kwargs else start_phase = kwargs['start_phase']
+            stop_phase = 1.0 if 'stop_phase' not in kwargs else stop_phase = kwargs['stop_phase']
+            number_of_points = 300 if 'number_of_points' not in kwargs else number_of_points = kwargs['number_of_points']
+
             if 'axis_unit' not in kwargs:
                 kwargs['axis_unit'] = u.solRad
 
@@ -521,10 +511,8 @@ class BinarySystem(System):
             a = self._semi_major_axis * self.get_distance_unit().to(kwargs['axis_unit'])
             radius = a * ellipse[:, 0]
             azimuth = ellipse[:, 1]
-            x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth - c.PI / 2)
-
-            kwargs['x_data'] = x
-            kwargs['y_data'] = y
+            x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth - c.PI / 2.0)
+            kwargs['x_data'], kwargs['y_data'] = x, y
 
         elif descriptor == 'equipotential':
             pass
