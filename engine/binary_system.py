@@ -99,9 +99,9 @@ class BinarySystem(System):
 
         :return:
         """
-        self.__init__(primary=self.primary, secondary=self.secondary, **self._kwargs_serialize())
+        self.__init__(primary=self.primary, secondary=self.secondary, **self._kwargs_serializer())
 
-    def _kwargs_serialize(self):
+    def _kwargs_serializer(self):
         """
         creating dictionary of keyword arguments of BinarySystem class in order to be able to reinitialize the class
         instance in init()
