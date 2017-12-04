@@ -28,6 +28,7 @@ import numpy as np
 import logging
 from engine import const as c
 from scipy.optimize import newton
+from engine import utils
 from engine import graphics
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
@@ -83,6 +84,9 @@ class BinarySystem(System):
         if len(missing_kwargs) != 0:
             raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                   BinarySystem.__name__))
+
+        # calculation of dependent parameters
+        self._semi_major_axis = self.semi_major_axis_from_3rd_kepler_law()
 
         # orbit initialisation
         self.init_orbit()
@@ -179,7 +183,7 @@ class BinarySystem(System):
     @period.setter
     def period(self, period):
         """
-        set orbital period of bonary star system, if unit is not specified, default unit is assumed
+        set orbital period of bonary star system, if unit is not specified, days are assumed
 
         :param period: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
@@ -324,6 +328,19 @@ class BinarySystem(System):
         self._logger.debug("Setting property phase_shift "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._phase_shift))
 
+    @property
+    def semi_major_axis(self):
+        """
+        returns semi major axis of the system in default distance unit
+
+        :return: np.float
+        """
+        return self._semi_major_axis
+
+    def semi_major_axis_from_3rd_kepler_law(self):
+        period = (self._period * self.get_period_unit()).to(u.s)
+        return (c.G * (self.primary.mass + self.secondary.mass) * (period) ** 2 / (4 * c.PI ** 2)) ** (1.0 / 3)
+
     def compute_lc(self):
         pass
 
@@ -432,11 +449,11 @@ class BinarySystem(System):
         """
         return self.potential_value_secondary(radius, *args) - self.secondary.surface_potential
 
-    def critical_potential(self, target, component_distance):
+    def critical_potential(self, component, component_distance):
         """
         return a critical potential for target component
 
-        :param target: str; define target component to compute critical potential; `primary` or `secondary`
+        :param component: str; define target component to compute critical potential; `primary` or `secondary`
         :param component_distance: (np.)float
         :return: (np.)float
         """
@@ -453,17 +470,17 @@ class BinarySystem(System):
         rosheho lalok.
         """
 
-        if target == "primary":
+        if component == "primary":
             args = component_distance,
             solution = newton(self.primary_potential_derivative_x, 0.001, args=args)
-        elif target == "secondary":
+        elif component == "secondary":
             args = component_distance,
             solution = newton(self.secondary_potential_derivative_x, 0.001, args=args)
         else:
-            raise ValueError("Parameter `target` has incorrect value. Use `primary` or `secondary`.")
+            raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
 
         if not np.isnan(solution):
-            if target == "primary":
+            if component == "primary":
                 args = component_distance, 0.0, np.pi / 2.0
                 return abs(self.potential_value_primary(solution, *args))
             else:
@@ -475,7 +492,7 @@ class BinarySystem(System):
 
     def plot(self, descriptor=None, **kwargs):
         """
-        universal plotting interface for binary system class
+        universal plot interface for binary system class
 
         :param descriptor: str (defines type of plot)
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
@@ -493,17 +510,23 @@ class BinarySystem(System):
             else:
                 stop_phase = kwargs['stop_phase']
             if 'number_of_points' not in kwargs:
-                number_of_points = 100
+                number_of_points = 300
             else:
                 number_of_points = kwargs['number_of_points']
+            if 'axis_unit' not in kwargs:
+                kwargs['axis_unit'] = u.solRad
 
             phases = np.linspace(start_phase, stop_phase, number_of_points)
-            ellipse = self.orbital_motion(phase=phases)
-            radius = ellipse[:, 0]
+            ellipse = self.orbit.orbital_motion(phase=phases)
+            a = self._semi_major_axis * self.get_distance_unit().to(kwargs['axis_unit'])
+            radius = a * ellipse[:, 0]
             azimut = ellipse[:, 1]
             x, y = utils.polar_to_cartesian(radius=radius, phi=azimut - c.PI / 2)
 
             kwargs['x_data'] = x
             kwargs['y_data'] = y
+
+        elif descriptor is 'equipotential':
+            pass
 
         method_to_call(**kwargs)

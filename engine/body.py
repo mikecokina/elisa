@@ -80,7 +80,7 @@ class Body(object, metaclass=ABCMeta):
     @property
     def mass(self):
         """
-        mass getter, returns mass of object in solar masses
+        mass getter, returns mass of object in default mass unit
         usage: by xy.mass
 
         :return: np.float64
@@ -102,7 +102,7 @@ class Body(object, metaclass=ABCMeta):
         if isinstance(mass, u.quantity.Quantity):
             self._mass = np.float64(mass.to(self.__MASS_UNIT))
         elif isinstance(mass, (int, np.int, float, np.float)):
-            self._mass = np.float64(mass * u.solMass.to(u.kg))
+            self._mass = np.float64(mass * u.solMass.to(self.__MASS_UNIT))
         else:
             raise TypeError('Your input is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity instance.')
 
