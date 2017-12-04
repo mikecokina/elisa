@@ -50,5 +50,5 @@ bs = BinarySystem(primary=primary,
 # plt.scatter(list(zip(*ys))[0], list(zip(*ys))[1])
 # plt.show()
 
-print(bs.critical_potential(target='primary', component_distance=1.0))
+print(bs.critical_potential(component='primary', component_distance=1.0))
 
