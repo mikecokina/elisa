@@ -499,9 +499,9 @@ class BinarySystem(System):
         method_to_call = getattr(graphics, descriptor)
 
         if descriptor == 'orbit':
-            start_phase = 0 if 'start_phase' not in kwargs else start_phase = kwargs['start_phase']
-            stop_phase = 1.0 if 'stop_phase' not in kwargs else stop_phase = kwargs['stop_phase']
-            number_of_points = 300 if 'number_of_points' not in kwargs else number_of_points = kwargs['number_of_points']
+            start_phase = 0 if 'start_phase' not in kwargs else kwargs['start_phase']
+            stop_phase = 1.0 if 'stop_phase' not in kwargs else kwargs['stop_phase']
+            number_of_points = 300 if 'number_of_points' not in kwargs else kwargs['number_of_points']
 
             if 'axis_unit' not in kwargs:
                 kwargs['axis_unit'] = u.solRad

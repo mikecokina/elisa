@@ -15,7 +15,7 @@ ur_anus = Planet(mass=500.2)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=0*u.deg,
+                  argument_of_periastron=45*u.deg,
                   gamma=0*u.km/u.s,
                   period=1.0*u.d,
                   eccentricity=0.6,
