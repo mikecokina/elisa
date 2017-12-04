@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 
+
 def orbit(**kwargs):
     """
     Plot function for descriptor = `orbit` in function BinarySystem.plot(). This function plots orbit of the secondary

@@ -500,7 +500,7 @@ class BinarySystem(System):
         """
         method_to_call = getattr(graphics, descriptor)
 
-        if descriptor is 'orbit':
+        if descriptor == 'orbit':
             if 'start_phase' not in kwargs:
                 start_phase = 0
             else:
@@ -520,13 +520,13 @@ class BinarySystem(System):
             ellipse = self.orbit.orbital_motion(phase=phases)
             a = self._semi_major_axis * self.get_distance_unit().to(kwargs['axis_unit'])
             radius = a * ellipse[:, 0]
-            azimut = ellipse[:, 1]
-            x, y = utils.polar_to_cartesian(radius=radius, phi=azimut - c.PI / 2)
+            azimuth = ellipse[:, 1]
+            x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth - c.PI / 2)
 
             kwargs['x_data'] = x
             kwargs['y_data'] = y
 
-        elif descriptor is 'equipotential':
+        elif descriptor == 'equipotential':
             pass
 
         method_to_call(**kwargs)
