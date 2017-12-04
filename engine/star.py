@@ -58,6 +58,7 @@ class Star(Body):
 
         :return: float64
         """
+        # fixme:
         return self._backward_radius
 
     @backward_radius.setter
