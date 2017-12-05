@@ -45,7 +45,7 @@ def equipotential(**kwargs):
     if utils.is_plane(kwargs['plane'], 'yz'):
         x_label, y_label = 'y', 'z'
     elif utils.is_plane(kwargs['plane'], 'zx'):
-        x_label, y_label = 'x', 'z'
+        x_label, y_label = 'z', 'x'
 
     x_primary, y_primary = kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1]
     x_secondary, y_secondary = kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1]

@@ -520,13 +520,18 @@ class BinarySystem(System):
                     continue
 
                 if use:
-                    if component == 'primary':
-                        points_primary.append([solution * np.cos(angle), solution * np.sin(angle)])
-                    elif component == 'secondary':
-                        # in case of yz plane is not necesary to flip back secondary component
-                        if utils.is_plane(plane, 'yz'):
-                            points_secondary.append([solution * np.cos(angle), solution * np.sin(angle)])
-                        else:
+                    # in case of yz plane is not necesary to flip back secondary component
+                    # and transformation is changed
+                    if utils.is_plane(plane, 'yz'):
+                        if component == 'primary':
+                            points_primary.append([solution * np.sin(angle), solution * np.cos(angle)])
+                        elif component == 'secondary':
+                            points_secondary.append([solution * np.sin(angle), solution * np.cos(angle)])
+
+                    else:
+                        if component == 'primary':
+                            points_primary.append([solution * np.cos(angle), solution * np.sin(angle)])
+                        elif component == 'secondary':
                             points_secondary.append([- (solution * np.cos(angle) - components_distance),
                                                      solution * np.sin(angle)])
 
