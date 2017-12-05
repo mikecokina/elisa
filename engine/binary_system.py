@@ -30,7 +30,6 @@ from scipy.optimize import newton
 from engine import utils
 from engine import graphics
 import scipy
-import re
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
