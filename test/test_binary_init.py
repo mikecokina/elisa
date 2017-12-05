@@ -2,6 +2,8 @@ import unittest
 import numpy as np
 from engine.binary_system import BinarySystem
 from engine.star import Star
+import engine.const as c
+from astropy import units as u
 
 class TestBinarySystemProperties(unittest.TestCase):
 
@@ -16,10 +18,18 @@ class TestBinarySystemProperties(unittest.TestCase):
                                "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
                                "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
                                "argument_of_periastron": np.pi / 2.0, "gamma": 0.0, "period": 0.9,
-                               "eccentricity": 0.0, "inclination": np.pi / 2.0, "primary_minimum_time": 0.0,
+                               "eccentricity": 0.0, "inclination": c.HALF_PI, "primary_minimum_time": 0.0,
+                               "phase_shift": 0.0},
+
+                              {"primary_mass": 2.0, "secondary_mass": 1.0,
+                               "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
+                               "primary_synchronicity": 1.7, "secondary_synchronicity": 1.3,
+                               "argument_of_periastron": c.PI, "gamma": 0.0, "period": 1.0,
+                               "eccentricity": 0.1, "inclination": 85.0 * u.deg, "primary_minimum_time": 0.0,
                                "phase_shift": 0.0}]
 
-        expected_potentials = [[2.8758446321, 2.8758446321]]
+        expected_potentials = [[2.8758446321, 2.8758446321],
+                               [3.4768803208, 3.2036513010]]
         obtained_potentials = []
 
         for combo in params_combination:

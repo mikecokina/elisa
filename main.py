@@ -39,6 +39,6 @@ print(ellipse)
 
 print(bs.critical_potential(component='primary', component_distance=0.9))
 print(bs.critical_potential(component='secondary', component_distance=0.9))
-bs.plot('orbit')
+# bs.plot('orbit')
 bs.plot('equipotential')
 

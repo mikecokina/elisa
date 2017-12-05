@@ -13,13 +13,9 @@ def polar_to_cartesian(radius, phi):
     return x, y
 
 
-def invalid_kwarg_checker(kwargs, kwarglist, object):
-    invalid_kwargs = []
-    for kwarg in kwargs:
-        if kwarg not in kwarglist:
-            invalid_kwargs.append(kwarg)
-
+def invalid_kwarg_checker(kwargs, kwarglist, instance):
+    invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
         raise ValueError('Invalid keyword argument(s): {} in class instance {}.\n List of available parameters: {}'
-                         ''.format(', '.join(invalid_kwargs), object.__name__, format(', '.join(kwarglist))))
+                         ''.format(', '.join(invalid_kwargs), instance.__name__, format(', '.join(kwarglist))))
 
