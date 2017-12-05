@@ -496,15 +496,15 @@ class BinarySystem(System):
         points_primary, points_secondary = [], []
         fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
 
-        phis = np.linspace(0, c.FULL_ARC, 300, endpoint=True)
+        angles = np.linspace(0, c.FULL_ARC, 300, endpoint=True)
         for component in components:
-            for phi in phis:
+            for angle in angles:
                 if utils.is_plane(plane, 'xy'):
-                    args, use = (components_distance, 0.0, phi), False
+                    args, use = (components_distance, 0.0, angle), False
                 elif utils.is_plane(plane, 'yz'):
-                    args, use = (components_distance, c.HALF_PI, phi), False
+                    args, use = (components_distance, c.HALF_PI, angle), False
                 elif utils.is_plane(plane, 'zx'):
-                    args, use = (components_distance, phi, c.HALF_PI), False
+                    args, use = (components_distance, angle, c.HALF_PI), False
                 else:
                     raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
 
@@ -522,14 +522,14 @@ class BinarySystem(System):
 
                 if use:
                     if component == 'primary':
-                        points_primary.append([solution * np.cos(phi), solution * np.sin(phi)])
+                        points_primary.append([solution * np.cos(angle), solution * np.sin(angle)])
                     elif component == 'secondary':
                         # in case of yz plane is not necesary to flip back secondary component
                         if utils.is_plane(plane, 'yz'):
-                            points_secondary.append([solution * np.cos(phi), solution * np.sin(phi)])
+                            points_secondary.append([solution * np.cos(angle), solution * np.sin(angle)])
                         else:
-                            points_secondary.append([- (solution * np.cos(phi) - components_distance),
-                                                     solution * np.sin(phi)])
+                            points_secondary.append([- (solution * np.cos(angle) - components_distance),
+                                                     solution * np.sin(angle)])
 
         return np.array(points_primary), np.array(points_secondary)
 
