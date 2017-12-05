@@ -50,27 +50,26 @@ class Star(Body):
         """
         self._surface_potential = np.float64(potential)
 
-    @property
-    def backward_radius(self):
-        """
-        returns value of backward radius of an object in default unit
-        usage: xy.backward_radius
-
-        :return: float64
-        """
-        # fixme:
-        return self._backward_radius
-
-    @backward_radius.setter
-    def backward_radius(self, backward_radius):
-        """
-        backward radius setter
-        accepts values in default distance units
-        usage: xy.backward_radius = new_backward_radius
-
-        :param backward_radius: float64
-        """
-        self._backward_radius = np.float64(backward_radius)
+    # @property
+    # def backward_radius(self):
+    #     """
+    #     returns value of backward radius of an object in default unit
+    #     usage: xy.backward_radius
+    #
+    #     :return: float64
+    #     """
+    #     return self._backward_radius
+    #
+    # @backward_radius.setter
+    # def backward_radius(self, backward_radius):
+    #     """
+    #     backward radius setter
+    #     accepts values in default distance units
+    #     usage: xy.backward_radius = new_backward_radius
+    #
+    #     :param backward_radius: float64
+    #     """
+    #     self._backward_radius = np.float64(backward_radius)
 
     @property
     def gravity_darkening(self):

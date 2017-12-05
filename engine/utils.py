@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def polar_to_cartesian(radius=None, phi=None):
+def polar_to_cartesian(radius, phi):
     """
 
     :param radius: (np.)float, (np.)int
@@ -11,3 +11,15 @@ def polar_to_cartesian(radius=None, phi=None):
     x = radius * np.cos(phi)
     y = radius * np.sin(phi)
     return x, y
+
+
+def invalid_kwarg_checker(kwargs, kwarglist, object):
+    invalid_kwargs = []
+    for kwarg in kwargs:
+        if kwarg not in kwarglist:
+            invalid_kwargs.append(kwarg)
+
+    if len(invalid_kwargs) > 0:
+        raise ValueError('Invalid keyword argument(s): {} in class instance {}.\n List of available parameters: {}'
+                         ''.format(', '.join(invalid_kwargs), object.__name__, format(', '.join(kwarglist))))
+

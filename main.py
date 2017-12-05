@@ -9,16 +9,16 @@ from engine import const as c
 
 # bs = BinarySystem(gamma=25, period=10.0, eccentricity=0.2)
 
-primary = Star(mass=2.0, surface_potential=5.0, synchronicity=1.0)
-secondary = Star(mass=1.0, surface_potential=5.0, synchronicity=1.0)
+primary = Star(mass=2.0, surface_potential=3.47688032078, synchronicity=1.7)
+secondary = Star(mass=1.0, surface_potential=3.20273942184, synchronicity=1.3)
 ur_anus = Planet(mass=500.2)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=45*u.deg,
+                  argument_of_periastron=90*u.deg,
                   gamma=0*u.km/u.s,
                   period=1.0*u.d,
-                  eccentricity=0.6,
+                  eccentricity=0.1,
                   inclination=85*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
@@ -28,21 +28,8 @@ bs = BinarySystem(primary=primary,
 # bs.inclination = 85*u.deg
 # bs.init()
 #
-# phases = np.linspace(0.0,1.0,100)
-# ellipse = bs.orbit.orbital_motion(phase=phases)
-# radius = ellipse[:, 0]
-# azimut = ellipse[:, 1]
-# x, y = utils.polar_to_cartesian(radius=radius, phi=azimut-c.PI/2)
-#
-# f = plt.figure()
-# ax = f.add_subplot(111)
-# ax.plot(x,y)
-# ax.scatter(x[0], y[0], c='r')
-# ax.scatter(0, 0, c='b')
-# ax.set_aspect('equal')
-# ax.grid()
-#
-# plt.show()
+ellipse = bs.orbit.orbital_motion(phase=0)
+print(ellipse)
 
 # xs = np.arange(-1, 1, 0.001)
 # ys = [[x, bs.secondary_potential_derivation_x(x, *(1.0, 1.0))] for x in xs
@@ -50,5 +37,8 @@ bs = BinarySystem(primary=primary,
 # plt.scatter(list(zip(*ys))[0], list(zip(*ys))[1])
 # plt.show()
 
-# print(bs.critical_potential(component='primary', component_distance=1.0))
-bs.plot('orbit', axis_unit=u.AU)
+print(bs.critical_potential(component='primary', component_distance=0.9))
+print(bs.critical_potential(component='secondary', component_distance=0.9))
+bs.plot('orbit')
+bs.plot('equipotential')
+

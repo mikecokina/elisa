@@ -30,6 +30,7 @@ from engine import const as c
 from scipy.optimize import newton
 from engine import utils
 from engine import graphics
+import scipy
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -336,6 +337,11 @@ class BinarySystem(System):
         return self._semi_major_axis
 
     def semi_major_axis_from_3rd_kepler_law(self):
+        """
+        calculates length semi major axis usin 3rd kepler law
+
+        :return: np.float
+        """
         period = (self._period * self.get_period_unit()).to(u.s)
         return (c.G * (self.primary.mass + self.secondary.mass) * (period) ** 2 / (4 * c.PI ** 2)) ** (1.0 / 3)
 
@@ -359,7 +365,7 @@ class BinarySystem(System):
 
     def primary_potential_derivative_x(self, x, *args):
         """
-        derivative of potential function perspective of primary component
+        derivative of potential function perspective of primary component along the x axis
 
         :param x: (np.)float
         :param args: tuple ((np.)float, (np.)float); (components distance, synchronicity of primary component)
@@ -367,13 +373,12 @@ class BinarySystem(System):
         """
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-        return - (x / r_sqr ** (3.0 / 2.0)) + (
-            (self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) + self.primary.synchronicity ** 2 * (
-            self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+        return - np.power(x, -2) + ((self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) + \
+               self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
     def secondary_potential_derivative_x(self, x, *args):
         """
-        derivative of potential function perspective of secondary component
+        derivative of potential function perspective of secondary component along the x axis
 
         :param x: (np.)float
         :param args: tuple ((np.)float, (np.)float); (components distance, synchronicity of secondary component)
@@ -381,9 +386,8 @@ class BinarySystem(System):
         """
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-        return - (x / r_sqr ** (3.0 / 2.0)) + (
-            (self.mass_ratio * (d - x)) / rw_sqr ** (3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (
-            self.mass_ratio + 1) * (1 - x) + (1.0 / d ** 2)
+        return - np.power(x, -2) + (self.mass_ratio * (d - x) / rw_sqr ** (3.0 / 2.0)) - \
+               self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (1 - x) + (1.0 / d ** 2)
 
     def potential_value_primary(self, radius, *args):
         """
@@ -392,17 +396,16 @@ class BinarySystem(System):
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
         :return: (np.)float
         """
-        d, phi, theta = args
+        d, phi, theta = args  # distance between components, azimut angle, latitude angle (0,180)
 
-        block_a = (1.0 / radius)
-        block_b = (self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
-            2.0 * radius * (np.cos(phi) * np.sin(theta)) * d))))
-        block_c = ((self.mass_ratio * radius * (np.cos(phi) * np.sin(theta))) / (np.power(d, 2)))
-        block_d = (
-            0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * np.power(radius, 2) * (
-                1 - np.power(np.cos(theta), 2)))
+        block_a = 1.0 / radius
+        block_b = self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
+            2.0 * radius * np.cos(phi) * np.sin(theta) * d)))
+        block_c = (self.mass_ratio * radius * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
+        block_d = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * np.power(radius, 2) * (
+                1 - np.power(np.cos(theta), 2))
 
-        return - (block_a + block_b - block_c + block_d)
+        return block_a + block_b - block_c + block_d
 
     def potential_value_secondary(self, radius, *args):
         """
@@ -414,18 +417,17 @@ class BinarySystem(System):
         d, phi, theta = args
         inverted_mass_ratio = 1.0 / self.mass_ratio
 
-        block_a = (1. / radius)
-        block_b = (inverted_mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
-            2 * radius * (np.cos(phi) * np.sin(theta)) * d))))
-        block_c = ((inverted_mass_ratio * radius * (np.cos(phi) * np.sin(theta))) / (np.power(d, 2)))
-        block_d = (
-            0.5 * np.power(self.secondary.synchronicity, 2) * (1 + inverted_mass_ratio) * np.power(
-                radius, 2) * (1 - np.power(np.cos(theta), 2)))
+        block_a = 1. / radius
+        block_b = inverted_mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
+            2 * radius * np.cos(phi) * np.sin(theta) * d)))
+        block_c = (inverted_mass_ratio * radius * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
+        block_d = 0.5 * np.power(self.secondary.synchronicity, 2) * (1 + inverted_mass_ratio) * np.power(
+                radius, 2) * (1 - np.power(np.cos(theta), 2))
 
         inverse_potential = (block_a + block_b - block_c + block_d) / inverted_mass_ratio + (
             0.5 * ((inverted_mass_ratio - 1) / inverted_mass_ratio))
 
-        return - inverse_potential
+        return inverse_potential
 
     def potential_primary_fn(self, radius, *args):
         """
@@ -448,6 +450,7 @@ class BinarySystem(System):
         return self.potential_value_secondary(radius, *args) - self.secondary.surface_potential
 
     def critical_potential(self, component, component_distance):
+        # nebude lepsie ak namiesto component distance bude faza?
         """
         return a critical potential for target component
 
@@ -488,33 +491,97 @@ class BinarySystem(System):
             raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
                              "solver has failed).")
 
+    def compute_polar_radius(self, component=None, distance=None):
+        if component == 'primary':
+            pass
+
+    def compute_equipotential_xy(self, phase=None):
+        components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
+
+        components = ['primary', 'secondary']
+        fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
+        points_primary, points_secondary = [], []
+        phis = np.linspace(0, c.FULL_ARC, 300, endpoint=True)
+        for component in components:
+            for phi in phis:
+                args, use = (components_distance, phi, c.halfPI), False
+                scipy_solver_init_value = components_distance / 1000.0
+                solution, info, ier, msg = scipy.optimize.fsolve(fn_map[component], scipy_solver_init_value,
+                                                                 full_output=True, args=args)
+                # check for regular solution
+                if ier == 1 and not np.isnan(solution[0]):
+                    solution = solution[0]
+                    if 30 >= solution >= 0: use = True
+                else:
+                    continue
+
+                if use:
+                    if component == 'primary':
+                        points_primary.append([solution * np.cos(phi), solution * np.sin(phi)])
+                    elif component == 'secondary':
+                        points_secondary.append([- (solution * np.cos(phi) - components_distance),
+                                       solution * np.sin(phi)])
+
+        return np.array(points_primary), np.array(points_secondary)
+
+
     def plot(self, descriptor=None, **kwargs):
         """
-        universal plot interface for binary system class
+        universal plot interface for binary system class, more detailed documentation for each value of descriptor is
+        available in graphics library
 
-        :param descriptor: str (defines type of plot)
+        :param descriptor: str (defines type of plot):
+                            orbit - plots orbit in orbital plane
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
         :return:
         """
-        method_to_call = getattr(graphics, descriptor)
 
         if descriptor == 'orbit':
+            KWARGlist = ['start_phase', 'stop_phase', 'number_of_points', 'axis_unit']
+            utils.invalid_kwarg_checker(kwargs, KWARGlist, BinarySystem.plot)
+
+            method_to_call = graphics.orbit
             start_phase = 0 if 'start_phase' not in kwargs else kwargs['start_phase']
             stop_phase = 1.0 if 'stop_phase' not in kwargs else kwargs['stop_phase']
             number_of_points = 300 if 'number_of_points' not in kwargs else kwargs['number_of_points']
 
             if 'axis_unit' not in kwargs:
                 kwargs['axis_unit'] = u.solRad
+            elif kwargs['axis_unit'] == 'dimensionless':
+                kwargs['axis_unit'] = u.dimensionless_unscaled
 
+            # orbit calculation for given phases
             phases = np.linspace(start_phase, stop_phase, number_of_points)
             ellipse = self.orbit.orbital_motion(phase=phases)
-            a = self._semi_major_axis * self.get_distance_unit().to(kwargs['axis_unit'])
-            radius = a * ellipse[:, 0]
+            #if axis are without unit a =1
+            if kwargs['axis_unit'] != u.dimensionless_unscaled:
+                a = self._semi_major_axis * self.get_distance_unit().to(kwargs['axis_unit'])
+                radius = a * ellipse[:, 0]
+            else:
+                radius = ellipse[:, 0]
             azimuth = ellipse[:, 1]
             x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth - c.PI / 2.0)
             kwargs['x_data'], kwargs['y_data'] = x, y
 
         elif descriptor == 'equipotential':
-            pass
+            KWARGlist = ['plane', 'phase']
 
+            method_to_call = graphics.equipotential
+            if 'phase' not in kwargs:
+                kwargs['phase'] = 0
+            if 'plane' not in kwargs:
+                kwargs['plane'] = 'xy'
+
+            # relative distance between components (a=1)
+            if kwargs['plane'] in ['xy', 'yx']:
+                points_primary, points_secondary = self.compute_equipotential_xy(phase=kwargs['phase'])
+            elif kwargs['plane'] in ['yz', 'zy']:
+                pass
+            elif kwargs['plane'] in ['zx', 'xz']:
+                pass
+            else:
+                raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
+
+            kwargs['points_primary'] = points_primary
+            kwargs['points_secondary'] = points_secondary
         method_to_call(**kwargs)

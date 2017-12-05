@@ -187,6 +187,21 @@ class Orbit(object):
         return azimut
 
     def orbital_motion(self, phase=None):
+        """
+        function takes photometric phase of the binary system as input and calculates positions of the secondary
+        component in the frame of reference of primary component
+
+        :param phase: np.array or np.float
+        :return: np.array: matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
+                           np.array((r1, az1, ni1, phs1),
+                                    (r2, az2, ni2, phs2),
+                                    ...
+                                    (rN, azN, niN, phsN))
+        """
+        # ability to accept float as input
+        if isinstance(phase, (int, np.int, float, np.float)):
+            phase = np.array([np.float(phase)])
+        # photometric phase to phase measured from periastron
         true_phase = self.true_phase(phase=phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
 
         mean_anomaly = self.mean_anomaly(phase=true_phase)
