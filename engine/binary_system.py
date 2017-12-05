@@ -499,11 +499,11 @@ class BinarySystem(System):
         for component in components:
             for angle in angles:
                 if utils.is_plane(plane, 'xy'):
-                    args, use = (components_distance, 0.0, angle), False
+                    args, use = (components_distance, angle, c.HALF_PI), False
                 elif utils.is_plane(plane, 'yz'):
                     args, use = (components_distance, c.HALF_PI, angle), False
                 elif utils.is_plane(plane, 'zx'):
-                    args, use = (components_distance, angle, c.HALF_PI), False
+                    args, use = (components_distance, 0.0, angle), False
                 else:
                     raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
 
@@ -520,14 +520,17 @@ class BinarySystem(System):
                     continue
 
                 if use:
-                    # in case of yz plane is not necesary to flip back secondary component
-                    # and transformation is changed
                     if utils.is_plane(plane, 'yz'):
                         if component == 'primary':
                             points_primary.append([solution * np.sin(angle), solution * np.cos(angle)])
                         elif component == 'secondary':
                             points_secondary.append([solution * np.sin(angle), solution * np.cos(angle)])
-
+                    elif utils.is_plane(plane, 'xz'):
+                        if component == 'primary':
+                            points_primary.append([solution * np.sin(angle), solution * np.cos(angle)])
+                        elif component == 'secondary':
+                            points_secondary.append([- (solution * np.sin(angle) - components_distance),
+                                                     solution * np.cos(angle)])
                     else:
                         if component == 'primary':
                             points_primary.append([solution * np.cos(angle), solution * np.sin(angle)])
