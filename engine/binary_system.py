@@ -459,18 +459,6 @@ class BinarySystem(System):
         :return: (np.)float
         """
 
-        """
-        vyzaduje testovanie pre excentricke orbity s parematrmi synchronicity pre primarnu a sekundarnu zlozku
-        roznymi od 1.0
-
-        otestovat pomocou grafickeho zobrazenia,
-
-        napisat resp. vytuningovat funkciu ktora je v starom programe na zobrazovanie prierezu v xy (tusim sa to vola
-        daco_equipotential_xy)
-        to co vrati kriticky potencial po nastaveni na zlozku musi pri vykresleni vratit zlozku ktora vyplna
-        rosheho lalok.
-        """
-
         if component == "primary":
             args = component_distance,
             solution = newton(self.primary_potential_derivative_x, 0.001, args=args)
@@ -492,10 +480,16 @@ class BinarySystem(System):
                              "solver has failed).")
 
     def compute_polar_radius(self, component=None, distance=None):
-        if component == 'primary':
-            pass
+        pass
 
-    def compute_equipotential_boundary(self, phase=None, plane=None):
+    def compute_equipotential_boundary(self, phase, plane):
+        """
+        compute a equipotential boundary of components (partial Hill plane)
+
+        :param phase: (np.)float; phase to obtain a component distance
+        :param plane: str; xy, yz, zx
+        :return: tuple (np.array, np.array)
+        """
         components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
 
         components = ['primary', 'secondary']
@@ -505,7 +499,15 @@ class BinarySystem(System):
         phis = np.linspace(0, c.FULL_ARC, 300, endpoint=True)
         for component in components:
             for phi in phis:
-                args, use = (components_distance, phi, c.HALF_PI), False
+                if utils.is_plane(plane, 'xy'):
+                    args, use = (components_distance, 0.0, phi), False
+                elif utils.is_plane(plane, 'yz'):
+                    args, use = (components_distance, c.HALF_PI, phi), False
+                elif utils.is_plane(plane, 'zx'):
+                    args, use = (components_distance, phi, c.HALF_PI), False
+                else:
+                    raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
+
                 scipy_solver_init_value = np.array([components_distance / 1000.0])
                 solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component], scipy_solver_init_value,
                                                             full_output=True, args=args)
@@ -522,8 +524,12 @@ class BinarySystem(System):
                     if component == 'primary':
                         points_primary.append([solution * np.cos(phi), solution * np.sin(phi)])
                     elif component == 'secondary':
-                        points_secondary.append([- (solution * np.cos(phi) - components_distance),
-                                                 solution * np.sin(phi)])
+                        # in case of yz plane is not necesary to flip back secondary component
+                        if utils.is_plane(plane, 'yz'):
+                            points_secondary.append([solution * np.cos(phi), solution * np.sin(phi)])
+                        else:
+                            points_secondary.append([- (solution * np.cos(phi) - components_distance),
+                                                     solution * np.sin(phi)])
 
         return np.array(points_primary), np.array(points_secondary)
 
@@ -577,12 +583,15 @@ class BinarySystem(System):
                 kwargs['plane'] = 'xy'
 
             # relative distance between components (a = 1)
-            if re.search(r'^(xy)|(yx)$', kwargs['plane']):
-                points_primary, points_secondary = self.compute_equipotential_boundary(phase=kwargs['phase'])
-            elif re.search(r'^(yz)|(zy)$', kwargs['plane']):
-                pass
-            elif re.search(r'^(xz)|(zx)$', kwargs['plane']):
-                pass
+            if utils.is_plane(kwargs['plane'], 'xy'):
+                points_primary, points_secondary = self.compute_equipotential_boundary(phase=kwargs['phase'],
+                                                                                       plane=kwargs['plane'])
+            elif utils.is_plane(kwargs['plane'], 'yz'):
+                points_primary, points_secondary = self.compute_equipotential_boundary(phase=kwargs['phase'],
+                                                                                       plane=kwargs['plane'])
+            elif utils.is_plane(kwargs['plane'], 'zx'):
+                points_primary, points_secondary = self.compute_equipotential_boundary(phase=kwargs['phase'],
+                                                                                       plane=kwargs['plane'])
             else:
                 raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
 

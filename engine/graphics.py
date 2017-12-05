@@ -1,5 +1,8 @@
+from engine import utils
+
 import matplotlib.pyplot as plt
 from astropy import units as u
+import re
 
 
 def orbit(**kwargs):
@@ -38,13 +41,11 @@ def orbit(**kwargs):
 
 
 def equipotential(**kwargs):
-
-    if kwargs['plane'] in ['xy', 'xy']:
-        x_label, y_label = 'x', 'y'
-    elif kwargs['plane'] in ['yz', 'zy']:
-        pass
-    elif kwargs['plane'] in ['zx', 'xz']:
-        pass
+    x_label, y_label = 'x', 'y'
+    if utils.is_plane(kwargs['plane'], 'yz'):
+        x_label, y_label = 'y', 'z'
+    elif utils.is_plane(kwargs['plane'], 'zx'):
+        x_label, y_label = 'x', 'z'
 
     x_primary, y_primary = kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1]
     x_secondary, y_secondary = kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1]
