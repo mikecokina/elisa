@@ -583,13 +583,8 @@ class BinarySystem(System):
                 kwargs['plane'] = 'xy'
 
             # relative distance between components (a = 1)
-            if utils.is_plane(kwargs['plane'], 'xy'):
-                points_primary, points_secondary = self.compute_equipotential_boundary(phase=kwargs['phase'],
-                                                                                       plane=kwargs['plane'])
-            elif utils.is_plane(kwargs['plane'], 'yz'):
-                points_primary, points_secondary = self.compute_equipotential_boundary(phase=kwargs['phase'],
-                                                                                       plane=kwargs['plane'])
-            elif utils.is_plane(kwargs['plane'], 'zx'):
+            if utils.is_plane(kwargs['plane'], 'xy') or utils.is_plane(
+                    kwargs['plane'], 'yz') or utils.is_plane(kwargs['plane'], 'zx'):
                 points_primary, points_secondary = self.compute_equipotential_boundary(phase=kwargs['phase'],
                                                                                        plane=kwargs['plane'])
             else:
