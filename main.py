@@ -10,7 +10,7 @@ from engine import const as c
 
 # bs = BinarySystem(gamma=25, period=10.0, eccentricity=0.2)
 
-primary = Star(mass=2.0, surface_potential=1.5, synchronicity=1.7)
+primary = Star(mass=2.0, surface_potential=1.51, synchronicity=1.7)
 secondary = Star(mass=1.0, surface_potential=3.33894538709, synchronicity=1.3)
 ur_anus = Planet(mass=500.2)
 
