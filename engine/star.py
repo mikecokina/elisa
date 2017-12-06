@@ -19,9 +19,12 @@ class Star(Body):
         super(Star, self).__init__(name=name, **kwargs)
 
         # default values of properties
-        self._surface_potential = None  # float64
-        self._backward_radius = None  # float64
-        self._gravity_darkening = None  # float
+        self._surface_potential = None
+        self._backward_radius = None
+        self._gravity_darkening = None
+        self._synchronicity = None
+        self._forward_radius = None
+        self._side_radius = None
 
         # values of properties
         for kwarg in Star.KWARGS:
@@ -50,26 +53,35 @@ class Star(Body):
         """
         self._surface_potential = np.float64(potential)
 
-    # @property
-    # def backward_radius(self):
-    #     """
-    #     returns value of backward radius of an object in default unit
-    #     usage: xy.backward_radius
-    #
-    #     :return: float64
-    #     """
-    #     return self._backward_radius
-    #
-    # @backward_radius.setter
-    # def backward_radius(self, backward_radius):
-    #     """
-    #     backward radius setter
-    #     accepts values in default distance units
-    #     usage: xy.backward_radius = new_backward_radius
-    #
-    #     :param backward_radius: float64
-    #     """
-    #     self._backward_radius = np.float64(backward_radius)
+    @property
+    def backward_radius(self):
+        """
+        returns value of backward radius of an object in default unit
+        usage: xy.backward_radius
+
+        :return: float64
+        """
+        return self._backward_radius
+
+    @property
+    def forward_radius(self):
+        """
+        returns value of forward radius of an object in default unit returns None if it doesn't exist
+        usage: xy.forward_radius
+
+        :return: float64
+        """
+        return self._forward_radius
+
+    @property
+    def side_radius(self):
+        """
+        returns value of side radius of an object in default unit
+        usage: xy.side_radius
+
+        :return: float64
+        """
+        return self._side_radius
 
     @property
     def gravity_darkening(self):

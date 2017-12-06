@@ -28,11 +28,12 @@ class TestBinarySystemProperties(unittest.TestCase):
                                "eccentricity": 0.1, "inclination": 85.0 * u.deg, "primary_minimum_time": 0.0,
                                "phase_shift": 0.0}]
 
+        phases_to_use = [0.25, 0.0]
         expected_potentials = [[2.8758446321, 2.8758446321],
-                               [3.4768803208, 3.2036513010]]
+                               [3.3060281748, 2.9883984921]]
         obtained_potentials = []
 
-        for combo in params_combination:
+        for ii, combo in enumerate(params_combination):
             primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
                            synchronicity=combo["primary_synchronicity"])
 
@@ -49,8 +50,8 @@ class TestBinarySystemProperties(unittest.TestCase):
                               primary_minimum_time=combo["primary_minimum_time"],
                               phase_shift=combo["phase_shift"])
 
-            primary_cp = bs.critical_potential(component="primary", component_distance=bs.orbit.periastron_distance)
-            secondary_cp = bs.critical_potential(component="secondary", component_distance=bs.orbit.periastron_distance)
+            primary_cp = bs.critical_potential(component="primary", phase=phases_to_use[ii])
+            secondary_cp = bs.critical_potential(component="secondary", phase=phases_to_use[ii])
 
             obtained_potentials.append([round(primary_cp, 10), round(secondary_cp, 10)])
 

@@ -1,7 +1,7 @@
 from engine import utils
-
 import matplotlib.pyplot as plt
 from astropy import units as u
+import numpy as np
 import re
 
 
@@ -19,9 +19,12 @@ def orbit(**kwargs):
                                                                astropy.units format, default unit is solar radius
                                                                if you want dimensionless axis, use
                                                                astropy.units.dimensionless_unscaled or `dimensionless`
+                            frame_or_reference = 'primary_component' - origin point for frame of reference in which
+                                                                       orbit will be displayed, choices:
+                                                                       primary_component - default
+                                                                       barycentric
     :return:
     """
-    x, y = kwargs['x_data'], kwargs['y_data']
     unit = str(kwargs['axis_unit'])
     if kwargs['axis_unit'] == u.dimensionless_unscaled:
         x_label, y_label = 'x', 'y'
@@ -30,17 +33,36 @@ def orbit(**kwargs):
 
     f = plt.figure()
     ax = f.add_subplot(111)
-    ax.plot(x, y)
-    # ax.scatter(x[0], y[0], c='r')
-    ax.scatter([0], [0], c='b')
+    ax.grid()
+    if kwargs['frame_of_reference'] == 'barycentric':
+        x1, y1 = kwargs['x1_data'], kwargs['y1_data']
+        x2, y2 = kwargs['x2_data'], kwargs['y2_data']
+        ax.plot(x1, y1, label='primary')
+        ax.plot(x2, y2, label='secondary')
+        ax.scatter([0], [0], c='black', s=4)
+    elif kwargs['frame_of_reference'] == 'primary_component':
+        x, y = kwargs['x_data'], kwargs['y_data']
+        ax.plot(x, y, label='primary')
+        # ax.scatter(x[0], y[0], c='r')
+        ax.scatter([0], [0], c='b', label='secondary')
+
+    ax.legend(loc = 1)
     ax.set_aspect('equal')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
-    ax.grid()
     plt.show()
 
 
 def equipotential(**kwargs):
+    """
+    Plot function for descriptor = `equipotential` in function BinarySystem.plot(). This function plots crossections of
+    surface Hill planes in xy, yz or zx plane
+
+    :param kwargs: dict
+                   keywords: plane = 'xy' - plane in which surface Hill plane is calculated, planes: 'xy', 'yz', 'zx'
+                             phase = 0 - photometric phase in which surface Hill plane is calculated
+    :return:
+    """
     x_label, y_label = 'x', 'y'
     if utils.is_plane(kwargs['plane'], 'yz'):
         x_label, y_label = 'y', 'z'
@@ -52,10 +74,33 @@ def equipotential(**kwargs):
 
     f = plt.figure()
     ax = f.add_subplot(111)
-    ax.plot(x_primary, y_primary)
-    ax.plot(x_secondary, y_secondary)
+    ax.plot(x_primary, y_primary, label='primary')
+    ax.plot(x_secondary, y_secondary, label='secondary')
+    lims = ax.get_xlim() - np.mean(ax.get_xlim())
+    ax.set_ylim(lims)
     ax.set_aspect('equal', 'box')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
+    ax.legend(loc = 1)
     ax.grid()
+    plt.show()
+
+def equipotential_single_star(**kwargs):
+    """
+    Plot function for descriptor = `equipotential` in function SingleSystem.plot(). Calculates zx plane crossection of
+    equipotential surface.
+
+    :param kwargs: dict
+    :return:
+    """
+    x_label, y_label = 'x', 'z'
+    x, y = kwargs['points'][:, 0], kwargs['points'][:, 1]
+
+    f = plt.figure()
+    ax = f.add_subplot(111)
+    ax.grid()
+    ax.plot(x,y)
+    ax.set_aspect('equal', 'box')
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
     plt.show()

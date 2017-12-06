@@ -260,10 +260,6 @@ class Body(object, metaclass=ABCMeta):
         # self._temperatures = {np.uint32(xx): np.float32(xx) for xx in temperatures}
         self._temperatures = temperatures
 
-    # @property
-    # def intensity(self):
-    #     return self._intensity
-
     @property
     def synchronicity(self):
         """
@@ -282,7 +278,10 @@ class Body(object, metaclass=ABCMeta):
 
         :param synchronicity: numpy.float64
         """
-        self._synchronicity = np.float64(synchronicity)
+        if synchronicity != None:
+            self._synchronicity = np.float64(synchronicity)
+        else:
+            self._synchronicity = None
 
     @property
     def albedo(self):
@@ -335,7 +334,6 @@ class Body(object, metaclass=ABCMeta):
         else:
             raise TypeError('Value of variable `polar radius` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-
 
     @property
     def mass_unit(self):

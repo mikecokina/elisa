@@ -390,6 +390,7 @@ class BinarySystem(System):
 
     def potential_value_primary(self, radius, *args):
         """
+        program calculates modified Kopal potential from point of view of primary component
 
         :param radius: (np.)float; spherical variable
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
@@ -408,6 +409,7 @@ class BinarySystem(System):
 
     def potential_value_secondary(self, radius, *args):
         """
+        program calculates modified Kopal potential from point of view of secondary component
 
         :param radius: (np.)float; spherical variable
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
@@ -448,8 +450,7 @@ class BinarySystem(System):
         """
         return self.potential_value_secondary(radius, *args) - self.secondary.surface_potential
 
-    def critical_potential(self, component, component_distance):
-        # nebude lepsie ak namiesto component distance bude faza?
+    def critical_potential(self, component, phase):
         """
         return a critical potential for target component
 
@@ -457,12 +458,11 @@ class BinarySystem(System):
         :param component_distance: (np.)float
         :return: (np.)float
         """
-
+        component_distance = self.orbit.orbital_motion(phase=phase)[0][0]
+        args = component_distance,
         if component == "primary":
-            args = component_distance,
             solution = newton(self.primary_potential_derivative_x, 0.001, args=args)
         elif component == "secondary":
-            args = component_distance,
             solution = newton(self.secondary_potential_derivative_x, 0.001, args=args)
         else:
             raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
@@ -478,7 +478,7 @@ class BinarySystem(System):
             raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
                              "solver has failed).")
 
-    def compute_polar_radius(self, component=None, distance=None):
+    def compute_polar_radius(self, component=None, phase=None):
         pass
 
     def compute_equipotential_boundary(self, phase, plane):
@@ -547,12 +547,13 @@ class BinarySystem(System):
 
         :param descriptor: str (defines type of plot):
                             orbit - plots orbit in orbital plane
+                            equipotential - plots crossections of surface Hill planes in xy,yz,zx planes
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
         :return:
         """
 
         if descriptor == 'orbit':
-            KWARGS = ['start_phase', 'stop_phase', 'number_of_points', 'axis_unit']
+            KWARGS = ['start_phase', 'stop_phase', 'number_of_points', 'axis_unit', 'frame_of_reference']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.orbit
@@ -565,6 +566,9 @@ class BinarySystem(System):
             elif kwargs['axis_unit'] == 'dimensionless':
                 kwargs['axis_unit'] = u.dimensionless_unscaled
 
+            if 'frame_of_reference' not in kwargs:
+                kwargs['frame_of_reference'] == 'primary_component'
+
             # orbit calculation for given phases
             phases = np.linspace(start_phase, stop_phase, number_of_points)
             ellipse = self.orbit.orbital_motion(phase=phases)
@@ -576,7 +580,13 @@ class BinarySystem(System):
                 radius = ellipse[:, 0]
             azimuth = ellipse[:, 1]
             x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth - c.PI / 2.0)
-            kwargs['x_data'], kwargs['y_data'] = x, y
+            if kwargs['frame_of_reference'] == 'barycentric':
+                kwargs['x1_data'] = - self.mass_ratio * x / (1 + self.mass_ratio)
+                kwargs['y1_data'] = - self.mass_ratio * y / (1 + self.mass_ratio)
+                kwargs['x2_data'] = x / (1 + self.mass_ratio)
+                kwargs['y2_data'] = y / (1 + self.mass_ratio)
+            elif kwargs['frame_of_reference'] == 'primary_component':
+                kwargs['x_data'], kwargs['y_data'] = x, y
 
         elif descriptor == 'equipotential':
             KWARGS = ['plane', 'phase']

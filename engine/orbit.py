@@ -198,7 +198,7 @@ class Orbit(object):
                                     ...
                                     (rN, azN, niN, phsN))
         """
-        # ability to accept float as input
+        # ability to accept scalar as input
         if isinstance(phase, (int, np.int, float, np.float)):
             phase = np.array([np.float(phase)])
         # photometric phase to phase measured from periastron
