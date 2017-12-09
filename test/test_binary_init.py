@@ -33,7 +33,7 @@ class TestBinarySystemProperties(unittest.TestCase):
                                [3.3060281748, 2.9883984921]]
         obtained_potentials = []
 
-        for ii, combo in enumerate(params_combination):
+        for i, combo in enumerate(params_combination):
             primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
                            synchronicity=combo["primary_synchronicity"])
 
@@ -50,8 +50,8 @@ class TestBinarySystemProperties(unittest.TestCase):
                               primary_minimum_time=combo["primary_minimum_time"],
                               phase_shift=combo["phase_shift"])
 
-            primary_cp = bs.critical_potential(component="primary", phase=phases_to_use[ii])
-            secondary_cp = bs.critical_potential(component="secondary", phase=phases_to_use[ii])
+            primary_cp = bs.critical_potential(component="primary", phase=phases_to_use[i])
+            secondary_cp = bs.critical_potential(component="secondary", phase=phases_to_use[i])
 
             obtained_potentials.append([round(primary_cp, 10), round(secondary_cp, 10)])
 
