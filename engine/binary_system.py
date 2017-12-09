@@ -455,7 +455,7 @@ class BinarySystem(System):
         return a critical potential for target component
 
         :param component: str; define target component to compute critical potential; `primary` or `secondary`
-        :param component_distance: (np.)float
+        :param phase: (np.)float
         :return: (np.)float
         """
         component_distance = self.orbit.orbital_motion(phase=phase)[0][0]
