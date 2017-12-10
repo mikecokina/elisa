@@ -99,7 +99,7 @@ def equipotential_single_star(**kwargs):
     f = plt.figure()
     ax = f.add_subplot(111)
     ax.grid()
-    ax.plot(x,y)
+    ax.plot(x, y)
     ax.set_aspect('equal', 'box')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)

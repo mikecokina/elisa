@@ -1,7 +1,6 @@
 import unittest
 import numpy as np
 from engine.orbit import Orbit
-from engine.star import Star
 import engine.const as c
 from astropy import units as u
 
