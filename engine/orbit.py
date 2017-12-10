@@ -284,7 +284,7 @@ class Orbit(object):
         return periastron_distance
 
     def periastron_phase(self):
-        return (-self.get_conjuction()['primary_eclipse']['true_phase'])%1
+        return (-self.get_conjuction()['primary_eclipse']['true_phase']) % 1
 
     @classmethod
     def is_property(cls, kwargs):
