@@ -1,6 +1,8 @@
 import logging
 import numpy as np
 from engine import const as c
+from astropy import units as u
+from engine.system import System
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -19,6 +21,7 @@ class Orbit(object):
         self._eccentricity = None
         self._argument_of_periastron = None
         self._periastron_distance = None
+        self._perastron_phase = None
 
         # values of properties
         for kwarg in Orbit.KWARGS:
@@ -29,6 +32,11 @@ class Orbit(object):
                     setattr(self, kwarg, kwargs[kwarg])
 
         self._periastron_distance = self.compute_periastron_distance()
+        self._perastron_phase = self.get_conjuction()["primary_eclipse"]["true_phase"]
+
+    @property
+    def periastron_phase(self):
+        return self._perastron_phase
 
     @property
     def period(self):
@@ -104,7 +112,18 @@ class Orbit(object):
         :param argument_of_periastron: numpy.float
         :return:
         """
-        self._argument_of_periastron = argument_of_periastron
+        if isinstance(argument_of_periastron, u.quantity.Quantity):
+            self._argument_of_periastron = np.float64(argument_of_periastron.to(System.get_arc_unit()))
+        elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
+            self._argument_of_periastron = np.float64(argument_of_periastron)
+        else:
+            raise TypeError('Input of variable `argument_of_periastron` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        if not 0 <= self._argument_of_periastron <= c.FULL_ARC:
+            self._argument_of_periastron %= c.FULL_ARC
+
+        self._logger.debug("Setting property argument_of_periastron "
+                           "of class instance {} to {}".format(Orbit.__name__, self._argument_of_periastron))
 
     @classmethod
     def true_phase(cls, phase=None, phase_shift=None):
