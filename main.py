@@ -30,14 +30,8 @@ bs = BinarySystem(primary=primary,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
-bs.lagrangian_points()
+print(bs.lagrangian_points(periastron_distance=1.0))
 # bs.plot('orbit', frame_of_reference='primary_component')
-from pprint import pprint
-pprint(bs.orbit.periastron_distance)
-pprint(bs.orbit.periastron_phase)
-pprint(bs.orbit.orbital_motion(phase=-bs.orbit.periastron_phase)[0][0])
-
-
 
 # bs.argument_of_periastron = 135*u.deg
 # bs.eccentricity = 0.3
