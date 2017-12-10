@@ -69,6 +69,7 @@ class BinarySystem(System):
         self._orbit = None
         self._primary_minimum_time = None
         self._phase_shift = None
+        self._semi_major_axis = None
 
         # testing if parameters were initialized
         missing_kwargs = []
@@ -538,7 +539,22 @@ class BinarySystem(System):
                             points_secondary.append([- (solution * np.cos(angle) - components_distance),
                                                      solution * np.sin(angle)])
 
-        return np.array(points_primary), np.array(points_secondary)
+        return np.array(points_primary), np.array(points_secondary)\
+
+
+    def lagrangian_points(self):
+        def potential_primary():
+            pass
+
+        def potential_secondary():
+            pass
+        pass
+
+        # args, end = (actual_distance, synchronicity_parameter), int(((actual_distance * 6.) / solve_step))
+        # points, lagrange = [], []
+        # scipy_solve_point, decimal = - (actual_distance * 3.) + solve_step, int(len(str(solve_step).split('.')[1]))
+        # derivation_value, ier = None, np.inf
+
 
     def plot(self, descriptor=None, **kwargs):
         """

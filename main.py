@@ -12,23 +12,25 @@ from engine import const as c
 
 primary = Star(mass=2.0, surface_potential=1.51, synchronicity=1.7)
 secondary = Star(mass=1.0, surface_potential=3.33894538709, synchronicity=1.3)
-ur_anus = Planet(mass=500.2)
+# ur_anus = Planet(mass=500.2)
+#
+# s = SingleSystem(star=primary,
+#                  gamma=0*u.km/u.s,
+#                  inclination=85*u.deg)
+#
+# s.plot(descriptor='equipotential')
 
-s = SingleSystem(star=primary,
-                 gamma=0*u.km/u.s,
-                 inclination=85*u.deg)
+bs = BinarySystem(primary=primary,
+                  secondary=secondary,
+                  argument_of_periastron=141*u.deg,
+                  gamma=0*u.km/u.s,
+                  period=1.0*u.d,
+                  eccentricity=0.2,
+                  inclination=85*u.deg,
+                  primary_minimum_time=0.0*u.d,
+                  phase_shift=0.0)
 
-s.plot(descriptor='equipotential')
-
-# bs = BinarySystem(primary=primary,
-#                   secondary=secondary,
-#                   argument_of_periastron=141*u.deg,
-#                   gamma=0*u.km/u.s,
-#                   period=1.0*u.d,
-#                   eccentricity=0.2,
-#                   inclination=85*u.deg,
-#                   primary_minimum_time=0.0*u.d,
-#                   phase_shift=0.0)
+bs.lagrangian_points()
 
 # bs.argument_of_periastron = 135*u.deg
 # bs.eccentricity = 0.3
