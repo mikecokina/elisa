@@ -46,7 +46,7 @@ def orbit(**kwargs):
         # ax.scatter(x[0], y[0], c='r')
         ax.scatter([0], [0], c='b', label='secondary')
 
-    ax.legend(loc = 1)
+    ax.legend(loc=1)
     ax.set_aspect('equal')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)

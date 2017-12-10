@@ -32,7 +32,7 @@ class Orbit(object):
                     setattr(self, kwarg, kwargs[kwarg])
 
         self._periastron_distance = self.compute_periastron_distance()
-        self._perastron_phase = self.get_conjuction()["primary_eclipse"]["true_phase"]
+        self._perastron_phase = self.get_conjuction()["primary_eclipse"]["true_phase"] % 1
 
     @property
     def periastron_phase(self):

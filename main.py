@@ -22,15 +22,22 @@ secondary = Star(mass=1.0, surface_potential=3.33894538709, synchronicity=1.3)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=0*u.deg,
+                  argument_of_periastron=315*u.deg,
                   gamma=0*u.km/u.s,
                   period=1.0*u.d,
-                  eccentricity=0.0,
-                  inclination=85*u.deg,
+                  eccentricity=0.2,
+                  inclination=120*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
 bs.lagrangian_points()
+# bs.plot('orbit', frame_of_reference='primary_component')
+from pprint import pprint
+pprint(bs.orbit.periastron_distance)
+pprint(bs.orbit.periastron_phase)
+pprint(bs.orbit.orbital_motion(phase=-bs.orbit.periastron_phase)[0][0])
+
+
 
 # bs.argument_of_periastron = 135*u.deg
 # bs.eccentricity = 0.3
@@ -45,6 +52,5 @@ bs.lagrangian_points()
 #
 # print(bs.critical_potential(component='primary', phase=0))
 # print(bs.critical_potential(component='secondary', phase=0))
-print(bs.orbit.periastron_phase())
-bs.plot('orbit')
+# bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx")

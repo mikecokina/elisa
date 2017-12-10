@@ -70,6 +70,7 @@ class BinarySystem(System):
         self._primary_minimum_time = None
         self._phase_shift = None
         self._semi_major_axis = None
+        self._periastron_phase = None
 
         # testing if parameters were initialized
         missing_kwargs = []
@@ -351,18 +352,6 @@ class BinarySystem(System):
     def get_info(self):
         pass
 
-    @classmethod
-    def is_property(cls, kwargs):
-        """
-        method for checking if keyword arguments are valid properties of this class
-
-        :param kwargs: dict
-        :return:
-        """
-        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
-        if is_not:
-            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
-
     def primary_potential_derivative_x(self, x, *args):
         """
         derivative of potential function perspective of primary component along the x axis
@@ -555,7 +544,6 @@ class BinarySystem(System):
         # scipy_solve_point, decimal = - (actual_distance * 3.) + solve_step, int(len(str(solve_step).split('.')[1]))
         # derivation_value, ier = None, np.inf
 
-
     def plot(self, descriptor=None, **kwargs):
         """
         universal plot interface for binary system class, more detailed documentation for each value of descriptor is
@@ -629,3 +617,15 @@ class BinarySystem(System):
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 
         method_to_call(**kwargs)
+
+    @classmethod
+    def is_property(cls, kwargs):
+        """
+        method for checking if keyword arguments are valid properties of this class
+
+        :param kwargs: dict
+        :return:
+        """
+        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
+        if is_not:
+            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
