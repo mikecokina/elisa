@@ -74,7 +74,16 @@ class Orbit(object):
         :param inclination: numpy.float
         :return:
         """
-        self._inclination = inclination
+        if isinstance(inclination, u.quantity.Quantity):
+            self._inclination = np.float64(inclination.to(System.get_arc_unit()))
+        elif isinstance(inclination, (int, np.int, float, np.float)):
+            self._inclination = np.float64(inclination)
+        else:
+            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
+        if not 0 <= self.inclination <= c.PI:
+            raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
 
     @property
     def eccentricity(self):
@@ -121,9 +130,6 @@ class Orbit(object):
                             'nor astropy.unit.quantity.Quantity instance.')
         if not 0 <= self._argument_of_periastron <= c.FULL_ARC:
             self._argument_of_periastron %= c.FULL_ARC
-
-        self._logger.debug("Setting property argument_of_periastron "
-                           "of class instance {} to {}".format(Orbit.__name__, self._argument_of_periastron))
 
     @classmethod
     def true_phase(cls, phase=None, phase_shift=None):
@@ -301,9 +307,6 @@ class Orbit(object):
                            "of class instance {} to {}".format('periastron_distance', Orbit.__name__,
                                                                periastron_distance))
         return periastron_distance
-
-    def periastron_phase(self):
-        return (-self.get_conjuction()['primary_eclipse']['true_phase']) % 1
 
     @classmethod
     def is_property(cls, kwargs):
