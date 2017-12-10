@@ -583,7 +583,7 @@ class BinarySystem(System):
                 kwargs['axis_unit'] = u.dimensionless_unscaled
 
             if 'frame_of_reference' not in kwargs:
-                kwargs['frame_of_reference'] == 'primary_component'
+                kwargs['frame_of_reference'] = 'primary_component'
 
             # orbit calculation for given phases
             phases = np.linspace(start_phase, stop_phase, number_of_points)
