@@ -531,8 +531,19 @@ class BinarySystem(System):
         return np.array(points_primary), np.array(points_secondary)
 
     def lagrangian_points(self):
+        """
+
+        :return: list; x-valeus of libration points [L3, L1, L2] respectively
+        """
 
         def potential_dx(x, *args):
+            """
+            general potential in case of primary.synchornicity = secondary.synchronicity = 1.0 and eccentricity = 0.0
+
+            :param x: (np.)float
+            :param args: tuple; periastron distance of components
+            :return: (np.)float
+            """
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
             return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
