@@ -577,7 +577,37 @@ class BinarySystem(System):
                 self._logger.debug("Solution for x: {0} lead to nowhere, exception: {1}".format(x_val, str(e)))
                 continue
 
-        return sorted(lagrange)
+        return sorted(lagrange) if self.mass_ratio < 1.0 else sorted(lagrange, reverse=True)
+
+    def libration_potentials(self):
+        """
+        return potentials in L3, L1, L2 respectively
+
+        :return: list; [Omega(L3), Omega(L1), Omega(L2)]
+        """
+        def potential(radius):
+            theta, d = c.HALF_PI, self.orbit.periastron_distance
+            if isinstance(radius, (float, int, np.float, np.int)):
+                radius = [radius]
+            elif not isinstance(radius, (list, np.array)):
+                raise ValueError("Incorrect value of variable `radius`")
+
+            p_values = []
+            for r in radius:
+                phi, r = (0.0, r) if r >= 0 else (c.PI, abs(r))
+
+                block_a = 1.0 / r
+                block_b = self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(r, 2) - (
+                    2.0 * r * np.cos(phi) * np.sin(theta) * d)))
+                block_c = (self.mass_ratio * r * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
+                block_d = 0.5 * (1 + self.mass_ratio) * np.power(r, 2) * (
+                    1 - np.power(np.cos(theta), 2))
+
+                p_values.append(block_a + block_b - block_c + block_d)
+            return p_values
+
+        lagrangian_points = self.lagrangian_points()
+        return potential(lagrangian_points)
 
     def plot(self, descriptor=None, **kwargs):
         """
