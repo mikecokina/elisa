@@ -126,7 +126,7 @@ class TestBinarySystem(unittest.TestCase):
 
             obtained_points.append([round(p, 10) for p in bs.lagrangian_points()])
 
-        # self.assertAlmostEquals(expected_points, obtained_points)
+        self.assertAlmostEquals(expected_points, obtained_points)
         print(obtained_points)
         print(expected_points)
 
