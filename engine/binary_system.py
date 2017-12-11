@@ -101,7 +101,8 @@ class BinarySystem(System):
             self._morphology = self._estimate_morphology()
 
         else:
-            pass
+            self._primary_filling_factor, self._secondary_filling_factor = None, None
+            # todo: add morphology type from _estimate_morphology, it is mean, also add this possibility to esmitate morphology
 
         # compute and assing to all radii values to both components
 
