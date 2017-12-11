@@ -530,7 +530,7 @@ class BinarySystem(System):
 
         return np.array(points_primary), np.array(points_secondary)
 
-    def lagrangian_points(self, periastron_distance):
+    def lagrangian_points(self):
 
         def potential_dx(x, *args):
             d, = args
@@ -538,6 +538,7 @@ class BinarySystem(System):
             return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
                 3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
+        periastron_distance = self.orbit.periastron_distance
         xs = np.linspace(- periastron_distance * 3.0, periastron_distance * 3.0, 100)
 
         args_val = periastron_distance,
@@ -551,11 +552,12 @@ class BinarySystem(System):
                 potential_dx(round(x_val, round_to), *args_val)
                 np.seterr(divide='print', invalid='print')
             except Exception as e:
-                self._logger.debug("Invalid value passed to potential, exception {0}".format(str(e)))
+                self._logger.debug("Invalid value passed to potential, exception: {0}".format(str(e)))
                 continue
 
             try:
-                solution, _, ier, _ = scipy.optimize.fsolve(potential_dx, x_val, full_output=True, args=args_val)
+                solution, _, ier, _ = scipy.optimize.fsolve(potential_dx, x_val, full_output=True, args=args_val,
+                                                            xtol=1e-12)
                 if ier == 1:
                     if round(solution[0], 5) not in points:
                         try:
@@ -563,7 +565,7 @@ class BinarySystem(System):
                             use = True if value_dx == 0 else False
                         except Exception as e:
                             self._logger.debug(
-                                "Skipping sollution for x: {0} due to exception {1}".format(x_val, str(e)))
+                                "Skipping sollution for x: {0} due to exception: {1}".format(x_val, str(e)))
                             use = False
 
                         if use:
@@ -572,7 +574,7 @@ class BinarySystem(System):
                             if len(lagrange) == 3:
                                 break
             except Exception as e:
-                self._logger.debug("Solution for x: {0} lead to nowhere, exception {1}".format(x_val, str(e)))
+                self._logger.debug("Solution for x: {0} lead to nowhere, exception: {1}".format(x_val, str(e)))
                 continue
 
         return sorted(lagrange)

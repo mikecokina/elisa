@@ -70,26 +70,6 @@ class TestBinarySystem(unittest.TestCase):
                                     "eccentricity": 0.1, "inclination": 85.0 * u.deg, "primary_minimum_time": 0.0,
                                     "phase_shift": 0.0}]
 
-    def test_periastron_distance(self):
-        expected_distance = []
-
-        for i, combo in enumerate(self.params_combination):
-            primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
-                           synchronicity=combo["primary_synchronicity"])
-
-            secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
-                             synchronicity=combo["secondary_synchronicity"])
-
-            bs = BinarySystem(primary=primary,
-                              secondary=secondary,
-                              argument_of_periastron=combo["argument_of_periastron"],
-                              gamma=combo["gamma"],
-                              period=combo["period"],
-                              eccentricity=combo["eccentricity"],
-                              inclination=combo["inclination"],
-                              primary_minimum_time=combo["primary_minimum_time"],
-                              phase_shift=combo["phase_shift"])
-
     def test_critical_potential(self):
         phases_to_use = [0.25, 0.0]
         expected_potentials = [[2.8758446321, 2.8758446321],
@@ -119,6 +99,38 @@ class TestBinarySystem(unittest.TestCase):
             obtained_potentials.append([round(primary_cp, 10), round(secondary_cp, 10)])
 
         self.assertEquals(expected_potentials, obtained_potentials)
+
+    def test_lagrangian_points(self):
+
+        expected_points = [[-0.8030279607, 0.5707515715, 1.5823807222],
+                           [-0.7857030576, 0.5221432499, 1.5315280946]]
+
+        obtained_points = []
+
+        for i, combo in enumerate(self.params_combination):
+            primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
+                           synchronicity=combo["primary_synchronicity"])
+
+            secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
+                             synchronicity=combo["secondary_synchronicity"])
+
+            bs = BinarySystem(primary=primary,
+                              secondary=secondary,
+                              argument_of_periastron=combo["argument_of_periastron"],
+                              gamma=combo["gamma"],
+                              period=combo["period"],
+                              eccentricity=combo["eccentricity"],
+                              inclination=combo["inclination"],
+                              primary_minimum_time=combo["primary_minimum_time"],
+                              phase_shift=combo["phase_shift"])
+
+            obtained_points.append([round(p, 10) for p in bs.lagrangian_points()])
+
+        # self.assertAlmostEquals(expected_points, obtained_points)
+        print(obtained_points)
+        print(expected_points)
+
+
 
 
 
