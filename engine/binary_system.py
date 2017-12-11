@@ -92,6 +92,17 @@ class BinarySystem(System):
         # orbit initialisation
         self.init_orbit()
 
+        # test if parameters of components staisfy reality
+        # circular and synchronous orbit
+        if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
+            lp = self.libration_potentials()
+            self._primary_filling_factor = (lp[1] - self.primary.surface_potential) / (lp[1] - lp[2])
+            self._secondary_filling_factor = (lp[1] - self.secondary.surface_potential) / (lp[1] - lp[2])
+            self._morphology = self._estimate_morphology()
+
+        else:
+            pass
+
         # compute and assing to all radii values to both components
 
     def init(self):
@@ -114,6 +125,28 @@ class BinarySystem(System):
             serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
 
+    def _estimate_morphology(self):
+
+        print(self.primary_filling_factor, self.secondary_filling_factor)
+
+        if ((1 > self.secondary_filling_factor > 0) or (1 > self.primary_filling_factor > 0)) and \
+                (self.primary_filling_factor - self.secondary_filling_factor > 1e-8):
+            raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
+        if self.primary_filling_factor > 1 or self.secondary_filling_factor > 1:
+            raise ValueError("Non-Physical system: primary_filling_factor or "
+                             "secondary_filling_factor is greater then 1. Filling factor is obtained as following:"
+                             "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
+
+        if self.primary_filling_factor < 0 and self.secondary_filling_factor < 0:
+            return "detached"
+        elif (abs(self.primary_filling_factor) < 1e-8 and self.secondary_filling_factor < 0) or (
+                        self.primary_filling_factor < 0 and abs(self.secondary_filling_factor) < 1e-8):
+            return "semi-detached"
+        elif 1 >= self.primary_filling_factor > 0:
+            return "over-contact"
+        elif self.primary_filling_factor > 1 or self.secondary_filling_factor > 1:
+            raise ValueError("Non-Physical system: potential of components is to low.")
+
     def init_orbit(self):
         """
         encapsulating orbit class into binary system
@@ -123,6 +156,33 @@ class BinarySystem(System):
         self._logger.debug("Re/Initializing orbit in class instance {} ".format(BinarySystem.__name__))
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
         self._orbit = Orbit(**orbit_kwargs)
+
+    @property
+    def primary_filling_factor(self):
+        """
+        filling factor for primary components
+
+        :return: (np.)float
+        """
+        return self._primary_filling_factor
+
+    @property
+    def secondary_filling_factor(self):
+        """
+        fillinf catro for secondary component
+
+        :return: (np.)float
+        """
+        return self._secondary_filling_factor
+
+    @property
+    def morphology(self):
+        """
+        morphology of binary star system
+
+        :return: str; detached, semi-detached, over-contact, double-contact
+        """
+        return self._morphology
 
     @property
     def mass_ratio(self):

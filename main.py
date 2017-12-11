@@ -30,7 +30,6 @@ bs = BinarySystem(primary=primary,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
-print(bs.libration_potentials())
 # bs.plot('orbit', frame_of_reference='primary_component')
 
 # bs.argument_of_periastron = 135*u.deg
@@ -47,4 +46,4 @@ print(bs.libration_potentials())
 # print(bs.critical_potential(component='primary', phase=0))
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference='barycentric')
-bs.plot('equipotential', plane="zx")
+# bs.plot('equipotential', plane="zx")
