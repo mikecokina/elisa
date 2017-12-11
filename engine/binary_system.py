@@ -528,110 +528,49 @@ class BinarySystem(System):
                             points_secondary.append([- (solution * np.cos(angle) - components_distance),
                                                      solution * np.sin(angle)])
 
-        return np.array(points_primary), np.array(points_secondary)\
-
+        return np.array(points_primary), np.array(points_secondary)
 
     def lagrangian_points(self, periastron_distance):
-        """
-        calculates position of Lagrange L1, L2 and L3 points
-        :param periastron_distance: float
-        :return: list - [L3, L1, L2]
-        """
 
-        def potential_dx_primary(x, *args):
-            """
-            first derivative of potential in frame of reference of primary component
-            :param x: float - distance on x axis where origin is in primary component and x axis is pointing to
-            secondary component
-            :param args: tuple: (d,): d - periastron distance
-            :return: float
-            """
+        def potential_dx(x, *args):
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-            return - np.power(x, -2) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
+            return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
                 3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
-        def potential_dx_secondary(x, *args):
-            """
-            first derivative of potential in frame of reference of secondary component
-
-            :param x: float - distance on x axis where origin is in secondary component and x axis is pointing to
-            primary component
-            :param args: tuple: d - periastron distance
-            :return: float
-            """
-            d, = args
-            r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-            inverted_mass_ratio = 1.0 / self.mass_ratio
-            # xx = d - x
-            return - np.power(x, -2) + ((inverted_mass_ratio * (d - x)) / rw_sqr ** (
-                3.0 / 2.0)) + (inverted_mass_ratio + 1) * x - inverted_mass_ratio / d ** 2
-
-        xs = np.linspace(- periastron_distance * 4.0, periastron_distance * 4.0, 100)
+        xs = np.linspace(- periastron_distance * 3.0, periastron_distance * 3.0, 100)
 
         args_val = periastron_distance,
         round_to = 10
         points, lagrange = [], []
 
-        # print(xs)
-
         for x_val in xs:
             try:
                 # if there is no valid value (in case close to x=0.0, potential_dx diverge)
                 np.seterr(divide='raise', invalid='raise')
-                # print(x_val, potential_dx_primary(round(x_val, round_to), *args_val),
-                #       potential_dx_secondary(round(x_val, round_to), *args_val))
-                potential_dx_primary(round(x_val, round_to), *args_val)
-                potential_dx_secondary(round(x_val, round_to), *args_val)
+                potential_dx(round(x_val, round_to), *args_val)
                 np.seterr(divide='print', invalid='print')
             except Exception as e:
                 self._logger.debug("Invalid value passed to potential, exception {0}".format(str(e)))
                 continue
 
             try:
-                solution1, _, ier1, _ = scipy.optimize.fsolve(potential_dx_primary, x_val, full_output=True,
-                                                              args=args_val)
-                solution2, _, ier2, _ = scipy.optimize.fsolve(potential_dx_secondary, x_val, full_output=True,
-                                                              args=args_val)
-                # reverting solution into frame of reference of primary comonent
-                solution2_transformed = periastron_distance - solution2[0]
-
-                if ier1 == 1:
-                    if round(solution1[0], 5) not in points:
+                solution, _, ier, _ = scipy.optimize.fsolve(potential_dx, x_val, full_output=True, args=args_val)
+                if ier == 1:
+                    if round(solution[0], 5) not in points:
                         try:
-                            value_dx = abs(round(potential_dx_primary(solution1[0], *args_val), 4))
-
-                            # print(solution1, value_dx)
+                            value_dx = abs(round(potential_dx(solution[0], *args_val), 4))
                             use = True if value_dx == 0 else False
                         except Exception as e:
-                            self._logger.debug("Skipping sollution for x: {0} due to exception {1}"
-                                               .format(x_val, str(e)))
+                            self._logger.debug(
+                                "Skipping sollution for x: {0} due to exception {1}".format(x_val, str(e)))
                             use = False
 
                         if use:
-                            points.append(round(solution1[0], 5))
-                            lagrange.append(solution1[0])
+                            points.append(round(solution[0], 5))
+                            lagrange.append(solution[0])
                             if len(lagrange) == 3:
                                 break
-
-                if ier2 == 1:
-                    if round(solution2_transformed, 5) not in points:
-                        try:
-                            value_dx = abs(round(potential_dx_secondary(solution2[0], *args_val), 4))
-
-                            # print(solution2_transformed, value_dx)
-                            use = True if value_dx == 0 else False
-                        except Exception as e:
-                            self._logger.debug("Skipping sollution for x: {0} due to exception {1}"
-                                               .format(x_val, str(e)))
-                            use = False
-
-                        if use:
-                            points.append(round(solution2_transformed, 5))
-                            lagrange.append(solution2_transformed)
-                            if len(lagrange) == 3:
-                                break
-
             except Exception as e:
                 self._logger.debug("Solution for x: {0} lead to nowhere, exception {1}".format(x_val, str(e)))
                 continue
