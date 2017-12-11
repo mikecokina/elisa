@@ -362,7 +362,7 @@ class BinarySystem(System):
         """
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-        return - np.power(x, -2) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
+        return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
             3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
     def secondary_potential_derivative_x(self, x, *args):
@@ -375,7 +375,7 @@ class BinarySystem(System):
         """
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-        return - np.power(x, -2) + (self.mass_ratio * (d - x) / rw_sqr ** (
+        return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
             3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (1 - x) + (1.0 / d ** 2)
 
     def potential_value_primary(self, radius, *args):
