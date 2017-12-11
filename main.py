@@ -11,7 +11,7 @@ from engine import const as c
 # bs = BinarySystem(gamma=25, period=10.0, eccentricity=0.2)
 
 primary = Star(mass=2.0, surface_potential=5.0, synchronicity=1.5)
-secondary = Star(mass=1.0, surface_potential=4, synchronicity=1.3)
+secondary = Star(mass=0.1, surface_potential=4, synchronicity=1.3)
 # ur_anus = Planet(mass=500.2)
 #
 # s = SingleSystem(star=primary,

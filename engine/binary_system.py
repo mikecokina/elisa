@@ -532,20 +532,34 @@ class BinarySystem(System):
 
 
     def lagrangian_points(self, periastron_distance):
-
-        # def potential_dx(x, *args):
-        #     d, = args
-        #     r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-        #     return - np.power(x, -2) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-        #         3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+        """
+        calculates position of Lagrange L1, L2 and L3 points
+        :param periastron_distance: float
+        :return: list - [L3, L1, L2]
+        """
 
         def potential_dx_primary(x, *args):
+            """
+            first derivative of potential in frame of reference of primary component
+            :param x: float - distance on x axis where origin is in primary component and x axis is pointing to
+            secondary component
+            :param args: tuple: (d,): d - periastron distance
+            :return: float
+            """
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
             return - np.power(x, -2) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
                 3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
         def potential_dx_secondary(x, *args):
+            """
+            first derivative of potential in frame of reference of secondary component
+
+            :param x: float - distance on x axis where origin is in secondary component and x axis is pointing to
+            primary component
+            :param args: tuple: d - periastron distance
+            :return: float
+            """
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
             inverted_mass_ratio = 1.0 / self.mass_ratio
@@ -553,7 +567,7 @@ class BinarySystem(System):
             return - np.power(x, -2) + ((inverted_mass_ratio * (d - x)) / rw_sqr ** (
                 3.0 / 2.0)) + (inverted_mass_ratio + 1) * x - inverted_mass_ratio / d ** 2
 
-        xs = np.linspace(- periastron_distance * 4.0, periastron_distance * 4.0, 300)
+        xs = np.linspace(- periastron_distance * 4.0, periastron_distance * 4.0, 100)
 
         args_val = periastron_distance,
         round_to = 10
