@@ -10,8 +10,10 @@ from engine import const as c
 
 # bs = BinarySystem(gamma=25, period=10.0, eccentricity=0.2)
 
-primary = Star(mass=2.0, surface_potential=2.5772602683306705, synchronicity=1.0)
-secondary = Star(mass=1.0, surface_potential=2.5772602683306705, synchronicity=1.0)
+# primary = Star(mass=2.0, surface_potential=2.5772602683306705, synchronicity=1.0)
+# secondary = Star(mass=1.0, surface_potential=2.5772602683306705, synchronicity=1.0)
+primary = Star(mass=2.0, surface_potential=2.5, synchronicity=1.0)
+secondary = Star(mass=1.0, surface_potential=2.5, synchronicity=1.0)
 # ur_anus = Planet(mass=500.2)
 #
 # s = SingleSystem(star=primary,
@@ -46,4 +48,5 @@ bs = BinarySystem(primary=primary,
 # print(bs.critical_potential(component='primary', phase=0))
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference='barycentric')
-# bs.plot('equipotential', plane="zx")
+bs.plot('equipotential', plane="zx")
+# print(bs.lagrangian_points())

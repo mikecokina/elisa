@@ -548,7 +548,7 @@ class BinarySystem(System):
         points_primary, points_secondary = [], []
         fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
 
-        angles = np.linspace(0, c.FULL_ARC, 300, endpoint=True)
+        angles = np.linspace(-3*c.HALF_PI, c.HALF_PI, 300, endpoint=True)
         for component in components:
             for angle in angles:
                 if utils.is_plane(plane, 'xy'):
