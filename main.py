@@ -12,8 +12,8 @@ from engine import const as c
 
 # primary = Star(mass=2.0, surface_potential=2.5772602683306705, synchronicity=1.0)
 # secondary = Star(mass=1.0, surface_potential=2.5772602683306705, synchronicity=1.0)
-primary = Star(mass=2.0, surface_potential=2.5, synchronicity=1.0)
-secondary = Star(mass=1.0, surface_potential=2.5, synchronicity=1.0)
+primary = Star(mass=2.0, surface_potential=3.5, synchronicity=0.5)
+secondary = Star(mass=1.0, surface_potential=3.5, synchronicity=0.5)
 # ur_anus = Planet(mass=500.2)
 #
 # s = SingleSystem(star=primary,
@@ -24,10 +24,10 @@ secondary = Star(mass=1.0, surface_potential=2.5, synchronicity=1.0)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=315*u.deg,
+                  argument_of_periastron=0*u.deg,
                   gamma=0*u.km/u.s,
                   period=1.0*u.d,
-                  eccentricity=0.0,
+                  eccentricity=0.3,
                   inclination=90*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)

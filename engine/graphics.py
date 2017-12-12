@@ -81,9 +81,10 @@ def equipotential(**kwargs):
     ax.set_aspect('equal', 'box')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
-    ax.legend(loc = 1)
+    ax.legend(loc=1)
     ax.grid()
     plt.show()
+
 
 def equipotential_single_star(**kwargs):
     """
