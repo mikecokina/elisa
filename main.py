@@ -13,7 +13,7 @@ from engine import const as c
 # primary = Star(mass=2.0, surface_potential=2.5772602683306705, synchronicity=1.0)
 # secondary = Star(mass=1.0, surface_potential=2.5772602683306705, synchronicity=1.0)
 primary = Star(mass=2.0, surface_potential=8.643878058931882, synchronicity=2.0)
-secondary = Star(mass=5.0, surface_potential=14.060924968356813, synchronicity=5.0)
+secondary = Star(mass=5.0, surface_potential=14.169737955768381, synchronicity=5.0)
 
 # ur_anus = Planet(mass=500.2)
 #
