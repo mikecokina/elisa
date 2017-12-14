@@ -448,7 +448,7 @@ class BinarySystem(System):
         program calculates modified Kopal potential from point of view of primary component
 
         :param radius: (np.)float; spherical variable
-        :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
+        :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimuthal angle, polar angle)
         :return: (np.)float
         """
         d, phi, theta = args  # distance between components, azimut angle, latitude angle (0,180)
