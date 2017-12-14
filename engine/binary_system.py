@@ -515,9 +515,9 @@ class BinarySystem(System):
         component_distance = self.orbit.orbital_motion(phase=phase)[0][0]
         args = component_distance,
         if component == "primary":
-            solution = newton(self.primary_potential_derivative_x, 0.001, args=args)
+            solution = newton(self.primary_potential_derivative_x, 0.001, args=args, tol=1e-12)
         elif component == "secondary":
-            solution = newton(self.secondary_potential_derivative_x, 0.001, args=args)
+            solution = newton(self.secondary_potential_derivative_x, 0.001, args=args, tol=1e-12)
         else:
             raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
 
@@ -563,7 +563,7 @@ class BinarySystem(System):
 
                 scipy_solver_init_value = np.array([components_distance / 1000.0])
                 solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component], scipy_solver_init_value,
-                                                            full_output=True, args=args)
+                                                            full_output=True, args=args, xtol=1e-12)
 
                 # check for regular solution
                 if ier == 1 and not np.isnan(solution[0]):
