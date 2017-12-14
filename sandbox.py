@@ -42,7 +42,7 @@ if False:
     plt.grid(True)
     plt.show()
 
-if True:
+if False:
     args = 1.0, 1.0
     xss = np.linspace(-3, 3, 10000)
     ys = []
@@ -58,4 +58,33 @@ if True:
     plt.scatter(xs, ys, s=0.1)
     plt.grid(True)
     plt.show()
+
+
+if True:
+    def secondary_potential_derivative_x(x, *args):
+        d, = args
+        mass_ratio = 1.0 / 3.0
+        synchronicity = 2.0
+
+        r_sqr, rw_sqr = x ** 2, (d - x) ** 2
+        return - (x / r_sqr ** (3.0 / 2.0)) + ((mass_ratio * (d - x)) / rw_sqr ** (
+            3.0 / 2.0)) - synchronicity ** 2 * (mass_ratio + 1) * (1 - x) + (1.0 / d ** 2)
+
+
+    args = 0.7,
+    xss = np.linspace(-3, 3, 10000)
+    ys = []
+    xs = []
+    # ys = [[x, potential_dx_primary(x, *args)] for x in xs if abs(x) > 0.01]
+
+    for x in xss:
+        y = secondary_potential_derivative_x(x, *args)
+        if abs(y) < 10:
+            ys.append(y)
+            xs.append(x)
+
+    plt.scatter(xs, ys, s=0.1)
+    plt.grid(True)
+    plt.show()
+
 

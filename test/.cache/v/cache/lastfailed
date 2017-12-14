@@ -1,4 +1,5 @@
 {
+  "test_binary_system.py::TestBinarySystem::test_critical_potential": true,
   "test_binary_system.py::TestBinarySystemProperties::test_binary_change": true,
   "test_binary_system.py::TestBinarySystemProperties::test_binary_system_unit": true,
   "test_binary_system.py::TestBinarySystemProperties::test_orbit_change": true

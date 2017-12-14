@@ -98,13 +98,12 @@ class BinarySystem(System):
             lp = self.libration_potentials()
             self._primary_filling_factor = (lp[1] - self.primary.surface_potential) / (lp[1] - lp[2])
             self._secondary_filling_factor = (lp[1] - self.secondary.surface_potential) / (lp[1] - lp[2])
-            self._morphology = self._estimate_morphology()
+        # self._morphology = self._estimate_morphology()
 
         else:
             self._primary_filling_factor, self._secondary_filling_factor = None, None
-
-
-            # todo: add morphology type from _estimate_morphology, it is mean, also add this possibility to esmitate morphology
+            # todo: add morphology type from _estimate_morphology,
+            # it is mean, also add this possibility to esmitate morphology
 
         # compute and assing to all radii values to both components
 
