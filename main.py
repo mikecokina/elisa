@@ -24,7 +24,7 @@ secondary = Star(mass=3.0, surface_potential=12.097570958, synchronicity=3.0)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=0*u.deg,
+                  argument_of_periastron=90*u.deg,
                   gamma=0*u.km/u.s,
                   period=1.0*u.d,
                   eccentricity=0.3,
@@ -35,7 +35,7 @@ bs = BinarySystem(primary=primary,
 print(bs.critical_potential(component="secondary", phase=bs.orbit.periastron_phase))
 print(bs.orbit.periastron_phase)
 
-# bs.plot('orbit', frame_of_reference='primary_component')
+bs.plot('orbit', frame_of_reference='primary_component')
 
 # bs.argument_of_periastron = 135*u.deg
 # bs.eccentricity = 0.3
