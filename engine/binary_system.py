@@ -523,10 +523,10 @@ class BinarySystem(System):
 
         if not np.isnan(solution):
             if component == "primary":
-                args = component_distance, 0.0, np.pi / 2.0
+                args = component_distance, 0.0, c.HALF_PI
                 return abs(self.potential_value_primary(solution, *args))
             else:
-                args = (component_distance, 0.0, np.pi / 2.0)
+                args = (component_distance, 0.0, c.HALF_PI)
                 return abs(self.potential_value_secondary(component_distance - solution, *args))
         else:
             raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
