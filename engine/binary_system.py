@@ -102,6 +102,8 @@ class BinarySystem(System):
 
         else:
             self._primary_filling_factor, self._secondary_filling_factor = None, None
+
+
             # todo: add morphology type from _estimate_morphology, it is mean, also add this possibility to esmitate morphology
 
         # compute and assing to all radii values to both components
@@ -148,7 +150,7 @@ class BinarySystem(System):
                 raise ValueError("Non-Physical system: potential of components is to low.")
 
         else:
-            pass
+            primary_critical_potential = None
 
     def init_orbit(self):
         """
@@ -471,9 +473,9 @@ class BinarySystem(System):
         d, phi, theta = args
         inverted_mass_ratio = 1.0 / self.mass_ratio
 
-        block_a = 1. / radius
+        block_a = 1.0 / radius
         block_b = inverted_mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
-            2 * radius * np.cos(phi) * np.sin(theta) * d)))
+            2.0 * radius * np.cos(phi) * np.sin(theta) * d)))
         block_c = (inverted_mass_ratio * radius * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
         block_d = 0.5 * np.power(self.secondary.synchronicity, 2) * (1 + inverted_mass_ratio) * np.power(
             radius, 2) * (1 - np.power(np.cos(theta), 2))

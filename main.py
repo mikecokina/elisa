@@ -12,8 +12,8 @@ from engine import const as c
 
 # primary = Star(mass=2.0, surface_potential=2.5772602683306705, synchronicity=1.0)
 # secondary = Star(mass=1.0, surface_potential=2.5772602683306705, synchronicity=1.0)
-primary = Star(mass=2.0, surface_potential=3.5, synchronicity=0.5)
-secondary = Star(mass=1.0, surface_potential=3.5, synchronicity=0.5)
+primary = Star(mass=1.0, surface_potential=9.60930412258, synchronicity=2.0)
+secondary = Star(mass=3.0, surface_potential=12.097570958, synchronicity=3.0)
 # ur_anus = Planet(mass=500.2)
 #
 # s = SingleSystem(star=primary,
@@ -32,6 +32,9 @@ bs = BinarySystem(primary=primary,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
+print(bs.critical_potential(component="secondary", phase=bs.orbit.periastron_phase))
+print(bs.orbit.periastron_phase)
+
 # bs.plot('orbit', frame_of_reference='primary_component')
 
 # bs.argument_of_periastron = 135*u.deg
@@ -48,5 +51,5 @@ bs = BinarySystem(primary=primary,
 # print(bs.critical_potential(component='primary', phase=0))
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference='barycentric')
-bs.plot('equipotential', plane="zx")
+bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 # print(bs.lagrangian_points())
