@@ -23,3 +23,21 @@ def invalid_kwarg_checker(kwargs, kwarglist, instance):
 def is_plane(given, expected):
     pattern = r'^({0})|({1})$'.format(expected, expected[::-1])
     return re.search(pattern, given)
+
+
+def find_nearest_dist_3d(data=None):
+    """
+
+    :param data: array like
+    :return: (np.)float; minimal distance of points in dataset
+    """
+    from scipy.spatial import KDTree
+    points = data[:]
+    test_points, distances = points[:], []
+
+    for i in range(0, len(test_points) - 1):
+        points.remove(test_points[i])
+        tree = KDTree(points)
+        distance, ndx = tree.query([test_points[i]], k=1)
+        distances.append(distance[0])
+    return min(distances)
