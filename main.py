@@ -59,6 +59,6 @@ print("{0:0.15f}".format(sc))
 #
 # print(bs.critical_potential(component='primary', phase=0))
 # print(bs.critical_potential(component='secondary', phase=0))
-# bs.plot('orbit', frame_of_reference='barycentric')
-bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
+bs.plot('orbit', frame_of_reference='barycentric')
+bs.plot('equipotential', plane="zx", phase=0.0)
 # print(bs.lagrangian_points())

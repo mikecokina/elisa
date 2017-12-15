@@ -1,0 +1,9 @@
+from astropy import units as u
+
+MASS_UNIT = u.kg
+TEMPERATURE_UNIT = u.K
+DISTANCE_UNIT = u.m
+TIME_UNIT = u.s
+ARC_UNIT = u.rad
+PERIOD_UNIT = u.d
+VELOCITY_UNIT = DISTANCE_UNIT / TIME_UNIT

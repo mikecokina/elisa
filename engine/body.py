@@ -2,6 +2,8 @@ from abc import ABCMeta, abstractmethod
 from astropy import units as u
 import numpy as np
 import logging
+from engine import units as U
+
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -17,13 +19,6 @@ class Body(object, metaclass=ABCMeta):
 
     ID = 1
     KWARGS = []
-
-    # Units
-    __MASS_UNIT = u.kg
-    __TEMPERATURE_UNIT = u.K
-    __DISTANCE_UNIT = u.m
-    __TIME_UNIT = u.s
-    __ARC_UNIT = u.rad
 
     def __init__(self, name=None, **kwargs):
         """
@@ -100,9 +95,9 @@ class Body(object, metaclass=ABCMeta):
         :param mass: int, np.int, float, np.float, astropy.unit.quantity.Quantity
         """
         if isinstance(mass, u.quantity.Quantity):
-            self._mass = np.float64(mass.to(self.__MASS_UNIT))
+            self._mass = np.float64(mass.to(U.MASS_UNIT))
         elif isinstance(mass, (int, np.int, float, np.float)):
-            self._mass = np.float64(mass * u.solMass.to(self.__MASS_UNIT))
+            self._mass = np.float64(mass * u.solMass.to(U.MASS_UNIT))
         else:
             raise TypeError('Your input is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity instance.')
 
@@ -127,7 +122,7 @@ class Body(object, metaclass=ABCMeta):
         :param t_eff: int, np.int, float, np.float, astropy.unit.quantity.Quantity
         """
         if isinstance(t_eff, u.quantity.Quantity):
-            self._t_eff = np.float64(t_eff.to(self.__TEMPERATURE_UNIT))
+            self._t_eff = np.float64(t_eff.to(U.TEMPERATURE_UNIT))
         elif isinstance(t_eff, (int, np.int, float, np.float)):
             self._t_eff = np.float64(t_eff)
         else:
@@ -328,7 +323,7 @@ class Body(object, metaclass=ABCMeta):
         :return:
         """
         if isinstance(polar_radius, u.quantity.Quantity):
-            self._polar_radius = np.float64(polar_radius.to(self.__DISTANCE_UNIT))
+            self._polar_radius = np.float64(polar_radius.to(U.DISTANCE_UNIT))
         elif isinstance(polar_radius, (int, np.int, float, np.float)):
             self._polar_radius = np.float64(polar_radius)
         else:
@@ -343,7 +338,7 @@ class Body(object, metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return self.__MASS_UNIT
+        return U.MASS_UNIT
 
     @property
     def temperature_unit(self):
@@ -353,7 +348,7 @@ class Body(object, metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return self.__TEMPERATURE_UNIT
+        return U.TEMPERATURE_UNIT
 
     @property
     def distance_unit(self):
@@ -363,7 +358,7 @@ class Body(object, metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return self.__DISTANCE_UNIT
+        return U.DISTANCE_UNIT
 
     @property
     def time_unit(self):
@@ -373,7 +368,7 @@ class Body(object, metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return self.__TIME_UNIT
+        return U.TIME_UNIT
 
     @property
     def arc_unit(self):
@@ -383,7 +378,7 @@ class Body(object, metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return self.__ARC_UNIT
+        return U.ARC_UNIT
 
     def get_info(self):
         pass

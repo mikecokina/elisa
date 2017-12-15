@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from astropy import units as u
 import numpy as np
 import logging
+from engine import units as U
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -91,7 +92,7 @@ class System(object):
 
         :return: astropy.units.quantity.Quantity
         """
-        return cls.__DISTANCE_UNIT
+        return U.DISTANCE_UNIT
 
     @classmethod
     def get_time_unit(cls):
@@ -100,7 +101,7 @@ class System(object):
 
         :return: astropy.units.quantity.Quantity
         """
-        return cls.__TIME_UNIT
+        return U.TIME_UNIT
 
     @classmethod
     def get_arc_unit(cls):
@@ -109,7 +110,7 @@ class System(object):
 
         :return: astropy.units.quantity.Quantity
         """
-        return cls.__ARC_UNIT
+        return U.ARC_UNIT
 
     @classmethod
     def get_velocity_unit(cls):
@@ -118,7 +119,7 @@ class System(object):
 
         :return: astropy.units.quantity.Quantity
         """
-        return cls.__VELOCITY_UNIT
+        return U.VELOCITY_UNIT
 
     @classmethod
     def get_period_unit(cls):
@@ -127,7 +128,7 @@ class System(object):
 
         :return: astropy.units.quantity.Quantity
         """
-        return cls.__PERIOD_UNIT
+        return U.PERIOD_UNIT
 
     @abstractmethod
     def compute_lc(self):
