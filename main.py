@@ -13,7 +13,7 @@ from engine import const as c
 # primary = Star(mass=2.0, surface_potential=2.5772602683306705, synchronicity=1.0)
 # secondary = Star(mass=1.0, surface_potential=2.5772602683306705, synchronicity=1.0)
 primary = Star(mass=2.0, surface_potential=8.643878058931882, synchronicity=2.0)
-secondary = Star(mass=5.0, surface_potential=14.169737955768381, synchronicity=5.0)
+secondary = Star(mass=5.0, surface_potential=13.396945616139345, synchronicity=5.0)
 
 # ur_anus = Planet(mass=500.2)
 #
@@ -25,11 +25,11 @@ secondary = Star(mass=5.0, surface_potential=14.169737955768381, synchronicity=5
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=90*u.deg,
+                  argument_of_periastron=41*u.deg,
                   gamma=0*u.km/u.s,
                   period=1.0*u.d,
                   eccentricity=0.3,
-                  inclination=90*u.deg,
+                  inclination=80*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
@@ -44,8 +44,6 @@ print("{0:0.15f}".format(pc))
 print("{0:0.15f}".format(sc))
 # print(bs.orbit.periastron_phase)
 
-# bs.plot('orbit', frame_of_reference='primary_component')
-
 # bs.argument_of_periastron = 135*u.deg
 # bs.eccentricity = 0.3
 # bs.inclination = 85*u.deg
@@ -59,6 +57,6 @@ print("{0:0.15f}".format(sc))
 #
 # print(bs.critical_potential(component='primary', phase=0))
 # print(bs.critical_potential(component='secondary', phase=0))
-bs.plot('orbit', frame_of_reference='barycentric')
-bs.plot('equipotential', plane="zx", phase=0.0)
+# bs.plot('orbit', frame_of_reference='barycentric')
+bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 # print(bs.lagrangian_points())
