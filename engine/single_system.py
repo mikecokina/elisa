@@ -67,6 +67,7 @@ class SingleSystem(System):
                                                                                   SingleSystem.__name__))
 
         # calculation of dependent parameters
+        self._gravity_acceleration = np.power(10, self.log_g)  # surface polar gravity
 
     def init(self):
         """
@@ -137,20 +138,37 @@ class SingleSystem(System):
             raise TypeError('Input of variable `log_g` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
-    def potential_value(self, radius, *args):
+    @property
+    def gravity_acceleration(self):
+        return self._gravity_acceleration
+
+    # def potential_value(self, radius, *args):
+    #     """
+    #     function calculates potential for single star (derived from kopal potential F=1, q=0)
+    #
+    #     :param radius: (np.)float; spherical variable
+    #     :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
+    #     :return: (np.)float
+    #     """
+    #     theta, = args  # latitude angle (0,180)
+    #
+    #     block_a = 1.0 / radius
+    #     block_d = 0.5 * np.power(radius, 2) * (1 - np.power(np.cos(theta), 2))
+    #
+    #     return block_a + block_d
+
+    def surface_potential(self, radius, *args):
         """
-        function calculates potential for single star (derived from kopal potential F=1, q=0)
+        function calculates potential on the given point of the star
 
         :param radius: (np.)float; spherical variable
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
         :return: (np.)float
         """
-        theta, = args  # distance between components, azimut angle, latitude angle (0,180)
+        theta, = args  # latitude angle (0,180)
 
-        block_a = 1.0 / radius
-        block_d = 0.5 * np.power(radius, 2) * (1 - np.power(np.cos(theta), 2))
-
-        return block_a + block_d
+        return - c.G * self._star.mass / radius - 0.5 * np.power(self.angular_velocity(self._rotation_period), 2.0) * \
+                                                  np.power(radius * np.sin(theta), 2)
 
     def potential_fn(self, radius, *args):
         """
@@ -160,7 +178,7 @@ class SingleSystem(System):
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
         :return:
         """
-        return self.potential_value(radius, *args) - self._star.surface_potential
+        return self.surface_potential(radius, *args) - self._star.surface_potential
 
     def compute_equipotential_boundary(self):
         """
