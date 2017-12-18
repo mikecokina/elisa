@@ -29,6 +29,7 @@ from engine import const as c
 from scipy.optimize import newton
 from engine import utils
 from engine import graphics
+from engine import units as U
 import scipy
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
@@ -252,7 +253,7 @@ class BinarySystem(System):
         :return:
         """
         if isinstance(period, u.quantity.Quantity):
-            self._period = np.float64(period.to(self.get_period_unit()))
+            self._period = np.float64(period.to(U.PERIOD_UNIT))
         elif isinstance(period, (int, np.int, float, np.float)):
             self._period = np.float64(period)
         else:
@@ -280,7 +281,7 @@ class BinarySystem(System):
         """
 
         if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(self.get_arc_unit()))
+            self._inclination = np.float64(inclination.to(U.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
             self._inclination = np.float64(inclination)
         else:
@@ -335,7 +336,7 @@ class BinarySystem(System):
         :return:
         """
         if isinstance(argument_of_periastron, u.quantity.Quantity):
-            self._argument_of_periastron = np.float64(argument_of_periastron.to(self.get_arc_unit()))
+            self._argument_of_periastron = np.float64(argument_of_periastron.to(U.ARC_UNIT))
         elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
             self._argument_of_periastron = np.float64(argument_of_periastron)
         else:
@@ -360,7 +361,7 @@ class BinarySystem(System):
         :return:
         """
         if isinstance(primary_minimum_time, u.quantity.Quantity):
-            self._primary_minimum_time = np.float64(primary_minimum_time.to(self.get_period_unit()))
+            self._primary_minimum_time = np.float64(primary_minimum_time.to(U.PERIOD_UNIT))
         elif isinstance(primary_minimum_time, (int, np.int, float, np.float)):
             self._primary_minimum_time = np.float64(primary_minimum_time)
         else:

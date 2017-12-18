@@ -18,13 +18,6 @@ class System(object):
     ID = 1
     KWARGS = []
 
-    # Units
-    __DISTANCE_UNIT = u.m
-    __TIME_UNIT = u.s
-    __PERIOD_UNIT = u.d
-    __VELOCITY_UNIT = __DISTANCE_UNIT / __TIME_UNIT
-    __ARC_UNIT = u.rad
-
     def __init__(self, name=None, **kwargs):
         self._logger = logging.getLogger(System.__name__)
 
@@ -77,58 +70,12 @@ class System(object):
         :return: None
         """
         if isinstance(gamma, u.quantity.Quantity):
-            self._gamma = np.float64(gamma.to(self.__VELOCITY_UNIT))
+            self._gamma = np.float64(gamma.to(U.VELOCITY_UNIT))
         elif isinstance(gamma, (int, np.int, float, np.float)):
             self._gamma = np.float64(gamma)
         else:
             raise TypeError('Value of variable `gamma` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-
-    # getters for protected variables
-    @classmethod
-    def get_distance_unit(cls):
-        """
-        returns default distance unit in astropy.units.quantity.Quantity format
-
-        :return: astropy.units.quantity.Quantity
-        """
-        return U.DISTANCE_UNIT
-
-    @classmethod
-    def get_time_unit(cls):
-        """
-        returns default time unit in astropy.units.quantity.Quantity format
-
-        :return: astropy.units.quantity.Quantity
-        """
-        return U.TIME_UNIT
-
-    @classmethod
-    def get_arc_unit(cls):
-        """
-        returns default arc unit in astropy.units.quantity.Quantity format
-
-        :return: astropy.units.quantity.Quantity
-        """
-        return U.ARC_UNIT
-
-    @classmethod
-    def get_velocity_unit(cls):
-        """
-        returns default velocity unit in astropy.units.quantity.Quantity format
-
-        :return: astropy.units.quantity.Quantity
-        """
-        return U.VELOCITY_UNIT
-
-    @classmethod
-    def get_period_unit(cls):
-        """
-        returns default period unit in astropy.units.quantity.Quantity format
-
-        :return: astropy.units.quantity.Quantity
-        """
-        return U.PERIOD_UNIT
 
     @abstractmethod
     def compute_lc(self):

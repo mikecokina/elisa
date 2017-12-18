@@ -6,15 +6,16 @@ import scipy
 from engine import graphics
 from engine import const as c
 from astropy import units as u
+from engine import units as U
 
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 
 class SingleSystem(System):
-    KWARGS = ['gamma', 'inclination', 'P_rot']
+    KWARGS = ['mass', 'gamma', 'inclination', 'rotation_period', 'log_g']
 
-    def __init__(self, star, name=None, **kwargs):
+    def __init__(self, name=None, **kwargs):
         self.is_property(kwargs)
         super(SingleSystem, self).__init__(name=name, **kwargs)
 
@@ -22,15 +23,13 @@ class SingleSystem(System):
         self._logger = logging.getLogger(SingleSystem.__name__)
         self._logger.info("Initialising object {}".format(SingleSystem.__name__))
 
-        # assign components to binary system
-        if not isinstance(star, Star):
-            raise TypeError("Stellar component of this single system is not instance of class {}".format(Star.__name__))
-
         self._logger.debug("Setting property components "
                            "of class instance {}".format(SingleSystem.__name__))
 
-        self._star = star
-        self._P_rot = None
+        # in case of SingleStar system there is no need for user to define stellar component because it is defined here
+        self._star = Star(mass=kwargs['mass'])
+        self._rotation_period = None
+        self._log_g = None
 
         # check if star object doesn't contain any meaningless parameters
         meaningless_params = {'synchronicity': self._star.synchronicity}
@@ -90,27 +89,52 @@ class SingleSystem(System):
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
 
     @property
-    def P_rot(self):
+    def rotation_period(self):
         """
         returns rotation period of single system star in default period unit
         :return: float
         """
-        return self._P_rot
+        return self._rotation_period
 
-    @P_rot.setter
-    def P_rot(self, P_rot):
+    @rotation_period.setter
+    def rotation_period(self, rotation_period):
         """
         setter for rotational period of star in single star system, if unit is not specified, default period unit is
         assumed
-        :param P_rot:
+        :param rotation_period:
         :return:
         """
-        if isinstance(P_rot, u.quantity.Quantity):
-            self._P_rot = np.float64(P_rot.to(self.get_period_unit()))
-        elif isinstance(P_rot, (int, np.int, float, np.float)):
-            self._P_rot = np.float64(P_rot)
+        if isinstance(rotation_period, u.quantity.Quantity):
+            self._rotation_period = np.float64(rotation_period.to(U.PERIOD_UNIT))
+        elif isinstance(rotation_period, (int, np.int, float, np.float)):
+            self._rotation_period = np.float64(rotation_period)
         else:
-            raise TypeError('Input of variable `P_rot` is not (np.)int or (np.)float '
+            raise TypeError('Input of variable `rotation_period` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
+    @property
+    def log_g(self):
+        """
+        returns logarythm of polar surface gravity in SI
+
+        :return: float
+        """
+        return self._log_g
+
+    @log_g.setter
+    def log_g(self, log_g):
+        """
+        setter for polar surface gravity, if unit is not specified in astropy.units format, value in cgs is assumed
+
+        :param log_g:
+        :return:
+        """
+        if isinstance(log_g, u.quantity.Quantity):
+            self._log_g = np.float64(log_g.to(U.LOG_ACCELERATION_UNIT))
+        elif isinstance(log_g, (int, np.int, float, np.float)):
+            self._log_g = np.float64((log_g*u.dex(u.cm/u.s**2)).to(U.LOG_ACCELERATION_UNIT))
+        else:
+            raise TypeError('Input of variable `log_g` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
     def potential_value(self, radius, *args):
@@ -161,12 +185,12 @@ class SingleSystem(System):
             points.append([solution * np.sin(angle), solution * np.cos(angle)])
         return np.array(points)
 
-    def angular_velocity(self, P_rot):
+    def angular_velocity(self, rotation_period):
         """
         rotational angular velocity of the star
         :return:
         """
-        return c.FULL_ARC / (P_rot * 86400)
+        return c.FULL_ARC / (rotation_period * 86400)
 
     def critical_break_up_radius(self):
         """
@@ -174,7 +198,7 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self._star.mass / np.power(self.angular_velocity(self.P_rot), 2), 1.0/3.0)
+        return np.power(c.G * self._star.mass / np.power(self.angular_velocity(self.rotation_period), 2), 1.0/3.0)
 
     def critical_break_up_velocity(self):
         """
@@ -182,7 +206,7 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self._star.mass * self.angular_velocity(self.P_rot), 1.0/3.0)
+        return np.power(c.G * self._star.mass * self.angular_velocity(self.rotation_period), 1.0/3.0)
 
     def plot(self, descriptor=None, **kwargs):
         """
