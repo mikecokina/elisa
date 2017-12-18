@@ -246,7 +246,7 @@ class BinarySystem(System):
     @period.setter
     def period(self, period):
         """
-        set orbital period of bonary star system, if unit is not specified, days are assumed
+        set orbital period of bonary star system, if unit is not specified, default period unit is assumed
 
         :param period: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
