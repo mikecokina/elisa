@@ -8,12 +8,11 @@ from engine import const as c
 from astropy import units as u
 from engine import units as U
 
-
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 
 class SingleSystem(System):
-    KWARGS = ['mass', 'gamma', 'inclination', 'rotation_period', 'log_g']
+    KWARGS = ['mass', 'gamma', 'inclination', 'rotation_period', 'polar_log_g']
 
     def __init__(self, name=None, **kwargs):
         self.is_property(kwargs)
@@ -28,8 +27,6 @@ class SingleSystem(System):
 
         # in case of SingleStar system there is no need for user to define stellar component because it is defined here
         self._star = Star(mass=kwargs['mass'])
-        self._rotation_period = None
-        self._log_g = None
 
         # check if star object doesn't contain any meaningless parameters
         meaningless_params = {'synchronicity': self._star.synchronicity}
@@ -51,6 +48,8 @@ class SingleSystem(System):
 
         # default values of properties
         self._inclination = None
+        self._polar_log_g = None
+        self._rotation_period = None
 
         # testing if parameters were initialized
         missing_kwargs = []
@@ -67,7 +66,12 @@ class SingleSystem(System):
                                                                                   SingleSystem.__name__))
 
         # calculation of dependent parameters
-        self._gravity_acceleration = np.power(10, self.log_g)  # surface polar gravity
+        self._angular_velocity = self.angular_velocity(self.rotation_period)
+        self._star._polar_log_g = self.polar_log_g
+        self._star._polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
+        self._star._polar_radius = self.polar_radius
+        args = 0,
+        self._star._surface_potential = self.surface_potential(self._star.polar_radius, args)[0]
 
     def init(self):
         """
@@ -88,6 +92,15 @@ class SingleSystem(System):
         is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
+
+    @property
+    def star(self):
+        """
+        returns star object used in this SingleSystem object
+
+        :return:
+        """
+        return self._star
 
     @property
     def rotation_period(self):
@@ -114,16 +127,16 @@ class SingleSystem(System):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def log_g(self):
+    def polar_log_g(self):
         """
         returns logarythm of polar surface gravity in SI
 
         :return: float
         """
-        return self._log_g
+        return self._polar_log_g
 
-    @log_g.setter
-    def log_g(self, log_g):
+    @polar_log_g.setter
+    def polar_log_g(self, log_g):
         """
         setter for polar surface gravity, if unit is not specified in astropy.units format, value in cgs is assumed
 
@@ -131,31 +144,30 @@ class SingleSystem(System):
         :return:
         """
         if isinstance(log_g, u.quantity.Quantity):
-            self._log_g = np.float64(log_g.to(U.LOG_ACCELERATION_UNIT))
+            self._polar_log_g = np.float64(log_g.to(U.LOG_ACCELERATION_UNIT))
         elif isinstance(log_g, (int, np.int, float, np.float)):
-            self._log_g = np.float64((log_g*u.dex(u.cm/u.s**2)).to(U.LOG_ACCELERATION_UNIT))
+            self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(U.LOG_ACCELERATION_UNIT))
         else:
-            raise TypeError('Input of variable `log_g` is not (np.)int or (np.)float '
+            raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def gravity_acceleration(self):
-        return self._gravity_acceleration
+    def polar_radius(self):
+        """
+        returns polar radius of the star in default units
 
-    # def potential_value(self, radius, *args):
-    #     """
-    #     function calculates potential for single star (derived from kopal potential F=1, q=0)
-    #
-    #     :param radius: (np.)float; spherical variable
-    #     :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
-    #     :return: (np.)float
-    #     """
-    #     theta, = args  # latitude angle (0,180)
-    #
-    #     block_a = 1.0 / radius
-    #     block_d = 0.5 * np.power(radius, 2) * (1 - np.power(np.cos(theta), 2))
-    #
-    #     return block_a + block_d
+        :return: float
+        """
+        return np.power(c.G * self._star.mass / self._star.polar_gravity_acceleration, 0.5)
+
+    @property
+    def equatorial_radius(self):
+        """
+        returns equatorial radius of the star in default units
+
+        :return: float
+        """
+        return
 
     def surface_potential(self, radius, *args):
         """
@@ -167,7 +179,7 @@ class SingleSystem(System):
         """
         theta, = args  # latitude angle (0,180)
 
-        return - c.G * self._star.mass / radius - 0.5 * np.power(self.angular_velocity(self._rotation_period), 2.0) * \
+        return - c.G * self._star.mass / radius - 0.5 * np.power(self._angular_velocity, 2.0) * \
                                                   np.power(radius * np.sin(theta), 2)
 
     def potential_fn(self, radius, *args):
@@ -182,7 +194,7 @@ class SingleSystem(System):
 
     def compute_equipotential_boundary(self):
         """
-         compute a equipotential boundary of star in zx(yz) plane
+        calculates a equipotential boundary of star in zx(yz) plane
 
         :return: tuple (np.array, np.array)
         """
@@ -208,7 +220,7 @@ class SingleSystem(System):
         rotational angular velocity of the star
         :return:
         """
-        return c.FULL_ARC / (rotation_period * 86400)
+        return c.FULL_ARC / (rotation_period * U.PERIOD_UNIT).to(u.s).value
 
     def critical_break_up_radius(self):
         """
@@ -216,7 +228,7 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self._star.mass / np.power(self.angular_velocity(self.rotation_period), 2), 1.0/3.0)
+        return np.power(c.G * self._star.mass / np.power(self._angular_velocity, 2), 1.0 / 3.0)
 
     def critical_break_up_velocity(self):
         """
@@ -224,7 +236,20 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self._star.mass * self.angular_velocity(self.rotation_period), 1.0/3.0)
+        return np.power(c.G * self._star.mass * self._angular_velocity, 1.0 / 3.0)
+
+    # def critical_rotational_period(self):
+    #     """
+    #     returns break up rotational period of star
+    #
+    #     :return:
+    #     """
+    #     return (c.FULL_ARC * self.critical_break_up_radius() / self.critical_break_up_velocity() * u.s).to(U.PERIOD_UNIT)
+
+    def single_star_mesh(alpha=0.01):
+        N_quarter = c.HALF_PI / alpha  # number of points on quarter of equator
+
+        characterictic_distance = None
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -236,10 +261,13 @@ class SingleSystem(System):
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
         :return:
         """
+        if 'axis_unit' not in kwargs:
+            kwargs['axis_unit'] = u.solRad
+
         if descriptor == 'equipotential':
             method_to_call = graphics.equipotential_single_star
             points = self.compute_equipotential_boundary()
 
-            kwargs['points'] = points
+            kwargs['points'] = (points * U.DISTANCE_UNIT).to(kwargs['axis_unit'])
 
         method_to_call(**kwargs)

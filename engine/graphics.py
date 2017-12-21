@@ -91,11 +91,16 @@ def equipotential_single_star(**kwargs):
     Plot function for descriptor = `equipotential` in function SingleSystem.plot(). Calculates zx plane crossection of
     equipotential surface.
 
-    :param kwargs: dict
+    :param kwargs: dict:
+                   keywords: `axis_unit` = astropy.units.solRad - unit in which axis will be displayed, please use
+                                                               astropy.units format, default unit is solar radius
     :return:
     """
     x_label, y_label = 'x', 'z'
     x, y = kwargs['points'][:, 0], kwargs['points'][:, 1]
+
+    unit = str(kwargs['axis_unit'])
+    x_label, y_label = r'x/' + unit, r'y/' + unit
 
     f = plt.figure()
     ax = f.add_subplot(111)

@@ -9,7 +9,8 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 class Star(Body):
 
     KWARGS = ['mass', 't_eff', 'vertices', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
-              'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening']
+              'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening', 'polar_gravity_acceleration',
+              'polar_log_g']
 
     def __init__(self, name=None, **kwargs):
         # get logger
@@ -25,6 +26,9 @@ class Star(Body):
         self._synchronicity = None
         self._forward_radius = None
         self._side_radius = None
+        self._polar_radius = None
+        self._polar_gravity_acceleration = None
+        self._polar_log_g = None
 
         # values of properties
         for kwarg in Star.KWARGS:
@@ -105,6 +109,33 @@ class Star(Body):
             self._gravity_darkening = np.float64(gravity_darkening)
         else:
             raise ValueError('Parameter gravity darkening = {} is out of range (0, 1)'.format(gravity_darkening))
+
+    @property
+    def polar_radius(self):
+        """
+        returns polar radius in default units
+
+        :return: float
+        """
+        return self._polar_radius
+
+    @property
+    def polar_gravity_acceleration(self):
+        """
+        returns polar gravity acceleration in default units
+
+        :return: float
+        """
+        return self._polar_gravity_acceleration
+
+    @property
+    def polar_log_g(self):
+        """
+        returns logarythm of polar surface gravity in SI
+
+        :return: float
+        """
+        return self._polar_log_g
 
     @classmethod
     def is_property(cls, kwargs):

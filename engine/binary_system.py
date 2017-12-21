@@ -408,7 +408,7 @@ class BinarySystem(System):
 
         :return: np.float
         """
-        period = (self._period * self.get_period_unit()).to(u.s)
+        period = (self._period * U.PERIOD_UNIT).to(u.s)
         return (c.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * c.PI ** 2)) ** (1.0 / 3)
 
     def compute_lc(self):

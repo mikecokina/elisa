@@ -12,20 +12,18 @@ from engine import const as c
 # primary = Star(mass=2.0, surface_potential=8.643878058931882, synchronicity=2.0)
 # secondary = Star(mass=5.0, surface_potential=13.396945616139345, synchronicity=5.0)
 
-# single = Star(mass=2.0, surface_potential=1.48)
-
 # ur_anus = Planet(mass=500.2)
 #
-s = SingleSystem(mass=2.0*u.solMass,
+s = SingleSystem(mass=1.0*u.solMass,
                  gamma=0*u.km/u.s,
                  inclination=85*u.deg,
-                 rotation_period=1.2*u.d,
-                 log_g=4.1*u.dex(u.cm / u.s**2))
+                 rotation_period=0.3*u.d,
+                 polar_log_g=4.43*u.dex(u.cm / u.s**2))
 
-# s.plot(descriptor='equipotential')
-print(s.log_g)
+# print(s.critical_rotational_period())
 print('Critical radius: {}'.format((s.critical_break_up_radius() * u.m).to(u.solRad)))
 print('Critical velocity: {}'.format((s.critical_break_up_velocity() * u.m / u.s).to(u.km / u.s)))
+s.plot(descriptor='equipotential')
 
 # bs = BinarySystem(primary=primary,
 #                   secondary=secondary,

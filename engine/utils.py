@@ -1,7 +1,6 @@
 import numpy as np
 import re
 
-
 def polar_to_cartesian(radius, phi):
     """
 
@@ -41,3 +40,4 @@ def find_nearest_dist_3d(data=None):
         distance, ndx = tree.query([test_points[i]], k=1)
         distances.append(distance[0])
     return min(distances)
+
