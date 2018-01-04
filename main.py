@@ -9,42 +9,28 @@ from engine import utils
 from engine import const as c
 
 
-# primary = Star(mass=2.0, surface_potential=8.643878058931882, synchronicity=2.0)
-# secondary = Star(mass=5.0, surface_potential=13.396945616139345, synchronicity=5.0)
+primary = Star(mass=2.0, surface_potential=8.276813070863756, synchronicity=1.2)
+secondary = Star(mass=5.0, surface_potential=8.281630331517764, synchronicity=1.1)
 
-# ur_anus = Planet(mass=500.2)
-#
-s = SingleSystem(mass=1.0*u.solMass,
-                 gamma=0*u.km/u.s,
-                 inclination=85*u.deg,
-                 rotation_period=0.3*u.d,
-                 polar_log_g=4.43*u.dex(u.cm / u.s**2))
+bs = BinarySystem(primary=primary,
+                  secondary=secondary,
+                  argument_of_periastron=41*u.deg,
+                  gamma=0*u.km/u.s,
+                  period=1.0*u.d,
+                  eccentricity=0.3,
+                  inclination=80*u.deg,
+                  primary_minimum_time=0.0*u.d,
+                  phase_shift=0.0)
 
-# print(s.critical_rotational_period())
-print('Critical radius: {}'.format((s.critical_break_up_radius() * u.m).to(u.solRad)))
-print('Critical velocity: {}'.format((s.critical_break_up_velocity() * u.m / u.s).to(u.km / u.s)))
-s.plot(descriptor='equipotential')
 
-# bs = BinarySystem(primary=primary,
-#                   secondary=secondary,
-#                   argument_of_periastron=41*u.deg,
-#                   gamma=0*u.km/u.s,
-#                   period=1.0*u.d,
-#                   eccentricity=0.3,
-#                   inclination=80*u.deg,
-#                   primary_minimum_time=0.0*u.d,
-#                   phase_shift=0.0)
-#
-#
-# print(bs.libration_potentials())
-# print(bs.orbit.periastron_phase)
-# pc = bs.critical_potential(component="primary", phase=bs.orbit.periastron_phase)
-# sc = bs.critical_potential(component="secondary", phase=bs.orbit.periastron_phase)
-#
-#
-# print("{0:0.15f}".format(pc))
-# print("{0:0.15f}".format(sc))
-# print(bs.orbit.periastron_phase)
+pc = bs.critical_potential(component="primary", phase=bs.orbit.periastron_phase)
+sc = bs.critical_potential(component="secondary", phase=bs.orbit.periastron_phase)
+
+
+print("{0:0.15f}".format(pc))
+print("{0:0.15f}".format(sc))
+
+bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
 # bs.argument_of_periastron = 135*u.deg
 # bs.eccentricity = 0.3

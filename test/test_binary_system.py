@@ -4,6 +4,7 @@ from engine.binary_system import BinarySystem
 from engine.star import Star
 import engine.const as c
 from astropy import units as u
+from numpy.testing import assert_array_almost_equal
 
 
 # class TestBinarySystemProperties(unittest.TestCase):
@@ -71,9 +72,9 @@ class TestBinarySystem(unittest.TestCase):
                                     "phase_shift": 0.0}]
 
     def test_critical_potential(self):
-        phases_to_use = [0.25, 0.0]
-        expected_potentials = [[2.8758446321, 2.8758446321],
-                               [3.3060281748, 2.9883984921]]
+        phases_to_use = [0.0, 0.218222142892]
+        expected_potentials = [[2.87584463214, 2.87584463214],
+                               [3.47688032078, 3.20273942184]]
         obtained_potentials = []
 
         for i, combo in enumerate(self.params_combination):
@@ -95,10 +96,9 @@ class TestBinarySystem(unittest.TestCase):
 
             primary_cp = bs.critical_potential(component="primary", phase=phases_to_use[i])
             secondary_cp = bs.critical_potential(component="secondary", phase=phases_to_use[i])
-
             obtained_potentials.append([round(primary_cp, 10), round(secondary_cp, 10)])
+        assert_array_almost_equal(expected_potentials, obtained_potentials)
 
-        self.assertEquals(expected_potentials, obtained_potentials)
 
     def test_lagrangian_points(self):
 
