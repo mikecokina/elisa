@@ -151,6 +151,7 @@ class BinarySystem(System):
 
         else:
             primary_critical_potential = None
+            # todo: check also whether forward radii are not in overlap (in periastron)
 
     def init_orbit(self):
         """
