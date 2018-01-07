@@ -37,9 +37,9 @@ class SingleSystem(System):
                                   'Setting parameter `{0}` value to None'.format(parameter))
 
         # quiet check if star object doesn't contain any meaningless dependent parameters
-        meaningless_params = {'backward radius': self._star._backward_radius,
-                              'forward_radius': self._star._forward_radius,
-                              'side_radius': self._star._side_radius}
+        meaningless_params = {'backward radius': self._star.backward_radius,
+                              'forward_radius': self._star.forward_radius,
+                              'side_radius': self._star.side_radius}
         for parameter in meaningless_params:
             if meaningless_params[parameter] is not None:
                 meaningless_params[parameter] = None
