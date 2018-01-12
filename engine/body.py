@@ -146,7 +146,7 @@ class Body(object, metaclass=ABCMeta):
         usage: xy.vertices = new_vertices
         setting numpy array of points that form surface of Body
         input dictionary has to be in shape:
-        vertices = numpy.array([[x1 y1 z1]
+        vertices = numpy.array([[x1 y1 z1],
                                 [x2 y2 z2],
                                 ...
                                 [xN yN zN]])

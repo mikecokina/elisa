@@ -10,7 +10,7 @@ class Star(Body):
 
     KWARGS = ['mass', 't_eff', 'vertices', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
               'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening', 'polar_gravity_acceleration',
-              'polar_log_g']
+              'polar_log_g', 'equatorial_radius']
 
     def __init__(self, name=None, **kwargs):
         # get logger
@@ -29,6 +29,7 @@ class Star(Body):
         self._polar_radius = None
         self._polar_gravity_acceleration = None
         self._polar_log_g = None
+        self._equatorial_radius = None
 
         # values of properties
         for kwarg in Star.KWARGS:
@@ -118,6 +119,15 @@ class Star(Body):
         :return: float
         """
         return self._polar_radius
+
+    @property
+    def equatorial_radius(self):
+        """
+        returns equatorial radius in default units
+
+        :return: float
+        """
+        return self._equatorial_radius
 
     @property
     def polar_gravity_acceleration(self):

@@ -58,6 +58,18 @@ class BinarySystem(System):
                            "of class instance {}".format(BinarySystem.__name__))
         self._primary = primary
         self._secondary = secondary
+        # checking if stellar components have all necessary parameters initialised
+        necessary_KWARGS = ['mass', 'surface_potential', 'synchronicity']
+        missing_kwargs = []
+        for component in [self.primary, self.secondary]:
+            for kwarg in necessary_KWARGS:
+                if getattr(component, kwarg) == None:
+                    missing_kwargs.append("`{}`".format(kwarg))
+
+            component_name = 'primary' if component == self.primary else 'secondary'
+            if len(missing_kwargs) != 0:
+                raise ValueError('Mising argument(s): {} in {} component Star class'.format(', '.join(missing_kwargs),
+                                                                                  component_name))
 
         # physical properties check
         self._mass_ratio = self.secondary.mass / self.primary.mass

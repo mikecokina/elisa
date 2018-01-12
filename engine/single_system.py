@@ -26,25 +26,18 @@ class SingleSystem(System):
                            "of class instance {}".format(SingleSystem.__name__))
 
         # in case of SingleStar system there is no need for user to define stellar component because it is defined here
-        self._star = Star(mass=kwargs['mass'])
+        self.star = Star(mass=kwargs['mass'])
 
         # check if star object doesn't contain any meaningless parameters
-        meaningless_params = {'synchronicity': self._star.synchronicity}
+        meaningless_params = {'synchronicity': self.star.synchronicity,
+                              'backward radius': self.star.backward_radius,
+                              'forward_radius': self.star.forward_radius,
+                              'side_radius': self.star.side_radius}
         for parameter in meaningless_params:
             if meaningless_params[parameter] is not None:
                 meaningless_params[parameter] = None
                 self._logger.info('Parameter `{0}` is meaningless in case of single star system.\n '
                                   'Setting parameter `{0}` value to None'.format(parameter))
-
-        # quiet check if star object doesn't contain any meaningless dependent parameters
-        meaningless_params = {'backward radius': self._star.backward_radius,
-                              'forward_radius': self._star.forward_radius,
-                              'side_radius': self._star.side_radius}
-        for parameter in meaningless_params:
-            if meaningless_params[parameter] is not None:
-                meaningless_params[parameter] = None
-                self._logger.debug('Parameter `{0}` is meaningless in case of single star system.\n '
-                                   'Setting parameter `{0}` value to None'.format(parameter))
 
         # default values of properties
         self._inclination = None
@@ -59,6 +52,8 @@ class SingleSystem(System):
                 self._logger.error("Property {} "
                                    "of class instance {} was not initialized".format(kwarg, SingleSystem.__name__))
             else:
+                self._logger.debug("Setting property {} "
+                                   "of class instance {} to {}".format(kwarg, SingleSystem.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
 
         if len(missing_kwargs) != 0:
@@ -67,19 +62,20 @@ class SingleSystem(System):
 
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)
-        self._star._polar_log_g = self.polar_log_g
-        self._star._polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
-        self._star._polar_radius = self.polar_radius
+        self.star._polar_log_g = self.polar_log_g
+        self.star._polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
+        self.star._polar_radius = self.polar_radius
         args = 0,
-        self._star._surface_potential = self.surface_potential(self._star.polar_radius, args)[0]
+        self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
+        self.star._equatorial_radius = self.equatorial_radius
 
     def init(self):
         """
-        function to reinitialize BinarySystem class instance after changing parameter(s) of binary system using setters
+        function to reinitialize SingleSystem class instance after changing parameter(s) of binary system using setters
 
         :return:
         """
-        self.__init__(primary=self.primary, secondary=self.secondary, **self._kwargs_serializer())
+        self.__init__(mass=self.star.mass, gamma=self.gamma, inclination=self._inclination)
 
     @classmethod
     def is_property(cls, kwargs):
@@ -92,15 +88,6 @@ class SingleSystem(System):
         is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
-
-    @property
-    def star(self):
-        """
-        returns star object used in this SingleSystem object
-
-        :return:
-        """
-        return self._star
 
     @property
     def rotation_period(self):
@@ -125,6 +112,38 @@ class SingleSystem(System):
         else:
             raise TypeError('Input of variable `rotation_period` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+
+    @property
+    def inclination(self):
+        """
+        inclination of single star system
+
+        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        """
+        return self._inclination
+
+    @inclination.setter
+    def inclination(self, inclination):
+        """
+        set orbit inclination of binary star system, if unit is not specified, default unit is assumed
+
+        :param inclination: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+
+        if isinstance(inclination, u.quantity.Quantity):
+            self._inclination = np.float64(inclination.to(U.ARC_UNIT))
+        elif isinstance(inclination, (int, np.int, float, np.float)):
+            self._inclination = np.float64(inclination)
+        else:
+            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
+        if not 0 <= self.inclination <= c.PI:
+            raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
+
+        self._logger.debug("Setting property inclination "
+                           "of class instance {} to {}".format(SingleSystem.__name__, self._inclination))
 
     @property
     def polar_log_g(self):
@@ -158,7 +177,7 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self._star.mass / self._star.polar_gravity_acceleration, 0.5)
+        return np.power(c.G * self.star.mass / self.star.polar_gravity_acceleration, 0.5)
 
     @property
     def equatorial_radius(self):
@@ -167,7 +186,17 @@ class SingleSystem(System):
 
         :return: float
         """
-        return
+        args, use = c.HALF_PI, False
+        scipy_solver_init_value = np.array([1 / 1000.0])
+        solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
+                                                        full_output=True, args=args)
+        if ier == 1 and not np.isnan(solution[0]):
+            solution = solution[0]
+            if solution <= 0:
+                print(solution)
+                raise ValueError('Value of single star equatorial radius {} is not valid'.format(solution))
+
+        return solution
 
     def surface_potential(self, radius, *args):
         """
@@ -179,7 +208,7 @@ class SingleSystem(System):
         """
         theta, = args  # latitude angle (0,180)
 
-        return - c.G * self._star.mass / radius - 0.5 * np.power(self._angular_velocity, 2.0) * \
+        return - c.G * self.star.mass / radius - 0.5 * np.power(self._angular_velocity, 2.0) * \
                                                   np.power(radius * np.sin(theta), 2)
 
     def potential_fn(self, radius, *args):
@@ -190,7 +219,7 @@ class SingleSystem(System):
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
         :return:
         """
-        return self.surface_potential(radius, *args) - self._star.surface_potential
+        return self.surface_potential(radius, *args) - self.star.surface_potential
 
     def compute_equipotential_boundary(self):
         """
@@ -228,7 +257,7 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self._star.mass / np.power(self._angular_velocity, 2), 1.0 / 3.0)
+        return np.power(c.G * self.star.mass / np.power(self._angular_velocity, 2), 1.0 / 3.0)
 
     def critical_break_up_velocity(self):
         """
@@ -236,20 +265,25 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self._star.mass * self._angular_velocity, 1.0 / 3.0)
+        return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
 
-    # def critical_rotational_period(self):
-    #     """
-    #     returns break up rotational period of star
-    #
-    #     :return:
-    #     """
-    #     return (c.FULL_ARC * self.critical_break_up_radius() / self.critical_break_up_velocity() * u.s).to(U.PERIOD_UNIT)
+    def single_star_mesh(self, N=100):
+        characterictic_distance = c.HALF_PI * self.star.equatorial_radius / N
+        characterictic_angle = c.HALF_PI / N
+        r, phi, theta = [], [], []
 
-    def single_star_mesh(alpha=0.01):
-        N_quarter = c.HALF_PI / alpha  # number of points on quarter of equator
+        # calculating equatorial part
+        r_eq = [self.equatorial_radius for ii in range(N)]
+        phi_eq = [characterictic_distance**ii for ii in range(N)]
+        theta_eq = [c.HALF_PI for ii in range(N)]
 
-        characterictic_distance = None
+        # adding quarter of the star without pole
+        num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
+        thetas = np.linspace(characterictic_angle, c.HALF_PI-characterictic_angle, num=num, endpoint=True)
+        radii_for_thetas = []
+
+        # for tht in thetas:
+
 
     def plot(self, descriptor=None, **kwargs):
         """

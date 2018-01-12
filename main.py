@@ -9,8 +9,8 @@ from engine import utils
 from engine import const as c
 
 
-primary = Star(mass=2.0, surface_potential=8.276813070863756, synchronicity=1.2)
-secondary = Star(mass=5.0, surface_potential=8.281630331517764, synchronicity=1.1)
+primary = Star(mass=2.0, surface_potential=8.276813070863756, synchronicity=1.0)
+secondary = Star(mass=5.0, surface_potential=8.281630331517764, synchronicity=1.0)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
