@@ -60,6 +60,8 @@ class SingleSystem(System):
             raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                   SingleSystem.__name__))
 
+        # check if star is closed
+
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)
         self.star._polar_log_g = self.polar_log_g
@@ -244,6 +246,14 @@ class SingleSystem(System):
             points.append([solution * np.sin(angle), solution * np.cos(angle)])
         return np.array(points)
 
+    def check_if_star_is_closed(self):
+        angle = c.HALF_PI
+        args, use = angle, False
+        scipy_solver_init_value = np.array([1 / 1000.0])
+        solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
+                                                    full_output=True, args=args)
+
+
     def angular_velocity(self, rotation_period):
         """
         rotational angular velocity of the star
@@ -281,9 +291,12 @@ class SingleSystem(System):
         num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
         thetas = np.linspace(characterictic_angle, c.HALF_PI-characterictic_angle, num=num, endpoint=True)
         radii_for_thetas = []
-
-        # for tht in thetas:
-
+        for tht in thetas:
+            args, use = tht, False
+            scipy_solver_init_value = np.array([1 / 1000.0])
+            solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
+                                                        full_output=True, args=args)
+            radii_for_thetas.append(solution[0])
 
     def plot(self, descriptor=None, **kwargs):
         """
