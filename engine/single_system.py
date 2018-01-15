@@ -7,6 +7,7 @@ from engine import graphics
 from engine import const as c
 from astropy import units as u
 from engine import units as U
+from engine import utils
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -60,8 +61,6 @@ class SingleSystem(System):
             raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                   SingleSystem.__name__))
 
-        # check if star is closed
-
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)
         self.star._polar_log_g = self.polar_log_g
@@ -69,6 +68,7 @@ class SingleSystem(System):
         self.star._polar_radius = self.polar_radius
         args = 0,
         self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
+        # this is also check if star surface is closed
         self.star._equatorial_radius = self.equatorial_radius
 
     def init(self):
@@ -192,11 +192,14 @@ class SingleSystem(System):
         scipy_solver_init_value = np.array([1 / 1000.0])
         solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
                                                         full_output=True, args=args)
+        # check if star is closed
         if ier == 1 and not np.isnan(solution[0]):
             solution = solution[0]
             if solution <= 0:
                 print(solution)
                 raise ValueError('Value of single star equatorial radius {} is not valid'.format(solution))
+        else:
+            raise ValueError('Surface of the star is not closed. Check values of polar gravity an rotation period.')
 
         return solution
 
@@ -246,14 +249,6 @@ class SingleSystem(System):
             points.append([solution * np.sin(angle), solution * np.cos(angle)])
         return np.array(points)
 
-    def check_if_star_is_closed(self):
-        angle = c.HALF_PI
-        args, use = angle, False
-        scipy_solver_init_value = np.array([1 / 1000.0])
-        solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
-                                                    full_output=True, args=args)
-
-
     def angular_velocity(self, rotation_period):
         """
         rotational angular velocity of the star
@@ -277,26 +272,46 @@ class SingleSystem(System):
         """
         return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
 
-    def single_star_mesh(self, N=100):
-        characterictic_distance = c.HALF_PI * self.star.equatorial_radius / N
+    def create_mesh(self, N=50):
         characterictic_angle = c.HALF_PI / N
-        r, phi, theta = [], [], []
+        characterictic_distance = self.star.equatorial_radius * characterictic_angle
 
         # calculating equatorial part
-        r_eq = [self.equatorial_radius for ii in range(N)]
-        phi_eq = [characterictic_distance**ii for ii in range(N)]
-        theta_eq = [c.HALF_PI for ii in range(N)]
+        r_eq = np.array([self.equatorial_radius for ii in range(N)])
+        phi_eq = np.array([characterictic_angle*ii for ii in range(N)])
+        theta_eq = np.array([c.HALF_PI for ii in range(N)])
+        # converting quarter of equator to cartesian
+        x_eq, y_eq, z_eq = utils.spherical_to_cartesiam(r_eq, phi_eq, theta_eq)
 
-        # adding quarter of the star without pole
+        # calculating radii for each latitude and generating one eighth of surface of the star without poles and equator
         num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
         thetas = np.linspace(characterictic_angle, c.HALF_PI-characterictic_angle, num=num, endpoint=True)
-        radii_for_thetas = []
+        r_q, phi_q, theta_q = [], [], []
         for tht in thetas:
             args, use = tht, False
             scipy_solver_init_value = np.array([1 / 1000.0])
             solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
                                                         full_output=True, args=args)
-            radii_for_thetas.append(solution[0])
+            radius = solution[0]
+            num = int(c.HALF_PI * radius * np.sin(tht) // characterictic_distance)
+            r_q += [radius for xx in range(num)]
+            M = c.HALF_PI/num
+            phi_q += [xx*M for xx in range(num)]
+            theta_q += [tht for xx in range(num)]
+
+        r_q = np.array(r_q)
+        phi_q = np.array(phi_q)
+        theta_q = np.array(theta_q)
+        # converting this eighth of surface to cartesian coordinates
+        x_q, y_q, z_q = utils.spherical_to_cartesiam(r_q, phi_q, theta_q)
+
+        # stiching together equator and 8 sectors of stellar surface
+        x = np.concatenate((x_eq, -y_eq, -x_eq,  y_eq, x_q, -y_q, -x_q,  y_q,  x_q, -y_q, -x_q,  y_q, np.array([0, 0])))
+        y = np.concatenate((y_eq,  x_eq, -y_eq, -x_eq, y_q,  x_q, -y_q, -x_q,  y_q,  x_q, -y_q, -x_q, np.array([0, 0])))
+        z = np.concatenate((z_eq,  z_eq,  z_eq,  z_eq, z_q,  z_q,  z_q,  z_q, -z_q, -z_q, -z_q, -z_q,
+                            np.array([self.star.polar_radius, -self.star.polar_radius])))
+        return np.column_stack((x,y,z))
+
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -316,5 +331,14 @@ class SingleSystem(System):
             points = self.compute_equipotential_boundary()
 
             kwargs['points'] = (points * U.DISTANCE_UNIT).to(kwargs['axis_unit'])
+
+        elif descriptor == 'mesh':
+            method_to_call = graphics.single_star_mesh
+            if 'N' not in kwargs:
+                kwargs['N'] = 100
+            kwargs['mesh'] = self.create_mesh(N=kwargs['N'])
+            denominator = (1*kwargs['axis_unit'].to(U.DISTANCE_UNIT))
+            kwargs['mesh'] /= denominator
+            kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
         method_to_call(**kwargs)

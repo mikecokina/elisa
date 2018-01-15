@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from astropy import units as u
 import numpy as np
 import re
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def orbit(**kwargs):
@@ -109,4 +110,15 @@ def equipotential_single_star(**kwargs):
     ax.set_aspect('equal', 'box')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
+    plt.show()
+
+def single_star_mesh(**kwargs):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2] ,s=2)
+    ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
+    ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
+    ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
+    ax.set_aspect('equal', adjustable='box')
+
     plt.show()

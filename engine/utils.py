@@ -26,6 +26,7 @@ def is_plane(given, expected):
 
 def find_nearest_dist_3d(data=None):
     """
+    function finds the smallest distance between given set of points
 
     :param data: array like
     :return: (np.)float; minimal distance of points in dataset
@@ -41,3 +42,17 @@ def find_nearest_dist_3d(data=None):
         distances.append(distance[0])
     return min(distances)
 
+
+def spherical_to_cartesiam(radius, phi, theta):
+    """
+    converts spherical coordinates into cartesian
+
+    :param radius:
+    :param phi:
+    :param theta:
+    :return:
+    """
+    x = radius * np.cos(phi) * np.sin(theta)
+    y = radius * np.sin(phi) * np.sin(theta)
+    z = radius * np.cos(theta)
+    return x, y, z
