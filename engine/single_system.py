@@ -13,7 +13,9 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 
 
 class SingleSystem(System):
-    KWARGS = ['mass', 'gamma', 'inclination', 'rotation_period', 'polar_log_g']
+    KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'polar_log_g']
+    OPTIONAL_KWARGS = ['discretization_factor']
+    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
         self.is_property(kwargs)
@@ -27,7 +29,7 @@ class SingleSystem(System):
                            "of class instance {}".format(SingleSystem.__name__))
 
         # in case of SingleStar system there is no need for user to define stellar component because it is defined here
-        self.star = Star(mass=kwargs['mass'])
+        self.star = kwargs['star']
 
         # check if star object doesn't contain any meaningless parameters
         meaningless_params = {'synchronicity': self.star.synchronicity,
@@ -44,6 +46,7 @@ class SingleSystem(System):
         self._inclination = None
         self._polar_log_g = None
         self._rotation_period = None
+        self._discretization_factor = None
 
         # testing if parameters were initialized
         missing_kwargs = []
@@ -61,15 +64,21 @@ class SingleSystem(System):
             raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                   SingleSystem.__name__))
 
+        # setting of optional parameters
+        if 'discretization_factor' in SingleSystem.OPTIONAL_KWARGS:
+            setattr(self, 'discretization_factor', kwargs['discretization_factor'])
+        else:
+            setattr(self, 'discretization_factor', 30)
+
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)
         self.star._polar_log_g = self.polar_log_g
         self.star._polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
-        self.star._polar_radius = self.polar_radius
+        self.star._polar_radius = self.calculate_polar_radius()
         args = 0,
         self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
         # this is also check if star surface is closed
-        self.star._equatorial_radius = self.equatorial_radius
+        self.star._equatorial_radius = self.calculate_equatorial_radius()
 
     def init(self):
         """
@@ -87,7 +96,7 @@ class SingleSystem(System):
         :param kwargs: dict
         :return:
         """
-        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
+        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.ALL_KWARGS]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
 
@@ -173,7 +182,25 @@ class SingleSystem(System):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def polar_radius(self):
+    def discretization_factor(self):
+        """
+        returns one quarter of number of points at star's equator
+
+        :return: float
+        """
+        return self._discretization_factor
+
+    @discretization_factor.setter
+    def discretization_factor(self, discretization_factor):
+        """
+        setter for discretization factor
+
+        :param log_g:
+        :return:
+        """
+        self._discretization_factor = int(discretization_factor)
+
+    def calculate_polar_radius(self):
         """
         returns polar radius of the star in default units
 
@@ -181,8 +208,7 @@ class SingleSystem(System):
         """
         return np.power(c.G * self.star.mass / self.star.polar_gravity_acceleration, 0.5)
 
-    @property
-    def equatorial_radius(self):
+    def calculate_equatorial_radius(self):
         """
         returns equatorial radius of the star in default units
 
@@ -277,7 +303,7 @@ class SingleSystem(System):
         characterictic_distance = self.star.equatorial_radius * characterictic_angle
 
         # calculating equatorial part
-        r_eq = np.array([self.equatorial_radius for ii in range(N)])
+        r_eq = np.array([self.star.equatorial_radius for ii in range(N)])
         phi_eq = np.array([characterictic_angle*ii for ii in range(N)])
         theta_eq = np.array([c.HALF_PI for ii in range(N)])
         # converting quarter of equator to cartesian
