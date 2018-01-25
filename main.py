@@ -14,23 +14,23 @@ secondary = Star(mass=5.0, surface_potential=8.281630331517764, synchronicity=1.
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=41*u.deg,
+                  argument_of_periastron=90*u.deg,
                   gamma=0*u.km/u.s,
                   period=1.0*u.d,
-                  eccentricity=0.3,
+                  eccentricity=0.2,
                   inclination=80*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
-
 pc = bs.critical_potential(component="primary", phase=bs.orbit.periastron_phase)
 sc = bs.critical_potential(component="secondary", phase=bs.orbit.periastron_phase)
-
 
 print("{0:0.15f}".format(pc))
 print("{0:0.15f}".format(sc))
 
-bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
+bs.create_mesh_detached(phase=0.0)
+
+# bs.plot('equipotential', plane="xy", phase=bs.orbit.periastron_phase)
 
 # bs.argument_of_periastron = 135*u.deg
 # bs.eccentricity = 0.3

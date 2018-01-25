@@ -546,7 +546,7 @@ class BinarySystem(System):
             raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
                              "solver has failed).")
 
-    def compute_polar_radius(self, component=None, phase=None):
+    def calculate_polar_radius(self, component=None, phase=None):
         pass
 
     def compute_equipotential_boundary(self, phase, plane):
@@ -698,6 +698,13 @@ class BinarySystem(System):
         lagrangian_points = self.lagrangian_points()
         return potential(lagrangian_points)
 
+    def create_mesh_detached(self, phase, alpha=0.05):
+        distance = self.orbit.orbital_motion(phase=phase)[0][0]
+        num_of_thetas_t = c.PI - 2 * alpha
+        thetas_t = np.linspace(alpha, c.PI-alpha, num=num_of_thetas_t)
+        for component in [self._primary, self._secondary]:
+            pass
+
     def plot(self, descriptor=None, **kwargs):
         """
         universal plot interface for binary system class, more detailed documentation for each value of descriptor is
@@ -732,7 +739,7 @@ class BinarySystem(System):
             ellipse = self.orbit.orbital_motion(phase=phases)
             # if axis are without unit a = 1
             if kwargs['axis_unit'] != u.dimensionless_unscaled:
-                a = self._semi_major_axis * self.get_distance_unit().to(kwargs['axis_unit'])
+                a = self._semi_major_axis * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
                 radius = a * ellipse[:, 0]
             else:
                 radius = ellipse[:, 0]

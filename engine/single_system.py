@@ -65,7 +65,7 @@ class SingleSystem(System):
                                                                                   SingleSystem.__name__))
 
         # setting of optional parameters
-        if 'discretization_factor' in SingleSystem.OPTIONAL_KWARGS:
+        if 'discretization_factor' in kwargs:
             setattr(self, 'discretization_factor', kwargs['discretization_factor'])
         else:
             setattr(self, 'discretization_factor', 30)
@@ -299,6 +299,15 @@ class SingleSystem(System):
         return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
 
     def create_mesh(self, N=50):
+        """
+        function for creating surface mesh of single star system
+
+        :param N: int, 1/4 of points on equator
+        :return: numpy.array([[x1 y1 z1],
+                              [x2 y2 z2],
+                                ...
+                              [xN yN zN]])
+        """
         characterictic_angle = c.HALF_PI / N
         characterictic_distance = self.star.equatorial_radius * characterictic_angle
 
