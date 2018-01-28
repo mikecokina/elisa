@@ -59,6 +59,8 @@ class BinarySystem(System):
         self._primary = primary
         self._secondary = secondary
         # checking if stellar components have all necessary parameters initialised
+
+        # todo: rafactor
         necessary_KWARGS = ['mass', 'surface_potential', 'synchronicity']
         missing_kwargs = []
         for component in [self.primary, self.secondary]:
@@ -70,6 +72,7 @@ class BinarySystem(System):
             if len(missing_kwargs) != 0:
                 raise ValueError('Mising argument(s): {} in {} component Star class'.format(', '.join(missing_kwargs),
                                                                                   component_name))
+        # end of refactor
 
         # physical properties check
         self._mass_ratio = self.secondary.mass / self.primary.mass
@@ -554,6 +557,7 @@ class BinarySystem(System):
         :param phase: float - photometric phase
         :return: float - polar radius
         """
+        # todo: refactor
         fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
         components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
         args = (components_distance, 0, 0)
