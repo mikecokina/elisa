@@ -316,7 +316,7 @@ class SingleSystem(System):
         phi_eq = np.array([characterictic_angle*ii for ii in range(N)])
         theta_eq = np.array([c.HALF_PI for ii in range(N)])
         # converting quarter of equator to cartesian
-        x_eq, y_eq, z_eq = utils.spherical_to_cartesiam(r_eq, phi_eq, theta_eq)
+        x_eq, y_eq, z_eq = utils.spherical_to_cartesian(r_eq, phi_eq, theta_eq)
 
         # calculating radii for each latitude and generating one eighth of surface of the star without poles and equator
         num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
@@ -338,7 +338,7 @@ class SingleSystem(System):
         phi_q = np.array(phi_q)
         theta_q = np.array(theta_q)
         # converting this eighth of surface to cartesian coordinates
-        x_q, y_q, z_q = utils.spherical_to_cartesiam(r_q, phi_q, theta_q)
+        x_q, y_q, z_q = utils.spherical_to_cartesian(r_q, phi_q, theta_q)
 
         # stiching together equator and 8 sectors of stellar surface
         x = np.concatenate((x_eq, -y_eq, -x_eq,  y_eq, x_q, -y_q, -x_q,  y_q,  x_q, -y_q, -x_q,  y_q, np.array([0, 0])))
@@ -346,7 +346,6 @@ class SingleSystem(System):
         z = np.concatenate((z_eq,  z_eq,  z_eq,  z_eq, z_q,  z_q,  z_q,  z_q, -z_q, -z_q, -z_q, -z_q,
                             np.array([self.star.polar_radius, -self.star.polar_radius])))
         return np.column_stack((x,y,z))
-
 
     def plot(self, descriptor=None, **kwargs):
         """

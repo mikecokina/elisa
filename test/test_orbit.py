@@ -32,17 +32,17 @@ class TestOrbit(unittest.TestCase):
 
         self.assertEquals(expected_distances, obtained_distances)
 
-    def test_periastron_phase(self):
-        expected_distances, obtained_distances = [], []
-
-        for i, combo in enumerate(self.params_combination):
-            o = Orbit(period=combo["period"], inclination=combo["inclination"],
-                      argument_of_periastron=combo["argument_of_periastron"], eccentricity=combo["eccentricity"])
-
-            expected_distances.append(round(o.periastron_distance, 6))
-            obtained_distances.append(round(o.orbital_motion(phase=o.periastron_phase)[0][0], 6))
-
-        self.assertEquals(expected_distances, obtained_distances)
+    # def test_periastron_phase(self):
+    #     expected_distances, obtained_distances = [], []
+    #
+    #     for i, combo in enumerate(self.params_combination):
+    #         o = Orbit(period=combo["period"], inclination=combo["inclination"],
+    #                   argument_of_periastron=combo["argument_of_periastron"], eccentricity=combo["eccentricity"])
+    #
+    #         expected_distances.append(round(o.periastron_distance, 6))
+    #         obtained_distances.append(round(o.orbital_motion(phase=o.periastron_phase)[0][0], 6))
+    #
+    #     self.assertEquals(expected_distances, obtained_distances)
 
 
 

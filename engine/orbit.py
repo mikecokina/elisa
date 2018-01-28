@@ -2,7 +2,7 @@ import logging
 import numpy as np
 from engine import const as c
 from astropy import units as u
-from engine.system import System
+import engine.units as U
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -75,7 +75,7 @@ class Orbit(object):
         :return:
         """
         if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(System.get_arc_unit()))
+            self._inclination = np.float64(inclination.to(U.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
             self._inclination = np.float64(inclination)
         else:
@@ -122,7 +122,7 @@ class Orbit(object):
         :return:
         """
         if isinstance(argument_of_periastron, u.quantity.Quantity):
-            self._argument_of_periastron = np.float64(argument_of_periastron.to(System.get_arc_unit()))
+            self._argument_of_periastron = np.float64(argument_of_periastron.to(U.ARC_UNIT))
         elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
             self._argument_of_periastron = np.float64(argument_of_periastron)
         else:

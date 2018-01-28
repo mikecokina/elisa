@@ -43,7 +43,7 @@ def find_nearest_dist_3d(data=None):
     return min(distances)
 
 
-def spherical_to_cartesiam(radius, phi, theta):
+def spherical_to_cartesian(radius, phi, theta):
     """
     converts spherical coordinates into cartesian
 
