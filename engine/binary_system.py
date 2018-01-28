@@ -547,7 +547,26 @@ class BinarySystem(System):
                              "solver has failed).")
 
     def calculate_polar_radius(self, component=None, phase=None):
-        pass
+        """
+        calculates polar radius in the similar manner as in BinarySystem.compute_equipotential_boundary method
+
+        :param component: str - `primary` or `secondary`
+        :param phase: float - photometric phase
+        :return: float - polar radius
+        """
+        fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
+        components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
+        args = (components_distance, 0, 0)
+        scipy_solver_init_value = np.array([components_distance / 1000.0])
+        solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component], scipy_solver_init_value,
+                                                    full_output=True, args=args, xtol=1e-12)
+
+        # check for regular solution
+        if ier == 1 and not np.isnan(solution[0]) and 30 >= solution[0] >= 0:
+            solution = solution[0]
+        else:
+            raise ValueError('Invalid value of polar radius {} was calculated.'.format(solution))
+        return solution
 
     def compute_equipotential_boundary(self, phase, plane):
         """
@@ -700,9 +719,12 @@ class BinarySystem(System):
 
     def create_mesh_detached(self, phase, alpha=0.05):
         distance = self.orbit.orbital_motion(phase=phase)[0][0]
-        num_of_thetas_t = c.PI - 2 * alpha
+        num_of_thetas_t = int((c.PI - 2 * alpha) // alpha)
         thetas_t = np.linspace(alpha, c.PI-alpha, num=num_of_thetas_t)
-        for component in [self._primary, self._secondary]:
+        r_q, phi_q, theta_q = {'primary': [], 'secondary': []}, {'primary': [], 'secondary': []}, \
+                              {'primary': [], 'secondary': []}
+        for component in ['primary', 'secondary']:
+            # self.calculate_polar_radius(component=component, phase=phase)
             pass
 
     def plot(self, descriptor=None, **kwargs):
