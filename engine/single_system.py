@@ -322,17 +322,17 @@ class SingleSystem(System):
         num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
         thetas = np.linspace(characterictic_angle, c.HALF_PI-characterictic_angle, num=num, endpoint=True)
         r_q, phi_q, theta_q = [], [], []
-        for tht in thetas:
-            args, use = tht, False
+        for theta in thetas:
+            args, use = theta, False
             scipy_solver_init_value = np.array([1 / 1000.0])
             solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
                                                         full_output=True, args=args)
             radius = solution[0]
-            num = int(c.HALF_PI * radius * np.sin(tht) // characterictic_distance)
+            num = int(c.HALF_PI * radius * np.sin(theta) // characterictic_distance)
             r_q += [radius for xx in range(num)]
             M = c.HALF_PI/num
             phi_q += [xx*M for xx in range(num)]
-            theta_q += [tht for xx in range(num)]
+            theta_q += [theta for xx in range(num)]
 
         r_q = np.array(r_q)
         phi_q = np.array(phi_q)

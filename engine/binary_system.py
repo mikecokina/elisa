@@ -557,20 +557,24 @@ class BinarySystem(System):
         :param phase: float - photometric phase
         :return: float - polar radius
         """
-        # todo: refactor
-        fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
+        if component == 'primary':
+            fn = self.potential_primary_fn
+        elif component == 'secondary':
+            fn = self.potential_secondary_fn
+        else:
+            raise ValueError('Invalid value of `component` argument {}. Expecting `primary` or `secondary`.'
+                             .format(component))
         components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
         args = (components_distance, 0, 0)
         scipy_solver_init_value = np.array([components_distance / 1000.0])
-        solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component], scipy_solver_init_value,
+        solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value,
                                                     full_output=True, args=args, xtol=1e-12)
 
         # check for regular solution
         if ier == 1 and not np.isnan(solution[0]) and 30 >= solution[0] >= 0:
-            solution = solution[0]
+            return solution[0]
         else:
             raise ValueError('Invalid value of polar radius {} was calculated.'.format(solution))
-        return solution
 
     def compute_equipotential_boundary(self, phase, plane):
         """
@@ -722,12 +726,25 @@ class BinarySystem(System):
         return potential(lagrangian_points)
 
     def create_mesh_detached(self, phase, alpha=0.05):
+        # calculating distance between components
         distance = self.orbit.orbital_motion(phase=phase)[0][0]
+
+        # calculating points on equator
+
+        num_of_thetas = int((c.HALF_PI - 2 * alpha) // alpha)
+        thetas_t = np.linspace(alpha, c.HALF_PI - alpha, num=num_of_thetas)
+
+
+    def create_mesh_contact(self, phase, alpha=0.05):
+        # calculating distance between components
+        distance = self.orbit.orbital_motion(phase=phase)[0][0]
+
         num_of_thetas_t = int((c.PI - 2 * alpha) // alpha)
         thetas_t = np.linspace(alpha, c.PI-alpha, num=num_of_thetas_t)
-        r_q, phi_q, theta_q = {'primary': [], 'secondary': []}, {'primary': [], 'secondary': []}, \
+        r, phi_q, theta_q = {'primary': [], 'secondary': []}, {'primary': [], 'secondary': []}, \
                               {'primary': [], 'secondary': []}
         for component in ['primary', 'secondary']:
+
             # self.calculate_polar_radius(component=component, phase=phase)
             pass
 
