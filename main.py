@@ -9,8 +9,8 @@ from engine import utils
 from engine import const as c
 
 
-primary = Star(mass=3.0, surface_potential=6.0, synchronicity=1.0)
-secondary = Star(mass=5.0, surface_potential=6.5, synchronicity=1.0)
+primary = Star(mass=3.0, surface_potential=4.55, synchronicity=2.5)
+secondary = Star(mass=1.5, surface_potential=3.5, synchronicity=1.0)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -28,10 +28,7 @@ sc = bs.critical_potential(component="secondary", phase=bs.orbit.periastron_phas
 print("{0:0.15f}".format(pc))
 print("{0:0.15f}".format(sc))
 
-print(bs.calculate_polar_radius(component='secondary', phase=0))
-# bs.create_mesh_detached(phase=0.0)
-
-bs.plot('equipotential', plane="yz", phase=bs.orbit.periastron_phase)
+# bs.plot('equipotential', plane="xy", phase=bs.orbit.periastron_phase)
 
 # bs.argument_of_periastron = 135*u.deg
 # bs.eccentricity = 0.3
@@ -49,3 +46,4 @@ bs.plot('equipotential', plane="yz", phase=bs.orbit.periastron_phase)
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 # print(bs.lagrangian_points())
+bs.plot(descriptor='mesh', phase=0, components_to_plot='both', alpha1=5, alpha2=3)

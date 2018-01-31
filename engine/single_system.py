@@ -298,7 +298,7 @@ class SingleSystem(System):
         """
         return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
 
-    def create_mesh(self, N=50):
+    def mesh(self, N=50):
         """
         function for creating surface mesh of single star system
 
@@ -370,7 +370,7 @@ class SingleSystem(System):
             method_to_call = graphics.single_star_mesh
             if 'N' not in kwargs:
                 kwargs['N'] = 100
-            kwargs['mesh'] = self.create_mesh(N=kwargs['N'])
+            kwargs['mesh'] = self.mesh(N=kwargs['N'])
             denominator = (1*kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])

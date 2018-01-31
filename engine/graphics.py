@@ -113,12 +113,39 @@ def equipotential_single_star(**kwargs):
     plt.show()
 
 def single_star_mesh(**kwargs):
+    """
+    Plot function for descriptor `mesh`, plots surface mesh of star in SingleStar system
+
+    :param kwargs: dict
+                   keywords: `mesh` = surface points of the star in standard numpy array format:
+                                      numpy.array([[x1 y1 z1],
+                                                   [x2 y2 z2],
+                                                   ...
+                                                   [xN yN zN]])
+                             `axis_unit` = astropy.units.solRad - unit in which axis will be displayed, please use
+                                                                 astropy.units format, default unit is solar radius
+                             `equatorial_radius': numpy.float - equatorial radius of the star in axis units
+    :return:
+    """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2] ,s=2)
+    ax.scatter(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2], s=2)
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_aspect('equal', adjustable='box')
 
+    plt.show()
+
+def binary_mesh(**kwargs):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_aspect('equal', adjustable='box')
+    if kwargs['components_to_plot'] in ['primary', 'both']:
+        ax.scatter(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1], kwargs['points_primary'][:, 2], s=2,
+                   label='primary')
+    if kwargs['components_to_plot'] in ['secondary', 'both']:
+        ax.scatter(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1], kwargs['points_secondary'][:, 2],
+                   s=2, label='secondary')
+    ax.legend(loc=1)
     plt.show()
