@@ -71,7 +71,7 @@ class BinarySystem(System):
             component_name = 'primary' if component == self.primary else 'secondary'
             if len(missing_kwargs) != 0:
                 raise ValueError('Mising argument(s): {} in {} component Star class'.format(', '.join(missing_kwargs),
-                                                                                  component_name))
+                                                                                            component_name))
         # end of refactor
 
         # physical properties check
@@ -532,9 +532,9 @@ class BinarySystem(System):
         component_distance = self.orbit.orbital_motion(phase=phase)[0][0]
         args = component_distance,
         if component == "primary":
-            solution = newton(self.primary_potential_derivative_x, 0.001, args=args, tol=1e-12)
+            solution = newton(self.primary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
         elif component == "secondary":
-            solution = newton(self.secondary_potential_derivative_x, 0.001, args=args, tol=1e-12)
+            solution = newton(self.secondary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
         else:
             raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
 
@@ -753,6 +753,17 @@ class BinarySystem(System):
         return potential(lagrangian_points)
 
     def mesh_detached(self, component, phase, alpha=3):
+        """
+        creates surface mesh of given binary star component
+
+        :param component: str - `primary` or `secondary`
+        :param phase: np.float - (0,1) photometric phase at which surface is calculated, irrelevant in case e=0
+        :param alpha: np.float - discretization factor, mean angular distance of vertices
+        :return: numpy.array - set of vertices in shape numpy.array([[x1 y1 z1],
+                                                                     [x2 y2 z2],
+                                                                      ...
+                                                                     [xN yN zN]])
+        """
         alpha = c.FULL_ARC * alpha / 360
         scipy_solver_init_value = np.array([1 / 10000])
 
@@ -821,18 +832,91 @@ class BinarySystem(System):
 
         return points
 
-    def mesh_contact(self, phase, alpha=0.05):
+    def calculate_neck_position(self):
+        pass
+
+    def mesh_contact(self, component, phase, alpha=3):
+        alpha = c.FULL_ARC * alpha / 360
+        scipy_solver_init_value = np.array([1 / 10000])
+
         # calculating distance between components
-        distance = self.orbit.orbital_motion(phase=phase)[0][0]
+        components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
 
-        num_of_thetas_t = int((c.PI - 2 * alpha) // alpha)
-        thetas_t = np.linspace(alpha, c.PI-alpha, num=num_of_thetas_t)
-        r, phi_q, theta_q = {'primary': [], 'secondary': []}, {'primary': [], 'secondary': []}, \
-                              {'primary': [], 'secondary': []}
-        for component in ['primary', 'secondary']:
+        if component == 'primary':
+            fn = self.potential_primary_fn
+        elif component == 'secondary':
+            fn = self.potential_secondary_fn
+        else:
+            raise ValueError('Invalid value of `component` argument: `{}`. Expecting `primary` or `secondary`.')\
+                .format(component)
 
-            # self.calculate_polar_radius(component=component, phase=phase)
-            pass
+        # calculating points on farside equator
+        num = int(c.HALF_PI // alpha)
+        r_eq = []
+        phi_eq = np.linspace(c.HALF_PI, c.PI, num=num + 1)
+        theta_eq = np.array([c.HALF_PI for xx in phi_eq])
+        for phi in phi_eq:
+            args = (components_distance, phi, c.HALF_PI)
+            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
+                                                        xtol=1e-12)
+            r_eq.append(solution[0])
+        r_eq = np.array(r_eq)
+        x_eq, y_eq, z_eq = utils.spherical_to_cartesian(r_eq, phi_eq, theta_eq)
+
+        # calculating points on phi = pi meridian
+        r_meridian = []
+        num = int(c.HALF_PI // alpha)
+        phi_meridian = np.array([c.PI for xx in range(num)])
+        theta_meridian = np.linspace(c.HALF_PI - alpha, 0, num=num)
+        for ii, theta in enumerate(theta_meridian):
+            args = (components_distance, phi_meridian[ii], theta)
+            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
+                                                        xtol=1e-12)
+            r_meridian.append(solution[0])
+        r_meridian = np.array(r_meridian)
+        x_meridian, y_meridian, z_meridian = utils.spherical_to_cartesian(r_meridian, phi_meridian, theta_meridian)
+
+        # calculating points on phi = pi/2 meridian
+        r_meridian2 = []
+        num = int(c.HALF_PI // alpha) - 1
+        phi_meridian2 = np.array([c.HALF_PI for xx in range(num)])
+        theta_meridian2 = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
+        for ii, theta in enumerate(theta_meridian2):
+            args = (components_distance, phi_meridian2[ii], theta)
+            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
+                                                        xtol=1e-12)
+            r_meridian2.append(solution[0])
+        r_meridian2 = np.array(r_meridian2)
+        x_meridian2, y_meridian2, z_meridian2 = utils.spherical_to_cartesian(r_meridian2, phi_meridian2,
+                                                                             theta_meridian2)
+
+        # calculating the rest of the surface on farside
+        thetas = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
+        r_q, phi_q, theta_q = [], [], []
+        for theta in thetas:
+            alpha_corrected = alpha / np.sin(theta)
+            num = int((c.HALF_PI) // alpha_corrected)
+            alpha_corrected = c.HALF_PI / (num + 1)
+            phi_q_add = [c.HALF_PI + alpha_corrected * ii for ii in range(1, num + 1)]
+            phi_q += phi_q_add
+            for phi in phi_q_add:
+                theta_q.append(theta)
+                args = (components_distance, phi, theta)
+                solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
+                                                            xtol=1e-12)
+                r_q.append(solution[0])
+        r_q, phi_q, theta_q = np.array(r_q), np.array(phi_q), np.array(theta_q)
+        x_q, y_q, z_q = utils.spherical_to_cartesian(r_q, phi_q, theta_q)
+
+        # calculating the neck
+
+        x = np.concatenate((x_eq,  x_eq[:-1], x_meridian,  x_meridian, x_meridian2,  x_meridian2,  x_meridian2,  x_meridian2, x_q,  x_q,  x_q,  x_q))
+        y = np.concatenate((y_eq, -y_eq[:-1], y_meridian,  y_meridian, y_meridian2,  y_meridian2, -y_meridian2, -y_meridian2, y_q, -y_q,  y_q, -y_q))
+        z = np.concatenate((z_eq,  z_eq[:-1], z_meridian, -z_meridian, z_meridian2, -z_meridian2,  z_meridian2, -z_meridian2, z_q,  z_q, -z_q, -z_q))
+        x = -x + components_distance if component == 'secondary' else x
+        points = np.column_stack((x, y, z))
+
+        return points
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -908,7 +992,7 @@ class BinarySystem(System):
             KWARGS = ['phase', 'components_to_plot', 'alpha1', 'alpha2']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
-            is_detached = True  # this can be finished after phenomenology of the system in __init__ is finished
+            is_detached = False  # this can be finished after phenomenology of the system in __init__ is finished
 
             method_to_call = graphics.binary_mesh
 
@@ -919,21 +1003,23 @@ class BinarySystem(System):
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
                 if 'alpha1' not in kwargs:
-                    kwargs['alpha1'] = 3
+                    kwargs['alpha1'] = 5
                 if is_detached:
                     kwargs['points_primary'] = self.mesh_detached(component='primary', phase=kwargs['phase'],
                                                                   alpha=kwargs['alpha1'])
                 else:
-                    kwargs['points_primary'] = self.mesh_contact()
+                    kwargs['points_primary'] = self.mesh_contact(component='primary', phase=kwargs['phase'],
+                                                                 alpha=kwargs['alpha1'])
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 if 'alpha2' not in kwargs:
-                    kwargs['alpha2'] = 3
+                    kwargs['alpha2'] = 5
                 if is_detached:
                     kwargs['points_secondary'] = self.mesh_detached(component='secondary', phase=kwargs['phase'],
-                                                                  alpha=kwargs['alpha2'])
+                                                                    alpha=kwargs['alpha2'])
                 else:
-                    kwargs['points_secondary'] = self.mesh_contact()
+                    kwargs['points_secondary'] = self.mesh_contact(component='secondary', phase=kwargs['phase'],
+                                                                   alpha=kwargs['alpha2'])
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

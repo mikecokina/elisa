@@ -134,13 +134,32 @@ def single_star_mesh(**kwargs):
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_aspect('equal', adjustable='box')
-
+    unit = str(kwargs['axis_unit'])
+    x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_zlabel(z_label)
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
 
+
 def binary_mesh(**kwargs):
-    fig = plt.figure()
+    """
+    Plot function for descriptor `mesh`, plots surface mesh of binary star in BinaryStar system
+
+    :param kwargs: dict
+                   keywords: `phase`: np.float - phase in which system is plotted default value is 0
+                             `components_to_plot`: str - decides which argument to plot, choices: `primary`, secondary`
+                                                         , `both`, default is `both`
+                             `alpha1`: np.float - discretization factor for primary component, equals to mean angular
+                                                  spacing between points, default value is 5
+                             `alpha2`: np.float - discretization factor for secondary component, equals to mean angular
+                                                  spacing between points, default value is 5
+    :return:
+    """
+    fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_aspect('equal', adjustable='box')
+    ax.set_aspect('equal')
     if kwargs['components_to_plot'] in ['primary', 'both']:
         ax.scatter(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1], kwargs['points_primary'][:, 2], s=2,
                    label='primary')
@@ -148,4 +167,23 @@ def binary_mesh(**kwargs):
         ax.scatter(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1], kwargs['points_secondary'][:, 2],
                    s=2, label='secondary')
     ax.legend(loc=1)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    if kwargs['components_to_plot'] == 'both':
+        x_min = np.min(kwargs['points_primary'][:, 0])
+        x_max = np.max(kwargs['points_secondary'][:, 0])
+    elif kwargs['components_to_plot'] == 'primary':
+        x_min = np.min(kwargs['points_primary'][:, 0])
+        x_max = np.max(kwargs['points_primary'][:, 0])
+    elif kwargs['components_to_plot'] == 'secondary':
+        x_min = np.min(kwargs['points_secondary'][:, 0])
+        x_max = np.max(kwargs['points_secondary'][:, 0])
+
+    D = (x_max - x_min)/2
+    ax.set_xlim3d(x_min, x_max)
+    ax.set_ylim3d(-D, D)
+    ax.set_zlim3d(-D, D)
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()

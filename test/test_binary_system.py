@@ -5,6 +5,7 @@ from engine.star import Star
 import engine.const as c
 from astropy import units as u
 from numpy.testing import assert_array_almost_equal
+from engine import utils
 
 
 # class TestBinarySystemProperties(unittest.TestCase):
@@ -60,21 +61,67 @@ class TestBinarySystem(unittest.TestCase):
         self.params_combination = [{"primary_mass": 2.0, "secondary_mass": 1.0,
                                     "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
                                     "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-                                    "argument_of_periastron": np.pi / 2.0, "gamma": 0.0, "period": 0.9,
+                                    "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
                                     "eccentricity": 0.0, "inclination": c.HALF_PI, "primary_minimum_time": 0.0,
-                                    "phase_shift": 0.0},
+                                    "phase_shift": 0.0},  # compact spherical components on circular orbit
 
                                    {"primary_mass": 2.0, "secondary_mass": 1.0,
-                                    "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
-                                    "primary_synchronicity": 1.7, "secondary_synchronicity": 1.3,
-                                    "argument_of_periastron": c.PI, "gamma": 0.0, "period": 1.0,
-                                    "eccentricity": 0.1, "inclination": 85.0 * u.deg, "primary_minimum_time": 0.0,
-                                    "phase_shift": 0.0}]
+                                    "primary_surface_potential": 100.0, "secondary_surface_potential": 80.0,
+                                    "primary_synchronicity": 400, "secondary_synchronicity": 550,
+                                    "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
+                                    "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                                    "phase_shift": 0.0},  # rotationally squashed compact spherical components
+
+                                   {"primary_mass": 2.0, "secondary_mass": 1.0,
+                                    "primary_surface_potential": 3.5, "secondary_surface_potential": 3.0,
+                                    "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+                                    "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
+                                    "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                                    "phase_shift": 0.0},  # close tidally deformed components with asynchronous rotation
+                                                          # on circular orbit
+
+                                   {"primary_mass": 2.0, "secondary_mass": 1.0,
+                                    "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
+                                    "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+                                    "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
+                                    "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                                    "phase_shift": 0.0},  # close tidally deformed components with asynchronous rotation
+                                                          # on eccentric orbit
+
+                                   {"primary_mass": 2.0, "secondary_mass": 1.0,
+                                    "primary_surface_potential": 2.875844632141054,
+                                    "secondary_surface_potential": 2.875844632141054,
+                                    "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+                                    "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
+                                    "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                                    "phase_shift": 0.0},  # synchronous contact system
+
+                                   {"primary_mass": 2.0, "secondary_mass": 1.0,
+                                    "primary_surface_potential": 3.159639848886489,
+                                    "secondary_surface_potential": 3.229240544834036,
+                                    "primary_synchronicity": 1.5, "secondary_synchronicity": 2.0,
+                                    "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
+                                    "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                                    "phase_shift": 0.0},  # asynchronous contact system (improbable but whatever...)
+
+                                   {"primary_mass": 2.0, "secondary_mass": 1.0,
+                                    "primary_surface_potential": 2.7,
+                                    "secondary_surface_potential": 2.7,
+                                    "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+                                    "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
+                                    "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                                    "phase_shift": 0.0}  # contact system
+                                   ]
 
     def test_critical_potential(self):
-        phases_to_use = [0.0, 0.218222142892]
-        expected_potentials = [[2.87584463214, 2.87584463214],
-                               [3.47688032078, 3.20273942184]]
+        phases_to_use = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        expected_potentials = [[2.875844632141054, 2.875844632141054],
+                               [93.717106763853593, 73.862399105365014],
+                               [3.159639848886489, 2.935086409515319],
+                               [4.027577786299736, 3.898140726941630],
+                               [2.875844632141054, 2.875844632141054],
+                               [3.159639848886489, 3.229240544834036],
+                               [2.875844632141054, 2.875844632141054]]
         obtained_potentials = []
 
         for i, combo in enumerate(self.params_combination):
@@ -102,8 +149,13 @@ class TestBinarySystem(unittest.TestCase):
 
     def test_lagrangian_points(self):
 
-        expected_points = [[-0.8030279607, 0.5707515715, 1.5823807222],
-                           [-0.7857030576, 0.5221432499, 1.5315280946]]
+        expected_points = [[-0.80302796065835425, 0.57075157151852673, 1.5823807222136623],
+                           [-0.80302796065835425, 0.57075157151852673, 1.5823807222136623],
+                           [-0.80302796065835425, 0.57075157151852673, 1.5823807222136623],
+                           [-0.7308068505479407, 0.41566688133312363, 1.4990376377419574],
+                           [-0.80302796065835425, 0.57075157151852673, 1.5823807222136623],
+                           [-0.80302796065835425, 0.57075157151852673, 1.5823807222136623],
+                           [-0.80302796065835425, 0.57075157151852673, 1.5823807222136623]]
 
         obtained_points = []
 
@@ -124,6 +176,47 @@ class TestBinarySystem(unittest.TestCase):
                               primary_minimum_time=combo["primary_minimum_time"],
                               phase_shift=combo["phase_shift"])
 
-            obtained_points.append([round(p, 10) for p in bs.lagrangian_points()])
+            obtained_points.append(bs.lagrangian_points())
 
         self.assertAlmostEquals(expected_points, obtained_points)
+
+    def test_mesh_for_duplicate_points(self):
+        phases_to_use = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        alpha = 10
+
+        for i, combo in enumerate(self.params_combination):
+            primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
+                           synchronicity=combo["primary_synchronicity"])
+
+            secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
+                             synchronicity=combo["secondary_synchronicity"])
+
+            bs = BinarySystem(primary=primary,
+                              secondary=secondary,
+                              argument_of_periastron=combo["argument_of_periastron"],
+                              gamma=combo["gamma"],
+                              period=combo["period"],
+                              eccentricity=combo["eccentricity"],
+                              inclination=combo["inclination"],
+                              primary_minimum_time=combo["primary_minimum_time"],
+                              phase_shift=combo["phase_shift"])
+
+            if i == 6:
+                mesh_primary = bs.mesh_contact(component='primary', phase=phases_to_use[i], alpha=alpha)
+                mesh_secondary = bs.mesh_contact(component='secondary', phase=phases_to_use[i], alpha=alpha)
+            else:
+                mesh_primary = bs.mesh_detached(component='primary', phase=phases_to_use[i], alpha=alpha)
+                mesh_secondary = bs.mesh_detached(component='secondary', phase=phases_to_use[i], alpha=alpha)
+
+            distance1 = utils.find_nearest_dist_3d(list(mesh_primary))
+            distance2 = utils.find_nearest_dist_3d(list(mesh_secondary))
+            self.assertNotAlmostEqual(distance1, 0)
+            self.assertNotAlmostEqual(distance2, 0)
+
+
+
+
+
+
+
+
