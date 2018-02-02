@@ -1027,7 +1027,7 @@ class BinarySystem(System):
             z_ns = np.linspace(delta_z, neck_position, num=num, endpoint=True)
         else:
             num = int((1 - neck_position) // delta_z)
-            z_ns = np.linspace(delta_z, 1.0 - neck_position, num=num, endpoint=False)
+            z_ns = np.linspace(delta_z, 1.0 - neck_position, num=num, endpoint=True)
 
         # generating equatorial, polar part and rest of the neck
         r_eqn, phi_eqn, z_eqn = [], [], []
