@@ -838,6 +838,7 @@ class BinarySystem(System):
         points_primary, points_secondary = [], []
         fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
 
+        # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
         angles = np.linspace(0, c.HALF_PI, 100, endpoint=True)
         for component in components:
             for angle in angles:
