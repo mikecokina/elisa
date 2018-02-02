@@ -833,7 +833,52 @@ class BinarySystem(System):
         return points
 
     def calculate_neck_position(self):
-        pass
+        components_distance = 1.0
+        components = ['primary', 'secondary']
+        points_primary, points_secondary = [], []
+        fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
+
+        angles = np.linspace(0, c.HALF_PI, 100, endpoint=True)
+        for component in components:
+            for angle in angles:
+                args, use = (components_distance, angle, c.HALF_PI), False
+
+                scipy_solver_init_value = np.array([components_distance / 10000.0])
+                solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component], scipy_solver_init_value, full_output=True,
+                                                        args=args, xtol=1e-12)
+
+                # check for regular solution
+                if ier == 1 and not np.isnan(solution[0]):
+                    solution = solution[0]
+                    if 30 >= solution >= 0:
+                        use = True
+                else:
+                    continue
+
+                if use:
+                    if component == 'primary':
+                        points_primary.append([solution * np.cos(angle), solution * np.sin(angle)])
+                    elif component == 'secondary':
+                        points_secondary.append([- (solution * np.cos(angle) - components_distance),
+                                                solution * np.sin(angle)])
+
+        neck_points = np.array(points_secondary + points_primary)
+        # fitting of the neck with polynomial in order to find minimum
+        polynomial_fit = np.polyfit(neck_points[:, 0], neck_points[:, 1], deg=15)
+        polynomial_fit_differentiation = np.polyder(polynomial_fit)
+        roots = np.roots(polynomial_fit_differentiation)
+        roots = [np.real(xx) for xx in roots if np.imag(xx) == 0]
+        # choosing root that is closest to the middle of the system, should work...
+        # idea is to rule out roots near 0 or 1
+        comparision_value = 1
+        for root in roots:
+            new_value = abs(0.5 - root)
+            if new_value < comparision_value:
+                comparision_value = new_value
+                neck_position = root
+
+        return neck_position
+
 
     def mesh_contact(self, component, phase, alpha=3):
         alpha = c.FULL_ARC * alpha / 360

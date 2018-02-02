@@ -9,8 +9,8 @@ from engine import utils
 from engine import const as c
 
 
-primary = Star(mass=2.0, surface_potential=2.7, synchronicity=1.0)
-secondary = Star(mass=1.0, surface_potential=2.7, synchronicity=1.0)
+primary = Star(mass=2.0, surface_potential=2.65, synchronicity=1.0)
+secondary = Star(mass=1.0, surface_potential=2.65, synchronicity=1.0)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -28,6 +28,7 @@ sc = bs.critical_potential(component="secondary", phase=phase)
 
 print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
 
+print(bs.calculate_neck_position())
 # bs.plot('equipotential', plane="xy", phase=bs.orbit.periastron_phase)
 
 # bs.argument_of_periastron = 135*u.deg
@@ -35,14 +36,12 @@ print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
 # bs.inclination = 85*u.deg
 # bs.init()
 
-# xs = np.arange(-1, 1, 0.001)
-# ys = [[x, bs.secondary_potential_derivation_x(x, *(1.0, 1.0))] for x in xs
-#       if abs(bs.secondary_potential_derivation_x(x, *(1.0, 1.0))) < 100]
-# plt.scatter(list(zip(*ys))[0], list(zip(*ys))[1])
+# plt.scatter(neck[:, 0], neck[:, 1])
+# plt.plot(neck[:, 0], fit, c='r')
 # plt.show()
 #
 # print(bs.critical_potential(component='primary', phase=0))
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference='barycentric')
-bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
+# bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 # bs.plot(descriptor='mesh', phase=0, components_to_plot='both')
