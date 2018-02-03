@@ -834,6 +834,10 @@ class BinarySystem(System):
                                                                      [xN yN zN]])
         """
         # alpha = c.FULL_ARC * alpha / 360
+
+        if alpha > 90:
+            raise ValueError("Invalid value of alpha paramter. Use at least 90")
+
         alpha = np.radians(alpha)
         scipy_solver_init_value = np.array([1. / 10000.])
 
