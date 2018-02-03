@@ -171,6 +171,7 @@ def binary_mesh(**kwargs):
     ax.set_ylabel('y')
     ax.set_zlabel('z')
 
+    x_min, x_max = 0, 0
     if kwargs['components_to_plot'] == 'both':
         x_min = np.min(kwargs['points_primary'][:, 0])
         x_max = np.max(kwargs['points_secondary'][:, 0])
