@@ -826,15 +826,16 @@ class BinarySystem(System):
         creates surface mesh of given binary star component
 
         :param component: str - `primary` or `secondary`
-        :param phase: np.float - (0,1) photometric phase at which surface is calculated, irrelevant in case e=0
+        :param phase: np.float - (0, 1) photometric phase at which surface is calculated, irrelevant in case e=0
         :param alpha: np.float - discretization factor, mean angular distance of vertices
         :return: numpy.array - set of vertices in shape numpy.array([[x1 y1 z1],
                                                                      [x2 y2 z2],
                                                                       ...
                                                                      [xN yN zN]])
         """
-        alpha = c.FULL_ARC * alpha / 360
-        scipy_solver_init_value = np.array([1 / 10000])
+        # alpha = c.FULL_ARC * alpha / 360
+        alpha = np.radians(alpha)
+        scipy_solver_init_value = np.array([1. / 10000.])
 
         # calculating distance between components
         components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
@@ -844,14 +845,13 @@ class BinarySystem(System):
         elif component == 'secondary':
             fn = self.potential_secondary_fn
         else:
-            raise ValueError('Invalid value of `component` argument: `{}`. Expecting `primary` or `secondary`.')\
-                .format(component)
+            raise ValueError('Invalid value of `component` argument: `{}`. Expecting `primary` or `secondary`.').format(component)
 
         # calculating points on equator
         num = int(c.PI // alpha)
         r_eq = []
-        phi_eq = np.linspace(0, c.PI, num=num+1)
-        theta_eq = np.array([c.HALF_PI for xx in phi_eq])
+        phi_eq = np.linspace(0, c.PI, num=num + 1)
+        theta_eq = np.array([c.HALF_PI for _ in phi_eq])
         for phi in phi_eq:
             args = (components_distance, phi, c.HALF_PI)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
@@ -863,8 +863,8 @@ class BinarySystem(System):
         # calculating points on phi = 0 meridian
         r_meridian = []
         num = int(c.HALF_PI // alpha)
-        phi_meridian = np.array([c.PI for xx in range(num-1)] + [0 for xx in range(num)])
-        theta_meridian = np.concatenate((np.linspace(c.HALF_PI-alpha, alpha, num=num-1),
+        phi_meridian = np.array([c.PI for _ in range(num - 1)] + [0 for _ in range(num)])
+        theta_meridian = np.concatenate((np.linspace(c.HALF_PI - alpha, alpha, num=num - 1),
                                          np.linspace(0, c.HALF_PI, num=num, endpoint=False)))
         for ii, theta in enumerate(theta_meridian):
             args = (components_distance, phi_meridian[ii], theta)
@@ -879,9 +879,9 @@ class BinarySystem(System):
         r_q, phi_q, theta_q = [], [], []
         for theta in thetas:
             alpha_corrected = alpha / np.sin(theta)
-            num = int((c.PI) // alpha_corrected)
+            num = int(c.PI // alpha_corrected)
             alpha_corrected = c.PI / (num + 1)
-            phi_q_add = [alpha_corrected * ii for ii in range(1, num+1)]
+            phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
             phi_q += phi_q_add
             for phi in phi_q_add:
                 theta_q.append(theta)
@@ -1157,7 +1157,7 @@ class BinarySystem(System):
             KWARGS = ['phase', 'components_to_plot', 'alpha1', 'alpha2']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
-            is_detached = False  # this can be finished after phenomenology of the system in __init__ is finished
+            is_detached = True  # this can be finished after phenomenology of the system in __init__ is finished
 
             method_to_call = graphics.binary_mesh
 
