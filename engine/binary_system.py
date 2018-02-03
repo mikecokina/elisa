@@ -47,32 +47,12 @@ class BinarySystem(System):
         self._logger = logging.getLogger(BinarySystem.__name__)
         self._logger.info("Initialising object {}".format(BinarySystem.__name__))
 
-        # assign components to binary system
-        if not isinstance(primary, Star):
-            raise TypeError("Primary component is not instance of class {}".format(Star.__name__))
-
-        if not isinstance(secondary, Star):
-            raise TypeError("Secondary component is not instance of class {}".format(Star.__name__))
-
         self._logger.debug("Setting property components "
                            "of class instance {}".format(BinarySystem.__name__))
+
+        # assign components to binary system
         self._primary = primary
         self._secondary = secondary
-        # checking if stellar components have all necessary parameters initialised
-
-        # todo: rafactor
-        necessary_KWARGS = ['mass', 'surface_potential', 'synchronicity']
-        missing_kwargs = []
-        for component in [self.primary, self.secondary]:
-            for kwarg in necessary_KWARGS:
-                if getattr(component, kwarg) == None:
-                    missing_kwargs.append("`{}`".format(kwarg))
-
-            component_name = 'primary' if component == self.primary else 'secondary'
-            if len(missing_kwargs) != 0:
-                raise ValueError('Mising argument(s): {} in {} component Star class'.format(', '.join(missing_kwargs),
-                                                                                  component_name))
-        # end of refactor
 
         # physical properties check
         self._mass_ratio = self.secondary.mass / self.primary.mass
@@ -88,7 +68,10 @@ class BinarySystem(System):
         self._semi_major_axis = None
         self._periastron_phase = None
 
-        # testing if parameters were initialized
+        params = {"primary": self.primary, "secondary": self.secondary}
+        params.update(**kwargs)
+        self._params_validity_check(**params)
+        # set attributes and test whether all parameters were initialized
         missing_kwargs = []
         for kwarg in BinarySystem.KWARGS:
             if kwarg not in kwargs:
@@ -98,7 +81,8 @@ class BinarySystem(System):
             else:
                 setattr(self, kwarg, kwargs[kwarg])
 
-        if len(missing_kwargs) != 0:
+        # will show all missing kwargs from KWARGS
+        if missing_kwargs:
             raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                   BinarySystem.__name__))
 
@@ -122,6 +106,29 @@ class BinarySystem(System):
             # it is mean, also add this possibility to esmitate morphology
 
         # compute and assing to all radii values to both components
+
+    def _params_validity_check(self, **kwargs):
+
+        if not isinstance(kwargs.get("primary"), Star):
+            raise TypeError("Primary component is not instance of class {}".format(Star.__name__))
+
+        if not isinstance(kwargs.get("secondary"), Star):
+            raise TypeError("Secondary component is not instance of class {}".format(Star.__name__))
+
+        # checking if stellar components have all necessary parameters initialised
+        # tehese parameters are not mandatory in single star system, so validity check cannot be provided
+        # on whole set of KWARGS in star object
+        star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity']
+        missing_kwargs = []
+        for component in [self.primary, self.secondary]:
+            for kwarg in star_mandatory_kwargs:
+                if getattr(component, kwarg) is None:
+                    missing_kwargs.append("`{}`".format(kwarg))
+
+            component_name = 'primary' if component == self.primary else 'secondary'
+            if len(missing_kwargs) != 0:
+                raise ValueError('Mising argument(s): {} in {} component Star class'.format(
+                    ', '.join(missing_kwargs), component_name))
 
     def init(self):
         """
@@ -804,6 +811,7 @@ class BinarySystem(System):
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 
         method_to_call(**kwargs)
+
 
     @classmethod
     def is_property(cls, kwargs):
