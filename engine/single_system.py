@@ -298,7 +298,7 @@ class SingleSystem(System):
         """
         return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
 
-    def create_mesh(self, N=50):
+    def mesh(self, N=50):
         """
         function for creating surface mesh of single star system
 
@@ -322,17 +322,17 @@ class SingleSystem(System):
         num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
         thetas = np.linspace(characterictic_angle, c.HALF_PI-characterictic_angle, num=num, endpoint=True)
         r_q, phi_q, theta_q = [], [], []
-        for tht in thetas:
-            args, use = tht, False
+        for theta in thetas:
+            args, use = theta, False
             scipy_solver_init_value = np.array([1 / 1000.0])
             solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
                                                         full_output=True, args=args)
             radius = solution[0]
-            num = int(c.HALF_PI * radius * np.sin(tht) // characterictic_distance)
+            num = int(c.HALF_PI * radius * np.sin(theta) // characterictic_distance)
             r_q += [radius for xx in range(num)]
             M = c.HALF_PI/num
             phi_q += [xx*M for xx in range(num)]
-            theta_q += [tht for xx in range(num)]
+            theta_q += [theta for xx in range(num)]
 
         r_q = np.array(r_q)
         phi_q = np.array(phi_q)
@@ -370,7 +370,7 @@ class SingleSystem(System):
             method_to_call = graphics.single_star_mesh
             if 'N' not in kwargs:
                 kwargs['N'] = 100
-            kwargs['mesh'] = self.create_mesh(N=kwargs['N'])
+            kwargs['mesh'] = self.mesh(N=kwargs['N'])
             denominator = (1*kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])

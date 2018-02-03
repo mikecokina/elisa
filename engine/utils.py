@@ -47,12 +47,26 @@ def spherical_to_cartesian(radius, phi, theta):
     """
     converts spherical coordinates into cartesian
 
-    :param radius:
-    :param phi:
-    :param theta:
+    :param radius: np.array
+    :param phi: np.array
+    :param theta: np.array
     :return:
     """
     x = radius * np.cos(phi) * np.sin(theta)
     y = radius * np.sin(phi) * np.sin(theta)
     z = radius * np.cos(theta)
+    return x, y, z
+
+
+def cylindrical_to_cartesian(radius, phi, z):
+    """
+    converts cylindrical coordinates to cartesian
+
+    :param radius: : np.array
+    :param phi: np.array
+    :param z: np.array
+    :return:
+    """
+    x = radius * np.cos(phi)
+    y = radius * np.sin(phi)
     return x, y, z
