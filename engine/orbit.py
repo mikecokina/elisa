@@ -36,6 +36,10 @@ class Orbit(object):
 
     @property
     def periastron_phase(self):
+        """
+        photometric phase of periastron
+        :return:
+        """
         return self._perastron_phase
 
     @property

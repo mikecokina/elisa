@@ -92,18 +92,8 @@ class BinarySystem(System):
         # orbit initialisation
         self.init_orbit()
 
-        # test if parameters of components staisfy reality
-        # circular and synchronous orbit
-        if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
-            lp = self.libration_potentials()
-            self._primary_filling_factor = (lp[1] - self.primary.surface_potential) / (lp[1] - lp[2])
-            self._secondary_filling_factor = (lp[1] - self.secondary.surface_potential) / (lp[1] - lp[2])
-        # self._morphology = self._estimate_morphology()
-
-        else:
-            self._primary_filling_factor, self._secondary_filling_factor = None, None
-            # todo: add morphology type from _estimate_morphology,
-            # it is mean, also add this possibility to esmitate morphology
+        # binary star morphology estimation
+        self._morphology = self._estimate_morphology()
 
         # compute and assing to all radii values to both components
 
@@ -151,8 +141,15 @@ class BinarySystem(System):
         return serialized_kwargs
 
     def _estimate_morphology(self):
-
+        """
+        Setup binary star class property `morphology`
+        :return:
+        """
         if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
+            lp = self.libration_potentials()
+            self._primary_filling_factor = (lp[1] - self.primary.surface_potential) / (lp[1] - lp[2])
+            self._secondary_filling_factor = (lp[1] - self.secondary.surface_potential) / (lp[1] - lp[2])
+
             if ((1 > self.secondary_filling_factor > 0) or (1 > self.primary_filling_factor > 0)) and \
                     (self.primary_filling_factor - self.secondary_filling_factor > 1e-8):
                 raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
@@ -172,7 +169,13 @@ class BinarySystem(System):
                 raise ValueError("Non-Physical system: potential of components is to low.")
 
         else:
-            primary_critical_potential = None
+            self._primary_filling_factor, self._secondary_filling_factor = None, None
+            print("{0:0.30f}".format(self.orbit.periastron_phase))
+
+            # phase = 0
+            # pc = bs.critical_potential(component="primary", phase=phase)
+            # sc = bs.critical_potential(component="secondary", phase=phase)
+            # primary_critical_potential = None
             # todo: check also whether forward radii are not in overlap (in periastron)
 
     def init_orbit(self):
