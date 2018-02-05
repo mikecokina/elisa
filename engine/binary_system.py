@@ -31,6 +31,7 @@ from engine import utils
 from engine import graphics
 from engine import units as U
 import scipy
+from scipy.spatial import Delaunay
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -826,7 +827,7 @@ class BinarySystem(System):
 
     def mesh_detached(self, component, phase, alpha=3):
         """
-        creates surface mesh of given binary star component
+        creates surface mesh of given binary star component in case of detached (semi-detached) system
 
         :param component: str - `primary` or `secondary`
         :param phase: np.float - (0, 1) photometric phase at which surface is calculated, irrelevant in case e=0
@@ -836,10 +837,8 @@ class BinarySystem(System):
                                                                       ...
                                                                      [xN yN zN]])
         """
-        # alpha = c.FULL_ARC * alpha / 360
-
         if alpha > 90:
-            raise ValueError("Invalid value of alpha paramter. Use at least 90")
+            raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
         alpha = np.radians(alpha)
         scipy_solver_init_value = np.array([1. / 10000.])
@@ -852,7 +851,8 @@ class BinarySystem(System):
         elif component == 'secondary':
             fn = self.potential_secondary_fn
         else:
-            raise ValueError('Invalid value of `component` argument: `{}`. Expecting `primary` or `secondary`.').format(component)
+            raise ValueError('Invalid value of `component` argument: `{}`. Expecting `primary` or `secondary`.'
+                             ).format(component)
 
         # calculating points on equator
         num = int(c.PI // alpha)
@@ -909,6 +909,10 @@ class BinarySystem(System):
         return points
 
     def calculate_neck_position(self):
+        """
+        function calculates x-coordinate of the `neck` (the narrowest place) of an over-contact system
+        :return: np.float (0.1)
+        """
         components_distance = 1.0
         components = ['primary', 'secondary']
         points_primary, points_secondary = [], []
@@ -956,8 +960,21 @@ class BinarySystem(System):
 
         return neck_position
 
-    def mesh_contact(self, component, alpha=3):
-        alpha = c.FULL_ARC * alpha / 360
+    def mesh_over_contact(self, component, alpha=3):
+        """
+        creates surface mesh of given binary star component in case of over-contact system
+
+        :param component: str - `primary` or `secondary`
+        :param alpha: np.float - discretization factor, mean angular distance of vertices, use < 90
+        :return: numpy.array - set of vertices in shape numpy.array([[x1 y1 z1],
+                                                                     [x2 y2 z2],
+                                                                      ...
+                                                                     [xN yN zN]])
+        """
+        if alpha > 90:
+            raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
+
+        alpha = np.radians(alpha)
         scipy_solver_init_value = np.array([1 / 10000])
 
         # calculating distance between components
@@ -1082,13 +1099,27 @@ class BinarySystem(System):
         phi_n = np.array(phi_n)
         z_n, y_n, x_n = utils.cylindrical_to_cartesian(r_n, phi_n, z_n)
 
-        x = np.concatenate((x_eq,  x_eq[:-1], x_meridian,  x_meridian, x_meridian2,  x_meridian2,  x_meridian2,  x_meridian2, x_q,  x_q,  x_q,  x_q, x_eqn,  x_eqn, x_n,  x_n,  x_n,  x_n))
-        y = np.concatenate((y_eq, -y_eq[:-1], y_meridian,  y_meridian, y_meridian2,  y_meridian2, -y_meridian2, -y_meridian2, y_q, -y_q,  y_q, -y_q, y_eqn, -y_eqn, y_n, -y_n, -y_n,  y_n))
-        z = np.concatenate((z_eq,  z_eq[:-1], z_meridian, -z_meridian, z_meridian2, -z_meridian2,  z_meridian2, -z_meridian2, z_q,  z_q, -z_q, -z_q, z_eqn, -z_eqn, z_n,  z_n, -z_n, -z_n))
+        x = np.concatenate((x_eq,  x_eq[:-1], x_meridian,  x_meridian, x_meridian2,  x_meridian2,  x_meridian2,
+                            x_meridian2, x_q,  x_q,  x_q,  x_q, x_eqn,  x_eqn, x_n,  x_n,  x_n,  x_n))
+        y = np.concatenate((y_eq, -y_eq[:-1], y_meridian,  y_meridian, y_meridian2,  y_meridian2, -y_meridian2,
+                            -y_meridian2, y_q, -y_q,  y_q, -y_q, y_eqn, -y_eqn, y_n, -y_n, -y_n,  y_n))
+        z = np.concatenate((z_eq,  z_eq[:-1], z_meridian, -z_meridian, z_meridian2, -z_meridian2,  z_meridian2,
+                            -z_meridian2, z_q,  z_q, -z_q, -z_q, z_eqn, -z_eqn, z_n,  z_n, -z_n, -z_n))
         x = -x + components_distance if component == 'secondary' else x
         points = np.column_stack((x, y, z))
 
         return points
+
+    def detached_system_surface(self, vertices):
+        """
+        calculates surface faces from the given component's vertices
+
+        :param vertices: numpy.array (see output of BinarySystem.mesh_detached() or BinarySystem.mesh_over_contact()
+        :return:
+        """
+        triangulation = Delaunay(vertices)
+        triangles_indices = triangulation.convex_hull
+        return triangles_indices
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -1164,8 +1195,6 @@ class BinarySystem(System):
             KWARGS = ['phase', 'components_to_plot', 'alpha1', 'alpha2']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
-            is_detached = True  # this can be finished after phenomenology of the system in __init__ is finished
-
             method_to_call = graphics.binary_mesh
 
             if 'phase' not in kwargs:
@@ -1176,20 +1205,53 @@ class BinarySystem(System):
             if kwargs['components_to_plot'] in ['primary', 'both']:
                 if 'alpha1' not in kwargs:
                     kwargs['alpha1'] = 5
-                if is_detached:
+                if self._morphology != 'over-contact':
                     kwargs['points_primary'] = self.mesh_detached(component='primary', phase=kwargs['phase'],
                                                                   alpha=kwargs['alpha1'])
                 else:
-                    kwargs['points_primary'] = self.mesh_contact(component='primary', alpha=kwargs['alpha1'])
+                    kwargs['points_primary'] = self.mesh_over_contact(component='primary', alpha=kwargs['alpha1'])
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 if 'alpha2' not in kwargs:
                     kwargs['alpha2'] = 5
-                if is_detached:
+                if self._morphology != 'over-contact':
                     kwargs['points_secondary'] = self.mesh_detached(component='secondary', phase=kwargs['phase'],
                                                                     alpha=kwargs['alpha2'])
                 else:
-                    kwargs['points_secondary'] = self.mesh_contact(component='secondary', alpha=kwargs['alpha2'])
+                    kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
+
+        elif descriptor == 'surface':
+            KWARGS = ['phase', 'components_to_plot', 'alpha1', 'alpha2']
+            utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
+
+            method_to_call = graphics.binary_surface
+
+            if 'phase' not in kwargs:
+                kwargs['phase'] = 0
+            if 'components_to_plot' not in kwargs:
+                kwargs['components_to_plot'] = 'both'
+
+            if kwargs['components_to_plot'] in ['primary', 'both']:
+                if 'alpha1' not in kwargs:
+                    kwargs['alpha1'] = 5
+                if self._morphology != 'over-contact':
+                    kwargs['points_primary'] = self.mesh_detached(component='primary', phase=kwargs['phase'],
+                                                              alpha=kwargs['alpha1'])
+                    kwargs['primary_triangles'] = self.detached_system_surface(vertices=kwargs['points_primary'])
+                else:
+                    kwargs['points_primary'] = self.mesh_over_contact(component='primary', alpha=kwargs['alpha1'])
+                    kwargs['primary_triangles'] = None
+
+            if kwargs['components_to_plot'] in ['secondary', 'both']:
+                if 'alpha2' not in kwargs:
+                    kwargs['alpha2'] = 5
+                if self._morphology != 'over-contact':
+                    kwargs['points_secondary'] = self.mesh_detached(component='secondary', phase=kwargs['phase'],
+                                                                alpha=kwargs['alpha2'])
+                    kwargs['secondary_triangles'] = self.detached_system_surface(vertices=kwargs['points_secondary'])
+                else:
+                    kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
+                    kwargs['secondary_triangles'] = None
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

@@ -188,3 +188,63 @@ def binary_mesh(**kwargs):
     ax.set_zlim3d(-D, D)
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
+
+
+def single_star_surface(**kwargs):
+    """
+    Plot function for descriptor `surface`, plots surface of star in SingleStar system
+    :param kwargs:
+    :return:
+    """
+    fig = plt.figure(figsize=(7, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_aspect('equal')
+
+    ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2], triangles=kwargs['triangles'])
+    unit = str(kwargs['axis_unit'])
+
+    ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
+    ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
+    ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
+
+    x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_zlabel(z_label)
+
+    plt.show()
+
+
+def binary_surface(**kwargs):
+    fig = plt.figure(figsize=(7, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_aspect('equal')
+
+    if kwargs['components_to_plot'] in ['primary', 'both']:
+        ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1], kwargs['points_primary'][:, 2],
+                        triangles=kwargs['primary_triangles'])
+    if kwargs['components_to_plot'] in ['secondary', 'both']:
+        ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
+                        kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'])
+
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+
+    x_min, x_max = 0, 0
+    if kwargs['components_to_plot'] == 'both':
+        x_min = np.min(kwargs['points_primary'][:, 0])
+        x_max = np.max(kwargs['points_secondary'][:, 0])
+    elif kwargs['components_to_plot'] == 'primary':
+        x_min = np.min(kwargs['points_primary'][:, 0])
+        x_max = np.max(kwargs['points_primary'][:, 0])
+    elif kwargs['components_to_plot'] == 'secondary':
+        x_min = np.min(kwargs['points_secondary'][:, 0])
+        x_max = np.max(kwargs['points_secondary'][:, 0])
+
+    D = (x_max - x_min) / 2
+    ax.set_xlim3d(x_min, x_max)
+    ax.set_ylim3d(-D, D)
+    ax.set_zlim3d(-D, D)
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
+    plt.show()
