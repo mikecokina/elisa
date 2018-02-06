@@ -221,11 +221,13 @@ def binary_surface(**kwargs):
     ax.set_aspect('equal')
 
     if kwargs['components_to_plot'] in ['primary', 'both']:
-        ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1], kwargs['points_primary'][:, 2],
-                        triangles=kwargs['primary_triangles'])
+        primary_plot = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
+                                       kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
+                                       antialiased=True, shade=True)
     if kwargs['components_to_plot'] in ['secondary', 'both']:
-        ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
-                        kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'])
+        secondary_plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
+                                         kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
+                                         antialiased=True, shade=True)
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')

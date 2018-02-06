@@ -472,7 +472,7 @@ class BinarySystem(System):
 
     def potential_value_primary(self, radius, *args):
         """
-        calculates modified Kopal potential from point of view of primary component
+        calculates modified kopal potential from point of view of primary component
 
         :param radius: (np.)float; spherical variable
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimuthal angle, polar angle)
@@ -491,7 +491,7 @@ class BinarySystem(System):
 
     def potential_value_primary_cylindrical(self, radius, *args):
         """
-        calculates modified Kopal potential from point of view of primary component in cylindrical coordinates
+        calculates modified kopal potential from point of view of primary component in cylindrical coordinates
         r_n, phi_n, z_n, where z_n = x and heads along z axis, this function is intended for generation of ``necks``
         of W UMa systems, therefore components distance = 1 an synchronicity = 1 is assumed
 
@@ -511,7 +511,7 @@ class BinarySystem(System):
 
     def potential_value_secondary(self, radius, *args):
         """
-        calculates modified Kopal potential from point of view of secondary component
+        calculates modified kopal potential from point of view of secondary component
 
         :param radius: np.float; spherical variable
         :param args: (np.float, np.float, np.float); (component distance, azimutal angle, polar angle)
@@ -534,7 +534,7 @@ class BinarySystem(System):
 
     def potential_value_secondary_cylindrical(self, radius, *args):
         """
-        calculates modified Kopal potential from point of view of secondary component in cylindrical coordinates
+        calculates modified kopal potential from point of view of secondary component in cylindrical coordinates
         r_n, phi_n, z_n, where z_n = x and heads along z axis, this function is intended for generation of ``necks``
         of W UMa systems, therefore components distance = 1 an synchronicity = 1 is assumed
 
@@ -1112,14 +1112,69 @@ class BinarySystem(System):
 
     def detached_system_surface(self, vertices):
         """
-        calculates surface faces from the given component's vertices
+        calculates surface faces from the given component's vertices in case of detached or semi-contact system
 
         :param vertices: numpy.array (see output of BinarySystem.mesh_detached() or BinarySystem.mesh_over_contact()
-        :return:
+        :return: np.array - N x 3 array of vertice indices
         """
         triangulation = Delaunay(vertices)
         triangles_indices = triangulation.convex_hull
         return triangles_indices
+
+    def over_contact_surface(self, vertices):
+        """
+        calculates surface faces from the given component's vertices in case of over-contact system
+
+        :param vertices: numpy.array (see output of BinarySystem.mesh_detached() or BinarySystem.mesh_over_contact()
+        :return: np.array - N x 3 array of vertice indices
+        """
+        component = 'primary' if min(vertices[:, 0]) < 0 else 'secondary'
+        neck_x = self.calculate_neck_position()
+
+        # projection of component's far side surface into ``sphere`` with radius r1
+        r1 = 10  # radius of the sphere and cylinder
+        projected_points = []
+        if component == 'primary':
+            k = r1 / (neck_x + 0.01)
+            for point in vertices:
+                if point[0] <= 0:
+                    projected_points.append(r1 * point / np.linalg.norm(point))
+                else:
+                    r = (r1**2 - (k * point[0])**2)**0.5
+                    length = np.linalg.norm(point[1:])
+                    new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
+                    projected_points.append(new_point)
+        else:
+            for point in vertices:
+                if point[0] >= 1:
+                    point_copy = np.array(point)
+                    point_copy[0] -= 1
+                    new_val = r1 * point_copy / np.linalg.norm(point_copy)
+                    new_val[0] += 1
+                    projected_points.append(new_val)
+                else:
+                    k = r1 / ((1 - neck_x) + 0.01)
+                    r = (r1**2 - (k * (1 - point[0]))**2)**0.5
+                    length = np.linalg.norm(point[1:])
+                    new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
+                    projected_points.append(new_point)
+
+        projected_points = np.array(projected_points)
+
+        # triangulation of this now convex object
+        triangulation = Delaunay(projected_points)
+        triangles_indices = triangulation.convex_hull
+
+        # removal of faces on top of the neck
+        new_triangles_indices = []
+        for indices in triangles_indices:
+            min_x = min([vertices[ii, 0] for ii in indices])
+            max_x = max([vertices[ii, 0] for ii in indices])
+            if min_x != max_x:
+                new_triangles_indices.append(indices)
+            elif not 0 < min_x < 1:
+                new_triangles_indices.append(indices)
+        return np.array(new_triangles_indices)
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -1240,7 +1295,7 @@ class BinarySystem(System):
                     kwargs['primary_triangles'] = self.detached_system_surface(vertices=kwargs['points_primary'])
                 else:
                     kwargs['points_primary'] = self.mesh_over_contact(component='primary', alpha=kwargs['alpha1'])
-                    kwargs['primary_triangles'] = None
+                    kwargs['primary_triangles'] = self.over_contact_surface(vertices=kwargs['points_primary'])
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 if 'alpha2' not in kwargs:
@@ -1251,7 +1306,7 @@ class BinarySystem(System):
                     kwargs['secondary_triangles'] = self.detached_system_surface(vertices=kwargs['points_secondary'])
                 else:
                     kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
-                    kwargs['secondary_triangles'] = None
+                    kwargs['secondary_triangles'] = self.over_contact_surface(vertices=kwargs['points_secondary'])
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
