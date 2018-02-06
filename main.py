@@ -9,8 +9,8 @@ from engine import utils
 from engine import const as c
 
 
-primary = Star(mass=1.5, surface_potential=3.28409047048, synchronicity=1.0)
-secondary = Star(mass=1.0, surface_potential=3.28409047048, synchronicity=1.0)
+primary = Star(mass=1.5, surface_potential=3.15, synchronicity=1.0)
+secondary = Star(mass=1.0, surface_potential=3.15, synchronicity=1.0)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -40,4 +40,5 @@ print(bs.morphology)
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference="primary_component")
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
-bs.plot(descriptor='mesh', phase=0, components_to_plot='both')
+# bs.plot(descriptor='mesh', phase=0, components_to_plot='both')
+bs.plot(descriptor='surface', phase=0, components_to_plot='both')

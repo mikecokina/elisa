@@ -1126,7 +1126,8 @@ class BinarySystem(System):
 
         return points
 
-    def detached_system_surface(self, vertices):
+    @staticmethod
+    def detached_system_surface(vertices):
         """
         calculates surface faces from the given component's vertices in case of detached or semi-contact system
 
@@ -1307,7 +1308,7 @@ class BinarySystem(System):
                     kwargs['alpha1'] = 5
                 if self._morphology != 'over-contact':
                     kwargs['points_primary'] = self.mesh_detached(component='primary', phase=kwargs['phase'],
-                                                              alpha=kwargs['alpha1'])
+                                                                  alpha=kwargs['alpha1'])
                     kwargs['primary_triangles'] = self.detached_system_surface(vertices=kwargs['points_primary'])
                 else:
                     kwargs['points_primary'] = self.mesh_over_contact(component='primary', alpha=kwargs['alpha1'])
@@ -1318,7 +1319,7 @@ class BinarySystem(System):
                     kwargs['alpha2'] = 5
                 if self._morphology != 'over-contact':
                     kwargs['points_secondary'] = self.mesh_detached(component='secondary', phase=kwargs['phase'],
-                                                                alpha=kwargs['alpha2'])
+                                                                    alpha=kwargs['alpha2'])
                     kwargs['secondary_triangles'] = self.detached_system_surface(vertices=kwargs['points_secondary'])
                 else:
                     kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
