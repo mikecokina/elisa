@@ -146,13 +146,15 @@ class BinarySystem(System):
         Setup binary star class property `morphology`
         :return:
         """
+        PRECISSION = 1e-8
+
         if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
             lp = self.libration_potentials()
             self._primary_filling_factor = (lp[1] - self.primary.surface_potential) / (lp[1] - lp[2])
             self._secondary_filling_factor = (lp[1] - self.secondary.surface_potential) / (lp[1] - lp[2])
 
             if ((1 > self.secondary_filling_factor > 0) or (1 > self.primary_filling_factor > 0)) and \
-                    (self.primary_filling_factor - self.secondary_filling_factor > 1e-8):
+                    (self.primary_filling_factor - self.secondary_filling_factor > PRECISSION):
                 raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
             if self.primary_filling_factor > 1 or self.secondary_filling_factor > 1:
                 raise ValueError("Non-Physical system: primary_filling_factor or "
@@ -161,8 +163,8 @@ class BinarySystem(System):
 
             if self.primary_filling_factor < 0 and self.secondary_filling_factor < 0:
                 return "detached"
-            elif (abs(self.primary_filling_factor) < 1e-8 and self.secondary_filling_factor < 0) or (
-                            self.primary_filling_factor < 0 and abs(self.secondary_filling_factor) < 1e-8):
+            elif (abs(self.primary_filling_factor) < PRECISSION and self.secondary_filling_factor < 0) or (
+                            self.primary_filling_factor < 0 and abs(self.secondary_filling_factor) < PRECISSION):
                 return "semi-detached"
             elif 1 >= self.primary_filling_factor > 0:
                 return "over-contact"
@@ -171,13 +173,22 @@ class BinarySystem(System):
 
         else:
             self._primary_filling_factor, self._secondary_filling_factor = None, None
-            print("{0:0.30f}".format(self.orbit.periastron_phase))
+            print(self.orbit.orbital_motion(phase=self.orbit.periastron_phase)[0][0])
+            primary_critical_potential = self.critical_potential(component="primary",
+                                                                 phase=self.orbit.periastron_phase)
+            secondary_critical_potential = self.critical_potential(component="secondary",
+                                                                   phase=self.orbit.periastron_phase)
 
-            # phase = 0
-            # pc = bs.critical_potential(component="primary", phase=phase)
-            # sc = bs.critical_potential(component="secondary", phase=phase)
-            # primary_critical_potential = None
-            # todo: check also whether forward radii are not in overlap (in periastron)
+            if abs(self.primary.surface_potential - primary_critical_potential) < PRECISSION and \
+               abs(self.secondary.surface_potential - secondary_critical_potential) < PRECISSION:
+                return "double-contact"
+
+            elif self.primary.surface_potential > primary_critical_potential and \
+                 self.secondary.surface_potential > secondary_critical_potential:
+                return "detached"
+
+            else:
+                raise ValueError("Non-Physical system. Change stellar parameters.")
 
     def init_orbit(self):
         """
@@ -975,7 +986,7 @@ class BinarySystem(System):
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
         alpha = np.radians(alpha)
-        scipy_solver_init_value = np.array([1 / 10000])
+        scipy_solver_init_value = np.array([1. / 10000.])
 
         # calculating distance between components
         components_distance = self.orbit.orbital_motion(phase=0)[0][0]
@@ -987,14 +998,14 @@ class BinarySystem(System):
             fn = self.potential_secondary_fn
             fn_cylindrical = self.potential_secondary_cylindrical_fn
         else:
-            raise ValueError('Invalid value of `component` argument: `{}`. Expecting `primary` or `secondary`.')\
-                .format(component)
+            raise ValueError('Invalid value of `component` argument: `{}`. '
+                             'Expecting `primary` or `secondary`.'.format(component))
 
         # calculating points on farside equator
         num = int(c.HALF_PI // alpha)
         r_eq = []
         phi_eq = np.linspace(c.HALF_PI, c.PI, num=num + 1)
-        theta_eq = np.array([c.HALF_PI for xx in phi_eq])
+        theta_eq = np.array([c.HALF_PI for _ in phi_eq])
         for phi in phi_eq:
             args = (components_distance, phi, c.HALF_PI)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
@@ -1006,7 +1017,7 @@ class BinarySystem(System):
         # calculating points on phi = pi meridian
         r_meridian = []
         num = int(c.HALF_PI // alpha)
-        phi_meridian = np.array([c.PI for xx in range(num)])
+        phi_meridian = np.array([c.PI for _ in range(num)])
         theta_meridian = np.linspace(c.HALF_PI - alpha, 0, num=num)
         for ii, theta in enumerate(theta_meridian):
             args = (components_distance, phi_meridian[ii], theta)
@@ -1035,7 +1046,7 @@ class BinarySystem(System):
         r_q, phi_q, theta_q = [], [], []
         for theta in thetas:
             alpha_corrected = alpha / np.sin(theta)
-            num = int((c.HALF_PI) // alpha_corrected)
+            num = int(c.HALF_PI // alpha_corrected)
             alpha_corrected = c.HALF_PI / (num + 1)
             phi_q_add = [c.HALF_PI + alpha_corrected * ii for ii in range(1, num + 1)]
             phi_q += phi_q_add
