@@ -183,8 +183,8 @@ class BinarySystem(System):
                abs(self.secondary.surface_potential - secondary_critical_potential) < PRECISSION:
                 return "double-contact"
 
-            elif self.primary.surface_potential > primary_critical_potential and \
-                 self.secondary.surface_potential > secondary_critical_potential:
+            elif self.primary.surface_potential > primary_critical_potential and (
+                        self.secondary.surface_potential > secondary_critical_potential):
                 return "detached"
 
             else:
