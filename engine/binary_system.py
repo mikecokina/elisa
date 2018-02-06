@@ -173,7 +173,6 @@ class BinarySystem(System):
 
         else:
             self._primary_filling_factor, self._secondary_filling_factor = None, None
-            print(self.orbit.orbital_motion(phase=self.orbit.periastron_phase)[0][0])
             primary_critical_potential = self.critical_potential(component="primary",
                                                                  phase=self.orbit.periastron_phase)
             secondary_critical_potential = self.critical_potential(component="secondary",

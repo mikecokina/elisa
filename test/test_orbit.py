@@ -11,6 +11,15 @@ class TestOrbit(unittest.TestCase):
         self.params_combination = [{"argument_of_periastron": np.pi / 2.0, "period": 0.9,
                                     "eccentricity": 0.0, "inclination": c.HALF_PI},
 
+                                   {"argument_of_periastron": np.pi / 2.0, "period": 0.9,
+                                    "eccentricity": 0.8, "inclination": c.HALF_PI},
+
+                                   {"argument_of_periastron": np.pi / 2.0, "period": 0.9,
+                                    "eccentricity": 0.8, "inclination": np.radians(89)},
+
+                                   {"argument_of_periastron": np.pi / 2.0, "period": 0.9,
+                                    "eccentricity": 0.8, "inclination": np.radians(91)},
+
                                    {"argument_of_periastron": 315 * u.deg, "period": 0.8,
                                     "eccentricity": 0.3, "inclination": c.HALF_PI},
 
@@ -23,7 +32,7 @@ class TestOrbit(unittest.TestCase):
 
     def test_periastron_distance(self):
 
-        expected_distances = [1.0, 0.7, 0.4, 0.8]
+        expected_distances = [1.0, 0.2, 0.2, 0.2, 0.7, 0.4, 0.8]
         obtained_distances = []
         for i, combo in enumerate(self.params_combination):
             o = Orbit(period=combo["period"], inclination=combo["inclination"],
