@@ -30,6 +30,7 @@ class Star(Body):
         self._polar_gravity_acceleration = None
         self._polar_log_g = None
         self._equatorial_radius = None
+        self._critical_surface_potential = None
 
         # values of properties
         for kwarg in Star.KWARGS:
@@ -37,6 +38,14 @@ class Star(Body):
                 self._logger.debug("Setting property {} "
                                    "of class instance {} to {}".format(kwarg, Star.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
+
+    @property
+    def critical_surface_potential(self):
+        return self._critical_surface_potential
+
+    @critical_surface_potential.setter
+    def critical_surface_potential(self, potential):
+        self._critical_surface_potential = potential
 
     @property
     def surface_potential(self):

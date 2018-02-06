@@ -148,6 +148,16 @@ class BinarySystem(System):
         """
         PRECISSION = 1e-8
 
+        # fixme: probably should be better to create a new function like setup_critical_potentials()
+
+        primary_critical_potential = self.critical_potential(component="primary",
+                                                             phase=self.orbit.periastron_phase)
+        secondary_critical_potential = self.critical_potential(component="secondary",
+                                                               phase=self.orbit.periastron_phase)
+
+        self.primary.critical_surface_potential = primary_critical_potential
+        self.secondary.critical_surface_potential = secondary_critical_potential
+
         if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
             lp = self.libration_potentials()
             self._primary_filling_factor = (lp[1] - self.primary.surface_potential) / (lp[1] - lp[2])
@@ -161,11 +171,11 @@ class BinarySystem(System):
                                  "secondary_filling_factor is greater then 1. Filling factor is obtained as following:"
                                  "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
-            if self.primary_filling_factor < 0 and self.secondary_filling_factor < 0:
-                return "detached"
-            elif (abs(self.primary_filling_factor) < PRECISSION and self.secondary_filling_factor < 0) or (
+            if (abs(self.primary_filling_factor) < PRECISSION and self.secondary_filling_factor < 0) or (
                             self.primary_filling_factor < 0 and abs(self.secondary_filling_factor) < PRECISSION):
                 return "semi-detached"
+            elif self.primary_filling_factor < 0 and self.secondary_filling_factor < 0:
+                return "detached"
             elif 1 >= self.primary_filling_factor > 0:
                 return "over-contact"
             elif self.primary_filling_factor > 1 or self.secondary_filling_factor > 1:
@@ -173,11 +183,6 @@ class BinarySystem(System):
 
         else:
             self._primary_filling_factor, self._secondary_filling_factor = None, None
-            primary_critical_potential = self.critical_potential(component="primary",
-                                                                 phase=self.orbit.periastron_phase)
-            secondary_critical_potential = self.critical_potential(component="secondary",
-                                                                   phase=self.orbit.periastron_phase)
-
             if abs(self.primary.surface_potential - primary_critical_potential) < PRECISSION and \
                abs(self.secondary.surface_potential - secondary_critical_potential) < PRECISSION:
                 return "double-contact"
@@ -923,6 +928,7 @@ class BinarySystem(System):
         function calculates x-coordinate of the `neck` (the narrowest place) of an over-contact system
         :return: np.float (0.1)
         """
+        neck_position = None
         components_distance = 1.0
         components = ['primary', 'secondary']
         points_primary, points_secondary = [], []
