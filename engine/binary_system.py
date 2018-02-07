@@ -1149,7 +1149,7 @@ class BinarySystem(System):
         neck_x = self.calculate_neck_position()
 
         # projection of component's far side surface into ``sphere`` with radius r1
-        r1 = 10  # radius of the sphere and cylinder
+        r1 = 0.5  # radius of the sphere and cylinder
         projected_points = []
         if component == 'primary':
             k = r1 / (neck_x + 0.01)
@@ -1191,6 +1191,7 @@ class BinarySystem(System):
                 new_triangles_indices.append(indices)
             elif not 0 < min_x < 1:
                 new_triangles_indices.append(indices)
+
         return np.array(new_triangles_indices)
 
     def plot(self, descriptor=None, **kwargs):
