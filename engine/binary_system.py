@@ -1187,7 +1187,7 @@ class BinarySystem(System):
         for indices in triangles_indices:
             min_x = min([vertices[ii, 0] for ii in indices])
             max_x = max([vertices[ii, 0] for ii in indices])
-            if min_x != max_x:
+            if abs(max_x - min_x) > 1e-8:
                 new_triangles_indices.append(indices)
             elif not 0 < min_x < 1:
                 new_triangles_indices.append(indices)
