@@ -846,8 +846,8 @@ class BinarySystem(System):
 
         :param component: str - `primary` or `secondary`
         :param phase: np.float - (0, 1) photometric phase at which surface is calculated, irrelevant in case e=0
-        :param alpha: np.float - discretization factor, mean angular distance of vertices
-        :return: numpy.array - set of vertices in shape numpy.array([[x1 y1 z1],
+        :param alpha: np.float - discretization factor, mean angular distance of points
+        :return: numpy.array - set of points in shape numpy.array([[x1 y1 z1],
                                                                      [x2 y2 z2],
                                                                       ...
                                                                      [xN yN zN]])
@@ -981,8 +981,8 @@ class BinarySystem(System):
         creates surface mesh of given binary star component in case of over-contact system
 
         :param component: str - `primary` or `secondary`
-        :param alpha: np.float - discretization factor, mean angular distance of vertices, use < 90
-        :return: numpy.array - set of vertices in shape numpy.array([[x1 y1 z1],
+        :param alpha: np.float - discretization factor, mean angular distance of points, use < 90
+        :return: numpy.array - set of points in shape numpy.array([[x1 y1 z1],
                                                                      [x2 y2 z2],
                                                                       ...
                                                                      [xN yN zN]])
@@ -1127,25 +1127,25 @@ class BinarySystem(System):
         return points
 
     @staticmethod
-    def detached_system_surface(vertices):
+    def detached_system_surface(points):
         """
-        calculates surface faces from the given component's vertices in case of detached or semi-contact system
+        calculates surface faces from the given component's points in case of detached or semi-contact system
 
-        :param vertices: numpy.array (see output of BinarySystem.mesh_detached() or BinarySystem.mesh_over_contact()
+        :param points: numpy.array (see output of BinarySystem.mesh_detached() or BinarySystem.mesh_over_contact()
         :return: np.array - N x 3 array of vertice indices
         """
-        triangulation = Delaunay(vertices)
+        triangulation = Delaunay(points)
         triangles_indices = triangulation.convex_hull
         return triangles_indices
 
-    def over_contact_surface(self, vertices):
+    def over_contact_surface(self, points):
         """
-        calculates surface faces from the given component's vertices in case of over-contact system
+        calculates surface faces from the given component's points in case of over-contact system
 
-        :param vertices: numpy.array (see output of BinarySystem.mesh_detached() or BinarySystem.mesh_over_contact()
+        :param points: numpy.array (see output of BinarySystem.mesh_detached() or BinarySystem.mesh_over_contact()
         :return: np.array - N x 3 array of vertice indices
         """
-        component = 'primary' if min(vertices[:, 0]) < 0 else 'secondary'
+        component = 'primary' if min(points[:, 0]) < 0 else 'secondary'
         neck_x = self.calculate_neck_position()
 
         # projection of component's far side surface into ``sphere`` with radius r1
@@ -1153,7 +1153,7 @@ class BinarySystem(System):
         projected_points = []
         if component == 'primary':
             k = r1 / (neck_x + 0.01)
-            for point in vertices:
+            for point in points:
                 if point[0] <= 0:
                     projected_points.append(r1 * point / np.linalg.norm(point))
                 else:
@@ -1162,7 +1162,7 @@ class BinarySystem(System):
                     new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
                     projected_points.append(new_point)
         else:
-            for point in vertices:
+            for point in points:
                 if point[0] >= 1:
                     point_copy = np.array(point)
                     point_copy[0] -= 1
@@ -1185,8 +1185,8 @@ class BinarySystem(System):
         # removal of faces on top of the neck
         new_triangles_indices = []
         for indices in triangles_indices:
-            min_x = min([vertices[ii, 0] for ii in indices])
-            max_x = max([vertices[ii, 0] for ii in indices])
+            min_x = min([points[ii, 0] for ii in indices])
+            max_x = max([points[ii, 0] for ii in indices])
             if abs(max_x - min_x) > 1e-8:
                 new_triangles_indices.append(indices)
             elif not 0 < min_x < 1:
@@ -1310,10 +1310,10 @@ class BinarySystem(System):
                 if self._morphology != 'over-contact':
                     kwargs['points_primary'] = self.mesh_detached(component='primary', phase=kwargs['phase'],
                                                                   alpha=kwargs['alpha1'])
-                    kwargs['primary_triangles'] = self.detached_system_surface(vertices=kwargs['points_primary'])
+                    kwargs['primary_triangles'] = self.detached_system_surface(points=kwargs['points_primary'])
                 else:
                     kwargs['points_primary'] = self.mesh_over_contact(component='primary', alpha=kwargs['alpha1'])
-                    kwargs['primary_triangles'] = self.over_contact_surface(vertices=kwargs['points_primary'])
+                    kwargs['primary_triangles'] = self.over_contact_surface(points=kwargs['points_primary'])
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 if 'alpha2' not in kwargs:
@@ -1321,10 +1321,10 @@ class BinarySystem(System):
                 if self._morphology != 'over-contact':
                     kwargs['points_secondary'] = self.mesh_detached(component='secondary', phase=kwargs['phase'],
                                                                     alpha=kwargs['alpha2'])
-                    kwargs['secondary_triangles'] = self.detached_system_surface(vertices=kwargs['points_secondary'])
+                    kwargs['secondary_triangles'] = self.detached_system_surface(points=kwargs['points_secondary'])
                 else:
                     kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
-                    kwargs['secondary_triangles'] = self.over_contact_surface(vertices=kwargs['points_secondary'])
+                    kwargs['secondary_triangles'] = self.over_contact_surface(points=kwargs['points_secondary'])
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

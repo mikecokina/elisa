@@ -36,7 +36,7 @@ class Body(object, metaclass=ABCMeta):
         # initializing other parameters to None
         self._mass = None  # float64
         self._t_eff = None  # float64
-        self._vertices = None  # numpy.array of float64
+        self._points = None  # numpy.array of float64
         self._faces = None  # dict
         self._normals = None  # dict
         self._temperatures = None  # dict
@@ -129,46 +129,46 @@ class Body(object, metaclass=ABCMeta):
             raise TypeError('Value of `t_eff` is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def vertices(self):
+    def points(self):
         """
-        vertices getter
-        usage: xy.vertices
+        points getter
+        usage: xy.points
         returns dictionary of points that forms surface of Body
 
         :return: dict
         """
-        return self._vertices
+        return self._points
 
-    @vertices.setter
-    def vertices(self, vertices):
+    @points.setter
+    def points(self, points):
         """
-        vertices setter
-        usage: xy.vertices = new_vertices
+        points setter
+        usage: xy.points = new_points
         setting numpy array of points that form surface of Body
         input dictionary has to be in shape:
-        vertices = numpy.array([[x1 y1 z1],
+        points = numpy.array([[x1 y1 z1],
                                 [x2 y2 z2],
                                 ...
                                 [xN yN zN]])
         where xi, yi, zi are cartesian coordinates of vertice i
 
-        :param vertices: numpy.array
+        :param points: numpy.array
         xi, yi, zi: float64
         """
-        self._vertices = np.array(vertices)
+        self._points = np.array(points)
 
     @property
     def faces(self):
         """
         returns dictionary of triangles that will create surface of body
-        triangles are stored as list of indices of vertices
+        triangles are stored as list of indices of points
         usage: xy.faces
 
-        :return: dict
-        shape: vertices = {face_ID_1: np.array([vertice_index_k, vertice_index_l, vertice_index_m]),
-                           face_ID_2: np.array([...]),
-                           ...
-                           face_ID_n: np.array([...])}
+        :return: numpy.array
+        shape: points = numpy.array([[vertice_index_k, vertice_index_l, vertice_index_m]),
+                                  [...]),
+                                   ...
+                                  [...]])
         """
         return self._faces
 
@@ -178,66 +178,52 @@ class Body(object, metaclass=ABCMeta):
         faces setter
         usage: xy.faces = new_faces
         faces dictionary has to be in shape:
-        vertices = {face_ID_1: np.array([vertice_index_k, vertice_index_l, vertice_index_m]),
-                    face_ID_2: np.array([...]),
-                    ...
-                    face_ID_n: np.array([...])}
-        where face_ID_i is unique integer ID of face and
-        vertice_ID_j is unique integer ID of vertice that belongs to particular face
+        points = np.array([vertice_index_k, vertice_index_l, vertice_index_m],
+                          [...],
+                           ...
+                          [...]]
 
-        :param faces: dict
-               face_ID_i: uint32
-               vertice_ID_j: uint32
+        :param faces: numpy.array
         """
-        # self._faces = {np.uint32(xx): np.array([np.uint32(yy) for yy in faces[xx]]) for xx in faces}
         self._faces = faces
 
     @property
     def normals(self):
         """
-        returns dictionary containing keywords corresponding to keywords of faces dictionary
-        where keywords are the same unique integer IDs and normalised outward facing normals in numpy array
+        returns array containing normalised outward facing normals of corresponding faces with same index
         usage: xy.normals
 
-        :return: dict
-        shape: normals = {face_ID_1: np.array([normal_x1, normal_y1, normal_z1]),
-                          face_ID_2: np.array([normal_x2, normal_y2, normal_z2]),
-                          ...
-                          face_ID_n: np.array([normal_xn, normal_yn, normal_zn])}
+        :return: numpy.array
+        shape: normals = numpy_array([[normal_x1, normal_y1, normal_z1],
+                                      [normal_x2, normal_y2, normal_z2],
+                                       ...
+                                      [normal_xn, normal_yn, normal_zn]]
         """
         return self._normals
 
     @normals.setter
     def normals(self, normals):
         """
-        normals setter
+        setter for normalised outward facing normals of corresponding faces with same index
         usage: xy.normals = new_normals
-        input dictionary has to contain keywords corresponding with unique integer keywords of faces dictionary
-        and numpy.array of normalized outward pointing normal vectors
-        normals dictionary has to be in shape:
-        normals = {face_ID_1: np.array([normal_x1, normal_y1, normal_z1]),
-                   face_ID_2: np.array([normal_x2, normal_y2, normal_z2]),
-                   ...
-                   face_ID_n: np.array([normal_xn, normal_yn, normal_zn])}
-        where face_ID_i is unique integer ID of face and
-        [normal_x1, normal_y1, normal_z1] is normal vector
+        expected shape of normals matrix:
+        normals = numpy_array([[normal_x1, normal_y1, normal_z1],
+                               [normal_x2, normal_y2, normal_z2],
+                                       ...
+                               [normal_xn, normal_yn, normal_zn]]
 
-        :param normals: dict
-               face_ID_i: uint32
-               normal_xyzj: float64
+        :param normals: numpy.array
         """
-        # self._normals = {np.uint32(xx): np.array([np.uint32(yy) for yy in normals[xx]]) for xx in normals}
         self._normals = normals
 
     @property
     def temperatures(self):
         """
-        returns temperature dictionary where keywords are unique integer keywords of faces and values are effective
-        temperatures of faces
+        returns array of temeratures of corresponding faces
         usage: xy.temperatures
 
-        :return:dict
-        shape: {face_ID_1: t_eff1, ..., face_ID_n: t_effn}
+        :return:numpy.arrays
+        shape: numpy.array([t_eff1, ..., t_effn])
         """
         return self._temperatures
 
@@ -246,13 +232,11 @@ class Body(object, metaclass=ABCMeta):
         """
         temperatures setter
         usage: xy.temperatures = new_temperatures
-        input temperatures dictionary has to contain keywords corresponding with unique integer keywords of faces
-        dictionary and temperatures
-        :shape: {face_ID_1: t_eff1, ..., face_ID_n: t_effn}
+        setter for array of temeratures of corresponding faces in shape
+        :shape: numpy.array([t_eff1, ..., t_effn])
 
-        :param temperatures: dict
+        :param temperatures: numpy.array
         """
-        # self._temperatures = {np.uint32(xx): np.float32(xx) for xx in temperatures}
         self._temperatures = temperatures
 
     @property
@@ -379,6 +363,11 @@ class Body(object, metaclass=ABCMeta):
         :return: astropy.unit.quantity.Quantity
         """
         return U.ARC_UNIT
+
+    def calculate_normals(self):
+        normals = np.array([np.cross(self.points[xx[1]] - self.points[xx[0]], self.points[xx[2]]
+                                     - self.points[xx[0]]) for xx in self.faces])
+        return normals
 
     def get_info(self):
         pass

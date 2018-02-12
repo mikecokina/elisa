@@ -228,7 +228,8 @@ def binary_surface(**kwargs):
     if kwargs['components_to_plot'] in ['secondary', 'both']:
         secondary_plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
                                          kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
-                                         antialiased=True, shade=True)
+                                         antialiased=True, shade=False)
+        secondary_plot.set_edgecolor('black')
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')
