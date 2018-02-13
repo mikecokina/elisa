@@ -102,11 +102,30 @@ class BinarySystem(System):
         # compute spots
         self._spots = None
         if spots:
-            for spot_meta in spots:
-                self._add_spot(spot=Spot(**spot_meta))
+            self._spots = [Spot(**spot_meta) for spot_meta in spots]
+            self._evaluate_spots()
 
     def _add_spot(self, spot):
         self._spots = spot if isinstance(spot, Spot) and not self._spots else [self._spots]
+
+    def _remove_spot(self):
+        pass
+
+    def _evaluate_spots(self):
+        self._logger.info("Evaluating spots")
+        if not self._spots:
+            self._logger.info("No spots to evaluate. Skipping.")
+
+        wuma_components_separation = None
+        # in case of wuma system, get separation and make additional test of location of each point (if primary
+        # spot doesn't intersect with secondary, if does, then such spot will be skiped completly)
+        if self.morphology == "over-contact":
+            wuma_components_separation = self.calculate_neck_position()
+
+        for spot_instance in self._spots:
+            # lon -> phi, lat -> theta
+            lon, lat, diameter = spot_instance.longitude, spot_instance.latitude, spot_instance.angular_diameter
+
 
     def _params_validity_check(self, **kwargs):
 

@@ -7,7 +7,11 @@ from engine import utils
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 class Spot(object):
+    """
+    Spot data container
+    """
     KWARGS = ["longitude", "latitude", "angular_density", "angular_diameter", "temperature_factor"]
+    MANDATORY_KWARGS = ["longitude", "latitude", "angular_diameter", "temperature_factor"]
 
     def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.KWARGS, instance=Spot)
@@ -18,7 +22,15 @@ class Spot(object):
         self._angular_diameter = None
         self._temperature_factor = None
 
+        self._points = None
+
         self._logger = logging.getLogger(Spot.__name__)
+
+        self.check_mandatory_kwargs(kwargs)
+
+        for key in Spot.KWARGS:
+            set_val = kwargs.get(key) if key != "angular_density" else kwargs.get(key, np.radians(1))
+            setattr(self, key, set_val)
 
     @property
     def longitude(self):
@@ -36,7 +48,7 @@ class Spot(object):
         if isinstance(longitude, u.quantity.Quantity):
             self._longitude = np.float64(longitude.to(units.ARC_UNIT))
         elif isinstance(longitude, (int, np.int, float, np.float)):
-            self._longitude = np.float64(longitude)
+            self._longitude = np.radians(np.float64(longitude))
         else:
             raise TypeError('Input of variable `longitude` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -55,19 +67,19 @@ class Spot(object):
         :return:
         """
         if isinstance(latitude, u.quantity.Quantity):
-            self._longitude = np.float64(latitude.to(units.ARC_UNIT))
+            self._latitude = np.float64(latitude.to(units.ARC_UNIT))
         elif isinstance(latitude, (int, np.int, float, np.float)):
-            self._longitude = np.float64(latitude)
+            self._latitude = np.radians(np.float64(latitude))
         else:
             raise TypeError('Input of variable `latitude` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def angular_diamter(self):
+    def angular_diameter(self):
         return self._angular_diameter
 
-    @angular_diamter.setter
-    def angular_diamter(self, angular_diamter):
+    @angular_diameter.setter
+    def angular_diameter(self, angular_diameter):
         """
         setter for spot angular_diamter
         expecting value in degrees or as astropy units instance
@@ -75,10 +87,10 @@ class Spot(object):
         :param angular_diamter: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
         """
-        if isinstance(angular_diamter, u.quantity.Quantity):
-            self._longitude = np.float64(angular_diamter.to(units.ARC_UNIT))
-        elif isinstance(angular_diamter, (int, np.int, float, np.float)):
-            self._longitude = np.float64(angular_diamter)
+        if isinstance(angular_diameter, u.quantity.Quantity):
+            self._angular_diameter = np.float64(angular_diameter.to(units.ARC_UNIT))
+        elif isinstance(angular_diameter, (int, np.int, float, np.float)):
+            self._angular_diameter = np.radians(np.float64(angular_diameter))
         else:
             raise TypeError('Input of variable `angular_diamter` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -97,9 +109,9 @@ class Spot(object):
         :return:
         """
         if isinstance(angular_density, u.quantity.Quantity):
-            self._longitude = np.float64(angular_density.to(units.ARC_UNIT))
+            self._angular_density = np.float64(angular_density.to(units.ARC_UNIT))
         elif isinstance(angular_density, (int, np.int, float, np.float)):
-            self._longitude = np.float64(angular_density)
+            self._angular_density = np.radians(np.float64(angular_density))
         else:
             raise TypeError('Input of variable `angular_density` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -117,6 +129,16 @@ class Spot(object):
        :return:
        """
         if isinstance(temperature_factor, (int, np.int, float, np.float)):
-            self._longitude = np.float64(temperature_factor)
+            self._temperature_factor = np.float64(temperature_factor)
         else:
             raise TypeError('Input of variable `temperature_factor` is not (np.)int or (np.)float.')
+
+    @staticmethod
+    def check_mandatory_kwargs(kwargs):
+        keys = list(kwargs.keys()) if 'angular_density' not in kwargs \
+            else list(set(list(kwargs.keys())) - {'angular_density'})
+        diff = list(set(Spot.MANDATORY_KWARGS) - set(keys))
+
+        if diff:
+            raise ValueError('Missing mandatory argument(s) {} for spot w/ params {}'.format(', '.join(diff), kwargs))
+

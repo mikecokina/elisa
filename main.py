@@ -13,17 +13,17 @@ primary = Star(mass=1.5, surface_potential=3.0, synchronicity=1.0)
 secondary = Star(mass=1.0, surface_potential=3.0, synchronicity=1.0)
 
 spots_metadata = [
-    {"longitude": None,
-     "latitude": None,
-     "angular_density": None,
-     "angular_diameter": None,
-     "temperature_factor": None},
+    {"longitude": 0,
+     "latitude": 0,
+     "angular_density": 1,
+     "angular_diameter": 10,
+     "temperature_factor": 0.9},
 
-    {"longitude": None,
-     "latitude": None,
-     "angular_density": None,
-     "angular_diameter": None,
-     "temperature_factor": None},
+    {"longitude": 0,
+     "latitude": 20,
+     "angular_density": 2,
+     "angular_diameter": 20,
+     "temperature_factor": 1.1},
 ]
 
 
