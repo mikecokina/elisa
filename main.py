@@ -12,6 +12,21 @@ from engine import const as c
 primary = Star(mass=1.5, surface_potential=3.0, synchronicity=1.0)
 secondary = Star(mass=1.0, surface_potential=3.0, synchronicity=1.0)
 
+spots_metadata = [
+    {"longitude": None,
+     "latitude": None,
+     "angular_density": None,
+     "angular_diameter": None,
+     "temperature_factor": None},
+
+    {"longitude": None,
+     "latitude": None,
+     "angular_density": None,
+     "angular_diameter": None,
+     "temperature_factor": None},
+]
+
+
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
                   argument_of_periastron=90 * u.deg,
@@ -20,7 +35,8 @@ bs = BinarySystem(primary=primary,
                   eccentricity=0.0,
                   inclination=90*u.deg,
                   primary_minimum_time=0.0*u.d,
-                  phase_shift=0.0)
+                  phase_shift=0.0,
+                  spots=spots_metadata)
 
 phase = 0
 pc = bs.critical_potential(component="primary", phase=phase)

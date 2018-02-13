@@ -21,6 +21,7 @@
 
 from engine.system import System
 from engine.star import Star
+from engine.spot import Spot
 from engine.orbit import Orbit
 from astropy import units as u
 import numpy as np
@@ -29,7 +30,7 @@ from engine import const as c
 from scipy.optimize import newton
 from engine import utils
 from engine import graphics
-from engine import units as U
+from engine import units
 import scipy
 from scipy.spatial import Delaunay
 
@@ -40,7 +41,7 @@ class BinarySystem(System):
     KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'primary_minimum_time',
               'phase_shift']
 
-    def __init__(self, primary, secondary, name=None, **kwargs):
+    def __init__(self, primary, secondary, name=None, spots=None, **kwargs):
         self.is_property(kwargs)
         super(BinarySystem, self).__init__(name=name, **kwargs)
 
@@ -96,7 +97,16 @@ class BinarySystem(System):
         # binary star morphology estimation
         self._morphology = self._estimate_morphology()
 
-        # compute and assing to all radii values to both components
+        # todo: compute and assing to all radii values to both components
+
+        # compute spots
+        self._spots = None
+        if spots:
+            for spot_meta in spots:
+                self._add_spot(spot=Spot(**spot_meta))
+
+    def _add_spot(self, spot):
+        self._spots = spot if isinstance(spot, Spot) and not self._spots else [self._spots]
 
     def _params_validity_check(self, **kwargs):
 
@@ -295,7 +305,7 @@ class BinarySystem(System):
         :return:
         """
         if isinstance(period, u.quantity.Quantity):
-            self._period = np.float64(period.to(U.PERIOD_UNIT))
+            self._period = np.float64(period.to(units.PERIOD_UNIT))
         elif isinstance(period, (int, np.int, float, np.float)):
             self._period = np.float64(period)
         else:
@@ -323,7 +333,7 @@ class BinarySystem(System):
         """
 
         if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(U.ARC_UNIT))
+            self._inclination = np.float64(inclination.to(units.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
             self._inclination = np.float64(inclination)
         else:
@@ -378,7 +388,7 @@ class BinarySystem(System):
         :return:
         """
         if isinstance(argument_of_periastron, u.quantity.Quantity):
-            self._argument_of_periastron = np.float64(argument_of_periastron.to(U.ARC_UNIT))
+            self._argument_of_periastron = np.float64(argument_of_periastron.to(units.ARC_UNIT))
         elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
             self._argument_of_periastron = np.float64(argument_of_periastron)
         else:
@@ -403,7 +413,7 @@ class BinarySystem(System):
         :return:
         """
         if isinstance(primary_minimum_time, u.quantity.Quantity):
-            self._primary_minimum_time = np.float64(primary_minimum_time.to(U.PERIOD_UNIT))
+            self._primary_minimum_time = np.float64(primary_minimum_time.to(units.PERIOD_UNIT))
         elif isinstance(primary_minimum_time, (int, np.int, float, np.float)):
             self._primary_minimum_time = np.float64(primary_minimum_time)
         else:
@@ -450,7 +460,7 @@ class BinarySystem(System):
 
         :return: np.float
         """
-        period = (self._period * U.PERIOD_UNIT).to(u.s)
+        period = (self._period * units.PERIOD_UNIT).to(u.s)
         return (c.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * c.PI ** 2)) ** (1.0 / 3)
 
     def compute_lc(self):
@@ -1228,7 +1238,7 @@ class BinarySystem(System):
             ellipse = self.orbit.orbital_motion(phase=phases)
             # if axis are without unit a = 1
             if kwargs['axis_unit'] != u.dimensionless_unscaled:
-                a = self._semi_major_axis * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
+                a = self._semi_major_axis * units.DISTANCE_UNIT.to(kwargs['axis_unit'])
                 radius = a * ellipse[:, 0]
             else:
                 radius = ellipse[:, 0]
@@ -1330,6 +1340,13 @@ class BinarySystem(System):
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 
         method_to_call(**kwargs)
+
+    def mesh_spot(self):
+
+
+
+
+        pass
 
     @classmethod
     def is_property(cls, kwargs):
