@@ -365,9 +365,31 @@ class Body(object, metaclass=ABCMeta):
         return U.ARC_UNIT
 
     def calculate_normals(self):
+        """
+        returns outward facing normal unit vector for each face of stellar surface
+
+        :return: numpy_array([[normal_x1, normal_y1, normal_z1],
+                              [normal_x2, normal_y2, normal_z2],
+                               ...
+                              [normal_xn, normal_yn, normal_zn]])
+        """
         normals = np.array([np.cross(self.points[xx[1]] - self.points[xx[0]], self.points[xx[2]]
                                      - self.points[xx[0]]) for xx in self.faces])
+        normals /= np.linalg.norm(normals, axis=1)[:, None]
+        centres = self.calculate_surface_centres()
+        sgn_vector = np.sign(centres[:, 1:]) * np.sign(normals[:, 1:])
         return normals
+
+    def calculate_surface_centres(self):
+        """
+        returns centers of every surface face
+
+        :return: numpy_array([[center_x1, center_y1, center_z1],
+                              [center_x2, center_y2, center_z2],
+                               ...
+                              [center_xn, center_yn, center_zn]])
+        """
+        return np.average(self.points[self.faces], axis=1)
 
     def get_info(self):
         pass

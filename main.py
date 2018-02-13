@@ -34,8 +34,8 @@ primary.points = bs.mesh_over_contact(component='primary', alpha=20)
 primary.faces = bs.over_contact_surface(points=primary.points)
 
 primary.normals = primary.calculate_normals()
-print(primary.normals)
-print(np.linalg.norm(primary.normals, axis=1))
+# print(primary.normals)
+# print(np.linalg.norm(primary.normals, axis=1))
 
 # bs.plot('equipotential', plane="xy", phase=bs.orbit.periastron_phase)
 
@@ -52,4 +52,4 @@ print(np.linalg.norm(primary.normals, axis=1))
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
-# bs.plot(descriptor='surface', phase=0, components_to_plot='both', alpha1=5)
+# bs.plot(descriptor='surface', phase=0, components_to_plot='both', alpha1=10, alpha2=10)
