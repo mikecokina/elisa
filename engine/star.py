@@ -1,4 +1,5 @@
 from engine.body import Body
+from engine.spot import Spot
 from astropy import units as u
 import numpy as np
 import logging
@@ -10,14 +11,14 @@ class Star(Body):
 
     KWARGS = ['mass', 't_eff', 'vertices', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
               'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening', 'polar_gravity_acceleration',
-              'polar_log_g', 'equatorial_radius']
+              'polar_log_g', 'equatorial_radius', 'spots']
 
     def __init__(self, name=None, **kwargs):
-        # get logger
-        self._logger = logging.getLogger(Star.__name__)
-
         self.is_property(kwargs)
         super(Star, self).__init__(name=name, **kwargs)
+
+        # get logger
+        self._logger = logging.getLogger(Star.__name__)
 
         # default values of properties
         self._surface_potential = None
@@ -31,6 +32,7 @@ class Star(Body):
         self._polar_log_g = None
         self._equatorial_radius = None
         self._critical_surface_potential = None
+        self._spots = None
 
         # values of properties
         for kwarg in Star.KWARGS:
@@ -38,6 +40,24 @@ class Star(Body):
                 self._logger.debug("Setting property {} "
                                    "of class instance {} to {}".format(kwarg, Star.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
+
+
+    # def _add_spot(self, spot):
+    #     self._spots = spot if isinstance(spot, Spot) and not self._spots else [self._spots]
+    #
+    # def _remove_spot(self):
+    #     pass
+    #
+
+    @property
+    def spots(self):
+        return self._spots
+
+    @spots.setter
+    def spots(self, spots):
+        # initialize spots dataframes
+        if spots:
+            self._spots = [Spot(**spot_meta) for spot_meta in spots]
 
     @property
     def critical_surface_potential(self):
@@ -156,14 +176,13 @@ class Star(Body):
         """
         return self._polar_log_g
 
-    @classmethod
-    def is_property(cls, kwargs):
+    def is_property(self, kwargs):
         """
         method for checking if keyword arguments are valid properties of this class
 
         :param kwargs: dict
         :return:
         """
-        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
+        is_not = ['`{}`'.format(k) for k in kwargs if k not in dir(self)]
         if is_not:
-            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
+            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), Star.__name__))

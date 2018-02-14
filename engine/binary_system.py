@@ -41,7 +41,7 @@ class BinarySystem(System):
     KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'primary_minimum_time',
               'phase_shift']
 
-    def __init__(self, primary, secondary, name=None, spots=None, **kwargs):
+    def __init__(self, primary, secondary, name=None, **kwargs):
         self.is_property(kwargs)
         super(BinarySystem, self).__init__(name=name, **kwargs)
 
@@ -99,32 +99,29 @@ class BinarySystem(System):
 
         # todo: compute and assign to all radii values to both components
 
-        # compute spots
-        self._spots = None
-        if spots:
-            self._spots = [Spot(**spot_meta) for spot_meta in spots]
-            self._evaluate_spots()
-
-    def _add_spot(self, spot):
-        self._spots = spot if isinstance(spot, Spot) and not self._spots else [self._spots]
-
-    def _remove_spot(self):
-        pass
+        # evaluate spots of both components
+        self._evaluate_spots()
 
     def _evaluate_spots(self):
-        self._logger.info("Evaluating spots")
-        if not self._spots:
-            self._logger.info("No spots to evaluate. Skipping.")
+        fns = {"primary": self.potential_primary_fn, "secondary": self.potential_secondary_fn}
 
-        wuma_components_separation = None
-        # in case of wuma system, get separation and make additional test of location of each point (if primary
-        # spot doesn't intersect with secondary, if does, then such spot will be skiped completly)
-        if self.morphology == "over-contact":
-            wuma_components_separation = self.calculate_neck_position()
+        for component, fn in fns.items():
+            self._logger.info("Evaluating spots for {} component".format(component))
+            component_instance = getattr(self, component)
 
-        for spot_instance in self._spots:
-            # lon -> phi, lat -> theta
-            lon, lat, diameter = spot_instance.longitude, spot_instance.latitude, spot_instance.angular_diameter
+            if not component_instance.spots:
+                self._logger.info("No spots to evaluate for {} component. Skipping.".format(component))
+                continue
+    #
+    #     wuma_components_separation = None
+    #     # in case of wuma system, get separation and make additional test of location of each point (if primary
+    #     # spot doesn't intersect with secondary, if does, then such spot will be skiped completly)
+    #     if self.morphology == "over-contact":
+    #         wuma_components_separation = self.calculate_neck_position()
+    #
+    #     for spot_instance in self._spots:
+    #         # lon -> phi, lat -> theta
+    #         lon, lat, diameter = spot_instance.longitude, spot_instance.latitude, spot_instance.angular_diameter
 
     def _params_validity_check(self, **kwargs):
 
@@ -1376,14 +1373,13 @@ class BinarySystem(System):
 
         pass
 
-    @classmethod
-    def is_property(cls, kwargs):
+    def is_property(self, kwargs):
         """
         method for checking if keyword arguments are valid properties of this class
 
         :param kwargs: dict
         :return:
         """
-        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
+        is_not = ['`{}`'.format(k) for k in kwargs if k not in dir(self)]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
