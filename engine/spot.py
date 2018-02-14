@@ -32,6 +32,9 @@ class Spot(object):
             set_val = kwargs.get(key) if key != "angular_density" else kwargs.get(key, np.radians(1))
             setattr(self, key, set_val)
 
+    def kwargs_serializer(self):
+        return {kwarg: getattr(self, kwarg) for kwarg in self.KWARGS if getattr(self, kwarg) is not None}
+
     @property
     def longitude(self):
         return self._longitude

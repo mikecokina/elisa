@@ -41,13 +41,11 @@ class Star(Body):
                                    "of class instance {} to {}".format(kwarg, Star.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
 
-
     # def _add_spot(self, spot):
     #     self._spots = spot if isinstance(spot, Spot) and not self._spots else [self._spots]
     #
-    # def _remove_spot(self):
-    #     pass
-    #
+    def remove_spot(self, spot_index):
+        del(self._spots[spot_index])
 
     @property
     def spots(self):
@@ -57,7 +55,7 @@ class Star(Body):
     def spots(self, spots):
         # initialize spots dataframes
         if spots:
-            self._spots = [Spot(**spot_meta) for spot_meta in spots]
+            self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)}
 
     @property
     def critical_surface_potential(self):
