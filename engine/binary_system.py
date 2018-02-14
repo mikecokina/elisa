@@ -163,17 +163,35 @@ class BinarySystem(System):
                 x, y, z = utils.spherical_to_cartesian(solution, radial_vector[1], radial_vector[2])
                 spot_points.append([x, y, z])
 
-                num_circular = int(c.FULL_ARC // alpha)
+                # compute euclidean distance of two points on spot
+                # we have to obtain distance between center and 1st point in 1st ring of spot
+                args, use = (components_distance, lon, lat + alpha), False
+                solution, use = self.solver(fn, solver_condition, *args)
+
+                if not use:
+                    # in case of spots, each point should be usefull, otherwise remove spot from
+                    # component spot list and skip current spot computation
+                    self._logger.info("Spot {} doesn't satisfy reasonable "
+                                      "conditions and will be omitted".format(spot_instance.kwargs_serializer()))
+
+                    component_instance.remove_spot(spot_index=spot_index)
+                    continue
+                x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
+
+                # number of points in 1st ring
+                n0 = 2.0 * np.pi * x0 // x0
+                # number of points in latitudal direction
                 num_radial = int((diameter * 0.5) // alpha)
 
                 # todo: add condition to die
-                azimuths = np.linspace(alpha, c.FULL_ARC, num=num_circular, endpoint=True)
+                # azimuths = np.linspace(alpha, c.FULL_ARC, num=num_circular, endpoint=True)
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
                 for theta_index, theta in enumerate(thetas):
-                    print(theta_index, theta)
-
-
+                    # first point of n-th ring of spot (counting start from center)
+                    spherical_vector = [1.0, lon % c.FULL_ARC, theta]
+                    # ni = n0 * (float(theta_index) + 1.0)
+                    # print(ni)
 
 
 
