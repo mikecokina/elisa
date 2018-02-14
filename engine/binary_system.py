@@ -170,6 +170,8 @@ class BinarySystem(System):
                 azimuths = np.linspace(alpha, c.FULL_ARC, num=num_circular, endpoint=True)
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
+                for theta_index, theta in enumerate(thetas):
+                    print(theta_index, theta)
 
 
 
