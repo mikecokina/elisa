@@ -364,7 +364,7 @@ class Body(object, metaclass=ABCMeta):
         """
         return U.ARC_UNIT
 
-    def calculate_normals(self):
+    def calculate_normals(self, points, faces):
         """
         returns outward facing normal unit vector for each face of stellar surface
 
@@ -373,14 +373,16 @@ class Body(object, metaclass=ABCMeta):
                                ...
                               [normal_xn, normal_yn, normal_zn]])
         """
-        normals = np.array([np.cross(self.points[xx[1]] - self.points[xx[0]], self.points[xx[2]]
-                                     - self.points[xx[0]]) for xx in self.faces])
+        normals = np.array([np.cross(points[xx[1]] - points[xx[0]], points[xx[2]]
+                                     - points[xx[0]]) for xx in faces])
         normals /= np.linalg.norm(normals, axis=1)[:, None]
-        centres = self.calculate_surface_centres()
-        sgn_vector = np.sign(centres[:, 1:]) * np.sign(normals[:, 1:])
-        return normals
+        centres = self.calculate_surface_centres(points, faces)
+        # possible problem is that this approach fails in case when triangle is perpendicular to x axis
+        sgn_vector = 0.5 * np.sum(np.sign(centres[:, 1:]) * np.sign(normals[:, 1:]), axis=1)
 
-    def calculate_surface_centres(self):
+        return normals * sgn_vector[:, None]
+
+    def calculate_surface_centres(self, points, faces):
         """
         returns centers of every surface face
 
@@ -389,7 +391,7 @@ class Body(object, metaclass=ABCMeta):
                                ...
                               [center_xn, center_yn, center_zn]])
         """
-        return np.average(self.points[self.faces], axis=1)
+        return np.average(points[faces], axis=1)
 
     def get_info(self):
         pass

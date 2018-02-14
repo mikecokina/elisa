@@ -46,10 +46,10 @@ sc = bs.critical_potential(component="secondary", phase=phase)
 print(bs.morphology)
 
 print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
-primary.points = bs.mesh_over_contact(component='primary', alpha=20)
-primary.faces = bs.over_contact_surface(points=primary.points)
-
-primary.normals = primary.calculate_normals()
+# primary.points = bs.mesh_over_contact(component='primary', alpha=5)
+# primary.faces = bs.over_contact_surface(points=primary.points)
+#
+# primary.normals = primary.calculate_normals()
 # print(primary.normals)
 # print(np.linalg.norm(primary.normals, axis=1))
 
@@ -68,4 +68,4 @@ primary.normals = primary.calculate_normals()
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
-# bs.plot(descriptor='surface', phase=0, components_to_plot='both', alpha1=10, alpha2=10)
+bs.plot(descriptor='surface', phase=0, components_to_plot='primary', alpha1=5, alpha2=5)
