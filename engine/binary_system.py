@@ -1470,20 +1470,36 @@ class BinarySystem(System):
 
         pass
 
-    def calculate_potential_gradient(self, component=None, points=None, component_distance=None):
+    def calculate_potential_gradient(self, component=None, component_distance=None):
+        """
+        returns array of values proportional to gradient of the gravity acceleration for each surface point
+
+        :param component: str, `primary` or `secondary`
+        :param component_distance: float, in SMA distance
+        :return: numpy.array
+        """
+        points = self.primary.points if component == 'primary' else self.secondary.points
         r = np.linalg.norm(points, axis=1)
         r3 = np.power(r, 3)
         r_hat = np.linalg.norm(points - np.array([component_distance, 0, 0]))
         r_hat3 = np.power(r_hat, 3)
         if component == 'primary':
+            F2 = np.power(self.primary.synchronicity, 2)
             dOmega_dx = - points[:, 0] / r3 + self.mass_ratio * (component_distance - points[:, 0]) / r_hat3 \
-                        + np.power(self.primary.synchronicity, 2) * (self.mass_ratio + 1) * points[:, 0] \
-                        - self.mass_ratio / np.array(component_distance, 2)
+                        + F2 * (self.mass_ratio + 1) * points[:, 0] \
+                        - self.mass_ratio / np.power(component_distance, 2)
         elif component == 'secondary':
+            F2 = np.power(self.secondary.synchronicity, 2)
             dOmega_dx = - points[:, 0] / r3 + self.mass_ratio * (component_distance - points[:, 0]) / r_hat3 \
-                        - np.power(self.primary.synchronicity, 2) * (self.mass_ratio + 1) \
+                        - F2 * (self.mass_ratio + 1) \
                         * (component_distance - points[:, 0]) * points[:, 0] \
-                        + 1 / np.array(component_distance, 2)
+                        + 1 / np.power(component_distance, 2)
+        else:
+            raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
+                             .format(component))
+        dOmega_dy = - points[:, 1] * (1 / r3 + self.mass_ratio / r_hat3 - F2 * (self.mass_ratio + 1))
+        dOmega_dz = - points[:, 2] * (1 / r3 + self.mass_ratio / r_hat3)
+        return np.power(np.power(dOmega_dx, 2) + np.power(dOmega_dy, 2) + np.power(dOmega_dz, 2), 0.5)
 
     def is_property(self, kwargs):
         """

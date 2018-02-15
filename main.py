@@ -53,7 +53,8 @@ sc = bs.critical_potential(component="secondary", phase=phase)
 primary.points = bs.mesh_over_contact(component='primary', alpha=20)
 primary.faces = bs.over_contact_surface(points=primary.points)
 
-primary.normals = primary.calculate_normals()
+print(bs.calculate_potential_gradient(component='primary', component_distance=1.0))
+# primary.normals = primary.calculate_normals()
 # print(primary.normals)
 # print(np.linalg.norm(primary.normals, axis=1))
 
