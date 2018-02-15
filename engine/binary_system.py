@@ -21,7 +21,6 @@
 
 from engine.system import System
 from engine.star import Star
-from engine.spot import Spot
 from engine.orbit import Orbit
 from astropy import units as u
 import numpy as np
@@ -33,6 +32,7 @@ from engine import graphics
 from engine import units
 import scipy
 from scipy.spatial import Delaunay
+from copy import copy
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -100,28 +100,125 @@ class BinarySystem(System):
         # todo: compute and assign to all radii values to both components
 
         # evaluate spots of both components
-        self._evaluate_spots()
+        self._evaluate_spots(phase=0.0)
 
-    def _evaluate_spots(self):
+    def _evaluate_spots(self, phase):
+        """
+        compute points of each spots and assigns values to spot container instance
+
+        :param phase: float
+        :return:
+        """
+        def solver_condition(x, *args, **kwargs):
+            x, _, _ = utils.spherical_to_cartesian(x, args[1], args[2])
+            x = x if component == "primary" else components_distance - x
+            # ignore also spots where one of points is suteated just on the neck, don't care abot bullshit spots
+            if (component == "primary" and x >= neck_position) or (component == "secondary" and x <= neck_position):
+                return False
+            return True
+
         fns = {"primary": self.potential_primary_fn, "secondary": self.potential_secondary_fn}
+
+        neck_position = None
+        # in case of wuma system, get separation and make additional test of location of each point (if primary
+        # spot doesn't intersect with secondary, if does, then such spot will be skiped completly)
+        if self.morphology == "over-contact":
+            neck_position = self.calculate_neck_position()
 
         for component, fn in fns.items():
             self._logger.info("Evaluating spots for {} component".format(component))
             component_instance = getattr(self, component)
+            components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
 
             if not component_instance.spots:
                 self._logger.info("No spots to evaluate for {} component. Skipping.".format(component))
                 continue
-    #
-    #     wuma_components_separation = None
-    #     # in case of wuma system, get separation and make additional test of location of each point (if primary
-    #     # spot doesn't intersect with secondary, if does, then such spot will be skiped completly)
-    #     if self.morphology == "over-contact":
-    #         wuma_components_separation = self.calculate_neck_position()
-    #
-    #     for spot_instance in self._spots:
-    #         # lon -> phi, lat -> theta
-    #         lon, lat, diameter = spot_instance.longitude, spot_instance.latitude, spot_instance.angular_diameter
+
+            # iterate over spots
+            for spot_index, spot_instance in list(component_instance.spots.items()):
+                # lon -> phi, lat -> theta
+                lon, lat = spot_instance.longitude, spot_instance.latitude
+                alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
+
+                # initial containers for current spot
+                boundary_points, spot_points = [], []
+                solution, use = False, False
+
+                # initial radial vector
+                radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
+
+                args, use = (components_distance, radial_vector[1], radial_vector[2]), False
+                solution, use = self.solver(fn, solver_condition, *args)
+
+                if not use:
+                    # in case of spots, each point should be usefull, otherwise remove spot from
+                    # component spot list and skip current spot computation
+                    self._logger.info("Spot {} doesn't satisfy reasonable "
+                                      "conditions and will be omitted".format(spot_instance.kwargs_serializer()))
+
+                    component_instance.remove_spot(spot_index=spot_index)
+                    continue
+
+                spot_center_r = solution
+                x, y, z = utils.spherical_to_cartesian(solution, radial_vector[1], radial_vector[2])
+                spot_points.append([x, y, z])
+
+                # compute euclidean distance of two points on spot
+                # we have to obtain distance between center and 1st point in 1st ring of spot
+                args, use = (components_distance, lon, lat + alpha), False
+                solution, use = self.solver(fn, solver_condition, *args)
+
+                if not use:
+                    # in case of spots, each point should be usefull, otherwise remove spot from
+                    # component spot list and skip current spot computation
+                    self._logger.info("Spot {} doesn't satisfy reasonable "
+                                      "conditions and will be omitted".format(spot_instance.kwargs_serializer()))
+
+                    component_instance.remove_spot(spot_index=spot_index)
+                    continue
+                x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
+
+                # number of points in 1st ring
+                n0 = 2.0 * np.pi * x0 // x0
+                # number of points in latitudal direction
+                num_radial = int((diameter * 0.5) // alpha)
+
+                # todo: add condition to die
+                # azimuths = np.linspace(alpha, c.FULL_ARC, num=num_circular, endpoint=True)
+                thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
+
+                for theta_index, theta in enumerate(thetas):
+                    # first point of n-th ring of spot (counting start from center)
+                    spherical_vector = [1.0, lon % c.FULL_ARC, theta]
+                    # ni = n0 * (float(theta_index) + 1.0)
+                    # print(ni)
+
+
+
+
+    def solver(self, fn, condition, *args, **kwargs):
+        """
+        will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
+        solution if satisfy condition function
+
+        :param fn: function
+        :param condition: function
+        :param args: tuple
+        :return: float (np.nan), bool
+        """
+        solution, use = np.nan, False
+        scipy_solver_init_value = np.array([1. / 10000.])
+        try:
+            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
+                                                        xtol=1e-12)
+            if ier == 1 and not np.isnan(solution[0]):
+                solution = solution[0]
+                use = True if 1 > solution > 0 else False
+        except Exception as e:
+            self._logger.debug("Attempt to solve function {} finished w/ exception: {}".format(fn.__name__, str(e)))
+            use = False
+
+        return (solution, use) if condition(solution, *args, **kwargs) else (np.nan, False)
 
     def _params_validity_check(self, **kwargs):
 
