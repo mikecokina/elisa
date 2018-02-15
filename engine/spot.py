@@ -23,6 +23,8 @@ class Spot(object):
         self._temperature_factor = None
 
         self._points = None
+        self._spot_center = None
+        self._spot_boundary = None
 
         self._logger = logging.getLogger(Spot.__name__)
 

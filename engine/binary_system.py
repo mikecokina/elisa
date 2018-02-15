@@ -146,6 +146,7 @@ class BinarySystem(System):
 
                 # initial radial vector
                 radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
+                center_vector = utils.spherical_to_cartesian(1.0, lon, lat)
 
                 args, use = (components_distance, radial_vector[1], radial_vector[2]), False
                 solution, use = self.solver(fn, solver_condition, *args)
@@ -153,15 +154,13 @@ class BinarySystem(System):
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
                     # component spot list and skip current spot computation
-                    self._logger.info("Spot {} doesn't satisfy reasonable "
-                                      "conditions and will be omitted".format(spot_instance.kwargs_serializer()))
+                    self._logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
+                                      "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
 
                     component_instance.remove_spot(spot_index=spot_index)
                     continue
 
                 spot_center_r = solution
-                x, y, z = utils.spherical_to_cartesian(solution, radial_vector[1], radial_vector[2])
-                spot_points.append([x, y, z])
 
                 # compute euclidean distance of two points on spot
                 # we have to obtain distance between center and 1st point in 1st ring of spot
@@ -171,8 +170,8 @@ class BinarySystem(System):
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
                     # component spot list and skip current spot computation
-                    self._logger.info("Spot {} doesn't satisfy reasonable "
-                                      "conditions and will be omitted".format(spot_instance.kwargs_serializer()))
+                    self._logger.info("First ring of spot {} doesn't satisfy reasonable conditions and "
+                                      "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
 
                     component_instance.remove_spot(spot_index=spot_index)
                     continue
@@ -183,22 +182,46 @@ class BinarySystem(System):
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
                 num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
-                rot_angles = [np.linspace(0, c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
+                deltas = [np.linspace(0, c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 
-                print(rot_angles)
+                # todo: add condition to die
+                try:
+                    for theta_index, theta in enumerate(thetas):
+                        # first point of n-th ring of spot (counting start from center)
+                        default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
 
-                # # todo: add condition to die
-                # # azimuths = np.linspace(alpha, c.FULL_ARC, num=num_circular, endpoint=True)
+                        for delta_index, delta in enumerate(deltas[theta_index]):
+                            delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
+                                                                    vector=utils.spherical_to_cartesian(
+                                                                        default_spherical_vector[0],
+                                                                        default_spherical_vector[1],
+                                                                        default_spherical_vector[2]),
+                                                                    degrees=False)
 
-                #
-                # for theta_index, theta in enumerate(thetas):
-                #     # first point of n-th ring of spot (counting start from center)
-                #     spherical_vector = [1.0, lon % c.FULL_ARC, theta]
-                #     # ni = n0 * (float(theta_index) + 1.0)
-                #     # print(ni)
+                            spherical_delta_vector = utils.cartesian_to_sphetical(delta_vector[0],
+                                                                                  delta_vector[1],
+                                                                                  delta_vector[2])
 
+                            args = (components_distance, spherical_delta_vector[1], spherical_delta_vector[2])
+                            solution, use = self.solver(fn, solver_condition, *args)
 
+                            if not use:
+                                raise StopIteration
 
+                            spot_point = utils.spherical_to_cartesian(solution, spherical_delta_vector[1],
+                                                                      spherical_delta_vector[2])
+                            spot_points.append(spot_point)
+
+                            if theta_index == len(thetas) - 1:
+                                boundary_points.append(spot_point)
+
+                    # setup spot instance properties
+                    spot_instance._points = spot_points
+                    spot_instance._boundary = boundary_points
+
+                except StopIteration:
+                    self._logger.info("Any point of spot {} doesn't satisfy reasonable conditions and "
+                                      "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
 
     def solver(self, fn, condition, *args, **kwargs):
         """

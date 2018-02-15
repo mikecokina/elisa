@@ -12,8 +12,8 @@ spots_metadata = {
     "primary":
         [{"longitude": 0,
           "latitude": 0,
-          "angular_density": 1,
-          "angular_diameter": 10,
+          "angular_density": 2,
+          "angular_diameter": 20,
           "temperature_factor": 0.9}],
 
     "secondary":
@@ -53,7 +53,7 @@ sc = bs.critical_potential(component="secondary", phase=phase)
 primary.points = bs.mesh_over_contact(component='primary', alpha=20)
 primary.faces = bs.over_contact_surface(points=primary.points)
 
-print(bs.calculate_potential_gradient(component='primary', component_distance=1.0))
+# print(bs.calculate_potential_gradient(component='primary', component_distance=1.0))
 # primary.normals = primary.calculate_normals()
 # print(primary.normals)
 # print(np.linalg.norm(primary.normals, axis=1))

@@ -43,6 +43,35 @@ def find_nearest_dist_3d(data=None):
     return min(distances)
 
 
+def cartesian_to_sphetical(x, y, z, degrees=False):
+    """
+    convert cartesian to spherical coordinates
+
+    :param x: (np.)float
+    :param y: (np.)float
+    :param z: (np.)float
+    :param degrees: bool
+    :return: tuple ((np.)float, (np.)float, (np.)float); (r, phi, theta)
+    """
+
+    r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+
+    np.seterr(divide='raise', invalid='raise')
+    try:
+        phi = np.arcsin(y / (np.sqrt(x ** 2 + y ** 2)))  # vypocet azimutalneho (rovinneho) uhla
+    except Exception as e:
+        phi = 0.0
+    try:
+        theta = np.arccos(z / r)  # vypocet polarneho (elevacneho) uhla
+    except Exception as e:
+        theta = 0.0
+    np.seterr(divide='print', invalid='print')
+
+    phi = np.pi - phi if x < 0 else phi
+
+    return (r, phi, theta) if not degrees else (r, np.degrees(phi), np.degrees(theta))
+
+
 def spherical_to_cartesian(radius, phi, theta):
     """
     converts spherical coordinates into cartesian
