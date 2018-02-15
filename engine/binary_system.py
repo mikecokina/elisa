@@ -1472,17 +1472,15 @@ class BinarySystem(System):
 
     def calculate_potential_gradient(self, component=None, component_distance=None):
         """
-        returns array of values proportional to gradient of the gravity acceleration for each surface point
+        returns array of potential gradients for each surface point
 
         :param component: str, `primary` or `secondary`
         :param component_distance: float, in SMA distance
         :return: numpy.array
         """
         points = self.primary.points if component == 'primary' else self.secondary.points
-        r = np.linalg.norm(points, axis=1)
-        r3 = np.power(r, 3)
-        r_hat = np.linalg.norm(points - np.array([component_distance, 0, 0]))
-        r_hat3 = np.power(r_hat, 3)
+        r3 = np.power(np.linalg.norm(points, axis=1), 3)
+        r_hat3 = np.power(np.linalg.norm(points - np.array([component_distance, 0, 0])), 3)
         if component == 'primary':
             F2 = np.power(self.primary.synchronicity, 2)
             dOmega_dx = - points[:, 0] / r3 + self.mass_ratio * (component_distance - points[:, 0]) / r_hat3 \

@@ -243,6 +243,14 @@ class SingleSystem(System):
         return - c.G * self.star.mass / radius - 0.5 * np.power(self._angular_velocity, 2.0) * \
                                                   np.power(radius * np.sin(theta), 2)
 
+    def calculate_potential_gradient(self):
+        r3 = np.power(np.linalg.norm(self.star.points, axis=1), 3)
+        dOmega_dx = None
+        dOmega_dy = None
+        dOmega_dz = - c.G * self.star.mass * self.star.points[:, 2] / r3
+        return np.power(np.power(dOmega_dx, 2) + np.power(dOmega_dy, 2) + np.power(dOmega_dz, 2), 0.5)
+
+
     def potential_fn(self, radius, *args):
         """
         implicit potential function
