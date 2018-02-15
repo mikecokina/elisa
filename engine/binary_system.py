@@ -178,20 +178,24 @@ class BinarySystem(System):
                     continue
                 x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
 
-                # number of points in 1st ring
-                n0 = 2.0 * np.pi * x0 // x0
                 # number of points in latitudal direction
                 num_radial = int((diameter * 0.5) // alpha)
-
-                # todo: add condition to die
-                # azimuths = np.linspace(alpha, c.FULL_ARC, num=num_circular, endpoint=True)
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
-                for theta_index, theta in enumerate(thetas):
-                    # first point of n-th ring of spot (counting start from center)
-                    spherical_vector = [1.0, lon % c.FULL_ARC, theta]
-                    # ni = n0 * (float(theta_index) + 1.0)
-                    # print(ni)
+                num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
+                rot_angles = [np.linspace(0, c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
+
+                print(rot_angles)
+
+                # # todo: add condition to die
+                # # azimuths = np.linspace(alpha, c.FULL_ARC, num=num_circular, endpoint=True)
+
+                #
+                # for theta_index, theta in enumerate(thetas):
+                #     # first point of n-th ring of spot (counting start from center)
+                #     spherical_vector = [1.0, lon % c.FULL_ARC, theta]
+                #     # ni = n0 * (float(theta_index) + 1.0)
+                #     # print(ni)
 
 
 
