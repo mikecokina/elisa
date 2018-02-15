@@ -89,7 +89,7 @@ class BinarySystem(System):
                                                                                   BinarySystem.__name__))
 
         # calculation of dependent parameters
-        self._semi_major_axis = self.semi_major_axis_from_3rd_kepler_law()
+        self._semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation
         self.init_orbit()
@@ -97,7 +97,7 @@ class BinarySystem(System):
         # binary star morphology estimation
         self._morphology = self._estimate_morphology()
 
-        # todo: compute and assing to all radii values to both components
+        # todo: compute and assign to all radii values to both components
 
         # evaluate spots of both components
         self._evaluate_spots(phase=0.0)
@@ -570,7 +570,7 @@ class BinarySystem(System):
         """
         return self._semi_major_axis
 
-    def semi_major_axis_from_3rd_kepler_law(self):
+    def calculate_semi_major_axis(self):
         """
         calculates length semi major axis usin 3rd kepler law
 
@@ -1420,7 +1420,7 @@ class BinarySystem(System):
                     kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
 
         elif descriptor == 'surface':
-            KWARGS = ['phase', 'components_to_plot', 'alpha1', 'alpha2']
+            KWARGS = ['phase', 'components_to_plot', 'alpha1', 'alpha2', 'normals']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.binary_surface
@@ -1429,6 +1429,8 @@ class BinarySystem(System):
                 kwargs['phase'] = 0
             if 'components_to_plot' not in kwargs:
                 kwargs['components_to_plot'] = 'both'
+            if 'normals' not in kwargs:
+                kwargs['normals'] = False
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
                 if 'alpha1' not in kwargs:
@@ -1440,6 +1442,10 @@ class BinarySystem(System):
                 else:
                     kwargs['points_primary'] = self.mesh_over_contact(component='primary', alpha=kwargs['alpha1'])
                     kwargs['primary_triangles'] = self.over_contact_surface(points=kwargs['points_primary'])
+                kwargs['primary_centers'] = self._primary.calculate_surface_centres(kwargs['points_primary'],
+                                                                                    kwargs['primary_triangles'])
+                kwargs['primary_arrows'] = self._primary.calculate_normals(kwargs['points_primary'],
+                                                                 kwargs['primary_triangles']) / 100
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 if 'alpha2' not in kwargs:
@@ -1451,6 +1457,10 @@ class BinarySystem(System):
                 else:
                     kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
                     kwargs['secondary_triangles'] = self.over_contact_surface(points=kwargs['points_secondary'])
+                kwargs['secondary_centers'] = self._secondary.calculate_surface_centres(kwargs['points_secondary'],
+                                                                                        kwargs['secondary_triangles'])
+                kwargs['secondary_arrows'] = self._secondary.calculate_normals(kwargs['points_secondary'],
+                                                                               kwargs['secondary_triangles']) / 100
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
@@ -1463,6 +1473,37 @@ class BinarySystem(System):
 
 
         pass
+
+    def calculate_potential_gradient(self, component=None, component_distance=None):
+        """
+        returns array of values proportional to gradient of the gravity acceleration for each surface point
+
+        :param component: str, `primary` or `secondary`
+        :param component_distance: float, in SMA distance
+        :return: numpy.array
+        """
+        points = self.primary.points if component == 'primary' else self.secondary.points
+        r = np.linalg.norm(points, axis=1)
+        r3 = np.power(r, 3)
+        r_hat = np.linalg.norm(points - np.array([component_distance, 0, 0]))
+        r_hat3 = np.power(r_hat, 3)
+        if component == 'primary':
+            F2 = np.power(self.primary.synchronicity, 2)
+            dOmega_dx = - points[:, 0] / r3 + self.mass_ratio * (component_distance - points[:, 0]) / r_hat3 \
+                        + F2 * (self.mass_ratio + 1) * points[:, 0] \
+                        - self.mass_ratio / np.power(component_distance, 2)
+        elif component == 'secondary':
+            F2 = np.power(self.secondary.synchronicity, 2)
+            dOmega_dx = - points[:, 0] / r3 + self.mass_ratio * (component_distance - points[:, 0]) / r_hat3 \
+                        - F2 * (self.mass_ratio + 1) \
+                        * (component_distance - points[:, 0]) * points[:, 0] \
+                        + 1 / np.power(component_distance, 2)
+        else:
+            raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
+                             .format(component))
+        dOmega_dy = - points[:, 1] * (1 / r3 + self.mass_ratio / r_hat3 - F2 * (self.mass_ratio + 1))
+        dOmega_dz = - points[:, 2] * (1 / r3 + self.mass_ratio / r_hat3)
+        return np.power(np.power(dOmega_dx, 2) + np.power(dOmega_dy, 2) + np.power(dOmega_dz, 2), 0.5)
 
     def is_property(self, kwargs):
         """
