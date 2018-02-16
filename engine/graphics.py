@@ -200,7 +200,9 @@ def single_star_surface(**kwargs):
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
 
-    ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2], triangles=kwargs['triangles'])
+    star_plot = ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2], triangles=kwargs['triangles'],
+                    antialiased=True, shade=False)
+    star_plot.set_edgecolor('black')
     unit = str(kwargs['axis_unit'])
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])

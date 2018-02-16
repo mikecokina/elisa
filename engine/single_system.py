@@ -244,12 +244,29 @@ class SingleSystem(System):
                                                   np.power(radius * np.sin(theta), 2)
 
     def calculate_potential_gradient(self):
-        r3 = np.power(np.linalg.norm(self.star.points, axis=1), 3)
-        dOmega_dx = None
-        dOmega_dy = None
-        dOmega_dz = - c.G * self.star.mass * self.star.points[:, 2] / r3
-        return np.power(np.power(dOmega_dx, 2) + np.power(dOmega_dy, 2) + np.power(dOmega_dz, 2), 0.5)
+        """
+        returns array of potential gradients for each surface point
 
+        :return: np.array
+        """
+        r3 = np.power(np.linalg.norm(self.star.points, axis=1), 3)
+        domega_dx = c.G * self.star.mass * self.star.points[:, 0] / r3 \
+                    - np.power(self._angular_velocity, 2) * self.star.points[:, 0]
+        domega_dy = c.G * self.star.mass * self.star.points[:, 1] / r3 \
+                    - np.power(self._angular_velocity, 2) * self.star.points[:, 1]
+        domega_dz = c.G * self.star.mass * self.star.points[:, 2] / r3
+        return np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
+
+    def calculate_polar_potential_gradient(self):
+        """
+        returns polar gradient of gravitational potential
+
+        :return:
+        """
+        points = np.array([0, 0, self.calculate_polar_radius()])
+        r3 = np.power(np.linalg.norm(points), 3)
+        domega_dz = c.G * self.star.mass * points[2] / r3
+        return np.power(np.power(domega_dz, 2), 0.5)
 
     def potential_fn(self, radius, *args):
         """

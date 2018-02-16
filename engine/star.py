@@ -27,7 +27,6 @@ class Star(Body):
         self._synchronicity = None
         self._forward_radius = None
         self._side_radius = None
-        self._polar_radius = None
         self._polar_gravity_acceleration = None
         self._polar_log_g = None
         self._equatorial_radius = None
@@ -137,15 +136,6 @@ class Star(Body):
             self._gravity_darkening = np.float64(gravity_darkening)
         else:
             raise ValueError('Parameter gravity darkening = {} is out of range (0, 1)'.format(gravity_darkening))
-
-    @property
-    def polar_radius(self):
-        """
-        returns polar radius in default units
-
-        :return: float
-        """
-        return self._polar_radius
 
     @property
     def equatorial_radius(self):

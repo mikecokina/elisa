@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from engine import utils
 from engine import const as c
+from time import time
 
 spots_metadata = {
     "primary":
@@ -30,6 +31,7 @@ spots_metadata = {
          ]
      }
 
+start_time = time()
 primary = Star(mass=1.5, surface_potential=3.0, synchronicity=1.0, spots=spots_metadata["primary"])
 secondary = Star(mass=1.0, surface_potential=3.0, synchronicity=1.0)
 
@@ -48,12 +50,22 @@ phase = 0
 pc = bs.critical_potential(component="primary", phase=phase)
 sc = bs.critical_potential(component="secondary", phase=phase)
 
+component = 'primary'
+# component = 'secondary'
+component_instance = getattr(bs, component)
+component_instance.points = bs.mesh_over_contact(component=component, alpha=5)
+idx = np.argmax(component_instance.points[:, 2])
+component_instance.faces = bs.over_contact_surface(points=component_instance.points)
+component_instance.polar_radius = bs.calculate_polar_radius(component=component, phase=0.0)
+
+print(component_instance.points[idx, :])
+print(component_instance.polar_radius)
+
 # print(bs.morphology)
 # print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
-primary.points = bs.mesh_over_contact(component='primary', alpha=20)
-primary.faces = bs.over_contact_surface(points=primary.points)
 
-# print(bs.calculate_potential_gradient(component='primary', component_distance=1.0))
+print(max(bs.calculate_potential_gradient(component=component, component_distance=1.0)))
+print(bs.calculate_polar_potential_gradient(component=component, component_distance=1.0))
 # primary.normals = primary.calculate_normals()
 # print(primary.normals)
 # print(np.linalg.norm(primary.normals, axis=1))
@@ -73,4 +85,6 @@ primary.faces = bs.over_contact_surface(points=primary.points)
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
-# bs.plot(descriptor='surface', phase=0, components_to_plot='both', alpha1=10, alpha2=10)
+# bs.plot(descriptor='surface', phase=0, components_to_plot='primary', alpha1=10, alpha2=10)
+
+print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
