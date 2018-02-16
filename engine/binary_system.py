@@ -215,13 +215,35 @@ class BinarySystem(System):
                             if theta_index == len(thetas) - 1:
                                 boundary_points.append(spot_point)
 
-                    # setup spot instance properties
-                    spot_instance._points = spot_points
-                    spot_instance._boundary = boundary_points
-
                 except StopIteration:
                     self._logger.info("Any point of spot {} doesn't satisfy reasonable conditions and "
                                       "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
+                    return
+
+                boundary_com = sum(np.array(boundary_points)) / len(boundary_points)
+                solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1], boundary_com[2]))
+                boundary_center = utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2])
+
+                # first point will be always center of boundary
+                spot_points.insert(0, boundary_center)
+
+                if component == "primary":
+                    spot_instance._points = spot_points
+                    spot_instance._boundary = boundary_points
+                    spot_instance._boundary_center = boundary_center
+                    spot_instance._center = spot_points[1]
+                else:
+                    spot_instance._points = [(components_distance - point[0], -point[1], point[2])
+                                             for point in spot_points]
+
+                    spot_instance._boundary = [(components_distance - point[0], -point[1], point[2])
+                                               for point in boundary_points]
+
+                    spot_instance._boundary_center = (components_distance - boundary_center[0],
+                                                      -boundary_center[1], boundary_center[2])
+
+                    spot_instance._center = (components_distance - spot_points[1][0], -spot_points[1][1],
+                                             spot_points[1][2])
 
     def solver(self, fn, condition, *args, **kwargs):
         """
