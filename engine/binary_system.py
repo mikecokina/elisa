@@ -811,7 +811,7 @@ class BinarySystem(System):
 
     def calculate_potential_gradient(self, component=None, component_distance=None):
         """
-        returns array of potential gradients for each surface point
+        returns array of absolute values of potential gradients for each surface point
 
         :param component: str, `primary` or `secondary`
         :param component_distance: float, in SMA distance

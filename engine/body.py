@@ -127,7 +127,8 @@ class Body(object, metaclass=ABCMeta):
         elif isinstance(t_eff, (int, np.int, float, np.float)):
             self._t_eff = np.float64(t_eff)
         else:
-            raise TypeError('Value of `t_eff` is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity instance.')
+            raise TypeError('Value of `t_eff` is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity '
+                            'instance.')
 
     @property
     def points(self):

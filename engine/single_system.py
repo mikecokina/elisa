@@ -245,7 +245,7 @@ class SingleSystem(System):
 
     def calculate_potential_gradient(self):
         """
-        returns array of potential gradients for each surface point
+        returns array of absolute values of potential gradients for each surface point
 
         :return: np.array
         """
@@ -259,7 +259,7 @@ class SingleSystem(System):
 
     def calculate_polar_potential_gradient(self):
         """
-        returns polar gradient of gravitational potential
+        returns absolute value of polar gradient of gravitational potential
 
         :return:
         """

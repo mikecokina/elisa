@@ -32,6 +32,8 @@ class Star(Body):
         self._equatorial_radius = None
         self._critical_surface_potential = None
         self._spots = None
+        self._potential_gradients = None
+        self._polar_potential_gradient = None
 
         # values of properties
         for kwarg in Star.KWARGS:
@@ -120,9 +122,9 @@ class Star(Body):
         returns gravity darkening
         usage: xy.gravity_darkening
 
-        :return: float64
+        :return: float
         """
-        return self._backward_radius
+        return self._gravity_darkening
 
     @gravity_darkening.setter
     def gravity_darkening(self, gravity_darkening):
@@ -130,7 +132,7 @@ class Star(Body):
         setter for gravity darkening
         accepts values of gravity darkening in range (0, 1)
 
-        :param gravity_darkening: float64
+        :param gravity_darkening: float
         """
         if 0 <= gravity_darkening <= 1:
             self._gravity_darkening = np.float64(gravity_darkening)
@@ -163,6 +165,48 @@ class Star(Body):
         :return: float
         """
         return self._polar_log_g
+
+    @property
+    def potential_gradients(self):
+        """
+        returns array of absolute values of potential gradients for each face of surface
+
+        :return: numpy.array
+        """
+        return self._potential_gradients
+
+    @potential_gradients.setter
+    def potential_gradients(self, potential_gradients):
+        """
+        :param potential_gradients: np.array
+        :return:
+        """
+        self._potential_gradients = potential_gradients
+
+    @property
+    def polar_potential_gradient(self):
+        """
+        returns array of absolute value of polar potential gradient
+
+        :return: float
+        """
+        return self._polar_potential_gradient
+
+    @polar_potential_gradient.setter
+    def polar_potential_gradient(self, potential_gradient):
+        """
+        :param potential_gradients: float
+        :return:
+        """
+        self._polar_potential_gradient = potential_gradient
+
+    def calculate_polar_effective_temperature(self):
+        print(self.potential_gradients)
+        return self.t_eff * np.power(np.sum(self.areas) /
+                                     np.sum(self.areas * np.power(self.potential_gradients /
+                                                                  self.polar_potential_gradient,
+                                                                  self.gravity_darkening)),
+                                     0.25)
 
     def is_property(self, kwargs):
         """
