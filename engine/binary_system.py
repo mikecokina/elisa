@@ -1569,10 +1569,6 @@ class BinarySystem(System):
         method_to_call(**kwargs)
 
     def mesh_spot(self):
-
-
-
-
         pass
 
     def is_property(self, kwargs):
@@ -1584,4 +1580,5 @@ class BinarySystem(System):
         """
         is_not = ['`{}`'.format(k) for k in kwargs if k not in dir(self)]
         if is_not:
-            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
+            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not),
+                                                                                    BinarySystem.__name__))
