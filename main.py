@@ -32,9 +32,17 @@ spots_metadata = {
      }
 
 start_time = time()
-primary = Star(mass=1.5, surface_potential=3.0, synchronicity=1.0, spots=spots_metadata["primary"])
-secondary = Star(mass=1.0, surface_potential=3.0, synchronicity=1.0)
-
+primary = Star(mass=1.5*u.solMass,
+               surface_potential=3.0,
+               synchronicity=1.0,
+               t_eff=7000*u.K,
+               gravity_darkening=1.0,
+               spots=spots_metadata["primary"])
+secondary = Star(mass=1.0*u.solMass,
+                 surface_potential=3.0,
+                 synchronicity=1.0,
+                 t_eff=6000*u.K,
+                 gravity_darkening=0.32)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -57,10 +65,14 @@ component_instance.points = bs.mesh_over_contact(component=component, alpha=5)
 idx = np.argmax(component_instance.points[:, 2])
 component_instance.faces = bs.over_contact_surface(points=component_instance.points)
 component_instance.polar_radius = bs.calculate_polar_radius(component=component, phase=0.0)
-
 component_instance.areas = component_instance.calculate_areas()
-print(np.shape(component_instance.areas), np.shape(component_instance.faces))
+component_instance.potential_gradients = bs.calculate_potential_gradient(component=component,
+                                                                         component_distance=1)
+component_instance.polar_potential_gradient = bs.calculate_polar_potential_gradient(component=component,
+                                                                                     component_distance=1)
+polar_t_eff = component_instance.calculate_polar_effective_temperature()
 
+print(polar_t_eff)
 
 # print(bs.morphology)
 # print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
