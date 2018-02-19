@@ -119,7 +119,7 @@ class BinarySystem(System):
 
         fns = {"primary": self.potential_primary_fn, "secondary": self.potential_secondary_fn}
 
-        neck_position = None
+        neck_position = 1e10
         # in case of wuma system, get separation and make additional test of location of each point (if primary
         # spot doesn't intersect with secondary, if does, then such spot will be skiped completly)
         if self.morphology == "over-contact":
@@ -191,6 +191,7 @@ class BinarySystem(System):
                         default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
 
                         for delta_index, delta in enumerate(deltas[theta_index]):
+                            print(delta, theta)
                             delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
                                                                     vector=utils.spherical_to_cartesian(
                                                                         default_spherical_vector[0],

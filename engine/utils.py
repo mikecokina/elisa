@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 import re
 
 def polar_to_cartesian(radius, phi):
@@ -128,3 +129,22 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
     matrix[2][2] = (np.cos(theta)) + (omega[2] ** 2 * (1. - np.cos(theta)))
 
     return np.dot(matrix, vector)
+
+
+def average_spacing(data=None, neighbours=6):
+    """
+    Average Spacing
+    Match w/ CGAL average spacing function
+
+    :param data: list (np.array); 3-dimensinal dataset
+    :param neighbours: int; nearest neighbours to averaging
+    :return:
+    """
+    if not isinstance(data, np.array):
+        data = np.array(data)
+
+    dist = sp.spatial.distance.cdist(data, data, 'euclidean')
+    total = 0
+    for line in dist:
+        total += np.sort(line)[1:1 + neighbours].sum() / (neighbours + 1)
+    return total / dist.shape[0]
