@@ -58,14 +58,13 @@ idx = np.argmax(component_instance.points[:, 2])
 component_instance.faces = bs.over_contact_surface(points=component_instance.points)
 component_instance.polar_radius = bs.calculate_polar_radius(component=component, phase=0.0)
 
-print(component_instance.points[idx, :])
-print(component_instance.polar_radius)
+component_instance.areas = component_instance.calculate_areas()
+print(np.shape(component_instance.areas), np.shape(component_instance.faces))
+
 
 # print(bs.morphology)
 # print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
 
-print(max(bs.calculate_potential_gradient(component=component, component_distance=1.0)))
-print(bs.calculate_polar_potential_gradient(component=component, component_distance=1.0))
 # primary.normals = primary.calculate_normals()
 # print(primary.normals)
 # print(np.linalg.norm(primary.normals, axis=1))

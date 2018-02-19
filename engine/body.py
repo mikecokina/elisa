@@ -44,6 +44,7 @@ class Body(object, metaclass=ABCMeta):
         self._synchronicity = None  # float64
         self._albedo = None  # float64
         self._polar_radius = None # float64
+        self._areas = None
 
         # values of properties
         # toto tu uz byt nemusi?
@@ -217,6 +218,27 @@ class Body(object, metaclass=ABCMeta):
         self._normals = normals
 
     @property
+    def areas(self):
+        """
+        returns array of areas of corresponding faces
+        usage: xy.areas
+
+        :return: np.array([area_1, ..., area_n])
+        """
+        return self._areas
+
+    @areas.setter
+    def areas(self, areas):
+        """
+        returns array of areas of corresponding faces
+        usage: xy.areas = new_areas
+
+        :param areas: numpy.array([area_1, ..., area_n])
+        :return:
+        """
+        self._areas = areas
+
+    @property
     def temperatures(self):
         """
         returns array of temeratures of corresponding faces
@@ -382,7 +404,8 @@ class Body(object, metaclass=ABCMeta):
 
         return normals * sgn_vector[:, None]
 
-    def calculate_surface_centres(self, points, faces):
+    @staticmethod
+    def calculate_surface_centres(points, faces):
         """
         returns centers of every surface face
 
@@ -392,6 +415,15 @@ class Body(object, metaclass=ABCMeta):
                               [center_xn, center_yn, center_zn]])
         """
         return np.average(points[faces], axis=1)
+
+    def calculate_areas(self):
+        """
+        returns areas of each face of the star surface
+        :return: numpy.array([area_1, ..., area_n])
+        """
+        return 0.5 * np.linalg.norm(np.cross(self.points[self.faces[:, 1]] - self.points[self.faces[:, 0]],
+                                             self.points[self.faces[:, 2]] - self.points[self.faces[:, 0]]),
+                                    axis=1)
 
     def get_info(self):
         pass
