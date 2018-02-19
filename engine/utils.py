@@ -1,6 +1,7 @@
 import numpy as np
 import scipy as sp
 import re
+from copy import copy
 
 def polar_to_cartesian(radius, phi):
     """
@@ -33,8 +34,8 @@ def find_nearest_dist_3d(data=None):
     :return: (np.)float; minimal distance of points in dataset
     """
     from scipy.spatial import KDTree
-    points = data[:]
-    test_points, distances = points[:], []
+    points = copy(data)
+    test_points, distances = copy(points), []
 
     for i in range(0, len(test_points) - 1):
         points.remove(test_points[i])

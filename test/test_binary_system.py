@@ -14,16 +14,16 @@ from engine import utils
 #         bs = BinarySystem(primary=None, secondary=None)
 #
 #         bs.period = 10.0
-#         self.assertEqual(bs.orbit.period, 10)
-#
 #         bs.eccentricity = 0.6
-#         self.assertEqual(bs.orbit.eccentricity, 0.6)
-#
 #         bs.inclination = 0.25
-#         self.assertEqual(bs.orbit.inclination, 0.25)
-#
 #         bs.periastron = 0.2345
+#
+#         bs.init()
+#
+#         self.assertEqual(bs.orbit.eccentricity, 0.6)
+#         self.assertEqual(bs.orbit.inclination, 0.25)
 #         self.assertEqual(bs.orbit.periastron, 0.2345)
+#         self.assertEqual(bs.orbit.period, 10)
 #
 #     def test_binary_system_unit(self):
 #         bs = BinarySystem(primary=None, secondary=None)
@@ -146,7 +146,6 @@ class TestBinarySystem(unittest.TestCase):
             obtained_potentials.append([round(primary_cp, 10), round(secondary_cp, 10)])
         assert_array_almost_equal(expected_potentials, obtained_potentials)
 
-
     def test_lagrangian_points(self):
 
         expected_points = [[-0.80302796065835425, 0.57075157151852673, 1.5823807222136623],
@@ -201,9 +200,9 @@ class TestBinarySystem(unittest.TestCase):
                               primary_minimum_time=combo["primary_minimum_time"],
                               phase_shift=combo["phase_shift"])
 
-            if i == 6:
-                mesh_primary = bs.mesh_contact(component='primary', alpha=alpha)
-                mesh_secondary = bs.mesh_contact(component='secondary', alpha=alpha)
+            if bs.morphology == "over-contact":
+                mesh_primary = bs.mesh_over_contact(component='primary', alpha=alpha)
+                mesh_secondary = bs.mesh_over_contact(component='secondary', alpha=alpha)
             else:
                 mesh_primary = bs.mesh_detached(component='primary', phase=phases_to_use[i], alpha=alpha)
                 mesh_secondary = bs.mesh_detached(component='secondary', phase=phases_to_use[i], alpha=alpha)
@@ -211,9 +210,16 @@ class TestBinarySystem(unittest.TestCase):
             distance1 = round(utils.find_nearest_dist_3d(list(mesh_primary)), 10)
             distance2 = round(utils.find_nearest_dist_3d(list(mesh_secondary)), 10)
             print(distance1, distance2)
-            self.assertNotAlmostEqual(distance1, 0)
-            self.assertNotAlmostEqual(distance2, 0)
+            self.assertFalse(distance1 < 1e-10)
+            self.assertFalse(distance2 < 1e-10)
 
+    def test_morphology(self):
+        # todo: doplnit test pre rozne kriticke pripady v morfologii
+        pass
+
+    def test_spots(self):
+        # todo: doplnit testy pre rozne patologicke pripady (aj nepatologicke)
+        pass
 
 
 

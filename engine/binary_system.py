@@ -109,8 +109,8 @@ class BinarySystem(System):
         :param phase: float
         :return:
         """
-        def solver_condition(x, *args, **kwargs):
-            x, _, _ = utils.spherical_to_cartesian(x, args[1], args[2])
+        def solver_condition(x, *_args, **_kwargs):
+            x, _, _ = utils.spherical_to_cartesian(x, _args[1], _args[2])
             x = x if component == "primary" else components_distance - x
             # ignore also spots where one of points is suteated just on the neck, don't care abot bullshit spots
             if (component == "primary" and x >= neck_position) or (component == "secondary" and x <= neck_position):
@@ -843,10 +843,14 @@ class BinarySystem(System):
         """
         returns array of potential gradients for each surface point
 
+        fixme: doplnit spravny popis
+
         :param component: str, `primary` or `secondary`
         :param component_distance: float, in SMA distance
         :return: numpy.array
         """
+
+        # fixme: ? netvrdim, ze to treba opravovat, ale vsade pouzivame fazu a tu component_distance? preco?
         component_instance = getattr(self, component)
         points = np.array([0, 0, component_instance.polar_radius]) if component == 'primary' \
             else np.array([component_distance, 0, component_instance.polar_radius])
