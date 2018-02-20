@@ -142,7 +142,7 @@ class BinarySystem(System):
 
                 # initial containers for current spot
                 boundary_points, spot_points = [], []
-                solution, use = False, False
+                solution, use = False, False  # tu toto treba?
 
                 # initial radial vector
                 radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
@@ -191,7 +191,7 @@ class BinarySystem(System):
                         default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
 
                         for delta_index, delta in enumerate(deltas[theta_index]):
-                            print(delta, theta)
+                            # print(delta, theta)
                             delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
                                                                     vector=utils.spherical_to_cartesian(
                                                                         default_spherical_vector[0],
@@ -841,9 +841,7 @@ class BinarySystem(System):
 
     def calculate_polar_potential_gradient(self, component=None, component_distance=None):
         """
-        returns array of potential gradients for each surface point
-
-        fixme: doplnit spravny popis
+        returns absolute value of polar potential gradient
 
         :param component: str, `primary` or `secondary`
         :param component_distance: float, in SMA distance

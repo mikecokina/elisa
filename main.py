@@ -69,7 +69,10 @@ component_instance.areas = component_instance.calculate_areas()
 component_instance.potential_gradients = bs.calculate_potential_gradient(component=component,
                                                                          component_distance=1)
 component_instance.polar_potential_gradient = bs.calculate_polar_potential_gradient(component=component,
-                                                                                     component_distance=1)
+                                                                                    component_distance=1)
+
+print(min(component_instance.areas), max(component_instance.areas))
+print(len(component_instance.potential_gradients), len(component_instance.faces[:, 0]))
 # polar_t_eff = component_instance.calculate_polar_effective_temperature()
 
 # print(polar_t_eff)
@@ -96,6 +99,6 @@ component_instance.polar_potential_gradient = bs.calculate_polar_potential_gradi
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
-bs.plot(descriptor='surface', phase=0, components_to_plot='both', alpha1=10, alpha2=10)
+bs.plot(descriptor='surface', phase=0, components_to_plot='primary', alpha1=10, alpha2=10)
 
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
