@@ -33,13 +33,13 @@ spots_metadata = {
 
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
-               surface_potential=3.0,
+               surface_potential=3.15,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                spots=spots_metadata["primary"])
 secondary = Star(mass=1.0*u.solMass,
-                 surface_potential=3.0,
+                 surface_potential=3.15,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32)
@@ -70,9 +70,9 @@ component_instance.potential_gradients = bs.calculate_potential_gradient(compone
                                                                          component_distance=1)
 component_instance.polar_potential_gradient = bs.calculate_polar_potential_gradient(component=component,
                                                                                      component_distance=1)
-polar_t_eff = component_instance.calculate_polar_effective_temperature()
+# polar_t_eff = component_instance.calculate_polar_effective_temperature()
 
-print(polar_t_eff)
+# print(polar_t_eff)
 
 # print(bs.morphology)
 # print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
@@ -96,6 +96,6 @@ print(polar_t_eff)
 # print(bs.critical_potential(component='secondary', phase=0))
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
-# bs.plot(descriptor='surface', phase=0, components_to_plot='primary', alpha1=10, alpha2=10)
+bs.plot(descriptor='surface', phase=0, components_to_plot='both', alpha1=10, alpha2=10)
 
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))

@@ -201,7 +201,6 @@ class Star(Body):
         self._polar_potential_gradient = potential_gradient
 
     def calculate_polar_effective_temperature(self):
-        print(self.potential_gradients)
         return self.t_eff * np.power(np.sum(self.areas) /
                                      np.sum(self.areas * np.power(self.potential_gradients /
                                                                   self.polar_potential_gradient,

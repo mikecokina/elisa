@@ -1301,10 +1301,10 @@ class BinarySystem(System):
         # z axis
         delta_z = alpha * self.calculate_polar_radius(component=component, phase=0)
         if component == 'primary':
-            num = int(neck_position // delta_z)
+            num = int(neck_position // delta_z) + 1
             z_ns = np.linspace(delta_z, neck_position, num=num, endpoint=True)
         else:
-            num = int((1 - neck_position) // delta_z)
+            num = int((1 - neck_position) // delta_z) + 1
             z_ns = np.linspace(delta_z, 1.0 - neck_position, num=num, endpoint=True)
 
         # generating equatorial, polar part and rest of the neck
@@ -1326,7 +1326,7 @@ class BinarySystem(System):
             r_eqn.append(solution[0])
 
             num = int(c.HALF_PI * r_eqn[-1] // delta_z)
-            start_val = c.HALF_PI / num
+            start_val = c.HALF_PI / (num + 1)
             phis = np.linspace(start_val, c.HALF_PI, num=num, endpoint=False)
             for phi in phis:
                 z_n.append(z)
