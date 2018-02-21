@@ -1152,7 +1152,7 @@ class BinarySystem(System):
 
         return points
 
-    def calculate_neck_position(self):
+    def calculate_neck_position(self, return_polynome=False):
         """
         function calculates x-coordinate of the `neck` (the narrowest place) of an over-contact system
         :return: np.float (0.1)
@@ -1202,8 +1202,10 @@ class BinarySystem(System):
             if new_value < comparision_value:
                 comparision_value = new_value
                 neck_position = root
-
-        return neck_position
+        if return_polynome:
+            return neck_position, polynomial_fit
+        else:
+            return neck_position
 
     def mesh_over_contact(self, component, alpha=3):
         """
@@ -1294,16 +1296,53 @@ class BinarySystem(System):
         x_q, y_q, z_q = utils.spherical_to_cartesian(r_q, phi_q, theta_q)
 
         # generating the neck
-        neck_position = self.calculate_neck_position()
+        neck_position, neck_polynome = self.calculate_neck_position(return_polynome=True)
         # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
         # z axis
+        num = 100
         delta_z = alpha * self.calculate_polar_radius(component=component, phase=0)
         if component == 'primary':
-            num = int(neck_position // delta_z) + 1
-            z_ns = np.linspace(delta_z, neck_position, num=num, endpoint=True)
+            # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
+            x_curve = np.linspace(0, neck_position, num=num, endpoint=True)
+            z_curve = np.polyval(neck_polynome, x_curve)
+            curve = np.column_stack((x_curve, z_curve))
+            neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0)**2, axis=1))
+            neck_length = np.sum(neck_lengths)
+            segment = neck_length / (int(neck_length // delta_z) + 1)
+
+            k = 1
+            z_ns, line_sum = [], 0.0
+            for ii in range(num-1):
+                line_sum += neck_lengths[ii]
+                if line_sum > k * segment:
+                    z_ns.append(x_curve[ii+1])
+                    k += 1
+            z_ns.append(neck_position)
+            z_ns = np.array(z_ns)
+            # num = int(neck_position // delta_z) + 1
+            # z_ns = np.linspace(delta_z, neck_position, num=num, endpoint=True)
         else:
-            num = int((1 - neck_position) // delta_z) + 1
-            z_ns = np.linspace(delta_z, 1.0 - neck_position, num=num, endpoint=True)
+            # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
+            x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
+            z_curve = np.polyval(neck_polynome, x_curve)
+            curve = np.column_stack((x_curve, z_curve))
+            neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
+            neck_length = np.sum(neck_lengths)
+            segment = neck_length / (int(neck_length // delta_z) + 1)
+
+            k = 1
+            z_ns, line_sum = [1 - neck_position], 0.0
+            for ii in range(num - 1):
+                line_sum += neck_lengths[ii]
+                if line_sum > k * segment:
+                    z_ns.append(1 - x_curve[ii + 1])
+                    k += 1
+
+            z_ns = np.array(z_ns)
+            print(neck_position, z_ns)
+
+            # num = int((1 - neck_position) // delta_z) + 1
+            # z_ns = np.linspace(delta_z, 1.0 - neck_position, num=num, endpoint=True)
 
         # generating equatorial, polar part and rest of the neck
         r_eqn, phi_eqn, z_eqn = [], [], []
