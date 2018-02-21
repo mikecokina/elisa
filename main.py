@@ -61,7 +61,7 @@ sc = bs.critical_potential(component="secondary", phase=phase)
 component = 'primary'
 # component = 'secondary'
 component_instance = getattr(bs, component)
-component_instance.points = bs.mesh_over_contact(component=component, alpha=5)
+component_instance.points = bs.mesh_over_contact(component=component, alpha=3)
 idx = np.argmax(component_instance.points[:, 2])
 component_instance.faces = bs.over_contact_surface(points=component_instance.points)
 component_instance.polar_radius = bs.calculate_polar_radius(component=component, phase=0.0)
@@ -70,12 +70,9 @@ component_instance.potential_gradients = bs.calculate_potential_gradient(compone
                                                                          component_distance=1)
 component_instance.polar_potential_gradient = bs.calculate_polar_potential_gradient(component=component,
                                                                                     component_distance=1)
+component_instance.temperatures = component_instance.calculate_effective_temperatures()
 
-print(min(component_instance.areas), max(component_instance.areas))
-print(len(component_instance.potential_gradients), len(component_instance.faces[:, 0]))
-# polar_t_eff = component_instance.calculate_polar_effective_temperature()
-
-# print(polar_t_eff)
+# print(component_instance.temperatures)
 
 # print(bs.morphology)
 # print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
@@ -97,8 +94,16 @@ print(len(component_instance.potential_gradients), len(component_instance.faces[
 #
 # print(bs.critical_potential(component='primary', phase=0))
 # print(bs.critical_potential(component='secondary', phase=0))
-# bs.plot('orbit', frame_of_reference='barycentric')
-# bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
-bs.plot(descriptor='surface', phase=0, components_to_plot='secondary', alpha1=10, alpha2=10)
 
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
+
+# bs.plot('orbit', frame_of_reference='barycentric')
+# bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
+bs.plot(descriptor='surface',
+        phase=0,
+        components_to_plot='both',
+        alpha1=15,
+        alpha2=15,
+        edges=True,
+        normals=True)
+

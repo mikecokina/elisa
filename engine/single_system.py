@@ -431,19 +431,32 @@ class SingleSystem(System):
             kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
         elif descriptor == 'surface':
-            KWARGS = ['axis_unit', 'alpha']
+            KWARGS = ['axis_unit', 'alpha', 'edges', 'normals', 'colormap']
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
             method_to_call = graphics.single_star_surface
 
             if 'alpha' not in kwargs:
                 kwargs['alpha'] = 5
+            if 'edges' not in kwargs:
+                kwargs['edges'] = False
+            if 'normals' not in kwargs:
+                kwargs['normals'] = False
+            if 'colormap' not in kwargs:
+                kwargs['normals'] = None
+
             kwargs['mesh'] = self.mesh(alpha=kwargs['alpha'])
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
-
             kwargs['triangles'] = self.surface(vertices=kwargs['mesh'])
-
             kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
+
+            if kwargs['normals']:
+                kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'])
+                kwargs['centres'] = self.star.calculate_surface_centres(points=kwargs['mesh'],
+                                                                        faces=kwargs['triangles'])
+
+            # if kwargs['colormap'] == 'temperature':
+            #     temperatures = self.star.calculate_effective_temperatures(points=)
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

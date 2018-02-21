@@ -1339,7 +1339,6 @@ class BinarySystem(System):
                     k += 1
 
             z_ns = np.array(z_ns)
-            print(neck_position, z_ns)
 
             # num = int((1 - neck_position) // delta_z) + 1
             # z_ns = np.linspace(delta_z, 1.0 - neck_position, num=num, endpoint=True)
@@ -1562,7 +1561,7 @@ class BinarySystem(System):
                     kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
 
         elif descriptor == 'surface':
-            KWARGS = ['phase', 'components_to_plot', 'alpha1', 'alpha2', 'normals']
+            KWARGS = ['phase', 'components_to_plot', 'alpha1', 'alpha2', 'normals', 'edges']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.binary_surface
@@ -1573,6 +1572,8 @@ class BinarySystem(System):
                 kwargs['components_to_plot'] = 'both'
             if 'normals' not in kwargs:
                 kwargs['normals'] = False
+            if 'edges' not in kwargs:
+                kwargs['edges'] = False
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
                 if 'alpha1' not in kwargs:
@@ -1584,10 +1585,12 @@ class BinarySystem(System):
                 else:
                     kwargs['points_primary'] = self.mesh_over_contact(component='primary', alpha=kwargs['alpha1'])
                     kwargs['primary_triangles'] = self.over_contact_surface(points=kwargs['points_primary'])
-                kwargs['primary_centers'] = self._primary.calculate_surface_centres(kwargs['points_primary'],
-                                                                                    kwargs['primary_triangles'])
-                kwargs['primary_arrows'] = self._primary.calculate_normals(kwargs['points_primary'],
-                                                                 kwargs['primary_triangles']) / 100
+
+                if kwargs['normals']:
+                    kwargs['primary_centres'] = self._primary.calculate_surface_centres(kwargs['points_primary'],
+                                                                                        kwargs['primary_triangles'])
+                    kwargs['primary_arrows'] = self._primary.calculate_normals(kwargs['points_primary'],
+                                                                               kwargs['primary_triangles'])
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 if 'alpha2' not in kwargs:
@@ -1599,10 +1602,13 @@ class BinarySystem(System):
                 else:
                     kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
                     kwargs['secondary_triangles'] = self.over_contact_surface(points=kwargs['points_secondary'])
-                kwargs['secondary_centers'] = self._secondary.calculate_surface_centres(kwargs['points_secondary'],
-                                                                                        kwargs['secondary_triangles'])
-                kwargs['secondary_arrows'] = self._secondary.calculate_normals(kwargs['points_secondary'],
-                                                                               kwargs['secondary_triangles']) / 100
+
+                if kwargs['normals']:
+                    kwargs['secondary_centres'] = self._secondary.calculate_surface_centres(kwargs['points_secondary'],
+                                                                                            kwargs[
+                                                                                                'secondary_triangles'])
+                    kwargs['secondary_arrows'] = self._secondary.calculate_normals(kwargs['points_secondary'],
+                                                                                   kwargs['secondary_triangles'])
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

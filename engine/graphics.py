@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from astropy import units as u
 import numpy as np
 import re
-from mpl_toolkits.mplot3d import Axes3D
+import mpl_toolkits.mplot3d.axes3d as axes3d
 
 
 def orbit(**kwargs):
@@ -197,23 +197,30 @@ def single_star_surface(**kwargs):
     :return:
     """
     fig = plt.figure(figsize=(7, 7))
-    ax = fig.add_subplot(111, projection='3d')
+    ax = axes3d.Axes3D(fig)
     ax.set_aspect('equal')
 
-    star_plot = ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2], triangles=kwargs['triangles'],
-                    antialiased=True, shade=False)
-    star_plot.set_edgecolor('black')
-    unit = str(kwargs['axis_unit'])
+    star_plot = ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2],
+                                triangles=kwargs['triangles'], antialiased=True, shade=False, alpha=1)
+    if kwargs['edges']:
+        star_plot.set_edgecolor('black')
+
+    if kwargs['normals']:
+        arrows = ax.quiver(kwargs['centres'][:, 0], kwargs['centres'][:, 1], kwargs['centres'][:, 2],
+                           kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
+                           length=0.1*kwargs['equatorial_radius'])
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
 
+    unit = str(kwargs['axis_unit'])
     x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
     ax.set_zlabel(z_label)
 
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
 
 
@@ -226,12 +233,27 @@ def binary_surface(**kwargs):
         primary_plot = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
                                        kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
                                        antialiased=True, shade=False)
-        primary_plot.set_edgecolor('black')
+        if kwargs['edges']:
+            primary_plot.set_edgecolor('black')
+
+        if kwargs['normals']:
+            ax.quiver(kwargs['primary_centres'][:, 0], kwargs['primary_centres'][:, 1], kwargs['primary_centres'][:, 2],
+                      kwargs['primary_arrows'][:, 0], kwargs['primary_arrows'][:, 1], kwargs['primary_arrows'][:, 2],
+                      color='black', length=0.05)
+
     if kwargs['components_to_plot'] in ['secondary', 'both']:
         secondary_plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
                                          kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
                                          antialiased=True, shade=False)
-        secondary_plot.set_edgecolor('black')
+        if kwargs['edges']:
+            secondary_plot.set_edgecolor('black')
+
+        if kwargs['normals']:
+            ax.quiver(kwargs['secondary_centres'][:, 0], kwargs['secondary_centres'][:, 1],
+                      kwargs['secondary_centres'][:, 2],
+                      kwargs['secondary_arrows'][:, 0], kwargs['secondary_arrows'][:, 1],
+                      kwargs['secondary_arrows'][:, 2],
+                      color='black', length=0.05)
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')

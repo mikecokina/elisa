@@ -406,7 +406,7 @@ class Body(object, metaclass=ABCMeta):
         return normals * sgn_vector[:, None]
 
     @staticmethod
-    def calculate_surface_centres(points, faces):
+    def calculate_surface_centres(points=None, faces=None):
         """
         returns centers of every surface face
 
