@@ -105,5 +105,5 @@ bs.plot(descriptor='surface',
         alpha1=15,
         alpha2=15,
         edges=True,
-        normals=True)
+        normals=False)
 

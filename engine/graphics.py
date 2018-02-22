@@ -112,6 +112,7 @@ def equipotential_single_star(**kwargs):
     ax.set_ylabel(y_label)
     plt.show()
 
+
 def single_star_mesh(**kwargs):
     """
     Plot function for descriptor `mesh`, plots surface mesh of star in SingleStar system

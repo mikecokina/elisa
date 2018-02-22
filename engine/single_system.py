@@ -324,20 +324,19 @@ class SingleSystem(System):
         """
         return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
 
-    def mesh(self, alpha):
+    def mesh(self):
         """
         function for creating surface mesh of single star system
 
-        :param alpha: np.float, mean angular distance between vertices, < 90 deg
         :return: numpy.array([[x1 y1 z1],
                               [x2 y2 z2],
                                 ...
                               [xN yN zN]])
         """
-        if alpha > 90:
+        if self.discretization_factor > 90:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
-        alpha = np.radians(alpha)
+        alpha = np.radians(self.discretization_factor)
         N = int(c.HALF_PI // alpha)
         characterictic_angle = c.HALF_PI / N
         characterictic_distance = self.star.equatorial_radius * characterictic_angle
@@ -378,7 +377,7 @@ class SingleSystem(System):
                             np.array([self.star.polar_radius, -self.star.polar_radius])))
         return np.column_stack((x, y, z))
 
-    def surface(self, vertices):
+    def surface(self):
         """
         calculates triangulation of the given surface points, returns set of triple indices of surface pints that make
         up given triangle
@@ -392,9 +391,13 @@ class SingleSystem(System):
                                             ...
                                           [...]])
         """
-        triangulation = Delaunay(vertices)
+        triangulation = Delaunay(self.star.points)
         triangles_indices = triangulation.convex_hull
         return triangles_indices
+
+    def build_surface(self):
+        self.star.points = self.mesh()
+        self.star.faces = self.surface()
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -402,7 +405,9 @@ class SingleSystem(System):
         available in graphics library
 
         :param descriptor: str (defines type of plot):
-                            equpotential - plots orbit in orbital plane
+                               equpotential - plots orbit in orbital plane
+                               mesh - plots surface points mesh
+                               surface - plots stellar surface
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
         :return:
         """
@@ -419,24 +424,22 @@ class SingleSystem(System):
             kwargs['points'] = (points * U.DISTANCE_UNIT).to(kwargs['axis_unit'])
 
         elif descriptor == 'mesh':
-            KWARGS = ['axis_unit', 'alpha']
+            KWARGS = ['axis_unit']
             method_to_call = graphics.single_star_mesh
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
 
-            if 'alpha' not in kwargs:
-                kwargs['alpha'] = 5
-            kwargs['mesh'] = self.mesh(alpha=kwargs['alpha'])
+            if self.star.points is None:
+                self.star.points = self.mesh()
+            kwargs['mesh'] = self.star.points
             denominator = (1*kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
         elif descriptor == 'surface':
-            KWARGS = ['axis_unit', 'alpha', 'edges', 'normals', 'colormap']
+            KWARGS = ['axis_unit', 'edges', 'normals', 'colormap']
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
             method_to_call = graphics.single_star_surface
 
-            if 'alpha' not in kwargs:
-                kwargs['alpha'] = 5
             if 'edges' not in kwargs:
                 kwargs['edges'] = False
             if 'normals' not in kwargs:
@@ -444,10 +447,12 @@ class SingleSystem(System):
             if 'colormap' not in kwargs:
                 kwargs['normals'] = None
 
-            kwargs['mesh'] = self.mesh(alpha=kwargs['alpha'])
+            if self.star.faces is None:
+                self.build_surface()
+            kwargs['mesh'] = self.star.points
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
-            kwargs['triangles'] = self.surface(vertices=kwargs['mesh'])
+            kwargs['triangles'] = self.star.faces
             kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
             if kwargs['normals']:

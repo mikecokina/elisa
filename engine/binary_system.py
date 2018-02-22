@@ -1469,6 +1469,8 @@ class BinarySystem(System):
         :param descriptor: str (defines type of plot):
                             orbit - plots orbit in orbital plane
                             equipotential - plots crossections of surface Hill planes in xy,yz,zx planes
+                            mesh - plot surface points
+                            surface - plot stellar surfaces
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
         :return:
         """
