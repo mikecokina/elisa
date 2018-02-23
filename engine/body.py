@@ -45,6 +45,7 @@ class Body(object, metaclass=ABCMeta):
         self._albedo = None  # float64
         self._polar_radius = None # float64
         self._areas = None
+        self._discretization_factor = 3
 
         # values of properties
         # toto tu uz byt nemusi?
@@ -336,6 +337,25 @@ class Body(object, metaclass=ABCMeta):
         else:
             raise TypeError('Value of variable `polar radius` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+
+    @property
+    def discretization_factor(self):
+        """
+        returns mean angular distance between surface points
+
+        :return: float
+        """
+        return self._discretization_factor
+
+    @discretization_factor.setter
+    def discretization_factor(self, discretization_factor):
+        """
+        setter for discretization factor
+
+        :param :float or int
+        :return:
+        """
+        self._discretization_factor = discretization_factor
 
     @property
     def mass_unit(self):

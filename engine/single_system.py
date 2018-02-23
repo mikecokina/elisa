@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 
 class SingleSystem(System):
     KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'polar_log_g']
-    OPTIONAL_KWARGS = ['discretization_factor']
+    OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
@@ -47,7 +47,6 @@ class SingleSystem(System):
         self._inclination = None
         self._polar_log_g = None
         self._rotation_period = None
-        self._discretization_factor = None
 
         # testing if parameters were initialized
         missing_kwargs = []
@@ -66,10 +65,6 @@ class SingleSystem(System):
                                                                                   SingleSystem.__name__))
 
         # setting of optional parameters
-        if 'discretization_factor' in kwargs:
-            setattr(self, 'discretization_factor', kwargs['discretization_factor'])
-        else:
-            setattr(self, 'discretization_factor', 5)
 
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)
@@ -181,25 +176,6 @@ class SingleSystem(System):
         else:
             raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-
-    @property
-    def discretization_factor(self):
-        """
-        returns one quarter of number of points at star's equator
-
-        :return: float
-        """
-        return self._discretization_factor
-
-    @discretization_factor.setter
-    def discretization_factor(self, discretization_factor):
-        """
-        setter for discretization factor
-
-        :param log_g:
-        :return:
-        """
-        self._discretization_factor = int(discretization_factor)
 
     def calculate_polar_radius(self):
         """
@@ -333,10 +309,10 @@ class SingleSystem(System):
                                 ...
                               [xN yN zN]])
         """
-        if self.discretization_factor > 90:
+        if self.star.discretization_factor > 90:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
-        alpha = np.radians(self.discretization_factor)
+        alpha = np.radians(self.star.discretization_factor)
         N = int(c.HALF_PI // alpha)
         characterictic_angle = c.HALF_PI / N
         characterictic_distance = self.star.equatorial_radius * characterictic_angle

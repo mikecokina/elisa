@@ -11,7 +11,7 @@ class Star(Body):
 
     KWARGS = ['mass', 't_eff', 'vertices', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
               'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening', 'polar_gravity_acceleration',
-              'polar_log_g', 'equatorial_radius', 'spots']
+              'polar_log_g', 'equatorial_radius', 'spots', 'discretization_factor']
 
     def __init__(self, name=None, **kwargs):
         self.is_property(kwargs)
