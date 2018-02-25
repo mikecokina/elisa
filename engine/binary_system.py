@@ -222,11 +222,12 @@ class BinarySystem(System):
                     return
 
                 boundary_com = sum(np.array(boundary_points)) / len(boundary_points)
+                boundary_com = utils.cartesian_to_sphetical(*boundary_com)
                 solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1], boundary_com[2]))
                 boundary_center = utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2])
 
                 # first point will be always barycenter of boundary
-                spot_points.insert(0, boundary_center)
+                spot_points[0] = boundary_center
 
                 # max size from barycenter of boundary to boundary
                 # todo: make sure this value is correct = make an unittests for spots
