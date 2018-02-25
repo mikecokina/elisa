@@ -33,6 +33,7 @@ from engine import units
 import scipy
 from scipy.spatial import Delaunay
 from copy import copy
+from scipy.spatial import KDTree
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -225,8 +226,13 @@ class BinarySystem(System):
                 solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1], boundary_com[2]))
                 boundary_center = utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2])
 
-                # first point will be always center of boundary
+                # first point will be always barycenter of boundary
                 spot_points.insert(0, boundary_center)
+
+                # max size from barycenter of boundary to boundary
+                # todo: make sure this value is correct = make an unittests for spots
+                spot_instance._max_size = max([np.linalg.norm(np.array(boundary_center) - np.array(b))
+                                               for b in boundary_points])
 
                 if component == "primary":
                     spot_instance._points = spot_points
@@ -245,6 +251,10 @@ class BinarySystem(System):
 
                     spot_instance._center = (components_distance - spot_points[1][0], -spot_points[1][1],
                                              spot_points[1][2])
+
+                spot_instance._normals = self.calculate_potential_gradient(component=component,
+                                                                           component_distance=components_distance,
+                                                                           points=np.array(spot_instance._points))
 
     def solver(self, fn, condition, *args, **kwargs):
         """
@@ -809,16 +819,18 @@ class BinarySystem(System):
             raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
                              "solver has failed).")
 
-    def calculate_potential_gradient(self, component=None, component_distance=None):
+    def calculate_potential_gradient(self, component, component_distance, points=None):
         """
         returns array of absolute values of potential gradients for each surface point
 
         :param component: str, `primary` or `secondary`
         :param component_distance: float, in SMA distance
+        :param points: list/numpy.array
         :return: numpy.array
         """
         component_instance = getattr(self, component)
-        points = component_instance.points
+        points = component_instance.points if points is None else points
+
         r3 = np.power(np.linalg.norm(points, axis=1), 3)
         r_hat3 = np.power(np.linalg.norm(points - np.array([component_distance, 0, 0]), axis=1), 3)
         if component == 'primary':
@@ -1399,7 +1411,7 @@ class BinarySystem(System):
         """
         calculates surface faces from the given component's points in case of detached or semi-contact system
 
-        :param points: numpy.array (see output of BinarySystem.mesh_detached() or BinarySystem.mesh_over_contact()
+        :param component: str
         :return: np.array - N x 3 array of vertice indices
         """
         component_instance = getattr(self, component)
@@ -1463,6 +1475,11 @@ class BinarySystem(System):
 
         return np.array(new_triangles_indices)
 
+    def build_mesh(self, component):
+        component_instance = getattr(self, component)
+        component_instance.points = self.mesh_over_contact(component=component) if self.morphology == 'over-contact' \
+            else self.mesh_detached(component=component)
+
     def build_surface(self, component='None'):
         component_instance = getattr(self, component)
         if self.morphology == 'over-contact':
@@ -1485,6 +1502,8 @@ class BinarySystem(System):
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
         :return:
         """
+
+        # fixme: alpha argument is not used anymore
 
         if descriptor == 'orbit':
             KWARGS = ['start_phase', 'stop_phase', 'number_of_points', 'axis_unit', 'frame_of_reference']
@@ -1560,7 +1579,7 @@ class BinarySystem(System):
                     if self._morphology != 'over-contact':
                         self.primary.points = self.mesh_over_contact(component='primary')
                     else:
-                        self.primary.points = self.mesh_detached(component='primary',phase=kwargs['phase'])
+                        self.primary.points = self.mesh_detached(component='primary', phase=kwargs['phase'])
                 kwargs['points_primary'] = self.primary.points
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
@@ -1627,7 +1646,98 @@ class BinarySystem(System):
 
         method_to_call(**kwargs)
 
-    def mesh_spot(self):
+    def surface(self, component):
+
+        if component not in ["primary", "secondary"]:
+            raise ValueError("Incorrect component value, `primary` or `secondary` allowed.")
+
+        # todo: check whether any spot exists for component and if not, provide a simple triangulation
+
+        component_instance = getattr(self, component)
+        simplices_map = [{"type": "object", "clearance": True, "enum": -1} for _ in component_instance.points]
+        vertices = copy(component_instance.points)
+        normals = copy(component_instance.normals)
+
+        # average spacing of component surface points
+        avsp = utils.average_spacing(data=component_instance.points, neighbours=6)
+
+        for spot_index, spot in component_instance.spots.items():
+            avsp_spot = utils.average_spacing(data=spot._points, neighbours=6)
+            simplices_test, vertices_test = [], []
+
+            # find nerest points to spot alt center
+            tree = KDTree(vertices)
+            distances, ics = tree.query(spot._boundary_center, k=len(vertices))
+
+            object_max_distance = spot._max_size + (0.25 * avsp)
+            spot_max_distance = spot._max_size + (0.05 * avsp_spot)
+
+            for dist, ix in zip(distances, ics):
+                if dist > object_max_distance:
+                    # break, because distancies are ordered by size
+                    break
+
+                # distance exeption for spots points
+                if simplices_map[ix]["type"] == "spot":
+                    if dist > spot_max_distance:
+                        continue
+
+                # # norms 0 belong to alt center
+                # if np.dot(spot["norms"][0], norms_t[t_object][i]) > 0:
+                #     simplices_test.append(i)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         pass
 
     def is_property(self, kwargs):

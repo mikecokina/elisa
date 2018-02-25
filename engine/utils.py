@@ -141,7 +141,7 @@ def average_spacing(data=None, neighbours=6):
     :param neighbours: int; nearest neighbours to averaging
     :return:
     """
-    if not isinstance(data, np.array):
+    if not isinstance(data, type(np.array)):
         data = np.array(data)
 
     dist = sp.spatial.distance.cdist(data, data, 'euclidean')

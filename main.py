@@ -61,6 +61,9 @@ pc = bs.critical_potential(component="primary", phase=phase)
 sc = bs.critical_potential(component="secondary", phase=phase)
 
 component = 'primary'
+
+bs.build_mesh(component=component)
+bs.surface(component=component)
 # # component = 'secondary'
 # component_instance = getattr(bs, component)
 # component_instance.points = bs.mesh_over_contact(component=component, alpha=3)
@@ -97,12 +100,12 @@ component = 'primary'
 # print(bs.critical_potential(component='primary', phase=0))
 # print(bs.critical_potential(component='secondary', phase=0))
 
-print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
+# print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
-bs.plot(descriptor='mesh', components_to_plot='primary')
+# bs.plot(descriptor='mesh', components_to_plot='primary')
 # bs.plot(descriptor='surface',
 #         phase=0,
 #         components_to_plot='both'

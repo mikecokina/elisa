@@ -201,11 +201,11 @@ class TestBinarySystem(unittest.TestCase):
                               phase_shift=combo["phase_shift"])
 
             if bs.morphology == "over-contact":
-                mesh_primary = bs.mesh_over_contact(component='primary', alpha=alpha)
-                mesh_secondary = bs.mesh_over_contact(component='secondary', alpha=alpha)
+                mesh_primary = bs.mesh_over_contact(component='primary')
+                mesh_secondary = bs.mesh_over_contact(component='secondary')
             else:
-                mesh_primary = bs.mesh_detached(component='primary', phase=phases_to_use[i], alpha=alpha)
-                mesh_secondary = bs.mesh_detached(component='secondary', phase=phases_to_use[i], alpha=alpha)
+                mesh_primary = bs.mesh_detached(component='primary', phase=phases_to_use[i])
+                mesh_secondary = bs.mesh_detached(component='secondary', phase=phases_to_use[i])
 
             distance1 = round(utils.find_nearest_dist_3d(list(mesh_primary)), 10)
             distance2 = round(utils.find_nearest_dist_3d(list(mesh_secondary)), 10)
