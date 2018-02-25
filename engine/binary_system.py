@@ -143,7 +143,6 @@ class BinarySystem(System):
 
                 # initial containers for current spot
                 boundary_points, spot_points = [], []
-                solution, use = False, False  # tu toto treba?
 
                 # initial radial vector
                 radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
