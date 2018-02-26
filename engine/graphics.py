@@ -163,10 +163,10 @@ def binary_mesh(**kwargs):
     ax.set_aspect('equal')
     if kwargs['components_to_plot'] in ['primary', 'both']:
         ax.scatter(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1], kwargs['points_primary'][:, 2], s=5,
-                   label='primary')
+                   label='primary', alpha=1.0)
     if kwargs['components_to_plot'] in ['secondary', 'both']:
         ax.scatter(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1], kwargs['points_secondary'][:, 2],
-                   s=2, label='secondary')
+                   s=2, label='secondary', alpha=1.0)
     ax.legend(loc=1)
     ax.set_xlabel('x')
     ax.set_ylabel('y')

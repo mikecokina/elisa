@@ -44,7 +44,7 @@ secondary = Star(mass=1.0*u.solMass,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=5)
+                 discretization_factor=10)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -62,24 +62,23 @@ pc = bs.critical_potential(component="primary", components_distance=components_d
 sc = bs.critical_potential(component="secondary", components_distance=components_distance)
 print('Critical potentials: {0}, {1}'.format(pc, sc))
 
-component = 'primary'
+component = 'secondary'
 phase = 0
 
 # bs.build_mesh(component=component)
 # bs.surface(component=component)
-component = 'primary'
-component_instance = getattr(bs, component)
-component_instance.points = bs.mesh_over_contact(component=component)
-idx = np.argmax(component_instance.points[:, 2])
-component_instance.faces = bs.over_contact_surface(component=component)
-component_instance.polar_radius = bs.calculate_polar_radius(component=component,
-                                                            components_distance=components_distance)
-component_instance.areas = component_instance.calculate_areas()
-component_instance.potential_gradients = bs.calculate_potential_gradient(component=component,
-                                                                         components_distance=components_distance)
-component_instance.polar_potential_gradient = bs.calculate_polar_potential_gradient(component=component,
-                                                                                    components_distance=
-                                                                                    components_distance)
+# component_instance = getattr(bs, component)
+# component_instance.points = bs.mesh_over_contact(component=component)
+# idx = np.argmax(component_instance.points[:, 2])
+# component_instance.faces = bs.over_contact_surface(component=component)
+# component_instance.polar_radius = bs.calculate_polar_radius(component=component,
+#                                                             components_distance=components_distance)
+# component_instance.areas = component_instance.calculate_areas()
+# component_instance.potential_gradients = bs.calculate_potential_gradient(component=component,
+#                                                                          components_distance=components_distance)
+# component_instance.polar_potential_gradient = bs.calculate_polar_potential_gradient(component=component,
+#                                                                                     components_distance=
+#                                                                                     components_distance)
 # component_instance.temperatures = component_instance.calculate_effective_temperatures()
 
 # print(component_instance.temperatures)
@@ -110,10 +109,10 @@ component_instance.polar_potential_gradient = bs.calculate_polar_potential_gradi
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
-# bs.plot(descriptor='mesh', components_to_plot='primary')
-bs.plot(descriptor='surface',
-        phase=0,
-        components_to_plot='primary',
-        edges=True,
-        normals=False)
+# bs.plot(descriptor='mesh', components_to_plot='both')
+# bs.plot(descriptor='surface',
+#         phase=0,
+#         components_to_plot='both',
+#         edges=True,
+#         normals=False)
 

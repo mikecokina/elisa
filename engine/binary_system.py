@@ -1336,7 +1336,7 @@ class BinarySystem(System):
 
             k = 1
             z_ns, line_sum = [1 - neck_position], 0.0
-            for ii in range(num - 1):
+            for ii in range(num - 2):
                 line_sum += neck_lengths[ii]
                 if line_sum > k * segment:
                     z_ns.append(1 - x_curve[ii + 1])
@@ -1433,7 +1433,7 @@ class BinarySystem(System):
                     new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
                     projected_points.append(new_point)
         else:
-            for point in 'secondary':
+            for point in component_instance.points:
                 if point[0] >= 1:
                     point_copy = np.array(point)
                     point_copy[0] -= 1
@@ -1465,18 +1465,20 @@ class BinarySystem(System):
 
         return np.array(new_triangles_indices)
 
-    def build_mesh(self, component, components_distance):
+    def build_mesh(self, component, components_distance=None):
+        if components_distance is None:
+            components_distance = 1 - self.eccentricity
         component_instance = getattr(self, component)
         component_instance.points = self.mesh_over_contact(component=component) if self.morphology == 'over-contact' \
             else self.mesh_detached(component=component, components_distance=components_distance)
 
-    def build_surface(self, component='None'):
+    def build_surface(self, component='None', components_distance=None):
         component_instance = getattr(self, component)
         if self.morphology == 'over-contact':
-            component_instance.points = self.mesh_over_contact(component=component)
             component_instance.faces = self.over_contact_surface(component=component)
         else:
-            component_instance.points = self.mesh_detached(component=component)
+            if components_distance is None:
+                components_distance = 1 - self.eccentricity
             component_instance.faces = self.detached_system_surface(component=component)
 
     def plot(self, descriptor=None, **kwargs):
@@ -1561,28 +1563,22 @@ class BinarySystem(System):
 
             method_to_call = graphics.binary_mesh
 
-            components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
-
             if 'phase' not in kwargs:
                 kwargs['phase'] = 0
             if 'components_to_plot' not in kwargs:
                 kwargs['components_to_plot'] = 'both'
 
+            components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
+
             if kwargs['components_to_plot'] in ['primary', 'both']:
                 if self.primary.points is None:
-                    if self._morphology != 'over-contact':
-                        self.primary.points = self.mesh_over_contact(component='primary')
-                    else:
-                        self.primary.points = self.mesh_detached(component='primary',
-                                                                 components_distance=components_distance)
+                    self.build_mesh(component='primary', components_distance=components_distance)
                 kwargs['points_primary'] = self.primary.points
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
-                if self._morphology != 'over-contact':
-                    kwargs['points_secondary'] = self.mesh_detached(component='secondary',
-                                                                    components_distance=components_distance)
-                else:
-                    kwargs['points_secondary'] = self.mesh_over_contact(component='secondary')
+                if self.secondary.points is None:
+                    self.build_mesh(component='secondary', components_distance=components_distance)
+                kwargs['points_secondary'] = self.secondary.points
 
         elif descriptor == 'surface':
             KWARGS = ['phase', 'components_to_plot', 'normals', 'edges']
@@ -1602,37 +1598,35 @@ class BinarySystem(System):
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
-                if self._morphology != 'over-contact':
-                    kwargs['points_primary'] = self.mesh_detached(component='primary',
-                                                                  components_distance=components_distance)
-                    kwargs['primary_triangles'] = self.detached_system_surface(component='primary')
-                else:
-                    kwargs['points_primary'] = self.mesh_over_contact(component='primary')
-                    kwargs['primary_triangles'] = self.over_contact_surface(component='primary')
+                if kwargs['components_to_plot'] in ['primary', 'both']:
+                    if self.primary.points is None:
+                        self.build_mesh(component='primary', components_distance=components_distance)
+                    kwargs['points_primary'] = self.primary.points
+                    if self.primary.faces is None:
+                        self.build_surface(component='primary', components_distance=components_distance)
+                    kwargs['primary_triangles'] = self.primary.faces
 
-                if kwargs['normals']:
-                    kwargs['primary_centres'] = self._primary.calculate_surface_centres(kwargs['points_primary'],
-                                                                                        kwargs['primary_triangles'])
-                    kwargs['primary_arrows'] = self._primary.calculate_normals(kwargs['points_primary'],
-                                                                               kwargs['primary_triangles'])
+                    if kwargs['normals']:
+                        kwargs['primary_centres'] = self._primary.calculate_surface_centres(kwargs['points_primary'],
+                                                                                            kwargs['primary_triangles'])
+                        kwargs['primary_arrows'] = self._primary.calculate_normals(kwargs['points_primary'],
+                                                                                   kwargs['primary_triangles'])
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
-                if 'alpha2' not in kwargs:
-                    kwargs['alpha2'] = 5
-                if self._morphology != 'over-contact':
-                    kwargs['points_secondary'] = self.mesh_detached(component='secondary',
-                                                                    components_distance=components_distance)
-                    kwargs['secondary_triangles'] = self.detached_system_surface(component='secondary')
-                else:
-                    kwargs['points_secondary'] = self.mesh_over_contact(component='secondary')
-                    kwargs['secondary_triangles'] = self.over_contact_surface(component='secondary')
+                    if self.secondary.points is None:
+                        self.build_mesh(component='secondary', components_distance=components_distance)
+                    kwargs['points_secondary'] = self.secondary.points
+                    if self.secondary.faces is None:
+                        self.build_surface(component='secondary', components_distance=components_distance)
+                    kwargs['secondary_triangles'] = self.secondary.faces
 
-                if kwargs['normals']:
-                    kwargs['secondary_centres'] = self._secondary.calculate_surface_centres(kwargs['points_secondary'],
-                                                                                            kwargs[
-                                                                                                'secondary_triangles'])
-                    kwargs['secondary_arrows'] = self._secondary.calculate_normals(kwargs['points_secondary'],
-                                                                                   kwargs['secondary_triangles'])
+                    if kwargs['normals']:
+                        kwargs['secondary_centres'] = self._secondary.calculate_surface_centres(
+                            kwargs['points_secondary'],
+                            kwargs[
+                                'secondary_triangles'])
+                        kwargs['secondary_arrows'] = self._secondary.calculate_normals(kwargs['points_secondary'],
+                                                                                       kwargs['secondary_triangles'])
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
@@ -1658,7 +1652,7 @@ class BinarySystem(System):
             avsp_spot = utils.average_spacing(data=spot._points, neighbours=6)
             simplices_test, vertices_test = [], []
 
-            # find nerest points to spot alt center
+            # find nearest points to spot alt center
             tree = KDTree(vertices)
             distances, ics = tree.query(spot._boundary_center, k=len(vertices))
 

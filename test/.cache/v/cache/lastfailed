@@ -1,5 +1,4 @@
 {
-  "test_binary_system.py::TestBinarySystem::test_mesh_for_duplicate_points": true,
   "test_binary_system.py::TestBinarySystemProperties::test_binary_change": true,
   "test_binary_system.py::TestBinarySystemProperties::test_binary_system_unit": true,
   "test_binary_system.py::TestBinarySystemProperties::test_orbit_change": true
