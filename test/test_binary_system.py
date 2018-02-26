@@ -141,8 +141,9 @@ class TestBinarySystem(unittest.TestCase):
                               primary_minimum_time=combo["primary_minimum_time"],
                               phase_shift=combo["phase_shift"])
 
-            primary_cp = bs.critical_potential(component="primary", phase=phases_to_use[i])
-            secondary_cp = bs.critical_potential(component="secondary", phase=phases_to_use[i])
+            components_distance = bs.orbit.orbital_motion(phase=phases_to_use[i])[0][0]
+            primary_cp = bs.critical_potential(component="primary", components_distance=components_distance)
+            secondary_cp = bs.critical_potential(component="secondary", components_distance=components_distance)
             obtained_potentials.append([round(primary_cp, 10), round(secondary_cp, 10)])
         assert_array_almost_equal(expected_potentials, obtained_potentials)
 
@@ -185,10 +186,10 @@ class TestBinarySystem(unittest.TestCase):
 
         for i, combo in enumerate(self.params_combination):
             primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
-                           synchronicity=combo["primary_synchronicity"])
+                           synchronicity=combo["primary_synchronicity"], discretization_factor=alpha)
 
             secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
-                             synchronicity=combo["secondary_synchronicity"])
+                             synchronicity=combo["secondary_synchronicity"], discretization_factor=alpha)
 
             bs = BinarySystem(primary=primary,
                               secondary=secondary,
@@ -204,8 +205,9 @@ class TestBinarySystem(unittest.TestCase):
                 mesh_primary = bs.mesh_over_contact(component='primary')
                 mesh_secondary = bs.mesh_over_contact(component='secondary')
             else:
-                mesh_primary = bs.mesh_detached(component='primary', phase=phases_to_use[i])
-                mesh_secondary = bs.mesh_detached(component='secondary', phase=phases_to_use[i])
+                components_distance = bs.orbit.orbital_motion(phase=phases_to_use[i])[0][0]
+                mesh_primary = bs.mesh_detached(component='primary', components_distance=components_distance)
+                mesh_secondary = bs.mesh_detached(component='secondary', components_distance=components_distance)
 
             distance1 = round(utils.find_nearest_dist_3d(list(mesh_primary)), 10)
             distance2 = round(utils.find_nearest_dist_3d(list(mesh_secondary)), 10)

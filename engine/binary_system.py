@@ -101,19 +101,19 @@ class BinarySystem(System):
         # todo: compute and assign to all radii values to both components
 
         # evaluate spots of both components
-        self._evaluate_spots(phase=0.0)
+        self._evaluate_spots(components_distance=0.0)
 
-    def _evaluate_spots(self, phase):
+    def _evaluate_spots(self, components_distance):
         """
         compute points of each spots and assigns values to spot container instance
 
-        :param phase: float
+        :param components_distance: float
         :return:
         """
         def solver_condition(x, *_args, **_kwargs):
             x, _, _ = utils.spherical_to_cartesian(x, _args[1], _args[2])
             x = x if component == "primary" else components_distance - x
-            # ignore also spots where one of points is suteated just on the neck, don't care abot bullshit spots
+            # ignore also spots where one of points is situated just on the neck
             if (component == "primary" and x >= neck_position) or (component == "secondary" and x <= neck_position):
                 return False
             return True
@@ -129,7 +129,6 @@ class BinarySystem(System):
         for component, fn in fns.items():
             self._logger.info("Evaluating spots for {} component".format(component))
             component_instance = getattr(self, component)
-            components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
 
             if not component_instance.spots:
                 self._logger.info("No spots to evaluate for {} component. Skipping.".format(component))
@@ -253,7 +252,7 @@ class BinarySystem(System):
                                              spot_points[1][2])
 
                 spot_instance._normals = self.calculate_potential_gradient(component=component,
-                                                                           component_distance=components_distance,
+                                                                           components_distance=components_distance,
                                                                            points=np.array(spot_instance._points))
 
     def solver(self, fn, condition, *args, **kwargs):
@@ -333,9 +332,9 @@ class BinarySystem(System):
         # fixme: probably should be better to create a new function like setup_critical_potentials()
 
         primary_critical_potential = self.critical_potential(component="primary",
-                                                             phase=self.orbit.periastron_phase)
+                                                             components_distance=1-self.eccentricity)
         secondary_critical_potential = self.critical_potential(component="secondary",
-                                                               phase=self.orbit.periastron_phase)
+                                                               components_distance=1-self.eccentricity)
 
         self.primary.critical_surface_potential = primary_critical_potential
         self.secondary.critical_surface_potential = secondary_critical_potential
@@ -791,16 +790,15 @@ class BinarySystem(System):
         """
         return self.potential_value_secondary_cylindrical(radius, *args) - self.secondary.surface_potential
 
-    def critical_potential(self, component, phase):
+    def critical_potential(self, component, components_distance):
         """
         return a critical potential for target component
 
         :param component: str; define target component to compute critical potential; `primary` or `secondary`
-        :param phase: np.float
+        :param components_distance: np.float
         :return: np.float
         """
-        component_distance = self.orbit.orbital_motion(phase=phase)[0][0]
-        args = component_distance,
+        args = components_distance,
         if component == "primary":
             solution = newton(self.primary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
         elif component == "secondary":
@@ -810,21 +808,21 @@ class BinarySystem(System):
 
         if not np.isnan(solution):
             if component == "primary":
-                args = component_distance, 0.0, c.HALF_PI
+                args = components_distance, 0.0, c.HALF_PI
                 return abs(self.potential_value_primary(solution, *args))
             else:
-                args = (component_distance, 0.0, c.HALF_PI)
-                return abs(self.potential_value_secondary(component_distance - solution, *args))
+                args = (components_distance, 0.0, c.HALF_PI)
+                return abs(self.potential_value_secondary(components_distance - solution, *args))
         else:
             raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
                              "solver has failed).")
 
-    def calculate_potential_gradient(self, component, component_distance, points=None):
+    def calculate_potential_gradient(self, component, components_distance, points=None):
         """
         returns array of absolute values of potential gradients for each surface point
 
         :param component: str, `primary` or `secondary`
-        :param component_distance: float, in SMA distance
+        :param components_distance: float, in SMA distance
         :param points: list/numpy.array
         :return: numpy.array
         """
@@ -832,18 +830,18 @@ class BinarySystem(System):
         points = component_instance.points if points is None else points
 
         r3 = np.power(np.linalg.norm(points, axis=1), 3)
-        r_hat3 = np.power(np.linalg.norm(points - np.array([component_distance, 0, 0]), axis=1), 3)
+        r_hat3 = np.power(np.linalg.norm(points - np.array([components_distance, 0, 0]), axis=1), 3)
         if component == 'primary':
             F2 = np.power(self.primary.synchronicity, 2)
-            domega_dx = - points[:, 0] / r3 + self.mass_ratio * (component_distance - points[:, 0]) / r_hat3 \
+            domega_dx = - points[:, 0] / r3 + self.mass_ratio * (components_distance - points[:, 0]) / r_hat3 \
                         + F2 * (self.mass_ratio + 1) * points[:, 0] \
-                        - self.mass_ratio / np.power(component_distance, 2)
+                        - self.mass_ratio / np.power(components_distance, 2)
         elif component == 'secondary':
             F2 = np.power(self.secondary.synchronicity, 2)
-            domega_dx = - points[:, 0] / r3 + self.mass_ratio * (component_distance - points[:, 0]) / r_hat3 \
+            domega_dx = - points[:, 0] / r3 + self.mass_ratio * (components_distance - points[:, 0]) / r_hat3 \
                         - F2 * (self.mass_ratio + 1) \
-                        * (component_distance - points[:, 0]) * points[:, 0] \
-                        + 1 / np.power(component_distance, 2)
+                        * (components_distance - points[:, 0]) * points[:, 0] \
+                        + 1 / np.power(components_distance, 2)
         else:
             raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
                              .format(component))
@@ -851,39 +849,37 @@ class BinarySystem(System):
         domega_dz = - points[:, 2] * (1 / r3 + self.mass_ratio / r_hat3)
         return np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
 
-    def calculate_polar_potential_gradient(self, component=None, component_distance=None):
+    def calculate_polar_potential_gradient(self, component=None, components_distance=None):
         """
         returns absolute value of polar potential gradient
 
         :param component: str, `primary` or `secondary`
-        :param component_distance: float, in SMA distance
+        :param components_distance: float, in SMA distance
         :return: numpy.array
         """
-
-        # fixme: ? netvrdim, ze to treba opravovat, ale vsade pouzivame fazu a tu component_distance? preco?
         component_instance = getattr(self, component)
         points = np.array([0, 0, component_instance.polar_radius]) if component == 'primary' \
-            else np.array([component_distance, 0, component_instance.polar_radius])
+            else np.array([components_distance, 0, component_instance.polar_radius])
         r3 = np.power(np.linalg.norm(points), 3)
-        r_hat3 = np.power(np.linalg.norm(points - np.array([component_distance, 0, 0])), 3)
+        r_hat3 = np.power(np.linalg.norm(points - np.array([components_distance, 0, 0])), 3)
         if component == 'primary':
-            domega_dx = self.mass_ratio * component_distance / r_hat3 \
-                        - self.mass_ratio / np.power(component_distance, 2)
+            domega_dx = self.mass_ratio * components_distance / r_hat3 \
+                        - self.mass_ratio / np.power(components_distance, 2)
         elif component == 'secondary':
-            domega_dx = - points[0] / r3 + self.mass_ratio * (component_distance - points[0]) / r_hat3 \
-                        + 1 / np.power(component_distance, 2)
+            domega_dx = - points[0] / r3 + self.mass_ratio * (components_distance - points[0]) / r_hat3 \
+                        + 1 / np.power(components_distance, 2)
         else:
             raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
                              .format(component))
         domega_dz = - points[2] * (1 / r3 + self.mass_ratio / r_hat3)
         return np.power(np.power(domega_dx, 2) + np.power(domega_dz, 2), 0.5)
 
-    def calculate_polar_radius(self, component=None, phase=None):
+    def calculate_polar_radius(self, component=None, components_distance=None):
         """
         calculates polar radius in the similar manner as in BinarySystem.compute_equipotential_boundary method
 
         :param component: str - `primary` or `secondary`
-        :param phase: float - photometric phase
+        :param components_distance: float
         :return: float - polar radius
         """
         if component == 'primary':
@@ -893,7 +889,6 @@ class BinarySystem(System):
         else:
             raise ValueError('Invalid value of `component` argument {}. Expecting `primary` or `secondary`.'
                              .format(component))
-        components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
         args = (components_distance, 0, 0)
         scipy_solver_init_value = np.array([components_distance / 10000.0])
         solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value,
@@ -905,12 +900,12 @@ class BinarySystem(System):
         else:
             raise ValueError('Invalid value of polar radius {} was calculated.'.format(solution))
 
-    def calculate_side_radius(self, component=None, phase=None):
+    def calculate_side_radius(self, component=None, components_distance=None):
         """
         calculates side radius in the similar manner as in BinarySystem.compute_equipotential_boundary method
 
         :param component: str - `primary` or `secondary`
-        :param phase: float - photometric phase
+        :param components_distance: float - photometric phase
         :return: float - polar radius
         """
         if component == 'primary':
@@ -920,7 +915,6 @@ class BinarySystem(System):
         else:
             raise ValueError('Invalid value of `component` argument {}. Expecting `primary` or `secondary`.'
                              .format(component))
-        components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
         args = (components_distance, c.HALF_PI, c.HALF_PI)
         scipy_solver_init_value = np.array([components_distance / 10000.0])
         solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value,
@@ -932,15 +926,14 @@ class BinarySystem(System):
         else:
             raise ValueError('Invalid value of polar radius {} was calculated.'.format(solution))
 
-    def compute_equipotential_boundary(self, phase, plane):
+    def compute_equipotential_boundary(self, components_distance, plane):
         """
         compute a equipotential boundary of components (crossection of Hill plane)
 
-        :param phase: (np.)float; phase to obtain a component distance
+        :param components_distance: (np.)float
         :param plane: str; xy, yz, zx
         :return: tuple (np.array, np.array)
         """
-        components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
 
         components = ['primary', 'secondary']
         points_primary, points_secondary = [], []
@@ -1081,12 +1074,12 @@ class BinarySystem(System):
         lagrangian_points = self.lagrangian_points()
         return potential(lagrangian_points)
 
-    def mesh_detached(self, component, phase):
+    def mesh_detached(self, component, components_distance):
         """
         creates surface mesh of given binary star component in case of detached (semi-detached) system
 
         :param component: str - `primary` or `secondary`
-        :param phase: np.float - (0, 1) photometric phase at which surface is calculated, irrelevant in case e=0
+        :param components_distance: np.float
         :param alpha: np.float - discretization factor, mean angular distance of points
         :return: numpy.array - set of points in shape numpy.array([[x1 y1 z1],
                                                                      [x2 y2 z2],
@@ -1099,9 +1092,6 @@ class BinarySystem(System):
 
         alpha = np.radians(component_instance.discretization_factor)
         scipy_solver_init_value = np.array([1. / 10000.])
-
-        # calculating distance between components
-        components_distance = self.orbit.orbital_motion(phase=phase)[0][0]
 
         if component == 'primary':
             fn = self.potential_primary_fn
@@ -1165,7 +1155,7 @@ class BinarySystem(System):
 
         return points
 
-    def calculate_neck_position(self, return_polynome=False):
+    def calculate_neck_position(self, return_polynomial=False):
         """
         function calculates x-coordinate of the `neck` (the narrowest place) of an over-contact system
         :return: np.float (0.1)
@@ -1215,7 +1205,7 @@ class BinarySystem(System):
             if new_value < comparision_value:
                 comparision_value = new_value
                 neck_position = root
-        if return_polynome:
+        if return_polynomial:
             return neck_position, polynomial_fit
         else:
             return neck_position
@@ -1310,11 +1300,11 @@ class BinarySystem(System):
         x_q, y_q, z_q = utils.spherical_to_cartesian(r_q, phi_q, theta_q)
 
         # generating the neck
-        neck_position, neck_polynome = self.calculate_neck_position(return_polynome=True)
+        neck_position, neck_polynome = self.calculate_neck_position(return_polynomial=True)
         # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
         # z axis
         num = 100
-        delta_z = alpha * self.calculate_polar_radius(component=component, phase=0)
+        delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1-self.eccentricity)
         if component == 'primary':
             # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
             x_curve = np.linspace(0, neck_position, num=num, endpoint=True)
@@ -1432,7 +1422,7 @@ class BinarySystem(System):
         # projection of component's far side surface into ``sphere`` with radius r1
         r1 = neck_x  # radius of the sphere and cylinder
         projected_points = []
-        if component == component_instance.points:
+        if component == 'primary':
             k = r1 / (neck_x + 0.01)
             for point in component_instance.points:
                 if point[0] <= 0:
@@ -1443,7 +1433,7 @@ class BinarySystem(System):
                     new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
                     projected_points.append(new_point)
         else:
-            for point in component_instance.points:
+            for point in 'secondary':
                 if point[0] >= 1:
                     point_copy = np.array(point)
                     point_copy[0] -= 1
@@ -1475,10 +1465,10 @@ class BinarySystem(System):
 
         return np.array(new_triangles_indices)
 
-    def build_mesh(self, component):
+    def build_mesh(self, component, components_distance):
         component_instance = getattr(self, component)
         component_instance.points = self.mesh_over_contact(component=component) if self.morphology == 'over-contact' \
-            else self.mesh_detached(component=component)
+            else self.mesh_detached(component=component, components_distance=components_distance)
 
     def build_surface(self, component='None'):
         component_instance = getattr(self, component)
@@ -1555,7 +1545,9 @@ class BinarySystem(System):
             # relative distance between components (a = 1)
             if utils.is_plane(kwargs['plane'], 'xy') or utils.is_plane(
                     kwargs['plane'], 'yz') or utils.is_plane(kwargs['plane'], 'zx'):
-                points_primary, points_secondary = self.compute_equipotential_boundary(phase=kwargs['phase'],
+                components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
+                points_primary, points_secondary = self.compute_equipotential_boundary(components_distance=
+                                                                                       components_distance,
                                                                                        plane=kwargs['plane'])
             else:
                 raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
@@ -1569,30 +1561,31 @@ class BinarySystem(System):
 
             method_to_call = graphics.binary_mesh
 
+            components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
+
             if 'phase' not in kwargs:
                 kwargs['phase'] = 0
             if 'components_to_plot' not in kwargs:
                 kwargs['components_to_plot'] = 'both'
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
-                if self.primary.points == None:
+                if self.primary.points is None:
                     if self._morphology != 'over-contact':
                         self.primary.points = self.mesh_over_contact(component='primary')
                     else:
-                        self.primary.points = self.mesh_detached(component='primary', phase=kwargs['phase'])
+                        self.primary.points = self.mesh_detached(component='primary',
+                                                                 components_distance=components_distance)
                 kwargs['points_primary'] = self.primary.points
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
-                if 'alpha2' not in kwargs:
-                    kwargs['alpha2'] = 5
                 if self._morphology != 'over-contact':
-                    kwargs['points_secondary'] = self.mesh_detached(component='secondary', phase=kwargs['phase'],
-                                                                    alpha=kwargs['alpha2'])
+                    kwargs['points_secondary'] = self.mesh_detached(component='secondary',
+                                                                    components_distance=components_distance)
                 else:
-                    kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
+                    kwargs['points_secondary'] = self.mesh_over_contact(component='secondary')
 
         elif descriptor == 'surface':
-            KWARGS = ['phase', 'components_to_plot', 'alpha1', 'alpha2', 'normals', 'edges']
+            KWARGS = ['phase', 'components_to_plot', 'normals', 'edges']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.binary_surface
@@ -1606,16 +1599,16 @@ class BinarySystem(System):
             if 'edges' not in kwargs:
                 kwargs['edges'] = False
 
+            components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
+
             if kwargs['components_to_plot'] in ['primary', 'both']:
-                if 'alpha1' not in kwargs:
-                    kwargs['alpha1'] = 5
                 if self._morphology != 'over-contact':
-                    kwargs['points_primary'] = self.mesh_detached(component='primary', phase=kwargs['phase'],
-                                                                  alpha=kwargs['alpha1'])
-                    kwargs['primary_triangles'] = self.detached_system_surface(points=kwargs['points_primary'])
+                    kwargs['points_primary'] = self.mesh_detached(component='primary',
+                                                                  components_distance=components_distance)
+                    kwargs['primary_triangles'] = self.detached_system_surface(component='primary')
                 else:
-                    kwargs['points_primary'] = self.mesh_over_contact(component='primary', alpha=kwargs['alpha1'])
-                    kwargs['primary_triangles'] = self.over_contact_surface(points=kwargs['points_primary'])
+                    kwargs['points_primary'] = self.mesh_over_contact(component='primary')
+                    kwargs['primary_triangles'] = self.over_contact_surface(component='primary')
 
                 if kwargs['normals']:
                     kwargs['primary_centres'] = self._primary.calculate_surface_centres(kwargs['points_primary'],
@@ -1627,12 +1620,12 @@ class BinarySystem(System):
                 if 'alpha2' not in kwargs:
                     kwargs['alpha2'] = 5
                 if self._morphology != 'over-contact':
-                    kwargs['points_secondary'] = self.mesh_detached(component='secondary', phase=kwargs['phase'],
-                                                                    alpha=kwargs['alpha2'])
-                    kwargs['secondary_triangles'] = self.detached_system_surface(points=kwargs['points_secondary'])
+                    kwargs['points_secondary'] = self.mesh_detached(component='secondary',
+                                                                    components_distance=components_distance)
+                    kwargs['secondary_triangles'] = self.detached_system_surface(component='secondary')
                 else:
-                    kwargs['points_secondary'] = self.mesh_over_contact(component='secondary', alpha=kwargs['alpha2'])
-                    kwargs['secondary_triangles'] = self.over_contact_surface(points=kwargs['points_secondary'])
+                    kwargs['points_secondary'] = self.mesh_over_contact(component='secondary')
+                    kwargs['secondary_triangles'] = self.over_contact_surface(component='secondary')
 
                 if kwargs['normals']:
                     kwargs['secondary_centres'] = self._secondary.calculate_surface_centres(kwargs['points_secondary'],
@@ -1685,58 +1678,6 @@ class BinarySystem(System):
                 # # norms 0 belong to alt center
                 # if np.dot(spot["norms"][0], norms_t[t_object][i]) > 0:
                 #     simplices_test.append(i)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         pass
 
