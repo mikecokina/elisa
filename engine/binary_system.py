@@ -819,7 +819,7 @@ class BinarySystem(System):
 
     def calculate_potential_gradient(self, component, components_distance, points=None):
         """
-        returns array of absolute values of potential gradients for each surface point
+        returns array of absolute values of potential gradients for corresponding face
 
         :param component: str, `primary` or `secondary`
         :param components_distance: float, in SMA distance
@@ -847,7 +847,8 @@ class BinarySystem(System):
                              .format(component))
         domega_dy = - points[:, 1] * (1 / r3 + self.mass_ratio / r_hat3 - F2 * (self.mass_ratio + 1))
         domega_dz = - points[:, 2] * (1 / r3 + self.mass_ratio / r_hat3)
-        return np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
+        points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
+        return np.mean(points_gradients[component_instance.faces], axis=1)
 
     def calculate_polar_potential_gradient(self, component=None, components_distance=None):
         """

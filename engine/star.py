@@ -206,10 +206,10 @@ class Star(Body):
 
         :return: float
         """
-        return self.t_eff * np.power(1 /
-                                     np.sum((1 / len(self.points)) * np.power(self.potential_gradients /
-                                                                              self.polar_potential_gradient,
-                                                                              self.gravity_darkening)),
+        return self.t_eff * np.power(np.sum(self.areas) /
+                                     np.sum(self.areas * np.power(self.potential_gradients /
+                                                                  self.polar_potential_gradient,
+                                                                  self.gravity_darkening)),
                                      0.25)
 
     def calculate_effective_temperatures(self):

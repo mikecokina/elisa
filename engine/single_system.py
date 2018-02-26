@@ -221,7 +221,7 @@ class SingleSystem(System):
 
     def calculate_potential_gradient(self):
         """
-        returns array of absolute values of potential gradients for each surface point
+        returns array of absolute values of potential gradients for corresponding face
 
         :return: np.array
         """
@@ -231,7 +231,8 @@ class SingleSystem(System):
         domega_dy = c.G * self.star.mass * self.star.points[:, 1] / r3 \
                     - np.power(self._angular_velocity, 2) * self.star.points[:, 1]
         domega_dz = c.G * self.star.mass * self.star.points[:, 2] / r3
-        return np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
+        points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
+        return np.mean(points_gradients[self.star.faces], axis=1)
 
     def calculate_polar_potential_gradient(self):
         """
@@ -436,8 +437,16 @@ class SingleSystem(System):
                 kwargs['centres'] = self.star.calculate_surface_centres(points=kwargs['mesh'],
                                                                         faces=kwargs['triangles'])
 
-            # if kwargs['colormap'] == 'temperature':
-            #     temperatures = self.star.calculate_effective_temperatures(points=)
+            if kwargs['colormap'] == 'temperature':
+                if self.star.areas is None:
+                    self.star.areas = self.star.calculate_areas()
+                if self.star.potential_gradients is None:
+                    self.star.potential_gradients = self.calculate_potential_gradient()
+                    self.star.polar_potential_gradient = self.calculate_polar_potential_gradient()
+                if self.star.temperatures is None:
+                    self.star.temperatures = self.star.calculate_effective_temperatures()
+                kwargs['cmap'] = self.star.temperatures
+                print(min(self.star.temperatures), max(self.star.temperatures))
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

@@ -1,5 +1,6 @@
 from engine import utils
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from astropy import units as u
 import numpy as np
 import re
@@ -210,6 +211,10 @@ def single_star_surface(**kwargs):
         arrows = ax.quiver(kwargs['centres'][:, 0], kwargs['centres'][:, 1], kwargs['centres'][:, 2],
                            kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
                            length=0.1*kwargs['equatorial_radius'])
+
+    if kwargs['colormap'] == 'temperature':
+        star_plot.set_cmap(cmap=cm.seismic)
+        star_plot.set_array(kwargs['cmap'])
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
