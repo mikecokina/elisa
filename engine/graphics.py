@@ -213,7 +213,7 @@ def single_star_surface(**kwargs):
                            length=0.1*kwargs['equatorial_radius'])
 
     if kwargs['colormap'] == 'temperature':
-        star_plot.set_cmap(cmap=cm.seismic)
+        star_plot.set_cmap(cmap=cm.jet)
         star_plot.set_array(kwargs['cmap'])
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])

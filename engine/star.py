@@ -195,7 +195,7 @@ class Star(Body):
     @polar_potential_gradient.setter
     def polar_potential_gradient(self, potential_gradient):
         """
-        :param potential_gradients: float
+        :param potential_gradient: float
         :return:
         """
         self._polar_potential_gradient = potential_gradient
@@ -216,7 +216,7 @@ class Star(Body):
         t_eff_polar = self.calculate_polar_effective_temperature()
         t_eff_points = t_eff_polar * np.power(self.potential_gradients / self.polar_potential_gradient,
                                               0.25 * self.gravity_darkening)
-        return np.average(t_eff_points[self.faces], axis=1)
+        return t_eff_points
 
     def is_property(self, kwargs):
         """
