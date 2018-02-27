@@ -68,10 +68,10 @@ phase = 0
 print(bs.primary.spots)
 
 bs.build_mesh(component=component)
-bs.evaluate_normals(component=component, component_distance=components_distance)
+# bs.evaluate_normals(component=component, component_distance=components_distance)
 bs.surface(component=component)
 
-if False:
+if True:
     component_instance = getattr(bs, component)
     component_instance.points = bs.mesh_over_contact(component=component)
     idx = np.argmax(component_instance.points[:, 2])
@@ -81,9 +81,8 @@ if False:
     component_instance.areas = component_instance.calculate_areas()
     component_instance.potential_gradients = bs.calculate_face_magnitude_gradient(component=component,
                                                                                   components_distance=components_distance)
-    component_instance.polar_potential_gradient = bs.calculate_polar_potential_gradient_magnitude(component=component,
-                                                                                                  components_distance=
-                                                                                        components_distance)
+    component_instance.polar_potential_gradient = \
+        bs.calculate_polar_potential_gradient_magnitude(component=component, components_distance=components_distance)
     component_instance.temperatures = component_instance.calculate_effective_temperatures()
     print(component_instance.temperatures)
 

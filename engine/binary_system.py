@@ -858,8 +858,8 @@ class BinarySystem(System):
         :return: np.array
         """
         component_instance = getattr(self, component)
-        gradients = self.calculate_potential_gradient(self, component, components_distance)
-        domega_dx, domega_dy, domega_dz = np.row_stack(gradients)
+        gradients = self.calculate_potential_gradient(component, components_distance)
+        domega_dx, domega_dy, domega_dz = gradients[:, 0], gradients[:, 1], gradients[:, 2]
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
         return np.mean(points_gradients[component_instance.faces], axis=1)
 

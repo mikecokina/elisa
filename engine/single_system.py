@@ -234,9 +234,9 @@ class SingleSystem(System):
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
         return np.mean(points_gradients[self.star.faces], axis=1)
 
-    def calculate_polar_potential_gradient(self):
+    def calculate_polar_potential_gradient_magnitude(self):
         """
-        returns absolute value of polar gradient of gravitational potential
+        returns matgnitude of polar gradient of gravitational potential
 
         :return:
         """
@@ -442,7 +442,7 @@ class SingleSystem(System):
                     self.star.areas = self.star.calculate_areas()
                 if self.star.potential_gradients is None:
                     self.star.potential_gradients = self.calculate_potential_gradient()
-                    self.star.polar_potential_gradient = self.calculate_polar_potential_gradient()
+                    self.star.polar_potential_gradient = self.calculate_polar_potential_gradient_magnitude()
                 if self.star.temperatures is None:
                     self.star.temperatures = self.star.calculate_effective_temperatures()
                 kwargs['cmap'] = self.star.temperatures
