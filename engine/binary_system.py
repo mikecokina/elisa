@@ -101,7 +101,7 @@ class BinarySystem(System):
         # todo: compute and assign to all radii values to both components
 
         # evaluate spots of both components
-        self._evaluate_spots(components_distance=0.0)
+        self._evaluate_spots(components_distance=1.0)
 
     def _evaluate_spots(self, components_distance):
         """
@@ -181,7 +181,7 @@ class BinarySystem(System):
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
                 num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
-                deltas = [np.linspace(0, c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
+                deltas = [np.linspace(0., c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 
                 # todo: add condition to die
                 try:
@@ -819,7 +819,7 @@ class BinarySystem(System):
 
     def calculate_potential_gradient(self, component, components_distance, points=None):
         """
-        returns array of absolute values of potential gradients for corresponding face
+        return gradients in each point of star surface or defined points
 
         :param component: str, `primary` or `secondary`
         :param components_distance: float, in SMA distance
@@ -830,7 +830,7 @@ class BinarySystem(System):
         points = component_instance.points if points is None else points
 
         r3 = np.power(np.linalg.norm(points, axis=1), 3)
-        r_hat3 = np.power(np.linalg.norm(points - np.array([components_distance, 0, 0]), axis=1), 3)
+        r_hat3 = np.power(np.linalg.norm(points - np.array([components_distance, 0., 0]), axis=1), 3)
         if component == 'primary':
             F2 = np.power(self.primary.synchronicity, 2)
             domega_dx = - points[:, 0] / r3 + self.mass_ratio * (components_distance - points[:, 0]) / r_hat3 \
@@ -847,32 +847,45 @@ class BinarySystem(System):
                              .format(component))
         domega_dy = - points[:, 1] * (1 / r3 + self.mass_ratio / r_hat3 - F2 * (self.mass_ratio + 1))
         domega_dz = - points[:, 2] * (1 / r3 + self.mass_ratio / r_hat3)
+        return np.column_stack((domega_dx, domega_dy, domega_dz))
+
+    def calculate_face_magnitude_gradient(self, component, components_distance):
+        """
+        return array of face mean of magnitude gradients
+
+        :param component:
+        :param components_distance:
+        :return: np.array
+        """
+        component_instance = getattr(self, component)
+        gradients = self.calculate_potential_gradient(self, component, components_distance)
+        domega_dx, domega_dy, domega_dz = np.row_stack(gradients)
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
         return np.mean(points_gradients[component_instance.faces], axis=1)
 
-    def calculate_polar_potential_gradient(self, component=None, components_distance=None):
+    def calculate_polar_potential_gradient_magnitude(self, component=None, components_distance=None):
         """
-        returns absolute value of polar potential gradient
+        returns magnitude of polar potential gradient
 
         :param component: str, `primary` or `secondary`
         :param components_distance: float, in SMA distance
         :return: numpy.array
         """
         component_instance = getattr(self, component)
-        points = np.array([0, 0, component_instance.polar_radius]) if component == 'primary' \
-            else np.array([components_distance, 0, component_instance.polar_radius])
+        points = np.array([0., 0., component_instance.polar_radius]) if component == 'primary' \
+            else np.array([components_distance, 0., component_instance.polar_radius])
         r3 = np.power(np.linalg.norm(points), 3)
-        r_hat3 = np.power(np.linalg.norm(points - np.array([components_distance, 0, 0])), 3)
+        r_hat3 = np.power(np.linalg.norm(points - np.array([components_distance, 0., 0.])), 3)
         if component == 'primary':
             domega_dx = self.mass_ratio * components_distance / r_hat3 \
                         - self.mass_ratio / np.power(components_distance, 2)
         elif component == 'secondary':
             domega_dx = - points[0] / r3 + self.mass_ratio * (components_distance - points[0]) / r_hat3 \
-                        + 1 / np.power(components_distance, 2)
+                        + 1. / np.power(components_distance, 2)
         else:
             raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
                              .format(component))
-        domega_dz = - points[2] * (1 / r3 + self.mass_ratio / r_hat3)
+        domega_dz = - points[2] * (1. / r3 + self.mass_ratio / r_hat3)
         return np.power(np.power(domega_dx, 2) + np.power(domega_dz, 2), 0.5)
 
     def calculate_polar_radius(self, component=None, components_distance=None):
@@ -890,7 +903,7 @@ class BinarySystem(System):
         else:
             raise ValueError('Invalid value of `component` argument {}. Expecting `primary` or `secondary`.'
                              .format(component))
-        args = (components_distance, 0, 0)
+        args = (components_distance, 0., 0)
         scipy_solver_init_value = np.array([components_distance / 10000.0])
         solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value,
                                                     full_output=True, args=args, xtol=1e-12)
@@ -940,7 +953,7 @@ class BinarySystem(System):
         points_primary, points_secondary = [], []
         fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
 
-        angles = np.linspace(-3*c.HALF_PI, c.HALF_PI, 300, endpoint=True)
+        angles = np.linspace(-3*c.HALF_PI, c.HALF_PI, 300., endpoint=True)
         for component in components:
             for angle in angles:
                 if utils.is_plane(plane, 'xy'):
@@ -1105,7 +1118,7 @@ class BinarySystem(System):
         # calculating points on equator
         num = int(c.PI // alpha)
         r_eq = []
-        phi_eq = np.linspace(0, c.PI, num=num + 1)
+        phi_eq = np.linspace(0., c.PI, num=num + 1)
         theta_eq = np.array([c.HALF_PI for _ in phi_eq])
         for phi in phi_eq:
             args = (components_distance, phi, c.HALF_PI)
@@ -1120,7 +1133,7 @@ class BinarySystem(System):
         num = int(c.HALF_PI // alpha)
         phi_meridian = np.array([c.PI for _ in range(num - 1)] + [0 for _ in range(num)])
         theta_meridian = np.concatenate((np.linspace(c.HALF_PI - alpha, alpha, num=num - 1),
-                                         np.linspace(0, c.HALF_PI, num=num, endpoint=False)))
+                                         np.linspace(0., c.HALF_PI, num=num, endpoint=False)))
         for ii, theta in enumerate(theta_meridian):
             args = (components_distance, phi_meridian[ii], theta)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
@@ -1168,7 +1181,7 @@ class BinarySystem(System):
         fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
 
         # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
-        angles = np.linspace(0, c.HALF_PI, 100, endpoint=True)
+        angles = np.linspace(0., c.HALF_PI, 100., endpoint=True)
         for component in components:
             for angle in angles:
                 args, use = (components_distance, angle, c.HALF_PI), False
@@ -1259,7 +1272,7 @@ class BinarySystem(System):
         r_meridian = []
         num = int(c.HALF_PI // alpha)
         phi_meridian = np.array([c.PI for _ in range(num)])
-        theta_meridian = np.linspace(c.HALF_PI - alpha, 0, num=num)
+        theta_meridian = np.linspace(c.HALF_PI - alpha, 0., num=num)
         for ii, theta in enumerate(theta_meridian):
             args = (components_distance, phi_meridian[ii], theta)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
@@ -1308,7 +1321,7 @@ class BinarySystem(System):
         delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1-self.eccentricity)
         if component == 'primary':
             # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
-            x_curve = np.linspace(0, neck_position, num=num, endpoint=True)
+            x_curve = np.linspace(0., neck_position, num=num, endpoint=True)
             z_curve = np.polyval(neck_polynome, x_curve)
             curve = np.column_stack((x_curve, z_curve))
             neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0)**2, axis=1))
@@ -1481,6 +1494,18 @@ class BinarySystem(System):
             if components_distance is None:
                 components_distance = 1 - self.eccentricity
             component_instance.faces = self.detached_system_surface(component=component)
+
+    def evaluate_normals(self, component, component_distance):
+        """
+        evaluate normals for both components
+
+        :param component:
+        :param component_distance:
+        :return:
+        """
+        component_instance = getattr(self, component)
+        component_instance.normals = self.calculate_potential_gradient(component=component,
+                                                                       components_distance=component_distance)
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -1655,19 +1680,20 @@ class BinarySystem(System):
 
             # find nearest points to spot alt center
             tree = KDTree(vertices)
-            distances, ics = tree.query(spot._boundary_center, k=len(vertices))
+            distances, indices = tree.query(spot._boundary_center, k=len(vertices))
 
-            object_max_distance = spot._max_size + (0.25 * avsp)
-            spot_max_distance = spot._max_size + (0.05 * avsp_spot)
+            max_dist_to_object_point = spot._max_size + (0.25 * avsp)
+            max_dist_to_spot_point = spot._max_size + (0.05 * avsp_spot)
 
-            for dist, ix in zip(distances, ics):
-                if dist > object_max_distance:
-                    # break, because distancies are ordered by size
+            for dist, ix in zip(distances, indices):
+                if dist > max_dist_to_object_point:
+                    # break, because distancies are ordered by size, so there is no more points of object that
+                    # have to be removed
                     break
 
                 # distance exeption for spots points
                 if simplices_map[ix]["type"] == "spot":
-                    if dist > spot_max_distance:
+                    if dist > max_dist_to_spot_point:
                         continue
 
                 # # norms 0 belong to alt center
