@@ -43,7 +43,7 @@ class Body(object, metaclass=ABCMeta):
         # self._intensity = None # dict
         self._synchronicity = None  # float64
         self._albedo = None  # float64
-        self._polar_radius = None # float64
+        self._polar_radius = None  # float64
         self._areas = None
         self._discretization_factor = 3
 
@@ -281,7 +281,7 @@ class Body(object, metaclass=ABCMeta):
 
         :param synchronicity: numpy.float64
         """
-        if synchronicity != None:
+        if synchronicity is not None:
             self._synchronicity = np.float64(synchronicity)
         else:
             self._synchronicity = None
