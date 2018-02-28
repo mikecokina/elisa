@@ -1683,6 +1683,13 @@ class BinarySystem(System):
         method_to_call(**kwargs)
 
     def surface(self, component):
+        # todo: add info
+        """
+
+        :param component: specify component, use `primary` or `secondary`
+        :type: str
+        :return:
+        """
 
         if component not in ["primary", "secondary"]:
             raise ValueError("Incorrect component value, `primary` or `secondary` allowed.")
