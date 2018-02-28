@@ -98,7 +98,6 @@ def equipotential_single_star(**kwargs):
                                                                astropy.units format, default unit is solar radius
     :return:
     """
-    x_label, y_label = 'x', 'z'
     x, y = kwargs['points'][:, 0], kwargs['points'][:, 1]
 
     unit = str(kwargs['axis_unit'])

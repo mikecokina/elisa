@@ -421,6 +421,7 @@ class Body(object, metaclass=ABCMeta):
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         centres = self.calculate_surface_centres(points, faces)
         # possible problem is that this approach fails in case when triangle is perpendicular to x axis
+        # fixme: so? then fix me
         sgn_vector = 0.5 * np.sum(np.sign(centres[:, 1:]) * np.sign(normals[:, 1:]), axis=1)
 
         return normals * sgn_vector[:, None]

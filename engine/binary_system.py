@@ -258,7 +258,7 @@ class BinarySystem(System):
     def solver(self, fn, condition, *args, **kwargs):
         """
         will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
-        solution if satisfy condition function
+        solution if satisfy conditional function
 
         :param fn: function
         :param condition: function
