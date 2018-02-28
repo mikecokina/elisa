@@ -1642,43 +1642,40 @@ class BinarySystem(System):
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
-                if kwargs['components_to_plot'] in ['primary', 'both']:
-                    if self.primary.points is None:
-                        self.build_mesh(component='primary', components_distance=components_distance)
-                    kwargs['points_primary'] = self.primary.points
-                    if self.primary.faces is None:
-                        self.build_surface(component='primary')
-                    kwargs['primary_triangles'] = self.primary.faces
+                if self.primary.points is None:
+                    self.build_mesh(component='primary', components_distance=components_distance)
+                kwargs['points_primary'] = self.primary.points
+                if self.primary.faces is None:
+                    self.build_surface(component='primary')
+                kwargs['primary_triangles'] = self.primary.faces
 
-                    if kwargs['normals']:
-                        kwargs['primary_centres'] = self.primary.calculate_surface_centres(kwargs['points_primary'],
-                                                                                            kwargs['primary_triangles'])
-                        kwargs['primary_arrows'] = self.primary.calculate_normals(kwargs['points_primary'],
-                                                                                   kwargs['primary_triangles'])
+                if kwargs['normals']:
+                    kwargs['primary_centres'] = self.primary.calculate_surface_centres(
+                        kwargs['points_primary'], kwargs['primary_triangles'])
+                    kwargs['primary_arrows'] = self.primary.calculate_normals(
+                        kwargs['points_primary'], kwargs['primary_triangles'])
 
-                    if kwargs['colormap'] == 'temperature':
-                        self.build_colormap(component='primary', components_distance=components_distance)
-                        kwargs['primary_cmap'] = self.primary.temperatures
+                if kwargs['colormap'] == 'temperature':
+                    self.build_colormap(component='primary', components_distance=components_distance)
+                    kwargs['primary_cmap'] = self.primary.temperatures
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
-                    if self.secondary.points is None:
-                        self.build_mesh(component='secondary', components_distance=components_distance)
-                    kwargs['points_secondary'] = self.secondary.points
-                    if self.secondary.faces is None:
-                        self.build_surface(component='secondary')
-                    kwargs['secondary_triangles'] = self.secondary.faces
+                if self.secondary.points is None:
+                    self.build_mesh(component='secondary', components_distance=components_distance)
+                kwargs['points_secondary'] = self.secondary.points
+                if self.secondary.faces is None:
+                    self.build_surface(component='secondary')
+                kwargs['secondary_triangles'] = self.secondary.faces
 
-                    if kwargs['normals']:
-                        kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
-                            kwargs['points_secondary'],
-                            kwargs[
-                                'secondary_triangles'])
-                        kwargs['secondary_arrows'] = self.secondary.calculate_normals(kwargs['points_secondary'],
-                                                                                       kwargs['secondary_triangles'])
+                if kwargs['normals']:
+                    kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
+                        kwargs['points_secondary'], kwargs['secondary_triangles'])
+                    kwargs['secondary_arrows'] = self.secondary.calculate_normals(
+                        kwargs['points_secondary'], kwargs['secondary_triangles'])
 
-                    if kwargs['colormap'] == 'temperature':
-                        self.build_colormap(component='secondary', components_distance=components_distance)
-                        kwargs['secondary_cmap'] = self.secondary.temperatures
+                if kwargs['colormap'] == 'temperature':
+                    self.build_colormap(component='secondary', components_distance=components_distance)
+                    kwargs['secondary_cmap'] = self.secondary.temperatures
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
@@ -1770,11 +1767,13 @@ class BinarySystem(System):
 
                 del (_points, _simplices_map, _normals)
 
-
-
+        component_instance.points = points
 
         # triangulation process
-        # triangulation = self.build_surface(component) if self.morphology in ["detached", "semi-contact", "double-contanct"] else
+        self.build_surface(component)
+
+        graphics.binary_surface(components_to_plot="primary", primary_triangles=component_instance.faces,
+                                points_primary=component_instance.points, edges=True)
 
         #     tri = {"primary": convex_hull_triangulation(vertices=vertices_t["primary"], verbose=verbose),
         #            "secondary": convex_hull_triangulation(vertices=vertices_t["secondary"], verbose=verbose)}

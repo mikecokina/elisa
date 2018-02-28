@@ -146,6 +146,7 @@ def single_star_mesh(**kwargs):
 
 
 def binary_mesh(**kwargs):
+    # fixme: fix dosctring keyword arguments
     """
     Plot function for descriptor `mesh`, plots surface mesh of binary star in BinaryStar system
 
@@ -233,26 +234,40 @@ def single_star_surface(**kwargs):
 
 
 def binary_surface(**kwargs):
+    """
+    todo: add all possibnble kwargs to docstring
+    :param kwargs:
+    :return:
+    """
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
 
     if kwargs['components_to_plot'] == 'primary':
-        plot = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
-                                       kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
-                                       antialiased=True, shade=False)
+        plot = ax.plot_trisurf(
+            kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
+            kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
+            antialiased=True, shade=False)
 
-        if kwargs['normals']:
+        # pre pochopenie co toto urobi.
+        # get sa snazi popytat normals z kwargs a ak neexistuje nastavi False, cize ak je tam cokolvek
+        # co sa sprava ako False, tak sa nevykona vykreslenie
+        #
+        # spravil som to tak, pretoze sa mi nechcel otrackovat, ako si to ty porobil, ak nchcem kreslit normaly,
+        # a ked som sa snazil na tvrdo pouzit uto funkciu pre debugovanie bez kwarg argumentu niektoreho,
+        # tak samozrejme to hodilo error
+        if kwargs.get('normals', False):
             ax.quiver(kwargs['primary_centres'][:, 0], kwargs['primary_centres'][:, 1], kwargs['primary_centres'][:, 2],
                       kwargs['primary_arrows'][:, 0], kwargs['primary_arrows'][:, 1], kwargs['primary_arrows'][:, 2],
                       color='black', length=0.05)
 
     elif kwargs['components_to_plot'] == 'secondary':
-        plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
-                                         kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
-                                         antialiased=True, shade=False)
+        plot = ax.plot_trisurf(
+            kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
+            kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
+            antialiased=True, shade=False)
 
-        if kwargs['normals']:
+        if kwargs.get('normals', False):
             ax.quiver(kwargs['secondary_centres'][:, 0], kwargs['secondary_centres'][:, 1],
                       kwargs['secondary_centres'][:, 2],
                       kwargs['secondary_arrows'][:, 0], kwargs['secondary_arrows'][:, 1],
@@ -266,7 +281,7 @@ def binary_surface(**kwargs):
 
         plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
                                shade=False)
-        if kwargs['normals']:
+        if kwargs.get('normals', False):
             centres = np.concatenate((kwargs['primary_centres'], kwargs['secondary_centres']), axis=0)
             arrows = np.concatenate((kwargs['primary_arrows'], kwargs['secondary_arrows']), axis=0)
 
@@ -274,20 +289,23 @@ def binary_surface(**kwargs):
                       arrows[:, 0], arrows[:, 1], arrows[:, 2],
                       color='black', length=0.05)
 
-    if kwargs['edges']:
+    # fixme: add else and raise error since plot should be call before assignment
+
+    if kwargs.get('edges', False):
         plot.set_edgecolor('black')
 
-    if kwargs['colormap'] == 'temperature':
-        plot.set_cmap(cmap=cm.jet_r)
-        if kwargs['components_to_plot'] == 'primary':
-            plot.set_array(kwargs['primary_cmap'])
-        elif kwargs['components_to_plot'] == 'secondary':
-            plot.set_array(kwargs['secondary_cmap'])
-        elif kwargs['components_to_plot'] == 'both':
-            both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
-            plot.set_array(both_cmaps)
-        colorbar = fig.colorbar(plot, shrink=0.7)
-        colorbar.set_label('T/[K]')
+    if kwargs.get('colormap', False):
+        if kwargs['colormap'] == 'temperature':
+            plot.set_cmap(cmap=cm.jet_r)
+            if kwargs['components_to_plot'] == 'primary':
+                plot.set_array(kwargs['primary_cmap'])
+            elif kwargs['components_to_plot'] == 'secondary':
+                plot.set_array(kwargs['secondary_cmap'])
+            elif kwargs['components_to_plot'] == 'both':
+                both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
+                plot.set_array(both_cmaps)
+            colorbar = fig.colorbar(plot, shrink=0.7)
+            colorbar.set_label('T/[K]')
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')
