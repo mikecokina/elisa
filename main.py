@@ -14,8 +14,14 @@ spots_metadata = {
         [{"longitude": 0,
           "latitude": 0,
           "angular_density": 2,
+          "angular_diameter": 30,
+          "temperature_factor": 0.9},
+         {"longitude": 0,
+          "latitude": 0,
+          "angular_density": 2,
           "angular_diameter": 20,
-          "temperature_factor": 0.9}],
+          "temperature_factor": 0.8}
+         ],
 
     "secondary":
         [{"longitude": 0,
@@ -38,13 +44,13 @@ primary = Star(mass=1.5*u.solMass,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                spots=spots_metadata["primary"],
-               discretization_factor=3)
+               discretization_factor=5)
 secondary = Star(mass=1.0*u.solMass,
                  surface_potential=3.1,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=3)
+                 discretization_factor=5)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -67,9 +73,9 @@ phase = 0
 
 # print(bs.primary.spots)
 #
-# bs.build_mesh(component=component)
-# # bs.evaluate_normals(component=component, component_distance=components_distance)
-# bs.surface(component=component)
+bs.build_mesh(component=component)
+bs.evaluate_normals(component=component, component_distance=components_distance)
+bs.surface(component=component)
 
 # if True:
 #     component_instance = getattr(bs, component)
@@ -104,10 +110,10 @@ phase = 0
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
 # bs.plot(descriptor='mesh', components_to_plot='both')
-bs.plot(descriptor='surface',
-        phase=0,
-        components_to_plot='both',
-        edges=False,
-        normals=False,
-        colormap='temperature')
+# bs.plot(descriptor='surface',
+#         phase=0,
+#         components_to_plot='both',
+#         edges=False,
+#         normals=False,
+#         colormap='temperature')
 
