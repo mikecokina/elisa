@@ -261,7 +261,6 @@ def binary_surface(**kwargs):
 
     elif kwargs['components_to_plot'] == 'both':
         points = np.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
-        print(np.shape(points))
         triangles = np.concatenate((kwargs['primary_triangles'],
                                     kwargs['secondary_triangles']+np.shape(kwargs['points_primary'])[0]), axis=0)
 

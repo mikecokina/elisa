@@ -38,13 +38,13 @@ primary = Star(mass=1.5*u.solMass,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                spots=spots_metadata["primary"],
-               discretization_factor=5)
+               discretization_factor=3)
 secondary = Star(mass=1.0*u.solMass,
                  surface_potential=3.1,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=5)
+                 discretization_factor=3)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -91,23 +91,12 @@ phase = 0
 # print(bs.morphology)
 # print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
 
-# primary.normals = primary.calculate_normals()
-# print(primary.normals)
-# print(np.linalg.norm(primary.normals, axis=1))
-
 # bs.plot('equipotential', plane="xy", phase=bs.orbit.periastron_phase)
 
 # bs.argument_of_periastron = 135*u.deg
 # bs.eccentricity = 0.3
 # bs.inclination = 85*u.deg
 # bs.init()
-
-# plt.scatter(neck[:, 0], neck[:, 1])
-# plt.plot(neck[:, 0], fit, c='r')
-# plt.show()
-#
-# print(bs.critical_potential(component='primary', phase=0))
-# print(bs.critical_potential(component='secondary', phase=0))
 
 # print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 
