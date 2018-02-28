@@ -33,27 +33,27 @@ spots_metadata = {
 
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
-               surface_potential=3.0,
+               surface_potential=3.1,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                spots=spots_metadata["primary"],
-               discretization_factor=10)
+               discretization_factor=5)
 secondary = Star(mass=1.0*u.solMass,
-                 surface_potential=3.0,
+                 surface_potential=3.1,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=10)
+                 discretization_factor=5)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=90 * u.deg,
-                  gamma=0 * u.km / u.s,
-                  period=1 * u.d,
+                  argument_of_periastron=90*u.deg,
+                  gamma=0*u.km/u.s,
+                  period=1*u.d,
                   eccentricity=0.0,
-                  inclination=90 * u.deg,
-                  primary_minimum_time=0.0 * u.d,
+                  inclination=90*u.deg,
+                  primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
 phase = 0
@@ -65,26 +65,26 @@ print('Critical potentials: {0}, {1}'.format(pc, sc))
 component = 'primary'
 phase = 0
 
-print(bs.primary.spots)
+# print(bs.primary.spots)
+#
+# bs.build_mesh(component=component)
+# # bs.evaluate_normals(component=component, component_distance=components_distance)
+# bs.surface(component=component)
 
-bs.build_mesh(component=component)
-# bs.evaluate_normals(component=component, component_distance=components_distance)
-bs.surface(component=component)
-
-if True:
-    component_instance = getattr(bs, component)
-    component_instance.points = bs.mesh_over_contact(component=component)
-    idx = np.argmax(component_instance.points[:, 2])
-    component_instance.faces = bs.over_contact_surface(component=component)
-    component_instance.polar_radius = bs.calculate_polar_radius(component=component,
-                                                                components_distance=components_distance)
-    component_instance.areas = component_instance.calculate_areas()
-    component_instance.potential_gradients = bs.calculate_face_magnitude_gradient(component=component,
-                                                                                  components_distance=components_distance)
-    component_instance.polar_potential_gradient = \
-        bs.calculate_polar_potential_gradient_magnitude(component=component, components_distance=components_distance)
-    component_instance.temperatures = component_instance.calculate_effective_temperatures()
-    print(component_instance.temperatures)
+# if True:
+#     component_instance = getattr(bs, component)
+#     component_instance.points = bs.mesh_over_contact(component=component)
+#     idx = np.argmax(component_instance.points[:, 2])
+#     component_instance.faces = bs.over_contact_surface(component=component)
+#     component_instance.polar_radius = bs.calculate_polar_radius(component=component,
+#                                                                 components_distance=components_distance)
+#     component_instance.areas = component_instance.calculate_areas()
+#     component_instance.potential_gradients = bs.calculate_face_magnitude_gradient(component=component,
+#                                                                                   components_distance=components_distance)
+#     component_instance.polar_potential_gradient = \
+#         bs.calculate_polar_potential_gradient_magnitude(component=component, components_distance=components_distance)
+#     component_instance.temperatures = component_instance.calculate_effective_temperatures()
+#     print(component_instance.temperatures)
 
 # print(component_instance.temperatures)
 
@@ -115,9 +115,10 @@ if True:
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
 # bs.plot(descriptor='mesh', components_to_plot='both')
-# bs.plot(descriptor='surface',
-#         phase=0,
-#         components_to_plot='both',
-#         edges=True,
-#         normals=False)
+bs.plot(descriptor='surface',
+        phase=0,
+        components_to_plot='both',
+        edges=False,
+        normals=False,
+        colormap='temperature')
 

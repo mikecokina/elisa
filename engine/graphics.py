@@ -213,8 +213,10 @@ def single_star_surface(**kwargs):
                            length=0.1*kwargs['equatorial_radius'])
 
     if kwargs['colormap'] == 'temperature':
-        star_plot.set_cmap(cmap=cm.jet)
+        star_plot.set_cmap(cmap=cm.jet_r)
         star_plot.set_array(kwargs['cmap'])
+        colorbar = fig.colorbar(star_plot, shrink=0.7)
+        colorbar.set_label('T/[K]')
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
@@ -235,24 +237,20 @@ def binary_surface(**kwargs):
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
 
-    if kwargs['components_to_plot'] in ['primary', 'both']:
-        primary_plot = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
+    if kwargs['components_to_plot'] == 'primary':
+        plot = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
                                        kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
                                        antialiased=True, shade=False)
-        if kwargs['edges']:
-            primary_plot.set_edgecolor('black')
 
         if kwargs['normals']:
             ax.quiver(kwargs['primary_centres'][:, 0], kwargs['primary_centres'][:, 1], kwargs['primary_centres'][:, 2],
                       kwargs['primary_arrows'][:, 0], kwargs['primary_arrows'][:, 1], kwargs['primary_arrows'][:, 2],
                       color='black', length=0.05)
 
-    if kwargs['components_to_plot'] in ['secondary', 'both']:
-        secondary_plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
+    elif kwargs['components_to_plot'] == 'secondary':
+        plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
                                          kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
                                          antialiased=True, shade=False)
-        if kwargs['edges']:
-            secondary_plot.set_edgecolor('black')
 
         if kwargs['normals']:
             ax.quiver(kwargs['secondary_centres'][:, 0], kwargs['secondary_centres'][:, 1],
@@ -260,6 +258,37 @@ def binary_surface(**kwargs):
                       kwargs['secondary_arrows'][:, 0], kwargs['secondary_arrows'][:, 1],
                       kwargs['secondary_arrows'][:, 2],
                       color='black', length=0.05)
+
+    elif kwargs['components_to_plot'] == 'both':
+        points = np.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
+        print(np.shape(points))
+        triangles = np.concatenate((kwargs['primary_triangles'],
+                                    kwargs['secondary_triangles']+np.shape(kwargs['points_primary'])[0]), axis=0)
+
+        plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
+                               shade=False)
+        if kwargs['normals']:
+            centres = np.concatenate((kwargs['primary_centres'], kwargs['secondary_centres']), axis=0)
+            arrows = np.concatenate((kwargs['primary_arrows'], kwargs['secondary_arrows']), axis=0)
+
+            ax.quiver(centres[:, 0], centres[:, 1], centres[:, 2],
+                      arrows[:, 0], arrows[:, 1], arrows[:, 2],
+                      color='black', length=0.05)
+
+    if kwargs['edges']:
+        plot.set_edgecolor('black')
+
+    if kwargs['colormap'] == 'temperature':
+        plot.set_cmap(cmap=cm.jet_r)
+        if kwargs['components_to_plot'] == 'primary':
+            plot.set_array(kwargs['primary_cmap'])
+        elif kwargs['components_to_plot'] == 'secondary':
+            plot.set_array(kwargs['secondary_cmap'])
+        elif kwargs['components_to_plot'] == 'both':
+            both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
+            plot.set_array(both_cmaps)
+        colorbar = fig.colorbar(plot, shrink=0.7)
+        colorbar.set_label('T/[K]')
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')

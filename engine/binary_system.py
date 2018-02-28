@@ -1491,7 +1491,7 @@ class BinarySystem(System):
     
     def evaluate_normals(self, component, component_distance):
         """
-        evaluate normals for both components
+        evaluate normals for both components using potential gradient (useful before triangulation)
 
         :param component:
         :param component_distance:
@@ -1500,6 +1500,29 @@ class BinarySystem(System):
         component_instance = getattr(self, component)
         component_instance.normals = self.calculate_potential_gradient(component=component,
                                                                        components_distance=component_distance)
+
+    def build_colormap(self, component=None, components_distance=None):
+        """
+        auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
+
+        :param component: str - `primary` or `secondary`
+        :param components_distance: float
+        :return:
+        """
+        component_instance = getattr(self, component)
+        if component_instance.areas is None:
+            component_instance.areas = component_instance.calculate_areas()
+        if component_instance.polar_radius is None:
+            component_instance.polar_radius = self.calculate_polar_radius(component=component,
+                                                                          components_distance=components_distance)
+        if component_instance.potential_gradients is None:
+            component_instance.potential_gradients = \
+                self.calculate_face_magnitude_gradient(component=component, components_distance=components_distance)
+            component_instance.polar_potential_gradient = \
+                self.calculate_polar_potential_gradient_magnitude(component=component,
+                                                                  components_distance=components_distance)
+        if component_instance.temperatures is None:
+            component_instance.temperatures = component_instance.calculate_effective_temperatures()
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -1600,7 +1623,7 @@ class BinarySystem(System):
                 kwargs['points_secondary'] = self.secondary.points
 
         elif descriptor == 'surface':
-            KWARGS = ['phase', 'components_to_plot', 'normals', 'edges']
+            KWARGS = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.binary_surface
@@ -1613,6 +1636,8 @@ class BinarySystem(System):
                 kwargs['normals'] = False
             if 'edges' not in kwargs:
                 kwargs['edges'] = False
+            if 'colormap' not in kwargs:
+                kwargs['colormap'] = None
 
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
@@ -1626,10 +1651,14 @@ class BinarySystem(System):
                     kwargs['primary_triangles'] = self.primary.faces
 
                     if kwargs['normals']:
-                        kwargs['primary_centres'] = self._primary.calculate_surface_centres(kwargs['points_primary'],
+                        kwargs['primary_centres'] = self.primary.calculate_surface_centres(kwargs['points_primary'],
                                                                                             kwargs['primary_triangles'])
-                        kwargs['primary_arrows'] = self._primary.calculate_normals(kwargs['points_primary'],
+                        kwargs['primary_arrows'] = self.primary.calculate_normals(kwargs['points_primary'],
                                                                                    kwargs['primary_triangles'])
+
+                    if kwargs['colormap'] == 'temperature':
+                        self.build_colormap(component='primary', components_distance=components_distance)
+                        kwargs['primary_cmap'] = self.primary.temperatures
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                     if self.secondary.points is None:
@@ -1640,12 +1669,16 @@ class BinarySystem(System):
                     kwargs['secondary_triangles'] = self.secondary.faces
 
                     if kwargs['normals']:
-                        kwargs['secondary_centres'] = self._secondary.calculate_surface_centres(
+                        kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
                             kwargs['points_secondary'],
                             kwargs[
                                 'secondary_triangles'])
-                        kwargs['secondary_arrows'] = self._secondary.calculate_normals(kwargs['points_secondary'],
+                        kwargs['secondary_arrows'] = self.secondary.calculate_normals(kwargs['points_secondary'],
                                                                                        kwargs['secondary_triangles'])
+
+                    if kwargs['colormap'] == 'temperature':
+                        self.build_colormap(component='secondary', components_distance=components_distance)
+                        kwargs['secondary_cmap'] = self.secondary.temperatures
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

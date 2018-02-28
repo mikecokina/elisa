@@ -446,7 +446,6 @@ class SingleSystem(System):
                 if self.star.temperatures is None:
                     self.star.temperatures = self.star.calculate_effective_temperatures()
                 kwargs['cmap'] = self.star.temperatures
-                print(min(self.star.temperatures), max(self.star.temperatures))
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
