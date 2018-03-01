@@ -258,7 +258,7 @@ class BinarySystem(System):
     def solver(self, fn, condition, *args, **kwargs):
         """
         will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
-        solution if satisfy condition function
+        solution if satisfy conditional function
 
         :param fn: function
         :param condition: function
@@ -1642,43 +1642,40 @@ class BinarySystem(System):
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
-                if kwargs['components_to_plot'] in ['primary', 'both']:
-                    if self.primary.points is None:
-                        self.build_mesh(component='primary', components_distance=components_distance)
-                    kwargs['points_primary'] = self.primary.points
-                    if self.primary.faces is None:
-                        self.build_surface(component='primary')
-                    kwargs['primary_triangles'] = self.primary.faces
+                if self.primary.points is None:
+                    self.build_mesh(component='primary', components_distance=components_distance)
+                kwargs['points_primary'] = self.primary.points
+                if self.primary.faces is None:
+                    self.build_surface(component='primary')
+                kwargs['primary_triangles'] = self.primary.faces
 
-                    if kwargs['normals']:
-                        kwargs['primary_centres'] = self.primary.calculate_surface_centres(kwargs['points_primary'],
-                                                                                            kwargs['primary_triangles'])
-                        kwargs['primary_arrows'] = self.primary.calculate_normals(kwargs['points_primary'],
-                                                                                   kwargs['primary_triangles'])
+                if kwargs['normals']:
+                    kwargs['primary_centres'] = self.primary.calculate_surface_centres(
+                        kwargs['points_primary'], kwargs['primary_triangles'])
+                    kwargs['primary_arrows'] = self.primary.calculate_normals(
+                        kwargs['points_primary'], kwargs['primary_triangles'])
 
-                    if kwargs['colormap'] == 'temperature':
-                        self.build_colormap(component='primary', components_distance=components_distance)
-                        kwargs['primary_cmap'] = self.primary.temperatures
+                if kwargs['colormap'] == 'temperature':
+                    self.build_colormap(component='primary', components_distance=components_distance)
+                    kwargs['primary_cmap'] = self.primary.temperatures
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
-                    if self.secondary.points is None:
-                        self.build_mesh(component='secondary', components_distance=components_distance)
-                    kwargs['points_secondary'] = self.secondary.points
-                    if self.secondary.faces is None:
-                        self.build_surface(component='secondary')
-                    kwargs['secondary_triangles'] = self.secondary.faces
+                if self.secondary.points is None:
+                    self.build_mesh(component='secondary', components_distance=components_distance)
+                kwargs['points_secondary'] = self.secondary.points
+                if self.secondary.faces is None:
+                    self.build_surface(component='secondary')
+                kwargs['secondary_triangles'] = self.secondary.faces
 
-                    if kwargs['normals']:
-                        kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
-                            kwargs['points_secondary'],
-                            kwargs[
-                                'secondary_triangles'])
-                        kwargs['secondary_arrows'] = self.secondary.calculate_normals(kwargs['points_secondary'],
-                                                                                       kwargs['secondary_triangles'])
+                if kwargs['normals']:
+                    kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
+                        kwargs['points_secondary'], kwargs['secondary_triangles'])
+                    kwargs['secondary_arrows'] = self.secondary.calculate_normals(
+                        kwargs['points_secondary'], kwargs['secondary_triangles'])
 
-                    if kwargs['colormap'] == 'temperature':
-                        self.build_colormap(component='secondary', components_distance=components_distance)
-                        kwargs['secondary_cmap'] = self.secondary.temperatures
+                if kwargs['colormap'] == 'temperature':
+                    self.build_colormap(component='secondary', components_distance=components_distance)
+                    kwargs['secondary_cmap'] = self.secondary.temperatures
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
@@ -1686,6 +1683,13 @@ class BinarySystem(System):
         method_to_call(**kwargs)
 
     def surface(self, component):
+        # todo: add info
+        """
+
+        :param component: specify component, use `primary` or `secondary`
+        :type: str
+        :return:
+        """
 
         if component not in ["primary", "secondary"]:
             raise ValueError("Incorrect component value, `primary` or `secondary` allowed.")
@@ -1693,8 +1697,8 @@ class BinarySystem(System):
         # todo: check whether any spot exists for component and if not, provide a simple triangulation
 
         component_instance = getattr(self, component)
-        simplices_map = [{"type": "object", "clearance": True, "enum": -1} for _ in component_instance.points]
-        vertices = copy(component_instance.points)
+        simplices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
+        points = copy(component_instance.points)
         normals = copy(component_instance.normals)
 
         # average spacing of component surface points
@@ -1702,14 +1706,14 @@ class BinarySystem(System):
 
         for spot_index, spot in component_instance.spots.items():
             avsp_spot = utils.average_spacing(data=spot.points, neighbours=6)
-            simplices_test, vertices_test = [], []
+            simplices_to_remove, vertices_test = [], []
 
             # find nearest points to spot alt center
-            tree = KDTree(vertices)
-            distances, indices = tree.query(spot.boundary_center, k=len(vertices))
+            tree = KDTree(points)
+            distances, indices = tree.query(spot.boundary_center, k=len(points))
 
             max_dist_to_object_point = spot.max_size + (0.25 * avsp)
-            max_dist_to_spot_point = spot.max_size + (0.05 * avsp_spot)
+            max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
 
             for dist, ix in zip(distances, indices):
                 if dist > max_dist_to_object_point:
@@ -1718,15 +1722,87 @@ class BinarySystem(System):
                     break
 
                 # distance exeption for spots points
-                if simplices_map[ix]["type"] == "spot":
-                    if dist > max_dist_to_spot_point:
+                # we keep such point [it is point in innner ring]
+                if simplices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
+                    continue
+                # norms 0 belong to boundary center
+                if np.dot(spot.normals[0], normals[ix]) > 0:
+                    simplices_to_remove.append(ix)
+
+            # simplices of target object for testing whether point lying inside or not of spot boundary
+            simplices_to_remove = list(set(simplices_to_remove))
+
+            # test if index to remove from all current points from simplex_map belongs to any of spots
+            spot_indices, star_indices = [], []
+            for item in simplices_to_remove:
+                # that cannot occurred in firt step of loop, since there is no spot
+                if simplices_map[item]["type"] == "spot":
+                    spot_indices.append(item)
+                else:
+                    star_indices.append(item)
+
+            # points, norms and simplices_map update
+            if len(simplices_to_remove) != 0:
+                _points, _normals = [], []
+                _simplices_map = {}
+                m_ix = 0
+
+                for ix, vertex, norm in list(zip(range(0, len(points)), points, normals)):
+                    if ix in simplices_to_remove:
+                        # skip point if is marked for removal
                         continue
 
-                # # norms 0 belong to alt center
-                # if np.dot(spot["norms"][0], norms_t[t_object][i]) > 0:
-                #     simplices_test.append(i)
+                    # append only points of currrent object that do not intervent to spot
+                    # [current, since there should be already spot from previous iteration step]
+                    _points.append(vertex)
+                    _normals.append(norm)
 
-        pass
+                    _simplices_map[m_ix] = {
+                        "type": simplices_map[ix]["type"],
+                        "enum": simplices_map[ix]["enum"]}
+                    m_ix += 1
+
+                shift = len(_points)
+                for i, vertex, norm in list(zip(range(shift, shift + len(spot.points)), spot.points, spot.normals)):
+                    _points.append(vertex)
+                    _normals.append(norm)
+                    _simplices_map[i] = {"type": "spot", "enum": spot_index}
+
+                points = copy(_points)
+                simplices_map = copy(_simplices_map)
+                normals = copy(_normals)
+
+                del (_points, _simplices_map, _normals)
+
+        component_instance.points = points
+
+        # triangulation process
+        self.build_surface(component)
+
+        graphics.binary_surface(components_to_plot="primary", primary_triangles=component_instance.faces,
+                                points_primary=component_instance.points, edges=True)
+
+        #     tri = {"primary": convex_hull_triangulation(vertices=vertices_t["primary"], verbose=verbose),
+        #            "secondary": convex_hull_triangulation(vertices=vertices_t["secondary"], verbose=verbose)}
+        #
+        # elif binary_morph == "over-contact":
+        #     tri_class = {"primary": Tri(vertices=vertices_t["primary"], norms=norms_t["primary"]),
+        #                  "secondary": Tri(vertices=vertices_t["secondary"], norms=norms_t["secondary"])}
+        #
+        #     tri_class["primary"].triangulate()
+        #     tri_class["secondary"].triangulate()
+        #
+        #     tri = {"primary": [tri_class["primary"].simplices(), tri_class["primary"].hull()],
+        #            "secondary": [tri_class["secondary"].simplices(), tri_class["secondary"].hull()]}
+        #
+        #     del (tri_class["primary"], tri_class["secondary"], tri_class)
+        #
+        #     face_orientation = {"primary": face_orientation_a(face=np.array(tri["primary"][1]), t_object="primary",
+        #                                                       actual_distance=0.0),
+        #                         "secondary": face_orientation_a(face=np.array(tri["secondary"][1]),
+        #                                                         t_object="secondary",
+        #                                                         actual_distance=1.0)}
+        #     rm_indices = {"primary": [], "secondary": []}
 
     def is_property(self, kwargs):
         """

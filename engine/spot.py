@@ -28,6 +28,7 @@ class Spot(object):
         self.boundary = None
         self.boundary_center = None
         self.max_size = None
+        self.indices = None
 
         self._logger = logging.getLogger(Spot.__name__)
 
