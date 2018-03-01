@@ -38,13 +38,13 @@ primary = Star(mass=1.5*u.solMass,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                spots=spots_metadata["primary"],
-               discretization_factor=3)
+               discretization_factor=5)
 secondary = Star(mass=1.0*u.solMass,
                  surface_potential=3.1,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=3)
+                 discretization_factor=5)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,

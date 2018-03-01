@@ -447,6 +447,11 @@ class SingleSystem(System):
                     self.star.temperatures = self.star.calculate_effective_temperatures()
                 kwargs['cmap'] = self.star.temperatures
 
+            elif kwargs['colormap'] == 'gravity_acceleration':
+                if self.star.potential_gradients is None:
+                    self.star.potential_gradients = self.calculate_potential_gradient()
+                    self.star.polar_potential_gradient = self.calculate_polar_potential_gradient_magnitude()
+
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 

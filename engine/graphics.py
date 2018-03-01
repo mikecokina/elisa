@@ -240,7 +240,7 @@ def binary_surface(**kwargs):
     if kwargs['components_to_plot'] == 'primary':
         plot = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
                                        kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
-                                       antialiased=True, shade=False)
+                                       antialiased=False, shade=False)
 
         if kwargs['normals']:
             ax.quiver(kwargs['primary_centres'][:, 0], kwargs['primary_centres'][:, 1], kwargs['primary_centres'][:, 2],
@@ -250,7 +250,7 @@ def binary_surface(**kwargs):
     elif kwargs['components_to_plot'] == 'secondary':
         plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
                                          kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
-                                         antialiased=True, shade=False)
+                                         antialiased=False, shade=False)
 
         if kwargs['normals']:
             ax.quiver(kwargs['secondary_centres'][:, 0], kwargs['secondary_centres'][:, 1],
@@ -264,7 +264,7 @@ def binary_surface(**kwargs):
         triangles = np.concatenate((kwargs['primary_triangles'],
                                     kwargs['secondary_triangles']+np.shape(kwargs['points_primary'])[0]), axis=0)
 
-        plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
+        plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=False,
                                shade=False)
         if kwargs['normals']:
             centres = np.concatenate((kwargs['primary_centres'], kwargs['secondary_centres']), axis=0)
