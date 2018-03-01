@@ -145,7 +145,6 @@ def single_star_mesh(**kwargs):
 
 
 def binary_mesh(**kwargs):
-    # fixme: fix dosctring keyword arguments
     """
     Plot function for descriptor `mesh`, plots surface mesh of binary star in BinaryStar system
 
@@ -153,10 +152,6 @@ def binary_mesh(**kwargs):
                    keywords: `phase`: np.float - phase in which system is plotted default value is 0
                              `components_to_plot`: str - decides which argument to plot, choices: `primary`, secondary`
                                                          , `both`, default is `both`
-                             `alpha1`: np.float - discretization factor for primary component, equals to mean angular
-                                                  spacing between points, default value is 5
-                             `alpha2`: np.float - discretization factor for secondary component, equals to mean angular
-                                                  spacing between points, default value is 5
     :return:
     """
     fig = plt.figure(figsize=(7, 7))
@@ -294,7 +289,9 @@ def binary_surface(**kwargs):
                       arrows[:, 0], arrows[:, 1], arrows[:, 2],
                       color='black', length=0.05)
 
-    # fixme: add else and raise error since plot should be call before assignment
+    else:
+        raise ValueError('Invalid value of keyword argument `components_to_plot`. '
+                         'Expected values are: `primary`, `secondary` or `both`')
 
     if kwargs.get('edges', False):
         plot.set_edgecolor('black')
