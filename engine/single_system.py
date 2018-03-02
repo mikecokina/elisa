@@ -451,6 +451,9 @@ class SingleSystem(System):
                 if self.star.potential_gradients is None:
                     self.star.potential_gradients = self.calculate_potential_gradient()
                     self.star.polar_potential_gradient = self.calculate_polar_potential_gradient_magnitude()
+                g0 = self.star.polar_gravity_acceleration / self.star.polar_potential_gradient
+                print(self.star.polar_potential_gradient, max(self.star.potential_gradients))
+                kwargs['cmap'] = g0 * self.star.potential_gradients
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

@@ -1779,8 +1779,9 @@ class BinarySystem(System):
         # triangulation process
         self.build_surface(component)
 
-        graphics.binary_surface(components_to_plot="primary", primary_triangles=component_instance.faces,
-                                points_primary=component_instance.points, edges=True)
+        # todo: take mi tu nenechavaj... to rob v maine
+        # graphics.binary_surface(components_to_plot="primary", primary_triangles=component_instance.faces,
+        #                         points_primary=component_instance.points, edges=True)
 
         #     tri = {"primary": convex_hull_triangulation(vertices=vertices_t["primary"], verbose=verbose),
         #            "secondary": convex_hull_triangulation(vertices=vertices_t["secondary"], verbose=verbose)}

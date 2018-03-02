@@ -198,7 +198,7 @@ def single_star_surface(**kwargs):
     ax.set_aspect('equal')
 
     star_plot = ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2],
-                                triangles=kwargs['triangles'], antialiased=True, shade=False, alpha=1)
+                                triangles=kwargs['triangles'], antialiased=False, shade=False, alpha=1)
     if kwargs['edges']:
         star_plot.set_edgecolor('black')
 
@@ -207,11 +207,14 @@ def single_star_surface(**kwargs):
                            kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
                            length=0.1*kwargs['equatorial_radius'])
 
-    if kwargs['colormap'] == 'temperature':
+    if kwargs.get('colormap', False):
         star_plot.set_cmap(cmap=cm.jet_r)
         star_plot.set_array(kwargs['cmap'])
         colorbar = fig.colorbar(star_plot, shrink=0.7)
-        colorbar.set_label('T/[K]')
+        if kwargs['colormap'] == 'temperature':
+            colorbar.set_label('T/[K]')
+        elif kwargs['colormap'] == 'gravity_acceleration':
+            colorbar.set_label('g')
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
@@ -246,13 +249,6 @@ def binary_surface(**kwargs):
                                        kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
                                        antialiased=False, shade=False)
 
-        # pre pochopenie co toto urobi.
-        # get sa snazi popytat normals z kwargs a ak neexistuje nastavi False, cize ak je tam cokolvek
-        # co sa sprava ako False, tak sa nevykona vykreslenie
-        #
-        # spravil som to tak, pretoze sa mi nechcel otrackovat, ako si to ty porobil, ak nchcem kreslit normaly,
-        # a ked som sa snazil na tvrdo pouzit uto funkciu pre debugovanie bez kwarg argumentu niektoreho,
-        # tak samozrejme to hodilo error
         if kwargs.get('normals', False):
             ax.quiver(kwargs['primary_centres'][:, 0], kwargs['primary_centres'][:, 1], kwargs['primary_centres'][:, 2],
                       kwargs['primary_arrows'][:, 0], kwargs['primary_arrows'][:, 1], kwargs['primary_arrows'][:, 2],
