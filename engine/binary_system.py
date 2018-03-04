@@ -160,6 +160,7 @@ class BinarySystem(System):
                     continue
 
                 spot_center_r = solution
+                spot_center = utils.spherical_to_cartesian(spot_center_r, lon, lat)
 
                 # compute euclidean distance of two points on spot
                 # we have to obtain distance between center and 1st point in 1st ring of spot
@@ -237,7 +238,7 @@ class BinarySystem(System):
                     spot_instance.points = spot_points
                     spot_instance.boundary = boundary_points
                     spot_instance.boundary_center = boundary_center
-                    spot_instance.center = spot_points[1]
+                    spot_instance.center = spot_center
                 else:
                     spot_instance.points = [(components_distance - point[0], -point[1], point[2])
                                             for point in spot_points]
@@ -248,8 +249,8 @@ class BinarySystem(System):
                     spot_instance.boundary_center = (components_distance - boundary_center[0],
                                                      -boundary_center[1], boundary_center[2])
 
-                    spot_instance.center = (components_distance - spot_points[1][0], -spot_points[1][1],
-                                            spot_points[1][2])
+                    spot_instance.center = (components_distance - spot_center[0], -spot_center[1][1],
+                                            spot_center[1][2])
 
                 spot_instance.normals = self.calculate_potential_gradient(component=component,
                                                                           components_distance=components_distance,
@@ -1779,25 +1780,42 @@ class BinarySystem(System):
         # triangulation process
         self.build_surface(component)
 
+        spots_indices_map = list(set([simplices_map[ix]["enum"]
+                                      for ix in simplices_map if simplices_map[ix]["type"] == "spot"]))
+
+        spots_indices_map = {i[1]: i[0] for i in enumerate(spots_indices_map)}  # {spot_container_index: list_index}
+        reverse_spots_indices_map = {spots_indices_map[i]: i for i in spots_indices_map}  # {list_index: spot_container_index}
+        print(spots_indices_map, reverse_spots_indices_map)
+
+        model = {"object": [], "spots": {}}
+        spot_candidates = {"vertices": {}, "com": {}, "3rd_enum": {}, "ref": {}}
+
+        # init variables
+        for spot_index in spots_indices_map.keys():
+            model["spots"][spot_index] = []
+            spot_candidates["vertices"][spot_index] = []
+            spot_candidates["com"][spot_index] = []
+            spot_candidates["3rd_enum"][spot_index] = []
+            spot_candidates["ref"][spot_index] = []
+
+        # iterate over triagnulation
+        # simplex (2d simplex over triangulatio e.g. [100, 25, 36]), I mentioned 2d, since in 3d, simplex is tetrahedron
+        # face (point representation of triangle (contain real coordinates, not just indices))
+        for simplex, face, ix in list(zip(component_instance.faces,
+                                          component_instance.points[component_instance.faces],
+                                          range(component_instance.faces.shape[0]))):
+
+            # test if each point belongs to spot
+            if simplices_map[simplex[0]]["type"] == "spot" and simplices_map[simplex[1]]["type"] == "spot" \
+                    and simplices_map[simplex[2]]["type"] == "spot":
+                pass
+
+
         # todo: take mi tu nenechavaj... to rob v maine
         # graphics.binary_surface(components_to_plot="primary", primary_triangles=component_instance.faces,
         #                         points_primary=component_instance.points, edges=True)
 
-        #     tri = {"primary": convex_hull_triangulation(vertices=vertices_t["primary"], verbose=verbose),
-        #            "secondary": convex_hull_triangulation(vertices=vertices_t["secondary"], verbose=verbose)}
-        #
-        # elif binary_morph == "over-contact":
-        #     tri_class = {"primary": Tri(vertices=vertices_t["primary"], norms=norms_t["primary"]),
-        #                  "secondary": Tri(vertices=vertices_t["secondary"], norms=norms_t["secondary"])}
-        #
-        #     tri_class["primary"].triangulate()
-        #     tri_class["secondary"].triangulate()
-        #
-        #     tri = {"primary": [tri_class["primary"].simplices(), tri_class["primary"].hull()],
-        #            "secondary": [tri_class["secondary"].simplices(), tri_class["secondary"].hull()]}
-        #
-        #     del (tri_class["primary"], tri_class["secondary"], tri_class)
-        #
+
         #     face_orientation = {"primary": face_orientation_a(face=np.array(tri["primary"][1]), t_object="primary",
         #                                                       actual_distance=0.0),
         #                         "secondary": face_orientation_a(face=np.array(tri["secondary"][1]),

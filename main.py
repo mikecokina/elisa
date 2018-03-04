@@ -13,6 +13,11 @@ spots_metadata = {
     "primary":
         [{"longitude": 0,
           "latitude": 0,
+          "angular_density": 1,
+          "angular_diameter": 5,
+          "temperature_factor": 0.8},
+         {"longitude": 0,
+          "latitude": 0,
           "angular_density": 2,
           "angular_diameter": 30,
           "temperature_factor": 0.9},
@@ -20,7 +25,7 @@ spots_metadata = {
           "latitude": 0,
           "angular_density": 2,
           "angular_diameter": 20,
-          "temperature_factor": 0.8}
+          "temperature_factor": 0.8},
          ],
 
     "secondary":
@@ -110,10 +115,10 @@ bs.surface(component=component)
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
 # bs.plot(descriptor='mesh', components_to_plot='both')
-bs.plot(descriptor='surface',
-        phase=0,
-        components_to_plot='both',
-        edges=False,
-        normals=False,
-        colormap='temperature')
+# bs.plot(descriptor='surface',
+#         phase=0,
+#         components_to_plot='both',
+#         edges=False,
+#         normals=False,
+#         colormap='temperature')
 
