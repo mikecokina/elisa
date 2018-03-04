@@ -1808,7 +1808,41 @@ class BinarySystem(System):
             # test if each point belongs to spot
             if simplices_map[simplex[0]]["type"] == "spot" and simplices_map[simplex[1]]["type"] == "spot" \
                     and simplices_map[simplex[2]]["type"] == "spot":
-                pass
+
+                # if each point belongs to the same spot, then it is for sure face of that spot
+                if simplices_map[simplex[0]]["enum"] == simplices_map[simplex[1]]["enum"] == simplices_map[simplex[2]]["enum"]:
+                    model["spots"][simplices_map[simplex[0]]["enum"]].append(np.array(simplex))
+
+                else:
+                    # if at least one of points of face belongs to different spot, we have to test
+                    # which one of those spots current face belongs to
+
+                    reference, trd_enum = None, None
+                    # variable trd_enum is enum index of 3rd corner of face;
+
+                    if simplices_map[simplex[-1]]["enum"] == simplices_map[simplex[0]]["enum"]:
+                        reference = simplices_map[simplex[-1]]["enum"]
+                        trd_enum = simplices_map[simplex[1]]["enum"]
+                    elif simplices_map[simplex[0]]["enum"] == simplices_map[simplex[1]]["enum"]:
+                        reference = simplices_map[simplex[0]]["enum"]
+                        trd_enum = simplices_map[simplex[-1]]["enum"]
+                    elif simplices_map[simplex[1]]["enum"] == simplices_map[simplex[-1]]["enum"]:
+                        reference = simplices_map[simplex[1]]["enum"]
+                        trd_enum = simplices_map[simplex[0]]["enum"]
+
+                    if reference is not None:
+                        spot_candidates["vertices"][reference].append(face)
+                        spot_candidates["com"][reference].append(np.average(face, axis=0)[0])
+                        spot_candidates["3rd_enum"][reference].append(trd_enum)
+                        spot_candidates["ref"][reference].append([ix, simplex])
+
+            # if at least one of points belongs to star body, then it is for sure star body face
+            elif simplices_map[simplex[0]]["type"] == "t_object" or simplices_map[simplex[1]]["type"] == "t_object" \
+                    or simplices_map[simplex[2]]["type"] == "t_object":
+
+                model["object"].append(np.array(simplex))
+            else:
+                model["object"].append(np.array(simplex))
 
 
         # todo: take mi tu nenechavaj... to rob v maine
