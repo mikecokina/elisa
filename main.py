@@ -22,7 +22,7 @@ spots_metadata = {
           "angular_diameter": 30,
           "temperature_factor": 0.9},
          {"longitude": 0,
-          "latitude": 0,
+          "latitude": 15,
           "angular_density": 2,
           "angular_diameter": 20,
           "temperature_factor": 0.8},

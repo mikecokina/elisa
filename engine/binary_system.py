@@ -1780,23 +1780,19 @@ class BinarySystem(System):
         # triangulation process
         self.build_surface(component)
 
-        spots_indices_map = list(set([simplices_map[ix]["enum"]
-                                      for ix in simplices_map if simplices_map[ix]["type"] == "spot"]))
-
-        spots_indices_map = {i[1]: i[0] for i in enumerate(spots_indices_map)}  # {spot_container_index: list_index}
-        reverse_spots_indices_map = {spots_indices_map[i]: i for i in spots_indices_map}  # {list_index: spot_container_index}
-        print(spots_indices_map, reverse_spots_indices_map)
+        spots_indices = list(set([simplices_map[ix]["enum"]
+                                  for ix in simplices_map if simplices_map[ix]["type"] == "spot"]))
 
         model = {"object": [], "spots": {}}
-        spot_candidates = {"vertices": {}, "com": {}, "3rd_enum": {}, "ref": {}}
+        spot_candidates = {"simplex": {}, "com": {}, "3rd_enum": {}, "ix": {}}
 
         # init variables
-        for spot_index in spots_indices_map.keys():
+        for spot_index in spots_indices:
             model["spots"][spot_index] = []
-            spot_candidates["vertices"][spot_index] = []
+            spot_candidates["simplex"][spot_index] = []
             spot_candidates["com"][spot_index] = []
             spot_candidates["3rd_enum"][spot_index] = []
-            spot_candidates["ref"][spot_index] = []
+            spot_candidates["ix"][spot_index] = []
 
         # iterate over triagnulation
         # simplex (2d simplex over triangulatio e.g. [100, 25, 36]), I mentioned 2d, since in 3d, simplex is tetrahedron
@@ -1831,10 +1827,10 @@ class BinarySystem(System):
                         trd_enum = simplices_map[simplex[0]]["enum"]
 
                     if reference is not None:
-                        spot_candidates["vertices"][reference].append(face)
-                        spot_candidates["com"][reference].append(np.average(face, axis=0)[0])
+                        spot_candidates["simplex"][reference].append(simplex)
+                        spot_candidates["com"][reference].append(np.average(face, axis=0))
                         spot_candidates["3rd_enum"][reference].append(trd_enum)
-                        spot_candidates["ref"][reference].append([ix, simplex])
+                        spot_candidates["ix"][reference].append(ix)
 
             # if at least one of points belongs to star body, then it is for sure star body face
             elif simplices_map[simplex[0]]["type"] == "t_object" or simplices_map[simplex[1]]["type"] == "t_object" \
@@ -1844,18 +1840,48 @@ class BinarySystem(System):
             else:
                 model["object"].append(np.array(simplex))
 
+        # if spot_candidates["com"]:
+        #     for spot_index in spot_candidates["com"].keys():
+        #         # get center and size of current spot candidate
+        #         center, size = component_instance.spots[spot_index].boundary_center, \
+        #                        component_instance.spots[spot_index].max_size
+        #
+        #         # compute distance of all center of mass of faces of current
+        #         # spot candidate to the center of this candidate
+        #         dists = [np.linalg.norm(np.array(com) - np.array(center)) for com in spot_candidates["com"][spot_index]]
+        #
+        #         # test if dist is smaller as current spot size;
+        #         # if dist is smaller, then current face belongs to spots otherwise face belongs to t_object itself
+        #
+        #         for idx, dist in enumerate(dists):
+        #             simplex_index = spot_candidates["ix"][spot_index][idx]
+        #             if dist < size:
+        #                 model["spots"][spot_index].append(np.array(component_instance.faces[simplex_index]))
+        #                 continue
+        #             else:
+        #                 # make the same computation for 3rd vertex of face
+        #                 # it might be confusing, but spot candidate is spot where 2 of 3 vertex of one face belong to first spot,
+        #                 # and the 3rd index belongs to another (neighbour) spot
+        #                 # it has to be alos tested, whether face finally do not belongs to spot candidate;
+        #
+        #                 trd_spot_index = spot_candidates["3rd_enum"][spot_index][idx]
+        #
+        #                 trd_center = component_instance.spots[trd_spot_index].boundary_center
+        #                 trd_size = component_instance.spots[trd_spot_index].max_size
+        #
+        #                 com = spot_candidates["com"][spot_index][idx]
+        #                 dist = np.linalg.norm(np.array(com) - np.array(trd_center))
+        #
+        #                 if dist < trd_size:
+        #                     model["spots"][trd_spot_index].append(np.array(component_instance.faces[simplex_index]))
+        #                 # else:
+        #                 #     model["object"].append(np.array(component_instance.faces[simplex_index]))
 
-        # todo: take mi tu nenechavaj... to rob v maine
-        # graphics.binary_surface(components_to_plot="primary", primary_triangles=component_instance.faces,
+
+        # graphics.binary_surface(components_to_plot="primary",
+        #                         primary_triangles=model["object"],
         #                         points_primary=component_instance.points, edges=True)
 
-
-        #     face_orientation = {"primary": face_orientation_a(face=np.array(tri["primary"][1]), t_object="primary",
-        #                                                       actual_distance=0.0),
-        #                         "secondary": face_orientation_a(face=np.array(tri["secondary"][1]),
-        #                                                         t_object="secondary",
-        #                                                         actual_distance=1.0)}
-        #     rm_indices = {"primary": [], "secondary": []}
 
     def is_property(self, kwargs):
         """
