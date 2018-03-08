@@ -221,7 +221,7 @@ class BinarySystem(System):
                                       "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
                     return
 
-                boundary_com = sum(np.array(boundary_points)) / len(boundary_points)
+                boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_sphetical(*boundary_com)
                 solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1], boundary_com[2]))
                 boundary_center = utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2])
@@ -1694,11 +1694,14 @@ class BinarySystem(System):
 
         if component not in ["primary", "secondary"]:
             raise ValueError("Incorrect component value, `primary` or `secondary` allowed.")
-
-        # todo: check whether any spot exists for component and if not, provide a simple triangulation
-
         component_instance = getattr(self, component)
-        simplices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
+
+        # build surface if there is no spot specified
+        if not component_instance.spots:
+            self.build_surface(component)
+            return
+
+        vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
         points = copy(component_instance.points)
         normals = copy(component_instance.normals)
 
@@ -1707,7 +1710,7 @@ class BinarySystem(System):
 
         for spot_index, spot in component_instance.spots.items():
             avsp_spot = utils.average_spacing(data=spot.points, neighbours=6)
-            simplices_to_remove, vertices_test = [], []
+            vertices_to_remove, vertices_test = [], []
 
             # find nearest points to spot alt center
             tree = KDTree(points)
@@ -1724,32 +1727,32 @@ class BinarySystem(System):
 
                 # distance exeption for spots points
                 # we keep such point [it is point in innner ring]
-                if simplices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
+                if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
                     continue
                 # norms 0 belong to boundary center
                 if np.dot(spot.normals[0], normals[ix]) > 0:
-                    simplices_to_remove.append(ix)
+                    vertices_to_remove.append(ix)
 
             # simplices of target object for testing whether point lying inside or not of spot boundary
-            simplices_to_remove = list(set(simplices_to_remove))
+            vertices_to_remove = list(set(vertices_to_remove))
 
             # test if index to remove from all current points from simplex_map belongs to any of spots
             spot_indices, star_indices = [], []
-            for item in simplices_to_remove:
+            for item in vertices_to_remove:
                 # that cannot occurred in firt step of loop, since there is no spot
-                if simplices_map[item]["type"] == "spot":
+                if vertices_map[item]["type"] == "spot":
                     spot_indices.append(item)
                 else:
                     star_indices.append(item)
 
-            # points, norms and simplices_map update
-            if len(simplices_to_remove) != 0:
+            # points, norms and vertices_map update
+            if len(vertices_to_remove) != 0:
                 _points, _normals = [], []
-                _simplices_map = {}
+                _vertices_map = {}
                 m_ix = 0
 
                 for ix, vertex, norm in list(zip(range(0, len(points)), points, normals)):
-                    if ix in simplices_to_remove:
+                    if ix in vertices_to_remove:
                         # skip point if is marked for removal
                         continue
 
@@ -1758,30 +1761,30 @@ class BinarySystem(System):
                     _points.append(vertex)
                     _normals.append(norm)
 
-                    _simplices_map[m_ix] = {
-                        "type": simplices_map[ix]["type"],
-                        "enum": simplices_map[ix]["enum"]}
+                    _vertices_map[m_ix] = {"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]}
                     m_ix += 1
 
                 shift = len(_points)
                 for i, vertex, norm in list(zip(range(shift, shift + len(spot.points)), spot.points, spot.normals)):
                     _points.append(vertex)
                     _normals.append(norm)
-                    _simplices_map[i] = {"type": "spot", "enum": spot_index}
+                    _vertices_map[i] = {"type": "spot", "enum": spot_index}
 
                 points = copy(_points)
-                simplices_map = copy(_simplices_map)
+                vertices_map = copy(_vertices_map)
                 normals = copy(_normals)
 
-                del (_points, _simplices_map, _normals)
+                del (_points, _vertices_map, _normals)
 
         component_instance.points = points
 
         # triangulation process
         self.build_surface(component)
 
-        spots_indices = list(set([simplices_map[ix]["enum"]
-                                  for ix in simplices_map if simplices_map[ix]["type"] == "spot"]))
+        spots_indices = list(set([vertices_map[ix]["enum"]
+                                  for ix in vertices_map if vertices_map[ix]["type"] == "spot"]))
+
+        # todo: deal w/ spots that have been removed (overlaped by another one)
 
         model = {"object": [], "spots": {}}
         spot_candidates = {"simplex": {}, "com": {}, "3rd_enum": {}, "ix": {}}
@@ -1789,10 +1792,8 @@ class BinarySystem(System):
         # init variables
         for spot_index in spots_indices:
             model["spots"][spot_index] = []
-            spot_candidates["simplex"][spot_index] = []
-            spot_candidates["com"][spot_index] = []
-            spot_candidates["3rd_enum"][spot_index] = []
-            spot_candidates["ix"][spot_index] = []
+            for key in ["com", "3rd_enum", "ix"]:
+                spot_candidates[key][spot_index] = []
 
         # iterate over triagnulation
         # simplex (2d simplex over triangulatio e.g. [100, 25, 36]), I mentioned 2d, since in 3d, simplex is tetrahedron
@@ -1802,12 +1803,12 @@ class BinarySystem(System):
                                           range(component_instance.faces.shape[0]))):
 
             # test if each point belongs to spot
-            if simplices_map[simplex[0]]["type"] == "spot" and simplices_map[simplex[1]]["type"] == "spot" \
-                    and simplices_map[simplex[2]]["type"] == "spot":
+            if vertices_map[simplex[0]]["type"] == "spot" and vertices_map[simplex[1]]["type"] == "spot" \
+                    and vertices_map[simplex[2]]["type"] == "spot":
 
                 # if each point belongs to the same spot, then it is for sure face of that spot
-                if simplices_map[simplex[0]]["enum"] == simplices_map[simplex[1]]["enum"] == simplices_map[simplex[2]]["enum"]:
-                    model["spots"][simplices_map[simplex[0]]["enum"]].append(np.array(simplex))
+                if vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"] == vertices_map[simplex[2]]["enum"]:
+                    model["spots"][vertices_map[simplex[0]]["enum"]].append(np.array(simplex))
 
                 else:
                     # if at least one of points of face belongs to different spot, we have to test
@@ -1816,72 +1817,69 @@ class BinarySystem(System):
                     reference, trd_enum = None, None
                     # variable trd_enum is enum index of 3rd corner of face;
 
-                    if simplices_map[simplex[-1]]["enum"] == simplices_map[simplex[0]]["enum"]:
-                        reference = simplices_map[simplex[-1]]["enum"]
-                        trd_enum = simplices_map[simplex[1]]["enum"]
-                    elif simplices_map[simplex[0]]["enum"] == simplices_map[simplex[1]]["enum"]:
-                        reference = simplices_map[simplex[0]]["enum"]
-                        trd_enum = simplices_map[simplex[-1]]["enum"]
-                    elif simplices_map[simplex[1]]["enum"] == simplices_map[simplex[-1]]["enum"]:
-                        reference = simplices_map[simplex[1]]["enum"]
-                        trd_enum = simplices_map[simplex[0]]["enum"]
+                    if vertices_map[simplex[-1]]["enum"] == vertices_map[simplex[0]]["enum"]:
+                        reference = vertices_map[simplex[-1]]["enum"]
+                        trd_enum = vertices_map[simplex[1]]["enum"]
+                    elif vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"]:
+                        reference = vertices_map[simplex[0]]["enum"]
+                        trd_enum = vertices_map[simplex[-1]]["enum"]
+                    elif vertices_map[simplex[1]]["enum"] == vertices_map[simplex[-1]]["enum"]:
+                        reference = vertices_map[simplex[1]]["enum"]
+                        trd_enum = vertices_map[simplex[0]]["enum"]
 
                     if reference is not None:
-                        spot_candidates["simplex"][reference].append(simplex)
                         spot_candidates["com"][reference].append(np.average(face, axis=0))
                         spot_candidates["3rd_enum"][reference].append(trd_enum)
                         spot_candidates["ix"][reference].append(ix)
 
             # if at least one of points belongs to star body, then it is for sure star body face
-            elif simplices_map[simplex[0]]["type"] == "t_object" or simplices_map[simplex[1]]["type"] == "t_object" \
-                    or simplices_map[simplex[2]]["type"] == "t_object":
-
+            elif vertices_map[simplex[0]]["type"] == "t_object" or vertices_map[simplex[1]]["type"] == "t_object" \
+                    or vertices_map[simplex[2]]["type"] == "t_object":
                 model["object"].append(np.array(simplex))
             else:
                 model["object"].append(np.array(simplex))
 
-        # if spot_candidates["com"]:
-        #     for spot_index in spot_candidates["com"].keys():
-        #         # get center and size of current spot candidate
-        #         center, size = component_instance.spots[spot_index].boundary_center, \
-        #                        component_instance.spots[spot_index].max_size
-        #
-        #         # compute distance of all center of mass of faces of current
-        #         # spot candidate to the center of this candidate
-        #         dists = [np.linalg.norm(np.array(com) - np.array(center)) for com in spot_candidates["com"][spot_index]]
-        #
-        #         # test if dist is smaller as current spot size;
-        #         # if dist is smaller, then current face belongs to spots otherwise face belongs to t_object itself
-        #
-        #         for idx, dist in enumerate(dists):
-        #             simplex_index = spot_candidates["ix"][spot_index][idx]
-        #             if dist < size:
-        #                 model["spots"][spot_index].append(np.array(component_instance.faces[simplex_index]))
-        #                 continue
-        #             else:
-        #                 # make the same computation for 3rd vertex of face
-        #                 # it might be confusing, but spot candidate is spot where 2 of 3 vertex of one face belong to first spot,
-        #                 # and the 3rd index belongs to another (neighbour) spot
-        #                 # it has to be alos tested, whether face finally do not belongs to spot candidate;
-        #
-        #                 trd_spot_index = spot_candidates["3rd_enum"][spot_index][idx]
-        #
-        #                 trd_center = component_instance.spots[trd_spot_index].boundary_center
-        #                 trd_size = component_instance.spots[trd_spot_index].max_size
-        #
-        #                 com = spot_candidates["com"][spot_index][idx]
-        #                 dist = np.linalg.norm(np.array(com) - np.array(trd_center))
-        #
-        #                 if dist < trd_size:
-        #                     model["spots"][trd_spot_index].append(np.array(component_instance.faces[simplex_index]))
-        #                 # else:
-        #                 #     model["object"].append(np.array(component_instance.faces[simplex_index]))
+        if spot_candidates["com"]:
+            for spot_index in spot_candidates["com"].keys():
+                # get center and size of current spot candidate
+                center, size = component_instance.spots[spot_index].boundary_center, \
+                               component_instance.spots[spot_index].max_size
+
+                # compute distance of all center of mass of faces of current
+                # spot candidate to the center of this candidate
+                dists = [np.linalg.norm(np.array(com) - np.array(center)) for com in spot_candidates["com"][spot_index]]
+
+                # test if dist is smaller as current spot size;
+                # if dist is smaller, then current face belongs to spots otherwise face belongs to t_object itself
+
+                for idx, dist in enumerate(dists):
+                    simplex_index = spot_candidates["ix"][spot_index][idx]
+                    if dist < size:
+                        model["spots"][spot_index].append(np.array(component_instance.faces[simplex_index]))
+                        continue
+                    else:
+                        # make the same computation for 3rd vertex of face
+                        # it might be confusing, but spot candidate is spot where 2 of 3 vertex of one face belong to first spot,
+                        # and the 3rd index belongs to another (neighbour) spot
+                        # it has to be alos tested, whether face finally do not belongs to spot candidate;
+
+                        trd_spot_index = spot_candidates["3rd_enum"][spot_index][idx]
+
+                        trd_center = component_instance.spots[trd_spot_index].boundary_center
+                        trd_size = component_instance.spots[trd_spot_index].max_size
+
+                        com = spot_candidates["com"][spot_index][idx]
+                        dist = np.linalg.norm(np.array(com) - np.array(trd_center))
+
+                        if dist < trd_size:
+                            model["spots"][trd_spot_index].append(np.array(component_instance.faces[simplex_index]))
+                        else:
+                            model["object"].append(np.array(component_instance.faces[simplex_index]))
 
 
-        # graphics.binary_surface(components_to_plot="primary",
-        #                         primary_triangles=model["object"],
-        #                         points_primary=component_instance.points, edges=True)
-
+        graphics.binary_surface(components_to_plot="primary",
+                                primary_triangles=model["spots"][2],
+                                points_primary=component_instance.points, edges=True)
 
     def is_property(self, kwargs):
         """
