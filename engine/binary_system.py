@@ -1781,8 +1781,8 @@ class BinarySystem(System):
         # triangulation process
         self.build_surface(component)
 
-        spots_indices = list(set([vertices_map[ix]["enum"]
-                                  for ix in vertices_map if vertices_map[ix]["type"] == "spot"]))
+        spots_instance_indices = list(set([vertices_map[ix]["enum"]
+                                      for ix in vertices_map if vertices_map[ix]["type"] == "spot"]))
 
         # todo: deal w/ spots that have been removed (overlaped by another one)
 
@@ -1790,7 +1790,7 @@ class BinarySystem(System):
         spot_candidates = {"simplex": {}, "com": {}, "3rd_enum": {}, "ix": {}}
 
         # init variables
-        for spot_index in spots_indices:
+        for spot_index in spots_instance_indices:
             model["spots"][spot_index] = []
             for key in ["com", "3rd_enum", "ix"]:
                 spot_candidates[key][spot_index] = []
@@ -1876,10 +1876,22 @@ class BinarySystem(System):
                         else:
                             model["object"].append(np.array(component_instance.faces[simplex_index]))
 
+        # remove spots that are totaly overlaped
+        for spot_index, _ in list(component_instance.spots.items()):
+            if spot_index not in spots_instance_indices:
+                self._logger.warning("Spot with index {} doesn't contain any face and will be removed "
+                                     "from component {} spot list".format(spot_index, component_instance.name))
+                component_instance.remove_spot(spot_index=spot_index)
+            else:
+                pass
+            # todo: negotiate w/ Miro best approach, if ther should be points in component instance and face in spots
+            # or there should be points in spots also and points of object should be just points without spots points
+        self._logger.debug("Changinh value of parameter faces of object {}".format(component_instance.name))
+        component_instance.faces = model["object"]
 
-        graphics.binary_surface(components_to_plot="primary",
-                                primary_triangles=model["spots"][2],
-                                points_primary=component_instance.points, edges=True)
+        # graphics.binary_surface(components_to_plot="primary",
+        #                         primary_triangles=model["object"],
+        #                         points_primary=component_instance.points, edges=True)
 
     def is_property(self, kwargs):
         """
