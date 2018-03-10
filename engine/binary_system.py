@@ -1489,7 +1489,7 @@ class BinarySystem(System):
         component_instance = getattr(self, component)
         component_instance.faces = self.over_contact_surface(component=component) if self.morphology == 'over-contact' \
             else self.detached_system_surface(component=component)
-    
+
     def evaluate_normals(self, component, component_distance):
         """
         evaluate normals for both components using potential gradient (useful before triangulation)
@@ -1784,8 +1784,6 @@ class BinarySystem(System):
         spots_instance_indices = list(set([vertices_map[ix]["enum"]
                                       for ix in vertices_map if vertices_map[ix]["type"] == "spot"]))
 
-        # todo: deal w/ spots that have been removed (overlaped by another one)
-
         model = {"object": [], "spots": {}}
         spot_candidates = {"simplex": {}, "com": {}, "3rd_enum": {}, "ix": {}}
 
@@ -1856,7 +1854,6 @@ class BinarySystem(System):
                     simplex_index = spot_candidates["ix"][spot_index][idx]
                     if dist < size:
                         model["spots"][spot_index].append(np.array(component_instance.faces[simplex_index]))
-                        continue
                     else:
                         # make the same computation for 3rd vertex of face
                         # it might be confusing, but spot candidate is spot where 2 of 3 vertex of one face belong to first spot,
@@ -1883,14 +1880,34 @@ class BinarySystem(System):
                                      "from component {} spot list".format(spot_index, component_instance.name))
                 component_instance.remove_spot(spot_index=spot_index)
             else:
-                pass
-            # todo: negotiate w/ Miro best approach, if ther should be points in component instance and face in spots
-            # or there should be points in spots also and points of object should be just points without spots points
-        self._logger.debug("Changinh value of parameter faces of object {}".format(component_instance.name))
-        component_instance.faces = model["object"]
+                self._logger.debug(
+                    "Changing value of parameter points of spot {} / "
+                    "component {}".format(spot_index, component_instance.name))
+                # get points currently belong to the given spot
+                indices = list(set(np.array(model["spots"][spot_index]).flatten()))
+                component_instance.spots[spot_index].points = component_instance.points[indices]
+
+                self._logger.debug(
+                    "Changing value of parameter faces of spot {} / "
+                    "component {}".format(spot_index, component_instance.name))
+                component_instance.spots[spot_index].faces = model["spots"][spot_index]
+                remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
+                component_instance.spots[spot_index].faces = \
+                    utils.remap(component_instance.spots[spot_index].faces, remap_dict)
+
+        self._logger.debug("Changing value of parameter points of object {}".format(component_instance.name))
+        indices = list(set(np.array(model["object"]).flatten()))
+        component_instance.points = component_instance.points[indices]
+
+        self._logger.debug("Changing value of parameter faces of object {}".format(component_instance.name))
+        remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
+
+        component_instance.faces = utils.remap(model["object"], remap_dict)
+
+        # todo: recompute normals????
 
         # graphics.binary_surface(components_to_plot="primary",
-        #                         primary_triangles=model["object"],
+        #                         primary_triangles=component_instance.faces,
         #                         points_primary=component_instance.points, edges=True)
 
     def is_property(self, kwargs):

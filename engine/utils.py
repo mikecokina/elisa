@@ -149,3 +149,7 @@ def average_spacing(data=None, neighbours=6):
     for line in dist:
         total += np.sort(line)[1:1 + neighbours].sum() / (neighbours + 1)
     return total / dist.shape[0]
+
+
+def remap(x, mapper):
+    return list(map(lambda val: [mapper[val[0]], mapper[val[1]], mapper[val[2]]], x))
