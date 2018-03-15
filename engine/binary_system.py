@@ -1739,17 +1739,17 @@ class BinarySystem(System):
             # simplices of target object for testing whether point lying inside or not of spot boundary
             vertices_to_remove = list(set(vertices_to_remove))
 
-            # test if index to remove from all current points from simplex_map belongs to any of spots
-            spot_indices, star_indices = [], []
-            for item in vertices_to_remove:
-                # that cannot occurred in firt step of loop, since there is no spot
-                if vertices_map[item]["type"] == "spot":
-                    spot_indices.append(item)
-                else:
-                    star_indices.append(item)
-
             # points, norms and vertices_map update
             if len(vertices_to_remove) != 0:
+                # test if index to remove from all current points from vertices_map belongs to any of spots
+                spot_indices, star_indices = [], []
+                for item in vertices_to_remove:
+                    # that cannot occurred in firt step of loop, since there is no spot
+                    if vertices_map[item]["type"] == "spot":
+                        spot_indices.append(item)
+                    else:
+                        star_indices.append(item)
+
                 _points, _normals = [], []
                 _vertices_map = {}
                 m_ix = 0
@@ -1816,23 +1816,23 @@ class BinarySystem(System):
                     # if at least one of points of face belongs to different spot, we have to test
                     # which one of those spots current face belongs to
 
-                    reference, trd_enum = None, None
+                    reference_to_spot, trd_enum = None, None
                     # variable trd_enum is enum index of 3rd corner of face;
 
                     if vertices_map[simplex[-1]]["enum"] == vertices_map[simplex[0]]["enum"]:
-                        reference = vertices_map[simplex[-1]]["enum"]
+                        reference_to_spot = vertices_map[simplex[-1]]["enum"]
                         trd_enum = vertices_map[simplex[1]]["enum"]
                     elif vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"]:
-                        reference = vertices_map[simplex[0]]["enum"]
+                        reference_to_spot = vertices_map[simplex[0]]["enum"]
                         trd_enum = vertices_map[simplex[-1]]["enum"]
                     elif vertices_map[simplex[1]]["enum"] == vertices_map[simplex[-1]]["enum"]:
-                        reference = vertices_map[simplex[1]]["enum"]
+                        reference_to_spot = vertices_map[simplex[1]]["enum"]
                         trd_enum = vertices_map[simplex[0]]["enum"]
 
-                    if reference is not None:
-                        spot_candidates["com"][reference].append(np.average(face, axis=0))
-                        spot_candidates["3rd_enum"][reference].append(trd_enum)
-                        spot_candidates["ix"][reference].append(ix)
+                    if reference_to_spot is not None:
+                        spot_candidates["com"][reference_to_spot].append(np.average(face, axis=0))
+                        spot_candidates["3rd_enum"][reference_to_spot].append(trd_enum)
+                        spot_candidates["ix"][reference_to_spot].append(ix)
 
             # if at least one of points belongs to star body, then it is for sure star body face
             elif vertices_map[simplex[0]]["type"] == "t_object" or vertices_map[simplex[1]]["type"] == "t_object" \
