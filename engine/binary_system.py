@@ -201,7 +201,7 @@ class BinarySystem(System):
                                                                         default_spherical_vector[2]),
                                                                     degrees=False)
 
-                            spherical_delta_vector = utils.cartesian_to_sphetical(delta_vector[0],
+                            spherical_delta_vector = utils.cartesian_to_spherical(delta_vector[0],
                                                                                   delta_vector[1],
                                                                                   delta_vector[2])
 
@@ -225,7 +225,7 @@ class BinarySystem(System):
                     return
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
-                boundary_com = utils.cartesian_to_sphetical(*boundary_com)
+                boundary_com = utils.cartesian_to_spherical(*boundary_com)
                 solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1], boundary_com[2]))
                 boundary_center = np.array(utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2]))
 

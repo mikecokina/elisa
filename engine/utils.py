@@ -45,7 +45,7 @@ def find_nearest_dist_3d(data=None):
     return min(distances)
 
 
-def cartesian_to_sphetical(x, y, z, degrees=False):
+def cartesian_to_spherical(x, y, z, degrees=False):
     """
     convert cartesian to spherical coordinates
 
