@@ -1776,7 +1776,8 @@ class BinarySystem(System):
 
                 del (_points, _vertices_map, _normals)
 
-        component_instance.points = points
+        points, normals = np.array(points), np.array(normals)
+        component_instance.points = np.array(points)
 
         # triangulation process
         self.build_surface(component)
@@ -1885,7 +1886,7 @@ class BinarySystem(System):
                     "component {}".format(spot_index, component_instance.name))
                 # get points currently belong to the given spot
                 indices = list(set(np.array(model["spots"][spot_index]).flatten()))
-                component_instance.spots[spot_index].points = component_instance.points[indices]
+                component_instance.spots[spot_index].points = np.array(component_instance.points[indices])
 
                 self._logger.debug(
                     "Changing value of parameter faces of spot {} / "
