@@ -154,7 +154,8 @@ class BinarySystem(System):
                     # in case of spots, each point should be usefull, otherwise remove spot from
                     # component spot list and skip current spot computation
                     self._logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
-                                      "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
+                                      "entire spot will be omitted. Your spot probably lies close to the "
+                                      "neck.".format(spot_instance.kwargs_serializer()))
 
                     component_instance.remove_spot(spot_index=spot_index)
                     continue
@@ -162,7 +163,7 @@ class BinarySystem(System):
                 spot_center_r = solution
                 spot_center = utils.spherical_to_cartesian(spot_center_r, lon, lat)
 
-                # compute euclidean distance of two points on spot
+                # compute euclidean distance of two points on spot (x0)
                 # we have to obtain distance between center and 1st point in 1st ring of spot
                 args, use = (components_distance, lon, lat + alpha), False
                 solution, use = self.solver(fn, solver_condition, *args)
@@ -191,7 +192,8 @@ class BinarySystem(System):
                         default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
 
                         for delta_index, delta in enumerate(deltas[theta_index]):
-                            # print(delta, theta)
+                            # rotating default spherical vector around spot center vector and thus generating concentric
+                            # circle of points around centre of spot
                             delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
                                                                     vector=utils.spherical_to_cartesian(
                                                                         default_spherical_vector[0],
@@ -218,12 +220,14 @@ class BinarySystem(System):
 
                 except StopIteration:
                     self._logger.info("Any point of spot {} doesn't satisfy reasonable conditions and "
-                                      "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
+                                      "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+                    # what about this?: component_instance.remove_spot(spot_index=spot_index)
                     return
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_sphetical(*boundary_com)
-                solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1], boundary_com[2]))
+                solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1],
+                                                                  boundary_com[2]))
                 boundary_center = utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2])
 
                 # first point will be always barycenter of boundary
@@ -235,22 +239,22 @@ class BinarySystem(System):
                                               for b in boundary_points])
 
                 if component == "primary":
-                    spot_instance.points = spot_points
-                    spot_instance.boundary = boundary_points
-                    spot_instance.boundary_center = boundary_center
-                    spot_instance.center = spot_center
+                    spot_instance.points = np.array(spot_points)
+                    spot_instance.boundary = np.array(boundary_points)
+                    spot_instance.boundary_center = np.array(boundary_center)
+                    spot_instance.center = np.array(spot_center)
                 else:
-                    spot_instance.points = [(components_distance - point[0], -point[1], point[2])
-                                            for point in spot_points]
+                    spot_instance.points = np.array([(components_distance - point[0], -point[1], point[2])
+                                                    for point in spot_points])
 
-                    spot_instance.boundary = [(components_distance - point[0], -point[1], point[2])
-                                              for point in boundary_points]
+                    spot_instance.boundary = np.array([(components_distance - point[0], -point[1], point[2])
+                                                      for point in boundary_points])
 
-                    spot_instance.boundary_center = (components_distance - boundary_center[0],
-                                                     -boundary_center[1], boundary_center[2])
+                    spot_instance.boundary_center = np.array((components_distance - boundary_center[0],
+                                                             -boundary_center[1], boundary_center[2]))
 
-                    spot_instance.center = (components_distance - spot_center[0], -spot_center[1][1],
-                                            spot_center[1][2])
+                    spot_instance.center = np.array((components_distance - spot_center[0], -spot_center[1][1],
+                                                    spot_center[1][2]))
 
                 spot_instance.normals = self.calculate_potential_gradient(component=component,
                                                                           components_distance=components_distance,
@@ -1538,9 +1542,6 @@ class BinarySystem(System):
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
         :return:
         """
-
-        # fixme: alpha argument is not used anymore
-
         if descriptor == 'orbit':
             KWARGS = ['start_phase', 'stop_phase', 'number_of_points', 'axis_unit', 'frame_of_reference']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
