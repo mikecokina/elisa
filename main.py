@@ -115,10 +115,10 @@ bs.surface(component=component)
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
 # bs.plot(descriptor='mesh', components_to_plot='both')
-# bs.plot(descriptor='surface',
-#         phase=0,
-#         components_to_plot='both',
-#         edges=False,
-#         normals=False,
-#         colormap='temperature')
+bs.plot(descriptor='surface',
+        phase=0,
+        components_to_plot='both',
+        edges=False,
+        normals=False,
+        colormap='temperature')
 

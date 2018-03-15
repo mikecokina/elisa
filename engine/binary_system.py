@@ -154,7 +154,8 @@ class BinarySystem(System):
                     # in case of spots, each point should be usefull, otherwise remove spot from
                     # component spot list and skip current spot computation
                     self._logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
-                                      "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
+                                      "entire spot will be omitted. Your spot probably lies close to the "
+                                      "neck.".format(spot_instance.kwargs_serializer()))
 
                     component_instance.remove_spot(spot_index=spot_index)
                     continue
@@ -162,7 +163,7 @@ class BinarySystem(System):
                 spot_center_r = solution
                 spot_center = np.array(utils.spherical_to_cartesian(spot_center_r, lon, lat))
 
-                # compute euclidean distance of two points on spot
+                # compute euclidean distance of two points on spot (x0)
                 # we have to obtain distance between center and 1st point in 1st ring of spot
                 args, use = (components_distance, lon, lat + alpha), False
                 solution, use = self.solver(fn, solver_condition, *args)
@@ -191,7 +192,8 @@ class BinarySystem(System):
                         default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
 
                         for delta_index, delta in enumerate(deltas[theta_index]):
-                            # print(delta, theta)
+                            # rotating default spherical vector around spot center vector and thus generating concentric
+                            # circle of points around centre of spot
                             delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
                                                                     vector=utils.spherical_to_cartesian(
                                                                         default_spherical_vector[0],
@@ -218,7 +220,8 @@ class BinarySystem(System):
 
                 except StopIteration:
                     self._logger.info("Any point of spot {} doesn't satisfy reasonable conditions and "
-                                      "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
+                                      "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+                    # what about this?: component_instance.remove_spot(spot_index=spot_index)
                     return
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
