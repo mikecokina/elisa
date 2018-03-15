@@ -1897,7 +1897,7 @@ class BinarySystem(System):
                 component_instance.spots[spot_index].faces = model["spots"][spot_index]
                 remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
                 component_instance.spots[spot_index].faces = \
-                    utils.remap(component_instance.spots[spot_index].faces, remap_dict)
+                    np.array(utils.remap(component_instance.spots[spot_index].faces, remap_dict))
 
         self._logger.debug("Changing value of parameter points of object {}".format(component_instance.name))
         indices = list(set(np.array(model["object"]).flatten()))
@@ -1906,7 +1906,7 @@ class BinarySystem(System):
         self._logger.debug("Changing value of parameter faces of object {}".format(component_instance.name))
         remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
 
-        component_instance.faces = utils.remap(model["object"], remap_dict)
+        component_instance.faces = np.array(utils.remap(model["object"], remap_dict))
 
         # todo: recompute normals????
 
