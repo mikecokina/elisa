@@ -145,7 +145,7 @@ class BinarySystem(System):
 
                 # initial radial vector
                 radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
-                center_vector = utils.spherical_to_cartesian(1.0, lon, lat)
+                center_vector = np.array(utils.spherical_to_cartesian(1.0, lon, lat))
 
                 args, use = (components_distance, radial_vector[1], radial_vector[2]), False
                 solution, use = self.solver(fn, solver_condition, *args)
@@ -160,7 +160,7 @@ class BinarySystem(System):
                     continue
 
                 spot_center_r = solution
-                spot_center = utils.spherical_to_cartesian(spot_center_r, lon, lat)
+                spot_center = np.array(utils.spherical_to_cartesian(spot_center_r, lon, lat))
 
                 # compute euclidean distance of two points on spot
                 # we have to obtain distance between center and 1st point in 1st ring of spot
@@ -209,8 +209,8 @@ class BinarySystem(System):
                             if not use:
                                 raise StopIteration
 
-                            spot_point = utils.spherical_to_cartesian(solution, spherical_delta_vector[1],
-                                                                      spherical_delta_vector[2])
+                            spot_point = np.array(utils.spherical_to_cartesian(solution, spherical_delta_vector[1],
+                                                                               spherical_delta_vector[2]))
                             spot_points.append(spot_point)
 
                             if theta_index == len(thetas) - 1:
@@ -224,7 +224,7 @@ class BinarySystem(System):
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_sphetical(*boundary_com)
                 solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1], boundary_com[2]))
-                boundary_center = utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2])
+                boundary_center = np.array(utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2]))
 
                 # first point will be always barycenter of boundary
                 spot_points[0] = boundary_center
@@ -235,22 +235,22 @@ class BinarySystem(System):
                                               for b in boundary_points])
 
                 if component == "primary":
-                    spot_instance.points = spot_points
-                    spot_instance.boundary = boundary_points
-                    spot_instance.boundary_center = boundary_center
-                    spot_instance.center = spot_center
+                    spot_instance.points = np.array(spot_points)
+                    spot_instance.boundary = np.array(boundary_points)
+                    spot_instance.boundary_center = np.array(boundary_center)
+                    spot_instance.center = np.array(spot_center)
                 else:
-                    spot_instance.points = [(components_distance - point[0], -point[1], point[2])
-                                            for point in spot_points]
+                    spot_instance.points = np.array([np.array([components_distance - point[0], -point[1], point[2]])
+                                                     for point in spot_points])
 
-                    spot_instance.boundary = [(components_distance - point[0], -point[1], point[2])
-                                              for point in boundary_points]
+                    spot_instance.boundary = np.array([np.array([components_distance - point[0], -point[1], point[2]])
+                                                       for point in boundary_points])
 
-                    spot_instance.boundary_center = (components_distance - boundary_center[0],
-                                                     -boundary_center[1], boundary_center[2])
+                    spot_instance.boundary_center = np.array([components_distance - boundary_center[0],
+                                                             -boundary_center[1], boundary_center[2]])
 
-                    spot_instance.center = (components_distance - spot_center[0], -spot_center[1][1],
-                                            spot_center[1][2])
+                    spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1][1],
+                                                    spot_center[1][2]])
 
                 spot_instance.normals = self.calculate_potential_gradient(component=component,
                                                                           components_distance=components_distance,
