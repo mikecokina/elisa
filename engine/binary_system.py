@@ -252,9 +252,10 @@ class BinarySystem(System):
                     spot_instance.boundary_center = np.array([components_distance - boundary_center[0],
                                                              -boundary_center[1], boundary_center[2]])
 
-                    spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1][1],
-                                                    spot_center[1][2]])
+                    spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1],
+                                                    spot_center[2]])
 
+                # again, you calculate normals using surface points... why?
                 spot_instance.normals = self.calculate_potential_gradient(component=component,
                                                                           components_distance=components_distance,
                                                                           points=np.array(spot_instance.points))
@@ -1493,6 +1494,7 @@ class BinarySystem(System):
         component_instance.faces = self.over_contact_surface(component=component) if self.morphology == 'over-contact' \
             else self.detached_system_surface(component=component)
 
+    # todo: needs rework
     def evaluate_normals(self, component, component_distance):
         """
         evaluate normals for both components using potential gradient (useful before triangulation)
@@ -1501,6 +1503,7 @@ class BinarySystem(System):
         :param component_distance:
         :return:
         """
+        # todo: component_instance.normals is set of normals corresponding to faces NOT to surface points, rtfm pls
         component_instance = getattr(self, component)
         component_instance.normals = self.calculate_potential_gradient(component=component,
                                                                        components_distance=component_distance)
@@ -1650,7 +1653,8 @@ class BinarySystem(System):
                     self.build_mesh(component='primary', components_distance=components_distance)
                 kwargs['points_primary'] = self.primary.points
                 if self.primary.faces is None:
-                    self.build_surface(component='primary')
+                    # self.build_surface(component='primary')
+                    self.surface(component='primary')
                 kwargs['primary_triangles'] = self.primary.faces
 
                 if kwargs['normals']:
@@ -1668,7 +1672,8 @@ class BinarySystem(System):
                     self.build_mesh(component='secondary', components_distance=components_distance)
                 kwargs['points_secondary'] = self.secondary.points
                 if self.secondary.faces is None:
-                    self.build_surface(component='secondary')
+                    # self.build_surface(component='secondary')
+                    self.surface(component='secondary')
                 kwargs['secondary_triangles'] = self.secondary.faces
 
                 if kwargs['normals']:

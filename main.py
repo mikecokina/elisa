@@ -11,28 +11,28 @@ from time import time
 
 spots_metadata = {
     "primary":
-        [{"longitude": 0,
-          "latitude": 0,
+        [{"longitude": 90,
+          "latitude": 58,
           "angular_density": 1,
           "angular_diameter": 5,
           "temperature_factor": 0.8},
-         {"longitude": 0,
-          "latitude": 0,
+         {"longitude": 70,
+          "latitude": 80,
           "angular_density": 2,
           "angular_diameter": 30,
           "temperature_factor": 0.9},
-         {"longitude": 0,
-          "latitude": 15,
+         {"longitude": 28,
+          "latitude": 90,
           "angular_density": 2,
-          "angular_diameter": 20,
+          "angular_diameter": 30,
           "temperature_factor": 0.8},
          ],
 
     "secondary":
-        [{"longitude": 0,
+        [{"longitude": 270,
           "latitude": 20,
           "angular_density": 2,
-          "angular_diameter": 20,
+          "angular_diameter": 30,
           "temperature_factor": 1.1},
          {"longitude": 0,
           "latitude": 0,
@@ -44,14 +44,14 @@ spots_metadata = {
 
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
-               surface_potential=3.1,
+               surface_potential=3.15,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                spots=spots_metadata["primary"],
                discretization_factor=5)
 secondary = Star(mass=1.0*u.solMass,
-                 surface_potential=3.1,
+                 surface_potential=3.15,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
@@ -78,9 +78,13 @@ phase = 0
 
 # print(bs.primary.spots)
 #
-bs.build_mesh(component=component)
-bs.evaluate_normals(component=component, component_distance=components_distance)
-bs.surface(component=component)
+# bs.build_mesh(component=component)
+# bs.evaluate_normals(component=component, component_distance=components_distance)
+# bs.surface(component=component)
+# component = 'secondary'
+# bs.build_mesh(component=component)
+# bs.evaluate_normals(component=component, component_distance=components_distance)
+# bs.surface(component=component)
 
 # if True:
 #     component_instance = getattr(bs, component)
@@ -109,7 +113,7 @@ bs.surface(component=component)
 # bs.inclination = 85*u.deg
 # bs.init()
 
-# print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
+print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
@@ -117,7 +121,7 @@ bs.surface(component=component)
 # bs.plot(descriptor='mesh', components_to_plot='both')
 bs.plot(descriptor='surface',
         phase=0,
-        components_to_plot='both',
+        components_to_plot='primary',
         edges=False,
         normals=False,
         colormap='temperature')
