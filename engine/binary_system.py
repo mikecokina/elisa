@@ -1711,7 +1711,7 @@ class BinarySystem(System):
 
         vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
         points = copy(component_instance.points)
-        normals = copy(component_instance.normals)
+        # normals = copy(component_instance.normals)
 
         # average spacing of component surface points
         avsp = utils.average_spacing(data=component_instance.points, neighbours=6)
@@ -1738,8 +1738,9 @@ class BinarySystem(System):
                 if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
                     continue
                 # norms 0 belong to boundary center
-                if np.dot(spot.normals[0], normals[ix]) > 0:
-                    vertices_to_remove.append(ix)
+                # if np.dot(spot.normals[0], normals[ix]) > 0:
+                #     vertices_to_remove.append(ix)
+                vertices_to_remove.append(ix)
 
             # simplices of target object for testing whether point lying inside or not of spot boundary
             vertices_to_remove = list(set(vertices_to_remove))
@@ -1755,11 +1756,13 @@ class BinarySystem(System):
                     else:
                         star_indices.append(item)
 
-                _points, _normals = [], []
+                # _points, _normals = [], []
+                _points = []
                 _vertices_map = {}
                 m_ix = 0
 
-                for ix, vertex, norm in list(zip(range(0, len(points)), points, normals)):
+                # for ix, vertex, norm in list(zip(range(0, len(points)), points, normals)):
+                for ix, vertex in list(zip(range(0, len(points)), points)):
                     if ix in vertices_to_remove:
                         # skip point if is marked for removal
                         continue
@@ -1767,31 +1770,34 @@ class BinarySystem(System):
                     # append only points of currrent object that do not intervent to spot
                     # [current, since there should be already spot from previous iteration step]
                     _points.append(vertex)
-                    _normals.append(norm)
+                    # _normals.append(norm)
 
                     _vertices_map[m_ix] = {"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]}
                     m_ix += 1
 
                 shift = len(_points)
-                for i, vertex, norm in list(zip(range(shift, shift + len(spot.points)), spot.points, spot.normals)):
+                # for i, vertex, norm in list(zip(range(shift, shift + len(spot.points)), spot.points, spot.normals)):
+                for i, vertex in list(zip(range(shift, shift + len(spot.points)), spot.points)):
                     _points.append(vertex)
-                    _normals.append(norm)
+                    # _normals.append(norm)
                     _vertices_map[i] = {"type": "spot", "enum": spot_index}
 
                 points = copy(_points)
                 vertices_map = copy(_vertices_map)
-                normals = copy(_normals)
+                # normals = copy(_normals)
 
-                del (_points, _vertices_map, _normals)
+                # del (_points, _vertices_map, _normals)
+                del (_points, _vertices_map)
 
-        points, normals = np.array(points), np.array(normals)
+        # points, normals = np.array(points), np.array(normals)
+        points = np.array(points)
         component_instance.points = np.array(points)
 
         # triangulation process
         self.build_surface(component)
 
         spots_instance_indices = list(set([vertices_map[ix]["enum"]
-                                      for ix in vertices_map if vertices_map[ix]["type"] == "spot"]))
+                                      for ix, _ in enumerate(vertices_map) if vertices_map[ix]["type"] == "spot"]))
 
         model = {"object": [], "spots": {}}
         spot_candidates = {"simplex": {}, "com": {}, "3rd_enum": {}, "ix": {}}
