@@ -209,6 +209,7 @@ class BinarySystem(System):
                             solution, use = self.solver(fn, solver_condition, *args)
 
                             if not use:
+                                component_instance.remove_spot(spot_index=spot_index)
                                 raise StopIteration
 
                             spot_point = np.array(utils.spherical_to_cartesian(solution, spherical_delta_vector[1],
