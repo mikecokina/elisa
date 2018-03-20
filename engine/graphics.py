@@ -179,7 +179,7 @@ def binary_mesh(**kwargs):
         x_min = np.min(kwargs['points_secondary'][:, 0])
         x_max = np.max(kwargs['points_secondary'][:, 0])
 
-    D = (x_max - x_min)/2
+    D = (x_max - x_min) / 2
     ax.set_xlim3d(x_min, x_max)
     ax.set_ylim3d(-D, D)
     ax.set_zlim3d(-D, D)
@@ -205,7 +205,7 @@ def single_star_surface(**kwargs):
     if kwargs['normals']:
         arrows = ax.quiver(kwargs['centres'][:, 0], kwargs['centres'][:, 1], kwargs['centres'][:, 2],
                            kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
-                           length=0.1*kwargs['equatorial_radius'])
+                           length=0.1 * kwargs['equatorial_radius'])
 
     if kwargs.get('colormap', False):
         star_plot.set_cmap(cmap=cm.jet_r)
@@ -244,24 +244,18 @@ def binary_surface(**kwargs):
         plot = ax.plot_trisurf(
             kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
             kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
-            antialiased=True, shade=False)
-        plot = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
-                                       kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
-                                       antialiased=False, shade=False)
+            antialiased=False, shade=False)
 
         if kwargs.get('normals', False):
-            ax.quiver(kwargs['primary_centres'][:, 0], kwargs['primary_centres'][:, 1], kwargs['primary_centres'][:, 2],
-                      kwargs['primary_arrows'][:, 0], kwargs['primary_arrows'][:, 1], kwargs['primary_arrows'][:, 2],
-                      color='black', length=0.05)
+            ax.quiver(
+                kwargs['primary_centres'][:, 0], kwargs['primary_centres'][:, 1], kwargs['primary_centres'][:, 2],
+                kwargs['primary_arrows'][:, 0], kwargs['primary_arrows'][:, 1], kwargs['primary_arrows'][:, 2],
+                color='black', length=0.05)
 
     elif kwargs['components_to_plot'] == 'secondary':
-        plot = ax.plot_trisurf(
-            kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
-            kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
-            antialiased=True, shade=False)
         plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
-                                         kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
-                                         antialiased=False, shade=False)
+                               kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
+                               antialiased=False, shade=False)
 
         if kwargs.get('normals', False):
             ax.quiver(kwargs['secondary_centres'][:, 0], kwargs['secondary_centres'][:, 1],
@@ -273,7 +267,7 @@ def binary_surface(**kwargs):
     elif kwargs['components_to_plot'] == 'both':
         points = np.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
         triangles = np.concatenate((kwargs['primary_triangles'],
-                                    kwargs['secondary_triangles']+np.shape(kwargs['points_primary'])[0]), axis=0)
+                                    kwargs['secondary_triangles'] + np.shape(kwargs['points_primary'])[0]), axis=0)
 
         plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=False,
                                shade=False)

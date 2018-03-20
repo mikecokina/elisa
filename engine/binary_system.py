@@ -256,11 +256,6 @@ class BinarySystem(System):
                     spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1],
                                                     spot_center[2]])
 
-                # again, you calculate normals using surface points... why?
-                spot_instance.normals = self.calculate_potential_gradient(component=component,
-                                                                          components_distance=components_distance,
-                                                                          points=np.array(spot_instance.points))
-
     def solver(self, fn, condition, *args, **kwargs):
         """
         will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
@@ -1484,8 +1479,7 @@ class BinarySystem(System):
         return np.array(new_triangles_indices)
 
     def build_mesh(self, component, components_distance=None):
-        if components_distance is None:
-            components_distance = 1 - self.eccentricity
+        components_distance = 1 - self.eccentricity if components_distance is None else components_distance
         component_instance = getattr(self, component)
         component_instance.points = self.mesh_over_contact(component=component) if self.morphology == 'over-contact' \
             else self.mesh_detached(component=component, components_distance=components_distance)
@@ -1546,24 +1540,20 @@ class BinarySystem(System):
         :return:
         """
 
-        # fixme: alpha argument is not used anymore
-
         if descriptor == 'orbit':
             KWARGS = ['start_phase', 'stop_phase', 'number_of_points', 'axis_unit', 'frame_of_reference']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.orbit
-            start_phase = 0 if 'start_phase' not in kwargs else kwargs['start_phase']
-            stop_phase = 1.0 if 'stop_phase' not in kwargs else kwargs['stop_phase']
-            number_of_points = 300 if 'number_of_points' not in kwargs else kwargs['number_of_points']
+            start_phase = kwargs.get('start_phase', 0.0)
+            stop_phase = kwargs.get('stop_phase', 1.0)
+            number_of_points = kwargs.get('number_of_points', 300)
 
-            if 'axis_unit' not in kwargs:
-                kwargs['axis_unit'] = u.solRad
-            elif kwargs['axis_unit'] == 'dimensionless':
+            kwargs['axis_unit'] = kwargs.get('axis_units', u.solRad)
+            kwargs['frame_of_reference'] = kwargs.get('frame_of_reference', 'primary_component')
+
+            if kwargs['axis_unit'] == 'dimensionless':
                 kwargs['axis_unit'] = u.dimensionless_unscaled
-
-            if 'frame_of_reference' not in kwargs:
-                kwargs['frame_of_reference'] = 'primary_component'
 
             # orbit calculation for given phases
             phases = np.linspace(start_phase, stop_phase, number_of_points)
@@ -1590,10 +1580,8 @@ class BinarySystem(System):
 
             method_to_call = graphics.equipotential
 
-            if 'phase' not in kwargs:
-                kwargs['phase'] = 0
-            if 'plane' not in kwargs:
-                kwargs['plane'] = 'xy'
+            kwargs['phase'] = kwargs.get('phase', 0.0)
+            kwargs['plane'] = kwargs.get('plane', 'xy')
 
             # relative distance between components (a = 1)
             if utils.is_plane(kwargs['plane'], 'xy') or utils.is_plane(
@@ -1610,13 +1598,10 @@ class BinarySystem(System):
         elif descriptor == 'mesh':
             KWARGS = ['phase', 'components_to_plot']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
-
             method_to_call = graphics.binary_mesh
 
-            if 'phase' not in kwargs:
-                kwargs['phase'] = 0
-            if 'components_to_plot' not in kwargs:
-                kwargs['components_to_plot'] = 'both'
+            kwargs['phase'] = kwargs.get('phase', 0)
+            kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
 
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
@@ -1636,26 +1621,22 @@ class BinarySystem(System):
 
             method_to_call = graphics.binary_surface
 
-            if 'phase' not in kwargs:
-                kwargs['phase'] = 0
-            if 'components_to_plot' not in kwargs:
-                kwargs['components_to_plot'] = 'both'
-            if 'normals' not in kwargs:
-                kwargs['normals'] = False
-            if 'edges' not in kwargs:
-                kwargs['edges'] = False
-            if 'colormap' not in kwargs:
-                kwargs['colormap'] = None
+            kwargs['phase'] = kwargs.get('phase', 0)
+            kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
+            kwargs['normals'] = kwargs.get('normals', False)
+            kwargs['edges'] = kwargs.get('edges', False)
+            kwargs['colormap'] = kwargs.get('colormap', None)
 
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
                 if self.primary.points is None:
                     self.build_mesh(component='primary', components_distance=components_distance)
-                kwargs['points_primary'] = self.primary.points
                 if self.primary.faces is None:
                     # self.build_surface(component='primary')
                     self.surface(component='primary')
+
+                kwargs['points_primary'] = self.primary.points
                 kwargs['primary_triangles'] = self.primary.faces
 
                 if kwargs['normals']:
@@ -1671,10 +1652,11 @@ class BinarySystem(System):
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 if self.secondary.points is None:
                     self.build_mesh(component='secondary', components_distance=components_distance)
-                kwargs['points_secondary'] = self.secondary.points
                 if self.secondary.faces is None:
                     # self.build_surface(component='secondary')
                     self.surface(component='secondary')
+
+                kwargs['points_secondary'] = self.secondary.points
                 kwargs['secondary_triangles'] = self.secondary.faces
 
                 if kwargs['normals']:
@@ -1686,6 +1668,15 @@ class BinarySystem(System):
                 if kwargs['colormap'] == 'temperature':
                     self.build_colormap(component='secondary', components_distance=components_distance)
                     kwargs['secondary_cmap'] = self.secondary.temperatures
+
+            # from numpy import testing
+            #
+            # testing.assert_array_equal(self.primary.points, kwargs["points_primary"])
+            # testing.assert_array_equal(self.primary.faces, kwargs["primary_triangles"])
+            #
+            # graphics.binary_surface(components_to_plot="primary",
+            #                         primary_triangles=kwargs["primary_triangles"],
+            #                         points_primary=kwargs["points_primary"], edges=True)
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
@@ -1712,7 +1703,6 @@ class BinarySystem(System):
 
         vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
         points = copy(component_instance.points)
-        # normals = copy(component_instance.normals)
 
         # average spacing of component surface points
         avsp = utils.average_spacing(data=component_instance.points, neighbours=6)
@@ -1738,15 +1728,13 @@ class BinarySystem(System):
                 # we keep such point [it is point in innner ring]
                 if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
                     continue
-                # norms 0 belong to boundary center
-                # if np.dot(spot.normals[0], normals[ix]) > 0:
-                #     vertices_to_remove.append(ix)
+
                 vertices_to_remove.append(ix)
 
             # simplices of target object for testing whether point lying inside or not of spot boundary
             vertices_to_remove = list(set(vertices_to_remove))
 
-            # points, norms and vertices_map update
+            # points and vertices_map update
             if len(vertices_to_remove) != 0:
                 # test if index to remove from all current points from vertices_map belongs to any of spots
                 spot_indices, star_indices = [], []
@@ -1757,7 +1745,6 @@ class BinarySystem(System):
                     else:
                         star_indices.append(item)
 
-                # _points, _normals = [], []
                 _points = []
                 _vertices_map = {}
                 m_ix = 0
@@ -1790,7 +1777,6 @@ class BinarySystem(System):
                 # del (_points, _vertices_map, _normals)
                 del (_points, _vertices_map)
 
-        # points, normals = np.array(points), np.array(normals)
         points = np.array(points)
         component_instance.points = np.array(points)
 
@@ -1810,8 +1796,6 @@ class BinarySystem(System):
                 spot_candidates[key][spot_index] = []
 
         # iterate over triagnulation
-        # simplex (2d simplex over triangulatio e.g. [100, 25, 36]), I mentioned 2d, since in 3d, simplex is tetrahedron
-        # face (point representation of triangle (contain real coordinates, not just indices))
         for simplex, face, ix in list(zip(component_instance.faces,
                                           component_instance.points[component_instance.faces],
                                           range(component_instance.faces.shape[0]))):
@@ -1919,8 +1903,6 @@ class BinarySystem(System):
         remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
 
         component_instance.faces = np.array(utils.remap(model["object"], remap_dict))
-
-        # todo: recompute normals????
 
         # graphics.binary_surface(components_to_plot="primary",
         #                         primary_triangles=component_instance.faces,

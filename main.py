@@ -121,8 +121,8 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 # bs.plot(descriptor='mesh', components_to_plot='both')
 bs.plot(descriptor='surface',
         phase=0,
-        components_to_plot='both',
-        edges=False,
+        components_to_plot='primary',
+        edges=True,
         normals=False,
         colormap='temperature')
 
