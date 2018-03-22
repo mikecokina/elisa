@@ -22,6 +22,8 @@ class Spot(object):
         self._angular_diameter = None
         self._temperature_factor = None
 
+        self.spot_parent = None
+
         self.boundary = None
         self.boundary_center = None
         self.center = None
@@ -30,6 +32,10 @@ class Spot(object):
         self.points = None
         self.normals = None
         self.faces = None
+
+        self.areas = None
+        self.potential_gradients = None
+        self.temperatures = None
 
         self._logger = logging.getLogger(Spot.__name__)
 
@@ -151,4 +157,11 @@ class Spot(object):
 
         if diff:
             raise ValueError('Missing mandatory argument(s) {} for spot w/ params {}'.format(', '.join(diff), kwargs))
+
+    def calculate_areas(self):
+        """
+        returns areas of each face of the spot surface
+        :return: numpy.array([area_1, ..., area_n])
+        """
+        return utils.triangle_areas(self.faces, self.points)
 

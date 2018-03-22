@@ -3,6 +3,7 @@ from astropy import units as u
 import numpy as np
 import logging
 from engine import units as U
+from engine import utils
 
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
@@ -444,9 +445,7 @@ class Body(object, metaclass=ABCMeta):
         returns areas of each face of the star surface
         :return: numpy.array([area_1, ..., area_n])
         """
-        return 0.5 * np.linalg.norm(np.cross(self.points[self.faces[:, 1]] - self.points[self.faces[:, 0]],
-                                             self.points[self.faces[:, 2]] - self.points[self.faces[:, 0]]),
-                                    axis=1)
+        return utils.triangle_areas(self.faces, self.points)
 
     def get_info(self):
         pass

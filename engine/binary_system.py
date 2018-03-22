@@ -136,6 +136,8 @@ class BinarySystem(System):
 
             # iterate over spots
             for spot_index, spot_instance in list(component_instance.spots.items()):
+                spot_instance.spot_parent = component_instance
+
                 # lon -> phi, lat -> theta
                 lon, lat = spot_instance.longitude, spot_instance.latitude
                 alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
@@ -850,19 +852,25 @@ class BinarySystem(System):
         domega_dz = - points[:, 2] * (1 / r3 + self.mass_ratio / r_hat3)
         return -np.column_stack((domega_dx, domega_dy, domega_dz))
 
-    def calculate_face_magnitude_gradient(self, component, components_distance):
+    def calculate_face_magnitude_gradient(self, component, components_distance, points=None, faces=None):
         """
         return array of face mean of magnitude gradients
 
         :param component:
         :param components_distance:
+        :param points: points in which to calculate magnitude of gradient, if False take star points
+        :param faces: faces corresponding to given points
         :return: np.array
         """
+        if points is not None and faces is None:
+            raise TypeError('Specify faces corresponding to given points')
+
         component_instance = getattr(self, component)
-        gradients = self.calculate_potential_gradient(component, components_distance)
+        face = component_instance.faces if faces is None else faces
+        gradients = self.calculate_potential_gradient(component, components_distance, points=points)
         domega_dx, domega_dy, domega_dz = gradients[:, 0], gradients[:, 1], gradients[:, 2]
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
-        return np.mean(points_gradients[component_instance.faces], axis=1)
+        return np.mean(points_gradients[face], axis=1)
 
     def calculate_polar_potential_gradient_magnitude(self, component=None, components_distance=None):
         """
@@ -1503,7 +1511,7 @@ class BinarySystem(System):
         component_instance.normals = self.calculate_potential_gradient(component=component,
                                                                        components_distance=component_distance)
 
-    def build_colormap(self, component=None, components_distance=None):
+    def build_colormap(self, component=None, components_distance=None, colormap_kwarg=None):
         """
         auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
 
@@ -1523,8 +1531,24 @@ class BinarySystem(System):
             component_instance.polar_potential_gradient = \
                 self.calculate_polar_potential_gradient_magnitude(component=component,
                                                                   components_distance=components_distance)
-        if component_instance.temperatures is None:
+        if component_instance.temperatures is None and colormap_kwarg == 'temperatures':
             component_instance.temperatures = component_instance.calculate_effective_temperatures()
+
+        if component_instance.spots:
+            for spot_index, spot in component_instance.spots.items():
+                if spot.areas is None:
+                    spot.areas = component_instance.calculate_areas()
+
+                if spot.potential_gradients is None:
+                    spot.potential_gradients = \
+                        self.calculate_face_magnitude_gradient(component=component,
+                                                               components_distance=components_distance,
+                                                               points=spot.points, faces=spot.faces)
+                if spot.temperatures is None and colormap_kwarg == 'temperatures':
+                    spot.temperatures = \
+                        spot.temperature_factor * \
+                        component_instance.calculate_effective_temperatures(gradient_magnitudes=
+                                                                            spot.potential_gradients)
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -1633,7 +1657,6 @@ class BinarySystem(System):
                 if self.primary.points is None:
                     self.build_mesh(component='primary', components_distance=components_distance)
                 if self.primary.faces is None:
-                    # self.build_surface(component='primary')
                     self.surface(component='primary')
 
                 kwargs['points_primary'] = self.primary.points
@@ -1646,14 +1669,34 @@ class BinarySystem(System):
                         kwargs['points_primary'], kwargs['primary_triangles'])
 
                 if kwargs['colormap'] == 'temperature':
-                    self.build_colormap(component='primary', components_distance=components_distance)
+                    self.build_colormap(component='primary', components_distance=components_distance,
+                                        colormap_kwarg=kwargs['colormap'])
                     kwargs['primary_cmap'] = self.primary.temperatures
+
+                elif kwargs['colormap'] == 'gravity_acceleration':
+                    self.build_colormap(component='primary', components_distance=components_distance,
+                                        colormap_kwarg=kwargs['colormap'])
+
+                if self.primary.spots:
+                    for spot_index, spot in self.primary.spots.items():
+                        n_points = np.shape(kwargs['points_primary'])[0]
+                        kwargs['points_primary'] = np.append(kwargs['points_primary'], spot.points, axis=0)
+                        kwargs['primary_triangles'] = np.append(kwargs['primary_triangles'], spot.faces + n_points,
+                                                                axis=0)
+                        if kwargs['colormap'] == 'temperature':
+                            kwargs['primary_cmap'] = np.append(kwargs['primary_cmap'], spot.temperatures)
+                        if kwargs['normals']:
+                            kwargs['primary_centres'] = \
+                                np.append(kwargs['primary_centres'], self.primary.calculate_surface_centres(
+                                                                      spot.points, spot.faces), axis=0)
+                            kwargs['primary_arrows'] = \
+                                np.append(kwargs['primary_arrows'], self.primary.calculate_normals(spot.points,
+                                                                                                   spot.faces), axis=0)
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 if self.secondary.points is None:
                     self.build_mesh(component='secondary', components_distance=components_distance)
                 if self.secondary.faces is None:
-                    # self.build_surface(component='secondary')
                     self.surface(component='secondary')
 
                 kwargs['points_secondary'] = self.secondary.points
@@ -1666,8 +1709,29 @@ class BinarySystem(System):
                         kwargs['points_secondary'], kwargs['secondary_triangles'])
 
                 if kwargs['colormap'] == 'temperature':
-                    self.build_colormap(component='secondary', components_distance=components_distance)
+                    self.build_colormap(component='secondary', components_distance=components_distance,
+                                        colormap_kwarg=kwargs['colormap'])
                     kwargs['secondary_cmap'] = self.secondary.temperatures
+
+                elif kwargs['colormap'] == 'gravity_acceleration':
+                    self.build_colormap(component='secondary', components_distance=components_distance,
+                                        colormap_kwarg=kwargs['colormap'])
+
+                if self.secondary.spots:
+                    for spot_index, spot in self.secondary.spots.items():
+                        n_points = np.shape(kwargs['points_secondary'])[0]
+                        kwargs['points_secondary'] = np.append(kwargs['points_secondary'], spot.points, axis=0)
+                        kwargs['secondary_triangles'] = np.append(kwargs['secondary_triangles'], spot.faces + n_points,
+                                                                  axis=0)
+                        if kwargs['colormap'] == 'temperature':
+                            kwargs['secondary_cmap'] = np.append(kwargs['secondary_cmap'], spot.temperatures)
+                        if kwargs['normals']:
+                            kwargs['secondary_centres'] = \
+                                np.append(kwargs['secondary_centres'], self.secondary.calculate_surface_centres(
+                                                                      spot.points, spot.faces), axis=0)
+                            kwargs['secondary_arrows'] = \
+                                np.append(kwargs['secondary_arrows'],
+                                          self.secondary.calculate_normals(spot.points, spot.faces), axis=0)
 
             # from numpy import testing
             #
@@ -1805,7 +1869,8 @@ class BinarySystem(System):
                     and vertices_map[simplex[2]]["type"] == "spot":
 
                 # if each point belongs to the same spot, then it is for sure face of that spot
-                if vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"] == vertices_map[simplex[2]]["enum"]:
+                if vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"] == \
+                        vertices_map[simplex[2]]["enum"]:
                     model["spots"][vertices_map[simplex[0]]["enum"]].append(np.array(simplex))
 
                 else:

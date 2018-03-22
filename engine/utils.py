@@ -152,4 +152,16 @@ def average_spacing(data=None, neighbours=6):
 
 
 def remap(x, mapper):
+    # vysvetli co to robi a hlavne jak by mal vyzerat ten mapper lebo toto sa mi pravdepodobne niekde zide
     return list(map(lambda val: [mapper[val[0]], mapper[val[1]], mapper[val[2]]], x))
+
+
+def triangle_areas(triangles, points):
+    """
+    calculates areas of triangles, where `triangles` indexes of vertices which coordinates are stored in `points`
+    :param triangles: np.array
+    :param points: np.array
+    :return: np.array
+    """
+    return 0.5 * np.linalg.norm(np.cross(points[triangles[:, 1]] - points[triangles[:, 0]],
+                                         points[triangles[:, 2]] - points[triangles[:, 0]]), axis=1)

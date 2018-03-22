@@ -212,9 +212,17 @@ class Star(Body):
                                                                   self.gravity_darkening)),
                                      0.25)
 
-    def calculate_effective_temperatures(self):
+    def calculate_effective_temperatures(self, gradient_magnitudes=None):
+        """
+        calculates effective temperatures for given gradient magnitudes, if None given star surface t_effs are
+        calculated
+
+        :param gradient_magnitudes:
+        :return:
+        """
+        gradient_magnitudes = self.potential_gradients if gradient_magnitudes is None else gradient_magnitudes
         t_eff_polar = self.calculate_polar_effective_temperature()
-        t_eff_points = t_eff_polar * np.power(self.potential_gradients / self.polar_potential_gradient,
+        t_eff_points = t_eff_polar * np.power(gradient_magnitudes / self.polar_potential_gradient,
                                               0.25 * self.gravity_darkening)
         return t_eff_points
 

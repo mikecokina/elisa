@@ -15,17 +15,17 @@ spots_metadata = {
           "latitude": 58,
           "angular_density": 1,
           "angular_diameter": 5,
-          "temperature_factor": 0.8},
+          "temperature_factor": 0.9},
          {"longitude": 70,
           "latitude": 80,
           "angular_density": 2,
           "angular_diameter": 30,
-          "temperature_factor": 0.9},
+          "temperature_factor": 1.05},
          {"longitude": 28,
           "latitude": 90,
           "angular_density": 2,
           "angular_diameter": 30,
-          "temperature_factor": 0.8},
+          "temperature_factor": 0.95},
          ],
 
     "secondary":
@@ -55,6 +55,7 @@ secondary = Star(mass=1.0*u.solMass,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
+                 spots=spots_metadata["secondary"],
                  discretization_factor=5)
 
 bs = BinarySystem(primary=primary,
@@ -121,8 +122,8 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 # bs.plot(descriptor='mesh', components_to_plot='both')
 bs.plot(descriptor='surface',
         phase=0,
-        components_to_plot='primary',
-        edges=True,
+        components_to_plot='both',
+        edges=False,
         normals=False,
         colormap='temperature')
 
