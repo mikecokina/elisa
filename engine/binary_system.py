@@ -101,6 +101,7 @@ class BinarySystem(System):
         # todo: compute and assign to all radii values to both components
 
         # evaluate spots of both components
+        # this is not true for all systems!!!
         self._evaluate_spots(components_distance=1.0)
 
     def _evaluate_spots(self, components_distance):
@@ -124,7 +125,7 @@ class BinarySystem(System):
         # in case of wuma system, get separation and make additional test of location of each point (if primary
         # spot doesn't intersect with secondary, if does, then such spot will be skiped completly)
         if self.morphology == "over-contact":
-            neck_position = self.calculate_neck_position()
+            neck_position = self.calculate_neck_position()  # where are you using this?
 
         for component, fn in fns.items():
             self._logger.info("Evaluating spots for {} component".format(component))
@@ -136,7 +137,6 @@ class BinarySystem(System):
 
             # iterate over spots
             for spot_index, spot_instance in list(component_instance.spots.items()):
-                spot_instance.spot_parent = component_instance
 
                 # lon -> phi, lat -> theta
                 lon, lat = spot_instance.longitude, spot_instance.latitude
@@ -156,8 +156,7 @@ class BinarySystem(System):
                     # in case of spots, each point should be usefull, otherwise remove spot from
                     # component spot list and skip current spot computation
                     self._logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
-                                      "entire spot will be omitted. Your spot probably lies close to the "
-                                      "neck.".format(spot_instance.kwargs_serializer()))
+                                      "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
 
                     component_instance.remove_spot(spot_index=spot_index)
                     continue
@@ -222,14 +221,15 @@ class BinarySystem(System):
                                 boundary_points.append(spot_point)
 
                 except StopIteration:
-                    self._logger.info("Any point of spot {} doesn't satisfy reasonable conditions and "
+                    self._logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
                                       "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
-                    # what about this?: component_instance.remove_spot(spot_index=spot_index)
+                    # shouldn't this be here?: component_instance.remove_spot(spot_index=spot_index)
                     return
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_spherical(*boundary_com)
-                solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1], boundary_com[2]))
+                solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1],
+                                                                  boundary_com[2]))
                 boundary_center = np.array(utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2]))
 
                 # first point will be always barycenter of boundary
@@ -1511,7 +1511,7 @@ class BinarySystem(System):
         component_instance.normals = self.calculate_potential_gradient(component=component,
                                                                        components_distance=component_distance)
 
-    def build_colormap(self, component=None, components_distance=None, colormap_kwarg=None):
+    def build_colormap(self, component=None, components_distance=None, colormap=None):
         """
         auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
 
@@ -1531,7 +1531,7 @@ class BinarySystem(System):
             component_instance.polar_potential_gradient = \
                 self.calculate_polar_potential_gradient_magnitude(component=component,
                                                                   components_distance=components_distance)
-        if component_instance.temperatures is None and colormap_kwarg == 'temperatures':
+        if component_instance.temperatures is None and colormap == 'temperature':
             component_instance.temperatures = component_instance.calculate_effective_temperatures()
 
         if component_instance.spots:
@@ -1544,7 +1544,7 @@ class BinarySystem(System):
                         self.calculate_face_magnitude_gradient(component=component,
                                                                components_distance=components_distance,
                                                                points=spot.points, faces=spot.faces)
-                if spot.temperatures is None and colormap_kwarg == 'temperatures':
+                if spot.temperatures is None and colormap == 'temperature':
                     spot.temperatures = \
                         spot.temperature_factor * \
                         component_instance.calculate_effective_temperatures(gradient_magnitudes=
@@ -1670,12 +1670,12 @@ class BinarySystem(System):
 
                 if kwargs['colormap'] == 'temperature':
                     self.build_colormap(component='primary', components_distance=components_distance,
-                                        colormap_kwarg=kwargs['colormap'])
+                                        colormap=kwargs['colormap'])
                     kwargs['primary_cmap'] = self.primary.temperatures
 
                 elif kwargs['colormap'] == 'gravity_acceleration':
                     self.build_colormap(component='primary', components_distance=components_distance,
-                                        colormap_kwarg=kwargs['colormap'])
+                                        colormap=kwargs['colormap'])
 
                 if self.primary.spots:
                     for spot_index, spot in self.primary.spots.items():
@@ -1710,12 +1710,12 @@ class BinarySystem(System):
 
                 if kwargs['colormap'] == 'temperature':
                     self.build_colormap(component='secondary', components_distance=components_distance,
-                                        colormap_kwarg=kwargs['colormap'])
+                                        colormap=kwargs['colormap'])
                     kwargs['secondary_cmap'] = self.secondary.temperatures
 
                 elif kwargs['colormap'] == 'gravity_acceleration':
                     self.build_colormap(component='secondary', components_distance=components_distance,
-                                        colormap_kwarg=kwargs['colormap'])
+                                        colormap=kwargs['colormap'])
 
                 if self.secondary.spots:
                     for spot_index, spot in self.secondary.spots.items():

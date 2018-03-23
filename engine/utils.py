@@ -21,6 +21,7 @@ def invalid_kwarg_checker(kwargs, kwarglist, instance):
         raise ValueError('Invalid keyword argument(s): {} in class instance {}.\n List of available parameters: {}'
                          ''.format(', '.join(invalid_kwargs), instance.__name__, format(', '.join(kwarglist))))
 
+
 def is_plane(given, expected):
     pattern = r'^({0})|({1})$'.format(expected, expected[::-1])
     return re.search(pattern, given)

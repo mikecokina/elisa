@@ -22,8 +22,6 @@ class Spot(object):
         self._angular_diameter = None
         self._temperature_factor = None
 
-        self.spot_parent = None
-
         self.boundary = None
         self.boundary_center = None
         self.center = None
