@@ -298,6 +298,17 @@ def binary_surface(**kwargs):
                 plot.set_array(both_cmaps)
             colorbar = fig.colorbar(plot, shrink=0.7)
             colorbar.set_label('T/[K]')
+        elif kwargs['colormap'] == 'gravity_acceleration':
+            plot.set_cmap(cmap=cm.jet_r)
+            if kwargs['components_to_plot'] == 'primary':
+                plot.set_array(kwargs['primary_cmap'] / np.max(kwargs['primary_cmap']))
+            elif kwargs['components_to_plot'] == 'secondary':
+                plot.set_array(kwargs['secondary_cmap'] / np.max(kwargs['secondary_cmap']))
+            elif kwargs['components_to_plot'] == 'both':
+                both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
+                plot.set_array(both_cmaps / np.max(both_cmaps))
+            colorbar = fig.colorbar(plot, shrink=0.7)
+            colorbar.set_label('Normalized gravity acceleration')
 
     ax.set_xlabel('x')
     ax.set_ylabel('y')

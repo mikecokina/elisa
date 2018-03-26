@@ -3,6 +3,7 @@ from astropy import units as u
 import numpy as np
 import logging
 from engine import units as U
+from scipy.optimize import fsolve
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -88,3 +89,28 @@ class System(object):
     @abstractmethod
     def init(self):
         pass
+
+    def solver(self, fn, condition, *args, **kwargs):
+        """
+        will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
+        solution if satisfy conditional function
+
+        :param fn: function
+        :param condition: function
+        :param args: tuple
+        :return: float (np.nan), bool
+        """
+        solution, use = np.nan, False
+        scipy_solver_init_value = np.array([1. / 10000.])
+        try:
+            solution, _, ier, _ = fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
+                                                        xtol=1e-12)
+            if ier == 1 and not np.isnan(solution[0]):
+                solution = solution[0]
+                use = True if 1e15 > solution > 0 else False
+        except Exception as e:
+            self._logger.debug("Attempt to solve function {} finished w/ exception: {}".format(fn.__name__, str(e)))
+            use = False
+
+        return (solution, use) if condition(solution, *args, **kwargs) else (np.nan, False)
+

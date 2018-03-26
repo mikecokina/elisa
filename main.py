@@ -125,5 +125,6 @@ bs.plot(descriptor='surface',
         # components_to_plot='secondary',
         edges=False,
         normals=False,
-        colormap='temperature')
+        colormap='gravity_acceleration')
+        # colormap='temperature')
 

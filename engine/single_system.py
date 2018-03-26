@@ -9,6 +9,7 @@ from engine import const as c
 from astropy import units as u
 from engine import units as U
 from engine import utils
+from copy import copy
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -76,6 +77,8 @@ class SingleSystem(System):
         # this is also check if star surface is closed
         self.star._equatorial_radius = self.calculate_equatorial_radius()
 
+        self._evaluate_spots()
+
     def init(self):
         """
         function to reinitialize SingleSystem class instance after changing parameter(s) of binary system using setters
@@ -83,6 +86,128 @@ class SingleSystem(System):
         :return:
         """
         self.__init__(mass=self.star.mass, gamma=self.gamma, inclination=self._inclination)
+
+    def _evaluate_spots(self):
+        """
+        compute points of each spots and assigns values to spot container instance
+
+        :return:
+        """
+        def solver_condition(x, *_args, **_kwargs):
+            return True
+
+        self._logger.info("Evaluating spots.")
+
+        if not self.star.spots:
+            self._logger.info("No spots to evaluate.")
+            return
+
+        # iterate over spots
+        for spot_index, spot_instance in list(self.star.spots.items()):
+            # lon -> phi, lat -> theta
+            lon, lat = spot_instance.longitude, spot_instance.latitude
+            alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
+
+            # initial containers for current spot
+            boundary_points, spot_points = [], []
+
+            # initial radial vector
+            radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
+            center_vector = np.array(utils.spherical_to_cartesian(1.0, lon, lat))
+
+            args, use = (radial_vector[2],), False
+            solution, use = self.solver(self.potential_fn, solver_condition, *args)
+
+            if not use:
+                # in case of spots, each point should be usefull, otherwise remove spot from
+                # component spot list and skip current spot computation
+                self._logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
+                                  "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+
+                self.star.remove_spot(spot_index=spot_index)
+                continue
+
+            spot_center_r = solution
+            spot_center = np.array(utils.spherical_to_cartesian(spot_center_r, lon, lat))
+
+            # compute euclidean distance of two points on spot (x0)
+            # we have to obtain distance between center and 1st point in 1st ring of spot
+            args, use = (lat + alpha,), False
+            solution, use = self.solver(self.potential_fn, solver_condition, *args)
+            if not use:
+                # in case of spots, each point should be usefull, otherwise remove spot from
+                # component spot list and skip current spot computation
+                self._logger.info("First ring of spot {} doesn't satisfy reasonable conditions and "
+                                  "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
+
+                self.star.remove_spot(spot_index=spot_index)
+                continue
+
+            x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
+
+            # number of points in latitudal direction
+            num_radial = int((diameter * 0.5) // alpha)
+            thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
+
+            num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
+            deltas = [np.linspace(0., c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
+
+            # todo: add condition to die
+            try:
+                for theta_index, theta in enumerate(thetas):
+                    # first point of n-th ring of spot (counting start from center)
+                    default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
+
+                    for delta_index, delta in enumerate(deltas[theta_index]):
+                        # rotating default spherical vector around spot center vector and thus generating concentric
+                        # circle of points around centre of spot
+                        delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
+                                                                vector=utils.spherical_to_cartesian(
+                                                                    default_spherical_vector[0],
+                                                                    default_spherical_vector[1],
+                                                                    default_spherical_vector[2]),
+                                                                degrees=False)
+
+                        spherical_delta_vector = utils.cartesian_to_spherical(delta_vector[0],
+                                                                              delta_vector[1],
+                                                                              delta_vector[2])
+
+                        args = (spherical_delta_vector[2],)
+                        solution, use = self.solver(self.potential_fn, solver_condition, *args)
+
+                        if not use:
+                            self.star.remove_spot(spot_index=spot_index)
+                            raise StopIteration
+
+                        spot_point = np.array(utils.spherical_to_cartesian(solution, spherical_delta_vector[1],
+                                                                           spherical_delta_vector[2]))
+                        spot_points.append(spot_point)
+
+                        if theta_index == len(thetas) - 1:
+                            boundary_points.append(spot_point)
+
+            except StopIteration:
+                self._logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
+                                  "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+                return
+
+            boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
+            boundary_com = utils.cartesian_to_spherical(*boundary_com)
+            solution, _ = self.solver(self.potential_fn, solver_condition, *(boundary_com[2],))
+            boundary_center = np.array(utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2]))
+
+            # first point will be always barycenter of boundary
+            spot_points[0] = boundary_center
+
+            # max size from barycenter of boundary to boundary
+            # todo: make sure this value is correct = make an unittests for spots
+            spot_instance.max_size = max([np.linalg.norm(np.array(boundary_center) - np.array(b))
+                                          for b in boundary_points])
+
+            spot_instance.points = np.array(spot_points)
+            spot_instance.boundary = np.array(boundary_points)
+            spot_instance.boundary_center = np.array(boundary_center)
+            spot_instance.center = np.array(spot_center)
 
     @classmethod
     def is_property(cls, kwargs):
@@ -219,9 +344,9 @@ class SingleSystem(System):
         return - c.G * self.star.mass / radius - 0.5 * np.power(self._angular_velocity, 2.0) * \
                                                   np.power(radius * np.sin(theta), 2)
 
-    def calculate_potential_gradient(self):
+    def calculate_potential_gradient_magnitudes(self):
         """
-        returns array of absolute values of potential gradients for corresponding face
+        returns array of absolute values of potential gradients for corresponding faces
 
         :return: np.array
         """
@@ -240,10 +365,10 @@ class SingleSystem(System):
 
         :return:
         """
-        points = np.array([0, 0, self.calculate_polar_radius()])
-        r3 = np.power(np.linalg.norm(points), 3)
-        domega_dz = c.G * self.star.mass * points[2] / r3
-        return np.power(np.power(domega_dz, 2), 0.5)
+        points_z = self.calculate_polar_radius()
+        r3 = np.power(points_z, 3)
+        domega_dz = c.G * self.star.mass * points_z / r3
+        return domega_dz
 
     def potential_fn(self, radius, *args):
         """
@@ -407,7 +532,7 @@ class SingleSystem(System):
 
             if self.star.points is None:
                 self.star.points = self.mesh()
-            kwargs['mesh'] = self.star.points
+            kwargs['mesh'] = copy(self.star.points)
             denominator = (1*kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])
@@ -417,16 +542,13 @@ class SingleSystem(System):
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
             method_to_call = graphics.single_star_surface
 
-            if 'edges' not in kwargs:
-                kwargs['edges'] = False
-            if 'normals' not in kwargs:
-                kwargs['normals'] = False
-            if 'colormap' not in kwargs:
-                kwargs['normals'] = None
+            kwargs['edges'] = kwargs.get('edges', False)
+            kwargs['normals'] = kwargs.get('normals', False)
+            kwargs['colormap'] = kwargs.get('colormap', None)
 
             if self.star.faces is None:
                 self.build_surface()
-            kwargs['mesh'] = self.star.points
+            kwargs['mesh'] = copy(self.star.points)
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['triangles'] = self.star.faces
@@ -440,20 +562,25 @@ class SingleSystem(System):
             if kwargs['colormap'] == 'temperature':
                 if self.star.areas is None:
                     self.star.areas = self.star.calculate_areas()
-                if self.star.potential_gradients is None:
-                    self.star.potential_gradients = self.calculate_potential_gradient()
-                    self.star.polar_potential_gradient = self.calculate_polar_potential_gradient_magnitude()
+                if self.star.potential_gradient_magnitudes is None:
+                    self.star.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes()
+                    self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
+                    print(min(self.star.potential_gradient_magnitudes), max(self.star.potential_gradient_magnitudes))
+
+                    print(self.star.polar_potential_gradient_magnitude, self.star.polar_gravity_acceleration)
                 if self.star.temperatures is None:
                     self.star.temperatures = self.star.calculate_effective_temperatures()
                 kwargs['cmap'] = self.star.temperatures
 
             elif kwargs['colormap'] == 'gravity_acceleration':
-                if self.star.potential_gradients is None:
-                    self.star.potential_gradients = self.calculate_potential_gradient()
-                    self.star.polar_potential_gradient = self.calculate_polar_potential_gradient_magnitude()
-                g0 = self.star.polar_gravity_acceleration / self.star.polar_potential_gradient
-                print(self.star.polar_potential_gradient, max(self.star.potential_gradients))
-                kwargs['cmap'] = g0 * self.star.potential_gradients
+                if self.star.potential_gradient_magnitudes is None:
+                    self.star.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes()
+                    self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
+                g0 = self.star.polar_gravity_acceleration / self.star.polar_potential_gradient_magnitude
+                print(max(self.star.points[:, 2]))
+                print(min(self.star.potential_gradient_magnitudes), max(self.star.potential_gradient_magnitudes))
+                print(self.star.polar_potential_gradient_magnitude, self.star.polar_gravity_acceleration)
+                kwargs['cmap'] = g0 * self.star.potential_gradient_magnitudes
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

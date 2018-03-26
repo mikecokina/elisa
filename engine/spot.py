@@ -32,7 +32,7 @@ class Spot(object):
         self.faces = None
 
         self.areas = None
-        self.potential_gradients = None
+        self.potential_gradient_magnitudes = None
         self.temperatures = None
 
         self._logger = logging.getLogger(Spot.__name__)

@@ -125,7 +125,7 @@ class BinarySystem(System):
         # in case of wuma system, get separation and make additional test of location of each point (if primary
         # spot doesn't intersect with secondary, if does, then such spot will be skiped completly)
         if self.morphology == "over-contact":
-            neck_position = self.calculate_neck_position()  # where are you using this?
+            neck_position = self.calculate_neck_position()
 
         for component, fn in fns.items():
             self._logger.info("Evaluating spots for {} component".format(component))
@@ -257,30 +257,6 @@ class BinarySystem(System):
 
                     spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1],
                                                     spot_center[2]])
-
-    def solver(self, fn, condition, *args, **kwargs):
-        """
-        will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
-        solution if satisfy conditional function
-
-        :param fn: function
-        :param condition: function
-        :param args: tuple
-        :return: float (np.nan), bool
-        """
-        solution, use = np.nan, False
-        scipy_solver_init_value = np.array([1. / 10000.])
-        try:
-            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
-                                                        xtol=1e-12)
-            if ier == 1 and not np.isnan(solution[0]):
-                solution = solution[0]
-                use = True if 1 > solution > 0 else False
-        except Exception as e:
-            self._logger.debug("Attempt to solve function {} finished w/ exception: {}".format(fn.__name__, str(e)))
-            use = False
-
-        return (solution, use) if condition(solution, *args, **kwargs) else (np.nan, False)
 
     def _params_validity_check(self, **kwargs):
 
@@ -1525,10 +1501,10 @@ class BinarySystem(System):
         if component_instance.polar_radius is None:
             component_instance.polar_radius = self.calculate_polar_radius(component=component,
                                                                           components_distance=components_distance)
-        if component_instance.potential_gradients is None:
-            component_instance.potential_gradients = \
+        if component_instance.potential_gradient_magnitudes is None:
+            component_instance.potential_gradient_magnitudes = \
                 self.calculate_face_magnitude_gradient(component=component, components_distance=components_distance)
-            component_instance.polar_potential_gradient = \
+            component_instance.polar_potential_gradient_magnitude = \
                 self.calculate_polar_potential_gradient_magnitude(component=component,
                                                                   components_distance=components_distance)
         if component_instance.temperatures is None and colormap == 'temperature':
@@ -1539,8 +1515,8 @@ class BinarySystem(System):
                 if spot.areas is None:
                     spot.areas = component_instance.calculate_areas()
 
-                if spot.potential_gradients is None:
-                    spot.potential_gradients = \
+                if spot.potential_gradient_magnitudes is None:
+                    spot.potential_gradient_magnitudes = \
                         self.calculate_face_magnitude_gradient(component=component,
                                                                components_distance=components_distance,
                                                                points=spot.points, faces=spot.faces)
@@ -1548,7 +1524,7 @@ class BinarySystem(System):
                     spot.temperatures = \
                         spot.temperature_factor * \
                         component_instance.calculate_effective_temperatures(gradient_magnitudes=
-                                                                            spot.potential_gradients)
+                                                                            spot.potential_gradient_magnitudes)
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -1668,14 +1644,14 @@ class BinarySystem(System):
                     kwargs['primary_arrows'] = self.primary.calculate_normals(
                         kwargs['points_primary'], kwargs['primary_triangles'])
 
+                self.build_colormap(component='primary', components_distance=components_distance,
+                                    colormap=kwargs['colormap'])
                 if kwargs['colormap'] == 'temperature':
-                    self.build_colormap(component='primary', components_distance=components_distance,
-                                        colormap=kwargs['colormap'])
                     kwargs['primary_cmap'] = self.primary.temperatures
 
                 elif kwargs['colormap'] == 'gravity_acceleration':
-                    self.build_colormap(component='primary', components_distance=components_distance,
-                                        colormap=kwargs['colormap'])
+                    kwargs['primary_cmap'] = self.primary.potential_gradient_magnitudes / \
+                                             self.primary.polar_potential_gradient_magnitude
 
                 if self.primary.spots:
                     for spot_index, spot in self.primary.spots.items():
@@ -1685,6 +1661,10 @@ class BinarySystem(System):
                                                                 axis=0)
                         if kwargs['colormap'] == 'temperature':
                             kwargs['primary_cmap'] = np.append(kwargs['primary_cmap'], spot.temperatures)
+                        elif kwargs['colormap'] == 'gravity_acceleration':
+                            kwargs['primary_cmap'] = np.append(kwargs['primary_cmap'],
+                                                               spot.potential_gradient_magnitudes /
+                                                               self.primary.polar_potential_gradient_magnitude)
                         if kwargs['normals']:
                             kwargs['primary_centres'] = \
                                 np.append(kwargs['primary_centres'], self.primary.calculate_surface_centres(
@@ -1708,14 +1688,14 @@ class BinarySystem(System):
                     kwargs['secondary_arrows'] = self.secondary.calculate_normals(
                         kwargs['points_secondary'], kwargs['secondary_triangles'])
 
+                self.build_colormap(component='secondary', components_distance=components_distance,
+                                    colormap=kwargs['colormap'])
                 if kwargs['colormap'] == 'temperature':
-                    self.build_colormap(component='secondary', components_distance=components_distance,
-                                        colormap=kwargs['colormap'])
                     kwargs['secondary_cmap'] = self.secondary.temperatures
 
                 elif kwargs['colormap'] == 'gravity_acceleration':
-                    self.build_colormap(component='secondary', components_distance=components_distance,
-                                        colormap=kwargs['colormap'])
+                    kwargs['secondary_cmap'] = self.secondary.potential_gradient_magnitudes / \
+                                               self.secondary.polar_potential_gradient_magnitude
 
                 if self.secondary.spots:
                     for spot_index, spot in self.secondary.spots.items():
@@ -1725,6 +1705,10 @@ class BinarySystem(System):
                                                                   axis=0)
                         if kwargs['colormap'] == 'temperature':
                             kwargs['secondary_cmap'] = np.append(kwargs['secondary_cmap'], spot.temperatures)
+                        elif kwargs['colormap'] == 'gravity_acceleration':
+                            kwargs['secondary_cmap'] = np.append(kwargs['secondary_cmap'],
+                                                                 spot.potential_gradient_magnitudes /
+                                                                 self.secondary.polar_potential_gradient_magnitude)
                         if kwargs['normals']:
                             kwargs['secondary_centres'] = \
                                 np.append(kwargs['secondary_centres'], self.secondary.calculate_surface_centres(
@@ -1755,7 +1739,6 @@ class BinarySystem(System):
         :type: str
         :return:
         """
-
         if component not in ["primary", "secondary"]:
             raise ValueError("Incorrect component value, `primary` or `secondary` allowed.")
         component_instance = getattr(self, component)
