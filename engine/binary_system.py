@@ -115,8 +115,9 @@ class BinarySystem(System):
             x, _, _ = utils.spherical_to_cartesian(x, _args[1], _args[2])
             x = x if component == "primary" else components_distance - x
             # ignore also spots where one of points is situated just on the neck
-            if (component == "primary" and x >= neck_position) or (component == "secondary" and x <= neck_position):
-                return False
+            if self.morphology == "over-contact":
+                if (component == "primary" and x >= neck_position) or (component == "secondary" and x <= neck_position):
+                    return False
             return True
 
         fns = {"primary": self.potential_primary_fn, "secondary": self.potential_secondary_fn}
