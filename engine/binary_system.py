@@ -182,6 +182,8 @@ class BinarySystem(System):
 
                 # number of points in latitudal direction
                 num_radial = int((diameter * 0.5) // alpha)
+                self._logger.debug('Number of rings in spot {} is {}'.format(spot_instance.kwargs_serializer(),
+                                                                             num_radial))
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
                 num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
@@ -1741,7 +1743,7 @@ class BinarySystem(System):
         :return:
         """
         if component not in ["primary", "secondary"]:
-            raise ValueError("Incorrect component value, `primary` or `secondary` allowed.")
+            raise ValueError("Incorrect component value, only `primary` or `secondary` allowed.")
         component_instance = getattr(self, component)
 
         # build surface if there is no spot specified
@@ -1756,6 +1758,7 @@ class BinarySystem(System):
         avsp = utils.average_spacing(data=component_instance.points, neighbours=6)
 
         for spot_index, spot in component_instance.spots.items():
+            # average spacing in spot points
             avsp_spot = utils.average_spacing(data=spot.points, neighbours=6)
             vertices_to_remove, vertices_test = [], []
 
@@ -1764,8 +1767,9 @@ class BinarySystem(System):
             distances, indices = tree.query(spot.boundary_center, k=len(points))
 
             max_dist_to_object_point = spot.max_size + (0.25 * avsp)
-            max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
+            # max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
 
+            # removing star points in spot
             for dist, ix in zip(distances, indices):
                 if dist > max_dist_to_object_point:
                     # break, because distancies are ordered by size, so there is no more points of object that
@@ -1774,28 +1778,36 @@ class BinarySystem(System):
 
                 # distance exeption for spots points
                 # we keep such point [it is point in innner ring]
-                if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
-                    continue
+                # todo: bude toto vobec pouzite?? vertices_map[ix]["type"] == "spot" tam zatial nemas
+                # if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:  # nie nahodou '<' ?
+                #     continue
 
                 vertices_to_remove.append(ix)
 
-            # simplices of target object for testing whether point lying inside or not of spot boundary
-            vertices_to_remove = list(set(vertices_to_remove))
+            # simplices of target object for testing whether point lying inside or not of spot boundary, removing
+            # duplicate points on the spot border
+            # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
+            # print(len(vertices_to_remove))
+            # vertices_to_remove = list(set(vertices_to_remove))
+            # print(len(vertices_to_remove))
 
             # points and vertices_map update
             if len(vertices_to_remove) != 0:
                 # test if index to remove from all current points from vertices_map belongs to any of spots
-                spot_indices, star_indices = [], []
-                for item in vertices_to_remove:
-                    # that cannot occurred in firt step of loop, since there is no spot
-                    if vertices_map[item]["type"] == "spot":
-                        spot_indices.append(item)
-                    else:
-                        star_indices.append(item)
+                # spot_indices, star_indices = [], []
+                # for item in vertices_to_remove:
+                #     # that cannot occurred in firt step of loop, since there is no spot
+                #     # vo vertices_map nemas body skvrny preto toto je zbytovne
+                #     if vertices_map[item]["type"] == "spot":
+                #         print('mylim sa, je tu take')
+                #         spot_indices.append(item)
+                #     else:
+                #         star_indices.append(item)
 
                 _points = []
-                _vertices_map = {}
-                m_ix = 0
+                # _vertices_map = {}
+                _vertices_map = []
+                # m_ix = 0
 
                 # for ix, vertex, norm in list(zip(range(0, len(points)), points, normals)):
                 for ix, vertex in list(zip(range(0, len(points)), points)):
@@ -1808,15 +1820,17 @@ class BinarySystem(System):
                     _points.append(vertex)
                     # _normals.append(norm)
 
-                    _vertices_map[m_ix] = {"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]}
-                    m_ix += 1
+                    # _vertices_map[m_ix] = {"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]}
+                    _vertices_map.append({"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]})
+                    # m_ix += 1
 
                 shift = len(_points)
                 # for i, vertex, norm in list(zip(range(shift, shift + len(spot.points)), spot.points, spot.normals)):
                 for i, vertex in list(zip(range(shift, shift + len(spot.points)), spot.points)):
                     _points.append(vertex)
                     # _normals.append(norm)
-                    _vertices_map[i] = {"type": "spot", "enum": spot_index}
+                    # _vertices_map[i] = {"type": "spot", "enum": spot_index}
+                    _vertices_map.append({"type": "spot", "enum": spot_index})
 
                 points = copy(_points)
                 vertices_map = copy(_vertices_map)
@@ -1880,8 +1894,8 @@ class BinarySystem(System):
                         spot_candidates["ix"][reference_to_spot].append(ix)
 
             # if at least one of points belongs to star body, then it is for sure star body face
-            elif vertices_map[simplex[0]]["type"] == "t_object" or vertices_map[simplex[1]]["type"] == "t_object" \
-                    or vertices_map[simplex[2]]["type"] == "t_object":
+            elif vertices_map[simplex[0]]["type"] == "object" or vertices_map[simplex[1]]["type"] == "object" \
+                    or vertices_map[simplex[2]]["type"] == "object":
                 model["object"].append(np.array(simplex))
             else:
                 model["object"].append(np.array(simplex))
