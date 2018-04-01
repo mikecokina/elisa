@@ -1767,7 +1767,7 @@ class BinarySystem(System):
             distances, indices = tree.query(spot.boundary_center, k=len(points))
 
             max_dist_to_object_point = spot.max_size + (0.25 * avsp)
-            # max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
+            max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
 
             # removing star points in spot
             for dist, ix in zip(distances, indices):
@@ -1779,8 +1779,8 @@ class BinarySystem(System):
                 # distance exeption for spots points
                 # we keep such point [it is point in innner ring]
                 # todo: bude toto vobec pouzite?? vertices_map[ix]["type"] == "spot" tam zatial nemas
-                # if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:  # nie nahodou '<' ?
-                #     continue
+                if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:  # nie nahodou '<' ?
+                    continue
 
                 vertices_to_remove.append(ix)
 
@@ -1788,7 +1788,7 @@ class BinarySystem(System):
             # duplicate points on the spot border
             # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
             # print(len(vertices_to_remove))
-            # vertices_to_remove = list(set(vertices_to_remove))
+            vertices_to_remove = list(set(vertices_to_remove))
             # print(len(vertices_to_remove))
 
             # points and vertices_map update
