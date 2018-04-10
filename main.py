@@ -21,7 +21,7 @@ spots_metadata = {
           "angular_density": 2,
           "angular_diameter": 30,
           "temperature_factor": 1.05},
-         {"longitude": 28,
+         {"longitude": 45,
           "latitude": 90,
           "angular_density": 2,
           "angular_diameter": 30,
@@ -122,7 +122,7 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 # bs.plot(descriptor='mesh', components_to_plot='both')
 bs.plot(descriptor='surface',
         phase=0,
-        components_to_plot='primary',
+        # components_to_plot='primary',
         # components_to_plot='secondary',
         edges=False,
         normals=False,

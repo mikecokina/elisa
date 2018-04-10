@@ -1776,10 +1776,7 @@ class BinarySystem(System):
                     # have to be removed
                     break
 
-                # distance exeption for spots points
-                # we keep such point [it is point in innner ring]
-                # todo: bude toto vobec pouzite?? vertices_map[ix]["type"] == "spot" tam zatial nemas
-                if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:  # nie nahodou '<' ?
+                if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
                     continue
 
                 vertices_to_remove.append(ix)
