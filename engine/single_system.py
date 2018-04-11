@@ -479,7 +479,7 @@ class SingleSystem(System):
                             np.array([self.star.polar_radius, -self.star.polar_radius])))
         return np.column_stack((x, y, z))
 
-    def surface(self):
+    def single_surface(self):
         """
         calculates triangulation of the given surface points, returns set of triple indices of surface pints that make
         up given triangle
@@ -499,7 +499,7 @@ class SingleSystem(System):
 
     def build_surface(self):
         self.star.points = self.mesh()
-        self.star.faces = self.surface()
+        self.star.faces = self.single_surface()
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -547,7 +547,8 @@ class SingleSystem(System):
             kwargs['colormap'] = kwargs.get('colormap', None)
 
             if self.star.faces is None:
-                self.build_surface()
+                self.surface()
+                # self.build_surface()
             kwargs['mesh'] = copy(self.star.points)
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
@@ -586,3 +587,21 @@ class SingleSystem(System):
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 
         method_to_call(**kwargs)
+
+    def surface(self):
+        # todo: add info
+        """
+
+        :param component: specify component, use `primary` or `secondary`
+        :type: str
+        :return:
+        """
+        component_instance = self.star
+        component_instance.points = self.mesh()
+
+        # build surface if there is no spot specified
+        if not component_instance.spots:
+            self.build_surface()
+            return
+
+        self.incorporate_spots_to_surface(component_instance=component_instance, build_surface_fn=self.build_surface)
