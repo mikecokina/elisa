@@ -344,20 +344,24 @@ class SingleSystem(System):
         return - c.G * self.star.mass / radius - 0.5 * np.power(self._angular_velocity, 2.0) * \
                                                   np.power(radius * np.sin(theta), 2)
 
-    def calculate_potential_gradient_magnitudes(self):
+    def calculate_potential_gradient_magnitudes(self, points=None, faces=None):
         """
         returns array of absolute values of potential gradients for corresponding faces
 
         :return: np.array
         """
-        r3 = np.power(np.linalg.norm(self.star.points, axis=1), 3)
-        domega_dx = c.G * self.star.mass * self.star.points[:, 0] / r3 \
-                    - np.power(self._angular_velocity, 2) * self.star.points[:, 0]
-        domega_dy = c.G * self.star.mass * self.star.points[:, 1] / r3 \
-                    - np.power(self._angular_velocity, 2) * self.star.points[:, 1]
-        domega_dz = c.G * self.star.mass * self.star.points[:, 2] / r3
+        if points is not None and faces is None:
+            raise TypeError('Specify faces corresponding to given points')
+        face = self.star.faces if faces is None else faces
+        point = self.star.points if points is None else points
+        r3 = np.power(np.linalg.norm(point, axis=1), 3)
+        domega_dx = c.G * self.star.mass * point[:, 0] / r3 \
+                    - np.power(self._angular_velocity, 2) * point[:, 0]
+        domega_dy = c.G * self.star.mass * point[:, 1] / r3 \
+                    - np.power(self._angular_velocity, 2) * point[:, 1]
+        domega_dz = c.G * self.star.mass * point[:, 2] / r3
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
-        return np.mean(points_gradients[self.star.faces], axis=1)
+        return np.mean(points_gradients[face], axis=1)
 
     def calculate_polar_potential_gradient_magnitude(self):
         """
@@ -498,7 +502,6 @@ class SingleSystem(System):
         return triangles_indices
 
     def build_surface(self):
-        self.star.points = self.mesh()
         self.star.faces = self.single_surface()
 
     def plot(self, descriptor=None, **kwargs):
@@ -546,43 +549,41 @@ class SingleSystem(System):
             kwargs['normals'] = kwargs.get('normals', False)
             kwargs['colormap'] = kwargs.get('colormap', None)
 
+            if self.star.points is None:
+                self.star.points = self.mesh()
             if self.star.faces is None:
                 self.surface()
-                # self.build_surface()
             kwargs['mesh'] = copy(self.star.points)
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['triangles'] = self.star.faces
             kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
-            if kwargs['normals']:
-                kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'])
-                kwargs['centres'] = self.star.calculate_surface_centres(points=kwargs['mesh'],
-                                                                        faces=kwargs['triangles'])
-
+            self.build_temperature_map(colormap=kwargs['colormap'])
             if kwargs['colormap'] == 'temperature':
-                if self.star.areas is None:
-                    self.star.areas = self.star.calculate_areas()
-                if self.star.potential_gradient_magnitudes is None:
-                    self.star.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes()
-                    self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
-                    print(min(self.star.potential_gradient_magnitudes), max(self.star.potential_gradient_magnitudes))
-
-                    print(self.star.polar_potential_gradient_magnitude, self.star.polar_gravity_acceleration)
-                if self.star.temperatures is None:
-                    self.star.temperatures = self.star.calculate_effective_temperatures()
                 kwargs['cmap'] = self.star.temperatures
-
             elif kwargs['colormap'] == 'gravity_acceleration':
                 if self.star.potential_gradient_magnitudes is None:
                     self.star.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes()
                     self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
                 g0 = self.star.polar_gravity_acceleration / self.star.polar_potential_gradient_magnitude
-                print(max(self.star.points[:, 2]))
-                print(min(self.star.potential_gradient_magnitudes), max(self.star.potential_gradient_magnitudes))
-                print(self.star.polar_potential_gradient_magnitude, self.star.polar_gravity_acceleration)
                 kwargs['cmap'] = g0 * self.star.potential_gradient_magnitudes
 
+            if self.star.spots:
+                for spot_index, spot in self.star.spots.items():
+                    n_points = np.shape(kwargs['mesh'])[0]
+                    kwargs['mesh'] = np.append(kwargs['mesh'], spot.points / denominator, axis=0)
+                    kwargs['triangles'] = np.append(kwargs['triangles'], spot.faces + n_points, axis=0)
+
+                    if kwargs['colormap'] == 'temperature':
+                        kwargs['cmap'] = np.append(kwargs['cmap'], spot.temperatures)
+                    elif kwargs['colormap'] == 'gravity_acceleration':
+                        kwargs['cmap'] = np.append(kwargs['cmap'], spot.potential_gradient_magnitudes)
+
+            if kwargs['normals']:
+                kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'])
+                kwargs['centres'] = self.star.calculate_surface_centres(points=kwargs['mesh'],
+                                                                        faces=kwargs['triangles'])
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 
@@ -597,11 +598,44 @@ class SingleSystem(System):
         :return:
         """
         component_instance = self.star
-        component_instance.points = self.mesh()
 
         # build surface if there is no spot specified
         if not component_instance.spots:
             self.build_surface()
             return
 
+        component_instance.points = self.mesh()
         self.incorporate_spots_to_surface(component_instance=component_instance, build_surface_fn=self.build_surface)
+
+    def build_temperature_map(self, colormap=None):
+        """
+        auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
+
+        :param colormap:np.array - temperatures for each face
+        :return:
+        """
+        if self.star.areas is None:
+            self.star.areas = self.star.calculate_areas()
+        if self.star.polar_radius is None:
+            self.star.polar_radius = self.calculate_polar_radius()
+        if self.star.potential_gradient_magnitudes is None:
+            self.star.potential_gradient_magnitudes = \
+                self.calculate_potential_gradient_magnitudes()
+            self.star.polar_potential_gradient_magnitude = \
+                self.calculate_polar_potential_gradient_magnitude()
+        if self.star.temperatures is None and colormap == 'temperature':
+            self.star.temperatures = self.star.calculate_effective_temperatures()
+
+        if self.star.spots:
+            for spot_index, spot in self.star.spots.items():
+                if spot.areas is None:
+                    spot.areas = self.star.calculate_areas()
+
+                if spot.potential_gradient_magnitudes is None:
+                    spot.potential_gradient_magnitudes = \
+                        self.calculate_potential_gradient_magnitudes(points=spot.points, faces=spot.faces)
+                if spot.temperatures is None and colormap == 'temperature':
+                    spot.temperatures = \
+                        spot.temperature_factor * \
+                        self.star.calculate_effective_temperatures(gradient_magnitudes=
+                                                                   spot.potential_gradient_magnitudes)

@@ -1471,7 +1471,6 @@ class BinarySystem(System):
             else self.mesh_detached(component=component, components_distance=components_distance)
 
     def build_surface(self, component='None'):
-        print(component)
         component_instance = getattr(self, component)
         component_instance.faces = self.over_contact_surface(component=component) if self.morphology == 'over-contact' \
             else self.detached_system_surface(component=component)
@@ -1489,45 +1488,6 @@ class BinarySystem(System):
         component_instance = getattr(self, component)
         component_instance.normals = self.calculate_potential_gradient(component=component,
                                                                        components_distance=component_distance)
-
-    def build_colormap(self, component=None, components_distance=None, colormap=None):
-        """
-        auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
-
-        :param component: str - `primary` or `secondary`
-        :param components_distance: float
-        :return:
-        """
-        component_instance = getattr(self, component)
-        if component_instance.areas is None:
-            component_instance.areas = component_instance.calculate_areas()
-        if component_instance.polar_radius is None:
-            component_instance.polar_radius = self.calculate_polar_radius(component=component,
-                                                                          components_distance=components_distance)
-        if component_instance.potential_gradient_magnitudes is None:
-            component_instance.potential_gradient_magnitudes = \
-                self.calculate_face_magnitude_gradient(component=component, components_distance=components_distance)
-            component_instance.polar_potential_gradient_magnitude = \
-                self.calculate_polar_potential_gradient_magnitude(component=component,
-                                                                  components_distance=components_distance)
-        if component_instance.temperatures is None and colormap == 'temperature':
-            component_instance.temperatures = component_instance.calculate_effective_temperatures()
-
-        if component_instance.spots:
-            for spot_index, spot in component_instance.spots.items():
-                if spot.areas is None:
-                    spot.areas = component_instance.calculate_areas()
-
-                if spot.potential_gradient_magnitudes is None:
-                    spot.potential_gradient_magnitudes = \
-                        self.calculate_face_magnitude_gradient(component=component,
-                                                               components_distance=components_distance,
-                                                               points=spot.points, faces=spot.faces)
-                if spot.temperatures is None and colormap == 'temperature':
-                    spot.temperatures = \
-                        spot.temperature_factor * \
-                        component_instance.calculate_effective_temperatures(gradient_magnitudes=
-                                                                            spot.potential_gradient_magnitudes)
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -1641,14 +1601,8 @@ class BinarySystem(System):
                 kwargs['points_primary'] = self.primary.points
                 kwargs['primary_triangles'] = self.primary.faces
 
-                if kwargs['normals']:
-                    kwargs['primary_centres'] = self.primary.calculate_surface_centres(
-                        kwargs['points_primary'], kwargs['primary_triangles'])
-                    kwargs['primary_arrows'] = self.primary.calculate_normals(
-                        kwargs['points_primary'], kwargs['primary_triangles'])
-
-                self.build_colormap(component='primary', components_distance=components_distance,
-                                    colormap=kwargs['colormap'])
+                self.build_temperature_map(component='primary', components_distance=components_distance,
+                                           colormap=kwargs['colormap'])
                 if kwargs['colormap'] == 'temperature':
                     kwargs['primary_cmap'] = self.primary.temperatures
 
@@ -1668,13 +1622,12 @@ class BinarySystem(System):
                             kwargs['primary_cmap'] = np.append(kwargs['primary_cmap'],
                                                                spot.potential_gradient_magnitudes /
                                                                self.primary.polar_potential_gradient_magnitude)
-                        if kwargs['normals']:
-                            kwargs['primary_centres'] = \
-                                np.append(kwargs['primary_centres'], self.primary.calculate_surface_centres(
-                                                                      spot.points, spot.faces), axis=0)
-                            kwargs['primary_arrows'] = \
-                                np.append(kwargs['primary_arrows'], self.primary.calculate_normals(spot.points,
-                                                                                                   spot.faces), axis=0)
+
+                if kwargs['normals']:
+                    kwargs['primary_centres'] = self.primary.calculate_surface_centres(
+                        kwargs['points_primary'], kwargs['primary_triangles'])
+                    kwargs['primary_arrows'] = self.primary.calculate_normals(
+                        kwargs['points_primary'], kwargs['primary_triangles'])
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 if self.secondary.points is None:
@@ -1685,14 +1638,8 @@ class BinarySystem(System):
                 kwargs['points_secondary'] = self.secondary.points
                 kwargs['secondary_triangles'] = self.secondary.faces
 
-                if kwargs['normals']:
-                    kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
-                        kwargs['points_secondary'], kwargs['secondary_triangles'])
-                    kwargs['secondary_arrows'] = self.secondary.calculate_normals(
-                        kwargs['points_secondary'], kwargs['secondary_triangles'])
-
-                self.build_colormap(component='secondary', components_distance=components_distance,
-                                    colormap=kwargs['colormap'])
+                self.build_temperature_map(component='secondary', components_distance=components_distance,
+                                           colormap=kwargs['colormap'])
                 if kwargs['colormap'] == 'temperature':
                     kwargs['secondary_cmap'] = self.secondary.temperatures
 
@@ -1712,13 +1659,12 @@ class BinarySystem(System):
                             kwargs['secondary_cmap'] = np.append(kwargs['secondary_cmap'],
                                                                  spot.potential_gradient_magnitudes /
                                                                  self.secondary.polar_potential_gradient_magnitude)
-                        if kwargs['normals']:
-                            kwargs['secondary_centres'] = \
-                                np.append(kwargs['secondary_centres'], self.secondary.calculate_surface_centres(
-                                                                      spot.points, spot.faces), axis=0)
-                            kwargs['secondary_arrows'] = \
-                                np.append(kwargs['secondary_arrows'],
-                                          self.secondary.calculate_normals(spot.points, spot.faces), axis=0)
+
+                if kwargs['normals']:
+                    kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
+                        kwargs['points_secondary'], kwargs['secondary_triangles'])
+                    kwargs['secondary_arrows'] = self.secondary.calculate_normals(
+                        kwargs['points_secondary'], kwargs['secondary_triangles'])
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
@@ -1744,6 +1690,46 @@ class BinarySystem(System):
 
         self.incorporate_spots_to_surface(component_instance=component_instance, build_surface_fn=self.build_surface,
                                           component=component)
+
+    def build_temperature_map(self, component=None, components_distance=None, colormap=None):
+        """
+        auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
+
+        :param colormap: np.array - temperatures for each face
+        :param component: str - `primary` or `secondary`
+        :param components_distance: float
+        :return:
+        """
+        component_instance = getattr(self, component)
+        if component_instance.areas is None:
+            component_instance.areas = component_instance.calculate_areas()
+        if component_instance.polar_radius is None:
+            component_instance.polar_radius = self.calculate_polar_radius(component=component,
+                                                                          components_distance=components_distance)
+        if component_instance.potential_gradient_magnitudes is None:
+            component_instance.potential_gradient_magnitudes = \
+                self.calculate_face_magnitude_gradient(component=component, components_distance=components_distance)
+            component_instance.polar_potential_gradient_magnitude = \
+                self.calculate_polar_potential_gradient_magnitude(component=component,
+                                                                  components_distance=components_distance)
+        if component_instance.temperatures is None and colormap == 'temperature':
+            component_instance.temperatures = component_instance.calculate_effective_temperatures()
+
+        if component_instance.spots:
+            for spot_index, spot in component_instance.spots.items():
+                if spot.areas is None:
+                    spot.areas = component_instance.calculate_areas()
+
+                if spot.potential_gradient_magnitudes is None:
+                    spot.potential_gradient_magnitudes = \
+                        self.calculate_face_magnitude_gradient(component=component,
+                                                               components_distance=components_distance,
+                                                               points=spot.points, faces=spot.faces)
+                if spot.temperatures is None and colormap == 'temperature':
+                    spot.temperatures = \
+                        spot.temperature_factor * \
+                        component_instance.calculate_effective_temperatures(gradient_magnitudes=
+                                                                            spot.potential_gradient_magnitudes)
 
     def is_property(self, kwargs):
         """

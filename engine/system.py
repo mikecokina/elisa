@@ -158,7 +158,6 @@ class System(object):
             # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
             # print(len(vertices_to_remove))
             vertices_to_remove = list(set(vertices_to_remove))
-            # print(len(vertices_to_remove))
 
             # points and vertices_map update
             if len(vertices_to_remove) != 0:
