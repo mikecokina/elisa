@@ -49,14 +49,14 @@ primary = Star(mass=1.5*u.solMass,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                spots=spots_metadata["primary"],
-               discretization_factor=10)
+               discretization_factor=3)
 secondary = Star(mass=1.0*u.solMass,
                  surface_potential=3.15,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
                  spots=spots_metadata["secondary"],
-                 discretization_factor=10)
+                 discretization_factor=3)
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -125,7 +125,7 @@ bs.plot(descriptor='surface',
         # components_to_plot='primary',
         # components_to_plot='secondary',
         # edges=True,
-        normals=True,
-        colormap='gravity_acceleration')
-        # colormap='temperature')
+        # normals=True,
+        # colormap='gravity_acceleration')
+        colormap='temperature')
 
