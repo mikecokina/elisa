@@ -6,6 +6,7 @@ from engine import utils
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
+
 class Spot(object):
     """
     Spot data container
@@ -39,8 +40,11 @@ class Spot(object):
 
         self.check_mandatory_kwargs(kwargs)
 
+        missing_kwargs = []
         for key in Spot.KWARGS:
             set_val = kwargs.get(key) if key != "angular_density" else kwargs.get(key, np.radians(1))
+            self._logger.debug("Setting property {} "
+                               "of class instance {} to {}".format(key, Spot.__name__, kwargs[key]))
             setattr(self, key, set_val)
 
     def kwargs_serializer(self):

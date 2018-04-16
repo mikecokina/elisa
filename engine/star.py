@@ -1,5 +1,6 @@
 from engine.body import Body
 from engine.spot import Spot
+from engine.pulsations import PulsationMode
 from astropy import units as u
 import numpy as np
 import logging
@@ -11,7 +12,7 @@ class Star(Body):
 
     KWARGS = ['mass', 't_eff', 'vertices', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
               'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening', 'polar_gravity_acceleration',
-              'polar_log_g', 'equatorial_radius', 'spots', 'discretization_factor']
+              'polar_log_g', 'equatorial_radius', 'spots', 'discretization_factor', 'pulsations']
 
     def __init__(self, name=None, **kwargs):
         self.is_property(kwargs)
@@ -34,6 +35,7 @@ class Star(Body):
         self._spots = None
         self._potential_gradient_magnitudes = None
         self._polar_potential_gradient = None
+        self._pulsations = None
 
         # values of properties
         for kwarg in Star.KWARGS:
@@ -41,6 +43,15 @@ class Star(Body):
                 self._logger.debug("Setting property {} "
                                    "of class instance {} to {}".format(kwarg, Star.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
+
+    @property
+    def pulsations(self):
+        return self._pulsations
+
+    @pulsations.setter
+    def pulsations(self, pulsations):
+        if pulsations:
+            self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
 
     # def _add_spot(self, spot):
     #     self._spots = spot if isinstance(spot, Spot) and not self._spots else [self._spots]
@@ -236,3 +247,7 @@ class Star(Body):
         is_not = ['`{}`'.format(k) for k in kwargs if k not in dir(self)]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), Star.__name__))
+
+    def pulsation_temperature_perturbation(self, points=None, faces=None):
+        points = self.points if points is None else points
+        faces = self.faces if faces is None else faces

@@ -49,7 +49,6 @@ class Body(object, metaclass=ABCMeta):
         self._discretization_factor = 3
 
         # values of properties
-        # toto tu uz byt nemusi?
         for kwarg in self.KWARGS:
             if kwarg in kwargs:
                 setattr(self, kwarg, kwargs[kwarg])

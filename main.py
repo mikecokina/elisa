@@ -31,12 +31,12 @@ spots_metadata = {
     "secondary":
         [{"longitude": 0,
           "latitude": 40,
-          "angular_density": 3,
+          "angular_density": 1.0,
           "angular_diameter": 30,
           "temperature_factor": 1.1},
          {"longitude": 0,
           "latitude": 0,
-          "angular_density": 1,
+          "angular_density": 1.5,
           "angular_diameter": 10,
           "temperature_factor": 0.9}
          ]
@@ -123,7 +123,7 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 bs.plot(descriptor='surface',
         phase=0,
         # components_to_plot='primary',
-        # components_to_plot='secondary',
+        components_to_plot='secondary',
         # edges=True,
         # normals=True,
         # colormap='gravity_acceleration')

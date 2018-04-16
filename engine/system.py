@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 class System(object):
     """
     Abstract class defining System
-    see https://docs.python.org/3.5/library/abc.html for more infromations
+    see https://docs.python.org/3.5/library/abc.html for more informations
     """
 
     __metaclass__ = ABCMeta
