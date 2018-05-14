@@ -123,7 +123,7 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 bs.plot(descriptor='surface',
         phase=0,
         # components_to_plot='primary',
-        components_to_plot='secondary',
+        # components_to_plot='secondary',
         # edges=True,
         # normals=True,
         # colormap='gravity_acceleration')

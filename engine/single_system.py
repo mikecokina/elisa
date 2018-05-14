@@ -85,7 +85,20 @@ class SingleSystem(System):
 
         :return:
         """
-        self.__init__(mass=self.star.mass, gamma=self.gamma, inclination=self._inclination)
+        self._logger.info('Reinitialising class instance {}'.format(SingleSystem.__name__))
+        self.__init__(**self._kwargs_serializer())
+
+    def _kwargs_serializer(self):
+        """
+        creating dictionary of keyword arguments of SingleSystem class in order to be able to reinitialize the class
+        instance in init()
+
+        :return: dict
+        """
+        serialized_kwargs = {}
+        for kwarg in self.KWARGS:
+            serialized_kwargs[kwarg] = getattr(self, kwarg)
+        return serialized_kwargs
 
     def _evaluate_spots(self):
         """

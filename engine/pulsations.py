@@ -40,7 +40,7 @@ class PulsationMode(object):
                 self._logger.error("Property {} "
                                    "of class instance {} was not initialized".format(key, PulsationMode.__name__))
             else:
-                self._logger.debug("Setting property {} "
+                self._logger.debug("Setting bla property {} "
                                    "of class instance {} to {}".format(key, PulsationMode.__name__, kwargs[key]))
                 setattr(self, key, kwargs.get(key))
 

@@ -166,3 +166,4 @@ def triangle_areas(triangles, points):
     """
     return 0.5 * np.linalg.norm(np.cross(points[triangles[:, 1]] - points[triangles[:, 0]],
                                          points[triangles[:, 2]] - points[triangles[:, 0]]), axis=1)
+
