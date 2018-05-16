@@ -86,7 +86,7 @@ class BinarySystem(System):
 
         # will show all missing kwargs from KWARGS
         if missing_kwargs:
-            raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
+            raise ValueError('Missing argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                   BinarySystem.__name__))
 
         # calculation of dependent parameters
@@ -226,8 +226,7 @@ class BinarySystem(System):
                 except StopIteration:
                     self._logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
                                       "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
-                    # shouldn't this be here?: component_instance.remove_spot(spot_index=spot_index)
-                    return
+                    continue
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_spherical(*boundary_com)
@@ -697,6 +696,7 @@ class BinarySystem(System):
         """
         d, phi, theta = args
         inverted_mass_ratio = 1.0 / self.mass_ratio
+
 
         block_a = 1.0 / radius
         block_b = inverted_mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (

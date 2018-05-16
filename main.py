@@ -11,7 +11,8 @@ from time import time
 
 spots_metadata = {
     "primary":
-        [{"longitude": 90,
+         [
+         {"longitude": 90,
           "latitude": 58,
           "angular_density": 1,
           "angular_diameter": 5,
@@ -29,7 +30,8 @@ spots_metadata = {
          ],
 
     "secondary":
-        [{"longitude": 0,
+        [
+         {"longitude": 0,
           "latitude": 40,
           "angular_density": 1.0,
           "angular_diameter": 30,
@@ -50,7 +52,7 @@ primary = Star(mass=1.5*u.solMass,
                gravity_darkening=1.0,
                spots=spots_metadata["primary"],
                discretization_factor=3)
-secondary = Star(mass=1.0*u.solMass,
+secondary = Star(mass=0.9*u.solMass,
                  surface_potential=3.15,
                  synchronicity=1.0,
                  t_eff=6000*u.K,

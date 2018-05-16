@@ -302,7 +302,7 @@ class SingleSystem(System):
     @polar_log_g.setter
     def polar_log_g(self, log_g):
         """
-        setter for polar surface gravity, if unit is not specified in astropy.units format, value in cgs is assumed
+        setter for polar surface gravity, if unit is not specified in astropy.units format, value in m/s^2 is assumed
 
         :param log_g:
         :return:
@@ -310,7 +310,8 @@ class SingleSystem(System):
         if isinstance(log_g, u.quantity.Quantity):
             self._polar_log_g = np.float64(log_g.to(U.LOG_ACCELERATION_UNIT))
         elif isinstance(log_g, (int, np.int, float, np.float)):
-            self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(U.LOG_ACCELERATION_UNIT))
+            # self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(U.LOG_ACCELERATION_UNIT))
+            self._polar_log_g = np.float64(log_g)
         else:
             raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
