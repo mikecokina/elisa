@@ -248,6 +248,6 @@ class Star(Body):
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), Star.__name__))
 
-    def pulsation_temperature_perturbation(self, points=None, faces=None):
+    def add_pulsations(self, points=None, faces=None):
         points = self.points if points is None else points
         faces = self.faces if faces is None else faces

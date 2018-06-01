@@ -75,6 +75,7 @@ components_distance = bs.orbit.orbital_motion(phase=phase)[0][0]
 pc = bs.critical_potential(component="primary", components_distance=components_distance)
 sc = bs.critical_potential(component="secondary", components_distance=components_distance)
 print('Critical potentials: {0}, {1}'.format(pc, sc))
+print(bs.morphology)
 
 component = 'primary'
 phase = 0
