@@ -226,6 +226,9 @@ class BinarySystem(System):
                 except StopIteration:
                     self._logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
                                       "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+                    print('theta_index: {0}/{1}'.format(theta_index, len(thetas)))
+                    print('spherical delta vector: {}'.format(spherical_delta_vector))
+                    print('solution, use: {0}, {1}'.format(solution, use))
                     continue
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
