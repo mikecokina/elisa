@@ -71,7 +71,7 @@ bs = BinarySystem(primary=primary,
 
 
 bs.build_mesh()
-bs.build_surface_with_no_spots()
+bs.build_surface()
 
 
 

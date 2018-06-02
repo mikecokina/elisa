@@ -1514,7 +1514,7 @@ class BinarySystem(System):
                 if self.morphology == 'over-contact' \
                 else self.detached_system_surface(component=_component)
 
-    def build_surface(self, component):
+    def build_surface(self, component=None):
         # todo: add info
         """
 
@@ -1522,18 +1522,22 @@ class BinarySystem(System):
         :type: str
         :return:
         """
-        if component not in ["primary", "secondary"]:
-            raise ValueError("Incorrect component value, only `primary` or `secondary` allowed.")
-        component_instance = getattr(self, component)
+        if not component:
+            component = ['primary', 'secondary']
+        if isinstance(component, str):
+            component = [component]
 
-        # build surface if there is no spot specified
-        if not component_instance.spots:
-            self.build_surface_with_no_spots(component)
-            return
+        for _component in component:
+            component_instance = getattr(self, _component)
 
-        self.incorporate_spots_to_surface(component_instance=component_instance,
-                                          build_surface_fn=self.build_surface_with_no_spots,
-                                          component=component)
+            # build surface if there is no spot specified
+            if not component_instance.spots:
+                self.build_surface_with_no_spots(_component)
+                return
+
+            self.incorporate_spots_to_surface(component_instance=component_instance,
+                                              build_surface_fn=self.build_surface_with_no_spots,
+                                              component=_component)
 
     # todo: needs rework
     def evaluate_normals(self, component, component_distance):
