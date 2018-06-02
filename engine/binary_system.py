@@ -1408,7 +1408,7 @@ class BinarySystem(System):
         """
         component_instance = getattr(self, component)
 
-        if np.any(component_instance.points):
+        if not np.any(component_instance.points):
             raise ValueError("{} component, with class instance name {} do not contain any valid build_surface point "
                              "to triangulate".format(component, component_instance.name))
 
@@ -1424,7 +1424,7 @@ class BinarySystem(System):
         :return: np.array - N x 3 array of vertice indices
         """
         component_instance = getattr(self, component)
-        if np.any(component_instance.points):
+        if not np.any(component_instance.points):
             raise ValueError("{} component, with class instance name {} do not contain any valid build_surface point "
                              "to triangulate".format(component, component_instance.name))
 
