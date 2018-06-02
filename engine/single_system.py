@@ -129,7 +129,7 @@ class SingleSystem(System):
             center_vector = np.array(utils.spherical_to_cartesian(1.0, lon, lat))
 
             args, use = (radial_vector[2],), False
-            solution, use = self.solver(self.potential_fn, solver_condition, *args)
+            solution, use = self._solver(self.potential_fn, solver_condition, *args)
 
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
@@ -146,7 +146,7 @@ class SingleSystem(System):
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st ring of spot
             args, use = (lat + alpha,), False
-            solution, use = self.solver(self.potential_fn, solver_condition, *args)
+            solution, use = self._solver(self.potential_fn, solver_condition, *args)
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
@@ -186,7 +186,7 @@ class SingleSystem(System):
                                                                               delta_vector[2])
 
                         args = (spherical_delta_vector[2],)
-                        solution, use = self.solver(self.potential_fn, solver_condition, *args)
+                        solution, use = self._solver(self.potential_fn, solver_condition, *args)
 
                         if not use:
                             self.star.remove_spot(spot_index=spot_index)
@@ -206,7 +206,7 @@ class SingleSystem(System):
 
             boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
             boundary_com = utils.cartesian_to_spherical(*boundary_com)
-            solution, _ = self.solver(self.potential_fn, solver_condition, *(boundary_com[2],))
+            solution, _ = self._solver(self.potential_fn, solver_condition, *(boundary_com[2],))
             boundary_center = np.array(utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2]))
 
             # first point will be always barycenter of boundary

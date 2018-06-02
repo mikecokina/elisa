@@ -53,9 +53,6 @@ class Star(Body):
         if pulsations:
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
 
-    # def _add_spot(self, spot):
-    #     self._spots = spot if isinstance(spot, Spot) and not self._spots else [self._spots]
-    #
     def remove_spot(self, spot_index):
         del(self._spots[spot_index])
 
@@ -189,7 +186,7 @@ class Star(Body):
     @potential_gradient_magnitudes.setter
     def potential_gradient_magnitudes(self, potential_gradient_magnitudes):
         """
-        :param potential_gradients: np.array
+        :param potential_gradient_magnitudes: np.array
         :return:
         """
         self._potential_gradient_magnitudes = potential_gradient_magnitudes

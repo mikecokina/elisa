@@ -9,40 +9,40 @@ from engine import utils
 from engine import const as c
 from time import time
 
-spots_metadata = {
-    "primary":
-         [
-         {"longitude": 90,
-          "latitude": 58,
-          "angular_density": 1,
-          "angular_diameter": 5,
-          "temperature_factor": 0.9},
-         {"longitude": 70,
-          "latitude": 80,
-          "angular_density": 2,
-          "angular_diameter": 30,
-          "temperature_factor": 1.05},
-         {"longitude": 45,
-          "latitude": 90,
-          "angular_density": 2,
-          "angular_diameter": 30,
-          "temperature_factor": 0.95},
-         ],
-
-    "secondary":
-        [
-         {"longitude": 0,
-          "latitude": 40,
-          "angular_density": 1.0,
-          "angular_diameter": 30,
-          "temperature_factor": 1.1},
-         {"longitude": 0,
-          "latitude": 0,
-          "angular_density": 1.5,
-          "angular_diameter": 10,
-          "temperature_factor": 0.9}
-         ]
-     }
+# spots_metadata = {
+#     "primary":
+#          [
+#          {"longitude": 90,
+#           "latitude": 58,
+#           "angular_density": 1,
+#           "angular_diameter": 5,
+#           "temperature_factor": 0.9},
+#          {"longitude": 70,
+#           "latitude": 80,
+#           "angular_density": 2,
+#           "angular_diameter": 30,
+#           "temperature_factor": 1.05},
+#          {"longitude": 45,
+#           "latitude": 90,
+#           "angular_density": 2,
+#           "angular_diameter": 30,
+#           "temperature_factor": 0.95},
+#          ],
+#
+#     "secondary":
+#         [
+#          {"longitude": 0,
+#           "latitude": 40,
+#           "angular_density": 1.0,
+#           "angular_diameter": 30,
+#           "temperature_factor": 1.1},
+#          {"longitude": 0,
+#           "latitude": 0,
+#           "angular_density": 1.5,
+#           "angular_diameter": 10,
+#           "temperature_factor": 0.9}
+#          ]
+#      }
 
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
@@ -50,15 +50,14 @@ primary = Star(mass=1.5*u.solMass,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
-               spots=spots_metadata["primary"],
                discretization_factor=3)
 secondary = Star(mass=0.9*u.solMass,
                  surface_potential=3.15,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 spots=spots_metadata["secondary"],
                  discretization_factor=3)
+
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -70,14 +69,19 @@ bs = BinarySystem(primary=primary,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
-phase = 0
-components_distance = bs.orbit.orbital_motion(phase=phase)[0][0]
-pc = bs.critical_potential(component="primary", components_distance=components_distance)
-sc = bs.critical_potential(component="secondary", components_distance=components_distance)
-print('Critical potentials: {0}, {1}'.format(pc, sc))
 
-component = 'primary'
-phase = 0
+bs.build_mesh('primary')
+
+
+
+# phase = 0
+# components_distance = bs.orbit.orbital_motion(phase=phase)[0][0]
+# pc = bs.critical_potential(component="primary", components_distance=components_distance)
+# sc = bs.critical_potential(component="secondary", components_distance=components_distance)
+# print('Critical potentials: {0}, {1}'.format(pc, sc))
+#
+# component = 'primary'
+# phase = 0
 
 # print(bs.primary.spots)
 #
@@ -122,12 +126,12 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
 # bs.plot(descriptor='mesh', components_to_plot='both')
-bs.plot(descriptor='surface',
-        phase=0,
-        # components_to_plot='primary',
-        # components_to_plot='secondary',
-        # edges=True,
-        # normals=True,
-        # colormap='gravity_acceleration')
-        colormap='temperature')
+# bs.plot(descriptor='surface',
+#         phase=0,
+#         # components_to_plot='primary',
+#         # components_to_plot='secondary',
+#         # edges=True,
+#         # normals=True,
+#         # colormap='gravity_acceleration')
+#         colormap='temperature')
 

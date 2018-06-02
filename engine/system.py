@@ -93,7 +93,7 @@ class System(object):
     def init(self):
         pass
 
-    def solver(self, fn, condition, *args, **kwargs):
+    def _solver(self, fn, condition, *args, **kwargs):
         """
         will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
         solution if satisfy conditional function

@@ -160,8 +160,8 @@ def remap(x, mapper):
 def triangle_areas(triangles, points):
     """
     calculates areas of triangles, where `triangles` indexes of vertices which coordinates are stored in `points`
-    :param triangles: np.array
-    :param points: np.array
+    :param triangles: np.array; indices of triangulation
+    :param points: np.array; 3d points
     :return: np.array
     """
     return 0.5 * np.linalg.norm(np.cross(points[triangles[:, 1]] - points[triangles[:, 0]],

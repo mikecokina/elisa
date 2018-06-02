@@ -158,7 +158,7 @@ class Orbit(object):
 
     def mean_anomaly_fn(self, eccentric_anomaly=None, *args):
         """
-        definition of Kepler equation for scipy solver in Orbit.eccentric_anomaly
+        definition of Kepler equation for scipy _solver in Orbit.eccentric_anomaly
 
         :param eccentric_anomaly: numpy.float
         :param args: mean_anomaly: numpy.float

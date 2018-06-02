@@ -444,6 +444,8 @@ class Body(object, metaclass=ABCMeta):
         returns areas of each face of the star surface
         :return: numpy.array([area_1, ..., area_n])
         """
+        if self.faces is None or self.points is None:
+            raise ValueError('Faces or/and points of object {} have not been set yet'.format(self.name))
         return utils.triangle_areas(self.faces, self.points)
 
     def get_info(self):

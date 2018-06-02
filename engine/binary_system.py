@@ -33,7 +33,6 @@ from engine import graphics
 from engine import units
 import scipy
 from scipy.spatial import Delaunay
-from copy import copy
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -73,7 +72,7 @@ class BinarySystem(System):
 
         params = {"primary": self.primary, "secondary": self.secondary}
         params.update(**kwargs)
-        self._params_validity_check(**params)
+        self._star_params_validity_check(**params)
         # set attributes and test whether all parameters were initialized
         missing_kwargs = []
         for kwarg in BinarySystem.KWARGS:
@@ -87,7 +86,7 @@ class BinarySystem(System):
         # will show all missing kwargs from KWARGS
         if missing_kwargs:
             raise ValueError('Missing argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
-                                                                                  BinarySystem.__name__))
+                                                                                   BinarySystem.__name__))
 
         # calculation of dependent parameters
         self._semi_major_axis = self.calculate_semi_major_axis()
@@ -102,7 +101,8 @@ class BinarySystem(System):
 
         # evaluate spots of both components
         # this is not true for all systems!!!
-        self._evaluate_spots(components_distance=1.0)
+        # fixme: need discussion w/ Miro
+        # self._evaluate_spots(components_distance=1.0)
 
     def _evaluate_spots(self, components_distance):
         """
@@ -111,7 +111,7 @@ class BinarySystem(System):
         :param components_distance: float
         :return:
         """
-        def solver_condition(x, *_args, **_kwargs):
+        def solver_condition(x, *_args):
             x, _, _ = utils.spherical_to_cartesian(x, _args[1], _args[2])
             x = x if component == "primary" else components_distance - x
             # ignore also spots where one of points is situated just on the neck
@@ -124,7 +124,7 @@ class BinarySystem(System):
 
         neck_position = 1e10
         # in case of wuma system, get separation and make additional test of location of each point (if primary
-        # spot doesn't intersect with secondary, if does, then such spot will be skiped completly)
+        # spot doesn't intersect with secondary, if does, then such spot will be skipped completly)
         if self.morphology == "over-contact":
             neck_position = self.calculate_neck_position()
 
@@ -133,7 +133,7 @@ class BinarySystem(System):
             component_instance = getattr(self, component)
 
             if not component_instance.spots:
-                self._logger.info("No spots to evaluate for {} component. Skipping.".format(component))
+                self._logger.info("No spots to evaluate for {} component. Continue.".format(component))
                 continue
 
             # iterate over spots
@@ -151,7 +151,7 @@ class BinarySystem(System):
                 center_vector = np.array(utils.spherical_to_cartesian(1.0, lon, lat))
 
                 args, use = (components_distance, radial_vector[1], radial_vector[2]), False
-                solution, use = self.solver(fn, solver_condition, *args)
+                solution, use = self._solver(fn, solver_condition, *args)
 
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
@@ -168,7 +168,7 @@ class BinarySystem(System):
                 # compute euclidean distance of two points on spot (x0)
                 # we have to obtain distance between center and 1st point in 1st ring of spot
                 args, use = (components_distance, lon, lat + alpha), False
-                solution, use = self.solver(fn, solver_condition, *args)
+                solution, use = self._solver(fn, solver_condition, *args)
 
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
@@ -210,7 +210,7 @@ class BinarySystem(System):
                                                                                   delta_vector[2])
 
                             args = (components_distance, spherical_delta_vector[1], spherical_delta_vector[2])
-                            solution, use = self.solver(fn, solver_condition, *args)
+                            solution, use = self._solver(fn, solver_condition, *args)
 
                             if not use:
                                 component_instance.remove_spot(spot_index=spot_index)
@@ -230,8 +230,8 @@ class BinarySystem(System):
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_spherical(*boundary_com)
-                solution, _ = self.solver(fn, solver_condition, *(components_distance, boundary_com[1],
-                                                                  boundary_com[2]))
+                solution, _ = self._solver(fn, solver_condition, *(components_distance, boundary_com[1],
+                                                                   boundary_com[2]))
                 boundary_center = np.array(utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2]))
 
                 # first point will be always barycenter of boundary
@@ -260,7 +260,7 @@ class BinarySystem(System):
                     spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1],
                                                     spot_center[2]])
 
-    def _params_validity_check(self, **kwargs):
+    def _star_params_validity_check(self, **kwargs):
 
         if not isinstance(kwargs.get("primary"), Star):
             raise TypeError("Primary component is not instance of class {}".format(Star.__name__))
@@ -268,7 +268,7 @@ class BinarySystem(System):
         if not isinstance(kwargs.get("secondary"), Star):
             raise TypeError("Secondary component is not instance of class {}".format(Star.__name__))
 
-        # checking if stellar components have all necessary parameters initialised
+        # checking if stellar components have all mandatory parameters initialised
         # tehese parameters are not mandatory in single star system, so validity check cannot be provided
         # on whole set of KWARGS in star object
         star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity']
@@ -697,7 +697,6 @@ class BinarySystem(System):
         d, phi, theta = args
         inverted_mass_ratio = 1.0 / self.mass_ratio
 
-
         block_a = 1.0 / radius
         block_b = inverted_mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
             2.0 * radius * np.cos(phi) * np.sin(theta) * d)))
@@ -797,7 +796,7 @@ class BinarySystem(System):
                 return abs(self.potential_value_secondary(components_distance - solution, *args))
         else:
             raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
-                             "solver has failed).")
+                             "_solver has failed).")
 
     def calculate_potential_gradient(self, component, components_distance, points=None):
         """
@@ -805,7 +804,7 @@ class BinarySystem(System):
 
         :param component: str, `primary` or `secondary`
         :param components_distance: float, in SMA distance
-        :param points: list/numpy.array
+        :param points: list/numpy.array or None
         :return: numpy.array
         """
         component_instance = getattr(self, component)
@@ -837,7 +836,7 @@ class BinarySystem(System):
 
         :param component:
         :param components_distance:
-        :param points: points in which to calculate magnitude of gradient, if False take star points
+        :param points: points in which to calculate magnitude of gradient, if False/None take star points
         :param faces: faces corresponding to given points
         :return: np.array
         """
@@ -1405,6 +1404,11 @@ class BinarySystem(System):
         :return: np.array - N x 3 array of vertice indices
         """
         component_instance = getattr(self, component)
+
+        if not component_instance.points:
+            raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
+                             "to triangulate".format(component, component_instance.name))
+
         triangulation = Delaunay(component_instance.points)
         triangles_indices = triangulation.convex_hull
         return triangles_indices
@@ -1417,6 +1421,10 @@ class BinarySystem(System):
         :return: np.array - N x 3 array of vertice indices
         """
         component_instance = getattr(self, component)
+        if not component_instance.points:
+            raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
+                             "to triangulate".format(component, component_instance.name))
+
         neck_x = self.calculate_neck_position()
 
         # projection of component's far side surface into ``sphere`` with radius r1
@@ -1465,16 +1473,43 @@ class BinarySystem(System):
 
         return np.array(new_triangles_indices)
 
-    def build_mesh(self, component, components_distance=None):
-        components_distance = 1 - self.eccentricity if components_distance is None else components_distance
-        component_instance = getattr(self, component)
-        component_instance.points = self.mesh_over_contact(component=component) if self.morphology == 'over-contact' \
-            else self.mesh_detached(component=component, components_distance=components_distance)
+    def build_mesh(self, component=None, components_distance=None):
+        """
+        build point surface of primary or/and secondary component !!! w/o spots yet !!!
 
-    def build_surface(self, component='None'):
-        component_instance = getattr(self, component)
-        component_instance.faces = self.over_contact_surface(component=component) if self.morphology == 'over-contact' \
-            else self.detached_system_surface(component=component)
+        :param component: str or empty
+        :param components_distance: float
+        :return:
+        """
+        if not component:
+            component = ['primary', 'secondary']
+        if isinstance(component, str):
+            component = [component]
+
+        for _component in component:
+            components_distance = 1 - self.eccentricity if components_distance is None else components_distance
+            component_instance = getattr(self, _component)
+            component_instance.points = self.mesh_over_contact(component=_component) \
+                if self.morphology == 'over-contact' \
+                else self.mesh_detached(component=_component, components_distance=components_distance)
+
+    def build_surface(self, component=None):
+        # todo: add description docstring
+        """
+
+        :param component:
+        :return:
+        """
+        if not component:
+            component = ['primary', 'secondary']
+        if isinstance(component, str):
+            component = [component]
+
+        for _component in component:
+            component_instance = getattr(self, _component)
+            component_instance.faces = self.over_contact_surface(component=_component) \
+                if self.morphology == 'over-contact' \
+                else self.detached_system_surface(component=_component)
 
     # todo: needs rework
     def evaluate_normals(self, component, component_distance):
@@ -1613,7 +1648,7 @@ class BinarySystem(System):
 
                 if self.primary.spots:
                     for spot_index, spot in self.primary.spots.items():
-                        n_points = np.shape(kwargs['points_primary'])[0]
+                        n_points = list(np.shape(kwargs['points_primary']))[0]
                         kwargs['points_primary'] = np.append(kwargs['points_primary'], spot.points, axis=0)
                         kwargs['primary_triangles'] = np.append(kwargs['primary_triangles'], spot.faces + n_points,
                                                                 axis=0)
