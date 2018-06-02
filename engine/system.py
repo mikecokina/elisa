@@ -127,7 +127,7 @@ class System(object):
 
         vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
         points = copy(component_instance.points)
-        # average spacing of component surface points
+        # average spacing of component build_surface points
         avsp = utils.average_spacing(data=component_instance.points, neighbours=6)
 
         for spot_index, spot in component_instance.spots.items():
@@ -213,7 +213,7 @@ class System(object):
         component_instance.points = np.array(points)
 
         # triangulation process
-        # self.build_surface(component)
+        # self.build_surface_with_no_spots(component)
         if 'component' in kwargs:
             build_surface_fn(kwargs['component'])
         else:

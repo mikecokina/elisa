@@ -70,7 +70,8 @@ bs = BinarySystem(primary=primary,
                   phase_shift=0.0)
 
 
-bs.build_mesh('primary')
+bs.build_mesh()
+bs.build_surface_with_no_spots()
 
 
 
@@ -87,11 +88,11 @@ bs.build_mesh('primary')
 #
 # bs.build_mesh(component=component)
 # bs.evaluate_normals(component=component, component_distance=components_distance)
-# bs.surface(component=component)
+# bs.build_surface(component=component)
 # component = 'secondary'
 # bs.build_mesh(component=component)
 # bs.evaluate_normals(component=component, component_distance=components_distance)
-# bs.surface(component=component)
+# bs.build_surface(component=component)
 
 # if True:
 #     component_instance = getattr(bs, component)
@@ -126,7 +127,7 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
 # bs.plot(descriptor='mesh', components_to_plot='both')
-# bs.plot(descriptor='surface',
+# bs.plot(descriptor='build_surface',
 #         phase=0,
 #         # components_to_plot='primary',
 #         # components_to_plot='secondary',

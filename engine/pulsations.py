@@ -68,7 +68,7 @@ class PulsationMode(object):
     @property
     def l(self):
         """
-        returns number of surface nodal planes
+        returns number of build_surface nodal planes
         :return: int
         """
         return self._l
@@ -76,20 +76,20 @@ class PulsationMode(object):
     @l.setter
     def l(self, surface_nodal_planes):
         """
-        setter for number of surface nodal planes
+        setter for number of build_surface nodal planes
         :param surface_nodal_planes: int
         :return:
         """
         try:
             self._n = np.int(surface_nodal_planes)
         except ValueError:
-            raise ValueError('Value for number of surface nodal planes is `l`={0} in pulsation mode class instance {1} '
+            raise ValueError('Value for number of build_surface nodal planes is `l`={0} in pulsation mode class instance {1} '
                              'is not valid.'.format(surface_nodal_planes, PulsationMode.__name__))
 
     @property
     def m(self):
         """
-        returns number of azimutal surface nodal planes for given pulsation mode
+        returns number of azimutal build_surface nodal planes for given pulsation mode
         :return:
         """
         return self._m

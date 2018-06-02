@@ -803,7 +803,7 @@ class BinarySystem(System):
 
     def calculate_potential_gradient(self, component, components_distance, points=None):
         """
-        return outter gradients in each point of star surface or defined points
+        return outter gradients in each point of star build_surface or defined points
 
         :param component: str, `primary` or `secondary`
         :param components_distance: float, in SMA distance
@@ -1080,7 +1080,7 @@ class BinarySystem(System):
 
     def mesh_detached(self, component, components_distance):
         """
-        creates surface mesh of given binary star component in case of detached (semi-detached) system
+        creates build_surface mesh of given binary star component in case of detached (semi-detached) system
 
         :param component: str - `primary` or `secondary`
         :param components_distance: np.float
@@ -1131,7 +1131,7 @@ class BinarySystem(System):
         r_meridian = np.array(r_meridian)
         x_meridian, y_meridian, z_meridian = utils.spherical_to_cartesian(r_meridian, phi_meridian, theta_meridian)
 
-        # calculating the rest (quarter) of the surface
+        # calculating the rest (quarter) of the build_surface
         thetas = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
         r_q, phi_q, theta_q = [], [], []
         for theta in thetas:
@@ -1169,7 +1169,7 @@ class BinarySystem(System):
         points_primary, points_secondary = [], []
         fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
 
-        # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
+        # generating only part of the build_surface that I'm interested in (neck in xy plane for x between 0 and 1)
         angles = np.linspace(0., c.HALF_PI, 100, endpoint=True)
         for component in components:
             for angle in angles:
@@ -1215,7 +1215,7 @@ class BinarySystem(System):
 
     def mesh_over_contact(self, component):
         """
-        creates surface mesh of given binary star component in case of over-contact system
+        creates build_surface mesh of given binary star component in case of over-contact system
 
         :param component: str - `primary` or `secondary`
         :return: numpy.array - set of points in shape numpy.array([[x1 y1 z1],
@@ -1283,7 +1283,7 @@ class BinarySystem(System):
         x_meridian2, y_meridian2, z_meridian2 = utils.spherical_to_cartesian(r_meridian2, phi_meridian2,
                                                                              theta_meridian2)
 
-        # calculating the rest of the surface on farside
+        # calculating the rest of the build_surface on farside
         thetas = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
         r_q, phi_q, theta_q = [], [], []
         for theta in thetas:
@@ -1401,15 +1401,15 @@ class BinarySystem(System):
 
     def detached_system_surface(self, component):
         """
-        calculates surface faces from the given component's points in case of detached or semi-contact system
+        calculates build_surface faces from the given component's points in case of detached or semi-contact system
 
         :param component: str
         :return: np.array - N x 3 array of vertice indices
         """
         component_instance = getattr(self, component)
 
-        if not component_instance.points:
-            raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
+        if np.any(component_instance.points):
+            raise ValueError("{} component, with class instance name {} do not contain any valid build_surface point "
                              "to triangulate".format(component, component_instance.name))
 
         triangulation = Delaunay(component_instance.points)
@@ -1418,19 +1418,19 @@ class BinarySystem(System):
 
     def over_contact_surface(self, component):
         """
-        calculates surface faces from the given component's points in case of over-contact system
+        calculates build_surface faces from the given component's points in case of over-contact system
 
         :param component: str - `primary` or `secondary`
         :return: np.array - N x 3 array of vertice indices
         """
         component_instance = getattr(self, component)
-        if not component_instance.points:
-            raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
+        if np.any(component_instance.points):
+            raise ValueError("{} component, with class instance name {} do not contain any valid build_surface point "
                              "to triangulate".format(component, component_instance.name))
 
         neck_x = self.calculate_neck_position()
 
-        # projection of component's far side surface into ``sphere`` with radius r1
+        # projection of component's far side build_surface into ``sphere`` with radius r1
         r1 = neck_x  # radius of the sphere and cylinder
         projected_points = []
         if component == 'primary':
@@ -1478,7 +1478,7 @@ class BinarySystem(System):
 
     def build_mesh(self, component=None, components_distance=None):
         """
-        build point surface of primary or/and secondary component !!! w/o spots yet !!!
+        build point build_surface of primary or/and secondary component !!! w/o spots yet !!!
 
         :param component: str or empty
         :param components_distance: float
@@ -1496,7 +1496,7 @@ class BinarySystem(System):
                 if self.morphology == 'over-contact' \
                 else self.mesh_detached(component=_component, components_distance=components_distance)
 
-    def build_surface(self, component=None):
+    def build_surface_with_no_spots(self, component=None):
         # todo: add description docstring
         """
 
@@ -1514,6 +1514,27 @@ class BinarySystem(System):
                 if self.morphology == 'over-contact' \
                 else self.detached_system_surface(component=_component)
 
+    def build_surface(self, component):
+        # todo: add info
+        """
+
+        :param component: specify component, use `primary` or `secondary`
+        :type: str
+        :return:
+        """
+        if component not in ["primary", "secondary"]:
+            raise ValueError("Incorrect component value, only `primary` or `secondary` allowed.")
+        component_instance = getattr(self, component)
+
+        # build build_surface if there is no spot specified
+        if not component_instance.spots:
+            self.build_surface_with_no_spots(component)
+            return
+
+        self.incorporate_spots_to_surface(component_instance=component_instance,
+                                          build_surface_fn=self.build_surface_with_no_spots,
+                                          component=component)
+
     # todo: needs rework
     def evaluate_normals(self, component, component_distance):
         """
@@ -1523,7 +1544,7 @@ class BinarySystem(System):
         :param component_distance:
         :return:
         """
-        # todo: component_instance.normals is set of normals corresponding to faces NOT to surface points, rtfm pls
+        # todo: component_instance.normals is set of normals corresponding to faces NOT to build_surface points, rtfm pls
         component_instance = getattr(self, component)
         component_instance.normals = self.calculate_potential_gradient(component=component,
                                                                        components_distance=component_distance)
@@ -1535,9 +1556,9 @@ class BinarySystem(System):
 
         :param descriptor: str (defines type of plot):
                             orbit - plots orbit in orbital plane
-                            equipotential - plots crossections of surface Hill planes in xy,yz,zx planes
-                            mesh - plot surface points
-                            surface - plot stellar surfaces
+                            equipotential - plots crossections of build_surface Hill planes in xy,yz,zx planes
+                            mesh - plot build_surface points
+                            build_surface - plot stellar surfaces
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
         :return:
         """
@@ -1617,7 +1638,7 @@ class BinarySystem(System):
                     self.build_mesh(component='secondary', components_distance=components_distance)
                 kwargs['points_secondary'] = self.secondary.points
 
-        elif descriptor == 'surface':
+        elif descriptor == 'build_surface':
             KWARGS = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
@@ -1635,7 +1656,7 @@ class BinarySystem(System):
                 if self.primary.points is None:
                     self.build_mesh(component='primary', components_distance=components_distance)
                 if self.primary.faces is None:
-                    self.surface(component='primary')
+                    self.build_surface(component='primary')
 
                 kwargs['points_primary'] = self.primary.points
                 kwargs['primary_triangles'] = self.primary.faces
@@ -1672,7 +1693,7 @@ class BinarySystem(System):
                 if self.secondary.points is None:
                     self.build_mesh(component='secondary', components_distance=components_distance)
                 if self.secondary.faces is None:
-                    self.surface(component='secondary')
+                    self.build_surface(component='secondary')
 
                 kwargs['points_secondary'] = self.secondary.points
                 kwargs['secondary_triangles'] = self.secondary.faces
@@ -1710,29 +1731,9 @@ class BinarySystem(System):
 
         method_to_call(**kwargs)
 
-    def surface(self, component):
-        # todo: add info
-        """
-
-        :param component: specify component, use `primary` or `secondary`
-        :type: str
-        :return:
-        """
-        if component not in ["primary", "secondary"]:
-            raise ValueError("Incorrect component value, only `primary` or `secondary` allowed.")
-        component_instance = getattr(self, component)
-
-        # build surface if there is no spot specified
-        if not component_instance.spots:
-            self.build_surface(component)
-            return
-
-        self.incorporate_spots_to_surface(component_instance=component_instance, build_surface_fn=self.build_surface,
-                                          component=component)
-
     def build_temperature_map(self, component=None, components_distance=None, colormap=None):
         """
-        auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
+        auxiliary function for plot function with descriptor value `build_surface` in case of temperature colormap turned on
 
         :param colormap: np.array - temperatures for each face
         :param component: str - `primary` or `secondary`
