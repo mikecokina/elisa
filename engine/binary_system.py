@@ -1484,10 +1484,7 @@ class BinarySystem(System):
         :param components_distance: float
         :return:
         """
-        if not component:
-            component = ['primary', 'secondary']
-        if isinstance(component, str):
-            component = [component]
+        component = self._component_to_list(component)
 
         for _component in component:
             components_distance = 1 - self.eccentricity if components_distance is None else components_distance
@@ -1503,10 +1500,7 @@ class BinarySystem(System):
         :param component:
         :return:
         """
-        if not component:
-            component = ['primary', 'secondary']
-        if isinstance(component, str):
-            component = [component]
+        component = self._component_to_list(component)
 
         for _component in component:
             component_instance = getattr(self, _component)
@@ -1522,10 +1516,7 @@ class BinarySystem(System):
         :type: str
         :return:
         """
-        if not component:
-            component = ['primary', 'secondary']
-        if isinstance(component, str):
-            component = [component]
+        component = self._component_to_list(component)
 
         for _component in component:
             component_instance = getattr(self, _component)
@@ -1538,6 +1529,27 @@ class BinarySystem(System):
             self.incorporate_spots_to_surface(component_instance=component_instance,
                                               build_surface_fn=self.build_surface_with_no_spots,
                                               component=_component)
+
+    def compute_temperature_distribution(self, component=None, components_distance=None):
+        if not components_distance:
+            raise ValueError('Parameter components_distance has to be number not {}'.format(type(components_distance)))
+
+        component = self._component_to_list(component)
+
+        for _component in component:
+            component_instance = getattr(self, _component)
+            component_instance.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude(
+                component=_component, components_distance=components_distance)
+
+            # component_instance.potential_gradient_magnitudes = 'xaxa'
+
+    @staticmethod
+    def _component_to_list(component):
+        if not component:
+            component = ['primary', 'secondary']
+        if isinstance(component, str):
+            component = [component]
+        return component
 
     # todo: needs rework
     def evaluate_normals(self, component, component_distance):

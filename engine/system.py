@@ -98,6 +98,9 @@ class System(object):
         will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
         solution if satisfy conditional function
 
+        # final spot containers contain their own points and simplex remaped from zero
+        # final object contain only points w/o spots points and simplex (triangulation)
+
         :param fn: function
         :param condition: function
         :param args: tuple
@@ -163,23 +166,9 @@ class System(object):
 
             # points and vertices_map update
             if len(vertices_to_remove) != 0:
-                # test if index to remove from all current points from vertices_map belongs to any of spots
-                # spot_indices, star_indices = [], []
-                # for item in vertices_to_remove:
-                #     # that cannot occurred in firt step of loop, since there is no spot
-                #     # vo vertices_map nemas body skvrny preto toto je zbytovne
-                #     if vertices_map[item]["type"] == "spot":
-                #         print('mylim sa, je tu take')
-                #         spot_indices.append(item)
-                #     else:
-                #         star_indices.append(item)
-
                 _points = []
-                # _vertices_map = {}
                 _vertices_map = []
-                # m_ix = 0
 
-                # for ix, vertex, norm in list(zip(range(0, len(points)), points, normals)):
                 for ix, vertex in list(zip(range(0, len(points)), points)):
                     if ix in vertices_to_remove:
                         # skip point if is marked for removal
@@ -188,25 +177,15 @@ class System(object):
                     # append only points of currrent object that do not intervent to spot
                     # [current, since there should be already spot from previous iteration step]
                     _points.append(vertex)
-                    # _normals.append(norm)
-
-                    # _vertices_map[m_ix] = {"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]}
                     _vertices_map.append({"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]})
-                    # m_ix += 1
 
-                shift = len(_points)
-                # for i, vertex, norm in list(zip(range(shift, shift + len(spot.points)), spot.points, spot.normals)):
-                for i, vertex in list(zip(range(shift, shift + len(spot.points)), spot.points)):
+                for vertex in spot.points:
                     _points.append(vertex)
-                    # _normals.append(norm)
-                    # _vertices_map[i] = {"type": "spot", "enum": spot_index}
                     _vertices_map.append({"type": "spot", "enum": spot_index})
 
                 points = copy(_points)
                 vertices_map = copy(_vertices_map)
-                # normals = copy(_normals)
 
-                # del (_points, _vertices_map, _normals)
                 del (_points, _vertices_map)
 
         points = np.array(points)
