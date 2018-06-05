@@ -104,8 +104,6 @@ class BinarySystem(System):
         # polar radius of both component
         self.init_radii(components_distance=self.orbit.periastron_distance)
 
-        # component_instance.polar_radius = self.calculate_polar_radius(component=_component, components_distance=components_distance)
-
         # evaluate spots of both components
         # this is not true for all systems!!!
         # fixme: need discussion w/ Miro
@@ -1548,7 +1546,7 @@ class BinarySystem(System):
             # build surface if there is no spot specified
             if not component_instance.spots:
                 self.build_surface_with_no_spots(_component)
-                return
+                continue
 
             self.incorporate_spots_to_surface(component_instance=component_instance,
                                               build_surface_fn=self.build_surface_with_no_spots,
@@ -1688,8 +1686,7 @@ class BinarySystem(System):
                 kwargs['points_primary'] = self.primary.points
                 kwargs['primary_triangles'] = self.primary.faces
 
-                self.build_temperature_map(component='primary', components_distance=components_distance,
-                                           colormap=kwargs['colormap'])
+                self.build_temperature_distribution(component='primary', components_distance=components_distance)
                 if kwargs['colormap'] == 'temperature':
                     kwargs['primary_cmap'] = self.primary.temperatures
 
@@ -1758,51 +1755,66 @@ class BinarySystem(System):
 
         method_to_call(**kwargs)
 
-    def build_temperature_map(self, component=None, components_distance=None, colormap=None):
+    def build_temperature_distribution(self, component=None, components_distance=None):
         """
-        auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
 
-        :param colormap: np.array - temperatures for each face
-        :param component: str - `primary` or `secondary`
-        :param components_distance: float
+        :param component:
+        :param components_distance:
         :return:
         """
         component = self._component_to_list(component)
         for _component in component:
             component_instance = getattr(self, _component)
 
+            # fixme/todo: mozno by tu netrebalo davat tie podmienky a zratat to vzdy
+            # compute and assign surface areas of elements if missing
             if component_instance.areas is None:
+                self._logger.debug('Surface areas of {} elements are missing, computing.'.format(_component))
                 component_instance.areas = component_instance.calculate_areas()
 
+            # compute and assign polar radius if missing
             if component_instance.polar_radius is None:
+                self._logger.debug('Polar radius of {} component is missing, computing.'.format(_component))
                 component_instance.polar_radius = self.calculate_polar_radius(
                     component=_component, components_distance=components_distance)
 
+            # compute and assign potential gradient magnitudes for elements if missing
             if component_instance.potential_gradient_magnitudes is None:
+                self._logger.debug('Potential gradient magnitudes distribution of {} component are missing, computing.'
+                                   ''.format(_component))
                 component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
                     component=_component, components_distance=components_distance)
 
+                self._logger.debug('Computing magnitude of {} polar potential gradient.'.format(_component))
                 component_instance.polar_potential_gradient_magnitude = \
-                    self.calculate_polar_potential_gradient_magnitude(component=component,
-                                                                      components_distance=components_distance)
-            if component_instance.temperatures is None and colormap == 'temperature':
-                component_instance.temperatures = component_instance.calculate_effective_temperatures()
+                    self.calculate_polar_potential_gradient_magnitude(
+                        component=_component, components_distance=components_distance)
+
+            # compute and assign temperature of elements
+            self._logger.debug('Computing effective temprature distibution of {} component.'.format(_component))
+            component_instance.temperatures = component_instance.calculate_effective_temperatures()
 
             if component_instance.spots:
                 for spot_index, spot in component_instance.spots.items():
                     if spot.areas is None:
+                        self._logger.debug('Surface areas of {} component / {} spot are missing, computing.'
+                                           ''.format(_component, spot_index))
                         spot.areas = component_instance.calculate_areas()
 
                     if spot.potential_gradient_magnitudes is None:
-                        spot.potential_gradient_magnitudes = \
-                            self.calculate_face_magnitude_gradient(component=component,
-                                                                   components_distance=components_distance,
-                                                                   points=spot.points, faces=spot.faces)
-                    if spot.temperatures is None and colormap == 'temperature':
-                        spot.temperatures = \
-                            spot.temperature_factor * \
-                            component_instance.calculate_effective_temperatures(gradient_magnitudes=
-                                                                                spot.potential_gradient_magnitudes)
+                        self._logger.debug('Distribution of potential gradient magnitudes of {} component / {} spot '
+                                           'is missing, computing.'.format(_component, spot_index))
+                        spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
+                            component=_component,
+                            components_distance=components_distance,
+                            points=spot.points, faces=spot.faces)
+
+                    self._logger.debug('Computing temperature distribution of {} component / {} spot'
+                                       ''.format(_component, spot_index))
+                    spot.temperatures = \
+                        spot.temperature_factor * \
+                        component_instance.calculate_effective_temperatures(
+                            gradient_magnitudes=spot.potential_gradient_magnitudes)
 
     def is_property(self, kwargs):
         """

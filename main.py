@@ -71,11 +71,11 @@ bs = BinarySystem(primary=primary,
 
 bs.build_mesh()
 bs.build_surface()
-# bs.build_temperature_map(components_distance=1.0)
+bs.build_temperature_distribution(components_distance=1.0)
 
 # bs.evaluate_normals()
-print(primary.potential_gradient_magnitudes)
-print(primary.polar_potential_gradient_magnitude)
+# print(primary.potential_gradient_magnitudes)
+# print(primary.polar_potential_gradient_magnitude)
 
 
 
