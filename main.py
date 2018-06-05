@@ -50,14 +50,14 @@ primary = Star(mass=1.5*u.solMass,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
-               discretization_factor=3,
+               discretization_factor=10,
                spots=[
                    {
                        "longitude": 45,
                        "latitude": 45,
-                       "angular_density": 1,
-                       "angular_diameter": 5,
-                       "temperature_factor": 0.9
+                       "angular_density": 3,
+                       "angular_diameter": 20,
+                       "temperature_factor": 0.99
                    }
                ])
 secondary = Star(mass=0.9*u.solMass,
@@ -146,12 +146,12 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
 # bs.plot(descriptor='mesh', components_to_plot='both')
-# bs.plot(descriptor='build_surface',
-#         phase=0,
-#         # components_to_plot='primary',
-#         # components_to_plot='secondary',
-#         # edges=True,
-#         # normals=True,
-#         # colormap='gravity_acceleration')
-#         colormap='temperature')
+bs.plot(descriptor='surface',
+        phase=0,
+        # components_to_plot='primary',
+        # components_to_plot='secondary',
+        # edges=True,
+        # normals=True,
+        # colormap='gravity_acceleration')
+        colormap='temperature')
 

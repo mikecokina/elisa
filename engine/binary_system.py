@@ -1733,8 +1733,8 @@ class BinarySystem(System):
                 kwargs['points_secondary'] = self.secondary.points
                 kwargs['secondary_triangles'] = self.secondary.faces
 
-                self.build_temperature_map(component='secondary', components_distance=components_distance,
-                                           colormap=kwargs['colormap'])
+                self.build_temperature_distribution(
+                    component='secondary', components_distance=components_distance)
                 if kwargs['colormap'] == 'temperature':
                     kwargs['secondary_cmap'] = self.secondary.temperatures
 
