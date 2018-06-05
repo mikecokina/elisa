@@ -24,6 +24,7 @@ class Star(Body):
         # default values of properties
         self._surface_potential = None
         self._backward_radius = None
+        self._polar_radius = None
         self._gravity_darkening = None
         self._synchronicity = None
         self._forward_radius = None
@@ -113,6 +114,16 @@ class Star(Body):
         :return: float64
         """
         return self._forward_radius
+
+    @property
+    def polar_radius(self):
+        """
+        returns value of polar radius of an object in default unit returns None if it doesn't exist
+        usage: xy.polar_radius
+
+        :return: float64
+        """
+        return self._polar_radius
 
     @property
     def side_radius(self):

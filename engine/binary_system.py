@@ -70,7 +70,11 @@ class BinarySystem(System):
         self._semi_major_axis = None
         self._periastron_phase = None
 
-        params = {"primary": self.primary, "secondary": self.secondary}
+        params = {
+            "primary": self.primary,
+            "secondary": self.secondary
+        }
+
         params.update(**kwargs)
         self._star_params_validity_check(**params)
         # set attributes and test whether all parameters were initialized
@@ -97,12 +101,30 @@ class BinarySystem(System):
         # binary star morphology estimation
         self._morphology = self._estimate_morphology()
 
-        # todo: compute and assign to all radii values to both components
+        # polar radius of both component
+        self.init_radii(components_distance=self.orbit.periastron_distance)
+
+        # component_instance.polar_radius = self.calculate_polar_radius(component=_component, components_distance=components_distance)
 
         # evaluate spots of both components
         # this is not true for all systems!!!
         # fixme: need discussion w/ Miro
         # self._evaluate_spots(components_distance=1.0)
+
+    def init_radii(self, components_distance):
+        fns = [self.calculate_polar_radius, self.calculate_side_radius, self.calculate_backward_radius]
+        components = ['primary', 'secondary']
+
+        for component in components:
+            component_instance = getattr(self, component)
+            for fn in fns:
+                self._logger.debug('Initialising {} for {} component'.format(
+                    ' '.join(str(fn.__name__).split('_')[1:]),
+                    component
+                ))
+                param = '_{}'.format('_'.join(str(fn.__name__).split('_')[1:]))
+                radius = fn(component, components_distance)
+                setattr(component_instance, param, radius)
 
     def _evaluate_spots(self, components_distance):
         """
@@ -878,57 +900,59 @@ class BinarySystem(System):
         domega_dz = - points[2] * (1. / r3 + self.mass_ratio / r_hat3)
         return np.power(np.power(domega_dx, 2) + np.power(domega_dz, 2), 0.5)
 
-    def calculate_polar_radius(self, component=None, components_distance=None):
+    def calculate_radius(self, *args):
+        """"""
+        if args[0] == 'primary':
+            fn = self.potential_primary_fn
+        elif args[0] == 'secondary':
+            fn = self.potential_secondary_fn
+        else:
+            raise ValueError('Invalid value of `component` argument {}. Expecting `primary` or `secondary`.'
+                             .format(args[0]))
+
+        scipy_solver_init_value = np.array([args[1] / 1e4])
+        solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value,
+                                                    full_output=True, args=args[1:], xtol=1e-10)
+
+        # check for regular solution
+        if ier == 1 and not np.isnan(solution[0]) and 30 >= solution[0] >= 0:
+            return solution[0]
+        else:
+            raise ValueError('Invalid value of radius {} was calculated.'.format(solution))
+
+    def calculate_polar_radius(self, component, components_distance):
         """
         calculates polar radius in the similar manner as in BinarySystem.compute_equipotential_boundary method
 
-        :param component: str - `primary` or `secondary`
+        :param component: str; `primary` or `secondary`
         :param components_distance: float
-        :return: float - polar radius
+        :return: float; polar radius
         """
-        if component == 'primary':
-            fn = self.potential_primary_fn
-        elif component == 'secondary':
-            fn = self.potential_secondary_fn
-        else:
-            raise ValueError('Invalid value of `component` argument {}. Expecting `primary` or `secondary`.'
-                             .format(component))
-        args = (components_distance, 0., 0)
-        scipy_solver_init_value = np.array([components_distance / 10000.0])
-        solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value,
-                                                    full_output=True, args=args, xtol=1e-12)
+        args = (component, components_distance, 0.0, 0.0)
+        return self.calculate_radius(*args)
 
-        # check for regular solution
-        if ier == 1 and not np.isnan(solution[0]) and 30 >= solution[0] >= 0:
-            return solution[0]
-        else:
-            raise ValueError('Invalid value of polar radius {} was calculated.'.format(solution))
-
-    def calculate_side_radius(self, component=None, components_distance=None):
+    def calculate_side_radius(self, component, components_distance):
         """
         calculates side radius in the similar manner as in BinarySystem.compute_equipotential_boundary method
 
-        :param component: str - `primary` or `secondary`
-        :param components_distance: float - photometric phase
-        :return: float - polar radius
+        :param component: str; `primary` or `secondary`
+        :param components_distance: float
+        :return: float; side radius
         """
-        if component == 'primary':
-            fn = self.potential_primary_fn
-        elif component == 'secondary':
-            fn = self.potential_secondary_fn
-        else:
-            raise ValueError('Invalid value of `component` argument {}. Expecting `primary` or `secondary`.'
-                             .format(component))
-        args = (components_distance, c.HALF_PI, c.HALF_PI)
-        scipy_solver_init_value = np.array([components_distance / 10000.0])
-        solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value,
-                                                    full_output=True, args=args, xtol=1e-12)
+        args = (component, components_distance, c.HALF_PI, c.HALF_PI)
+        return self.calculate_radius(*args)
 
-        # check for regular solution
-        if ier == 1 and not np.isnan(solution[0]) and 30 >= solution[0] >= 0:
-            return solution[0]
-        else:
-            raise ValueError('Invalid value of polar radius {} was calculated.'.format(solution))
+    def calculate_backward_radius(self, component, components_distance):
+        """
+        calculates backward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method
+
+        :param component: str; `primary` or `secondary`
+        :param components_distance: float
+        :return: float; polar radius
+        """
+
+        args = (component, components_distance, c.PI, c.HALF_PI)
+        return self.calculate_radius(*args)
 
     def compute_equipotential_boundary(self, components_distance, plane):
         """
@@ -1530,19 +1554,6 @@ class BinarySystem(System):
                                               build_surface_fn=self.build_surface_with_no_spots,
                                               component=_component)
 
-    def compute_temperature_distribution(self, component=None, components_distance=None):
-        if not components_distance:
-            raise ValueError('Parameter components_distance has to be number not {}'.format(type(components_distance)))
-
-        component = self._component_to_list(component)
-
-        for _component in component:
-            component_instance = getattr(self, _component)
-            component_instance.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude(
-                component=_component, components_distance=components_distance)
-
-            # component_instance.potential_gradient_magnitudes = 'xaxa'
-
     @staticmethod
     def _component_to_list(component):
         if not component:
@@ -1756,36 +1767,42 @@ class BinarySystem(System):
         :param components_distance: float
         :return:
         """
-        component_instance = getattr(self, component)
-        if component_instance.areas is None:
-            component_instance.areas = component_instance.calculate_areas()
-        if component_instance.polar_radius is None:
-            component_instance.polar_radius = self.calculate_polar_radius(component=component,
-                                                                          components_distance=components_distance)
-        if component_instance.potential_gradient_magnitudes is None:
-            component_instance.potential_gradient_magnitudes = \
-                self.calculate_face_magnitude_gradient(component=component, components_distance=components_distance)
-            component_instance.polar_potential_gradient_magnitude = \
-                self.calculate_polar_potential_gradient_magnitude(component=component,
-                                                                  components_distance=components_distance)
-        if component_instance.temperatures is None and colormap == 'temperature':
-            component_instance.temperatures = component_instance.calculate_effective_temperatures()
+        component = self._component_to_list(component)
+        for _component in component:
+            component_instance = getattr(self, _component)
 
-        if component_instance.spots:
-            for spot_index, spot in component_instance.spots.items():
-                if spot.areas is None:
-                    spot.areas = component_instance.calculate_areas()
+            if component_instance.areas is None:
+                component_instance.areas = component_instance.calculate_areas()
 
-                if spot.potential_gradient_magnitudes is None:
-                    spot.potential_gradient_magnitudes = \
-                        self.calculate_face_magnitude_gradient(component=component,
-                                                               components_distance=components_distance,
-                                                               points=spot.points, faces=spot.faces)
-                if spot.temperatures is None and colormap == 'temperature':
-                    spot.temperatures = \
-                        spot.temperature_factor * \
-                        component_instance.calculate_effective_temperatures(gradient_magnitudes=
-                                                                            spot.potential_gradient_magnitudes)
+            if component_instance.polar_radius is None:
+                component_instance.polar_radius = self.calculate_polar_radius(
+                    component=_component, components_distance=components_distance)
+
+            if component_instance.potential_gradient_magnitudes is None:
+                component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
+                    component=_component, components_distance=components_distance)
+
+                component_instance.polar_potential_gradient_magnitude = \
+                    self.calculate_polar_potential_gradient_magnitude(component=component,
+                                                                      components_distance=components_distance)
+            if component_instance.temperatures is None and colormap == 'temperature':
+                component_instance.temperatures = component_instance.calculate_effective_temperatures()
+
+            if component_instance.spots:
+                for spot_index, spot in component_instance.spots.items():
+                    if spot.areas is None:
+                        spot.areas = component_instance.calculate_areas()
+
+                    if spot.potential_gradient_magnitudes is None:
+                        spot.potential_gradient_magnitudes = \
+                            self.calculate_face_magnitude_gradient(component=component,
+                                                                   components_distance=components_distance,
+                                                                   points=spot.points, faces=spot.faces)
+                    if spot.temperatures is None and colormap == 'temperature':
+                        spot.temperatures = \
+                            spot.temperature_factor * \
+                            component_instance.calculate_effective_temperatures(gradient_magnitudes=
+                                                                                spot.potential_gradient_magnitudes)
 
     def is_property(self, kwargs):
         """
