@@ -106,8 +106,7 @@ class BinarySystem(System):
 
         # evaluate spots of both components
         # this is not true for all systems!!!
-        # fixme: need discussion w/ Miro
-        # self._evaluate_spots(components_distance=1.0)
+        self._evaluate_spots(components_distance=self.orbit.periastron_distance)
 
     def init_radii(self, components_distance):
         fns = [self.calculate_polar_radius, self.calculate_side_radius, self.calculate_backward_radius]
@@ -140,7 +139,10 @@ class BinarySystem(System):
                     return False
             return True
 
-        fns = {"primary": self.potential_primary_fn, "secondary": self.potential_secondary_fn}
+        fns = {
+            "primary": self.potential_primary_fn,
+            "secondary": self.potential_secondary_fn
+        }
 
         neck_position = 1e10
         # in case of wuma system, get separation and make additional test of location of each point (if primary
@@ -1561,18 +1563,27 @@ class BinarySystem(System):
         return component
 
     # todo: needs rework
-    def evaluate_normals(self, component, component_distance):
+    def evaluate_normals(self, component=None):
         """
         evaluate normals for both components using potential gradient (useful before triangulation)
 
-        :param component:
-        :param component_distance:
+        :param component: str
         :return:
         """
-        # todo: component_instance.normals is set of normals corresponding to faces NOT to surface points, rtfm pls
-        component_instance = getattr(self, component)
-        component_instance.normals = self.calculate_potential_gradient(component=component,
-                                                                       components_distance=component_distance)
+        self._logger.info('Evaluating normals of surface elements')
+        component = self._component_to_list(component)
+        for _component in component:
+            component_instance = getattr(self, _component)
+
+            if component_instance.faces is None or component_instance.points is None:
+                raise ValueError('Faces or/and points of {} component have not been set yet'.format(_component))
+            component_instance.normals = component_instance.calculate_normals(
+                component_instance.points, component_instance.faces)
+
+            if component_instance.spots:
+                for spot_index, spot in component_instance.spots.items():
+                    component_instance.spots[spot_index].normals = component_instance.calculate_normals(
+                        spot.points, spot.faces)
 
     def plot(self, descriptor=None, **kwargs):
         """
