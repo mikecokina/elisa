@@ -1518,8 +1518,8 @@ class BinarySystem(System):
                 else self.mesh_detached(component=_component, components_distance=components_distance)
 
     def build_surface_with_no_spots(self, component=None):
-        # todo: add description docstring
         """
+        function for building binary star component surfaces without spots
 
         :param component:
         :return:
@@ -1533,8 +1533,8 @@ class BinarySystem(System):
                 else self.detached_system_surface(component=_component)
 
     def build_surface(self, component=None):
-        # todo: add info
         """
+        function for building of general binary star component surfaces including spots
 
         :param component: specify component, use `primary` or `secondary`
         :type: str

@@ -70,11 +70,11 @@ class SingleSystem(System):
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)
         self.star._polar_log_g = self.polar_log_g
-        self.star._polar_gravity_acceleration = np.power(10, self.polar_log_g)  # build_surface polar gravity
+        self.star._polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
         self.star._polar_radius = self.calculate_polar_radius()
         args = 0,
         self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
-        # this is also check if star build_surface is closed
+        # this is also check if star surface is closed
         self.star._equatorial_radius = self.calculate_equatorial_radius()
 
         self._evaluate_spots()
@@ -293,7 +293,7 @@ class SingleSystem(System):
     @property
     def polar_log_g(self):
         """
-        returns logarythm of polar build_surface gravity in SI
+        returns logarithm of polar surface gravity in SI
 
         :return: float
         """
@@ -302,7 +302,7 @@ class SingleSystem(System):
     @polar_log_g.setter
     def polar_log_g(self, log_g):
         """
-        setter for polar build_surface gravity, if unit is not specified in astropy.units format, value in m/s^2 is assumed
+        setter for polar surface gravity, if unit is not specified in astropy.units format, value in m/s^2 is assumed
 
         :param log_g:
         :return:
@@ -446,7 +446,7 @@ class SingleSystem(System):
 
     def mesh(self):
         """
-        function for creating build_surface mesh of single star system
+        function for creating surface mesh of single star system
 
         :return: numpy.array([[x1 y1 z1],
                               [x2 y2 z2],
@@ -468,7 +468,7 @@ class SingleSystem(System):
         # converting quarter of equator to cartesian
         x_eq, y_eq, z_eq = utils.spherical_to_cartesian(r_eq, phi_eq, theta_eq)
 
-        # calculating radii for each latitude and generating one eighth of build_surface of the star without poles and equator
+        # calculating radii for each latitude and generating one eighth of surface of the star without poles and equator
         num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
         thetas = np.linspace(characterictic_angle, c.HALF_PI-characterictic_angle, num=num, endpoint=True)
         r_q, phi_q, theta_q = [], [], []
@@ -487,10 +487,10 @@ class SingleSystem(System):
         r_q = np.array(r_q)
         phi_q = np.array(phi_q)
         theta_q = np.array(theta_q)
-        # converting this eighth of build_surface to cartesian coordinates
+        # converting this eighth of surface to cartesian coordinates
         x_q, y_q, z_q = utils.spherical_to_cartesian(r_q, phi_q, theta_q)
 
-        # stiching together equator and 8 sectors of stellar build_surface
+        # stiching together equator and 8 sectors of stellar surface
         x = np.concatenate((x_eq, -y_eq, -x_eq,  y_eq, x_q, -y_q, -x_q,  y_q,  x_q, -y_q, -x_q,  y_q, np.array([0, 0])))
         y = np.concatenate((y_eq,  x_eq, -y_eq, -x_eq, y_q,  x_q, -y_q, -x_q,  y_q,  x_q, -y_q, -x_q, np.array([0, 0])))
         z = np.concatenate((z_eq,  z_eq,  z_eq,  z_eq, z_q,  z_q,  z_q,  z_q, -z_q, -z_q, -z_q, -z_q,
@@ -499,7 +499,7 @@ class SingleSystem(System):
 
     def single_surface(self):
         """
-        calculates triangulation of the given build_surface points, returns set of triple indices of build_surface pints that make
+        calculates triangulation of the given surface points, returns set of triple indices of surface pints that make
         up given triangle
 
         :param vertices: np.array: numpy.array([[x1 y1 z1],
@@ -516,6 +516,11 @@ class SingleSystem(System):
         return triangles_indices
 
     def build_surface(self):
+        """
+        function is calling surface building function for single systems and assigns star's surface to star object as
+        its property
+        :return:
+        """
         self.star.faces = self.single_surface()
 
     def plot(self, descriptor=None, **kwargs):
@@ -525,8 +530,8 @@ class SingleSystem(System):
 
         :param descriptor: str (defines type of plot):
                                equpotential - plots orbit in orbital plane
-                               mesh - plots build_surface points mesh
-                               build_surface - plots stellar build_surface
+                               mesh - plots surface points mesh
+                               surface - plots stellar surface
         :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
         :return:
         """
@@ -554,7 +559,7 @@ class SingleSystem(System):
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
-        elif descriptor == 'build_surface':
+        elif descriptor == 'surface':
             KWARGS = ['axis_unit', 'edges', 'normals', 'colormap']
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
             method_to_call = graphics.single_star_surface
@@ -613,17 +618,17 @@ class SingleSystem(System):
         """
         component_instance = self.star
 
-        # build build_surface if there is no spot specified
+        # build surface if there is no spot specified
         if not component_instance.spots:
             self.build_surface()
             return
 
         component_instance.points = self.mesh()
-        self.incorporate_spots_to_surface(component_instance=component_instance, build_surface_fn=self.build_surface)
+        self.incorporate_spots_to_surface(component_instance=component_instance, surface_fn=self.surface)
 
     def build_temperature_map(self, colormap=None):
         """
-        auxiliary function for plot function with descriptor value `build_surface` in case of temperature colormap turned on
+        auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
 
         :param colormap:np.array - temperatures for each face
         :return:

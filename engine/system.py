@@ -122,15 +122,15 @@ class System(object):
 
         return (solution, use) if condition(solution, *args, **kwargs) else (np.nan, False)
 
-    def incorporate_spots_to_surface(self, component_instance=None, build_surface_fn=None, **kwargs):
+    def incorporate_spots_to_surface(self, component_instance=None, surface_fn=None, **kwargs):
         if component_instance is None:
             raise ValueError('Object instance was not given.')
-        if build_surface_fn is None:
+        if surface_fn is None:
             raise ValueError('Function for building surfaces was not specified.')
 
         vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
         points = copy(component_instance.points)
-        # average spacing of component build_surface points
+        # average spacing of component surface points
         avsp = utils.average_spacing(data=component_instance.points, neighbours=6)
 
         for spot_index, spot in component_instance.spots.items():
@@ -194,9 +194,9 @@ class System(object):
         # triangulation process
         # self.build_surface_with_no_spots(component)
         if 'component' in kwargs:
-            build_surface_fn(kwargs['component'])
+            surface_fn(kwargs['component'])
         else:
-            build_surface_fn()
+            surface_fn()
 
         spots_instance_indices = list(set([vertices_map[ix]["enum"]
                                            for ix, _ in enumerate(vertices_map) if vertices_map[ix]["type"] == "spot"]))

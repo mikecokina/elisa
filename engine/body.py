@@ -136,7 +136,7 @@ class Body(object, metaclass=ABCMeta):
         """
         points getter
         usage: xy.points
-        returns dictionary of points that forms build_surface of Body
+        returns dictionary of points that forms surface of Body
 
         :return: dict
         """
@@ -147,7 +147,7 @@ class Body(object, metaclass=ABCMeta):
         """
         points setter
         usage: xy.points = new_points
-        setting numpy array of points that form build_surface of Body
+        setting numpy array of points that form surface of Body
         input dictionary has to be in shape:
         points = numpy.array([[x1 y1 z1],
                                 [x2 y2 z2],
@@ -163,7 +163,7 @@ class Body(object, metaclass=ABCMeta):
     @property
     def faces(self):
         """
-        returns dictionary of triangles that will create build_surface of body
+        returns dictionary of triangles that will create surface of body
         triangles are stored as list of indices of points
         usage: xy.faces
 
@@ -341,7 +341,7 @@ class Body(object, metaclass=ABCMeta):
     @property
     def discretization_factor(self):
         """
-        returns mean angular distance between build_surface points
+        returns mean angular distance between surface points
 
         :return: float
         """
@@ -409,7 +409,7 @@ class Body(object, metaclass=ABCMeta):
 
     def calculate_normals(self, points, faces):
         """
-        returns outward facing normal unit vector for each face of stellar build_surface
+        returns outward facing normal unit vector for each face of stellar surface
 
         :return: numpy_array([[normal_x1, normal_y1, normal_z1],
                               [normal_x2, normal_y2, normal_z2],
@@ -430,7 +430,7 @@ class Body(object, metaclass=ABCMeta):
     @staticmethod
     def calculate_surface_centres(points=None, faces=None):
         """
-        returns centers of every build_surface face
+        returns centers of every surface face
 
         :return: numpy_array([[center_x1, center_y1, center_z1],
                               [center_x2, center_y2, center_z2],
@@ -441,7 +441,7 @@ class Body(object, metaclass=ABCMeta):
 
     def calculate_areas(self):
         """
-        returns areas of each face of the star build_surface
+        returns areas of each face of the star surface
         :return: numpy.array([area_1, ..., area_n])
         """
         if self.faces is None or self.points is None:

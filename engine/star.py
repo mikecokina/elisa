@@ -78,7 +78,7 @@ class Star(Body):
     @property
     def surface_potential(self):
         """
-        returns build_surface potential of Star
+        returns surface potential of Star
         usage: xy.Star
 
         :return: float64
@@ -88,7 +88,7 @@ class Star(Body):
     @surface_potential.setter
     def surface_potential(self, potential):
         """
-        setter for build_surface potential
+        setter for surface potential
         usage: xy.surface_potential = new_potential
 
         :param potential: float64
@@ -179,7 +179,7 @@ class Star(Body):
     @property
     def polar_log_g(self):
         """
-        returns logarythm of polar build_surface gravity in SI
+        returns logarythm of polar surface gravity in SI
 
         :return: float
         """
@@ -188,7 +188,7 @@ class Star(Body):
     @property
     def potential_gradient_magnitudes(self):
         """
-        returns array of absolute values of potential gradients for each face of build_surface
+        returns array of absolute values of potential gradients for each face of surface
 
         :return: numpy.array
         """
@@ -233,7 +233,7 @@ class Star(Body):
 
     def calculate_effective_temperatures(self, gradient_magnitudes=None):
         """
-        calculates effective temperatures for given gradient magnitudes, if None given star build_surface t_effs are
+        calculates effective temperatures for given gradient magnitudes, if None given star surface t_effs are
         calculated
 
         :param gradient_magnitudes:

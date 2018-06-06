@@ -58,11 +58,11 @@ def orbit(**kwargs):
 def equipotential(**kwargs):
     """
     Plot function for descriptor = `equipotential` in function BinarySystem.plot(). This function plots crossections of
-    build_surface Hill planes in xy, yz or zx plane
+    surface Hill planes in xy, yz or zx plane
 
     :param kwargs: dict
-                   keywords: plane = 'xy' - plane in which build_surface Hill plane is calculated, planes: 'xy', 'yz', 'zx'
-                             phase = 0 - photometric phase in which build_surface Hill plane is calculated
+                   keywords: plane = 'xy' - plane in which surface Hill plane is calculated, planes: 'xy', 'yz', 'zx'
+                             phase = 0 - photometric phase in which surface Hill plane is calculated
     :return:
     """
     x_label, y_label = 'x', 'y'
@@ -91,7 +91,7 @@ def equipotential(**kwargs):
 def equipotential_single_star(**kwargs):
     """
     Plot function for descriptor = `equipotential` in function SingleSystem.plot(). Calculates zx plane crossection of
-    equipotential build_surface.
+    equipotential surface.
 
     :param kwargs: dict:
                    keywords: `axis_unit` = astropy.units.solRad - unit in which axis will be displayed, please use
@@ -115,10 +115,10 @@ def equipotential_single_star(**kwargs):
 
 def single_star_mesh(**kwargs):
     """
-    Plot function for descriptor `mesh`, plots build_surface mesh of star in SingleStar system
+    Plot function for descriptor `mesh`, plots surface mesh of star in SingleStar system
 
     :param kwargs: dict
-                   keywords: `mesh` = build_surface points of the star in standard numpy array format:
+                   keywords: `mesh` = surface points of the star in standard numpy array format:
                                       numpy.array([[x1 y1 z1],
                                                    [x2 y2 z2],
                                                    ...
@@ -146,7 +146,7 @@ def single_star_mesh(**kwargs):
 
 def binary_mesh(**kwargs):
     """
-    Plot function for descriptor `mesh`, plots build_surface mesh of binary star in BinaryStar system
+    Plot function for descriptor `mesh`, plots surface mesh of binary star in BinaryStar system
 
     :param kwargs: dict
                    keywords: `phase`: np.float - phase in which system is plotted default value is 0
@@ -189,7 +189,7 @@ def binary_mesh(**kwargs):
 
 def single_star_surface(**kwargs):
     """
-    Plot function for descriptor `build_surface`, plots build_surface of star in SingleStar system
+    Plot function for descriptor `surface`, plots surface of star in SingleStar system
     :param kwargs:
     :return:
     """
