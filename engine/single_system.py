@@ -568,36 +568,29 @@ class SingleSystem(System):
             kwargs['normals'] = kwargs.get('normals', False)
             kwargs['colormap'] = kwargs.get('colormap', None)
 
-            if self.star.points is None:
-                self.star.points = self.mesh()
-            if self.star.faces is None:
-                self.build_surface()
-            kwargs['mesh'] = copy(self.star.points)
+            kwargs['mesh'] = self.build_mesh()
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
+
+            self.build_surface()
             kwargs['triangles'] = self.star.faces
             kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
-            self.build_temperature_map(colormap=kwargs['colormap'])
             if kwargs['colormap'] == 'temperature':
-                kwargs['cmap'] = self.star.temperatures
+                kwargs['cmap'] = self.build_surface_map(colormap='temperature')
             elif kwargs['colormap'] == 'gravity_acceleration':
-                if self.star.potential_gradient_magnitudes is None:
-                    self.star.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes()
-                    self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
-                g0 = self.star.polar_gravity_acceleration / self.star.polar_potential_gradient_magnitude
-                kwargs['cmap'] = g0 * self.star.potential_gradient_magnitudes
+                kwargs['cmap'] = self.build_surface_map(colormap='gravity_acceleration')
 
-            if self.star.spots:
-                for spot_index, spot in self.star.spots.items():
-                    n_points = np.shape(kwargs['mesh'])[0]
-                    kwargs['mesh'] = np.append(kwargs['mesh'], spot.points / denominator, axis=0)
-                    kwargs['triangles'] = np.append(kwargs['triangles'], spot.faces + n_points, axis=0)
-
-                    if kwargs['colormap'] == 'temperature':
-                        kwargs['cmap'] = np.append(kwargs['cmap'], spot.temperatures)
-                    elif kwargs['colormap'] == 'gravity_acceleration':
-                        kwargs['cmap'] = np.append(kwargs['cmap'], spot.potential_gradient_magnitudes)
+            # if self.star.spots:
+            #     for spot_index, spot in self.star.spots.items():
+            #         n_points = np.shape(kwargs['mesh'])[0]
+            #         kwargs['mesh'] = np.append(kwargs['mesh'], spot.points / denominator, axis=0)
+            #         kwargs['triangles'] = np.append(kwargs['triangles'], spot.faces + n_points, axis=0)
+            #
+            #         if kwargs['colormap'] == 'temperature':
+            #             kwargs['cmap'] = np.append(kwargs['cmap'], spot.temperatures)
+            #         elif kwargs['colormap'] == 'gravity_acceleration':
+            #             kwargs['cmap'] = np.append(kwargs['cmap'], spot.potential_gradient_magnitudes)
 
             if kwargs['normals']:
                 kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'])
@@ -608,8 +601,16 @@ class SingleSystem(System):
 
         method_to_call(**kwargs)
 
+    def build_mesh(self):
+        self.star.points = self.mesh()
+        retMesh = copy(self.star.points)
+        if self.star.spots:
+            for spot_index, spot in self.star.spots.items():
+                n_points = np.shape(retMesh)[0]
+                retMesh = np.append(retMesh, spot.points, axis=0)
+        return retMesh
+
     def build_surface(self):
-        # todo: add info
         """
         function for building of general single star component surfaces including spots
 
@@ -627,35 +628,38 @@ class SingleSystem(System):
         component_instance.points = self.mesh()
         self.incorporate_spots_to_surface(component_instance=component_instance, surface_fn=self.surface)
 
-    def build_temperature_map(self, colormap=None):
+    def build_surface_map(self, colormap=None):
         """
         auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
 
-        :param colormap:np.array - temperatures for each face
         :return:
         """
-        if self.star.areas is None:
-            self.star.areas = self.star.calculate_areas()
-        if self.star.polar_radius is None:
-            self.star.polar_radius = self.calculate_polar_radius()
-        if self.star.potential_gradient_magnitudes is None:
-            self.star.potential_gradient_magnitudes = \
-                self.calculate_potential_gradient_magnitudes()
-            self.star.polar_potential_gradient_magnitude = \
-                self.calculate_polar_potential_gradient_magnitude()
-        if self.star.temperatures is None and colormap == 'temperature':
-            self.star.temperatures = self.star.calculate_effective_temperatures()
+        if colormap is None:
+            raise ValueError('Specify colormap to calculate (`temperature` or `gravity_acceleration`.')
+
+        self.star.areas = self.star.calculate_areas()
+        self.star._polar_radius = self.calculate_polar_radius()
+        self.star.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes()
+        self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
+
+        if colormap == 'temperature':
+            retList = self.star.calculate_effective_temperatures()
+        elif colormap == 'gravity_acceleration':
+            g0 = self.star.polar_gravity_acceleration / self.star.polar_potential_gradient_magnitude
+            retList = g0 * self.star.potential_gradient_magnitudes
 
         if self.star.spots:
             for spot_index, spot in self.star.spots.items():
-                if spot.areas is None:
-                    spot.areas = self.star.calculate_areas()
+                spot.areas = self.star.calculate_areas()
 
-                if spot.potential_gradient_magnitudes is None:
-                    spot.potential_gradient_magnitudes = \
-                        self.calculate_potential_gradient_magnitudes(points=spot.points, faces=spot.faces)
-                if spot.temperatures is None and colormap == 'temperature':
-                    spot.temperatures = \
-                        spot.temperature_factor * \
-                        self.star.calculate_effective_temperatures(gradient_magnitudes=
-                                                                   spot.potential_gradient_magnitudes)
+                spot.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes(points=spot.points,
+                                                                                                  faces=spot.faces)
+
+                if colormap == 'temperature':
+                    retList = np.append(retList, spot.temperature_factor *
+                                        self.star.calculate_effective_temperatures(gradient_magnitudes=
+                                                                                   spot.potential_gradient_magnitudes))
+                elif colormap == 'gravity_acceleration':
+                    retList = np.append(retList, spot.potential_gradient_magnitudes)
+
+        return retList
