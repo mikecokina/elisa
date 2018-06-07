@@ -515,9 +515,9 @@ class SingleSystem(System):
         triangles_indices = triangulation.convex_hull
         return triangles_indices
 
-    def build_surface(self):
+    def surface(self):
         """
-        function is calling surface building function for single systems and assigns star's surface to star object as
+        function is calling surface building function for single systems without spots and assigns star's surface to star object as
         its property
         :return:
         """
@@ -571,7 +571,7 @@ class SingleSystem(System):
             if self.star.points is None:
                 self.star.points = self.mesh()
             if self.star.faces is None:
-                self.surface()
+                self.build_surface()
             kwargs['mesh'] = copy(self.star.points)
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
@@ -608,9 +608,10 @@ class SingleSystem(System):
 
         method_to_call(**kwargs)
 
-    def surface(self):
+    def build_surface(self):
         # todo: add info
         """
+        function for building of general single star component surfaces including spots
 
         :param component: specify component, use `primary` or `secondary`
         :type: str
@@ -620,7 +621,7 @@ class SingleSystem(System):
 
         # build surface if there is no spot specified
         if not component_instance.spots:
-            self.build_surface()
+            self.surface()
             return
 
         component_instance.points = self.mesh()

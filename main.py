@@ -57,9 +57,10 @@ primary = Star(mass=1.5*u.solMass,
                        "latitude": 45,
                        "angular_density": 3,
                        "angular_diameter": 20,
-                       "temperature_factor": 0.99
+                       "temperature_factor": 0.8
                    }
-               ])
+               ]
+)
 secondary = Star(mass=0.9*u.solMass,
                  surface_potential=3.15,
                  synchronicity=1.0,
@@ -78,10 +79,10 @@ bs = BinarySystem(primary=primary,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
 
-bs.build_mesh()
-bs.build_surface()
-bs.build_temperature_distribution(components_distance=1.0)
-bs.evaluate_normals()
+# bs.build_mesh()
+# bs.build_surface()
+# bs.build_temperature_distribution(components_distance=1.0)
+# bs.evaluate_normals()
 
 # bs.evaluate_normals()
 # print(primary.potential_gradient_magnitudes)

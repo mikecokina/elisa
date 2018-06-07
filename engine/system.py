@@ -100,6 +100,7 @@ class System(object):
 
         # final spot containers contain their own points and simplex remaped from zero
         # final object contain only points w/o spots points and simplex (triangulation)
+        # je tato poznamka vhodna tu? trosku metie
 
         :param fn: function
         :param condition: function

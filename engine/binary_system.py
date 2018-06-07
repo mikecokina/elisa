@@ -901,7 +901,18 @@ class BinarySystem(System):
         return np.power(np.power(domega_dx, 2) + np.power(domega_dz, 2), 0.5)
 
     def calculate_radius(self, *args):
-        """"""
+        """
+        function calculates radius of the star in given direction of arbitrary direction vector (in spherical
+        coordinates) starting from the centre of the star
+
+        :param args: tuple - (component: str - `primary` or `secondary`,
+                              components_distance: float - distance between components in SMA units,
+                              phi: float - longitudonal angle of direction vector measured from point under L_1 in
+                                           positive direction (in radians)
+                              omega: float - latitudonal angle of direction vector measured from north pole (in radians)
+                              )
+        :return: float - radius
+        """
         if args[0] == 'primary':
             fn = self.potential_primary_fn
         elif args[0] == 'secondary':
@@ -1551,7 +1562,7 @@ class BinarySystem(System):
                 continue
 
             self.incorporate_spots_to_surface(component_instance=component_instance,
-                                              build_surface_fn=self.build_surface_with_no_spots,
+                                              surface_fn=self.build_surface_with_no_spots,
                                               component=_component)
 
     @staticmethod
