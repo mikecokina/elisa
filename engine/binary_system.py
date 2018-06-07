@@ -870,6 +870,8 @@ class BinarySystem(System):
 
         component_instance = getattr(self, component)
         face = component_instance.faces if faces is None else faces
+        points = component_instance.points if points is None else points
+
         gradients = self.calculate_potential_gradient(component, components_distance, points=points)
         domega_dx, domega_dy, domega_dz = gradients[:, 0], gradients[:, 1], gradients[:, 2]
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
