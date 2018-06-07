@@ -1788,29 +1788,25 @@ class BinarySystem(System):
         for _component in component:
             component_instance = getattr(self, _component)
 
-            # fixme/todo: mozno by tu netrebalo davat tie podmienky a zratat to vzdy
             # compute and assign surface areas of elements if missing
-            if component_instance.areas is None:
-                self._logger.debug('Surface areas of {} elements are missing, computing.'.format(_component))
-                component_instance.areas = component_instance.calculate_areas()
+            self._logger.debug('Surface areas of {} elements are missing, computing.'.format(_component))
+            component_instance.areas = component_instance.calculate_areas()
 
             # compute and assign polar radius if missing
-            if component_instance.polar_radius is None:
-                self._logger.debug('Polar radius of {} component is missing, computing.'.format(_component))
-                component_instance.polar_radius = self.calculate_polar_radius(
-                    component=_component, components_distance=components_distance)
+            self._logger.debug('Polar radius of {} component is missing, computing.'.format(_component))
+            component_instance.polar_radius = self.calculate_polar_radius(
+                component=_component, components_distance=components_distance)
 
             # compute and assign potential gradient magnitudes for elements if missing
-            if component_instance.potential_gradient_magnitudes is None:
-                self._logger.debug('Potential gradient magnitudes distribution of {} component are missing, computing.'
-                                   ''.format(_component))
-                component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
-                    component=_component, components_distance=components_distance)
+            self._logger.debug('Potential gradient magnitudes distribution of {} component are missing, computing.'
+                               ''.format(_component))
+            component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
+                component=_component, components_distance=components_distance)
 
-                self._logger.debug('Computing magnitude of {} polar potential gradient.'.format(_component))
-                component_instance.polar_potential_gradient_magnitude = \
-                    self.calculate_polar_potential_gradient_magnitude(
-                        component=_component, components_distance=components_distance)
+            self._logger.debug('Computing magnitude of {} polar potential gradient.'.format(_component))
+            component_instance.polar_potential_gradient_magnitude = \
+                self.calculate_polar_potential_gradient_magnitude(
+                    component=_component, components_distance=components_distance)
 
             # compute and assign temperature of elements
             self._logger.debug('Computing effective temprature distibution of {} component.'.format(_component))
@@ -1818,18 +1814,16 @@ class BinarySystem(System):
 
             if component_instance.spots:
                 for spot_index, spot in component_instance.spots.items():
-                    if spot.areas is None:
-                        self._logger.debug('Surface areas of {} component / {} spot are missing, computing.'
-                                           ''.format(_component, spot_index))
-                        spot.areas = component_instance.calculate_areas()
+                    self._logger.debug('Surface areas of {} component / {} spot are missing, computing.'
+                                       ''.format(_component, spot_index))
+                    spot.areas = component_instance.calculate_areas()
 
-                    if spot.potential_gradient_magnitudes is None:
-                        self._logger.debug('Distribution of potential gradient magnitudes of {} component / {} spot '
-                                           'is missing, computing.'.format(_component, spot_index))
-                        spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
-                            component=_component,
-                            components_distance=components_distance,
-                            points=spot.points, faces=spot.faces)
+                    self._logger.debug('Distribution of potential gradient magnitudes of {} component / {} spot '
+                                       'is missing, computing.'.format(_component, spot_index))
+                    spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
+                        component=_component,
+                        components_distance=components_distance,
+                        points=spot.points, faces=spot.faces)
 
                     self._logger.debug('Computing temperature distribution of {} component / {} spot'
                                        ''.format(_component, spot_index))
