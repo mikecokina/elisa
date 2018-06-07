@@ -347,6 +347,7 @@ class BinarySystem(System):
 
         if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
             lp = self.libration_potentials()
+            # todo: expose filling factors as funtion
             self._primary_filling_factor = (lp[1] - self.primary.surface_potential) / (lp[1] - lp[2])
             self._secondary_filling_factor = (lp[1] - self.secondary.surface_potential) / (lp[1] - lp[2])
 

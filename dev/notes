@@ -8,3 +8,6 @@
               - zákryty nastaávajú vtedy ked sekundárna zlozka pretne rovinu yz
 
 - treba doinstalovat python3-tk koli matplotlibu
+
+- observer class main skelleton
+- common interface helper fns for single and binary system
