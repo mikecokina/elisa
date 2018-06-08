@@ -582,7 +582,7 @@ class SingleSystem(System):
             kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
             if kwargs['colormap'] is not None:
-                kwargs['cmap'] = self.build_surface_map(colormap=kwargs['colormap'])
+                kwargs['cmap'] = self.build_surface_map(colormap=kwargs['colormap'], return_map=True)
             if kwargs['normals']:
                 kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'])
                 kwargs['centres'] = self.star.calculate_surface_centres(points=kwargs['mesh'],
@@ -621,14 +621,17 @@ class SingleSystem(System):
                 ret_points = np.append(ret_points, spot.points, axis=0)
             return ret_points, ret_faces
 
-    def build_surface_map(self, colormap=None):
+    def build_surface_map(self, colormap=None, return_map=False):
         """
-        auxiliary function for plot function with descriptor value `surface` in case of temperature colormap turned on
+        function calculates surface maps (temperature or gravity acceleration) for star and spot faces and it can return
+        them as one array if return_map=True
 
+        :param return_map: if True function returns arrays with surface map including star and spot segments
+        :param colormap: str - `temperature` or `gravity`
         :return:
         """
         if colormap is None:
-            raise ValueError('Specify colormap to calculate (`temperature` or `gravity_acceleration`.')
+            raise ValueError('Specify colormap to calculate (`temperature` or `gravity_acceleration`).')
 
         self.star.areas = self.star.calculate_areas()
         self.star._polar_radius = self.calculate_polar_radius()
@@ -636,10 +639,7 @@ class SingleSystem(System):
         self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
 
         if colormap == 'temperature':
-            retList = self.star.calculate_effective_temperatures()
-        elif colormap == 'gravity_acceleration':
-            g0 = self.star.polar_gravity_acceleration / self.star.polar_potential_gradient_magnitude
-            retList = g0 * self.star.potential_gradient_magnitudes
+            self.star.temperatures = self.star.calculate_effective_temperatures()
 
         if self.star.spots:
             for spot_index, spot in self.star.spots.items():
@@ -649,10 +649,21 @@ class SingleSystem(System):
                                                                                                   faces=spot.faces)
 
                 if colormap == 'temperature':
-                    retList = np.append(retList, spot.temperature_factor *
+                    spot.temperatures = spot.temperature_factor * \
                                         self.star.calculate_effective_temperatures(gradient_magnitudes=
-                                                                                   spot.potential_gradient_magnitudes))
-                elif colormap == 'gravity_acceleration':
-                    retList = np.append(retList, spot.potential_gradient_magnitudes)
+                                                                                   spot.potential_gradient_magnitudes)
 
-        return retList
+        if return_map:
+            if colormap == 'temperature':
+                ret_list = copy(self.star.temperatures)
+            elif colormap == 'gravity_acceleration':
+                ret_list = copy(self.star.potential_gradient_magnitudes)
+
+            if self.star.spots:
+                for spot_index, spot in self.star.spots.items():
+                    if colormap == 'temperature':
+                        ret_list = np.append(ret_list, spot.temperatures)
+                    elif colormap == 'gravity_acceleration':
+                        ret_list = np.append(ret_list, spot.potential_gradient_magnitudes)
+            return ret_list
+        return

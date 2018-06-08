@@ -1740,22 +1740,9 @@ class BinarySystem(System):
                 kwargs['points_primary'] = points['primary']
                 kwargs['primary_triangles'] = faces['primary']
 
-                self.build_temperature_distribution(component='primary', components_distance=components_distance)
-                if kwargs['colormap'] == 'temperature':
-                    kwargs['primary_cmap'] = self.primary.temperatures
-
-                elif kwargs['colormap'] == 'gravity_acceleration':
-                    kwargs['primary_cmap'] = self.primary.potential_gradient_magnitudes / \
-                                             self.primary.polar_potential_gradient_magnitude
-
-                if self.primary.spots:
-                    for spot_index, spot in self.primary.spots.items():
-                        if kwargs['colormap'] == 'temperature':
-                            kwargs['primary_cmap'] = np.append(kwargs['primary_cmap'], spot.temperatures)
-                        elif kwargs['colormap'] == 'gravity_acceleration':
-                            kwargs['primary_cmap'] = np.append(kwargs['primary_cmap'],
-                                                               spot.potential_gradient_magnitudes /
-                                                               self.primary.polar_potential_gradient_magnitude)
+                cmap = self.build_surface_map(colormap=kwargs['colormap'], component='primary',
+                                              components_distance=components_distance, return_map=True)
+                kwargs['primary_cmap'] = cmap['primary']
 
                 if kwargs['normals']:
                     kwargs['primary_centres'] = self.primary.calculate_surface_centres(
@@ -1769,23 +1756,9 @@ class BinarySystem(System):
                 kwargs['points_secondary'] = points['secondary']
                 kwargs['secondary_triangles'] = faces['secondary']
 
-                self.build_temperature_distribution(
-                    component='secondary', components_distance=components_distance)
-                if kwargs['colormap'] == 'temperature':
-                    kwargs['secondary_cmap'] = self.secondary.temperatures
-
-                elif kwargs['colormap'] == 'gravity_acceleration':
-                    kwargs['secondary_cmap'] = self.secondary.potential_gradient_magnitudes / \
-                                               self.secondary.polar_potential_gradient_magnitude
-
-                if self.secondary.spots:
-                    for spot_index, spot in self.secondary.spots.items():
-                        if kwargs['colormap'] == 'temperature':
-                            kwargs['secondary_cmap'] = np.append(kwargs['secondary_cmap'], spot.temperatures)
-                        elif kwargs['colormap'] == 'gravity_acceleration':
-                            kwargs['secondary_cmap'] = np.append(kwargs['secondary_cmap'],
-                                                                 spot.potential_gradient_magnitudes /
-                                                                 self.secondary.polar_potential_gradient_magnitude)
+                cmap = self.build_surface_map(colormap=kwargs['colormap'], component='secondary',
+                                              components_distance=components_distance, return_map=True)
+                kwargs['secondary_cmap'] = cmap['secondary']
 
                 if kwargs['normals']:
                     kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
@@ -1798,28 +1771,38 @@ class BinarySystem(System):
 
         method_to_call(**kwargs)
 
-    def build_temperature_distribution(self, component=None, components_distance=None):
+    def build_surface_map(self, colormap=None, component=None, components_distance=None, return_map=False):
         """
+        function calculates surface maps (temperature or gravity acceleration) for star and spot faces and it can return
+        them as one array if return_map=True
 
-        :param component:
-        :param components_distance:
+        :param return_map: if True function returns arrays with surface map including star and spot segments
+        :param colormap: switch for `temperature` or `gravity` colormap to create
+        :param component: `primary` or `secondary` component surface map to calculate, if not supplied
+        :param components_distance: distance between components
         :return:
         """
+        if colormap is None:
+            raise ValueError('Specify colormap to calculate (`temperature` or `gravity_acceleration`).')
+        if components_distance is None:
+            raise ValueError('Component distance value was not supplied.')
+
         component = self._component_to_list(component)
+
         for _component in component:
             component_instance = getattr(self, _component)
 
             # compute and assign surface areas of elements if missing
-            self._logger.debug('Surface areas of {} elements are missing, computing.'.format(_component))
+            self._logger.debug('Computing surface areas of {} elements.'.format(_component))
             component_instance.areas = component_instance.calculate_areas()
 
             # compute and assign polar radius if missing
-            self._logger.debug('Polar radius of {} component is missing, computing.'.format(_component))
+            self._logger.debug('Computing polar radius of {} component.'.format(_component))
             component_instance._polar_radius = self.calculate_polar_radius(
                 component=_component, components_distance=components_distance)
 
             # compute and assign potential gradient magnitudes for elements if missing
-            self._logger.debug('Potential gradient magnitudes distribution of {} component are missing, computing.'
+            self._logger.debug('Computing potential gradient magnitudes distribution of {} component.'
                                ''.format(_component))
             component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
                 component=_component, components_distance=components_distance)
@@ -1830,28 +1813,47 @@ class BinarySystem(System):
                     component=_component, components_distance=components_distance)
 
             # compute and assign temperature of elements
-            self._logger.debug('Computing effective temprature distibution of {} component.'.format(_component))
-            component_instance.temperatures = component_instance.calculate_effective_temperatures()
+            if colormap == 'temperature':
+                self._logger.debug('Computing effective temprature distibution of {} component.'.format(_component))
+                component_instance.temperatures = component_instance.calculate_effective_temperatures()
 
             if component_instance.spots:
                 for spot_index, spot in component_instance.spots.items():
-                    self._logger.debug('Surface areas of {} component / {} spot are missing, computing.'
-                                       ''.format(_component, spot_index))
+                    self._logger.debug('Calculating surface areas of {} component / {} spot.'.format(_component,
+                                                                                                     spot_index))
                     spot.areas = component_instance.calculate_areas()
 
-                    self._logger.debug('Distribution of potential gradient magnitudes of {} component / {} spot '
-                                       'is missing, computing.'.format(_component, spot_index))
+                    self._logger.debug('Calculating distribution of potential gradient magnitudes of {} component / '
+                                       '{} spot.'.format(_component, spot_index))
                     spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
                         component=_component,
                         components_distance=components_distance,
                         points=spot.points, faces=spot.faces)
 
-                    self._logger.debug('Computing temperature distribution of {} component / {} spot'
-                                       ''.format(_component, spot_index))
-                    spot.temperatures = \
-                        spot.temperature_factor * \
-                        component_instance.calculate_effective_temperatures(
-                            gradient_magnitudes=spot.potential_gradient_magnitudes)
+                    if colormap == 'temperature':
+                        self._logger.debug('Computing temperature distribution of {} component / {} spot'
+                                           ''.format(_component, spot_index))
+                        spot.temperatures = spot.temperature_factor * \
+                                            component_instance.calculate_effective_temperatures(
+                                                gradient_magnitudes=spot.potential_gradient_magnitudes)
+
+        if return_map:
+            return_map = {}
+            for _component in component:
+                component_instance = getattr(self, _component)
+                if colormap == 'gravity_acceleration':
+                    return_map[_component] = copy(component_instance.potential_gradient_magnitudes)
+                elif colormap == 'temperature':
+                    return_map[_component] = copy(component_instance.temperatures)
+
+                if component_instance.spots:
+                    for spot_index, spot in component_instance.spots.items():
+                        if colormap == 'gravity_acceleration':
+                            return_map[_component] = np.append(return_map[_component], spot.potential_gradient_magnitudes)
+                        elif colormap == 'temperature':
+                            return_map[_component] = np.append(return_map[_component], spot.temperatures)
+            return return_map
+        return
 
     def is_property(self, kwargs):
         """
