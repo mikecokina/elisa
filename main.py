@@ -9,40 +9,40 @@ from engine import utils
 from engine import const as c
 from time import time
 
-# spots_metadata = {
-#     "primary":
-#          [
-#          {"longitude": 90,
-#           "latitude": 58,
-#           "angular_density": 1,
-#           "angular_diameter": 5,
-#           "temperature_factor": 0.9},
-#          {"longitude": 70,
-#           "latitude": 80,
-#           "angular_density": 2,
-#           "angular_diameter": 30,
-#           "temperature_factor": 1.05},
-#          {"longitude": 45,
-#           "latitude": 90,
-#           "angular_density": 2,
-#           "angular_diameter": 30,
-#           "temperature_factor": 0.95},
-#          ],
-#
-#     "secondary":
-#         [
-#          {"longitude": 0,
-#           "latitude": 40,
-#           "angular_density": 1.0,
-#           "angular_diameter": 30,
-#           "temperature_factor": 1.1},
-#          {"longitude": 0,
-#           "latitude": 0,
-#           "angular_density": 1.5,
-#           "angular_diameter": 10,
-#           "temperature_factor": 0.9}
-#          ]
-#      }
+spots_metadata = {
+    "primary":
+         [
+         {"longitude": 90,
+          "latitude": 58,
+          "angular_density": 1,
+          "angular_diameter": 5,
+          "temperature_factor": 0.9},
+         {"longitude": 70,
+          "latitude": 80,
+          "angular_density": 2,
+          "angular_diameter": 30,
+          "temperature_factor": 1.05},
+         {"longitude": 45,
+          "latitude": 90,
+          "angular_density": 2,
+          "angular_diameter": 30,
+          "temperature_factor": 0.95},
+         ],
+
+    "secondary":
+        [
+         {"longitude": 0,
+          "latitude": 40,
+          "angular_density": 1.0,
+          "angular_diameter": 30,
+          "temperature_factor": 1.1},
+         {"longitude": 0,
+          "latitude": 0,
+          "angular_density": 1.5,
+          "angular_diameter": 10,
+          "temperature_factor": 0.9}
+         ]
+     }
 
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
@@ -51,22 +51,15 @@ primary = Star(mass=1.5*u.solMass,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                discretization_factor=10,
-               spots=[
-                   {
-                       "longitude": 45,
-                       "latitude": 45,
-                       "angular_density": 3,
-                       "angular_diameter": 20,
-                       "temperature_factor": 0.8
-                   }
-               ]
+               spots=spots_metadata['primary'],
 )
 secondary = Star(mass=0.9*u.solMass,
                  surface_potential=3.15,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=3)
+                 discretization_factor=10,
+                 spots=spots_metadata['secondary'])
 
 
 bs = BinarySystem(primary=primary,
@@ -151,8 +144,8 @@ bs.plot(descriptor='surface',
         phase=0,
         # components_to_plot='primary',
         # components_to_plot='secondary',
-        # edges=True,
+        edges=True,
         # normals=True,
         # colormap='gravity_acceleration')
         colormap='temperature')
-
+        # )

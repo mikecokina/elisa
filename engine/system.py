@@ -124,6 +124,14 @@ class System(object):
         return (solution, use) if condition(solution, *args, **kwargs) else (np.nan, False)
 
     def incorporate_spots_to_surface(self, component_instance=None, surface_fn=None, **kwargs):
+        # todo: documentation
+        """
+
+        :param component_instance:
+        :param surface_fn:
+        :param kwargs:
+        :return:
+        """
         if component_instance is None:
             raise ValueError('Object instance was not given.')
         if surface_fn is None:
@@ -318,5 +326,5 @@ class System(object):
 
         self._logger.debug("Changing value of parameter faces of object {}".format(component_instance.name))
         remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
-
         component_instance.faces = np.array(utils.remap(model["object"], remap_dict))
+

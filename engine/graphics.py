@@ -118,14 +118,8 @@ def single_star_mesh(**kwargs):
     Plot function for descriptor `mesh`, plots surface mesh of star in SingleStar system
 
     :param kwargs: dict
-                   keywords: `mesh` = surface points of the star in standard numpy array format:
-                                      numpy.array([[x1 y1 z1],
-                                                   [x2 y2 z2],
-                                                   ...
-                                                   [xN yN zN]])
-                             `axis_unit` = astropy.units.solRad - unit in which axis will be displayed, please use
+                   keywords:`axis_unit` = astropy.units.solRad - unit in which axis will be displayed, please use
                                                                  astropy.units format, default unit is solar radius
-                             `equatorial_radius': numpy.float - equatorial radius of the star in axis units
     :return:
     """
     fig = plt.figure()
@@ -189,8 +183,15 @@ def binary_mesh(**kwargs):
 
 def single_star_surface(**kwargs):
     """
-    Plot function for descriptor `surface`, plots surface of star in SingleStar system
-    :param kwargs:
+    Plot function for descriptor `surface` in SingleSystem plot function, plots surface of star in SingleStar system
+
+    :param kwargs: `axis_unit` - astropy.units.solRad : unit in which axis will be displayed, please use
+                                                        astropy.units format, default unit is solar radius
+                   `edges` - bool: if True edges of surface faces are visible
+                   `normals` - bool: if True surface faces outward facing normals are visible
+                   `colormap` - string: `temperature` - displays temperature surface colormap
+                                        `gravity_acceleration` - displays gravity acceleration colormap
+
     :return:
     """
     fig = plt.figure(figsize=(7, 7))
@@ -240,7 +241,7 @@ def binary_surface(**kwargs):
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
 
-    clr = 'none' if kwargs['colormap'] == 'transparent' else 'b'
+    clr = 'b'
 
     if kwargs['components_to_plot'] == 'primary':
         plot = ax.plot_trisurf(
@@ -331,5 +332,34 @@ def binary_surface(**kwargs):
     ax.set_xlim3d(x_min, x_max)
     ax.set_ylim3d(-D, D)
     ax.set_zlim3d(-D, D)
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
+    plt.show()
+
+
+def single_star_wireframe(**kwargs):
+    """
+    Plot function for descriptor `wireframe` in SingleSystem, plots wireframe model of single system star
+
+    :param kwargs: `axis_unit` = astropy.units.solRad - unit in which axis will be displayed, please use
+                                                                 astropy.units format, default unit is solar radius
+
+    :return:
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    star_plot = ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2],
+                                triangles=kwargs['triangles'], antialiased=True, color='none')
+    star_plot.set_edgecolor('black')
+
+    ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
+    ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
+    ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
+    ax.set_aspect('equal', adjustable='box')
+    unit = str(kwargs['axis_unit'])
+    x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_zlabel(z_label)
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()

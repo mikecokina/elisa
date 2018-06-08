@@ -515,7 +515,7 @@ class SingleSystem(System):
         triangles_indices = triangulation.convex_hull
         return triangles_indices
 
-    def surface(self):
+    def build_surface_with_no_spots(self):
         """
         function is calling surface building function for single systems without spots and assigns star's surface to star object as
         its property
@@ -552,12 +552,20 @@ class SingleSystem(System):
             method_to_call = graphics.single_star_mesh
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
 
-            if self.star.points is None:
-                self.star.points = self.mesh()
-            kwargs['mesh'] = copy(self.star.points)
+            kwargs['mesh'], _ = self.build_surface(return_surface=True)
             denominator = (1*kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])
+
+        elif descriptor == 'wireframe':
+            KWARGS = ['axis_unit']
+            method_to_call = graphics.single_star_wireframe
+            utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
+
+            kwargs['mesh'], kwargs['triangles'] = self.build_surface(return_surface=True)
+            denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
+            kwargs['mesh'] /= denominator
+            kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
         elif descriptor == 'surface':
             KWARGS = ['axis_unit', 'edges', 'normals', 'colormap']
@@ -568,65 +576,50 @@ class SingleSystem(System):
             kwargs['normals'] = kwargs.get('normals', False)
             kwargs['colormap'] = kwargs.get('colormap', None)
 
-            kwargs['mesh'] = self.build_mesh()
+            kwargs['mesh'], kwargs['triangles'] = self.build_surface(return_surface=True)
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
-
-            self.build_surface()
-            kwargs['triangles'] = self.star.faces
             kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
 
-            if kwargs['colormap'] == 'temperature':
-                kwargs['cmap'] = self.build_surface_map(colormap='temperature')
-            elif kwargs['colormap'] == 'gravity_acceleration':
-                kwargs['cmap'] = self.build_surface_map(colormap='gravity_acceleration')
-
-            # if self.star.spots:
-            #     for spot_index, spot in self.star.spots.items():
-            #         n_points = np.shape(kwargs['mesh'])[0]
-            #         kwargs['mesh'] = np.append(kwargs['mesh'], spot.points / denominator, axis=0)
-            #         kwargs['triangles'] = np.append(kwargs['triangles'], spot.faces + n_points, axis=0)
-            #
-            #         if kwargs['colormap'] == 'temperature':
-            #             kwargs['cmap'] = np.append(kwargs['cmap'], spot.temperatures)
-            #         elif kwargs['colormap'] == 'gravity_acceleration':
-            #             kwargs['cmap'] = np.append(kwargs['cmap'], spot.potential_gradient_magnitudes)
-
+            if kwargs['colormap'] is not None:
+                kwargs['cmap'] = self.build_surface_map(colormap=kwargs['colormap'])
             if kwargs['normals']:
                 kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'])
                 kwargs['centres'] = self.star.calculate_surface_centres(points=kwargs['mesh'],
                                                                         faces=kwargs['triangles'])
+
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 
         method_to_call(**kwargs)
 
-    def build_mesh(self):
-        self.star.points = self.mesh()
-        retMesh = copy(self.star.points)
-        if self.star.spots:
-            for spot_index, spot in self.star.spots.items():
-                n_points = np.shape(retMesh)[0]
-                retMesh = np.append(retMesh, spot.points, axis=0)
-        return retMesh
-
-    def build_surface(self):
+    def build_surface(self, return_surface=False):
         """
-        function for building of general single star component surfaces including spots
+        function for building of general system component surfaces including spots
 
+        :param return_surface: bool - if true, function returns arrays with all points and faces (surface + spots)
         :param component: specify component, use `primary` or `secondary`
         :type: str
         :return:
         """
-        component_instance = self.star
-
         # build surface if there is no spot specified
-        if not component_instance.spots:
-            self.surface()
-            return
+        self.star.points = self.mesh()
+        if not self.star.spots:
+            self.build_surface_with_no_spots()
+            if return_surface:
+                return self.star.points, self.star.faces
+            else:
+                return
 
-        component_instance.points = self.mesh()
-        self.incorporate_spots_to_surface(component_instance=component_instance, surface_fn=self.surface)
+        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_no_spots)
+        if return_surface:
+            ret_points = copy(self.star.points)
+            ret_faces = copy(self.star.faces)
+            for spot_index, spot in self.star.spots.items():
+                n_points = np.shape(ret_points)[0]
+                ret_faces = np.append(ret_faces, spot.faces+n_points, axis=0)
+                ret_points = np.append(ret_points, spot.points, axis=0)
+            return ret_points, ret_faces
 
     def build_surface_map(self, colormap=None):
         """

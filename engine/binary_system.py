@@ -33,6 +33,7 @@ from engine import graphics
 from engine import units
 import scipy
 from scipy.spatial import Delaunay
+from copy import copy
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -1546,34 +1547,65 @@ class BinarySystem(System):
                 if self.morphology == 'over-contact' \
                 else self.detached_system_surface(component=_component)
 
-    def build_surface(self, component=None):
+    def build_surface(self, components_distance=None, component=None, return_surface=False):
         """
         function for building of general binary star component surfaces including spots
 
+        :param return_surface: bool - if true, function returns dictionary of arrays with all points and faces
+                                      (surface + spots) for each component
+        :param components_distance: distance between components
         :param component: specify component, use `primary` or `secondary`
-        :type: str
         :return:
         """
+        if not components_distance:
+            raise ValueError('components_distance value was not provided.')
         component = self._component_to_list(component)
+
+        if return_surface: ret_points, ret_faces = {}, {}
 
         for _component in component:
             component_instance = getattr(self, _component)
 
             # build surface if there is no spot specified
+            self.build_mesh(component=_component, components_distance=components_distance)
+            self.build_surface_with_no_spots(_component)
             if not component_instance.spots:
-                self.build_surface_with_no_spots(_component)
+                if return_surface:
+                    ret_points[_component] = copy(component_instance.points)
+                    ret_faces[_component] = copy(component_instance.faces)
                 continue
 
             self.incorporate_spots_to_surface(component_instance=component_instance,
                                               surface_fn=self.build_surface_with_no_spots,
                                               component=_component)
+            if return_surface:
+                ret_points[_component] = copy(component_instance.points)
+                ret_faces[_component] = copy(component_instance.faces)
+                for spot_index, spot in component_instance.spots.items():
+                    n_points = np.shape(ret_points[_component])[0]
+                    ret_points[_component] = np.append(ret_points[_component], spot.points, axis=0)
+                    ret_faces[_component] = np.append(ret_faces[_component], spot.faces + n_points, axis=0)
+
+        if return_surface:
+            return ret_points, ret_faces
+        else:
+            return
 
     @staticmethod
     def _component_to_list(component):
+        """
+        converts component name string into list
+
+        :param component: if None, `['primary', 'secondary']` will be returned
+                          otherwise `primary` and `secondary` will be converted into lists [`primary`] and [`secondary`]
+        :return:
+        """
         if not component:
             component = ['primary', 'secondary']
-        if isinstance(component, str):
+        elif component in ['primary', 'secondary']:
             component = [component]
+        else:
+            raise ValueError('Invalid name of the component. Use `primary` or `secondary`.')
         return component
 
     # todo: needs rework
@@ -1703,13 +1735,10 @@ class BinarySystem(System):
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
-                if self.primary.points is None:
-                    self.build_mesh(component='primary', components_distance=components_distance)
-                if self.primary.faces is None:
-                    self.build_surface(component='primary')
-
-                kwargs['points_primary'] = self.primary.points
-                kwargs['primary_triangles'] = self.primary.faces
+                points, faces = self.build_surface(component='primary', components_distance=components_distance,
+                                                   return_surface=True)
+                kwargs['points_primary'] = points['primary']
+                kwargs['primary_triangles'] = faces['primary']
 
                 self.build_temperature_distribution(component='primary', components_distance=components_distance)
                 if kwargs['colormap'] == 'temperature':
@@ -1721,10 +1750,6 @@ class BinarySystem(System):
 
                 if self.primary.spots:
                     for spot_index, spot in self.primary.spots.items():
-                        n_points = list(np.shape(kwargs['points_primary']))[0]
-                        kwargs['points_primary'] = np.append(kwargs['points_primary'], spot.points, axis=0)
-                        kwargs['primary_triangles'] = np.append(kwargs['primary_triangles'], spot.faces + n_points,
-                                                                axis=0)
                         if kwargs['colormap'] == 'temperature':
                             kwargs['primary_cmap'] = np.append(kwargs['primary_cmap'], spot.temperatures)
                         elif kwargs['colormap'] == 'gravity_acceleration':
@@ -1739,13 +1764,10 @@ class BinarySystem(System):
                         kwargs['points_primary'], kwargs['primary_triangles'])
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
-                if self.secondary.points is None:
-                    self.build_mesh(component='secondary', components_distance=components_distance)
-                if self.secondary.faces is None:
-                    self.build_surface(component='secondary')
-
-                kwargs['points_secondary'] = self.secondary.points
-                kwargs['secondary_triangles'] = self.secondary.faces
+                points, faces = self.build_surface(component='secondary', components_distance=components_distance,
+                                                   return_surface=True)
+                kwargs['points_secondary'] = points['secondary']
+                kwargs['secondary_triangles'] = faces['secondary']
 
                 self.build_temperature_distribution(
                     component='secondary', components_distance=components_distance)
@@ -1758,10 +1780,6 @@ class BinarySystem(System):
 
                 if self.secondary.spots:
                     for spot_index, spot in self.secondary.spots.items():
-                        n_points = np.shape(kwargs['points_secondary'])[0]
-                        kwargs['points_secondary'] = np.append(kwargs['points_secondary'], spot.points, axis=0)
-                        kwargs['secondary_triangles'] = np.append(kwargs['secondary_triangles'], spot.faces + n_points,
-                                                                  axis=0)
                         if kwargs['colormap'] == 'temperature':
                             kwargs['secondary_cmap'] = np.append(kwargs['secondary_cmap'], spot.temperatures)
                         elif kwargs['colormap'] == 'gravity_acceleration':
@@ -1797,7 +1815,7 @@ class BinarySystem(System):
 
             # compute and assign polar radius if missing
             self._logger.debug('Polar radius of {} component is missing, computing.'.format(_component))
-            component_instance.polar_radius = self.calculate_polar_radius(
+            component_instance._polar_radius = self.calculate_polar_radius(
                 component=_component, components_distance=components_distance)
 
             # compute and assign potential gradient magnitudes for elements if missing
