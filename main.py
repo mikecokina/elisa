@@ -33,14 +33,14 @@ spots_metadata = {
         [
          {"longitude": 0,
           "latitude": 40,
-          "angular_density": 1.0,
+          "angular_density": 2,
           "angular_diameter": 30,
-          "temperature_factor": 1.1},
+          "temperature_factor": 1.01},
          {"longitude": 0,
           "latitude": 0,
-          "angular_density": 1.5,
+          "angular_density": 1,
           "angular_diameter": 10,
-          "temperature_factor": 0.9}
+          "temperature_factor": 0.98}
          ]
      }
 
@@ -55,13 +55,12 @@ primary = Star(mass=1.5*u.solMass,
                )
 secondary = Star(mass=0.9*u.solMass,
                  surface_potential=3.15,
-                 synchronicity=1.0,
+                 synchronicity=1.2,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
                  discretization_factor=5,
                  spots=spots_metadata['secondary'],
                  )
-
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
@@ -78,75 +77,29 @@ bs = BinarySystem(primary=primary,
 # bs.build_temperature_distribution(components_distance=1.0)
 # bs.evaluate_normals()
 
-# bs.evaluate_normals()
-# print(primary.potential_gradient_magnitudes)
-# print(primary.polar_potential_gradient_magnitude)
-
-
-
-# bs.evaluate_normals()
-# primary.calculate_effective_temperatures()
-
-
-
-# phase = 0
-# components_distance = bs.orbit.orbital_motion(phase=phase)[0][0]
-# pc = bs.critical_potential(component="primary", components_distance=components_distance)
-# sc = bs.critical_potential(component="secondary", components_distance=components_distance)
-# print('Critical potentials: {0}, {1}'.format(pc, sc))
-#
-# component = 'primary'
-# phase = 0
-
-# print(bs.primary.spots)
-#
-# bs.build_mesh(component=component)
-# bs.evaluate_normals(component=component, component_distance=components_distance)
-# bs.build_surface(component=component)
-# component = 'secondary'
-# bs.build_mesh(component=component)
-# bs.evaluate_normals(component=component, component_distance=components_distance)
-# bs.build_surface(component=component)
-
-# if True:
-#     component_instance = getattr(bs, component)
-#     component_instance.points = bs.mesh_over_contact(component=component)
-#     idx = np.argmax(component_instance.points[:, 2])
-#     component_instance.faces = bs.over_contact_surface(component=component)
-#     component_instance.polar_radius = bs.calculate_polar_radius(component=component,
-#                                                                 components_distance=components_distance)
-#     component_instance.areas = component_instance.calculate_areas()
-#     component_instance.potential_gradients = bs.calculate_face_magnitude_gradient(component=component,
-#                                                                                   components_distance=components_distance)
-#     component_instance.polar_potential_gradient = \
-#         bs.calculate_polar_potential_gradient_magnitude(component=component, components_distance=components_distance)
-#     component_instance.temperatures = component_instance.calculate_effective_temperatures()
-#     print(component_instance.temperatures)
-
-# print(component_instance.temperatures)
-
-# print(bs.morphology)
-# print("[{0:0.15f}, {1:0.15f}]".format(pc, sc))
-
-# bs.plot('equipotential', plane="xy", phase=bs.orbit.periastron_phase)
-
-# bs.argument_of_periastron = 135*u.deg
-# bs.eccentricity = 0.3
-# bs.inclination = 85*u.deg
-# bs.init()
 
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
-# bs.plot(descriptor='mesh', components_to_plot='both')
-# bs.plot(descriptor='surface',
-#         phase=0,
+# bs.plot(descriptor='mesh',
+        # components_to_plot='primary',
+        # components_to_plot='secondary',
+        # plot_axis=False
+        # )
+# bs.plot(descriptor='wireframe',
+        # components_to_plot='primary',
+        # components_to_plot='secondary',
+        # plot_axis=False
+        # )
+bs.plot(descriptor='surface',
+        phase=0,
         # components_to_plot='primary',
         # components_to_plot='secondary',
         # edges=True,
         # normals=True,
-        # colormap='gravity_acceleration')
-        # colormap='temperature')
-        # )
+        # colormap='gravity_acceleration',
+        colormap='temperature',
+        plot_axis=False,
+        )

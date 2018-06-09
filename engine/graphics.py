@@ -129,11 +129,14 @@ def single_star_mesh(**kwargs):
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_aspect('equal', adjustable='box')
-    unit = str(kwargs['axis_unit'])
-    x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
-    ax.set_zlabel(z_label)
+    if kwargs['plot_axis']:
+        unit = str(kwargs['axis_unit'])
+        x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_zlabel(z_label)
+    else:
+         ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
 
@@ -158,9 +161,6 @@ def binary_mesh(**kwargs):
         ax.scatter(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1], kwargs['points_secondary'][:, 2],
                    s=2, label='secondary', alpha=1.0)
     ax.legend(loc=1)
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
 
     x_min, x_max = 0, 0
     if kwargs['components_to_plot'] == 'both':
@@ -177,6 +177,13 @@ def binary_mesh(**kwargs):
     ax.set_xlim3d(x_min, x_max)
     ax.set_ylim3d(-D, D)
     ax.set_zlim3d(-D, D)
+
+    if kwargs['plot_axis']:
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+    else:
+        ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
 
@@ -221,12 +228,14 @@ def single_star_surface(**kwargs):
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
 
-    unit = str(kwargs['axis_unit'])
-    x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
-    ax.set_zlabel(z_label)
-
+    if kwargs['plot_axis']:
+        unit = str(kwargs['axis_unit'])
+        x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_zlabel(z_label)
+    else:
+         ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
 
@@ -313,10 +322,6 @@ def binary_surface(**kwargs):
             colorbar = fig.colorbar(plot, shrink=0.7)
             colorbar.set_label('Normalized gravity acceleration')
 
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-
     x_min, x_max = 0, 0
     if kwargs['components_to_plot'] == 'both':
         x_min = np.min(kwargs['points_primary'][:, 0])
@@ -332,6 +337,14 @@ def binary_surface(**kwargs):
     ax.set_xlim3d(x_min, x_max)
     ax.set_ylim3d(-D, D)
     ax.set_zlim3d(-D, D)
+
+    if kwargs['plot_axis']:
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+    else:
+         ax.set_axis_off()
+
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
 
@@ -356,10 +369,68 @@ def single_star_wireframe(**kwargs):
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_aspect('equal', adjustable='box')
-    unit = str(kwargs['axis_unit'])
-    x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
-    ax.set_zlabel(z_label)
+    if kwargs['plot_axis']:
+        unit = str(kwargs['axis_unit'])
+        x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_zlabel(z_label)
+    else:
+        ax.set_axis_off()
+    plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
+    plt.show()
+
+
+def binary_wireframe(**kwargs):
+    fig = plt.figure(figsize=(7, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_aspect('equal')
+
+    if kwargs['components_to_plot'] == 'primary':
+        plot = ax.plot_trisurf(
+            kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
+            kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
+            antialiased=True, shade=False, color='none')
+
+    elif kwargs['components_to_plot'] == 'secondary':
+        plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
+                               kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
+                               antialiased=True, shade=False, color='none')
+
+    elif kwargs['components_to_plot'] == 'both':
+        points = np.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
+        triangles = np.concatenate((kwargs['primary_triangles'],
+                                    kwargs['secondary_triangles'] + np.shape(kwargs['points_primary'])[0]), axis=0)
+
+        plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
+                               shade=False, color='none')
+
+    else:
+        raise ValueError('Invalid value of keyword argument `components_to_plot`. '
+                         'Expected values are: `primary`, `secondary` or `both`')
+
+    plot.set_edgecolor('black')
+
+    x_min, x_max = 0, 0
+    if kwargs['components_to_plot'] == 'both':
+        x_min = np.min(kwargs['points_primary'][:, 0])
+        x_max = np.max(kwargs['points_secondary'][:, 0])
+    elif kwargs['components_to_plot'] == 'primary':
+        x_min = np.min(kwargs['points_primary'][:, 0])
+        x_max = np.max(kwargs['points_primary'][:, 0])
+    elif kwargs['components_to_plot'] == 'secondary':
+        x_min = np.min(kwargs['points_secondary'][:, 0])
+        x_max = np.max(kwargs['points_secondary'][:, 0])
+
+    D = (x_max - x_min) / 2
+    ax.set_xlim3d(x_min, x_max)
+    ax.set_ylim3d(-D, D)
+    ax.set_zlim3d(-D, D)
+    if kwargs['plot_axis']:
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+    else:
+        ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()

@@ -1717,27 +1717,52 @@ class BinarySystem(System):
             kwargs['points_secondary'] = points_secondary
 
         elif descriptor == 'mesh':
-            KWARGS = ['phase', 'components_to_plot']
+            KWARGS = ['phase', 'components_to_plot', 'plot_axis']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
             method_to_call = graphics.binary_mesh
 
             kwargs['phase'] = kwargs.get('phase', 0)
             kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
+            kwargs['plot_axis'] = kwargs.get('plot_axis', True)
 
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
-                if self.primary.points is None:
-                    self.build_mesh(component='primary', components_distance=components_distance)
-                kwargs['points_primary'] = self.primary.points
+                points, _ = self.build_surface(component='primary', components_distance=components_distance,
+                                               return_surface=True)
+                kwargs['points_primary'] = points['primary']
+                # self.build_mesh(component='primary', components_distance=components_distance)
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
-                if self.secondary.points is None:
-                    self.build_mesh(component='secondary', components_distance=components_distance)
-                kwargs['points_secondary'] = self.secondary.points
+                points, _ = self.build_surface(component='secondary', components_distance=components_distance,
+                                               return_surface=True)
+                kwargs['points_secondary'] = points['secondary']
+                # self.build_mesh(component='secondary', components_distance=components_distance)
+
+        elif descriptor == 'wireframe':
+            KWARGS = ['phase', 'components_to_plot', 'plot_axis']
+            utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
+            method_to_call = graphics.binary_wireframe
+
+            kwargs['phase'] = kwargs.get('phase', 0)
+            kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
+            kwargs['plot_axis'] = kwargs.get('plot_axis', True)
+
+            components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
+
+            if kwargs['components_to_plot'] in ['primary', 'both']:
+                points, faces = self.build_surface(component='primary', components_distance=components_distance,
+                                                   return_surface=True)
+                kwargs['points_primary'] = points['primary']
+                kwargs['primary_triangles'] = faces['primary']
+            if kwargs['components_to_plot'] in ['secondary', 'both']:
+                points, faces = self.build_surface(component='secondary', components_distance=components_distance,
+                                                   return_surface=True)
+                kwargs['points_secondary'] = points['secondary']
+                kwargs['secondary_triangles'] = faces['secondary']
 
         elif descriptor == 'surface':
-            KWARGS = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap']
+            KWARGS = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.binary_surface
@@ -1747,6 +1772,7 @@ class BinarySystem(System):
             kwargs['normals'] = kwargs.get('normals', False)
             kwargs['edges'] = kwargs.get('edges', False)
             kwargs['colormap'] = kwargs.get('colormap', None)
+            kwargs['plot_axis'] = kwargs.get('plot_axis', True)
 
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
