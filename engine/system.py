@@ -127,6 +127,10 @@ class System(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def build_faces(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
     def build_surface(self, *args, **kwargs):
         pass
 
