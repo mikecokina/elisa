@@ -11,13 +11,12 @@ from scipy.spatial import KDTree
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 
-class System(object):
+class System(metaclass=ABCMeta):
     """
     Abstract class defining System
     see https://docs.python.org/3.5/library/abc.html for more informations
     """
 
-    __metaclass__ = ABCMeta
 
     ID = 1
     KWARGS = []
@@ -122,6 +121,18 @@ class System(object):
             use = False
 
         return (solution, use) if condition(solution, *args, **kwargs) else (np.nan, False)
+
+    @abstractmethod
+    def build_mesh(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def build_surface(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def build_surface_map(self, *args, **kwargs):
+        pass
 
     def incorporate_spots_to_surface(self, component_instance=None, surface_fn=None, **kwargs):
         # todo: documentation

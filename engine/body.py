@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from astropy import units as u
 import numpy as np
 import logging
@@ -9,14 +9,13 @@ from engine import utils
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 
-class Body(object, metaclass=ABCMeta):
+class Body(metaclass=ABCMeta):
     """
     Abstract class defining bodies that can be modelled by this software
     see https://docs.python.org/3.5/library/abc.html for more informations
     units are imported from astropy.units module
     see documentation http://docs.astropy.org/en/stable/units/
     """
-    __metaclass__ = ABCMeta
 
     ID = 1
     KWARGS = []
