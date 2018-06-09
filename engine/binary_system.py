@@ -204,7 +204,8 @@ class BinarySystem(System):
                 x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
 
                 # number of points in latitudal direction
-                num_radial = int((diameter * 0.5) // alpha)
+                # + 1 to obtain same discretization as object itself
+                num_radial = int(np.round((diameter * 0.5) / alpha)) + 1
                 self._logger.debug('Number of rings in spot {} is {}'.format(spot_instance.kwargs_serializer(),
                                                                              num_radial))
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
