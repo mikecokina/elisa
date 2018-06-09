@@ -9,6 +9,7 @@ from engine import utils
 from engine import const as c
 from time import time
 
+# todo: spots order
 spots_metadata = {
     "primary":
          [

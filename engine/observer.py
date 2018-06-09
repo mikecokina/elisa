@@ -6,8 +6,9 @@ from os.path import dirname
 
 
 class Observer(object):
-    def __init__(self, passband):
+    def __init__(self, passband, observe):
         self._passband = passband
+        self._observe = observe
 
     @property
     def passband(self):
@@ -35,6 +36,9 @@ class Observer(object):
     @classmethod
     def limb_darkening_sqrt(cls, gamma, xsqrt, ysqrt):
         return 1.0 - (xsqrt * (1.0 - abs(np.cos(gamma)))) - (ysqrt * (1.0 - np.sqrt(abs(np.cos(gamma)))))
+
+    def compute_lightcurve(self):
+        pass
 
 
 if __name__ == '__main__':
