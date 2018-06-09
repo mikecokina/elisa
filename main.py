@@ -99,13 +99,13 @@ spots_metadata = {
         [
          {"longitude": 0,
           "latitude": 40,
-          "angular_density": 3,
+          "angular_density": 10,
           "angular_diameter": 30,
           "temperature_factor": 1.1},
          {"longitude": 0,
           "latitude": 0,
-          "angular_density": 1,
-          "angular_diameter": 10,
+          "angular_density": 10,
+          "angular_diameter": 20,
           "temperature_factor": 0.98}
          ]
      }
@@ -124,7 +124,7 @@ secondary = Star(mass=0.9*u.solMass,
                  synchronicity=1.2,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=3,
+                 discretization_factor=10,
                  spots=spots_metadata['secondary'],
                  )
 
@@ -137,17 +137,6 @@ bs = BinarySystem(primary=primary,
                   inclination=90*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0)
-
-bs.plot(descriptor='surface',
-        phase=0,
-        # components_to_plot='primary',
-        components_to_plot='secondary',
-        edges=True,
-        # normals=True,
-        # colormap='gravity_acceleration',
-        colormap='temperature',
-        plot_axis=False,
-        )
 
 
 # bs.build_mesh()
@@ -174,8 +163,8 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 bs.plot(descriptor='surface',
         phase=0,
         # components_to_plot='primary',
-        # components_to_plot='secondary',
-        # edges=True,
+        components_to_plot='secondary',
+        edges=True,
         # normals=True,
         # colormap='gravity_acceleration',
         colormap='temperature',

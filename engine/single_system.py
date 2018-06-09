@@ -690,3 +690,9 @@ class SingleSystem(System):
         build points of surface for star!!! w/o spots yet !!!
         """
         self.star.points = self.mesh()
+
+    def compute_lc(self):
+        pass
+
+    def get_info(self):
+        pass
