@@ -125,6 +125,10 @@ class Star(Body):
         """
         return self._polar_radius
 
+    @polar_radius.setter
+    def polar_radius(self, polar_radius):
+        self._polar_radius = polar_radius
+
     @property
     def side_radius(self):
         """
