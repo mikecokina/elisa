@@ -1517,7 +1517,7 @@ class BinarySystem(System):
 
     def build_mesh(self, component=None, components_distance=None):
         """
-        build point surface of primary or/and secondary component !!! w/o spots yet !!!
+        build points of surface for primary or/and secondary component !!! w/o spots yet !!!
 
         :param component: str or empty
         :param components_distance: float
@@ -1526,7 +1526,8 @@ class BinarySystem(System):
         component = self._component_to_list(component)
 
         for _component in component:
-            components_distance = 1 - self.eccentricity if components_distance is None else components_distance
+            components_distance = 1 - self.eccentricity if components_distance is None else components_distance  # tu by
+            #  som radsej raisol error ze nie je dodana ako pocitat s ad hoc hodnotou, a moze to byt aj mimo cyklu
             component_instance = getattr(self, _component)
             component_instance.points = self.mesh_over_contact(component=_component) \
                 if self.morphology == 'over-contact' \
@@ -1547,6 +1548,22 @@ class BinarySystem(System):
                 if self.morphology == 'over-contact' \
                 else self.detached_system_surface(component=_component)
 
+    def build_faces(self, component=None):
+        """
+        function creates faces of the star surface for given components provided you already calculated surface points
+        of the component
+
+        :param component: `primary` or `secondary` if not supplied both components are calculated
+        :return:
+        """
+        component = self._component_to_list(component)
+        for _component in component:
+            component_instance = getattr(self, _component)
+            self.build_surface_with_no_spots(_component)
+            self.incorporate_spots_to_surface(component_instance=component_instance,
+                                              surface_fn=self.build_surface_with_no_spots,
+                                              component=_component)
+
     def build_surface(self, components_distance=None, component=None, return_surface=False):
         """
         function for building of general binary star component surfaces including spots
@@ -1560,7 +1577,6 @@ class BinarySystem(System):
         if not components_distance:
             raise ValueError('components_distance value was not provided.')
         component = self._component_to_list(component)
-
         if return_surface: ret_points, ret_faces = {}, {}
 
         for _component in component:

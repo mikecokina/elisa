@@ -499,7 +499,7 @@ class SingleSystem(System):
 
     def single_surface(self):
         """
-        calculates triangulation of the given surface points, returns set of triple indices of surface pints that make
+        calculates triangulation of the star surface points, returns set of triple indices of surface pints that make
         up given triangle
 
         :param vertices: np.array: numpy.array([[x1 y1 z1],
@@ -593,9 +593,21 @@ class SingleSystem(System):
 
         method_to_call(**kwargs)
 
+    def build_faces(self):
+        """
+        function creates faces of the star surface provided you already calculated surface points of the star
+
+        :return:
+        """
+        # build surface if there is no spot specified
+        if not self.star.spots:
+            self.build_surface_with_no_spots()
+
+        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_no_spots)
+
     def build_surface(self, return_surface=False):
         """
-        function for building of general system component surfaces including spots
+        function for building of general system component points and surfaces including spots
 
         :param return_surface: bool - if true, function returns arrays with all points and faces (surface + spots)
         :param component: specify component, use `primary` or `secondary`
@@ -667,3 +679,9 @@ class SingleSystem(System):
                         ret_list = np.append(ret_list, spot.potential_gradient_magnitudes)
             return ret_list
         return
+
+    def build_mesh(self):
+        """
+        build points of surface for star!!! w/o spots yet !!!
+        """
+        self.star.points = self.mesh()
