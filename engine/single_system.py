@@ -159,7 +159,7 @@ class SingleSystem(System):
             x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
 
             # number of points in latitudal direction
-            num_radial = int((diameter * 0.5) // alpha)
+            num_radial = int(np.round((diameter * 0.5) / alpha)) + 1
             thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
             num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
