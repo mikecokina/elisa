@@ -106,6 +106,7 @@ class SingleSystem(System):
 
         :return:
         """
+        # fixme: it's not crutial, but this function and same function in binary system should on the same place
         def solver_condition(x, *_args, **_kwargs):
             return True
 
