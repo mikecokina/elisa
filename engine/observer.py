@@ -8,7 +8,7 @@ from os.path import dirname
 class Observer(object):
     def __init__(self, passband, observe):
         self._passband = passband
-        self._observe = observe
+        self._observe = observe  # co je observe?
 
     @property
     def passband(self):

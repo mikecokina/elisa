@@ -99,6 +99,7 @@ class BinarySystem(System):
         # orbit initialisation
         self.init_orbit()
 
+        # everything below this shouldn't stay here forever
         # binary star morphology estimation
         self._morphology = self._estimate_morphology()
 
