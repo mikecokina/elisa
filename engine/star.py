@@ -260,6 +260,15 @@ class Star(Body):
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), Star.__name__))
 
-    def add_pulsations(self, points=None, faces=None):
-        points = self.points if points is None else points
-        faces = self.faces if faces is None else faces
+    def add_pulsations(self, points=None, faces=None, temperatures=None):
+        if points is not None:
+            self.points
+            if faces is None or temperatures is None:
+                raise ValueError('`points` argument is not None but `faces` or `temperature` is. Please supply the '
+                                 'missing keyword arguments')
+        else:
+            points = self.points
+            faces = self.faces
+            temperatures = self.temperatures
+
+

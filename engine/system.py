@@ -372,4 +372,3 @@ class System(metaclass=ABCMeta):
         self._logger.debug("Changing value of parameter faces of object {}".format(component_instance.name))
         remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
         component_instance.faces = np.array(utils.remap(model["object"], remap_dict))
-
