@@ -1,9 +1,12 @@
 from engine.body import Body
 from engine.spot import Spot
 from engine.pulsations import PulsationMode
+from engine import utils
 from astropy import units as u
 import numpy as np
 import logging
+from copy import copy
+from scipy.special import sph_harm
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -267,8 +270,16 @@ class Star(Body):
                 raise ValueError('`points` argument is not None but `faces` or `temperature` is. Please supply the '
                                  'missing keyword arguments')
         else:
-            points = self.points
-            faces = self.faces
-            temperatures = self.temperatures
+            points = copy(self.points)
+            faces = copy(self.faces)
+            temperatures = copy(self.temperatures)
+
+        surface_centers = self.calculate_surface_centres(points, faces)
+        centres_r, centres_phi, centres_theta = utils.cartesian_to_spherical(surface_centers[:, 0], surface_centers[:, 1],
+                                                                          surface_centers[:, 2])
+        for pulsation_index, pulsation in self.pulsations.items():
+            spherical_harmonics = sph_harm(pulsation.m, pulsation.l, centres_theta, centres_phi)
+            # points_temperature_perturbation = pulsation.amplitude *
+
 
 
