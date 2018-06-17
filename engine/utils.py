@@ -62,7 +62,9 @@ def cartesian_to_spherical(x, y, z, degrees=False):
         back_transformation = True
         x, y, z = np.array([x]), np.array([y]), np.array([z])
 
-    r = np.linalg.norm([x, y, z], axis=1)
+    points = np.column_stack((x, y, z))
+
+    r = np.linalg.norm(points, axis=1)
 
     np.seterr(divide='ignore', invalid='ignore')
     phi = np.arcsin(y / (np.linalg.norm([x, y])))  # vypocet azimutalneho (rovinneho) uhla
