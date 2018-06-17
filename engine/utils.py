@@ -57,7 +57,12 @@ def cartesian_to_spherical(x, y, z, degrees=False):
     :return: tuple ((np.)float, (np.)float, (np.)float); (r, phi, theta)
     """
 
-    r = np.linalg.norm([x, y, z])
+    back_transformation = False
+    if not isinstance(x, np.ndarray):
+        back_transformation = True
+        x, y, z = np.array([x]), np.array([y]), np.array([z])
+
+    r = np.linalg.norm([x, y, z], axis=1)
 
     np.seterr(divide='ignore', invalid='ignore')
     phi = np.arcsin(y / (np.linalg.norm([x, y])))  # vypocet azimutalneho (rovinneho) uhla
@@ -69,6 +74,9 @@ def cartesian_to_spherical(x, y, z, degrees=False):
 
     signtest = x < 0
     phi[signtest] = np.pi - phi[signtest]
+
+    if back_transformation:
+        r, phi, theta = r[0], phi[0], theta[0]
 
     return (r, phi, theta) if not degrees else (r, np.degrees(phi), np.degrees(theta))
 

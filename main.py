@@ -213,14 +213,13 @@ spots_metadata = [{"longitude": 30,
                    "temperature_factor": 0.995},
                   ]
 #
-pulsations = [{'n': 1, 'l': 1, 'm': 1, 'amplitude': 50*u.K}]
+# pulsations = [{'n': 1, 'l': 1, 'm': 1, 'amplitude': 50*u.K}]
 #
 start_time = time()
 s = Star(mass=1.0*u.solMass,
          t_eff=5774*u.K,
          gravity_darkening=0.32,
          discretization_factor=5,
-         pulsations=pulsations,
          spots=spots_metadata,
          )
 
