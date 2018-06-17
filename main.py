@@ -212,9 +212,9 @@ spots_metadata = [{"longitude": 30,
                    "angular_diameter": 30,
                    "temperature_factor": 0.995},
                   ]
-
+#
 pulsations = [{'n': 1, 'l': 1, 'm': 1, 'amplitude': 50*u.K}]
-
+#
 start_time = time()
 s = Star(mass=1.0*u.solMass,
          t_eff=5774*u.K,
@@ -233,8 +233,8 @@ single = SingleSystem(star=s,
 single.gamma = 55*u.km/u.s
 single.init()
 
-# single.build_mesh()
-# single.build_faces()
+single.build_mesh()
+single.build_faces()
 
 # print(s.equatorial_radius*U.DISTANCE_UNIT.to(u.solRad))
 #

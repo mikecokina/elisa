@@ -192,6 +192,8 @@ class System(metaclass=ABCMeta):
             if len(vertices_to_remove) != 0:
                 _points = []
                 _vertices_map = []
+                # _vertices_map = {}
+                # m_ix = 0
 
                 for ix, vertex in list(zip(range(0, len(points)), points)):
                     if ix in vertices_to_remove:
@@ -240,8 +242,7 @@ class System(metaclass=ABCMeta):
                                           range(component_instance.faces.shape[0]))):
 
             # test if each point belongs to spot
-            if vertices_map[simplex[0]]["type"] == "spot" and vertices_map[simplex[1]]["type"] == "spot" \
-                    and vertices_map[simplex[2]]["type"] == "spot":
+            if {'spot'} == set([vertices_map[simplex[_i]]["type"] for _i in range(3)]):
 
                 # if each point belongs to the same spot, then it is for sure face of that spot
                 if vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"] == \
@@ -269,12 +270,38 @@ class System(metaclass=ABCMeta):
                         spot_candidates["com"][reference_to_spot].append(np.average(face, axis=0))
                         spot_candidates["3rd_enum"][reference_to_spot].append(trd_enum)
                         spot_candidates["ix"][reference_to_spot].append(ix)
+            # if at least one of point belongs to the spot and another one to the stellar body, it is neccesary
+            # to compute a distance of center of mass  of such surface element from the center of spot
+            # and compare whether it is within the spot or outside
+            elif {'spot', 'object'}.issubset(set([vertices_map[simplex[_i]]["type"] for _i in range(3)])):
+                # inefficient piece of code, do not care about that sicne this condition
+                # is not satisfied to many times doesn't
 
-            # if at least one of points belongs to star body, then it is for sure star body face
-            elif vertices_map[simplex[0]]["type"] == "object" or vertices_map[simplex[1]]["type"] == "object" \
-                    or vertices_map[simplex[2]]["type"] == "object":
+                # je to hovnokod, treba tu vetvu dajak poludstit
+                spots_in_indices = [_i for _i in range(3) if vertices_map[simplex[_i]]["type"] == 'spot']
+                spots_enum = np.array([vertices_map[simplex[_i]]["enum"] for _i in range(3)])[spots_in_indices]
+
+                center = component_instance.spots[spot_index].boundary_center
+                size = component_instance.spots[spot_index].max_size
+                dist = np.linalg.norm(np.array(np.average(face, axis=0)) - np.array(center))
+
+                if len(spots_in_indices) == 1:
+                    if dist < size:
+                        model["spots"][vertices_map[simplex[spots_in_indices[0]]]["enum"]].append(np.array(simplex))
+                    else:
+                        model["object"].append(np.array(simplex))
+                else:
+                    if spots_enum[0] != spots_enum[1]:
+                        model["object"].append(np.array(simplex))
+                    else:
+                        if dist < size:
+                            model["spots"][vertices_map[simplex[spots_in_indices[0]]]["enum"]].append(np.array(simplex))
+                        else:
+                            model["object"].append(np.array(simplex))
+            elif {'object'} == set([vertices_map[simplex[_i]]["type"] for _i in range(3)]):
                 model["object"].append(np.array(simplex))
             else:
+                # just in case we forgat something in previous conditions
                 model["object"].append(np.array(simplex))
 
         if spot_candidates["com"]:
