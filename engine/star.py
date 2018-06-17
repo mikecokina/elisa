@@ -1,9 +1,14 @@
 from engine.body import Body
 from engine.spot import Spot
 from engine.pulsations import PulsationMode
+from engine import utils
 from astropy import units as u
 import numpy as np
 import logging
+from copy import copy
+from scipy.special import sph_harm, lpmv
+from scipy.optimize import minimize_scalar
+from scipy.misc import factorial
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -260,6 +265,62 @@ class Star(Body):
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), Star.__name__))
 
-    def add_pulsations(self, points=None, faces=None):
-        points = self.points if points is None else points
-        faces = self.faces if faces is None else faces
+    def add_pulsations(self, points=None, faces=None, temperatures=None):
+        def spherical_harmonics_normalization_constant(l, m):
+            """
+            returns standard normalization constant of spherical harmonics Y_l^m(theta, phi)
+            :param l: int - order of spherical harmonic
+            :param m: int - degree of spherical harmonic
+            :return:float - normalization constant
+            """
+            return np.sqrt(((2 * l + 1) * factorial(l - m)) / (4 * np.pi * factorial(l + m)))
+
+        def alp(x, *args):
+            """
+            returns negative value from imaginary value of associated Legendre polynomial (ALP), used in minimizer to
+            find global maximum of real part of spherical harmonics
+
+            :param x: float - argument of function
+            :param args: l - order of ALP
+                         m - degree of ALP
+            :return: float - negative of absolute value of ALP
+            """
+            l, m = args
+            return -abs(lpmv(m, l, x))
+
+        def spherical_harmonics_renormalization_constant(l, m):
+            old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
+            output = minimize_scalar(alp, bounds=(0, 1), method='bounded', args=(l, m))
+            np.seterr(**old_settings)
+            # result = abs(lpmv(m, l, output.x)) * spherical_harmonics_normalization_constant(l, m)
+            result = abs(np.real(sph_harm(m, l, 0, np.arccos(output.x))))
+            print(output.x, result)
+            return 1. / result
+
+        if points is not None:
+            self.points
+            if faces is None or temperatures is None:
+                raise ValueError('`points` argument is not None but `faces` or `temperature` is. Please supply the '
+                                 'missing keyword arguments')
+        else:
+            points = copy(self.points)
+            faces = copy(self.faces)
+            temperatures = copy(self.temperatures)
+
+        surface_centers = self.calculate_surface_centres(points, faces)
+        centres_r, centres_phi, centres_theta = utils.cartesian_to_spherical(surface_centers[:, 0],
+                                                                             surface_centers[:, 1],
+                                                                             surface_centers[:, 2])
+        for pulsation_index, pulsation in self.pulsations.items():
+            spherical_harmonics = spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m) * \
+                                  np.real(sph_harm(pulsation.m, pulsation.l, centres_phi, centres_theta))
+            # spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m)
+            # spherical_harmonics = sph_harm(pulsation.m, pulsation.l, centres_phi, centres_theta) / \
+            #                       spherical_harmonics_normalization_constant(pulsation.l, pulsation.m)
+            spherical_harmonics1 = lpmv(pulsation.m, pulsation.l, np.cos(centres_theta)) * \
+                                   np.cos(pulsation.m * centres_phi)
+            # print(min(np.real(spherical_harmonics)), max(np.real(spherical_harmonics)))
+            print(max(spherical_harmonics), max(spherical_harmonics1))
+
+
+

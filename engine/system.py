@@ -124,18 +124,48 @@ class System(metaclass=ABCMeta):
 
     @abstractmethod
     def build_mesh(self, *args, **kwargs):
+        """
+        abstract method for creating surface points
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
         pass
 
     @abstractmethod
     def build_faces(self, *args, **kwargs):
+        """
+        abstract method for building body surface from given set of points in already calculated and stored in
+        object.points
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
         pass
 
     @abstractmethod
     def build_surface(self, *args, **kwargs):
+        """
+        abstract method which builds surface from ground up including points and faces of surface and spots
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
         pass
 
     @abstractmethod
     def build_surface_map(self, *args, **kwargs):
+        """
+        abstract method which calculates surface maps for surface faces of given body (eg. temperature or gravity
+        acceleration map)
+
+        :param args:
+        :param kwargs:
+        :return:
+        """
         pass
 
     def incorporate_spots_to_surface(self, component_instance=None, surface_fn=None, **kwargs):
@@ -369,4 +399,3 @@ class System(metaclass=ABCMeta):
         self._logger.debug("Changing value of parameter faces of object {}".format(component_instance.name))
         remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
         component_instance.faces = np.array(utils.remap(model["object"], remap_dict))
-
