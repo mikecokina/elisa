@@ -133,11 +133,12 @@ class BinarySystem(System):
         :return:
         """
         def solver_condition(x, *_args):
-            x, _, _ = utils.spherical_to_cartesian(x, _args[1], _args[2])
-            x = x if component == "primary" else components_distance - x
+            point = utils.spherical_to_cartesian([x, _args[1], _args[2]])
+            point[0] = point[0] if component == "primary" else components_distance - point[0]
             # ignore also spots where one of points is situated just on the neck
             if self.morphology == "over-contact":
-                if (component == "primary" and x >= neck_position) or (component == "secondary" and x <= neck_position):
+                if (component == "primary" and point[0] >= neck_position) or \
+                        (component == "secondary" and point[0] <= neck_position):
                     return False
             return True
 
@@ -172,7 +173,7 @@ class BinarySystem(System):
 
                 # initial radial vector
                 radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
-                center_vector = np.array(utils.spherical_to_cartesian(1.0, lon, lat))
+                center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
 
                 args, use = (components_distance, radial_vector[1], radial_vector[2]), False
                 solution, use = self._solver(fn, solver_condition, *args)
@@ -187,7 +188,7 @@ class BinarySystem(System):
                     continue
 
                 spot_center_r = solution
-                spot_center = np.array(utils.spherical_to_cartesian(spot_center_r, lon, lat))
+                spot_center = utils.spherical_to_cartesian([spot_center_r, lon, lat])
 
                 # compute euclidean distance of two points on spot (x0)
                 # we have to obtain distance between center and 1st point in 1st ring of spot
@@ -225,14 +226,10 @@ class BinarySystem(System):
                             # circle of points around centre of spot
                             delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
                                                                     vector=utils.spherical_to_cartesian(
-                                                                        default_spherical_vector[0],
-                                                                        default_spherical_vector[1],
-                                                                        default_spherical_vector[2]),
+                                                                        default_spherical_vector),
                                                                     degrees=False)
 
-                            spherical_delta_vector = utils.cartesian_to_spherical(delta_vector[0],
-                                                                                  delta_vector[1],
-                                                                                  delta_vector[2])
+                            spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
                             args = (components_distance, spherical_delta_vector[1], spherical_delta_vector[2])
                             solution, use = self._solver(fn, solver_condition, *args)
@@ -241,8 +238,8 @@ class BinarySystem(System):
                                 component_instance.remove_spot(spot_index=spot_index)
                                 raise StopIteration
 
-                            spot_point = np.array(utils.spherical_to_cartesian(solution, spherical_delta_vector[1],
-                                                                               spherical_delta_vector[2]))
+                            spot_point = utils.spherical_to_cartesian([solution, spherical_delta_vector[1],
+                                                                       spherical_delta_vector[2]])
                             spot_points.append(spot_point)
 
                             if theta_index == len(thetas) - 1:
@@ -257,10 +254,10 @@ class BinarySystem(System):
                     continue
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
-                boundary_com = utils.cartesian_to_spherical(*boundary_com)
+                boundary_com = utils.cartesian_to_spherical(boundary_com)
                 solution, _ = self._solver(fn, solver_condition, *(components_distance, boundary_com[1],
                                                                    boundary_com[2]))
-                boundary_center = np.array(utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2]))
+                boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
 
                 # first point will be always barycenter of boundary
                 spot_points[0] = boundary_center
@@ -1156,7 +1153,8 @@ class BinarySystem(System):
                                                         xtol=1e-12)
             r_eq.append(solution[0])
         r_eq = np.array(r_eq)
-        x_eq, y_eq, z_eq = utils.spherical_to_cartesian(r_eq, phi_eq, theta_eq)
+        equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
+        x_eq, y_eq, z_eq = equator[:, 0], equator[:, 1], equator[:, 2]
 
         # calculating points on phi = 0 meridian
         r_meridian = []
@@ -1170,7 +1168,8 @@ class BinarySystem(System):
                                                         xtol=1e-12)
             r_meridian.append(solution[0])
         r_meridian = np.array(r_meridian)
-        x_meridian, y_meridian, z_meridian = utils.spherical_to_cartesian(r_meridian, phi_meridian, theta_meridian)
+        meridian = utils.spherical_to_cartesian(np.column_stack((r_meridian, phi_meridian, theta_meridian)))
+        x_meridian, y_meridian, z_meridian = meridian[:, 0], meridian[:, 1], meridian[:, 2]
 
         # calculating the rest (quarter) of the surface
         thetas = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
@@ -1189,7 +1188,8 @@ class BinarySystem(System):
                 r_q.append(solution[0])
 
         r_q, phi_q, theta_q = np.array(r_q), np.array(phi_q), np.array(theta_q)
-        x_q, y_q, z_q = utils.spherical_to_cartesian(r_q, phi_q, theta_q)
+        quarter = utils.spherical_to_cartesian(np.column_stack((r_q, phi_q, theta_q)))
+        x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
         x = np.concatenate((x_eq,  x_eq[1:-1], x_meridian,  x_meridian, x_q,  x_q,  x_q,  x_q))
         y = np.concatenate((y_eq, -y_eq[1:-1], y_meridian,  y_meridian, y_q, -y_q,  y_q, -y_q))
@@ -1295,7 +1295,8 @@ class BinarySystem(System):
                                                         xtol=1e-12)
             r_eq.append(solution[0])
         r_eq = np.array(r_eq)
-        x_eq, y_eq, z_eq = utils.spherical_to_cartesian(r_eq, phi_eq, theta_eq)
+        equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
+        x_eq, y_eq, z_eq = equator[:, 0], equator[:, 1], equator[:, 2]
 
         # calculating points on phi = pi meridian
         r_meridian = []
@@ -1308,7 +1309,8 @@ class BinarySystem(System):
                                                         xtol=1e-12)
             r_meridian.append(solution[0])
         r_meridian = np.array(r_meridian)
-        x_meridian, y_meridian, z_meridian = utils.spherical_to_cartesian(r_meridian, phi_meridian, theta_meridian)
+        meridian = utils.spherical_to_cartesian(np.column_stack((r_meridian, phi_meridian, theta_meridian)))
+        x_meridian, y_meridian, z_meridian = meridian[:, 0], meridian[:, 1], meridian[:, 2]
 
         # calculating points on phi = pi/2 meridian
         r_meridian2 = []
@@ -1321,8 +1323,8 @@ class BinarySystem(System):
                                                         xtol=1e-12)
             r_meridian2.append(solution[0])
         r_meridian2 = np.array(r_meridian2)
-        x_meridian2, y_meridian2, z_meridian2 = utils.spherical_to_cartesian(r_meridian2, phi_meridian2,
-                                                                             theta_meridian2)
+        meridian2 = utils.spherical_to_cartesian(np.column_stack((r_meridian2, phi_meridian2, theta_meridian2)))
+        x_meridian2, y_meridian2, z_meridian2 = meridian2[:, 0], meridian2[:, 1], meridian2[:, 2]
 
         # calculating the rest of the surface on farside
         thetas = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
@@ -1340,7 +1342,8 @@ class BinarySystem(System):
                                                             xtol=1e-12)
                 r_q.append(solution[0])
         r_q, phi_q, theta_q = np.array(r_q), np.array(phi_q), np.array(theta_q)
-        x_q, y_q, z_q = utils.spherical_to_cartesian(r_q, phi_q, theta_q)
+        quarter = utils.spherical_to_cartesian(np.column_stack((r_q, phi_q, theta_q)))
+        x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
         # generating the neck
         neck_position, neck_polynome = self.calculate_neck_position(return_polynomial=True)

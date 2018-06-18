@@ -46,56 +46,62 @@ def find_nearest_dist_3d(data=None):
     return min(distances)
 
 
-def cartesian_to_spherical(x, y, z, degrees=False):
+def cartesian_to_spherical(points, degrees=False):
     """
-    convert cartesian to spherical coordinates
+    convert cartesian to spherical coordinates if only 1 point is given input an output is only 1D vector
 
-    :param x: (np.)float
-    :param y: (np.)float
-    :param z: (np.)float
+    :param points: numpy_array([[x1, y1, z1],
+                                [x2, y2, z2],
+                                 ...
+                                [xn, yn, zn]])
     :param degrees: bool
-    :return: tuple ((np.)float, (np.)float, (np.)float); (r, phi, theta)
+    :return: numpy_array([[r1, phi1, theta1],
+                          [r2, phi2, theta2],
+                          ...
+                          [rn, phin, thetan]])
     """
-
-    back_transformation = False
-    if not isinstance(x, np.ndarray):
-        back_transformation = True
-        x, y, z = np.array([x]), np.array([y]), np.array([z])
-
-    points = np.column_stack((x, y, z))
-
+    points = np.array(points)
+    points = np.expand_dims(points, axis=0) if len(np.shape(points)) == 1 else points
     r = np.linalg.norm(points, axis=1)
 
     np.seterr(divide='ignore', invalid='ignore')
-    phi = np.arcsin(y / (np.linalg.norm([x, y])))  # vypocet azimutalneho (rovinneho) uhla
+    phi = np.arcsin(points[:, 1] / (np.linalg.norm(points[:, :2], axis=1)))  # vypocet azimutalneho (rovinneho) uhla
     phi[np.isnan(phi)] = 0
 
-    theta = np.arccos(z / r)  # vypocet polarneho (elevacneho) uhla
+    theta = np.arccos(points[:, 2] / r)  # vypocet polarneho (elevacneho) uhla
     theta[np.isnan(theta)] = 0
     np.seterr(divide='print', invalid='print')
 
-    signtest = x < 0
+    signtest = points[:, 0] < 0
     phi[signtest] = np.pi - phi[signtest]
 
-    if back_transformation:
-        r, phi, theta = r[0], phi[0], theta[0]
+    return_val = np.column_stack((r, phi, theta)) if not degrees else np.column_stack((r, np.degrees(phi),
+                                                                                       np.degrees(theta)))
+    return np.squeeze(return_val, axis=0) if np.shape(return_val)[0] == 1 else return_val
 
-    return (r, phi, theta) if not degrees else (r, np.degrees(phi), np.degrees(theta))
 
-
-def spherical_to_cartesian(radius, phi, theta):
+# def spherical_to_cartesian(radius, phi, theta):
+def spherical_to_cartesian(spherical_points):
     """
-    converts spherical coordinates into cartesian
+    converts spherical coordinates into cartesian, if input is one point, output is 1D vector
 
-    :param radius: np.array
-    :param phi: np.array
-    :param theta: np.array
-    :return:
+    :param spherical_points: numpy_array([[r1, phi1, theta1],
+                                          [r2, phi2, theta2],
+                                           ...
+                                          [rn, phin, thetan]])
+    :return: numpy_array([[x1, y1, z1],
+                          [x2, y2, z2],
+                           ...
+                          [xn, yn, zn]])
     """
-    x = radius * np.cos(phi) * np.sin(theta)
-    y = radius * np.sin(phi) * np.sin(theta)
-    z = radius * np.cos(theta)
-    return x, y, z
+    spherical_points = np.array(spherical_points)
+    spherical_points = np.expand_dims(spherical_points, axis=0) if len(np.shape(spherical_points)) == 1 \
+        else spherical_points
+    x = spherical_points[:, 0] * np.cos(spherical_points[:, 1]) * np.sin(spherical_points[:, 2])
+    y = spherical_points[:, 0] * np.sin(spherical_points[:, 1]) * np.sin(spherical_points[:, 2])
+    z = spherical_points[:, 0] * np.cos(spherical_points[:, 2])
+    points = np.column_stack((x, y, z))
+    return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
 def cylindrical_to_cartesian(radius, phi, z):
@@ -113,6 +119,7 @@ def cylindrical_to_cartesian(radius, phi, z):
 
 
 def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
+    # Todo: documentation!!!
     """
 
     :param theta: float; radial vector of point of interest to ratate

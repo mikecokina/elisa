@@ -308,17 +308,15 @@ class Star(Body):
             temperatures = copy(self.temperatures)
 
         surface_centers = self.calculate_surface_centres(points, faces)
-        centres_r, centres_phi, centres_theta = utils.cartesian_to_spherical(surface_centers[:, 0],
-                                                                             surface_centers[:, 1],
-                                                                             surface_centers[:, 2])
+        centres = utils.cartesian_to_spherical(surface_centers)
         for pulsation_index, pulsation in self.pulsations.items():
             spherical_harmonics = spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m) * \
-                                  np.real(sph_harm(pulsation.m, pulsation.l, centres_phi, centres_theta))
+                                  np.real(sph_harm(pulsation.m, pulsation.l, centres[:, 1], centres[:, 2]))
             # spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m)
             # spherical_harmonics = sph_harm(pulsation.m, pulsation.l, centres_phi, centres_theta) / \
             #                       spherical_harmonics_normalization_constant(pulsation.l, pulsation.m)
-            spherical_harmonics1 = lpmv(pulsation.m, pulsation.l, np.cos(centres_theta)) * \
-                                   np.cos(pulsation.m * centres_phi)
+            spherical_harmonics1 = lpmv(pulsation.m, pulsation.l, np.cos(centres[:, 2])) * \
+                                   np.cos(pulsation.m * centres[:, 1])
             # print(min(np.real(spherical_harmonics)), max(np.real(spherical_harmonics)))
             print(max(spherical_harmonics), max(spherical_harmonics1))
 

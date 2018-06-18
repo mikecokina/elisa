@@ -127,7 +127,7 @@ class SingleSystem(System):
 
             # initial radial vector
             radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
-            center_vector = np.array(utils.spherical_to_cartesian(1.0, lon, lat))
+            center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
 
             args, use = (radial_vector[2],), False
             solution, use = self._solver(self.potential_fn, solver_condition, *args)
@@ -142,7 +142,7 @@ class SingleSystem(System):
                 continue
 
             spot_center_r = solution
-            spot_center = np.array(utils.spherical_to_cartesian(spot_center_r, lon, lat))
+            spot_center = utils.spherical_to_cartesian([spot_center_r, lon, lat])
 
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st ring of spot
@@ -177,14 +177,10 @@ class SingleSystem(System):
                         # circle of points around centre of spot
                         delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
                                                                 vector=utils.spherical_to_cartesian(
-                                                                    default_spherical_vector[0],
-                                                                    default_spherical_vector[1],
-                                                                    default_spherical_vector[2]),
+                                                                    default_spherical_vector),
                                                                 degrees=False)
 
-                        spherical_delta_vector = utils.cartesian_to_spherical(delta_vector[0],
-                                                                              delta_vector[1],
-                                                                              delta_vector[2])
+                        spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
                         args = (spherical_delta_vector[2],)
                         solution, use = self._solver(self.potential_fn, solver_condition, *args)
@@ -193,8 +189,8 @@ class SingleSystem(System):
                             self.star.remove_spot(spot_index=spot_index)
                             raise StopIteration
 
-                        spot_point = np.array(utils.spherical_to_cartesian(solution, spherical_delta_vector[1],
-                                                                           spherical_delta_vector[2]))
+                        spot_point = utils.spherical_to_cartesian([solution, spherical_delta_vector[1],
+                                                                           spherical_delta_vector[2]])
                         spot_points.append(spot_point)
 
                         if theta_index == len(thetas) - 1:
@@ -206,9 +202,9 @@ class SingleSystem(System):
                 return
 
             boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
-            boundary_com = utils.cartesian_to_spherical(*boundary_com)
+            boundary_com = utils.cartesian_to_spherical(boundary_com)
             solution, _ = self._solver(self.potential_fn, solver_condition, *(boundary_com[2],))
-            boundary_center = np.array(utils.spherical_to_cartesian(solution, boundary_com[1], boundary_com[2]))
+            boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
 
             # first point will be always barycenter of boundary
             spot_points[0] = boundary_center
@@ -467,7 +463,8 @@ class SingleSystem(System):
         phi_eq = np.array([characterictic_angle*ii for ii in range(N)])
         theta_eq = np.array([c.HALF_PI for ii in range(N)])
         # converting quarter of equator to cartesian
-        x_eq, y_eq, z_eq = utils.spherical_to_cartesian(r_eq, phi_eq, theta_eq)
+        equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
+        x_eq, y_eq, z_eq = equator[:, 0], equator[:, 1], equator[:, 2]
 
         # calculating radii for each latitude and generating one eighth of surface of the star without poles and equator
         num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
@@ -489,7 +486,8 @@ class SingleSystem(System):
         phi_q = np.array(phi_q)
         theta_q = np.array(theta_q)
         # converting this eighth of surface to cartesian coordinates
-        x_q, y_q, z_q = utils.spherical_to_cartesian(r_q, phi_q, theta_q)
+        quarter = utils.spherical_to_cartesian(np.column_stack((r_q, phi_q, theta_q)))
+        x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
         # stiching together equator and 8 sectors of stellar surface
         x = np.concatenate((x_eq, -y_eq, -x_eq,  y_eq, x_q, -y_q, -x_q,  y_q,  x_q, -y_q, -x_q,  y_q, np.array([0, 0])))
