@@ -7,7 +7,7 @@ import numpy as np
 import logging
 from copy import copy
 from scipy.special import sph_harm, lpmv
-from scipy.optimize import minimize_scalar
+from scipy.optimize import brute, fmin
 from scipy.misc import factorial
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
@@ -287,14 +287,16 @@ class Star(Body):
             """
             l, m = args
             return -abs(lpmv(m, l, x))
+            # return -abs(np.real(sph_harm(m, l, x[0], x[1])))
 
         def spherical_harmonics_renormalization_constant(l, m):
-            old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
-            output = minimize_scalar(alp, bounds=(0, 1), method='bounded', args=(l, m))
-            np.seterr(**old_settings)
-            # result = abs(lpmv(m, l, output.x)) * spherical_harmonics_normalization_constant(l, m)
-            result = abs(np.real(sph_harm(m, l, 0, np.arccos(output.x))))
-            print(output.x, result)
+            # old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
+            Ns = int(np.power(3, np.ceil((l-m)/25))*((l-m)+1))
+            output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=Ns, finish=fmin, full_output=True)
+            # np.seterr(**old_settings)
+
+            x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
+            result = abs(np.real(sph_harm(m, l, 0, np.arccos(x))))
             return 1. / result
 
         if points is not None:
@@ -310,15 +312,6 @@ class Star(Body):
         surface_centers = self.calculate_surface_centres(points, faces)
         centres = utils.cartesian_to_spherical(surface_centers)
         for pulsation_index, pulsation in self.pulsations.items():
+            # generating of renormalised spherical harmonics (maximum value on sphere equuals to 1)
             spherical_harmonics = spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m) * \
                                   np.real(sph_harm(pulsation.m, pulsation.l, centres[:, 1], centres[:, 2]))
-            # spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m)
-            # spherical_harmonics = sph_harm(pulsation.m, pulsation.l, centres_phi, centres_theta) / \
-            #                       spherical_harmonics_normalization_constant(pulsation.l, pulsation.m)
-            spherical_harmonics1 = lpmv(pulsation.m, pulsation.l, np.cos(centres[:, 2])) * \
-                                   np.cos(pulsation.m * centres[:, 1])
-            # print(min(np.real(spherical_harmonics)), max(np.real(spherical_harmonics)))
-            print(max(spherical_harmonics), max(spherical_harmonics1))
-
-
-

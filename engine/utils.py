@@ -73,7 +73,7 @@ def cartesian_to_spherical(points, degrees=False):
     np.seterr(divide='print', invalid='print')
 
     signtest = points[:, 0] < 0
-    phi[signtest] = np.pi - phi[signtest]
+    phi[signtest] = (np.pi - phi[signtest])
 
     return_val = np.column_stack((r, phi, theta)) if not degrees else np.column_stack((r, np.degrees(phi),
                                                                                        np.degrees(theta)))
