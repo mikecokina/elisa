@@ -71,13 +71,22 @@ class SingleSystem(System):
         self._angular_velocity = self.angular_velocity(self.rotation_period)
         self.star._polar_log_g = self.polar_log_g
         self.star._polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
+       # this is also check if star surface is closed
+        self.init_radii()
+        self._evaluate_spots()
+
+    def init_radii(self):
+        """
+        auxiliary function for calculation of important radii
+        :return:
+        """
+        self._logger.debug('Calculating polar radius.')
         self.star._polar_radius = self.calculate_polar_radius()
+        self._logger.debug('Calculating surface potential.')
         args = 0,
         self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
-        # this is also check if star surface is closed
+        self._logger.debug('Calculating equatorial radius.')
         self.star._equatorial_radius = self.calculate_equatorial_radius()
-
-        self._evaluate_spots()
 
     def init(self):
         """
@@ -649,25 +658,44 @@ class SingleSystem(System):
         if colormap is None:
             raise ValueError('Specify colormap to calculate (`temperature` or `gravity_acceleration`).')
 
+        self._logger.debug('Computing surface areas of stellar surface.')
         self.star.areas = self.star.calculate_areas()
+        self._logger.debug('Computing polar radius')
         self.star._polar_radius = self.calculate_polar_radius()
+        self._logger.debug('Computing potential gradient magnitudes distribution accros the stellar surface')
         self.star.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes()
+        self._logger.debug('Computing magnitude of {} polar potential gradient.')
         self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
 
         if colormap == 'temperature':
+            self._logger.debug('Computing effective temprature distibution of stellar surface.')
             self.star.temperatures = self.star.calculate_effective_temperatures()
+            if self.star.pulsations:
+                self._logger.debug('Adding pulsations to surface temperature distribution of the star.')
+                self.star.temperatures = self.star.add_pulsations()
 
         if self.star.spots:
             for spot_index, spot in self.star.spots.items():
+                self._logger.debug('Calculating surface areas {} spot.'.format(spot_index))
+
+                self._logger.debug('Calculating surface areas of spot: {}'.format(spot_index))
                 spot.areas = self.star.calculate_areas()
 
+                self._logger.debug('Calculating distribution of potential gradient magnitudes of spot:'
+                                   ' {}'.format(spot_index))
                 spot.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes(points=spot.points,
                                                                                                   faces=spot.faces)
 
                 if colormap == 'temperature':
+                    self._logger.debug('Computing temperature distribution of spot: {}'.format(spot_index))
                     spot.temperatures = spot.temperature_factor * \
                                         self.star.calculate_effective_temperatures(gradient_magnitudes=
                                                                                    spot.potential_gradient_magnitudes)
+                    if self.star.pulsations:
+                        self._logger.debug('Adding pulsations to temperature distribution of spot: '
+                                           '{}'.format(spot_index))
+                        spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
+                                                                     temperatures=spot.temperatures)
 
         if return_map:
             if colormap == 'temperature':

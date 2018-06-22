@@ -1736,13 +1736,11 @@ class BinarySystem(System):
                 points, _ = self.build_surface(component='primary', components_distance=components_distance,
                                                return_surface=True)
                 kwargs['points_primary'] = points['primary']
-                # self.build_mesh(component='primary', components_distance=components_distance)
 
             if kwargs['components_to_plot'] in ['secondary', 'both']:
                 points, _ = self.build_surface(component='secondary', components_distance=components_distance,
                                                return_surface=True)
                 kwargs['points_secondary'] = points['secondary']
-                # self.build_mesh(component='secondary', components_distance=components_distance)
 
         elif descriptor == 'wireframe':
             KWARGS = ['phase', 'components_to_plot', 'plot_axis']
@@ -1863,6 +1861,10 @@ class BinarySystem(System):
             if colormap == 'temperature':
                 self._logger.debug('Computing effective temprature distibution of {} component.'.format(_component))
                 component_instance.temperatures = component_instance.calculate_effective_temperatures()
+                if component_instance.pulsations:
+                    self._logger.debug('Adding pulsations to surface temperature distribution '
+                                       'of the {} component.'.format(_component))
+                    component_instance.temperatures = component_instance.add_pulsations()
 
             if component_instance.spots:
                 for spot_index, spot in component_instance.spots.items():
@@ -1883,6 +1885,11 @@ class BinarySystem(System):
                         spot.temperatures = spot.temperature_factor * \
                                             component_instance.calculate_effective_temperatures(
                                                 gradient_magnitudes=spot.potential_gradient_magnitudes)
+                        if component_instance.pulsations:
+                            self._logger.debug('Adding pulsations to temperature distribution of {} component / {} spot'
+                                               ''.format(_component, spot_index))
+                            spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
+                                                                                  temperatures=spot.temperatures)
 
         if return_map:
             return_map = {}

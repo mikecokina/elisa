@@ -8,7 +8,6 @@ import logging
 from copy import copy
 from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
-from scipy.misc import factorial
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -129,10 +128,6 @@ class Star(Body):
         :return: float64
         """
         return self._polar_radius
-
-    @polar_radius.setter
-    def polar_radius(self, polar_radius):
-        self._polar_radius = polar_radius
 
     @property
     def side_radius(self):
@@ -266,14 +261,6 @@ class Star(Body):
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), Star.__name__))
 
     def add_pulsations(self, points=None, faces=None, temperatures=None):
-        def spherical_harmonics_normalization_constant(l, m):
-            """
-            returns standard normalization constant of spherical harmonics Y_l^m(theta, phi)
-            :param l: int - order of spherical harmonic
-            :param m: int - degree of spherical harmonic
-            :return:float - normalization constant
-            """
-            return np.sqrt(((2 * l + 1) * factorial(l - m)) / (4 * np.pi * factorial(l + m)))
 
         def alp(x, *args):
             """
@@ -290,10 +277,10 @@ class Star(Body):
             # return -abs(np.real(sph_harm(m, l, x[0], x[1])))
 
         def spherical_harmonics_renormalization_constant(l, m):
-            # old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
-            Ns = int(np.power(3, np.ceil((l-m)/25))*((l-m)+1))
+            old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
+            Ns = int(np.power(5, np.ceil((l-m)/23))*((l-m)+1))
             output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=Ns, finish=fmin, full_output=True)
-            # np.seterr(**old_settings)
+            np.seterr(**old_settings)
 
             x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
             result = abs(np.real(sph_harm(m, l, 0, np.arccos(x))))
@@ -311,7 +298,31 @@ class Star(Body):
 
         surface_centers = self.calculate_surface_centres(points, faces)
         centres = utils.cartesian_to_spherical(surface_centers)
+
         for pulsation_index, pulsation in self.pulsations.items():
             # generating of renormalised spherical harmonics (maximum value on sphere equuals to 1)
-            spherical_harmonics = spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m) * \
-                                  np.real(sph_harm(pulsation.m, pulsation.l, centres[:, 1], centres[:, 2]))
+            constant = spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m)
+            spherical_harmonics = constant * np.real(sph_harm(pulsation.m, pulsation.l, centres[:, 1], centres[:, 2]))
+
+            temperatures += pulsation.amplitude * spherical_harmonics
+
+        return temperatures
+
+    def renormalize_temperatures(self):
+        # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
+        total_surface = np.sum(self.areas)
+        if self.spots:
+            for spot_index, spot in self.spots.items():
+                total_surface += np.sum(spot.areas)
+        desired_flux_value = total_surface * self.t_eff
+
+        current_flux = np.sum(self.areas * self.temperatures)
+        if self.spots:
+            for spot_index, spot in self.spots.items():
+                current_flux += np.sum(spot.areas * spot.temperatures)
+
+        coefficient = np.power(desired_flux_value / current_flux, 0.25)
+        self.temperatures *= coefficient
+        if self.spots:
+            for spot_index, spot in self.spots.items():
+                spot.temperatures *= coefficient

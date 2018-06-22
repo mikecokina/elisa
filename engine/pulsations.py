@@ -46,6 +46,11 @@ class PulsationMode(object):
                                    "of class instance {} to {}".format(key, PulsationMode.__name__, kwargs[key]))
                 setattr(self, key, kwargs.get(key))
 
+        # checking validity of parameters
+        if abs(self.m) > self.l:
+            raise ValueError('Absolute value of degree of mode m: {0} cannot be higher than non-radial order of '
+                             'pulsations l: {1}. '.format(self.l, self.m))
+
     # @property
     # def n(self):
     #     """
@@ -131,6 +136,8 @@ class PulsationMode(object):
         else:
             raise TypeError('Value of `amplitude` is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity '
                             'instance.')
+        if self._amplitude < 0:
+            raise ValueError('Temperature amplitude of mode has to be non-negative number.')
 
     @property
     def frequency(self):
