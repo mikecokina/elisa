@@ -129,6 +129,10 @@ class SingleSystem(System):
         for spot_index, spot_instance in list(self.star.spots.items()):
             # lon -> phi, lat -> theta
             lon, lat = spot_instance.longitude, spot_instance.latitude
+            if spot_instance.angular_density is None:
+                self._logger.debug('Angular density of the spot {0} was not supplied and discretization factor of star '
+                                   '{1} was used.'.format(spot_index, self.star.discretization_factor))
+                spot_instance.angular_density = self.star.discretization_factor
             alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
 
             # initial containers for current spot
@@ -664,7 +668,7 @@ class SingleSystem(System):
         self.star._polar_radius = self.calculate_polar_radius()
         self._logger.debug('Computing potential gradient magnitudes distribution accros the stellar surface')
         self.star.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes()
-        self._logger.debug('Computing magnitude of {} polar potential gradient.')
+        self._logger.debug('Computing magnitude of polar potential gradient.')
         self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
 
         if colormap == 'temperature':
@@ -676,10 +680,8 @@ class SingleSystem(System):
 
         if self.star.spots:
             for spot_index, spot in self.star.spots.items():
-                self._logger.debug('Calculating surface areas {} spot.'.format(spot_index))
-
                 self._logger.debug('Calculating surface areas of spot: {}'.format(spot_index))
-                spot.areas = self.star.calculate_areas()
+                spot.areas = spot.calculate_areas()
 
                 self._logger.debug('Calculating distribution of potential gradient magnitudes of spot:'
                                    ' {}'.format(spot_index))
@@ -696,6 +698,8 @@ class SingleSystem(System):
                                            '{}'.format(spot_index))
                         spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                      temperatures=spot.temperatures)
+            self._logger.debug('Renormalizing temperature map of star surface.')
+            self.star.renormalize_temperatures()
 
         if return_map:
             if colormap == 'temperature':

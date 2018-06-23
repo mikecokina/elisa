@@ -261,6 +261,14 @@ class Star(Body):
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), Star.__name__))
 
     def add_pulsations(self, points=None, faces=None, temperatures=None):
+        """
+        function returns temperature map with added temperature perturbations caused by pulsations
+
+        :param points: np.array - if `None` star.points are used
+        :param faces: np.array - if `None` star.faces are used
+        :param temperatures: np.array - if `None` star.temperatures
+        :return:
+        """
 
         def alp(x, *args):
             """
@@ -322,6 +330,7 @@ class Star(Body):
                 current_flux += np.sum(spot.areas * spot.temperatures)
 
         coefficient = np.power(desired_flux_value / current_flux, 0.25)
+        self._logger.debug('Surface temperature map renormalized by a factor {0}'.format(coefficient))
         self.temperatures *= coefficient
         if self.spots:
             for spot_index, spot in self.spots.items():

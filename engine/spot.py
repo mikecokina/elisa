@@ -41,8 +41,8 @@ class Spot(object):
         self.check_mandatory_kwargs(kwargs)
 
         missing_kwargs = []
-        for key in Spot.KWARGS:
-            set_val = kwargs.get(key) if key != "angular_density" else kwargs.get(key, np.radians(1))
+        for key in kwargs:
+            set_val = kwargs.get(key)
             self._logger.debug("Setting property {} "
                                "of class instance {} to {}".format(key, Spot.__name__, kwargs[key]))
             setattr(self, key, set_val)
@@ -153,9 +153,9 @@ class Spot(object):
 
     @staticmethod
     def check_mandatory_kwargs(kwargs):
-        keys = list(kwargs.keys()) if 'angular_density' not in kwargs \
-            else list(set(list(kwargs.keys())) - {'angular_density'})
-        diff = list(set(Spot.MANDATORY_KWARGS) - set(keys))
+        # keys = list(kwargs.keys()) if 'angular_density' not in kwargs \
+        #     else list(set(list(kwargs.keys())) - {'angular_density'})
+        diff = list(set(Spot.MANDATORY_KWARGS) - set(kwargs.keys()))
 
         if diff:
             raise ValueError('Missing mandatory argument(s) {} for spot w/ params {}'.format(', '.join(diff), kwargs))

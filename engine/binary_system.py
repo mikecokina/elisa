@@ -163,9 +163,13 @@ class BinarySystem(System):
 
             # iterate over spots
             for spot_index, spot_instance in list(component_instance.spots.items()):
-
                 # lon -> phi, lat -> theta
                 lon, lat = spot_instance.longitude, spot_instance.latitude
+                if spot_instance.angular_density is None:
+                    self._logger.debug(
+                        'Angular density of the spot {0} on {2} component was not supplied and discretization factor of'
+                        ' star {1} was used.'.format(spot_index, component_instance.discretization_factor, component))
+                    spot_instance.angular_density = component_instance.discretization_factor
                 alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
 
                 # initial containers for current spot
@@ -1870,7 +1874,7 @@ class BinarySystem(System):
                 for spot_index, spot in component_instance.spots.items():
                     self._logger.debug('Calculating surface areas of {} component / {} spot.'.format(_component,
                                                                                                      spot_index))
-                    spot.areas = component_instance.calculate_areas()
+                    spot.areas = spot.calculate_areas()
 
                     self._logger.debug('Calculating distribution of potential gradient magnitudes of {} component / '
                                        '{} spot.'.format(_component, spot_index))
@@ -1890,6 +1894,9 @@ class BinarySystem(System):
                                                ''.format(_component, spot_index))
                             spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
                                                                                   temperatures=spot.temperatures)
+                self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
+                                   ''.format(component))
+                component_instance.renormalize_temperatures()
 
         if return_map:
             return_map = {}
