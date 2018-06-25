@@ -267,6 +267,9 @@ class SingleSystem(System):
         else:
             raise TypeError('Input of variable `rotation_period` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+        if self._rotation_period <= 0:
+            raise ValueError('Period of rotation must be non-zero positive value. Your value: {0}.'
+                             .format(rotation_period))
 
     @property
     def inclination(self):
