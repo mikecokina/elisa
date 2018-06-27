@@ -46,6 +46,7 @@ class Body(metaclass=ABCMeta):
         self._polar_radius = None  # float64
         self._areas = None
         self._discretization_factor = 3
+        self._faces_centers = None
 
         # values of properties
         for kwarg in self.KWARGS:
@@ -355,6 +356,15 @@ class Body(metaclass=ABCMeta):
         :return:
         """
         self._discretization_factor = discretization_factor
+
+    @property
+    def faces_centres(self):
+        """
+        returns centres of corresponding faces
+
+        :return: np.array([face_centre1, face_centre2, ..., face_centreN])
+        """
+        return self._faces_centers
 
     @property
     def mass_unit(self):
