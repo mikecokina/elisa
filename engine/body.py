@@ -36,17 +36,17 @@ class Body(metaclass=ABCMeta):
         # initializing other parameters to None
         self._mass = None  # float64
         self._t_eff = None  # float64
-        self._points = None  # numpy.array of float64
-        self._faces = None  # dict
-        self._normals = None  # dict
-        self._temperatures = None  # dict
+        self._points = None  # numpy.array
+        self._faces = None  # numpy.array
+        self._normals = None  # numpy.array
+        self._temperatures = None  # numpy.array
         # self._intensity = None # dict
         self._synchronicity = None  # float64
         self._albedo = None  # float64
         self._polar_radius = None  # float64
-        self._areas = None
+        self._areas = None  # numpy.array
         self._discretization_factor = 3
-        self._faces_centers = None
+        self._face_centers = None  # numpy.array
 
         # values of properties
         for kwarg in self.KWARGS:
@@ -358,13 +358,13 @@ class Body(metaclass=ABCMeta):
         self._discretization_factor = discretization_factor
 
     @property
-    def faces_centres(self):
+    def face_centres(self):
         """
         returns centres of corresponding faces
 
         :return: np.array([face_centre1, face_centre2, ..., face_centreN])
         """
-        return self._faces_centers
+        return self._face_centers
 
     @property
     def mass_unit(self):

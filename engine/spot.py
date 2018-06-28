@@ -31,7 +31,7 @@ class Spot(object):
         self.points = None
         self.normals = None
         self.faces = None
-        self.faces_centres = None
+        self.face_centres = None
 
         self.areas = None
         self.potential_gradient_magnitudes = None
