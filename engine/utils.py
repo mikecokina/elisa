@@ -119,8 +119,8 @@ def cylindrical_to_cartesian(radius, phi, z):
 
 
 def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
-    # Todo: documentation!!!
     """
+    function rotates `vector` around axis defined by `omega` vector by amount `theta`
 
     :param theta: float; radial vector of point of interest to ratate
     :param omega: 3d list of floats; arbitrary vector to rotate around
@@ -145,7 +145,7 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
     matrix[2, 1] = (omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
     matrix[2, 2] = (np.cos(theta)) + (omega[2] ** 2 * (1. - np.cos(theta)))
 
-    return np.dot(matrix, vector)
+    return np.matmul(matrix, vector)
 
 
 def average_spacing_cgal(data=None, neighbours=6):
@@ -183,7 +183,14 @@ def average_spacing(data=None, mean_angular_distance=None):
 
 
 def remap(x, mapper):
-    # vysvetli co to robi a hlavne jak by mal vyzerat ten mapper lebo toto sa mi pravdepodobne niekde zide
+    """
+    function rearranges list of points indices according to indices in mapper, maper contains on the nth place new
+    address of the nth point
+
+    :param x: faces-like matrix
+    :param mapper: transformation map - numpy.array(): new_index_of_point = mapper[old_index_of_point]
+    :return: faces-like matrix
+    """
     return list(map(lambda val: [mapper[val[0]], mapper[val[1]], mapper[val[2]]], x))
 
 

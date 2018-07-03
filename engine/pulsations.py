@@ -11,7 +11,7 @@ class PulsationMode(object):
     """
     pulsation mode data container
     """
-    KWARGS = ["l", "m", "amplitude", "frequency", "start_phase"]
+    KWARGS = ["l", "m", "amplitude", "frequency", "start_phase", 'mode_axis_theta', 'mode_axis_phi']
     MANDATORY_KWARGS = ["l", "m", "amplitude", "frequency"]
 
     def __init__(self, **kwargs):
@@ -29,7 +29,9 @@ class PulsationMode(object):
         self._m = None
         self._amplitude = None
         self._frequency = None
-        self._start_phase = None
+        self._start_phase = 0
+        self._mode_axis_theta = 0
+        self._mode_axis_phi = 0
 
         self._logger = logging.getLogger(PulsationMode.__name__)
 
@@ -185,6 +187,57 @@ class PulsationMode(object):
         except TypeError:
             raise TypeError('Invalid data type {0} for `start_phase` parameter for {1} pulsation mode '
                             'instance.'.format(type(phase), PulsationMode.__name__))
+
+    @property
+    def mode_axis_theta(self):
+        """
+        returns polar latitude angle of pulsation mode axis
+
+        :return: np.float - in radians
+        """
+        return self._mode_axis_theta
+
+    @mode_axis_theta.setter
+    def mode_axis_theta(self, mode_axis_theta):
+        """
+        setter for latitude of pulsation mode axis, if unit is not supplied, degrees are assumed
+
+        :param mode_axis_theta: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        if isinstance(mode_axis_theta, u.quantity.Quantity):
+            self._mode_axis_theta = np.float64(mode_axis_theta.to(U.ARC_UNIT))
+        elif isinstance(mode_axis_theta, (int, np.int, float, np.float)):
+            self._mode_axis_theta = np.float64((mode_axis_theta*u.deg).to(U.ARC_UNIT))
+        else:
+            raise TypeError('Input of variable `mode_axis_theta` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
+    @property
+    def mode_axis_phi(self):
+        """
+        returns longitude angle of pulsation mode axis at t_0
+
+        :return: np.float - in radians
+        """
+        return self._mode_axis_phi
+
+    @mode_axis_phi.setter
+    def mode_axis_phi(self, mode_axis_phi):
+        """
+        setter for longitude of pulsation mode axis, if unit is not supplied, degrees are assumed
+
+        :param mode_axis_phi: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        if isinstance(mode_axis_phi, u.quantity.Quantity):
+            self._mode_axis_phi = np.float64(mode_axis_phi.to(U.ARC_UNIT))
+        elif isinstance(mode_axis_phi, (int, np.int, float, np.float)):
+            self._mode_axis_phi = np.float64((mode_axis_phi * u.deg).to(U.ARC_UNIT))
+        else:
+            raise TypeError('Input of variable `mode_axis_phi` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
 
     @staticmethod
     def check_mandatory_kwargs(kwargs):

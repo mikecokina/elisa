@@ -53,22 +53,22 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000*u.K, 'freq
 
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
-               surface_potential=3.15,
+               surface_potential=3.0,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                discretization_factor=4,
                spots=spots_metadata['primary'],
-               # pulsations=pulsations_metadata['primary']
+               # pulsations=pulsations_metadata['primary'],
                )
 secondary = Star(mass=0.9*u.solMass,
-                 surface_potential=3.15,
-                 synchronicity=1.2,
+                 surface_potential=3.0,
+                 synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
                  discretization_factor=4,
                  spots=spots_metadata['secondary'],
-                 # pulsations=pulsations_metadata['secondary']
+                 # pulsations=pulsations_metadata['secondary'],
                  )
 
 bs = BinarySystem(primary=primary,

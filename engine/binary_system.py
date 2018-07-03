@@ -517,7 +517,7 @@ class BinarySystem(System):
         if isinstance(inclination, u.quantity.Quantity):
             self._inclination = np.float64(inclination.to(units.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64(inclination)
+            self._inclination = np.float64((inclination*u.deg).to(units.ARC_UNIT))
         else:
             raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -564,7 +564,7 @@ class BinarySystem(System):
     @argument_of_periastron.setter
     def argument_of_periastron(self, argument_of_periastron):
         """
-        setter for argument of periastron
+        setter for argument of periastron, if unit is not supplied, value in degrees is assumed
 
         :param argument_of_periastron: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
@@ -572,7 +572,7 @@ class BinarySystem(System):
         if isinstance(argument_of_periastron, u.quantity.Quantity):
             self._argument_of_periastron = np.float64(argument_of_periastron.to(units.ARC_UNIT))
         elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
-            self._argument_of_periastron = np.float64(argument_of_periastron)
+            self._argument_of_periastron = np.float64((argument_of_periastron*u.deg).to(units.ARC_UNIT))
         else:
             raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
