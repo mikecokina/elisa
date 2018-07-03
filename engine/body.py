@@ -355,7 +355,13 @@ class Body(metaclass=ABCMeta):
         :param :float or int
         :return:
         """
-        self._discretization_factor = discretization_factor
+        if isinstance(discretization_factor, u.quantity.Quantity):
+            self._discretization_factor = np.float64(discretization_factor.to(U.ARC_UNIT))
+        elif isinstance(discretization_factor, (int, np.int, float, np.float)):
+            self._discretization_factor = np.radians(np.float64(discretization_factor))
+        else:
+            raise TypeError('Input of variable `discretization_factor` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
 
     @property
     def face_centres(self):

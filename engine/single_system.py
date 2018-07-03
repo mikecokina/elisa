@@ -132,7 +132,7 @@ class SingleSystem(System):
             if spot_instance.angular_density is None:
                 self._logger.debug('Angular density of the spot {0} was not supplied and discretization factor of star '
                                    '{1} was used.'.format(spot_index, self.star.discretization_factor))
-                spot_instance.angular_density = self.star.discretization_factor
+                spot_instance.angular_density = self.star.discretization_factor * U.ARC_UNIT
             alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
 
             # initial containers for current spot
@@ -466,10 +466,10 @@ class SingleSystem(System):
                                 ...
                               [xN yN zN]])
         """
-        if self.star.discretization_factor > 90:
+        if self.star.discretization_factor > c.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
-        alpha = np.radians(self.star.discretization_factor)
+        alpha = self.star.discretization_factor
         N = int(c.HALF_PI // alpha)
         characterictic_angle = c.HALF_PI / N
         characterictic_distance = self.star.equatorial_radius * characterictic_angle

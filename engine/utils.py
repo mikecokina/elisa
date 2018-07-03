@@ -148,13 +148,14 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
     return np.dot(matrix, vector)
 
 
-def average_spacing(data=None, neighbours=6):
+def average_spacing_cgal(data=None, neighbours=6):
     """
-    Average Spacing
+    Average Spacing - calculates average distance between points using average distances to `neighbours` number of
+    points
     Match w/ CGAL average spacing function
 
     :param data: list (np.array); 3-dimensinal dataset
-    :param neighbours: int; nearest neighbours to averaging
+    :param neighbours: int; nearest neighbours to average
     :return:
     """
     if not isinstance(data, type(np.array)):
@@ -165,6 +166,20 @@ def average_spacing(data=None, neighbours=6):
     for line in dist:
         total += np.sort(line)[1:1 + neighbours].sum() / (neighbours + 1)
     return total / dist.shape[0]
+
+
+def average_spacing(data=None, mean_angular_distance=None):
+    """
+    calculates mean distance between points using mean radius of data points and mean angular distance between them
+    :param data: numpy.array([[x1 y1 z1],
+                              [x2 y2 z2],
+                                ...
+                              [xN yN zN]])
+    :param mean_angular_distance: np.float - in radians
+    :return:
+    """
+    average_radius = np.mean(np.linalg.norm(data, axis=1))
+    return average_radius * mean_angular_distance
 
 
 def remap(x, mapper):

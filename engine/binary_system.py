@@ -169,7 +169,7 @@ class BinarySystem(System):
                     self._logger.debug(
                         'Angular density of the spot {0} on {2} component was not supplied and discretization factor of'
                         ' star {1} was used.'.format(spot_index, component_instance.discretization_factor, component))
-                    spot_instance.angular_density = component_instance.discretization_factor
+                    spot_instance.angular_density = component_instance.discretization_factor * units.ARC_UNIT
                 alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
 
                 # initial containers for current spot
@@ -1132,10 +1132,10 @@ class BinarySystem(System):
                                                                      [xN yN zN]])
         """
         component_instance = getattr(self, component)
-        if component_instance.discretization_factor > 90:
+        if component_instance.discretization_factor > c.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
-        alpha = np.radians(component_instance.discretization_factor)
+        alpha = component_instance.discretization_factor
         scipy_solver_init_value = np.array([1. / 10000.])
 
         if component == 'primary':
@@ -1269,10 +1269,10 @@ class BinarySystem(System):
                                                                      [xN yN zN]])
         """
         component_instance = getattr(self, component)
-        if component_instance.discretization_factor > 90:
+        if component_instance.discretization_factor > c.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
-        alpha = np.radians(component_instance.discretization_factor)
+        alpha = component_instance.discretization_factor
         scipy_solver_init_value = np.array([1. / 10000.])
 
         # calculating distance between components
@@ -1789,9 +1789,10 @@ class BinarySystem(System):
                 kwargs['points_primary'] = points['primary']
                 kwargs['primary_triangles'] = faces['primary']
 
-                cmap = self.build_surface_map(colormap=kwargs['colormap'], component='primary',
-                                              components_distance=components_distance, return_map=True)
-                kwargs['primary_cmap'] = cmap['primary']
+                if kwargs['colormap']:
+                    cmap = self.build_surface_map(colormap=kwargs['colormap'], component='primary',
+                                                  components_distance=components_distance, return_map=True)
+                    kwargs['primary_cmap'] = cmap['primary']
 
                 if kwargs['normals']:
                     kwargs['primary_centres'] = self.primary.calculate_surface_centres(
@@ -1805,9 +1806,10 @@ class BinarySystem(System):
                 kwargs['points_secondary'] = points['secondary']
                 kwargs['secondary_triangles'] = faces['secondary']
 
-                cmap = self.build_surface_map(colormap=kwargs['colormap'], component='secondary',
-                                              components_distance=components_distance, return_map=True)
-                kwargs['secondary_cmap'] = cmap['secondary']
+                if kwargs['colormap']:
+                    cmap = self.build_surface_map(colormap=kwargs['colormap'], component='secondary',
+                                                  components_distance=components_distance, return_map=True)
+                    kwargs['secondary_cmap'] = cmap['secondary']
 
                 if kwargs['normals']:
                     kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(

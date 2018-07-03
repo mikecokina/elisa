@@ -185,19 +185,21 @@ class System(metaclass=ABCMeta):
         vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
         points = copy(component_instance.points)
         # average spacing of component surface points
-        avsp = utils.average_spacing(data=component_instance.points, neighbours=6)
+        avsp = utils.average_spacing(data=component_instance.points,
+                                     mean_angular_distance=component_instance.discretization_factor)
 
         for spot_index, spot in component_instance.spots.items():
             # average spacing in spot points
 
-            avsp_spot = utils.average_spacing(data=spot.points, neighbours=6)
+            avsp_spot = utils.average_spacing(data=spot.points,
+                                              mean_angular_distance=spot.angular_density)
             vertices_to_remove, vertices_test = [], []
 
             # find nearest points to spot alt center
             tree = KDTree(points)
             distances, indices = tree.query(spot.boundary_center, k=len(points))
 
-            max_dist_to_object_point = spot.max_size + (0.25 * avsp)
+            max_dist_to_object_point = spot.max_size + (0.20 * avsp)
             max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
 
             # removing star points in spot
