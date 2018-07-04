@@ -2,6 +2,7 @@ from engine.body import Body
 from engine.spot import Spot
 from engine.pulsations import PulsationMode
 from engine import utils
+from engine import const as c
 from astropy import units as u
 import numpy as np
 import logging
@@ -308,9 +309,27 @@ class Star(Body):
         centres = utils.cartesian_to_spherical(surface_centers)
 
         for pulsation_index, pulsation in self.pulsations.items():
+            # generating spherical coordinate system in case of mode axis not identical with axis of rotation, new axis
+            # is created by rotation of polar coordinates around z in positive direction by `mode_axis_phi' and than
+            # rotating this coordinate system around y axis to tilt z axis by amount of `mode_axis_theta`
+            if pulsation.mode_axis_phi == 0 and pulsation.mode_axis_theta == 0:
+                phi, theta = centres[:, 1], centres[:, 2]
+            else:
+                phi_rot = (centres[:, 1] - pulsation.mode_axis_phi) % c.FULL_ARC  # rotation around Z
+                # axis
+                cos_phi = np.cos(phi_rot)
+                sin_theta = np.sin(centres[:, 2])
+                sin_axis_theta = np.sin(pulsation.mode_axis_theta)
+                cos_theta = np.cos(centres[:, 2])
+                # rotation around Y axis by `mode_axis_theta` angle
+                cos_axis_theta = np.cos(pulsation.mode_axis_theta)
+                theta = np.arccos(cos_phi * sin_theta * sin_axis_theta + cos_theta * cos_axis_theta)
+                phi = np.arctan2(np.sin(phi_rot) * sin_theta, cos_phi * sin_theta * cos_axis_theta -
+                                 cos_theta * sin_axis_theta)
+
             # generating of renormalised spherical harmonics (maximum value on sphere equuals to 1)
             constant = spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m)
-            spherical_harmonics = constant * np.real(sph_harm(pulsation.m, pulsation.l, centres[:, 1], centres[:, 2]))
+            spherical_harmonics = constant * np.real(sph_harm(pulsation.m, pulsation.l, phi, theta))
 
             temperatures += pulsation.amplitude * spherical_harmonics
 
@@ -335,3 +354,38 @@ class Star(Body):
         if self.spots:
             for spot_index, spot in self.spots.items():
                 spot.temperatures *= coefficient
+
+    @staticmethod
+    def limb_darkening_factor(theta=None, coefficients=None, rule=None):
+        """
+        calculates limb darkening factor from one or multiple `theta` angles between radius vector of surface
+        component(s) and a line of sight
+        :param theta: np.float or np.array
+        :param coefficients: np.float in case of linear law
+                             np.array in other cases
+        :param rule: str -  `linear` or `cosine`, `logarithmic`, `square_root`
+        :return:  gravity darkening factor(s), the same type/shape as theta
+        """
+        if theta is None:
+            raise ValueError('Angle `theta` between line of sight, centre of the star and surface element was not '
+                             'supplied')
+        theta = np.array(theta) if isinstance(theta, list) else theta
+        test = (theta >= 0) & (theta <= c.HALF_PI)
+        if isinstance(test, bool):
+            if not test:
+                raise ValueError('Value of angle `theta`: {} is outside of bounds (0, pi/2).'.format(theta))
+        elif not test.all():
+            raise ValueError('At least one value of angle `theta` is outside of bounds (0, pi/2).')
+        if coefficients is None:
+            ValueError('Limb darkening coefficients were not supplied.')
+        if rule is None:
+            ValueError('Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, '
+                       '`square_root`')
+
+        cos_theta = np.cos(theta)
+        if rule in ['linear', 'cosine']:
+            return 1 - coefficients + coefficients * cos_theta
+        elif rule == 'logarithmic':
+            return 1 - coefficients[0] * (1 - cos_theta) - coefficients[1] * cos_theta * np.log(cos_theta)
+        elif rule == 'square_root':
+            return 1 - coefficients[0] * (1 - cos_theta) - coefficients[1] * (1 - np.sqrt(cos_theta))

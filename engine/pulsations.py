@@ -3,6 +3,7 @@ import logging
 from engine import utils
 from astropy import units as u
 from engine import units as U
+from engine import const as c
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -43,7 +44,8 @@ class PulsationMode(object):
                 missing_kwargs.append("`{}`".format(key))
                 self._logger.error("Property {} "
                                    "of class instance {} was not initialized".format(key, PulsationMode.__name__))
-            else:
+
+        for key in kwargs:
                 self._logger.debug("Setting property {} "
                                    "of class instance {} to {}".format(key, PulsationMode.__name__, kwargs[key]))
                 setattr(self, key, kwargs.get(key))
@@ -212,6 +214,8 @@ class PulsationMode(object):
         else:
             raise TypeError('Input of variable `mode_axis_theta` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+        if not 0 <= self._mode_axis_theta < c.PI:
+            raise ValueError('Value of `mode_axis_theta`: {} is outside bounds (0, pi).'.format(self._mode_axis_theta))
 
     @property
     def mode_axis_phi(self):
@@ -237,6 +241,8 @@ class PulsationMode(object):
         else:
             raise TypeError('Input of variable `mode_axis_phi` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+        if not 0 <= self._mode_axis_phi <= c.FULL_ARC:
+            raise ValueError('Value of `mode_axis_phi`: {} is outside bounds (0, 2pi).'.format(self._mode_axis_phi))
 
 
     @staticmethod

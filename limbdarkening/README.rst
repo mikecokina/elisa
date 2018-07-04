@@ -39,9 +39,9 @@ List of models included
 
 ::
 
-    linear
+    linear or cosine
     logarithmic
-    squareroot
+    square_root
 
 List of passbands included
 --------------------------
