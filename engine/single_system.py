@@ -506,10 +506,16 @@ class SingleSystem(System):
         x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
         # stiching together equator and 8 sectors of stellar surface
-        x = np.concatenate((x_eq, -y_eq, -x_eq,  y_eq, x_q, -y_q, -x_q,  y_q,  x_q, -y_q, -x_q,  y_q, np.array([0, 0])))
-        y = np.concatenate((y_eq,  x_eq, -y_eq, -x_eq, y_q,  x_q, -y_q, -x_q,  y_q,  x_q, -y_q, -x_q, np.array([0, 0])))
-        z = np.concatenate((z_eq,  z_eq,  z_eq,  z_eq, z_q,  z_q,  z_q,  z_q, -z_q, -z_q, -z_q, -z_q,
-                            np.array([self.star.polar_radius, -self.star.polar_radius])))
+        # in order: north pole
+        #           south pole
+        #           1 quadrant quarter of equator, 1 quadrant north quarter of hemisphere, 1 quadrant south quarter of
+        #           hemisphere
+        #           ... (next 3 quadrants)
+        x = np.concatenate((np.array([0, 0]), x_eq, x_q,  x_q, -y_eq, -y_q, -y_q, -x_eq, -x_q, -x_q,  y_eq,  y_q,  y_q))
+        y = np.concatenate((np.array([0, 0]), y_eq, y_q,  y_q,  x_eq,  x_q,  x_q, -y_eq, -y_q, -y_q, -x_eq, -x_q, -x_q))
+        z = np.concatenate((np.array([self.star.polar_radius, -self.star.polar_radius]), z_eq, z_q, -z_q,  z_eq,  z_q,
+                            -z_q,  z_eq,  z_q, -z_q,  z_eq,  z_q, -z_q))
+
         return np.column_stack((x, y, z))
 
     def single_surface(self):

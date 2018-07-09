@@ -232,7 +232,7 @@ class System(metaclass=ABCMeta):
                         # skip point if is marked for removal
                         continue
 
-                    # append only points of currrent object that do not intervent to spot
+                    # append only points of current object that do not intervent to spot
                     # [current, since there should be already spot from previous iteration step]
                     _points.append(vertex)
                     _vertices_map.append({"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]})

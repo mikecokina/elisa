@@ -47,6 +47,9 @@ class Body(metaclass=ABCMeta):
         self._areas = None  # numpy.array
         self._discretization_factor = 3
         self._face_centers = None  # numpy.array
+        self._point_symmetry_matrix = None
+        self._base_symmetry_points_number = None
+        # self._face_symmetry_matrix = None
 
         # values of properties
         for kwarg in self.KWARGS:
@@ -366,11 +369,52 @@ class Body(metaclass=ABCMeta):
     @property
     def face_centres(self):
         """
-        returns centres of corresponding faces
+        returns coordinates of centres of corresponding faces
 
-        :return: np.array([face_centre1, face_centre2, ..., face_centreN])
+        :return: np.array([[face_centrex1, face_centrey1, face_centrez1],
+                           [face_centrex2, face_centrey2, face_centrez2],
+                           ...,
+                           [face_centrexN, face_centrey2, face_centrez2]])
         """
         return self._face_centers
+
+    @face_centres.setter
+    def face_centres(self, centres):
+        """
+        setter for coordinates of face centres
+
+        :param centres: np.array([[face_centrex1, face_centrey1, face_centrez1],
+                                  [face_centrex2, face_centrey2, face_centrez2],
+                                   ...,
+                                  [face_centrexN, face_centrey2, face_centrez2]])
+        :return:
+        """
+        if np.shape(centres)[0] != np.shape(self.faces)[0]:
+            raise ValueError('Number of surface centres doesn`t equal to number of faces')
+        self._face_centers = centres
+
+    @property
+    def point_symmetry_matrix(self):
+        """
+        matrix of indices with the same length as body`s points, n-th value of point_symmetry_matrix indicates position
+        of base symmetry point for given n-th point
+        :return:
+        """
+        return self._point_symmetry_matrix
+
+    @point_symmetry_matrix.setter
+    def point_symmetry_matrix(self, symmetry_matrix):
+        """
+        setter for matrix of indices with the same length as body`s points, n-th value of point_symmetry_matrix
+        indicates position of base symmetry point for given n-th point
+
+        :param symmetry_matrix: np.array([index_of_symmetry_point_for_point1, ..., index_of_symmetry_point_for_pointN])
+        :return:
+        """
+        if np.shape(self.points)[0] != np.shape(symmetry_matrix)[0]:
+            raise ValueError('Length of symmetry matrix {} is not the same as number of surface points '
+                             '{}'.format(np.shape(symmetry_matrix)[0], np.shape(self.points)[0]))
+        self._point_symmetry_matrix = symmetry_matrix
 
     @property
     def mass_unit(self):
@@ -439,8 +483,7 @@ class Body(metaclass=ABCMeta):
 
         return normals * sgn_vector[:, None]
 
-    @staticmethod
-    def calculate_surface_centres(points=None, faces=None):
+    def calculate_surface_centres(self, points=None, faces=None):
         """
         returns centers of every surface face
 
@@ -449,6 +492,9 @@ class Body(metaclass=ABCMeta):
                                ...
                               [center_xn, center_yn, center_zn]])
         """
+        if points is None:
+            points = self.points
+            faces = self.faces
         return np.average(points[faces], axis=1)
 
     def calculate_areas(self):
