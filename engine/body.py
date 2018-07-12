@@ -47,9 +47,10 @@ class Body(metaclass=ABCMeta):
         self._areas = None  # numpy.array
         self._discretization_factor = 3
         self._face_centers = None  # numpy.array
-        self._point_symmetry_matrix = None
-        self._base_symmetry_points_number = None
-        # self._face_symmetry_matrix = None
+        self._point_symmetry_vector = None
+        self.inverse_point_symmetry_matrix = None
+        self.base_symmetry_points_number = None
+        self._face_symmetry_matrix = None
 
         # values of properties
         for kwarg in self.KWARGS:
@@ -394,27 +395,27 @@ class Body(metaclass=ABCMeta):
         self._face_centers = centres
 
     @property
-    def point_symmetry_matrix(self):
+    def point_symmetry_vector(self):
         """
-        matrix of indices with the same length as body`s points, n-th value of point_symmetry_matrix indicates position
+        vector of indices with the same length as body`s points, n-th value of point_symmetry_matrix indicates position
         of base symmetry point for given n-th point
         :return:
         """
-        return self._point_symmetry_matrix
+        return self._point_symmetry_vector
 
-    @point_symmetry_matrix.setter
-    def point_symmetry_matrix(self, symmetry_matrix):
+    @point_symmetry_vector.setter
+    def point_symmetry_vector(self, symmetry_vector):
         """
-        setter for matrix of indices with the same length as body`s points, n-th value of point_symmetry_matrix
+        setter for vector of indices with the same length as body`s points, n-th value of point_symmetry_matrix
         indicates position of base symmetry point for given n-th point
 
-        :param symmetry_matrix: np.array([index_of_symmetry_point_for_point1, ..., index_of_symmetry_point_for_pointN])
+        :param symmetry_vector: np.array([index_of_symmetry_point_for_point1, ..., index_of_symmetry_point_for_pointN])
         :return:
         """
-        if np.shape(self.points)[0] != np.shape(symmetry_matrix)[0]:
-            raise ValueError('Length of symmetry matrix {} is not the same as number of surface points '
-                             '{}'.format(np.shape(symmetry_matrix)[0], np.shape(self.points)[0]))
-        self._point_symmetry_matrix = symmetry_matrix
+        if np.shape(self.points)[0] != np.shape(symmetry_vector)[0]:
+            raise ValueError('Length of symmetry vector {} is not the same as number of surface points '
+                             '{}'.format(np.shape(symmetry_vector)[0], np.shape(self.points)[0]))
+        self._point_symmetry_vector = symmetry_vector
 
     @property
     def mass_unit(self):

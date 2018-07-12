@@ -457,7 +457,7 @@ class SingleSystem(System):
         """
         return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
 
-    def mesh(self):
+    def mesh(self, symmetry_output=False):
         """
         function for creating surface mesh of single star system
 
@@ -486,6 +486,8 @@ class SingleSystem(System):
         num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
         thetas = np.linspace(characterictic_angle, c.HALF_PI-characterictic_angle, num=num, endpoint=True)
         r_q, phi_q, theta_q = [], [], []
+        # also generating meridian line
+        r_mer, phi_mer, theta_mer = [], [], []
         for theta in thetas:
             args, use = theta, False
             scipy_solver_init_value = np.array([1 / 1000.0])
@@ -493,37 +495,131 @@ class SingleSystem(System):
                                                         full_output=True, args=args)
             radius = solution[0]
             num = int(c.HALF_PI * radius * np.sin(theta) // characterictic_distance)
-            r_q += [radius for xx in range(num)]
+            r_q += [radius for xx in range(1, num)]
             M = c.HALF_PI/num
-            phi_q += [xx*M for xx in range(num)]
-            theta_q += [theta for xx in range(num)]
+            phi_q += [xx*M for xx in range(1, num)]
+            theta_q += [theta for xx in range(1, num)]
+
+            r_mer.append(radius)
+            phi_mer.append(0)
+            theta_mer.append(theta)
 
         r_q = np.array(r_q)
         phi_q = np.array(phi_q)
         theta_q = np.array(theta_q)
+        r_mer = np.array(r_mer)
+        phi_mer = np.array(phi_mer)
+        theta_mer = np.array(theta_mer)
+
         # converting this eighth of surface to cartesian coordinates
         quarter = utils.spherical_to_cartesian(np.column_stack((r_q, phi_q, theta_q)))
+        meridian = utils.spherical_to_cartesian(np.column_stack((r_mer, phi_mer, theta_mer)))
         x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
+        x_mer, y_mer, z_mer = meridian[:, 0], meridian[:, 1], meridian[:, 2]
 
-        # stiching together equator and 8 sectors of stellar surface
-        # in order: north pole
-        #           south pole
-        #           1 quadrant quarter of equator, 1 quadrant north quarter of hemisphere, 1 quadrant south quarter of
-        #           hemisphere
-        #           ... (next 3 quadrants)
-        x = np.concatenate((np.array([0, 0]), x_eq, x_q,  x_q, -y_eq, -y_q, -y_q, -x_eq, -x_q, -x_q,  y_eq,  y_q,  y_q))
-        y = np.concatenate((np.array([0, 0]), y_eq, y_q,  y_q,  x_eq,  x_q,  x_q, -y_eq, -y_q, -y_q, -x_eq, -x_q, -x_q))
-        z = np.concatenate((np.array([self.star.polar_radius, -self.star.polar_radius]), z_eq, z_q, -z_q,  z_eq,  z_q,
-                            -z_q,  z_eq,  z_q, -z_q,  z_eq,  z_q, -z_q))
+        # stitching together equator and 8 sectors of stellar surface
+        # in order: north hemisphere: north pole, x_meridian, xy_equator, xy_quarter, y_meridian, y-x_equator,
+        #                             y-x_quarter, -x_meridian, -x-y_equator, -x-y_quarter, -y_meridian, -yx_equator,
+        #                             -yx_quarter
+        #           south hemisphere: south_pole, x_meridian, xy_quarter, y_meridian, y-x_quarter, -x_meridian,
+        #                             -x-y_quarter, -y_meridian, -yx_quarter
 
-        return np.column_stack((x, y, z))
+        x = np.concatenate((np.array([0]), x_mer, x_eq, x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq, -x_q,  y_mer,  y_eq,
+                            y_q, np.array([0]), x_mer,  x_q, -y_mer, -y_q, -x_mer, -x_q,  y_mer,  y_q))
+        y = np.concatenate((np.array([0]), y_mer, y_eq, y_q,  x_mer,  x_eq,  x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq,
+                            -x_q, np.array([0]), y_mer,  y_q,  x_mer,  x_q, -y_mer, -y_q, -x_mer, -x_q))
+        z = np.concatenate((np.array([self.star.polar_radius]), z_mer, z_eq, z_q,  z_mer,  z_eq,  z_q,  z_mer,  z_eq,
+                            z_q,  z_mer,  z_eq,  z_q, np.array([-self.star.polar_radius]), -z_mer, -z_q, -z_mer, -z_q,
+                            -z_mer, -z_q, -z_mer, -z_q))
 
-    def single_surface(self):
+        if symmetry_output:
+            quarter_equator_length = len(x_eq)
+            meridian_length = len(x_mer)
+            quarter_length = len(x_q)
+            base_symmetry_points_number = 1 + meridian_length + quarter_equator_length + quarter_length + \
+                                          meridian_length
+            symmetry_vector = np.concatenate((np.arange(base_symmetry_points_number),  # 1st quadrant
+                                              # stray point on equator
+                                              [base_symmetry_points_number],
+                                              # 2nd quadrant
+                                              np.arange(2 + meridian_length, base_symmetry_points_number),
+                                              # 3rd quadrant
+                                              np.arange(1 + meridian_length, base_symmetry_points_number),
+                                              # 4rd quadrant
+                                              np.arange(1 + meridian_length, base_symmetry_points_number -
+                                                        meridian_length),
+                                              # south hemisphere
+                                              np.arange(1 + meridian_length),
+                                              np.arange(1 + meridian_length + quarter_equator_length,
+                                                        base_symmetry_points_number),  # 1st quadrant
+                                              np.arange(1 + meridian_length + quarter_equator_length,
+                                                        base_symmetry_points_number),  # 2nd quadrant
+                                              np.arange(1 + meridian_length + quarter_equator_length,
+                                                        base_symmetry_points_number),  # 3nd quadrant
+                                              np.arange(1 + meridian_length + quarter_equator_length,
+                                                        base_symmetry_points_number - meridian_length)))
+
+            south_pole_index = 4*(base_symmetry_points_number - meridian_length) - 3
+            reduced_bspn = base_symmetry_points_number-meridian_length  # auxiliary variable1
+            reduced_bspn2 = base_symmetry_points_number - quarter_equator_length
+            inverse_symmetry_matrix = \
+                np.array([
+                    np.arange(base_symmetry_points_number+1),  # 1st quadrant (north hem)
+                    # 2nd quadrant (north hem)
+                    np.concatenate(([0], np.arange(reduced_bspn, 2*base_symmetry_points_number-meridian_length))),
+                    # 3rd quadrant (north hem)
+                    np.concatenate(([0], np.arange(2*reduced_bspn - 1, 3*reduced_bspn + meridian_length -1))),
+                    # 4th quadrant (north hem)
+                    np.concatenate(([0], np.arange(3*reduced_bspn - 2, 4*reduced_bspn - 3),
+                                    np.arange(1, meridian_length + 2))),
+                    # 1st quadrant (south hemisphere)
+                    np.concatenate((np.arange(south_pole_index, meridian_length + 1 + south_pole_index),
+                                    np.arange(1 + meridian_length, 1 + meridian_length + quarter_equator_length),
+                                    np.arange(meridian_length + 1 + south_pole_index,
+                                              base_symmetry_points_number - quarter_equator_length + south_pole_index),
+                                    [base_symmetry_points_number])),
+                    # 2nd quadrant (south hem)
+                    np.concatenate(([south_pole_index],
+                                    np.arange(reduced_bspn2 - meridian_length + south_pole_index,
+                                              reduced_bspn2 + south_pole_index),
+                                    np.arange(base_symmetry_points_number,
+                                              base_symmetry_points_number + quarter_equator_length),
+                                    np.arange(reduced_bspn2 + south_pole_index, 2*reduced_bspn2 - meridian_length - 1 +
+                                              south_pole_index),
+                                    [2*base_symmetry_points_number-meridian_length-1])),
+                    # 3rd quadrant (south hem)
+                    np.concatenate(([south_pole_index],
+                                    np.arange(2*reduced_bspn2 - 2*meridian_length - 1 + south_pole_index,
+                                              2*reduced_bspn2 - meridian_length - 1 + south_pole_index),
+                                    np.arange(2*base_symmetry_points_number - meridian_length - 1,
+                                              2*base_symmetry_points_number - meridian_length + quarter_equator_length
+                                              - 1),
+                                    np.arange(2*reduced_bspn2 - meridian_length - 1 + south_pole_index,
+                                              3*reduced_bspn2 - 2*meridian_length - 2 + south_pole_index),
+                                    [3*reduced_bspn + meridian_length - 2])),
+                    # 4th quadrant (south hem)
+                    np.concatenate(([south_pole_index],
+                                    np.arange(3*reduced_bspn2 - 3*meridian_length - 2 + south_pole_index,
+                                              3*reduced_bspn2 - 2*meridian_length - 2 + south_pole_index),
+                                    np.arange(3*reduced_bspn + meridian_length - 2,
+                                              3*reduced_bspn + meridian_length - 2 +
+                                              quarter_equator_length),
+                                    np.arange(3*reduced_bspn2 - 2*meridian_length - 2 + south_pole_index, len(x)),
+                                    np.arange(1 + south_pole_index, meridian_length + south_pole_index + 1),
+                                    [1 + meridian_length]
+                                    ))
+                          ])
+
+            return np.column_stack((x, y, z)), symmetry_vector, base_symmetry_points_number + 1, inverse_symmetry_matrix
+        else:
+            return np.column_stack((x, y, z))
+
+    def single_surface(self, points=None):
         """
-        calculates triangulation of the star surface points, returns set of triple indices of surface pints that make
-        up given triangle
+        calculates triangulation of given set of points, if points are not given, star surface points are used. Returns
+        set of triple indices of surface pints that make up given triangle
 
-        :param vertices: np.array: numpy.array([[x1 y1 z1],
+        :param points: np.array: numpy.array([[x1 y1 z1],
                                                 [x2 y2 z2],
                                                   ...
                                                 [xN yN zN]])
@@ -532,14 +628,41 @@ class SingleSystem(System):
                                             ...
                                           [...]])
         """
-        triangulation = Delaunay(self.star.points)
+        if points is None:
+            points = self.star.points
+        triangulation = Delaunay(points)
         triangles_indices = triangulation.convex_hull
         return triangles_indices
 
     def build_surface_with_no_spots(self):
         """
-        function is calling surface building function for single systems without spots and assigns star's surface to star object as
-        its property
+        function is calling surface building function for single systems without spots and assigns star's surface to
+        star object as its property
+        :return:
+        """
+
+        points_length = np.shape(self.star.points[:self.star.base_symmetry_points_number, :])[0]
+        # triangulating only one eighth of the star
+        points_to_triangulate = np.append(self.star.points[:self.star.base_symmetry_points_number, :],
+                                          [[0, 0, 0]],
+                                          # [[0, 0.5 * self.star.polar_radius, 0.5 * self.star.polar_radius],
+                                          #  [0.5 * self.star.polar_radius, 0, 0.5 * self.star.polar_radius],
+                                          #  [0.5 * self.star.polar_radius, 0.5 * self.star.polar_radius, 0]],
+                                          axis=0)
+        # print((points_to_triangulate >= 0).all())
+        triangles = self.single_surface(points=points_to_triangulate)
+        # removing faces from triangulation, where origin point is included
+        triangles = triangles[~(triangles >= points_length).any(1)]
+        triangles = triangles[~((points_to_triangulate[triangles]==0.).all(1)).any(1)]
+        # lets exploit axial symmetry and fill the rest of the surface of the star
+        all_triangles = [inv[triangles] for inv in self.star.inverse_point_symmetry_matrix]
+        self.star.faces = np.concatenate(all_triangles, axis=0)
+        # self.star.faces = triangles
+
+    def build_surface_with_spots(self):
+        """
+        function for triangulation of surface with spots
+
         :return:
         """
         self.star.faces = self.single_surface()
@@ -629,7 +752,7 @@ class SingleSystem(System):
         if not self.star.spots:
             self.build_surface_with_no_spots()
 
-        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_no_spots)
+        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
 
     def build_surface(self, return_surface=False):
         """
@@ -641,15 +764,17 @@ class SingleSystem(System):
         :return:
         """
         # build surface if there is no spot specified
-        self.star.points = self.mesh()
         if not self.star.spots:
+            self.star.points, self.star.point_symmetry_vector, self.star.base_symmetry_points_number, \
+            self.star.inverse_point_symmetry_matrix = self.mesh(symmetry_output=True)
             self.build_surface_with_no_spots()
             if return_surface:
                 return self.star.points, self.star.faces
             else:
                 return
 
-        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_no_spots)
+        self.star.points = self.mesh()
+        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
         if return_surface:
             ret_points = copy(self.star.points)
             ret_faces = copy(self.star.faces)
@@ -729,7 +854,11 @@ class SingleSystem(System):
         """
         build points of surface for star!!! w/o spots yet !!!
         """
-        self.star.points = self.mesh()
+        if self.star.spots:
+            self.star.points, self.star.point_symmetry_vector, self.star.base_symmetry_points_number, \
+                self.star.inverse_point_symmetry_matrix = self.mesh(symmetry_output=True)
+        else:
+            self.star.points = self.mesh(symmetry_output=False)
 
     def compute_lc(self):
         pass
