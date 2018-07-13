@@ -4,6 +4,7 @@ import numpy as np
 import logging
 from engine import units as U
 from engine import utils
+from engine.spot import Spot
 
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
@@ -47,10 +48,12 @@ class Body(metaclass=ABCMeta):
         self._areas = None  # numpy.array
         self._discretization_factor = 3
         self._face_centers = None  # numpy.array
+        self._spots = None
         self._point_symmetry_vector = None
         self.inverse_point_symmetry_matrix = None
         self.base_symmetry_points_number = None
-        self._face_symmetry_matrix = None
+        self._face_symmetry_vector = None
+        self.base_symmetry_faces_number = None
 
         # values of properties
         for kwarg in self.KWARGS:
@@ -394,6 +397,20 @@ class Body(metaclass=ABCMeta):
             raise ValueError('Number of surface centres doesn`t equal to number of faces')
         self._face_centers = centres
 
+    def remove_spot(self, spot_index):
+        del(self._spots[spot_index])
+
+    @property
+    def spots(self):
+        return self._spots
+
+    @spots.setter
+    def spots(self, spots):
+        # initialize spots dataframes
+        if spots:
+            self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)}
+
+
     @property
     def point_symmetry_vector(self):
         """
@@ -416,6 +433,29 @@ class Body(metaclass=ABCMeta):
             raise ValueError('Length of symmetry vector {} is not the same as number of surface points '
                              '{}'.format(np.shape(symmetry_vector)[0], np.shape(self.points)[0]))
         self._point_symmetry_vector = symmetry_vector
+
+    @property
+    def face_symmetry_vector(self):
+        """
+        vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix indicates position
+        of base symmetry face for given n-th point
+        :return:
+        """
+        return self._face_symmetry_vector
+
+    @face_symmetry_vector.setter
+    def face_symmetry_vector(self, symmetry_vector):
+        """
+        setter for vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix
+        indicates position of base symmetry face for given n-th point
+
+        :param symmetry_vector: np.array([index_of_symmetry_face1, ..., index_of_symmetry_faceN])
+        :return:
+        """
+        if np.shape(self.faces)[0] != np.shape(symmetry_vector)[0]:
+            raise ValueError('Length of symmetry vector {} is not the same as number of surface faces '
+                             '{}'.format(np.shape(symmetry_vector)[0], np.shape(self.faces)[0]))
+        self._face_symmetry_vector = symmetry_vector
 
     @property
     def mass_unit(self):
@@ -505,7 +545,12 @@ class Body(metaclass=ABCMeta):
         """
         if self.faces is None or self.points is None:
             raise ValueError('Faces or/and points of object {} have not been set yet'.format(self.name))
-        return utils.triangle_areas(self.faces, self.points)
+
+        if not self.spots:  # temporary
+            return utils.triangle_areas(self.faces, self.points)
+        else:
+            base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number])
+            self.areas = base_areas[self.face_symmetry_vector]
 
     def get_info(self):
         pass

@@ -58,7 +58,7 @@ primary = Star(mass=1.5*u.solMass,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                discretization_factor=4,
-               spots=spots_metadata['primary'],
+               # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                )
 secondary = Star(mass=0.9*u.solMass,
@@ -67,7 +67,7 @@ secondary = Star(mass=0.9*u.solMass,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
                  discretization_factor=4,
-                 spots=spots_metadata['secondary'],
+                 # spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['secondary'],
                  )
 
@@ -86,7 +86,7 @@ bs = BinarySystem(primary=primary,
 # bs.build_faces()
 # bs.build_temperature_distribution(components_distance=1.0)
 # bs.evaluate_normals()
-# bs.build_surface(components_distance=1)
+bs.build_surface(components_distance=1)
 
 
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
@@ -107,7 +107,7 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 bs.plot(descriptor='surface',
         phase=0,
         # components_to_plot='primary',
-        components_to_plot='secondary',
+        # components_to_plot='secondary',
         edges=True,
         # normals=True,
         # colormap='gravity_acceleration',

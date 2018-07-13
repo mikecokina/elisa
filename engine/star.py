@@ -1,5 +1,4 @@
 from engine.body import Body
-from engine.spot import Spot
 from engine.pulsations import PulsationMode
 from engine import utils
 from engine import const as c
@@ -38,7 +37,6 @@ class Star(Body):
         self._polar_log_g = None
         self._equatorial_radius = None
         self._critical_surface_potential = None
-        self._spots = None
         self._potential_gradient_magnitudes = None
         self._polar_potential_gradient = None
         self._pulsations = None
@@ -58,20 +56,6 @@ class Star(Body):
     def pulsations(self, pulsations):
         if pulsations:
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
-
-    def remove_spot(self, spot_index):
-        del(self._spots[spot_index])
-
-    @property
-    def spots(self):
-        return self._spots
-
-    @spots.setter
-    def spots(self, spots):
-        # initialize spots dataframes
-        if spots:
-            self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)}
-
     @property
     def critical_surface_potential(self):
         return self._critical_surface_potential
@@ -244,11 +228,19 @@ class Star(Body):
         :param gradient_magnitudes:
         :return:
         """
-        gradient_magnitudes = self.potential_gradient_magnitudes if gradient_magnitudes is None else gradient_magnitudes
+        if self.spots:  # temporary
+            gradient_magnitudes = self.potential_gradient_magnitudes if gradient_magnitudes is None else \
+                gradient_magnitudes
+        else:
+            gradient_magnitudes = self.potential_gradient_magnitudes[:self.base_symmetry_faces_number] if \
+                gradient_magnitudes is None else gradient_magnitudes
         t_eff_polar = self.calculate_polar_effective_temperature()
-        t_eff_points = t_eff_polar * np.power(gradient_magnitudes / self.polar_potential_gradient_magnitude,
-                                              0.25 * self.gravity_darkening)
-        return t_eff_points
+        t_eff = t_eff_polar * np.power(gradient_magnitudes / self.polar_potential_gradient_magnitude,
+                                       0.25 * self.gravity_darkening)
+        if self.spots:  # temporary
+            return t_eff
+        else:
+            return t_eff[self.face_symmetry_vector]
 
     def is_property(self, kwargs):
         """
