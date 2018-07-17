@@ -166,5 +166,5 @@ class Spot(object):
         returns areas of each face of the spot build_surface
         :return: numpy.array([area_1, ..., area_n])
         """
-        return utils.triangle_areas(self.faces, self.points)
+        return utils.triangle_areas(triangles=self.faces, points=self.points)
 

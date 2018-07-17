@@ -54,6 +54,9 @@ class Body(metaclass=ABCMeta):
         self.base_symmetry_points_number = None
         self._face_symmetry_vector = None
         self.base_symmetry_faces_number = None
+        # those are used only if case of spots are used
+        self.base_symmetry_points = None
+        self.base_symmetry_faces = None
 
         # values of properties
         for kwarg in self.KWARGS:
@@ -547,10 +550,11 @@ class Body(metaclass=ABCMeta):
             raise ValueError('Faces or/and points of object {} have not been set yet'.format(self.name))
 
         if not self.spots:  # temporary
-            return utils.triangle_areas(self.faces, self.points)
+            base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
+                                              self.points[:self.base_symmetry_points_number])
+            return base_areas[self.face_symmetry_vector]
         else:
-            base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number])
-            self.areas = base_areas[self.face_symmetry_vector]
+            return utils.triangle_areas(self.faces, self.points)
 
     def get_info(self):
         pass

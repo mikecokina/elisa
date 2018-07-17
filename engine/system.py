@@ -168,6 +168,25 @@ class System(metaclass=ABCMeta):
         """
         pass
 
+    def incorporate_spots_to_surface_new(self, component_instance=None, surface_fn=None, **kwargs):
+        if component_instance is None:
+            raise ValueError('Object instance was not given.')
+        if surface_fn is None:
+            raise ValueError('Function for building surfaces was not specified.')
+
+        vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
+        points = copy(component_instance.points)  # copy of star points
+        # average spacing of star surface points
+        avsp = utils.average_spacing(data=component_instance.points,
+                                     mean_angular_distance=component_instance.discretization_factor)
+
+        for spot_index, spot in component_instance.spots.items():
+            # deleting points and faces of star/spot that are under current spot
+            # average spacing in spot points
+            avsp_spot = utils.average_spacing(data=spot.points,
+                                              mean_angular_distance=spot.angular_density)
+
+
     def incorporate_spots_to_surface(self, component_instance=None, surface_fn=None, **kwargs):
         # todo: documentation
         """
@@ -190,7 +209,6 @@ class System(metaclass=ABCMeta):
 
         for spot_index, spot in component_instance.spots.items():
             # average spacing in spot points
-
             avsp_spot = utils.average_spacing(data=spot.points,
                                               mean_angular_distance=spot.angular_density)
             vertices_to_remove, vertices_test = [], []

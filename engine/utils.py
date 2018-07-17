@@ -194,13 +194,18 @@ def remap(x, mapper):
     return list(map(lambda val: [mapper[val[0]], mapper[val[1]], mapper[val[2]]], x))
 
 
-def triangle_areas(triangles, points):
+def triangle_areas(triangles=None, points=None):
     """
     calculates areas of triangles, where `triangles` indexes of vertices which coordinates are stored in `points`
     :param triangles: np.array; indices of triangulation
     :param points: np.array; 3d points
     :return: np.array
     """
+    if triangles is None:
+        raise ValueError('Faces from which to calculate areas were not supplied.')
+    if points is None:
+        raise ValueError('Vertices of faces from which to calculate areas were not supplied.')
+
     return 0.5 * np.linalg.norm(np.cross(points[triangles[:, 1]] - points[triangles[:, 0]],
                                          points[triangles[:, 2]] - points[triangles[:, 0]]), axis=1)
 

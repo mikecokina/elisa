@@ -71,7 +71,7 @@ class SingleSystem(System):
         self._angular_velocity = self.angular_velocity(self.rotation_period)
         self.star._polar_log_g = self.polar_log_g
         self.star._polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
-       # this is also check if star surface is closed
+        # this is also check if star surface is closed
         self.init_radii()
         self._evaluate_spots()
 
@@ -648,25 +648,20 @@ class SingleSystem(System):
         star object as its property
         :return:
         """
-
         points_length = np.shape(self.star.points[:self.star.base_symmetry_points_number, :])[0]
         # triangulating only one eighth of the star
         points_to_triangulate = np.append(self.star.points[:self.star.base_symmetry_points_number, :],
-                                          [[0, 0, 0]],
-                                          # [[0, 0.5 * self.star.polar_radius, 0.5 * self.star.polar_radius],
-                                          #  [0.5 * self.star.polar_radius, 0, 0.5 * self.star.polar_radius],
-                                          #  [0.5 * self.star.polar_radius, 0.5 * self.star.polar_radius, 0]],
-                                          axis=0)
-        # print((points_to_triangulate >= 0).all())
+                                          [[0, 0, 0]], axis=0)
         triangles = self.single_surface(points=points_to_triangulate)
         # removing faces from triangulation, where origin point is included
         triangles = triangles[~(triangles >= points_length).any(1)]
-        triangles = triangles[~((points_to_triangulate[triangles]==0.).all(1)).any(1)]
+        triangles = triangles[~((points_to_triangulate[triangles] == 0.).all(1)).any(1)]
+        # setting number of base symmetry faces
+        self.star.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
         # lets exploit axial symmetry and fill the rest of the surface of the star
         all_triangles = [inv[triangles] for inv in self.star.inverse_point_symmetry_matrix]
         self.star.faces = np.concatenate(all_triangles, axis=0)
 
-        self.star.base_symmetry_faces_number = np.int(np.shape(self.star.faces)[0] / 8)
         base_face_symmetry_vector = np.arange(self.star.base_symmetry_faces_number)
         self.star.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(8)])
 
@@ -774,6 +769,39 @@ class SingleSystem(System):
         :type: str
         :return:
         """
+        self.star.points, self.star.point_symmetry_vector, self.star.base_symmetry_points_number, \
+            self.star.inverse_point_symmetry_matrix = self.mesh(symmetry_output=True)
+        self.build_surface_with_no_spots()
+        # build surface if there is no spot specified
+        if not self.star.spots:
+            if return_surface:
+                return self.star.points, self.star.faces
+            else:
+                return
+
+        # saving one eighth of the star without spots to be used as reference for faces unaffected by spots
+        self.star.base_symmetry_points = self.star.points[:self.star.base_symmetry_points_number]
+        self.star.base_symmetry_faces = self.star.faces[:self.star.base_symmetry_faces_number]
+        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
+        if return_surface:
+            ret_points = copy(self.star.points)
+            ret_faces = copy(self.star.faces)
+            for spot_index, spot in self.star.spots.items():
+                n_points = np.shape(ret_points)[0]
+                ret_faces = np.append(ret_faces, spot.faces+n_points, axis=0)
+                ret_points = np.append(ret_points, spot.points, axis=0)
+            return ret_points, ret_faces
+
+    def build_surface_bckp(self, return_surface=False):
+        """
+        function for building of general system component points and surfaces including spots
+
+        :param return_surface: bool - if true, function returns arrays with all points and faces (surface + spots)
+        :param component: specify component, use `primary` or `secondary`
+        :type: str
+        :return:
+        """
+
         # build surface if there is no spot specified
         if not self.star.spots:
             self.star.points, self.star.point_symmetry_vector, self.star.base_symmetry_points_number, \
@@ -784,6 +812,7 @@ class SingleSystem(System):
             else:
                 return
 
+        # saving one eighth of the star without spots to be used as reference for faces unaffected by spots
         self.star.points = self.mesh()
         self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
         if return_surface:
