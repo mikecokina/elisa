@@ -780,9 +780,9 @@ class SingleSystem(System):
                 return
 
         # saving one eighth of the star without spots to be used as reference for faces unaffected by spots
-        self.star.base_symmetry_points = self.star.points[:self.star.base_symmetry_points_number]
-        self.star.base_symmetry_faces = self.star.faces[:self.star.base_symmetry_faces_number]
-        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
+        self.star.base_symmetry_points = copy(self.star.points[:self.star.base_symmetry_points_number])
+        self.star.base_symmetry_faces = copy(self.star.faces[:self.star.base_symmetry_faces_number])
+        self.incorporate_spots_to_surface_new(component_instance=self.star, surface_fn=self.build_surface_with_spots)
         if return_surface:
             ret_points = copy(self.star.points)
             ret_faces = copy(self.star.faces)
@@ -792,7 +792,7 @@ class SingleSystem(System):
                 ret_points = np.append(ret_points, spot.points, axis=0)
             return ret_points, ret_faces
 
-    def build_surface_bckp(self, return_surface=False):
+    def build_surface_old(self, return_surface=False):
         """
         function for building of general system component points and surfaces including spots
 

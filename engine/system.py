@@ -174,17 +174,49 @@ class System(metaclass=ABCMeta):
         if surface_fn is None:
             raise ValueError('Function for building surfaces was not specified.')
 
-        vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
-        points = copy(component_instance.points)  # copy of star points
         # average spacing of star surface points
         avsp = utils.average_spacing(data=component_instance.points,
                                      mean_angular_distance=component_instance.discretization_factor)
 
-        for spot_index, spot in component_instance.spots.items():
+        # order of spots matters during overlaping points removal
+        sorted_spots = sorted([(idx, spot) for idx, spot in component_instance.spots.items()], key=lambda x: x[0])
+        for spot_index, spot in sorted_spots:
             # deleting points and faces of star/spot that are under current spot
             # average spacing in spot points
             avsp_spot = utils.average_spacing(data=spot.points,
                                               mean_angular_distance=spot.angular_density)
+
+            max_dist_to_object_point = spot.max_size + (0.25 * avsp)
+            max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
+
+            # finding points that are closer to the spot centre than max_dist_to_spot_point
+            not_under_spot_test = np.linalg.norm(component_instance.points-spot.boundary_center, axis=1) > \
+                                  max_dist_to_object_point
+            component_instance.points = component_instance.points[not_under_spot_test]
+            component_instance.point_symmetry_vector = component_instance.point_symmetry_vector[not_under_spot_test]
+            # searching for index of spot with spot_index of current spot (in order to know when to stop iteration over
+            # previous spots)
+            stop_index = np.where(np.array([x[0] for x in sorted_spots]) == spot_index)[0][0]
+            for previous_spot_index, previous_spot in sorted_spots[:stop_index]:
+                not_under_spot_test = np.linalg.norm(previous_spot.points-spot.boundary_center, axis=1) > \
+                                      max_dist_to_object_point
+                previous_spot.points = previous_spot.points[not_under_spot_test]
+
+            # deleting star faces that are at least partialy overlaped with spots
+            # face is removed if only just one point was removed
+            component_instance.faces = component_instance.faces[not_under_spot_test[component_instance.faces].all(1)]
+            # star points were deleted, therefore faces remap is necessary
+            # new_points_indexes = np.arange(np.shape(component_instance.points)[0])
+            # points_remap = np.array([ for ])
+            # component_instance.faces = points_remap[component_instance.faces]
+
+        # deleting spots with no points (totally overlapped spots)
+        for spot_index, spot in sorted_spots:
+            if np.shape(spot.points)[0] == 0:
+                self._logger.warning("Spot with index {} doesn't contain any points and will be removed "
+                                     "from component {} spot list".format(spot_index, component_instance.name))
+                component_instance.remove_spot(spot_index=spot_index)
+
 
 
     def incorporate_spots_to_surface(self, component_instance=None, surface_fn=None, **kwargs):
