@@ -192,23 +192,28 @@ class System(metaclass=ABCMeta):
             # finding points that are closer to the spot centre than max_dist_to_spot_point
             not_under_spot_test = np.linalg.norm(component_instance.points-spot.boundary_center, axis=1) > \
                                   max_dist_to_object_point
+            valid_points_counter = 0
+            points_remap = np.empty(len(component_instance.points), dtype=np.int)
+            for ii, test in enumerate(not_under_spot_test):
+                if test:
+                    points_remap[ii] = valid_points_counter
+                    valid_points_counter += 1
+
             component_instance.points = component_instance.points[not_under_spot_test]
             component_instance.point_symmetry_vector = component_instance.point_symmetry_vector[not_under_spot_test]
             # searching for index of spot with spot_index of current spot (in order to know when to stop iteration over
             # previous spots)
             stop_index = np.where(np.array([x[0] for x in sorted_spots]) == spot_index)[0][0]
             for previous_spot_index, previous_spot in sorted_spots[:stop_index]:
-                not_under_spot_test = np.linalg.norm(previous_spot.points-spot.boundary_center, axis=1) > \
-                                      max_dist_to_object_point
-                previous_spot.points = previous_spot.points[not_under_spot_test]
+                spot_not_under_spot_test = np.linalg.norm(previous_spot.points-spot.boundary_center, axis=1) > \
+                                           max_dist_to_object_point
+                previous_spot.points = previous_spot.points[spot_not_under_spot_test]
 
             # deleting star faces that are at least partialy overlaped with spots
             # face is removed if only just one point was removed
             component_instance.faces = component_instance.faces[not_under_spot_test[component_instance.faces].all(1)]
             # star points were deleted, therefore faces remap is necessary
-            # new_points_indexes = np.arange(np.shape(component_instance.points)[0])
-            # points_remap = np.array([ for ])
-            # component_instance.faces = points_remap[component_instance.faces]
+            component_instance.faces = points_remap[component_instance.faces]
 
         # deleting spots with no points (totally overlapped spots)
         for spot_index, spot in sorted_spots:
