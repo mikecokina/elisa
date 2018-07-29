@@ -207,23 +207,10 @@ class SingleSystem(System):
                 self._logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
                                   "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
                 return
-
-            boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
-            boundary_com = utils.cartesian_to_spherical(boundary_com)
-            solution, _ = self._solver(self.potential_fn, solver_condition, *(boundary_com[2],))
-            boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
-
-            # first point will be always barycenter of boundary
-            spot_points[0] = boundary_center
-
-            # max size from barycenter of boundary to boundary
             # todo: make sure this value is correct = make an unittests for spots
-            spot_instance.max_size = max([np.linalg.norm(np.array(boundary_center) - np.array(b))
-                                          for b in boundary_points])
-
             spot_instance.points = np.array(spot_points)
             spot_instance.boundary = np.array(boundary_points)
-            spot_instance.boundary_center = np.array(boundary_center)
+            spot_instance.boundary_center = spot_points[0]
             spot_instance.center = np.array(spot_center)
 
     @classmethod
