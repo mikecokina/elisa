@@ -168,62 +168,6 @@ class System(metaclass=ABCMeta):
         """
         pass
 
-    def incorporate_spots_to_surface_new(self, component_instance=None, surface_fn=None, **kwargs):
-        if component_instance is None:
-            raise ValueError('Object instance was not given.')
-        if surface_fn is None:
-            raise ValueError('Function for building surfaces was not specified.')
-
-        # average spacing of star surface points
-        avsp = utils.average_spacing(data=component_instance.points,
-                                     mean_angular_distance=component_instance.discretization_factor)
-
-        # order of spots matters during overlaping points removal
-        sorted_spots = sorted([(idx, spot) for idx, spot in component_instance.spots.items()], key=lambda x: x[0])
-        for spot_index, spot in sorted_spots:
-            # deleting points and faces of star/spot that are under current spot
-            # average spacing in spot points
-            avsp_spot = utils.average_spacing(data=spot.points,
-                                              mean_angular_distance=spot.angular_density)
-
-            max_dist_to_object_point = spot.max_size + (0.25 * avsp)
-            max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
-
-            # finding points that are closer to the spot centre than max_dist_to_spot_point
-            not_under_spot_test = np.linalg.norm(component_instance.points-spot.boundary_center, axis=1) > \
-                                  max_dist_to_object_point
-            valid_points_counter = 0
-            points_remap = np.empty(len(component_instance.points), dtype=np.int)
-            for ii, test in enumerate(not_under_spot_test):
-                if test:
-                    points_remap[ii] = valid_points_counter
-                    valid_points_counter += 1
-
-            component_instance.points = component_instance.points[not_under_spot_test]
-            component_instance.point_symmetry_vector = component_instance.point_symmetry_vector[not_under_spot_test]
-            # searching for index of spot with spot_index of current spot (in order to know when to stop iteration over
-            # previous spots)
-            stop_index = np.where(np.array([x[0] for x in sorted_spots]) == spot_index)[0][0]
-            for previous_spot_index, previous_spot in sorted_spots[:stop_index]:
-                spot_not_under_spot_test = np.linalg.norm(previous_spot.points-spot.boundary_center, axis=1) > \
-                                           max_dist_to_object_point
-                previous_spot.points = previous_spot.points[spot_not_under_spot_test]
-
-            # deleting star faces that are at least partialy overlaped with spots
-            # face is removed if only just one point was removed
-            component_instance.faces = component_instance.faces[not_under_spot_test[component_instance.faces].all(1)]
-            # star points were deleted, therefore faces remap is necessary
-            component_instance.faces = points_remap[component_instance.faces]
-
-        # deleting spots with no points (totally overlapped spots)
-        for spot_index, spot in sorted_spots:
-            if np.shape(spot.points)[0] == 0:
-                self._logger.warning("Spot with index {} doesn't contain any points and will be removed "
-                                     "from component {} spot list".format(spot_index, component_instance.name))
-                component_instance.remove_spot(spot_index=spot_index)
-
-
-
     def incorporate_spots_to_surface(self, component_instance=None, surface_fn=None, **kwargs):
         # todo: documentation
         """
@@ -246,6 +190,7 @@ class System(metaclass=ABCMeta):
 
         for spot_index, spot in component_instance.spots.items():
             # average spacing in spot points
+
             avsp_spot = utils.average_spacing(data=spot.points,
                                               mean_angular_distance=spot.angular_density)
             vertices_to_remove, vertices_test = [], []
@@ -287,7 +232,7 @@ class System(metaclass=ABCMeta):
                         # skip point if is marked for removal
                         continue
 
-                    # append only points of current object that do not intervent to spot
+                    # append only points of currrent object that do not intervent to spot
                     # [current, since there should be already spot from previous iteration step]
                     _points.append(vertex)
                     _vertices_map.append({"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]})
@@ -381,10 +326,11 @@ class System(metaclass=ABCMeta):
                     if spots_enum[0] != spots_enum[1]:
                         model["object"].append(np.array(simplex))
                     else:
-                        if dist < size:
-                            model["spots"][vertices_map[simplex[spots_in_indices[0]]]["enum"]].append(np.array(simplex))
-                        else:
-                            model["object"].append(np.array(simplex))
+                        model["object"].append(np.array(simplex))
+                        # if dist < size:
+                        #     model["spots"][vertices_map[simplex[spots_in_indices[0]]]["enum"]].append(np.array(simplex))
+                        # else:
+                        #     model["object"].append(np.array(simplex))
             elif {'object'} == set([vertices_map[simplex[_i]]["type"] for _i in range(3)]):
                 model["object"].append(np.array(simplex))
             else:

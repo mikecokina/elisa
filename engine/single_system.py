@@ -115,6 +115,7 @@ class SingleSystem(System):
 
         :return:
         """
+
         # fixme: it's not crutial, but this function and same function in binary system should on the same place
         def solver_condition(x, *_args, **_kwargs):
             return True
@@ -203,7 +204,7 @@ class SingleSystem(System):
                             raise StopIteration
 
                         spot_point = utils.spherical_to_cartesian([solution, spherical_delta_vector[1],
-                                                                           spherical_delta_vector[2]])
+                                                                   spherical_delta_vector[2]])
                         spot_points.append(spot_point)
 
                         if theta_index == len(thetas) - 1:
@@ -782,7 +783,7 @@ class SingleSystem(System):
         # saving one eighth of the star without spots to be used as reference for faces unaffected by spots
         self.star.base_symmetry_points = copy(self.star.points[:self.star.base_symmetry_points_number])
         self.star.base_symmetry_faces = copy(self.star.faces[:self.star.base_symmetry_faces_number])
-        self.incorporate_spots_to_surface_new(component_instance=self.star, surface_fn=self.build_surface_with_spots)
+        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
         if return_surface:
             ret_points = copy(self.star.points)
             ret_faces = copy(self.star.faces)
