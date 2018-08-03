@@ -422,7 +422,7 @@ class Body(metaclass=ABCMeta):
         :param symmetry_vector: np.array([index_of_symmetry_point_for_point1, ..., index_of_symmetry_point_for_pointN])
         :return:
         """
-        if np.shape(self.points)[0] != np.shape(symmetry_vector)[0]:
+        if np.shape(self.points)[0] != np.shape(symmetry_vector)[0] and self.spots is None:
             raise ValueError('Length of symmetry vector {} is not the same as number of surface points '
                              '{}'.format(np.shape(symmetry_vector)[0], np.shape(self.points)[0]))
         self._point_symmetry_vector = symmetry_vector

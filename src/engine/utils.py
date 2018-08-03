@@ -149,6 +149,36 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
     return np.matmul(matrix, vector)
 
 
+# def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
+#     omega = np.array(omega) / np.linalg.norm(np.array(omega))
+#     theta = theta if not degrees else np.radians(theta)
+#     # if np.shape(theta)[0] != np.shape(vector)[0] and vector.ndim != 1:
+#     #     raise ValueError('Number of angles theta does not correspond to number of vectors to rotate.')
+#     #
+#     if omega.ndim == 1:
+#         omega = omega[np.newaxis, :]
+#     # elif np.shape(vector) != np.shape(omega):
+#     #     raise ValueError('Number of rotation axis is not `omega` and does not correspond to number of vectors to '
+#     #                      'rotate.')
+#
+#     matrix = np.empty((np.shape(omega)[0], 3, 3), dtype=np.float)
+#
+#     matrix[:, 0, 0] = np.cos(theta) + (omega[:, 0] ** 2 * (1. - np.cos(theta)))
+#     matrix[:, 0, 1] = (omega[:, 0] * omega[:, 1] * (1. - np.cos(theta))) - (omega[:, 2] * np.sin(theta))
+#     matrix[:, 0, 2] = (omega[:, 1] * np.sin(theta)) + (omega[:, 0] * omega[:, 2] * (1. - np.cos(theta)))
+#
+#     matrix[:, 1, 0] = (omega[:, 2] * np.sin(theta)) + (omega[:, 0] * omega[:, 1] * (1. - np.cos(theta)))
+#     matrix[:, 1, 1] = (np.cos(theta)) + (omega[:, 1] ** 2 * (1. - np.cos(theta)))
+#     matrix[:, 1, 2] = (- omega[:, 0] * np.sin(theta)) + (omega[:, 1] * omega[:, 2] * (1. - np.cos(theta)))
+#
+#     matrix[:, 2, 0] = (- omega[:, 1] * np.sin(theta)) + (omega[:, 0] * omega[:, 2] * (1. - np.cos(theta)))
+#     matrix[:, 2, 1] = (omega[:, 0] * np.sin(theta)) + (omega[:, 1] * omega[:, 2] * (1. - np.cos(theta)))
+#     matrix[:, 2, 2] = (np.cos(theta)) + (omega[:, 2] ** 2 * (1. - np.cos(theta)))
+#
+#     return np.matmul(matrix, vector)
+
+
+
 def average_spacing_cgal(data=None, neighbours=6):
     """
     Average Spacing - calculates average distance between points using average distances to `neighbours` number of
