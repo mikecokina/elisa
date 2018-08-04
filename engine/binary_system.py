@@ -1120,7 +1120,7 @@ class BinarySystem(System):
         lagrangian_points = self.lagrangian_points()
         return potential(lagrangian_points)
 
-    def mesh_detached(self, component, components_distance):
+    def mesh_detached(self, component, components_distance, symmetry_output=False):
         """
         creates surface mesh of given binary star component in case of detached (semi-detached) system
 
@@ -1158,7 +1158,10 @@ class BinarySystem(System):
             r_eq.append(solution[0])
         r_eq = np.array(r_eq)
         equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
-        x_eq, y_eq, z_eq = equator[:, 0], equator[:, 1], equator[:, 2]
+        # assigning equator points and nearside and farside points A and B
+        x_a, x_eq, x_b = equator[0, 0], equator[1: -1, 0], equator[-1, 0]
+        y_a, y_eq, y_b = equator[0, 1], equator[1: -1, 1], equator[-1, 1]
+        z_a, z_eq, z_b = equator[0, 2], equator[1: -1, 2], equator[-1, 2]
 
         # calculating points on phi = 0 meridian
         r_meridian = []
@@ -1195,13 +1198,63 @@ class BinarySystem(System):
         quarter = utils.spherical_to_cartesian(np.column_stack((r_q, phi_q, theta_q)))
         x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
-        x = np.concatenate((x_eq,  x_eq[1:-1], x_meridian,  x_meridian, x_q,  x_q,  x_q,  x_q))
-        y = np.concatenate((y_eq, -y_eq[1:-1], y_meridian,  y_meridian, y_q, -y_q,  y_q, -y_q))
-        z = np.concatenate((z_eq,  z_eq[1:-1], z_meridian, -z_meridian, z_q,  z_q, -z_q, -z_q))
+        # stiching together 4 quarters of stellar surface in order:
+        # north hemisphere: left_quadrant (from companion point of view):
+        #                   nearside_point, farside_point, equator, quarter, meridian
+        #                   right_quadrant:
+        #                   quadrant, equator
+        # south hemisphere: right_quadrant:
+        #                   quadrant, meridian
+        #                   left_quadrant:
+        #                   quadrant
+        x = np.array([x_a, x_b])
+        y = np.array([y_a, y_b])
+        z = np.array([z_a, z_b])
+        x = np.concatenate((x, x_eq, x_q, x_meridian,  x_q,  x_eq,  x_q,  x_meridian,  x_q))
+        y = np.concatenate((y, y_eq, y_q, y_meridian, -y_q, -y_eq, -y_q, -y_meridian,  y_q))
+        z = np.concatenate((z, z_eq, z_q, z_meridian,  z_q,  z_eq, -z_q, -z_meridian, -z_q))
+
         x = -x + components_distance if component == 'secondary' else x
         points = np.column_stack((x, y, z))
+        if symmetry_output:
+            equator_length = np.shape(x_eq)[0]
+            meridian_length = np.shape(x_meridian)[0]
+            quarter_length = np.shape(x_q)[0]
+            quadrant_start = 2 + equator_length
+            base_symmetry_points_number = 2 + equator_length + quarter_length + meridian_length
+            symmetry_vector = np.concatenate((np.arange(base_symmetry_points_number),  # 1st quadrant
+                                              np.arange(quadrant_start, quadrant_start + quarter_length),
+                                              np.arange(2, quadrant_start),  # 2nd quadrant
+                                              np.arange(quadrant_start, base_symmetry_points_number),  # 3rd quadrant
+                                              np.arange(quadrant_start, quadrant_start + quarter_length)
+                                              ))
 
-        return points
+            points_length = np.shape(x)[0]
+            inverse_symmetry_matrix = \
+                np.array([np.arange(base_symmetry_points_number),  # 1st quadrant
+                          np.concatenate(([0, 1],
+                                          np.arange(base_symmetry_points_number + quarter_length,
+                                                    base_symmetry_points_number + quarter_length+equator_length),
+                                          np.arange(base_symmetry_points_number,
+                                                    base_symmetry_points_number + quarter_length),
+                                          np.arange(base_symmetry_points_number - meridian_length,
+                                                    base_symmetry_points_number))),  # 2nd quadrant
+                          np.concatenate(([0, 1],
+                                          np.arange(base_symmetry_points_number + quarter_length,
+                                                    base_symmetry_points_number + quarter_length+equator_length),
+                                          np.arange(base_symmetry_points_number + quarter_length+equator_length,
+                                                    base_symmetry_points_number + 2*quarter_length+equator_length +
+                                                    meridian_length))),  # 3rd quadrant
+                          np.concatenate((np.arange(2+equator_length),
+                                          np.arange(points_length-quarter_length, points_length),
+                                          np.arange(base_symmetry_points_number + 2*quarter_length + equator_length,
+                                                    base_symmetry_points_number + 2*quarter_length + equator_length +
+                                                    meridian_length)))  # 4th quadrant
+                          ])
+
+            return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
+        else:
+            return points
 
     def calculate_neck_position(self, return_polynomial=False):
         """
@@ -1258,7 +1311,7 @@ class BinarySystem(System):
         else:
             return neck_position
 
-    def mesh_over_contact(self, component):
+    def mesh_over_contact(self, component, symmetry_output=False):
         """
         creates surface mesh of given binary star component in case of over-contact system
 
@@ -1447,7 +1500,33 @@ class BinarySystem(System):
 
         return points
 
-    def detached_system_surface(self, component):
+    def build_mesh(self, component=None, components_distance=None):
+        """
+        build points of surface for primary or/and secondary component !!! w/o spots yet !!!
+
+        :param component: str or empty
+        :param components_distance: float
+        :return:
+        """
+        component = self._component_to_list(component)
+
+        for _component in component:
+            components_distance = 1 - self.eccentricity if components_distance is None else components_distance  # tu by
+            #  som radsej raisol error ze nie je dodana ako pocitat s ad hoc hodnotou, a moze to byt aj mimo cyklu
+            component_instance = getattr(self, _component)
+            if component_instance.spots:
+                component_instance.points = self.mesh_over_contact(component=_component) \
+                    if self.morphology == 'over-contact' \
+                    else self.mesh_detached(component=_component, components_distance=components_distance)
+            else:
+                component_instance.points, component_instance.point_symmetry_vector, \
+                component_instance.base_symmetry_points_number, component_instance.inverse_point_symmetry_matrix = \
+                    self.mesh_over_contact(component=_component, symmetry_output=True) \
+                        if self.morphology == 'over-contact' \
+                        else self.mesh_detached(component=_component, components_distance=components_distance,
+                                                symmetry_output=True)
+
+    def detached_system_surface(self, component=None, points=None):
         """
         calculates surface faces from the given component's points in case of detached or semi-contact system
 
@@ -1455,12 +1534,14 @@ class BinarySystem(System):
         :return: np.array - N x 3 array of vertice indices
         """
         component_instance = getattr(self, component)
+        if points is None:
+            points = component_instance.points
 
         if not np.any(component_instance.points):
             raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
                              "to triangulate".format(component, component_instance.name))
 
-        triangulation = Delaunay(component_instance.points)
+        triangulation = Delaunay(points)
         triangles_indices = triangulation.convex_hull
         return triangles_indices
 
@@ -1524,39 +1605,6 @@ class BinarySystem(System):
 
         return np.array(new_triangles_indices)
 
-    def build_mesh(self, component=None, components_distance=None):
-        """
-        build points of surface for primary or/and secondary component !!! w/o spots yet !!!
-
-        :param component: str or empty
-        :param components_distance: float
-        :return:
-        """
-        component = self._component_to_list(component)
-
-        for _component in component:
-            components_distance = 1 - self.eccentricity if components_distance is None else components_distance  # tu by
-            #  som radsej raisol error ze nie je dodana ako pocitat s ad hoc hodnotou, a moze to byt aj mimo cyklu
-            component_instance = getattr(self, _component)
-            component_instance.points = self.mesh_over_contact(component=_component) \
-                if self.morphology == 'over-contact' \
-                else self.mesh_detached(component=_component, components_distance=components_distance)
-
-    def build_surface_with_no_spots(self, component=None):
-        """
-        function for building binary star component surfaces without spots
-
-        :param component:
-        :return:
-        """
-        component = self._component_to_list(component)
-
-        for _component in component:
-            component_instance = getattr(self, _component)
-            component_instance.faces = self.over_contact_surface(component=_component) \
-                if self.morphology == 'over-contact' \
-                else self.detached_system_surface(component=_component)
-
     def build_faces(self, component=None):
         """
         function creates faces of the star surface for given components provided you already calculated surface points
@@ -1568,9 +1616,11 @@ class BinarySystem(System):
         component = self._component_to_list(component)
         for _component in component:
             component_instance = getattr(self, _component)
-            self.build_surface_with_no_spots(_component)
+            if not component_instance.spots:
+                self.build_surface_with_no_spots(_component)
+
             self.incorporate_spots_to_surface(component_instance=component_instance,
-                                              surface_fn=self.build_surface_with_no_spots,
+                                              surface_fn=self.build_surface_with_spots,
                                               component=_component)
 
     def build_surface(self, components_distance=None, component=None, return_surface=False):
@@ -1593,15 +1643,16 @@ class BinarySystem(System):
 
             # build surface if there is no spot specified
             self.build_mesh(component=_component, components_distance=components_distance)
-            self.build_surface_with_no_spots(_component)
+
             if not component_instance.spots:
+                self.build_surface_with_no_spots(_component)
                 if return_surface:
                     ret_points[_component] = copy(component_instance.points)
                     ret_faces[_component] = copy(component_instance.faces)
                 continue
 
             self.incorporate_spots_to_surface(component_instance=component_instance,
-                                              surface_fn=self.build_surface_with_no_spots,
+                                              surface_fn=self.build_surface_with_spots,
                                               component=_component)
             if return_surface:
                 ret_points[_component] = copy(component_instance.points)
@@ -1615,6 +1666,47 @@ class BinarySystem(System):
             return ret_points, ret_faces
         else:
             return
+
+    def build_surface_with_no_spots(self, component=None):
+        """
+        function for building binary star component surfaces without spots
+
+        :param component:
+        :return:
+        """
+        component = self._component_to_list(component)
+
+        for _component in component:
+            component_instance = getattr(self, _component)
+            # triangulating only one quarter of the star
+            if self.morphology != 'over-contact':
+                points_to_triangulate = component_instance.points[:component_instance.base_symmetry_points_number, :]
+                triangles = self.detached_system_surface(component=_component, points=points_to_triangulate)
+                # filtering out faces on xy an xz planes
+                y0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 1], 0).all(1)
+                z0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 2], 0).all(1)
+                triangles = triangles[np.logical_and(y0_test, z0_test)]
+                # setting number of base symmetry faces
+                component_instance.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
+                # lets exploit axial symmetry and fill the rest of the surface of the star
+                all_triangles = [inv[triangles] for inv in component_instance.inverse_point_symmetry_matrix]
+                component_instance.faces = np.concatenate(all_triangles, axis=0)
+
+                base_face_symmetry_vector = np.arange(component_instance.base_symmetry_faces_number)
+                component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
+
+            else:
+                component_instance.faces = self.over_contact_surface(component=_component)
+
+    def build_surface_with_spots(self, component=None):
+        component = self._component_to_list(component)
+        for _component in component:
+            component_instance = getattr(self, _component)
+            if self.morphology == 'over-contact':
+                component_instance.faces = self.over_contact_surface(component=_component)
+            else:
+                component_instance.faces = self.detached_system_surface(component=_component)
+
 
     @staticmethod
     def _component_to_list(component):
@@ -1896,9 +1988,10 @@ class BinarySystem(System):
                                                ''.format(_component, spot_index))
                             spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
                                                                                   temperatures=spot.temperatures)
+
+                        component_instance.renormalize_temperatures()
                 self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
                                    ''.format(component))
-                component_instance.renormalize_temperatures()
 
         if return_map:
             return_map = {}

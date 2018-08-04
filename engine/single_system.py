@@ -473,7 +473,18 @@ class SingleSystem(System):
         :return: numpy.array([[x1 y1 z1],
                               [x2 y2 z2],
                                 ...
-                              [xN yN zN]])
+                              [xN yN zN]]) - array of surface points if symmetry_output = False, else:
+                 numpy.array([[x1 y1 z1],
+                              [x2 y2 z2],
+                                ...
+                              [xN yN zN]]) - array of surface points,
+                 numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
+                                                                eighth of surface,
+                 numpy.float - number of points included in symmetrical one eighth of surface,
+                 numpy.array([octants[indexes_of_remapped_points_in_octants]) - matrix of eight sub matrices that mapped
+                                                                                basic symmetry quadrant to all others
+                                                                                octants
+
         """
         if self.star.discretization_factor > c.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
@@ -770,43 +781,10 @@ class SingleSystem(System):
         :type: str
         :return:
         """
-        self.star.points, self.star.point_symmetry_vector, self.star.base_symmetry_points_number, \
-            self.star.inverse_point_symmetry_matrix = self.mesh(symmetry_output=True)
-        self.build_surface_with_no_spots()
-        # build surface if there is no spot specified
-        if not self.star.spots:
-            if return_surface:
-                return self.star.points, self.star.faces
-            else:
-                return
-
-        # saving one eighth of the star without spots to be used as reference for faces unaffected by spots
-        self.star.base_symmetry_points = copy(self.star.points[:self.star.base_symmetry_points_number])
-        self.star.base_symmetry_faces = copy(self.star.faces[:self.star.base_symmetry_faces_number])
-        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
-        if return_surface:
-            ret_points = copy(self.star.points)
-            ret_faces = copy(self.star.faces)
-            for spot_index, spot in self.star.spots.items():
-                n_points = np.shape(ret_points)[0]
-                ret_faces = np.append(ret_faces, spot.faces+n_points, axis=0)
-                ret_points = np.append(ret_points, spot.points, axis=0)
-            return ret_points, ret_faces
-
-    def build_surface_old(self, return_surface=False):
-        """
-        function for building of general system component points and surfaces including spots
-
-        :param return_surface: bool - if true, function returns arrays with all points and faces (surface + spots)
-        :param component: specify component, use `primary` or `secondary`
-        :type: str
-        :return:
-        """
+        self.build_mesh()
 
         # build surface if there is no spot specified
         if not self.star.spots:
-            self.star.points, self.star.point_symmetry_vector, self.star.base_symmetry_points_number, \
-                self.star.inverse_point_symmetry_matrix = self.mesh(symmetry_output=True)
             self.build_surface_with_no_spots()
             if return_surface:
                 return self.star.points, self.star.faces
@@ -814,7 +792,8 @@ class SingleSystem(System):
                 return
 
         # saving one eighth of the star without spots to be used as reference for faces unaffected by spots
-        self.star.points = self.mesh()
+        # self.star.base_symmetry_points = copy(self.star.points[:self.star.base_symmetry_points_number])
+        # self.star.base_symmetry_faces = copy(self.star.faces[:self.star.base_symmetry_faces_number])
         self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
         if return_surface:
             ret_points = copy(self.star.points)
@@ -895,7 +874,7 @@ class SingleSystem(System):
         """
         build points of surface for star!!! w/o spots yet !!!
         """
-        if self.star.spots:
+        if not self.star.spots:
             self.star.points, self.star.point_symmetry_vector, self.star.base_symmetry_points_number, \
                 self.star.inverse_point_symmetry_matrix = self.mesh(symmetry_output=True)
         else:

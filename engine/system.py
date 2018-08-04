@@ -187,10 +187,8 @@ class System(metaclass=ABCMeta):
         # average spacing of component surface points
         avsp = utils.average_spacing(data=component_instance.points,
                                      mean_angular_distance=component_instance.discretization_factor)
-
         for spot_index, spot in component_instance.spots.items():
             # average spacing in spot points
-
             avsp_spot = utils.average_spacing(data=spot.points,
                                               mean_angular_distance=spot.angular_density)
             vertices_to_remove, vertices_test = [], []
