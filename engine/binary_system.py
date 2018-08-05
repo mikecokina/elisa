@@ -1564,6 +1564,7 @@ class BinarySystem(System):
                                                     base_symmetry_points_number + 2 * quarter_length + equator_length +
                                                     meridian_length)))  # 4th quadrant
                           ])
+
             return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
         else:
             return points
