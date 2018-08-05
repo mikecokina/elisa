@@ -874,13 +874,21 @@ class BinarySystem(System):
             raise TypeError('Specify faces corresponding to given points')
 
         component_instance = getattr(self, component)
-        faces = component_instance.faces if faces is None else faces
-        points = component_instance.points if points is None else points
+        if component_instance.spots:
+            faces = component_instance.faces if faces is None else faces
+            points = component_instance.points if points is None else points
+        else:
+            faces = component_instance.faces[:component_instance.base_symmetry_faces_number] if faces is None \
+                else faces
+            points = component_instance.points[:component_instance.base_symmetry_points_number] if points is None \
+                else points
 
         gradients = self.calculate_potential_gradient(component, components_distance, points=points)
         domega_dx, domega_dy, domega_dz = gradients[:, 0], gradients[:, 1], gradients[:, 2]
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
-        return np.mean(points_gradients[faces], axis=1)
+
+        return np.mean(points_gradients[faces], axis=1) if component_instance.spots \
+            else np.mean(points_gradients[faces], axis=1)[component_instance.face_symmetry_vector]
 
     def calculate_polar_potential_gradient_magnitude(self, component=None, components_distance=None):
         """
@@ -1179,7 +1187,7 @@ class BinarySystem(System):
         x_meridian, y_meridian, z_meridian = meridian[:, 0], meridian[:, 1], meridian[:, 2]
 
         # calculating the rest (quarter) of the surface
-        thetas = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
+        thetas = np.linspace(alpha, c.HALF_PI, num=num-1, endpoint=False)
         r_q, phi_q, theta_q = [], [], []
         for theta in thetas:
             alpha_corrected = alpha / np.sin(theta)
@@ -1311,7 +1319,7 @@ class BinarySystem(System):
         else:
             return neck_position
 
-    def mesh_over_contact(self, component, symmetry_output=False):
+    def mesh_over_contact(self, component=None, symmetry_output=False):
         """
         creates surface mesh of given binary star component in case of over-contact system
 
@@ -1343,33 +1351,36 @@ class BinarySystem(System):
 
         # calculating points on farside equator
         num = int(c.HALF_PI // alpha)
-        r_eq = []
-        phi_eq = np.linspace(c.HALF_PI, c.PI, num=num + 1)
-        theta_eq = np.array([c.HALF_PI for _ in phi_eq])
-        for phi in phi_eq:
+        r_eq1 = []
+        phi_eq1 = np.linspace(c.HALF_PI, c.PI, num=num + 1)
+        theta_eq1 = np.array([c.HALF_PI for _ in phi_eq1])
+        for phi in phi_eq1:
             args = (components_distance, phi, c.HALF_PI)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                         xtol=1e-12)
-            r_eq.append(solution[0])
-        r_eq = np.array(r_eq)
-        equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
-        x_eq, y_eq, z_eq = equator[:, 0], equator[:, 1], equator[:, 2]
+            r_eq1.append(solution[0])
+        r_eq1 = np.array(r_eq1)
+        equator1 = utils.spherical_to_cartesian(np.column_stack((r_eq1, phi_eq1, theta_eq1)))
+        # assigning equator points and point A
+        x_eq1, x_a = equator1[: -1, 0], equator1[-1, 0],
+        y_eq1, y_a = equator1[: -1, 1], equator1[-1, 1],
+        z_eq1, z_a = equator1[: -1, 2], equator1[-1, 2],
 
         # calculating points on phi = pi meridian
-        r_meridian = []
+        r_meridian1 = []
         num = int(c.HALF_PI // alpha)
-        phi_meridian = np.array([c.PI for _ in range(num)])
-        theta_meridian = np.linspace(c.HALF_PI - alpha, 0., num=num)
-        for ii, theta in enumerate(theta_meridian):
-            args = (components_distance, phi_meridian[ii], theta)
+        phi_meridian1 = np.array([c.PI for _ in range(num)])
+        theta_meridian1 = np.linspace(0., c.HALF_PI - alpha, num=num)
+        for ii, theta in enumerate(theta_meridian1):
+            args = (components_distance, phi_meridian1[ii], theta)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                         xtol=1e-12)
-            r_meridian.append(solution[0])
-        r_meridian = np.array(r_meridian)
-        meridian = utils.spherical_to_cartesian(np.column_stack((r_meridian, phi_meridian, theta_meridian)))
-        x_meridian, y_meridian, z_meridian = meridian[:, 0], meridian[:, 1], meridian[:, 2]
+            r_meridian1.append(solution[0])
+        r_meridian1 = np.array(r_meridian1)
+        meridian1 = utils.spherical_to_cartesian(np.column_stack((r_meridian1, phi_meridian1, theta_meridian1)))
+        x_meridian1, y_meridian1, z_meridian1 = meridian1[:, 0], meridian1[:, 1], meridian1[:, 2]
 
-        # calculating points on phi = pi/2 meridian
+        # calculating points on phi = pi/2 meridian, perpendicular to component`s radius vector
         r_meridian2 = []
         num = int(c.HALF_PI // alpha) - 1
         phi_meridian2 = np.array([c.HALF_PI for _ in range(num)])
@@ -1385,30 +1396,30 @@ class BinarySystem(System):
 
         # calculating the rest of the surface on farside
         thetas = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
-        r_q, phi_q, theta_q = [], [], []
+        r_q1, phi_q1, theta_q1 = [], [], []
         for theta in thetas:
             alpha_corrected = alpha / np.sin(theta)
             num = int(c.HALF_PI // alpha_corrected)
             alpha_corrected = c.HALF_PI / (num + 1)
             phi_q_add = [c.HALF_PI + alpha_corrected * ii for ii in range(1, num + 1)]
-            phi_q += phi_q_add
+            phi_q1 += phi_q_add
             for phi in phi_q_add:
-                theta_q.append(theta)
+                theta_q1.append(theta)
                 args = (components_distance, phi, theta)
                 solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                             xtol=1e-12)
-                r_q.append(solution[0])
-        r_q, phi_q, theta_q = np.array(r_q), np.array(phi_q), np.array(theta_q)
-        quarter = utils.spherical_to_cartesian(np.column_stack((r_q, phi_q, theta_q)))
-        x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
+                r_q1.append(solution[0])
+        r_q1, phi_q1, theta_q1 = np.array(r_q1), np.array(phi_q1), np.array(theta_q1)
+        quarter = utils.spherical_to_cartesian(np.column_stack((r_q1, phi_q1, theta_q1)))
+        x_q1, y_q1, z_q1 = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
         # generating the neck
         neck_position, neck_polynome = self.calculate_neck_position(return_polynomial=True)
         # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
         # z axis
-        num = 100
         delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1-self.eccentricity)
         if component == 'primary':
+            num = 15*int(neck_position // (component_instance.polar_radius * component_instance.discretization_factor))
             # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
             x_curve = np.linspace(0., neck_position, num=num, endpoint=True)
             z_curve = np.polyval(neck_polynome, x_curve)
@@ -1429,6 +1440,8 @@ class BinarySystem(System):
             # num = int(neck_position // delta_z) + 1
             # z_ns = np.linspace(delta_z, neck_position, num=num, endpoint=True)
         else:
+            num = 15 * int(
+                (1-neck_position) // (component_instance.polar_radius * component_instance.discretization_factor))
             # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
             x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
             z_curve = np.polyval(neck_polynome, x_curve)
@@ -1452,21 +1465,22 @@ class BinarySystem(System):
 
         # generating equatorial, polar part and rest of the neck
         r_eqn, phi_eqn, z_eqn = [], [], []
+        r_meridian_n, phi_meridian_n, z_meridian_n = [], [], []
         r_n, phi_n, z_n = [], [], []
         for z in z_ns:
-            z_eqn.append(z)
-            phi_eqn.append(0.0)
-            args = (0.0, z)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
-                                                        args=args, xtol=1e-12)
-            r_eqn.append(solution[0])
-
             z_eqn.append(z)
             phi_eqn.append(c.HALF_PI)
             args = (c.HALF_PI, z)
             solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
                                                         args=args, xtol=1e-12)
             r_eqn.append(solution[0])
+
+            z_meridian_n.append(z)
+            phi_meridian_n.append(0.)
+            args = (0., z)
+            solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
+                                                        args=args, xtol=1e-12)
+            r_meridian_n.append(solution[0])
 
             num = int(c.HALF_PI * r_eqn[-1] // delta_z)
             start_val = c.HALF_PI / (num + 1)
@@ -1484,21 +1498,75 @@ class BinarySystem(System):
         phi_eqn = np.array(phi_eqn)
         z_eqn, y_eqn, x_eqn = utils.cylindrical_to_cartesian(r_eqn, phi_eqn, z_eqn)
 
+        r_meridian_n = np.array(r_meridian_n)
+        z_meridian_n = np.array(z_meridian_n)
+        phi_meridian_n = np.array(phi_meridian_n)
+        z_meridian_n, y_meridian_n, x_meridian_n = \
+            utils.cylindrical_to_cartesian(r_meridian_n, phi_meridian_n, z_meridian_n)
+
         r_n = np.array(r_n)
         z_n = np.array(z_n)
         phi_n = np.array(phi_n)
         z_n, y_n, x_n = utils.cylindrical_to_cartesian(r_n, phi_n, z_n)
 
-        x = np.concatenate((x_eq,  x_eq[:-1], x_meridian,  x_meridian, x_meridian2,  x_meridian2,  x_meridian2,
-                            x_meridian2, x_q,  x_q,  x_q,  x_q, x_eqn,  x_eqn, x_n,  x_n,  x_n,  x_n))
-        y = np.concatenate((y_eq, -y_eq[:-1], y_meridian,  y_meridian, y_meridian2,  y_meridian2, -y_meridian2,
-                            -y_meridian2, y_q, -y_q,  y_q, -y_q, y_eqn, -y_eqn, y_n, -y_n, -y_n,  y_n))
-        z = np.concatenate((z_eq,  z_eq[:-1], z_meridian, -z_meridian, z_meridian2, -z_meridian2,  z_meridian2,
-                            -z_meridian2, z_q,  z_q, -z_q, -z_q, z_eqn, -z_eqn, z_n,  z_n, -z_n, -z_n))
+        # building point blocks similar to those in detached system (equator pts, meridian pts and quarter pts)
+        x_eq = np.concatenate((x_eqn, x_eq1), axis=0)
+        y_eq = np.concatenate((y_eqn, y_eq1), axis=0)
+        z_eq = np.concatenate((z_eqn, z_eq1), axis=0)
+        x_q = np.concatenate((x_n, x_meridian2, x_q1), axis=0)
+        y_q = np.concatenate((y_n, y_meridian2, y_q1), axis=0)
+        z_q = np.concatenate((z_n, z_meridian2, z_q1), axis=0)
+        x_meridian = np.concatenate((x_meridian_n, x_meridian1), axis=0)
+        y_meridian = np.concatenate((y_meridian_n, y_meridian1), axis=0)
+        z_meridian = np.concatenate((z_meridian_n, z_meridian1), axis=0)
+
+        x = np.array([x_a])
+        y = np.array([y_a])
+        z = np.array([z_a])
+        x = np.concatenate((x, x_eq, x_q, x_meridian, x_q, x_eq, x_q, x_meridian, x_q))
+        y = np.concatenate((y, y_eq, y_q, y_meridian, -y_q, -y_eq, -y_q, -y_meridian, y_q))
+        z = np.concatenate((z, z_eq, z_q, z_meridian, z_q, z_eq, -z_q, -z_meridian, -z_q))
+
         x = -x + components_distance if component == 'secondary' else x
         points = np.column_stack((x, y, z))
+        if symmetry_output:
+            equator_length = np.shape(x_eq)[0]
+            meridian_length = np.shape(x_meridian)[0]
+            quarter_length = np.shape(x_q)[0]
+            quadrant_start = 1 + equator_length
+            base_symmetry_points_number = 1 + equator_length + quarter_length + meridian_length
+            symmetry_vector = np.concatenate((np.arange(base_symmetry_points_number),  # 1st quadrant
+                                              np.arange(quadrant_start, quadrant_start + quarter_length),
+                                              np.arange(1, quadrant_start),  # 2nd quadrant
+                                              np.arange(quadrant_start, base_symmetry_points_number),  # 3rd quadrant
+                                              np.arange(quadrant_start, quadrant_start + quarter_length)
+                                              ))
 
-        return points
+            points_length = np.shape(x)[0]
+            inverse_symmetry_matrix = \
+                np.array([np.arange(base_symmetry_points_number),  # 1st quadrant
+                          np.concatenate(([0],
+                                          np.arange(base_symmetry_points_number + quarter_length,
+                                                    base_symmetry_points_number + quarter_length + equator_length),
+                                          np.arange(base_symmetry_points_number,
+                                                    base_symmetry_points_number + quarter_length),
+                                          np.arange(base_symmetry_points_number - meridian_length,
+                                                    base_symmetry_points_number))),  # 2nd quadrant
+                          np.concatenate(([0],
+                                          np.arange(base_symmetry_points_number + quarter_length,
+                                                    base_symmetry_points_number + quarter_length + equator_length),
+                                          np.arange(base_symmetry_points_number + quarter_length + equator_length,
+                                                    base_symmetry_points_number + 2 * quarter_length + equator_length +
+                                                    meridian_length))),  # 3rd quadrant
+                          np.concatenate((np.arange(1 + equator_length),
+                                          np.arange(points_length - quarter_length, points_length),
+                                          np.arange(base_symmetry_points_number + 2 * quarter_length + equator_length,
+                                                    base_symmetry_points_number + 2 * quarter_length + equator_length +
+                                                    meridian_length)))  # 4th quadrant
+                          ])
+            return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
+        else:
+            return points
 
     def build_mesh(self, component=None, components_distance=None):
         """
@@ -1508,11 +1576,11 @@ class BinarySystem(System):
         :param components_distance: float
         :return:
         """
+        if components_distance is None:
+            raise ValueError('Argument `component_distance` was not supplied.')
         component = self._component_to_list(component)
 
         for _component in component:
-            components_distance = 1 - self.eccentricity if components_distance is None else components_distance  # tu by
-            #  som radsej raisol error ze nie je dodana ako pocitat s ad hoc hodnotou, a moze to byt aj mimo cyklu
             component_instance = getattr(self, _component)
             if component_instance.spots:
                 component_instance.points = self.mesh_over_contact(component=_component) \
@@ -1537,7 +1605,7 @@ class BinarySystem(System):
         if points is None:
             points = component_instance.points
 
-        if not np.any(component_instance.points):
+        if not np.any(points):
             raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
                              "to triangulate".format(component, component_instance.name))
 
@@ -1545,7 +1613,7 @@ class BinarySystem(System):
         triangles_indices = triangulation.convex_hull
         return triangles_indices
 
-    def over_contact_surface(self, component):
+    def over_contact_surface(self, component=None, points=None):
         """
         calculates surface faces from the given component's points in case of over-contact system
 
@@ -1553,7 +1621,10 @@ class BinarySystem(System):
         :return: np.array - N x 3 array of vertice indices
         """
         component_instance = getattr(self, component)
-        if not np.any(component_instance.points):
+        if points is None:
+            points = component_instance.points
+
+        if not np.any(points):
             raise ValueError("{} component, with class instance name {} do not contain any valid point "
                              "to triangulate".format(component, component_instance.name))
 
@@ -1679,6 +1750,7 @@ class BinarySystem(System):
         for _component in component:
             component_instance = getattr(self, _component)
             # triangulating only one quarter of the star
+
             if self.morphology != 'over-contact':
                 points_to_triangulate = component_instance.points[:component_instance.base_symmetry_points_number, :]
                 triangles = self.detached_system_surface(component=_component, points=points_to_triangulate)
@@ -1686,17 +1758,21 @@ class BinarySystem(System):
                 y0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 1], 0).all(1)
                 z0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 2], 0).all(1)
                 triangles = triangles[np.logical_and(y0_test, z0_test)]
-                # setting number of base symmetry faces
-                component_instance.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
-                # lets exploit axial symmetry and fill the rest of the surface of the star
-                all_triangles = [inv[triangles] for inv in component_instance.inverse_point_symmetry_matrix]
-                component_instance.faces = np.concatenate(all_triangles, axis=0)
-
-                base_face_symmetry_vector = np.arange(component_instance.base_symmetry_faces_number)
-                component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
-
             else:
-                component_instance.faces = self.over_contact_surface(component=_component)
+                points_to_triangulate = \
+                    np.append(component_instance.points[:component_instance.base_symmetry_points_number, :],
+                              np.array([[np.max(component_instance.points[:, 0]), 0, 0]]), axis=0)
+                triangles = self.over_contact_surface(component=_component, points=points_to_triangulate)
+                # filtering out triangles containing last point in `points_to_triangulate`
+                triangles = triangles[(triangles < component_instance.base_symmetry_points_number).all(1)]
+
+            component_instance.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
+            # lets exploit axial symmetry and fill the rest of the surface of the star
+            all_triangles = [inv[triangles] for inv in component_instance.inverse_point_symmetry_matrix]
+            component_instance.faces = np.concatenate(all_triangles, axis=0)
+
+            base_face_symmetry_vector = np.arange(component_instance.base_symmetry_faces_number)
+            component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
 
     def build_surface_with_spots(self, component=None):
         component = self._component_to_list(component)
@@ -1989,7 +2065,7 @@ class BinarySystem(System):
                             spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
                                                                                   temperatures=spot.temperatures)
 
-                        component_instance.renormalize_temperatures()
+                component_instance.renormalize_temperatures()
                 self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
                                    ''.format(component))
 

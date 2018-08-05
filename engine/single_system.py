@@ -394,10 +394,9 @@ class SingleSystem(System):
                     - np.power(self._angular_velocity, 2) * point[:, 1]
         domega_dz = c.G * self.star.mass * point[:, 2] / r3
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
-        if self.star.spots:
-            return np.mean(points_gradients[face], axis=1)
-        else:
-            return np.mean(points_gradients[face], axis=1)[self.star.face_symmetry_vector]
+
+        return np.mean(points_gradients[face], axis=1) if self.star.spots \
+            else np.mean(points_gradients[face], axis=1)[self.star.face_symmetry_vector]
 
     def calculate_polar_potential_gradient_magnitude(self):
         """

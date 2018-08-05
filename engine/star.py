@@ -237,10 +237,8 @@ class Star(Body):
         t_eff_polar = self.calculate_polar_effective_temperature()
         t_eff = t_eff_polar * np.power(gradient_magnitudes / self.polar_potential_gradient_magnitude,
                                        0.25 * self.gravity_darkening)
-        if self.spots:  # temporary
-            return t_eff
-        else:
-            return t_eff[self.face_symmetry_vector]
+
+        return t_eff if self.spots else t_eff[self.face_symmetry_vector]
 
     def is_property(self, kwargs):
         """

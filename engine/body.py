@@ -553,6 +553,7 @@ class Body(metaclass=ABCMeta):
             base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
                                               self.points[:self.base_symmetry_points_number])
             return base_areas[self.face_symmetry_vector]
+
         else:
             return utils.triangle_areas(self.faces, self.points)
 
