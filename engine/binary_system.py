@@ -143,8 +143,8 @@ class BinarySystem(System):
             return True
 
         fns = {
-            "primary": self.potential_primary_fn,
-            "secondary": self.potential_secondary_fn
+            "primary": (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
+            "secondary": (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)
         }
 
         neck_position = 1e10
@@ -153,7 +153,8 @@ class BinarySystem(System):
         if self.morphology == "over-contact":
             neck_position = self.calculate_neck_position()
 
-        for component, fn in fns.items():
+        for component, functions in fns.items():
+            fn, precalc = functions
             self._logger.info("Evaluating spots for {} component".format(component))
             component_instance = getattr(self, component)
 
@@ -180,6 +181,7 @@ class BinarySystem(System):
                 center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
 
                 args, use = (components_distance, radial_vector[1], radial_vector[2]), False
+                args = precalc(*args)
                 solution, use = self._solver(fn, solver_condition, *args)
 
                 if not use:
@@ -197,6 +199,7 @@ class BinarySystem(System):
                 # compute euclidean distance of two points on spot (x0)
                 # we have to obtain distance between center and 1st point in 1st ring of spot
                 args, use = (components_distance, lon, lat + alpha), False
+                args = precalc(*args)
                 solution, use = self._solver(fn, solver_condition, *args)
 
                 if not use:
@@ -236,6 +239,7 @@ class BinarySystem(System):
                             spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
                             args = (components_distance, spherical_delta_vector[1], spherical_delta_vector[2])
+                            args = precalc(*args)
                             solution, use = self._solver(fn, solver_condition, *args)
 
                             if not use:
@@ -259,8 +263,9 @@ class BinarySystem(System):
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_spherical(boundary_com)
-                solution, _ = self._solver(fn, solver_condition, *(components_distance, boundary_com[1],
-                                                                   boundary_com[2]))
+                args = components_distance, boundary_com[1], boundary_com[2]
+                args = precalc(*args)
+                solution, _ = self._solver(fn, solver_condition, *args)
                 boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
 
                 # first point will be always barycenter of boundary
@@ -677,24 +682,59 @@ class BinarySystem(System):
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
             3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
 
+    def pre_calculate_for_potential_value_primary(self, *args):
+        """
+        function calculates auxiliary values for calculation of primary component potential, and therefore they don't
+        need to be wastefully recalculated every iteration in solver
+
+        :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
+        :return: tuple: (B, C, D, E) such that: Psi1 = 1/r + A/sqrt(B+r^2+Cr) - D*r + E*x^2
+        """
+        d, phi, theta = args  # distance between components, azimut angle, latitude angle (0,180)
+
+        cs = np.cos(phi) * np.sin(theta)
+
+        B = np.power(d, 2)
+        C = 2 * d * cs
+        D = (self.mass_ratio * cs) / B
+        E = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
+
+        return B, C, D, E
+
     def potential_value_primary(self, radius, *args):
         """
         calculates modified kopal potential from point of view of primary component
 
         :param radius: (np.)float; spherical variable
-        :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimuthal angle, polar angle)
+        :param args: tuple: (B, C, D, E) such that: Psi1 = 1/r + A/sqrt(B+r^2+Cr) - D*r + E*x^2
         :return: (np.)float
         """
-        d, phi, theta = args  # distance between components, azimut angle, latitude angle (0,180)
 
-        block_a = 1.0 / radius
-        block_b = self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
-            2.0 * radius * np.cos(phi) * np.sin(theta) * d)))
-        block_c = (self.mass_ratio * radius * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
-        block_d = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * np.power(radius, 2) * (
-            1 - np.power(np.cos(theta), 2))
+        B, C, D, E = args  # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
+        radius2 = np.power(radius, 2)
 
-        return block_a + block_b - block_c + block_d
+        return 1 / radius + self.mass_ratio / np.sqrt(B + radius2 - C * radius) - D * radius + E * radius2
+
+    def pre_calculate_for_potential_value_primary_cylindrical(self, *args):
+        """
+        function calculates auxiliary values for calculation of primary component potential  in cylindrical symmetry,
+        and therefore they don't need to be wastefully recalculated every iteration in solver
+
+        :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x))
+        :return: tuple: (A, B, C, D, E, F) such that: Psi1 = 1/sqrt(A+r^2) + q/sqrt(B + r^2) - C + D*(E+F*r^2)
+        """
+        phi, z = args
+
+        qq = self.mass_ratio / (1 + self.mass_ratio)
+
+        A = np.power(z, 2)
+        B = np.power(1 - z, 2)
+        C = 0.5 * self.mass_ratio * qq
+        D = 0.5 + 0.5 * self.mass_ratio
+        E = np.power(qq - z, 2)
+        F = np.power(np.sin(phi), 2)
+
+        return A, B, C, D, E, F
 
     def potential_value_primary_cylindrical(self, radius, *args):
         """
@@ -703,41 +743,77 @@ class BinarySystem(System):
         of W UMa systems, therefore components distance = 1 an synchronicity = 1 is assumed
 
         :param radius: np.float
-        :param args: tuple (np.float, np.float) - phi, z (polar coordinates)
+        :param args: tuple: (A, B, C, D, E, F) such that: Psi1 = 1/sqrt(A+r^2) + q/sqrt(B + r^2) - C + D*(E+F*r^2)
         :return:
         """
-        phi, z = args
+        # phi, z = args
+        #
+        # block_a = 1 / np.power(np.power(z, 2) + np.power(radius, 2), 0.5)
+        # block_b = self.mass_ratio / np.power(np.power(1 - z, 2) + np.power(radius, 2), 0.5)
+        # block_c = 0.5 * np.power(self.mass_ratio, 2) / (self.mass_ratio + 1)
+        # block_d = 0.5 * (self.mass_ratio + 1) * (np.power(self.mass_ratio / (self.mass_ratio + 1) - z, 2)
+        #                                          + np.power(radius * np.sin(phi), 2))
+        #
+        # return block_a + block_b - block_c + block_d
+        A, B, C, D, E, F = args
 
-        block_a = 1 / np.power(np.power(z, 2) + np.power(radius, 2), 0.5)
-        block_b = self.mass_ratio / np.power(np.power(1 - z, 2) + np.power(radius, 2), 0.5)
-        block_c = 0.5 * np.power(self.mass_ratio, 2) / (self.mass_ratio + 1)
-        block_d = 0.5 * (self.mass_ratio + 1) * (np.power(self.mass_ratio / (self.mass_ratio + 1) - z, 2)
-                                                 + np.power(radius * np.sin(phi), 2))
+        radius2 = np.power(radius, 2)
+        return 1 / np.sqrt(A + radius2) + self.mass_ratio / np.sqrt(B + radius2) - C + D * (E + F * radius2)
 
-        return block_a + block_b - block_c + block_d
+    def pre_calculate_for_potential_value_secondary(self, *args):
+        """
+        function calculates auxiliary values for calculation of secondary component potential, and therefore they don't
+        need to be wastefully recalculated every iteration in solver
+
+        :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
+        :return: tuple: (B, C, D, E, F) such that: Psi2 = q/r + 1/sqrt(B+r^2+Cr) - D*r + E*x^2 + F
+        """
+        d, phi, theta = args  # distance between components, azimut angle, latitude angle (0,180)
+
+        cs = np.cos(phi) * np.sin(theta)
+
+        B = np.power(d, 2)
+        C = 2 * d * cs
+        D = cs / B
+        E = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
+        F = 0.5 - 0.5 * self.mass_ratio
+
+        return B, C, D, E, F
 
     def potential_value_secondary(self, radius, *args):
         """
         calculates modified kopal potential from point of view of secondary component
 
         :param radius: np.float; spherical variable
-        :param args: (np.float, np.float, np.float); (component distance, azimutal angle, polar angle)
+        :param args: tuple: (B, C, D, E, F) such that: Psi2 = q/r + 1/sqrt(B+r^2+Cr) - D*r + E*x^2 + F
         :return: np.float
         """
-        d, phi, theta = args
-        inverted_mass_ratio = 1.0 / self.mass_ratio
+        B, C, D, E, F = args
+        radius2 = np.power(radius, 2)
 
-        block_a = 1.0 / radius
-        block_b = inverted_mass_ratio / (np.sqrt(np.power(d, 2) + np.power(radius, 2) - (
-            2.0 * radius * np.cos(phi) * np.sin(theta) * d)))
-        block_c = (inverted_mass_ratio * radius * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
-        block_d = 0.5 * np.power(self.secondary.synchronicity, 2) * (1 + inverted_mass_ratio) * np.power(
-            radius, 2) * (1 - np.power(np.cos(theta), 2))
+        return self.mass_ratio / radius + 1. / np.sqrt(B + radius2 - C * radius) - D * radius + E * radius2 + F
 
-        inverse_potential = (block_a + block_b - block_c + block_d) / inverted_mass_ratio + (
-            0.5 * ((inverted_mass_ratio - 1) / inverted_mass_ratio))
+    def pre_calculate_for_potential_value_secondary_cylindrical(self, *args):
+        """
+        function calculates auxiliary values for calculation of secondary component potential in cylindrical symmetry,
+        and therefore they don't need to be wastefully recalculated every iteration in solver
 
-        return inverse_potential
+        :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x))
+        :return: tuple: (A, B, C, D, E, F, G) such that: Psi2 = q/sqrt(A+r^2) + 1/sqrt(B + r^2) - C + D*(E+F*r^2) + G
+        """
+        phi, z = args
+
+        qq = self.mass_ratio / (1 + self.mass_ratio)
+
+        A = np.power(z, 2)
+        B = np.power(1 - z, 2)
+        C = 0.5 * qq
+        D = 1. / (2 * qq)
+        E = np.power(qq - z, 2)
+        F = np.power(np.sin(phi), 2)
+        G = 0.5 - 0.5 * self.mass_ratio
+
+        return A, B, C, D, E, F, G
 
     def potential_value_secondary_cylindrical(self, radius, *args):
         """
@@ -746,20 +822,24 @@ class BinarySystem(System):
         of W UMa systems, therefore components distance = 1 an synchronicity = 1 is assumed
 
         :param radius: np.float
-        :param args: tuple (np.float, np.float) - phi, z (polar coordinates)
+        :param args: tuple: (A, B, C, D, E, F, G) such that: Psi2 = q/sqrt(A+r^2) + 1/sqrt(B+r^2) - C + D*(E+F*r^2) + G
         :return:
         """
-        phi, z = args
-        inverted_mass_ratio = 1.0 / self.mass_ratio
+        # phi, z = args
+        # inverted_mass_ratio = 1.0 / self.mass_ratio
+        #
+        # block_a = 1 / np.power(np.power(z, 2) + np.power(radius, 2), 0.5)
+        # block_b = inverted_mass_ratio / np.power(np.power(1 - z, 2) + np.power(radius, 2), 0.5)
+        # block_c = 0.5 * np.power(inverted_mass_ratio, 2) / (inverted_mass_ratio + 1)
+        # block_d = 0.5 * (inverted_mass_ratio + 1) * (np.power(inverted_mass_ratio / (inverted_mass_ratio + 1) - z, 2)
+        #                                              + np.power(radius * np.sin(phi), 2))
+        #
+        # return (block_a + block_b - block_c + block_d) / inverted_mass_ratio + (
+        #         0.5 * ((inverted_mass_ratio - 1) / inverted_mass_ratio))
+        A, B, C, D, E, F, G = args
 
-        block_a = 1 / np.power(np.power(z, 2) + np.power(radius, 2), 0.5)
-        block_b = inverted_mass_ratio / np.power(np.power(1 - z, 2) + np.power(radius, 2), 0.5)
-        block_c = 0.5 * np.power(inverted_mass_ratio, 2) / (inverted_mass_ratio + 1)
-        block_d = 0.5 * (inverted_mass_ratio + 1) * (np.power(inverted_mass_ratio / (inverted_mass_ratio + 1) - z, 2)
-                                                     + np.power(radius * np.sin(phi), 2))
-
-        return (block_a + block_b - block_c + block_d) / inverted_mass_ratio + (
-                0.5 * ((inverted_mass_ratio - 1) / inverted_mass_ratio))
+        radius2 = np.power(radius, 2)
+        return self.mass_ratio / np.sqrt(A + radius2) + 1. / np.sqrt(B + radius2) - C + D * (E + F * radius2) + G
 
     def potential_primary_fn(self, radius, *args):
         """
@@ -820,9 +900,11 @@ class BinarySystem(System):
         if not np.isnan(solution):
             if component == "primary":
                 args = components_distance, 0.0, c.HALF_PI
+                args = self.pre_calculate_for_potential_value_primary(*args)
                 return abs(self.potential_value_primary(solution, *args))
-            else:
+            elif component == 'secondary':
                 args = (components_distance, 0.0, c.HALF_PI)
+                args = self.pre_calculate_for_potential_value_secondary(*args)
                 return abs(self.potential_value_secondary(components_distance - solution, *args))
         else:
             raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
@@ -930,15 +1012,18 @@ class BinarySystem(System):
         """
         if args[0] == 'primary':
             fn = self.potential_primary_fn
+            precalc = self.pre_calculate_for_potential_value_primary
         elif args[0] == 'secondary':
             fn = self.potential_secondary_fn
+            precalc = self.pre_calculate_for_potential_value_secondary
         else:
             raise ValueError('Invalid value of `component` argument {}. Expecting `primary` or `secondary`.'
                              .format(args[0]))
 
         scipy_solver_init_value = np.array([args[1] / 1e4])
+        argss = precalc(*args[1:])
         solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value,
-                                                    full_output=True, args=args[1:], xtol=1e-10)
+                                                    full_output=True, args=argss, xtol=1e-10)
 
         # check for regular solution
         if ier == 1 and not np.isnan(solution[0]) and 30 >= solution[0] >= 0:
@@ -991,7 +1076,8 @@ class BinarySystem(System):
 
         components = ['primary', 'secondary']
         points_primary, points_secondary = [], []
-        fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
+        fn_map = {'primary': (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
+                  'secondary': (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)}
 
         angles = np.linspace(-3*c.HALF_PI, c.HALF_PI, 300, endpoint=True)
         for component in components:
@@ -1006,7 +1092,8 @@ class BinarySystem(System):
                     raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
 
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
-                solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component], scipy_solver_init_value,
+                args = fn_map[component][1](*args)
+                solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
                                                             full_output=True, args=args, xtol=1e-12)
 
                 # check for regular solution
@@ -1132,12 +1219,24 @@ class BinarySystem(System):
         """
         creates surface mesh of given binary star component in case of detached (semi-detached) system
 
+        :param symmetry_output: bool - if true, besides surface points are returned also `symmetry_vector`,
+                                       `base_symmetry_points_number`, `inverse_symmetry_matrix`
         :param component: str - `primary` or `secondary`
         :param components_distance: np.float
-        :return: numpy.array - set of points in shape numpy.array([[x1 y1 z1],
-                                                                     [x2 y2 z2],
-                                                                      ...
-                                                                     [xN yN zN]])
+        :return: numpy.array([[x1 y1 z1],
+                              [x2 y2 z2],
+                                ...
+                              [xN yN zN]]) - array of surface points if symmetry_output = False, else:
+                 numpy.array([[x1 y1 z1],
+                              [x2 y2 z2],
+                                ...
+                              [xN yN zN]]) - array of surface points,
+                 numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
+                                                                quarter of surface,
+                 numpy.float - number of points included in symmetrical one quarter of surface,
+                 numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
+                                                                                mapped basic symmetry quadrant to all
+                                                                                others quadrants
         """
         component_instance = getattr(self, component)
         if component_instance.discretization_factor > c.HALF_PI:
@@ -1148,8 +1247,10 @@ class BinarySystem(System):
 
         if component == 'primary':
             fn = self.potential_primary_fn
+            precalc = self.pre_calculate_for_potential_value_primary
         elif component == 'secondary':
             fn = self.potential_secondary_fn
+            precalc = self.pre_calculate_for_potential_value_secondary
         else:
             raise ValueError('Invalid value of `component` argument: `{}`. Expecting '
                              '`primary` or `secondary`.'.format(component))
@@ -1161,6 +1262,7 @@ class BinarySystem(System):
         theta_eq = np.array([c.HALF_PI for _ in phi_eq])
         for phi in phi_eq:
             args = (components_distance, phi, c.HALF_PI)
+            args = precalc(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                         xtol=1e-12)
             r_eq.append(solution[0])
@@ -1179,6 +1281,7 @@ class BinarySystem(System):
                                          np.linspace(0., c.HALF_PI, num=num, endpoint=False)))
         for ii, theta in enumerate(theta_meridian):
             args = (components_distance, phi_meridian[ii], theta)
+            args = precalc(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                         xtol=1e-12)
             r_meridian.append(solution[0])
@@ -1198,6 +1301,7 @@ class BinarySystem(System):
             for phi in phi_q_add:
                 theta_q.append(theta)
                 args = (components_distance, phi, theta)
+                args = precalc(*args)
                 solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                             xtol=1e-12)
                 r_q.append(solution[0])
@@ -1273,7 +1377,8 @@ class BinarySystem(System):
         components_distance = 1.0
         components = ['primary', 'secondary']
         points_primary, points_secondary = [], []
-        fn_map = {'primary': self.potential_primary_fn, 'secondary': self.potential_secondary_fn}
+        fn_map = {'primary': (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
+                  'secondary': (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)}
 
         # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
         angles = np.linspace(0., c.HALF_PI, 100, endpoint=True)
@@ -1282,7 +1387,8 @@ class BinarySystem(System):
                 args, use = (components_distance, angle, c.HALF_PI), False
 
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
-                solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component], scipy_solver_init_value,
+                args = fn_map[component][1](*args)
+                solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
                                                             full_output=True, args=args, xtol=1e-12)
 
                 # check for regular solution
@@ -1323,11 +1429,23 @@ class BinarySystem(System):
         """
         creates surface mesh of given binary star component in case of over-contact system
 
+        :param symmetry_output: bool - if true, besides surface points are returned also `symmetry_vector`,
+                                       `base_symmetry_points_number`, `inverse_symmetry_matrix`
         :param component: str - `primary` or `secondary`
-        :return: numpy.array - set of points in shape numpy.array([[x1 y1 z1],
-                                                                     [x2 y2 z2],
-                                                                      ...
-                                                                     [xN yN zN]])
+        :return: numpy.array([[x1 y1 z1],
+                              [x2 y2 z2],
+                                ...
+                              [xN yN zN]]) - array of surface points if symmetry_output = False, else:
+                 numpy.array([[x1 y1 z1],
+                              [x2 y2 z2],
+                                ...
+                              [xN yN zN]]) - array of surface points,
+                 numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
+                                                                quarter of surface,
+                 numpy.float - number of points included in symmetrical one quarter of surface,
+                 numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
+                                                                                mapped basic symmetry quadrant to all
+                                                                                others quadrants
         """
         component_instance = getattr(self, component)
         if component_instance.discretization_factor > c.HALF_PI:
@@ -1342,9 +1460,13 @@ class BinarySystem(System):
         if component == 'primary':
             fn = self.potential_primary_fn
             fn_cylindrical = self.potential_primary_cylindrical_fn
+            precalc = self.pre_calculate_for_potential_value_primary
+            precal_cylindrical = self.pre_calculate_for_potential_value_primary_cylindrical
         elif component == 'secondary':
             fn = self.potential_secondary_fn
             fn_cylindrical = self.potential_secondary_cylindrical_fn
+            precalc = self.pre_calculate_for_potential_value_secondary
+            precal_cylindrical = self.pre_calculate_for_potential_value_secondary_cylindrical
         else:
             raise ValueError('Invalid value of `component` argument: `{}`. '
                              'Expecting `primary` or `secondary`.'.format(component))
@@ -1356,6 +1478,7 @@ class BinarySystem(System):
         theta_eq1 = np.array([c.HALF_PI for _ in phi_eq1])
         for phi in phi_eq1:
             args = (components_distance, phi, c.HALF_PI)
+            args = precalc(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                         xtol=1e-12)
             r_eq1.append(solution[0])
@@ -1373,6 +1496,7 @@ class BinarySystem(System):
         theta_meridian1 = np.linspace(0., c.HALF_PI - alpha, num=num)
         for ii, theta in enumerate(theta_meridian1):
             args = (components_distance, phi_meridian1[ii], theta)
+            args = precalc(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                         xtol=1e-12)
             r_meridian1.append(solution[0])
@@ -1387,6 +1511,7 @@ class BinarySystem(System):
         theta_meridian2 = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
         for ii, theta in enumerate(theta_meridian2):
             args = (components_distance, phi_meridian2[ii], theta)
+            args = precalc(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                         xtol=1e-12)
             r_meridian2.append(solution[0])
@@ -1406,6 +1531,7 @@ class BinarySystem(System):
             for phi in phi_q_add:
                 theta_q1.append(theta)
                 args = (components_distance, phi, theta)
+                args = precalc(*args)
                 solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                             xtol=1e-12)
                 r_q1.append(solution[0])
@@ -1471,6 +1597,7 @@ class BinarySystem(System):
             z_eqn.append(z)
             phi_eqn.append(c.HALF_PI)
             args = (c.HALF_PI, z)
+            args = precal_cylindrical(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
                                                         args=args, xtol=1e-12)
             r_eqn.append(solution[0])
@@ -1478,17 +1605,19 @@ class BinarySystem(System):
             z_meridian_n.append(z)
             phi_meridian_n.append(0.)
             args = (0., z)
+            args = precal_cylindrical(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
                                                         args=args, xtol=1e-12)
             r_meridian_n.append(solution[0])
 
             num = int(c.HALF_PI * r_eqn[-1] // delta_z)
             start_val = c.HALF_PI / (num + 1)
-            phis = np.linspace(start_val, c.HALF_PI, num=num, endpoint=False)
+            phis = np.linspace(start_val, c.HALF_PI, num=num-1, endpoint=False)
             for phi in phis:
                 z_n.append(z)
                 phi_n.append(phi)
                 args = (phi, z)
+                args = precal_cylindrical(*args)
                 solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
                                                             args=args, xtol=1e-12)
                 r_n.append(solution[0])
@@ -1600,7 +1729,7 @@ class BinarySystem(System):
         calculates surface faces from the given component's points in case of detached or semi-contact system
 
         :param component: str
-        :return: np.array - N x 3 array of vertice indices
+        :return: np.array - N x 3 array of vertices indices
         """
         component_instance = getattr(self, component)
         if points is None:
@@ -1618,34 +1747,49 @@ class BinarySystem(System):
         """
         calculates surface faces from the given component's points in case of over-contact system
 
+        :param points: numpy.array - points to triangulate
         :param component: str - `primary` or `secondary`
         :return: np.array - N x 3 array of vertice indices
         """
         component_instance = getattr(self, component)
         if points is None:
             points = component_instance.points
-
-        if not np.any(points):
-            raise ValueError("{} component, with class instance name {} do not contain any valid point "
+        if np.isnan(points).any():
+            raise ValueError("{} component, with class instance name {} contain any valid point "
                              "to triangulate".format(component, component_instance.name))
 
-        neck_x = self.calculate_neck_position()
+        neck_x = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
 
         # projection of component's far side surface into ``sphere`` with radius r1
-        r1 = neck_x  # radius of the sphere and cylinder
-        projected_points = []
+        projected_points = np.empty((np.shape(points)[0], 3))
         if component == 'primary':
-            k = r1 / (neck_x + 0.01)
-            for point in component_instance.points:
-                if point[0] <= 0:
-                    projected_points.append(r1 * point / np.linalg.norm(point))
-                else:
-                    r = (r1**2 - (k * point[0])**2)**0.5
-                    length = np.linalg.norm(point[1:])
-                    new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
-                    projected_points.append(new_point)
+            k = neck_x / (neck_x + 0.01)
+            outside_points_test = points[:, 0] <= 0
+            outside_points = points[outside_points_test]
+            projected_points[outside_points_test] = neck_x * outside_points / np.linalg.norm(outside_points, axis=1)[:, None]
+
+            inside_points_test = (points[:, 0] > 0)[:-1]
+            inside_points_test = np.append(inside_points_test, False)
+            inside_points = points[inside_points_test]
+            print(inside_points[-1])
+            r = (neck_x ** 2 - (k * inside_points[:, 0]) ** 2) ** 0.5
+            length = np.linalg.norm(inside_points[:, 1:], axis=1)
+            projected_points[inside_points_test][:, 0] = inside_points[:, 0]
+            projected_points[inside_points_test][:, 1:] = r[:, None] * inside_points[:, 1:] / length[:, None]
+            projected_points[-1] = points[-1]
+            #
+            # for point in points:
+            #     if point[0] <= 0:
+            #         projected_points.append(r1 * point / np.linalg.norm(point))
+            #     else:
+            #         r = (r1 ** 2 - (k * point[0]) ** 2) ** 0.5
+            #         length = np.linalg.norm(point[1:])
+            #         new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
+            #         projected_points.append(new_point)
+
         else:
-            for point in component_instance.points:
+            k = r1 / ((1 - neck_x) + 0.01)
+            for point in points:
                 if point[0] >= 1:
                     point_copy = np.array(point)
                     point_copy[0] -= 1
@@ -1653,13 +1797,12 @@ class BinarySystem(System):
                     new_val[0] += 1
                     projected_points.append(new_val)
                 else:
-                    k = r1 / ((1 - neck_x) + 0.01)
-                    r = (r1**2 - (k * (1 - point[0]))**2)**0.5
+                    r = (r1 ** 2 - (k * (1 - point[0])) ** 2) ** 0.5
                     length = np.linalg.norm(point[1:])
                     new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
                     projected_points.append(new_point)
 
-        projected_points = np.array(projected_points)
+        print(np.shape(projected_points), np.shape(points))
 
         # triangulation of this now convex object
         triangulation = Delaunay(projected_points)
@@ -1760,9 +1903,11 @@ class BinarySystem(System):
                 z0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 2], 0).all(1)
                 triangles = triangles[np.logical_and(y0_test, z0_test)]
             else:
+                neck = np.max(component_instance.points[:, 0]) if component[0] == 'primary' \
+                    else np.min(component_instance.points[:, 0])
                 points_to_triangulate = \
                     np.append(component_instance.points[:component_instance.base_symmetry_points_number, :],
-                              np.array([[np.max(component_instance.points[:, 0]), 0, 0]]), axis=0)
+                              np.array([[neck, 0, 0]]), axis=0)
                 triangles = self.over_contact_surface(component=_component, points=points_to_triangulate)
                 # filtering out triangles containing last point in `points_to_triangulate`
                 triangles = triangles[(triangles < component_instance.base_symmetry_points_number).all(1)]

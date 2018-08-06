@@ -53,11 +53,11 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000*u.K, 'freq
 
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
-               surface_potential=3.5,
+               surface_potential=3.0,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
-               discretization_factor=3,
+               discretization_factor=5,
                # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                )
@@ -66,7 +66,7 @@ secondary = Star(mass=0.9*u.solMass,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=3,
+                 discretization_factor=5,
                  # spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['secondary'],
                  )
@@ -113,5 +113,5 @@ bs.plot(descriptor='surface',
         # normals=True,
         # colormap='gravity_acceleration',
         colormap='temperature',
-        plot_axis=False,
+        # plot_axis=False,
         )

@@ -106,6 +106,7 @@ class System(metaclass=ABCMeta):
         :param args: tuple
         :return: float (np.nan), bool
         """
+        # precalculation of auxiliary values
         solution, use = np.nan, False
         scipy_solver_init_value = np.array([1. / 10000.])
         try:

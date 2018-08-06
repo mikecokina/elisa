@@ -144,6 +144,7 @@ class SingleSystem(System):
             center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
 
             args, use = (radial_vector[2],), False
+
             solution, use = self._solver(self.potential_fn, solver_condition, *args)
 
             if not use:
