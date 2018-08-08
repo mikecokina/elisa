@@ -186,7 +186,7 @@ class System(metaclass=ABCMeta):
         vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
         points = copy(component_instance.points)
         # average spacing of component surface points
-        avsp = utils.average_spacing(data=component_instance.points,
+        avsp = utils.average_spacing(data=component_instance.polar_radius,
                                      mean_angular_distance=component_instance.discretization_factor)
         for spot_index, spot in component_instance.spots.items():
             # average spacing in spot points

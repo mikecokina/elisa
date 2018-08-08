@@ -171,6 +171,13 @@ class BinarySystem(System):
                         'Angular density of the spot {0} on {2} component was not supplied and discretization factor of'
                         ' star {1} was used.'.format(spot_index, component_instance.discretization_factor, component))
                     spot_instance.angular_density = component_instance.discretization_factor * units.ARC_UNIT
+                if spot_instance.angular_density > 0.5 * spot_instance.angular_diameter:
+                    self._logger.debug('Angular density {1} of the spot {0} on {2} component was larger than its '
+                                       'angular radius. Therefore value of angular density was set to be equal to '
+                                       '0.5 * angular diameter.'.format(spot_index,
+                                                                        component_instance.discretization_factor,
+                                                                        component))
+                    spot_instance.angular_density = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
                 alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
 
                 # initial containers for current spot

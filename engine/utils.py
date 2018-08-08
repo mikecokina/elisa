@@ -178,7 +178,7 @@ def average_spacing(data=None, mean_angular_distance=None):
     :param mean_angular_distance: np.float - in radians
     :return:
     """
-    average_radius = np.mean(np.linalg.norm(data, axis=1))
+    average_radius = np.mean(np.linalg.norm(data, axis=1)) if not np.isscalar(data) else data
     return average_radius * mean_angular_distance
 
 
