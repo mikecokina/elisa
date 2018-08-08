@@ -12,11 +12,11 @@ from time import time
 spots_metadata = {
     "primary":
          [
-         {"longitude": 90,
-          "latitude": 58,
-          # "angular_density": 1,
-          "angular_diameter": 5,
-          "temperature_factor": 0.9},
+         # {"longitude": 90,
+         #  "latitude": 58,
+         #  # "angular_density": 1,
+         #  "angular_diameter": 5,
+         #  "temperature_factor": 0.9},
          {"longitude": 70,
           "latitude": 80,
           # "angular_density": 2,
@@ -36,11 +36,11 @@ spots_metadata = {
           # "angular_density": 3,
           "angular_diameter": 30,
           "temperature_factor": 1.03},
-         {"longitude": 45,
-          "latitude": 3,
-          # "angular_density": 3,
-          "angular_diameter": 10,
-          "temperature_factor": 0.98}
+         # {"longitude": 45,
+         #  "latitude": 3,
+         #  # "angular_density": 3,
+         #  "angular_diameter": 10,
+         #  "temperature_factor": 0.98}
          ]
      }
 
@@ -57,8 +57,8 @@ primary = Star(mass=1.5*u.solMass,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
-               discretization_factor=5,
-               # spots=spots_metadata['primary'],
+               discretization_factor=10,
+               spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                )
 secondary = Star(mass=0.9*u.solMass,
@@ -66,8 +66,8 @@ secondary = Star(mass=0.9*u.solMass,
                  synchronicity=1.0,
                  t_eff=6000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=5,
-                 # spots=spots_metadata['secondary'],
+                 discretization_factor=2,
+                 spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['secondary'],
                  )
 
@@ -82,8 +82,10 @@ bs = BinarySystem(primary=primary,
                   phase_shift=0.0)
 
 
-bs.build_surface(components_distance=1, component='primary')
-bs.build_surface_map(colormap='temperature', component='primary', components_distance=1)
+# bs.build_surface(components_distance=1, component='primary')
+bs.build_surface(components_distance=1, component='secondary')
+# print(np.shape(bs.secondary.spots[0].points))
+# bs.build_surface_map(colormap='temperature', component='primary', components_distance=1)
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=1)
 # bs.build_temperature_distribution(components_distance=1.0)
 # bs.evaluate_normals()
@@ -97,19 +99,20 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 
 # bs.plot(descriptor='mesh',
 #         # components_to_plot='primary',
-#         # components_to_plot='secondary',
+#         components_to_plot='secondary',
 #         plot_axis=False
 #         )
 # bs.plot(descriptor='wireframe',
-        # components_to_plot='primary',
-        # components_to_plot='secondary',
-        # plot_axis=False
-        # )
+#         # components_to_plot='primary',
+#         components_to_plot='secondary',
+#         # plot_axis=False
+#         )
+
 bs.plot(descriptor='surface',
         phase=0,
-        components_to_plot='primary',
-        # components_to_plot='secondary',
-        edges=True,
+        # components_to_plot='primary',
+        components_to_plot='secondary',
+        # edges=True,
         # normals=True,
         # colormap='gravity_acceleration',
         colormap='temperature',

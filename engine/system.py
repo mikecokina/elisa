@@ -396,6 +396,7 @@ class System(metaclass=ABCMeta):
 
         self._logger.debug("Changing value of parameter points of object {}".format(component_instance.name))
         indices = list(set(np.array(model["object"]).flatten()))
+
         component_instance.points = component_instance.points[indices]
 
         self._logger.debug("Changing value of parameter faces of object {}".format(component_instance.name))

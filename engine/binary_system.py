@@ -746,15 +746,6 @@ class BinarySystem(System):
         :param args: tuple: (A, B, C, D, E, F) such that: Psi1 = 1/sqrt(A+r^2) + q/sqrt(B + r^2) - C + D*(E+F*r^2)
         :return:
         """
-        # phi, z = args
-        #
-        # block_a = 1 / np.power(np.power(z, 2) + np.power(radius, 2), 0.5)
-        # block_b = self.mass_ratio / np.power(np.power(1 - z, 2) + np.power(radius, 2), 0.5)
-        # block_c = 0.5 * np.power(self.mass_ratio, 2) / (self.mass_ratio + 1)
-        # block_d = 0.5 * (self.mass_ratio + 1) * (np.power(self.mass_ratio / (self.mass_ratio + 1) - z, 2)
-        #                                          + np.power(radius * np.sin(phi), 2))
-        #
-        # return block_a + block_b - block_c + block_d
         A, B, C, D, E, F = args
 
         radius2 = np.power(radius, 2)
@@ -803,17 +794,16 @@ class BinarySystem(System):
         """
         phi, z = args
 
-        qq = self.mass_ratio / (1 + self.mass_ratio)
+        qq = 1 / (1 + self.mass_ratio)
 
         A = np.power(z, 2)
         B = np.power(1 - z, 2)
-        C = 0.5 * qq
-        D = 1. / (2 * qq)
-        E = np.power(qq - z, 2)
-        F = np.power(np.sin(phi), 2)
-        G = 0.5 - 0.5 * self.mass_ratio
+        C = 0.5 / qq
+        D = np.power(qq - z, 2)
+        E = np.power(np.sin(phi), 2)
+        F = 0.5 - 0.5 * self.mass_ratio - 0.5 * qq
 
-        return A, B, C, D, E, F, G
+        return A, B, C, D, E, F
 
     def potential_value_secondary_cylindrical(self, radius, *args):
         """
@@ -825,21 +815,10 @@ class BinarySystem(System):
         :param args: tuple: (A, B, C, D, E, F, G) such that: Psi2 = q/sqrt(A+r^2) + 1/sqrt(B+r^2) - C + D*(E+F*r^2) + G
         :return:
         """
-        # phi, z = args
-        # inverted_mass_ratio = 1.0 / self.mass_ratio
-        #
-        # block_a = 1 / np.power(np.power(z, 2) + np.power(radius, 2), 0.5)
-        # block_b = inverted_mass_ratio / np.power(np.power(1 - z, 2) + np.power(radius, 2), 0.5)
-        # block_c = 0.5 * np.power(inverted_mass_ratio, 2) / (inverted_mass_ratio + 1)
-        # block_d = 0.5 * (inverted_mass_ratio + 1) * (np.power(inverted_mass_ratio / (inverted_mass_ratio + 1) - z, 2)
-        #                                              + np.power(radius * np.sin(phi), 2))
-        #
-        # return (block_a + block_b - block_c + block_d) / inverted_mass_ratio + (
-        #         0.5 * ((inverted_mass_ratio - 1) / inverted_mass_ratio))
-        A, B, C, D, E, F, G = args
+        A, B, C, D, E, F = args
 
         radius2 = np.power(radius, 2)
-        return self.mass_ratio / np.sqrt(A + radius2) + 1. / np.sqrt(B + radius2) - C + D * (E + F * radius2) + G
+        return self.mass_ratio / np.sqrt(A + radius2) + 1. / np.sqrt(B + radius2) + C * (D + E * radius2) + F
 
     def potential_primary_fn(self, radius, *args):
         """
@@ -1611,7 +1590,7 @@ class BinarySystem(System):
             r_meridian_n.append(solution[0])
 
             num = int(c.HALF_PI * r_eqn[-1] // delta_z)
-            start_val = c.HALF_PI / (num + 1)
+            start_val = c.HALF_PI / num
             phis = np.linspace(start_val, c.HALF_PI, num=num-1, endpoint=False)
             for phi in phis:
                 z_n.append(z)
@@ -1757,68 +1736,52 @@ class BinarySystem(System):
         if np.isnan(points).any():
             raise ValueError("{} component, with class instance name {} contain any valid point "
                              "to triangulate".format(component, component_instance.name))
-
+        # calculating position of the neck
         neck_x = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
+        # parameter k is used later to transform inner surface to quasi sphere (convex object) which will be then
+        # triangulated
+        k = neck_x / (neck_x + 0.01) if component == 'primary' else neck_x / ((1 - neck_x) + 0.01)
 
         # projection of component's far side surface into ``sphere`` with radius r1
-        projected_points = np.empty((np.shape(points)[0], 3))
-        if component == 'primary':
-            k = neck_x / (neck_x + 0.01)
-            outside_points_test = points[:, 0] <= 0
-            outside_points = points[outside_points_test]
-            projected_points[outside_points_test] = neck_x * outside_points / np.linalg.norm(outside_points, axis=1)[:, None]
+        projected_points = np.empty(np.shape(points), dtype=float)
 
-            inside_points_test = (points[:, 0] > 0)[:-1]
-            inside_points_test = np.append(inside_points_test, False)
-            inside_points = points[inside_points_test]
-            print(inside_points[-1])
-            r = (neck_x ** 2 - (k * inside_points[:, 0]) ** 2) ** 0.5
-            length = np.linalg.norm(inside_points[:, 1:], axis=1)
-            projected_points[inside_points_test][:, 0] = inside_points[:, 0]
-            projected_points[inside_points_test][:, 1:] = r[:, None] * inside_points[:, 1:] / length[:, None]
+        # outside facing points are just inflated to match with transformed inner surface
+        # condition to select outward facing points
+        outside_points_test = points[:, 0] <= 0 if component == 'primary' else points[:, 0] >= 1
+        outside_points = points[outside_points_test]
+        if component == 'secondary':
+            outside_points[:, 0] -= 1
+        projected_points[outside_points_test] = \
+            neck_x * outside_points / np.linalg.norm(outside_points, axis=1)[:, None]
+        if component == 'secondary':
+            projected_points[:, 0] += 1
+
+        # condition to select outward facing points
+        inside_points_test = (points[:, 0] > 0)[:-1] if component == 'primary' else (points[:, 0] < 1)[:-1]
+        # if auxiliary point was used than  it is not appended to list of inner points to be transformed
+        # (it would cause division by zero error)
+        inside_points_test = np.append(inside_points_test, False) if \
+            np.array_equal(points[-1], np.array([neck_x, 0, 0])) else np.append(inside_points_test, True)
+        inside_points = points[inside_points_test]
+        # scaling radii for each point in cylindrical coordinates
+        r = (neck_x ** 2 - (k * inside_points[:, 0]) ** 2) ** 0.5 if component == 'primary' else \
+            (neck_x ** 2 - (k * (1 - inside_points[:, 0])) ** 2) ** 0.5
+
+        length = np.linalg.norm(inside_points[:, 1:], axis=1)
+        projected_points[inside_points_test, 0] = inside_points[:, 0]
+        projected_points[inside_points_test, 1:] = r[:, None] * inside_points[:, 1:] / length[:, None]
+        # if auxiliary point was used, than it will be appended to list of transformed points
+        if np.array_equal(points[-1], np.array([neck_x, 0, 0])):
             projected_points[-1] = points[-1]
-            #
-            # for point in points:
-            #     if point[0] <= 0:
-            #         projected_points.append(r1 * point / np.linalg.norm(point))
-            #     else:
-            #         r = (r1 ** 2 - (k * point[0]) ** 2) ** 0.5
-            #         length = np.linalg.norm(point[1:])
-            #         new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
-            #         projected_points.append(new_point)
 
-        else:
-            k = r1 / ((1 - neck_x) + 0.01)
-            for point in points:
-                if point[0] >= 1:
-                    point_copy = np.array(point)
-                    point_copy[0] -= 1
-                    new_val = r1 * point_copy / np.linalg.norm(point_copy)
-                    new_val[0] += 1
-                    projected_points.append(new_val)
-                else:
-                    r = (r1 ** 2 - (k * (1 - point[0])) ** 2) ** 0.5
-                    length = np.linalg.norm(point[1:])
-                    new_point = np.array([point[0], r * point[1] / length, r * point[2] / length])
-                    projected_points.append(new_point)
-
-        print(np.shape(projected_points), np.shape(points))
-
-        # triangulation of this now convex object
         triangulation = Delaunay(projected_points)
         triangles_indices = triangulation.convex_hull
 
         # removal of faces on top of the neck
-        new_triangles_indices = []
-        for indices in triangles_indices:
-            min_x = min([component_instance.points[ii, 0] for ii in indices])
-            max_x = max([component_instance.points[ii, 0] for ii in indices])
-            if abs(max_x - min_x) > 1e-8:
-                new_triangles_indices.append(indices)
-            elif not 0 < min_x < 1:
-                new_triangles_indices.append(indices)
+        neck_test = ~(np.equal(points[triangles_indices][:, :, 0], neck_x).all(-1))
+        new_triangles_indices = triangles_indices[neck_test]
 
-        return np.array(new_triangles_indices)
+        return new_triangles_indices
 
     def build_faces(self, component=None):
         """
@@ -1869,6 +1832,7 @@ class BinarySystem(System):
             self.incorporate_spots_to_surface(component_instance=component_instance,
                                               surface_fn=self.build_surface_with_spots,
                                               component=_component)
+
             if return_surface:
                 ret_points[_component] = copy(component_instance.points)
                 ret_faces[_component] = copy(component_instance.faces)
@@ -1898,10 +1862,7 @@ class BinarySystem(System):
             if self.morphology != 'over-contact':
                 points_to_triangulate = component_instance.points[:component_instance.base_symmetry_points_number, :]
                 triangles = self.detached_system_surface(component=_component, points=points_to_triangulate)
-                # filtering out faces on xy an xz planes
-                y0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 1], 0).all(1)
-                z0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 2], 0).all(1)
-                triangles = triangles[np.logical_and(y0_test, z0_test)]
+
             else:
                 neck = np.max(component_instance.points[:, 0]) if component[0] == 'primary' \
                     else np.min(component_instance.points[:, 0])
@@ -1911,6 +1872,11 @@ class BinarySystem(System):
                 triangles = self.over_contact_surface(component=_component, points=points_to_triangulate)
                 # filtering out triangles containing last point in `points_to_triangulate`
                 triangles = triangles[(triangles < component_instance.base_symmetry_points_number).all(1)]
+
+            # filtering out faces on xy an xz planes
+            y0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 1], 0).all(1)
+            z0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 2], 0).all(1)
+            triangles = triangles[np.logical_and(y0_test, z0_test)]
 
             component_instance.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
             # lets exploit axial symmetry and fill the rest of the surface of the star
