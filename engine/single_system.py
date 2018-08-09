@@ -65,6 +65,10 @@ class SingleSystem(System):
             raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                   SingleSystem.__name__))
 
+        for kwarg in BinarySystem.OPTIONAL_KWARGS:
+            if kwarg in kwargs:
+                setattr(self, kwarg, kwargs[kwarg])
+
         # setting of optional parameters
 
         # calculation of dependent parameters
