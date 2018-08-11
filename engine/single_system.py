@@ -65,7 +65,7 @@ class SingleSystem(System):
             raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                   SingleSystem.__name__))
 
-        for kwarg in BinarySystem.OPTIONAL_KWARGS:
+        for kwarg in SingleSystem.OPTIONAL_KWARGS:
             if kwarg in kwargs:
                 setattr(self, kwarg, kwargs[kwarg])
 
@@ -374,8 +374,7 @@ class SingleSystem(System):
         """
         theta, = args  # latitude angle (0,180)
 
-        return - c.G * self.star.mass / radius - 0.5 * np.power(self._angular_velocity, 2.0) * \
-                                                  np.power(radius * np.sin(theta), 2)
+        return - c.G * self.star.mass / radius - 0.5 * np.power(self._angular_velocity * radius * np.sin(theta), 2.0)
 
     def calculate_potential_gradient_magnitudes(self, points=None, faces=None):
         """
