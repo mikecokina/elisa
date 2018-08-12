@@ -743,7 +743,8 @@ class SingleSystem(System):
             kwargs['colormap'] = kwargs.get('colormap', None)
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
 
-            kwargs['mesh'], kwargs['triangles'] = self.build_surface(return_surface=True)
+            output = self.build_surface(return_surface=True)
+            kwargs['mesh'], kwargs['triangles'] = copy(output[0]), copy(output[1])
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
