@@ -1852,7 +1852,8 @@ class BinarySystem(System):
         if not components_distance:
             raise ValueError('components_distance value was not provided.')
         component = self._component_to_list(component)
-        if return_surface: ret_points, ret_faces = {}, {}
+        if return_surface:
+            ret_points, ret_faces = {}, {}
 
         for _component in component:
             component_instance = getattr(self, _component)
@@ -2101,39 +2102,62 @@ class BinarySystem(System):
 
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
-            if kwargs['components_to_plot'] in ['primary', 'both']:
-                points, faces = self.build_surface(component='primary', components_distance=components_distance,
+            # this part decides if both components need to be calculated at once (due to reflection effect)
+            if kwargs['colormap'] == 'temperature' and self.reflection_effect_iterations != 0:
+                points, faces = self.build_surface(components_distance=components_distance,
                                                    return_surface=True)
                 kwargs['points_primary'] = points['primary']
                 kwargs['primary_triangles'] = faces['primary']
+                kwargs['points_secondary'] = points['secondary']
+                kwargs['secondary_triangles'] = faces['secondary']
 
-                if kwargs['colormap']:
-                    cmap = self.build_surface_map(colormap=kwargs['colormap'], component='primary',
-                                                  components_distance=components_distance, return_map=True)
-                    kwargs['primary_cmap'] = cmap['primary']
-
+                cmap = self.build_surface_map(colormap=kwargs['colormap'],
+                                              components_distance=components_distance, return_map=True)
+                kwargs['primary_cmap'] = cmap['primary']
+                kwargs['secondary_cmap'] = cmap['secondary']
                 if kwargs['normals']:
                     kwargs['primary_centres'] = self.primary.calculate_surface_centres(
                         kwargs['points_primary'], kwargs['primary_triangles'])
                     kwargs['primary_arrows'] = self.primary.calculate_normals(
                         kwargs['points_primary'], kwargs['primary_triangles'])
-
-            if kwargs['components_to_plot'] in ['secondary', 'both']:
-                points, faces = self.build_surface(component='secondary', components_distance=components_distance,
-                                                   return_surface=True)
-                kwargs['points_secondary'] = points['secondary']
-                kwargs['secondary_triangles'] = faces['secondary']
-
-                if kwargs['colormap']:
-                    cmap = self.build_surface_map(colormap=kwargs['colormap'], component='secondary',
-                                                  components_distance=components_distance, return_map=True)
-                    kwargs['secondary_cmap'] = cmap['secondary']
-
-                if kwargs['normals']:
                     kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
                         kwargs['points_secondary'], kwargs['secondary_triangles'])
                     kwargs['secondary_arrows'] = self.secondary.calculate_normals(
                         kwargs['points_secondary'], kwargs['secondary_triangles'])
+            else:
+                if kwargs['components_to_plot'] in ['primary', 'both']:
+                    points, faces = self.build_surface(component='primary', components_distance=components_distance,
+                                                       return_surface=True)
+                    kwargs['points_primary'] = points['primary']
+                    kwargs['primary_triangles'] = faces['primary']
+
+                    if kwargs['colormap']:
+                        cmap = self.build_surface_map(colormap=kwargs['colormap'], component='primary',
+                                                      components_distance=components_distance, return_map=True)
+                        kwargs['primary_cmap'] = cmap['primary']
+
+                    if kwargs['normals']:
+                        kwargs['primary_centres'] = self.primary.calculate_surface_centres(
+                            kwargs['points_primary'], kwargs['primary_triangles'])
+                        kwargs['primary_arrows'] = self.primary.calculate_normals(
+                            kwargs['points_primary'], kwargs['primary_triangles'])
+
+                if kwargs['components_to_plot'] in ['secondary', 'both']:
+                    points, faces = self.build_surface(component='secondary', components_distance=components_distance,
+                                                       return_surface=True)
+                    kwargs['points_secondary'] = points['secondary']
+                    kwargs['secondary_triangles'] = faces['secondary']
+
+                    if kwargs['colormap']:
+                        cmap = self.build_surface_map(colormap=kwargs['colormap'], component='secondary',
+                                                      components_distance=components_distance, return_map=True)
+                        kwargs['secondary_cmap'] = cmap['secondary']
+
+                    if kwargs['normals']:
+                        kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
+                            kwargs['points_secondary'], kwargs['secondary_triangles'])
+                        kwargs['secondary_arrows'] = self.secondary.calculate_normals(
+                            kwargs['points_secondary'], kwargs['secondary_triangles'])
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
@@ -2215,9 +2239,9 @@ class BinarySystem(System):
                             spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
                                                                                   temperatures=spot.temperatures)
 
-                component_instance.renormalize_temperatures()
-                self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
-                                   ''.format(component))
+                        component_instance.renormalize_temperatures()
+                        self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
+                                           ''.format(component))
 
         # implementation of reflection effect
         if colormap == 'temperature':

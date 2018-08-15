@@ -84,7 +84,7 @@ bs = BinarySystem(primary=primary,
                   )
 
 
-bs.build_surface(components_distance=1)
+# bs.build_surface(components_distance=1)
 # bs.build_surface(components_distance=1, component='primary')
 # bs.build_surface(components_distance=1, component='secondary')
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=1)
@@ -110,13 +110,13 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 #         # plot_axis=False
 #         )
 
-# bs.plot(descriptor='surface',
-#         phase=0,
-#         # components_to_plot='primary',
-#         components_to_plot='secondary',
-#         edges=True,
-#         # normals=True,
-#         # colormap='gravity_acceleration',
-#         colormap='temperature',
-#         # plot_axis=False,
-#         )
+bs.plot(descriptor='surface',
+        phase=0,
+        # components_to_plot='primary',
+        components_to_plot='secondary',
+        edges=True,
+        # normals=True,
+        # colormap='gravity_acceleration',
+        colormap='temperature',
+        # plot_axis=False,
+        )
