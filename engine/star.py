@@ -346,33 +346,33 @@ class Star(Body):
                 spot.temperatures *= coefficient
 
     @staticmethod
-    def limb_darkening_factor(theta=None, coefficients=None, rule=None):
+    def limb_darkening_factor(radius_vector=None, line_of_sight=None, coefficients=None, rule=None):
         """
-        calculates limb darkening factor from one or multiple `theta` angles between radius vector of surface
-        component(s) and a line of sight
-        :param theta: np.float or np.array
+        calculates limb darkening factor for given surface element given by radius vector and line of sight vector
+        :param line_of_sight: numpy.array - vector (or vectors) of line of sight
+        :param radius_vector: numpy.array - single or multiple radius vectors
         :param coefficients: np.float in case of linear law
                              np.array in other cases
         :param rule: str -  `linear` or `cosine`, `logarithmic`, `square_root`
         :return:  gravity darkening factor(s), the same type/shape as theta
         """
-        if theta is None:
-            raise ValueError('Angle `theta` between line of sight, centre of the star and surface element was not '
-                             'supplied')
-        theta = np.array(theta) if isinstance(theta, list) else theta
-        test = (theta >= 0) & (theta <= c.HALF_PI)
-        if isinstance(test, bool):
-            if not test:
-                raise ValueError('Value of angle `theta`: {} is outside of bounds (0, pi/2).'.format(theta))
-        elif not test.all():
-            raise ValueError('At least one value of angle `theta` is outside of bounds (0, pi/2).')
+        if not radius_vector:
+            raise ValueError('Radius vector(s) was not supplied.')
+        if not line_of_sight:
+            raise ValueError('Line of sight vector(s) was not supplied.')
+
+        if line_of_sight.ndim != 1 and np.shape(radius_vector) != np.shape(line_of_sight):
+            raise ValueError('`line_of_sight` should be either one vector or ther same amount of vectors as provided in'
+                             ' radius vectors')
+
         if coefficients is None:
             ValueError('Limb darkening coefficients were not supplied.')
         if rule is None:
             ValueError('Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, '
                        '`square_root`')
 
-        cos_theta = np.cos(theta)
+        cos_theta = np.sum(radius_vector * line_of_sight, axis=-1) / (np.linalg.norm(radius_vector, axis=-1) *
+                                                                      np.linalg.norm(line_of_sight, axis=-1))
         if rule in ['linear', 'cosine']:
             return 1 - coefficients + coefficients * cos_theta
         elif rule == 'logarithmic':

@@ -41,6 +41,8 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 class BinarySystem(System):
     KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'primary_minimum_time',
               'phase_shift']
+    OPTIONAL_KWARGS = ['reflection_effect_iterations']
+    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, **kwargs):
         self.is_property(kwargs)
@@ -70,6 +72,7 @@ class BinarySystem(System):
         self._phase_shift = None
         self._semi_major_axis = None
         self._periastron_phase = None
+        self._reflection_effect_iterations = 0
 
         params = {
             "primary": self.primary,
@@ -93,6 +96,10 @@ class BinarySystem(System):
             raise ValueError('Missing argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                    BinarySystem.__name__))
 
+        for kwarg in BinarySystem.OPTIONAL_KWARGS:
+            if kwarg in kwargs:
+                setattr(self, kwarg, kwargs[kwarg])
+
         # calculation of dependent parameters
         self._semi_major_axis = self.calculate_semi_major_axis()
 
@@ -109,6 +116,279 @@ class BinarySystem(System):
         # evaluate spots of both components
         # this is not true for all systems!!!
         self._evaluate_spots(components_distance=self.orbit.periastron_distance)
+
+    @property
+    def primary_filling_factor(self):
+        """
+        filling factor for primary components
+
+        :return: (np.)float
+        """
+        return self._primary_filling_factor
+
+    @property
+    def secondary_filling_factor(self):
+        """
+        fillinf catro for secondary component
+
+        :return: (np.)float
+        """
+        return self._secondary_filling_factor
+
+    @property
+    def morphology(self):
+        """
+        morphology of binary star system
+
+        :return: str; detached, semi-detached, over-contact, double-contact
+        """
+        return self._morphology
+
+    @property
+    def mass_ratio(self):
+        """
+        returns mass ratio m2/m1 of binary system components
+
+        :return: numpy.float
+        """
+        return self._mass_ratio
+
+    @mass_ratio.setter
+    def mass_ratio(self, value):
+        """
+        disabled setter for binary system mass ratio
+
+        :param value:
+        :return:
+        """
+        raise Exception("Property ``mass_ratio`` is read-only.")
+
+    @property
+    def primary(self):
+        """
+        encapsulation of primary component into binary system
+
+        :return: class Star
+        """
+        return self._primary
+
+    @property
+    def secondary(self):
+        """
+        encapsulation of secondary component into binary system
+
+        :return: class Star
+        """
+        return self._secondary
+
+    @property
+    def orbit(self):
+        """
+        encapsulation of orbit class into binary system
+
+        :return: class Orbit
+        """
+        return self._orbit
+
+    @property
+    def period(self):
+        """
+        returns orbital period of binary system
+
+        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        """
+        return self._period
+
+    @period.setter
+    def period(self, period):
+        """
+        set orbital period of bonary star system, if unit is not specified, default period unit is assumed
+
+        :param period: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        if isinstance(period, u.quantity.Quantity):
+            self._period = np.float64(period.to(units.PERIOD_UNIT))
+        elif isinstance(period, (int, np.int, float, np.float)):
+            self._period = np.float64(period)
+        else:
+            raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        self._logger.debug("Setting property period "
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._period))
+
+    @property
+    def inclination(self):
+        """
+        inclination of binary star system
+
+        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        """
+        return self._inclination
+
+    @inclination.setter
+    def inclination(self, inclination):
+        """
+        set orbit inclination of binary star system, if unit is not specified, default unit is assumed
+
+        :param inclination: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+
+        if isinstance(inclination, u.quantity.Quantity):
+            self._inclination = np.float64(inclination.to(units.ARC_UNIT))
+        elif isinstance(inclination, (int, np.int, float, np.float)):
+            self._inclination = np.float64((inclination * u.deg).to(units.ARC_UNIT))
+        else:
+            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
+        if not 0 <= self.inclination <= c.PI:
+            raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
+
+        self._logger.debug("Setting property inclination "
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._inclination))
+
+    @property
+    def eccentricity(self):
+        """
+        eccentricity of orbit of binary star system
+
+        :return: (np.)int, (np.)float
+        """
+        return self._eccentricity
+
+    @eccentricity.setter
+    def eccentricity(self, eccentricity):
+        """
+        set eccentricity
+
+        :param eccentricity: (np.)int, (np.)float
+        :return:
+        """
+        if eccentricity < 0 or eccentricity > 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
+            raise TypeError(
+                'Input of variable `eccentricity` is not (np.)int or (np.)float or it is out of boundaries.')
+        self._eccentricity = eccentricity
+        self._logger.debug("Setting property eccentricity "
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._eccentricity))
+
+    @property
+    def argument_of_periastron(self):
+        """
+        argument of periastron
+
+        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        """
+        return self._argument_of_periastron
+
+    @argument_of_periastron.setter
+    def argument_of_periastron(self, argument_of_periastron):
+        """
+        setter for argument of periastron, if unit is not supplied, value in degrees is assumed
+
+        :param argument_of_periastron: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        if isinstance(argument_of_periastron, u.quantity.Quantity):
+            self._argument_of_periastron = np.float64(argument_of_periastron.to(units.ARC_UNIT))
+        elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
+            self._argument_of_periastron = np.float64((argument_of_periastron * u.deg).to(units.ARC_UNIT))
+        else:
+            raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        self._logger.debug("Setting property argument of periastron "
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._argument_of_periastron))
+
+    @property
+    def primary_minimum_time(self):
+        """
+        returns time of primary minimum in default period unit
+
+        :return: numpy.float
+        """
+        return self._primary_minimum_time
+
+    @primary_minimum_time.setter
+    def primary_minimum_time(self, primary_minimum_time):
+        """
+        setter for time of primary minima
+
+        :param primary_minimum_time: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        if isinstance(primary_minimum_time, u.quantity.Quantity):
+            self._primary_minimum_time = np.float64(primary_minimum_time.to(units.PERIOD_UNIT))
+        elif isinstance(primary_minimum_time, (int, np.int, float, np.float)):
+            self._primary_minimum_time = np.float64(primary_minimum_time)
+        else:
+            raise TypeError('Input of variable `primary_minimum_time` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        self._logger.debug("Setting property primary_minimum_time "
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._primary_minimum_time))
+
+    @property
+    def phase_shift(self):
+        """
+        returns phase shift of the primary eclipse minimum with respect to ephemeris
+        true_phase is used during calculations, where: true_phase = phase + phase_shift
+
+        :return: numpy.float
+        """
+        return self._phase_shift
+
+    @phase_shift.setter
+    def phase_shift(self, phase_shift):
+        """
+        setter for phase shift of the primary eclipse minimum with respect to ephemeris
+        this will cause usage of true_phase during calculations, where: true_phase = phase + phase_shift
+
+        :param phase_shift: numpy.float
+        :return:
+        """
+        self._phase_shift = phase_shift
+        self._logger.debug("Setting property phase_shift "
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._phase_shift))
+
+    @property
+    def reflection_effect_iterations(self):
+        """
+        returns number of iterations (reflections) that will be taken into an account during reflection effect
+        calculation
+
+        :return: int
+        """
+        return self._reflection_effect_iterations
+
+    @reflection_effect_iterations.setter
+    def reflection_effect_iterations(self, iterations):
+        """
+        setter for number of iterations (reflections) that will be taken into an account during reflection effect
+        calculation
+        :param iterations: int
+        """
+        self._reflection_effect_iterations = int(iterations)
+        self._logger.debug("Setting property `reflection_effect_iterations` "
+                           "of class instance {} to {}".format(BinarySystem.__name__,
+                                                               self._reflection_effect_iterations))
+
+    @property
+    def semi_major_axis(self):
+        """
+        returns semi major axis of the system in default distance unit
+
+        :return: np.float
+        """
+        return self._semi_major_axis
+
+    def calculate_semi_major_axis(self):
+        """
+        calculates length semi major axis usin 3rd kepler law
+
+        :return: np.float
+        """
+        period = (self._period * units.PERIOD_UNIT).to(u.s)
+        return (c.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * c.PI ** 2)) ** (1.0 / 3)
 
     def init_radii(self, components_distance):
         fns = [self.calculate_polar_radius, self.calculate_side_radius, self.calculate_backward_radius]
@@ -407,255 +687,6 @@ class BinarySystem(System):
         self._logger.debug("Re/Initializing orbit in class instance {} ".format(BinarySystem.__name__))
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
         self._orbit = Orbit(**orbit_kwargs)
-
-    @property
-    def primary_filling_factor(self):
-        """
-        filling factor for primary components
-
-        :return: (np.)float
-        """
-        return self._primary_filling_factor
-
-    @property
-    def secondary_filling_factor(self):
-        """
-        fillinf catro for secondary component
-
-        :return: (np.)float
-        """
-        return self._secondary_filling_factor
-
-    @property
-    def morphology(self):
-        """
-        morphology of binary star system
-
-        :return: str; detached, semi-detached, over-contact, double-contact
-        """
-        return self._morphology
-
-    @property
-    def mass_ratio(self):
-        """
-        returns mass ratio m2/m1 of binary system components
-
-        :return: numpy.float
-        """
-        return self._mass_ratio
-
-    @mass_ratio.setter
-    def mass_ratio(self, value):
-        """
-        disabled setter for binary system mass ratio
-
-        :param value:
-        :return:
-        """
-        raise Exception("Property ``mass_ratio`` is read-only.")
-
-    @property
-    def primary(self):
-        """
-        encapsulation of primary component into binary system
-
-        :return: class Star
-        """
-        return self._primary
-
-    @property
-    def secondary(self):
-        """
-        encapsulation of secondary component into binary system
-
-        :return: class Star
-        """
-        return self._secondary
-
-    @property
-    def orbit(self):
-        """
-        encapsulation of orbit class into binary system
-
-        :return: class Orbit
-        """
-        return self._orbit
-
-    @property
-    def period(self):
-        """
-        returns orbital period of binary system
-
-        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        """
-        return self._period
-
-    @period.setter
-    def period(self, period):
-        """
-        set orbital period of bonary star system, if unit is not specified, default period unit is assumed
-
-        :param period: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(period, u.quantity.Quantity):
-            self._period = np.float64(period.to(units.PERIOD_UNIT))
-        elif isinstance(period, (int, np.int, float, np.float)):
-            self._period = np.float64(period)
-        else:
-            raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug("Setting property period "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._period))
-
-    @property
-    def inclination(self):
-        """
-        inclination of binary star system
-
-        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        """
-        return self._inclination
-
-    @inclination.setter
-    def inclination(self, inclination):
-        """
-        set orbit inclination of binary star system, if unit is not specified, default unit is assumed
-
-        :param inclination: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-
-        if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(units.ARC_UNIT))
-        elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64((inclination*u.deg).to(units.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-        if not 0 <= self.inclination <= c.PI:
-            raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
-
-        self._logger.debug("Setting property inclination "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._inclination))
-
-    @property
-    def eccentricity(self):
-        """
-        eccentricity of orbit of binary star system
-
-        :return: (np.)int, (np.)float
-        """
-        return self._eccentricity
-
-    @eccentricity.setter
-    def eccentricity(self, eccentricity):
-        """
-        set eccentricity
-
-        :param eccentricity: (np.)int, (np.)float
-        :return:
-        """
-        if eccentricity < 0 or eccentricity > 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
-            raise TypeError(
-                'Input of variable `eccentricity` is not (np.)int or (np.)float or it is out of boundaries.')
-        self._eccentricity = eccentricity
-        self._logger.debug("Setting property eccentricity "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._eccentricity))
-
-    @property
-    def argument_of_periastron(self):
-        """
-        argument of periastron
-
-        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        """
-        return self._argument_of_periastron
-
-    @argument_of_periastron.setter
-    def argument_of_periastron(self, argument_of_periastron):
-        """
-        setter for argument of periastron, if unit is not supplied, value in degrees is assumed
-
-        :param argument_of_periastron: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(argument_of_periastron, u.quantity.Quantity):
-            self._argument_of_periastron = np.float64(argument_of_periastron.to(units.ARC_UNIT))
-        elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
-            self._argument_of_periastron = np.float64((argument_of_periastron*u.deg).to(units.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-    @property
-    def primary_minimum_time(self):
-        """
-        returns time of primary minimum in default period unit
-
-        :return: numpy.float
-        """
-        return self._primary_minimum_time
-
-    @primary_minimum_time.setter
-    def primary_minimum_time(self, primary_minimum_time):
-        """
-        setter for time of primary minima
-
-        :param primary_minimum_time: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(primary_minimum_time, u.quantity.Quantity):
-            self._primary_minimum_time = np.float64(primary_minimum_time.to(units.PERIOD_UNIT))
-        elif isinstance(primary_minimum_time, (int, np.int, float, np.float)):
-            self._primary_minimum_time = np.float64(primary_minimum_time)
-        else:
-            raise TypeError('Input of variable `primary_minimum_time` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug("Setting property primary_minimum_time "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._primary_minimum_time))
-
-    @property
-    def phase_shift(self):
-        """
-        returns phase shift of the primary eclipse minimum with respect to ephemeris
-        true_phase is used during calculations, where: true_phase = phase + phase_shift
-
-        :return: numpy.float
-        """
-        return self._phase_shift
-
-    @phase_shift.setter
-    def phase_shift(self, phase_shift):
-        """
-        setter for phase shift of the primary eclipse minimum with respect to ephemeris
-        this will cause usage of true_phase during calculations, where: true_phase = phase + phase_shift
-
-        :param phase_shift: numpy.float
-        :return:
-        """
-        self._phase_shift = phase_shift
-        self._logger.debug("Setting property phase_shift "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._phase_shift))
-
-    @property
-    def semi_major_axis(self):
-        """
-        returns semi major axis of the system in default distance unit
-
-        :return: np.float
-        """
-        return self._semi_major_axis
-
-    def calculate_semi_major_axis(self):
-        """
-        calculates length semi major axis usin 3rd kepler law
-
-        :return: np.float
-        """
-        period = (self._period * units.PERIOD_UNIT).to(u.s)
-        return (c.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * c.PI ** 2)) ** (1.0 / 3)
 
     def compute_lc(self):
         pass
@@ -1821,7 +1852,8 @@ class BinarySystem(System):
         if not components_distance:
             raise ValueError('components_distance value was not provided.')
         component = self._component_to_list(component)
-        if return_surface: ret_points, ret_faces = {}, {}
+        if return_surface:
+            ret_points, ret_faces = {}, {}
 
         for _component in component:
             component_instance = getattr(self, _component)
@@ -2070,39 +2102,62 @@ class BinarySystem(System):
 
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
-            if kwargs['components_to_plot'] in ['primary', 'both']:
-                points, faces = self.build_surface(component='primary', components_distance=components_distance,
+            # this part decides if both components need to be calculated at once (due to reflection effect)
+            if kwargs['colormap'] == 'temperature' and self.reflection_effect_iterations != 0:
+                points, faces = self.build_surface(components_distance=components_distance,
                                                    return_surface=True)
                 kwargs['points_primary'] = points['primary']
                 kwargs['primary_triangles'] = faces['primary']
+                kwargs['points_secondary'] = points['secondary']
+                kwargs['secondary_triangles'] = faces['secondary']
 
-                if kwargs['colormap']:
-                    cmap = self.build_surface_map(colormap=kwargs['colormap'], component='primary',
-                                                  components_distance=components_distance, return_map=True)
-                    kwargs['primary_cmap'] = cmap['primary']
-
+                cmap = self.build_surface_map(colormap=kwargs['colormap'],
+                                              components_distance=components_distance, return_map=True)
+                kwargs['primary_cmap'] = cmap['primary']
+                kwargs['secondary_cmap'] = cmap['secondary']
                 if kwargs['normals']:
                     kwargs['primary_centres'] = self.primary.calculate_surface_centres(
                         kwargs['points_primary'], kwargs['primary_triangles'])
                     kwargs['primary_arrows'] = self.primary.calculate_normals(
                         kwargs['points_primary'], kwargs['primary_triangles'])
-
-            if kwargs['components_to_plot'] in ['secondary', 'both']:
-                points, faces = self.build_surface(component='secondary', components_distance=components_distance,
-                                                   return_surface=True)
-                kwargs['points_secondary'] = points['secondary']
-                kwargs['secondary_triangles'] = faces['secondary']
-
-                if kwargs['colormap']:
-                    cmap = self.build_surface_map(colormap=kwargs['colormap'], component='secondary',
-                                                  components_distance=components_distance, return_map=True)
-                    kwargs['secondary_cmap'] = cmap['secondary']
-
-                if kwargs['normals']:
                     kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
                         kwargs['points_secondary'], kwargs['secondary_triangles'])
                     kwargs['secondary_arrows'] = self.secondary.calculate_normals(
                         kwargs['points_secondary'], kwargs['secondary_triangles'])
+            else:
+                if kwargs['components_to_plot'] in ['primary', 'both']:
+                    points, faces = self.build_surface(component='primary', components_distance=components_distance,
+                                                       return_surface=True)
+                    kwargs['points_primary'] = points['primary']
+                    kwargs['primary_triangles'] = faces['primary']
+
+                    if kwargs['colormap']:
+                        cmap = self.build_surface_map(colormap=kwargs['colormap'], component='primary',
+                                                      components_distance=components_distance, return_map=True)
+                        kwargs['primary_cmap'] = cmap['primary']
+
+                    if kwargs['normals']:
+                        kwargs['primary_centres'] = self.primary.calculate_surface_centres(
+                            kwargs['points_primary'], kwargs['primary_triangles'])
+                        kwargs['primary_arrows'] = self.primary.calculate_normals(
+                            kwargs['points_primary'], kwargs['primary_triangles'])
+
+                if kwargs['components_to_plot'] in ['secondary', 'both']:
+                    points, faces = self.build_surface(component='secondary', components_distance=components_distance,
+                                                       return_surface=True)
+                    kwargs['points_secondary'] = points['secondary']
+                    kwargs['secondary_triangles'] = faces['secondary']
+
+                    if kwargs['colormap']:
+                        cmap = self.build_surface_map(colormap=kwargs['colormap'], component='secondary',
+                                                      components_distance=components_distance, return_map=True)
+                        kwargs['secondary_cmap'] = cmap['secondary']
+
+                    if kwargs['normals']:
+                        kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
+                            kwargs['points_secondary'], kwargs['secondary_triangles'])
+                        kwargs['secondary_arrows'] = self.secondary.calculate_normals(
+                            kwargs['points_secondary'], kwargs['secondary_triangles'])
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
@@ -2184,9 +2239,17 @@ class BinarySystem(System):
                             spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
                                                                                   temperatures=spot.temperatures)
 
-                component_instance.renormalize_temperatures()
-                self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
-                                   ''.format(component))
+                        component_instance.renormalize_temperatures()
+                        self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
+                                           ''.format(component))
+
+        # implementation of reflection effect
+        if colormap == 'temperature':
+            if len(component) == 2:
+                self.reflection_effect(iterations=self.reflection_effect_iterations)
+            else:
+                self._logger.debug('Reflection effect can be calculated only when surface map of both components is '
+                                   'calculated. Skipping calculation of reflection effect.')
 
         if return_map:
             return_map = {}
@@ -2206,14 +2269,28 @@ class BinarySystem(System):
             return return_map
         return
 
-    def is_property(self, kwargs):
+    @classmethod
+    def is_property(cls, kwargs):
         """
         method for checking if keyword arguments are valid properties of this class
 
         :param kwargs: dict
         :return:
         """
-        is_not = ['`{}`'.format(k) for k in kwargs if k not in dir(self)]
+        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.ALL_KWARGS]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not),
-                                                                                    BinarySystem.__name__))
+                                                                                    cls.__name__))
+
+    def reflection_effect(self, iterations=None):
+        if iter is None:
+            raise ValueError('Number of iterations for reflection effect was not specified.')
+        elif iterations == 0:
+            self._logger.debug('Number of reflections in reflection effect was set to zero. Reflection effect will '
+                               'not be calculated.')
+            return
+
+
+
+
+

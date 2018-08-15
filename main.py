@@ -79,14 +79,16 @@ bs = BinarySystem(primary=primary,
                   eccentricity=0.0,
                   inclination=90*u.deg,
                   primary_minimum_time=0.0*u.d,
-                  phase_shift=0.0)
+                  phase_shift=0.0,
+                  reflection_effect_iterations=0,
+                  )
 
 
+# bs.build_surface(components_distance=1)
 # bs.build_surface(components_distance=1, component='primary')
 # bs.build_surface(components_distance=1, component='secondary')
-# print(np.shape(bs.secondary.spots[0].points))
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=1)
-# bs.build_surface_map(colormap='temperature', component='primary', components_distance=1)
+# bs.build_surface_map(colormap='temperature', component='secondary', components_distance=1)
 # bs.build_temperature_distribution(components_distance=1.0)
 # bs.evaluate_normals()
 # bs.build_surface(components_distance=1)
