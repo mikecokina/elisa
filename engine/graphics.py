@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from astropy import units as u
 import numpy as np
-import re
 import mpl_toolkits.mplot3d.axes3d as axes3d
 
 

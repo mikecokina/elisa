@@ -379,3 +379,6 @@ class Star(Body):
             return 1 - coefficients[0] * (1 - cos_theta) - coefficients[1] * cos_theta * np.log(cos_theta)
         elif rule == 'square_root':
             return 1 - coefficients[0] * (1 - cos_theta) - coefficients[1] * (1 - np.sqrt(cos_theta))
+
+    def calculate_bolometric_limb_darkening_factor(self, limb_darkening_law=None, points=None, faces=None):
+        pass
