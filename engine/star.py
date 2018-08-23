@@ -346,19 +346,19 @@ class Star(Body):
                 spot.temperatures *= coefficient
 
     @staticmethod
-    def limb_darkening_factor(radius_vector=None, line_of_sight=None, coefficients=None, rule=None):
+    def limb_darkening_factor(radius_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None):
         """
         calculates limb darkening factor for given surface element given by radius vector and line of sight vector
         :param line_of_sight: numpy.array - vector (or vectors) of line of sight
         :param radius_vector: numpy.array - single or multiple radius vectors
         :param coefficients: np.float in case of linear law
                              np.array in other cases
-        :param rule: str -  `linear` or `cosine`, `logarithmic`, `square_root`
+        :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
         :return:  gravity darkening factor(s), the same type/shape as theta
         """
-        if not radius_vector:
+        if radius_vector is None:
             raise ValueError('Radius vector(s) was not supplied.')
-        if not line_of_sight:
+        if line_of_sight is None:
             raise ValueError('Line of sight vector(s) was not supplied.')
 
         if line_of_sight.ndim != 1 and np.shape(radius_vector) != np.shape(line_of_sight):
@@ -366,16 +366,57 @@ class Star(Body):
                              ' radius vectors')
 
         if coefficients is None:
-            ValueError('Limb darkening coefficients were not supplied.')
-        if rule is None:
-            ValueError('Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, '
-                       '`square_root`')
+            raise ValueError('Limb darkening coefficients were not supplied.')
+        elif limb_darkening_law is None:
+            raise ValueError('Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, '
+                             '`square_root`.')
+        elif limb_darkening_law in ['linear', 'cosine']:
+            if not np.isscalar(coefficients):
+                raise ValueError('Only one scalar limb darkening coefficient is required for linear cosine law. You '
+                                 'used: {}'.format(coefficients))
+        elif limb_darkening_law in ['logarithmic', 'square_root']:
+            if not np.shape(coefficients) == (2,):
+                raise ValueError('Invalid number of limb darkening coefficients. Expected 2, given: '
+                                 '{}'.format(coefficients))
 
         cos_theta = np.sum(radius_vector * line_of_sight, axis=-1) / (np.linalg.norm(radius_vector, axis=-1) *
                                                                       np.linalg.norm(line_of_sight, axis=-1))
-        if rule in ['linear', 'cosine']:
+        if limb_darkening_law in ['linear', 'cosine']:
             return 1 - coefficients + coefficients * cos_theta
-        elif rule == 'logarithmic':
+        elif limb_darkening_law == 'logarithmic':
             return 1 - coefficients[0] * (1 - cos_theta) - coefficients[1] * cos_theta * np.log(cos_theta)
-        elif rule == 'square_root':
+        elif limb_darkening_law == 'square_root':
             return 1 - coefficients[0] * (1 - cos_theta) - coefficients[1] * (1 - np.sqrt(cos_theta))
+
+    @staticmethod
+    def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coefficients=None):
+        """
+        Calculates limb darkening factor D(int) used when calculating flux from given intensity on surface.
+        D(int) = integral over hemisphere (D(theta)cos(theta)
+
+        :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
+        :param coefficients: np.float in case of linear law
+                             np.array in other cases
+        :return: float - bolometric_limb_darkening_factor (scalar for the whole star)
+        """
+        if coefficients is None:
+            raise ValueError('Limb darkening coefficients were not supplied.')
+        elif limb_darkening_law is None:
+            raise ValueError('Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, '
+                             '`square_root`.')
+        elif limb_darkening_law in ['linear', 'cosine']:
+            if not np.isscalar(coefficients):
+                raise ValueError('Only one scalar limb darkening coefficient is required for linear cosine law. You '
+                                 'used: {}'.format(coefficients))
+        elif limb_darkening_law in ['logarithmic', 'square_root']:
+            if not np.shape(coefficients) == (2,):
+                raise ValueError('Invalid number of limb darkening coefficients. Expected 2, given: '
+                                 '{}'.format(coefficients))
+
+        if limb_darkening_law in ['linear', 'cosine']:
+            return np.pi * (1 - coefficients / 3)
+        elif limb_darkening_law == 'logarithmic':
+            return np.pi * (1 - coefficients[0] / 3 + 2 * coefficients[1] / 9)
+        elif limb_darkening_law == 'square_root':
+            return np.pi * (1 - coefficients[0] / 3 - coefficients[1] / 5)
+

@@ -17,7 +17,6 @@ class System(metaclass=ABCMeta):
     see https://docs.python.org/3.5/library/abc.html for more informations
     """
 
-
     ID = 1
     KWARGS = []
 
