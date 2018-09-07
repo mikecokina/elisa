@@ -2239,9 +2239,10 @@ class BinarySystem(System):
                             spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
                                                                                   temperatures=spot.temperatures)
 
-                        component_instance.renormalize_temperatures()
-                        self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
-                                           ''.format(component))
+                if colormap == 'temperature':
+                    component_instance.renormalize_temperatures()
+                    self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
+                                       ''.format(component))
 
         # implementation of reflection effect
         if colormap == 'temperature':
