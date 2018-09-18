@@ -2088,7 +2088,8 @@ class BinarySystem(System):
                 kwargs['secondary_triangles'] = faces['secondary']
 
         elif descriptor == 'surface':
-            KWARGS = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis']
+            KWARGS = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis', 'face_mask_primary',
+                      'face_mask_secondary']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.binary_surface
@@ -2099,6 +2100,8 @@ class BinarySystem(System):
             kwargs['edges'] = kwargs.get('edges', False)
             kwargs['colormap'] = kwargs.get('colormap', None)
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
+            kwargs['face_mask_primary'] = kwargs.get('face_mask_primary', None)
+            kwargs['face_mask_secondary'] = kwargs.get('face_mask_secondary', None)
 
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
@@ -2142,6 +2145,10 @@ class BinarySystem(System):
                         kwargs['primary_arrows'] = self.primary.calculate_normals(
                             kwargs['points_primary'], kwargs['primary_triangles'])
 
+                    if kwargs['face_mask_primary'] is not None:
+                        kwargs['primary_triangles'] = kwargs['primary_triangles'][kwargs['face_mask_primary']]
+                        kwargs['primary_cmap'] = kwargs['primary_cmap'][kwargs['face_mask_primary']]
+
                 if kwargs['components_to_plot'] in ['secondary', 'both']:
                     points, faces = self.build_surface(component='secondary', components_distance=components_distance,
                                                        return_surface=True)
@@ -2159,6 +2166,9 @@ class BinarySystem(System):
                         kwargs['secondary_arrows'] = self.secondary.calculate_normals(
                             kwargs['points_secondary'], kwargs['secondary_triangles'])
 
+                    if kwargs['face_mask_secondary'] is not None:
+                        kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
+                        kwargs['secondary_cmap'] = kwargs['secondary_cmap'][kwargs['face_mask_secondary']]
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 
@@ -2247,7 +2257,10 @@ class BinarySystem(System):
         # implementation of reflection effect
         if colormap == 'temperature':
             if len(component) == 2:
-                self.reflection_effect(iterations=self.reflection_effect_iterations)
+                self.primary.face_centres = utils.find_face_centres(faces=self.primary.points[self.primary.faces])
+                self.secondary.face_centres = utils.find_face_centres(faces=self.secondary.points[self.secondary.faces])
+                self.reflection_effect(iterations=self.reflection_effect_iterations,
+                                       components_distance=components_distance)
             else:
                 self._logger.debug('Reflection effect can be calculated only when surface map of both components is '
                                    'calculated. Skipping calculation of reflection effect.')
@@ -2283,13 +2296,38 @@ class BinarySystem(System):
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not),
                                                                                     cls.__name__))
 
-    def reflection_effect(self, iterations=None):
+    def reflection_effect(self, iterations=None, components_distance=None):
         if iter is None:
             raise ValueError('Number of iterations for reflection effect was not specified.')
         elif iterations == 0:
             self._logger.debug('Number of reflections in reflection effect was set to zero. Reflection effect will '
                                'not be calculated.')
             return
+
+        if components_distance is None:
+            raise ValueError('Components distance was not supplied.')
+
+        # this section calculates the visibility of each surface face
+        # don't forget to treat self visibility of faces on the same star in over-contact system
+
+        # if stars are too close and with too different radii, you can see more (less) than a half of the stellare
+        # surface, calculating excess angle
+        sinTheta = np.abs(self.primary.polar_radius - self.secondary.polar_radius) / components_distance
+        x_corr_primary = self.primary.polar_radius * sinTheta
+        x_corr_secondary = self.secondary.polar_radius * sinTheta
+        (xlim_primary, xlim_secondary) = (x_corr_primary, 1 + x_corr_secondary) \
+            if self.primary.polar_radius > self.secondary.polar_radius else (- x_corr_primary, 1 - x_corr_secondary)
+
+        # selecting faces that have a chance to be visible from other component
+        vis_test_primary = self.primary.face_centres[:, 0] >= xlim_primary
+        vis_test_secondary = self.secondary.face_centres[:, 0] <= xlim_secondary
+        # print(np.shape(self.primary.face_centres[:, 0]), np.shape(self.primary.face_centres[vis_test_primary, 0]))
+        # print(np.shape(self.secondary.face_centres[:, 0]), np.shape(self.secondary.face_centres[vis_test_secondary, 0]))
+
+        # distance_matrix, distance_vector_matrix = utils.calculate_distance_matrix(points1=self.primary.face_centres,
+        #                                                                           points2=self.secondary.face_centres)
+
+        return vis_test_primary, vis_test_secondary
 
 
 

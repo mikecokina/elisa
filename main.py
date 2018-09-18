@@ -9,6 +9,8 @@ from engine import utils
 from engine import const as c
 from time import time
 
+from scipy.spatial import distance_matrix
+
 spots_metadata = {
     "primary":
          [
@@ -47,27 +49,27 @@ spots_metadata = {
 pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000*u.K, 'frequency': 15/u.d},
                                    # {'l': 3, 'm': 2, 'amplitude': 50*u.K, 'frequency': 20/u.d},
                                    ],
-                       'secondary': [{'l': 5, 'm': 5, 'amplitude': 3000*u.K, 'frequency': 15/u.d},
+                       'secondary': [{'l': 5, 'm': 5, 'amplitude': 300*u.K, 'frequency': 15/u.d},
                                      ]
                        }
 
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
-               surface_potential=3.0,
+               surface_potential=15.1,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
-               discretization_factor=5,
-               spots=spots_metadata['primary'],
+               discretization_factor=3,
+               # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                )
 secondary = Star(mass=0.9*u.solMass,
-                 surface_potential=3.0,
+                 surface_potential=3.1,
                  synchronicity=1.0,
-                 t_eff=6000*u.K,
+                 t_eff=7000*u.K,
                  gravity_darkening=0.32,
-                 discretization_factor=5,
-                 spots=spots_metadata['secondary'],
+                 # discretization_factor=3,
+                 # spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['secondary'],
                  )
 
@@ -83,15 +85,23 @@ bs = BinarySystem(primary=primary,
                   reflection_effect_iterations=0,
                   )
 
-
-# bs.build_surface(components_distance=1)
+bs.build_surface(components_distance=1)
 # bs.build_surface(components_distance=1, component='primary')
 # bs.build_surface(components_distance=1, component='secondary')
+bs.build_surface_map(colormap='temperature', components_distance=1)
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=1)
 # bs.build_surface_map(colormap='temperature', component='secondary', components_distance=1)
 # bs.build_temperature_distribution(components_distance=1.0)
 # bs.evaluate_normals()
 # bs.build_surface(components_distance=1)
+
+start_time = time()
+# dists, dist_vect = utils.calculate_distance_matrix(points1=bs.primary.points, points2=bs.secondary.points,
+#                                                    return_distance_vector_matrix=True)
+# print(np.shape(dists), np.shape(dist_vect))
+# dists = distance_matrix(bs.primary.points, bs.secondary.points)
+# print(np.shape(dists))
+a, b = bs.reflection_effect(components_distance=1)
 
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 
@@ -112,10 +122,12 @@ print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 bs.plot(descriptor='surface',
         phase=0,
         # components_to_plot='primary',
-        # components_to_plot='secondary',
+        components_to_plot='secondary',
         # edges=True,
         # normals=True,
         # colormap='gravity_acceleration',
         colormap='temperature',
-        # plot_axis=False,
+        plot_axis=False,
+        face_mask_primary=a,
+        face_mask_secondary=b,
         )

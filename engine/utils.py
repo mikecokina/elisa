@@ -209,3 +209,49 @@ def triangle_areas(triangles=None, points=None):
     return 0.5 * np.linalg.norm(np.cross(points[triangles[:, 1]] - points[triangles[:, 0]],
                                          points[triangles[:, 2]] - points[triangles[:, 0]]), axis=1)
 
+
+def calculate_distance_matrix(points1=None, points2=None, return_distance_vector_matrix=False):
+    """
+    function returns distance matrix between two sets of points
+    :param points1:
+    :param points2:
+    :param return_distance_vector_matrix:
+    :return:
+    """
+    # pairwise distance vector matrix
+    distance_vector_matrix = points2[np.newaxis, :, :] - points1[:, np.newaxis, :]
+    distance_matrix = np.linalg.norm(distance_vector_matrix, axis=2)
+
+    return distance_matrix, distance_vector_matrix if return_distance_vector_matrix else distance_matrix
+
+
+def calculate_visibility_matrix(normals1=None, centres1=None, normals2=None, centres2=None):
+    """
+    function calculates N1*N2 bool matrix which tels us if two faces can see each other
+
+    :param normals1:
+    :param centres1:
+    :param normals2:
+    :param centres2:
+    :return:
+    """
+
+    pass
+
+
+def find_face_centres(faces=None):
+    """
+    function calculates centres of each supplied face
+    :param faces: np.array([[[x11,y11,z11],
+                             [x11,y11,z11],
+                             [x12,y12,z12]]
+                            [[x21,y21,z21],
+                             [x21,y21,z21],
+                             [x22,y22,z22]]
+                             ...
+                             ])
+    :return:
+    """
+    if faces is None:
+        raise ValueError('Faces were not supplied')
+    return np.mean(faces, axis=1)
