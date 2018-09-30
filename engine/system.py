@@ -197,7 +197,7 @@ class System(metaclass=ABCMeta):
             tree = KDTree(points)
             distances, indices = tree.query(spot.boundary_center, k=len(points))
 
-            max_dist_to_object_point = spot.max_size + (0.25 * avsp)
+            max_dist_to_object_point = spot.max_size + (0.5 * avsp)
             max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
 
             # removing star points in spot

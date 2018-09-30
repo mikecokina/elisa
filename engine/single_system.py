@@ -137,7 +137,7 @@ class SingleSystem(System):
             if spot_instance.angular_density is None:
                 self._logger.debug('Angular density of the spot {0} was not supplied and discretization factor of star '
                                    '{1} was used.'.format(spot_index, self.star.discretization_factor))
-                spot_instance.angular_density = self.star.discretization_factor * U.ARC_UNIT
+                spot_instance.angular_density = 0.9 * self.star.discretization_factor * U.ARC_UNIT
             alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
 
             # initial containers for current spot

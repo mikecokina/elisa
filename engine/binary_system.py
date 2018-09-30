@@ -450,7 +450,7 @@ class BinarySystem(System):
                     self._logger.debug(
                         'Angular density of the spot {0} on {2} component was not supplied and discretization factor of'
                         ' star {1} was used.'.format(spot_index, component_instance.discretization_factor, component))
-                    spot_instance.angular_density = component_instance.discretization_factor * units.ARC_UNIT
+                    spot_instance.angular_density = 0.9 * component_instance.discretization_factor * units.ARC_UNIT
                 if spot_instance.angular_density > 0.5 * spot_instance.angular_diameter:
                     self._logger.debug('Angular density {1} of the spot {0} on {2} component was larger than its '
                                        'angular radius. Therefore value of angular density was set to be equal to '
@@ -2257,8 +2257,14 @@ class BinarySystem(System):
         # implementation of reflection effect
         if colormap == 'temperature':
             if len(component) == 2:
-                self.primary.face_centres = utils.find_face_centres(faces=self.primary.points[self.primary.faces])
-                self.secondary.face_centres = utils.find_face_centres(faces=self.secondary.points[self.secondary.faces])
+                for _component in component:
+                    component_instance = getattr(self, _component)
+                    component_instance.face_centres = \
+                        utils.find_face_centres(faces=component_instance.points[component_instance.faces])
+                    if component_instance.spots:
+                        for spot_index, spot in component_instance.spots.items():
+                            spot.face_centres = utils.find_face_centres(faces=spot.points[spot.faces])
+
                 self.reflection_effect(iterations=self.reflection_effect_iterations,
                                        components_distance=components_distance)
             else:
@@ -2307,6 +2313,8 @@ class BinarySystem(System):
         if components_distance is None:
             raise ValueError('Components distance was not supplied.')
 
+        component = self._component_to_list(None)
+
         # this section calculates the visibility of each surface face
         # don't forget to treat self visibility of faces on the same star in over-contact system
 
@@ -2315,19 +2323,91 @@ class BinarySystem(System):
         sinTheta = np.abs(self.primary.polar_radius - self.secondary.polar_radius) / components_distance
         x_corr_primary = self.primary.polar_radius * sinTheta
         x_corr_secondary = self.secondary.polar_radius * sinTheta
-        (xlim_primary, xlim_secondary) = (x_corr_primary, 1 + x_corr_secondary) \
+
+        # visibility of faces is given by their x position
+        xlim = {}
+        (xlim['primary'], xlim['secondary']) = (x_corr_primary, 1 + x_corr_secondary) \
             if self.primary.polar_radius > self.secondary.polar_radius else (- x_corr_primary, 1 - x_corr_secondary)
 
+        use_quarter_star_test = self.primary.spots is None and self.secondary.spots is None
         # selecting faces that have a chance to be visible from other component
-        vis_test_primary = self.primary.face_centres[:, 0] >= xlim_primary
-        vis_test_secondary = self.secondary.face_centres[:, 0] <= xlim_secondary
-        # print(np.shape(self.primary.face_centres[:, 0]), np.shape(self.primary.face_centres[vis_test_primary, 0]))
-        # print(np.shape(self.secondary.face_centres[:, 0]), np.shape(self.secondary.face_centres[vis_test_secondary, 0]))
+        centres, vis_test, vis_test_star, normal = {}, {}, {}, {}
+        # centres - dict with all centres concatenated (star and spot) into one matrix for convenience
+        # vis_test - dict with bool map for centres to select only faces visible from any face on companion
+        # vis_test_star - dict with bool map for component_instance.face_centres star faces visible from any face on
+        # companion
+        vis_test_spot = {}
+        # vis_test_spot - dict with bool maps for each spot faces visible from any face on companion
+        for _component in component:
+            component_instance = getattr(self, _component)
+            centres[_component] = component_instance.face_centres
+            if use_quarter_star_test:
+                # this branch is activated in case of clean surface where symmetries can be used
+                # excluding quadrants that can be mirrored using symmetries
+                if self.morphology == 'over-contact':
+                    quadrant_exclusion = np.logical_or(component_instance.face_centres[:, 1] > 0,
+                                                       component_instance.face_centres[:, 2] > 0)
+                else:
+                    quadrant_exclusion = np.array([True for _ in component_instance.face_centres[:, 0]])
+                # excluding faces on far sides of components
+                test1 = component_instance.face_centres[:, 0] >= xlim[_component] if _component == 'primary' else \
+                    component_instance.face_centres[:, 0] <= xlim[_component]
+                # this variable contains faces that can seen from base symmetry part of the other star
+                vis_test[_component] = np.logical_and(test1, quadrant_exclusion)
+                vis_test_star[_component] = vis_test[_component]
+                vis_test[_component] = copy(vis_test_star[_component])
 
-        # distance_matrix, distance_vector_matrix = utils.calculate_distance_matrix(points1=self.primary.face_centres,
-        #                                                                           points2=self.secondary.face_centres)
+            else:
+                vis_test_star[_component] = component_instance.face_centres[:, 0] >= xlim[_component] if \
+                    _component == 'primary' else component_instance.face_centres[:, 0] <= xlim[_component]
+                vis_test[_component] = copy(vis_test_star[_component])
+                if component_instance.spots:
+                    vis_test_spot[_component] = {}
+                    for spot_index, spot in component_instance.spots.items():
+                        vis_test_spot[_component][spot_index] = spot.face_centres[:, 0] >= xlim[_component] if \
+                            _component == 'primary' else spot.face_centres[:, 0] <= xlim[_component]
 
-        return vis_test_primary, vis_test_secondary
+                        # merge surface and spot face parameters into one variable
+                        centres[_component] = np.append(centres[_component], spot.face_centres, axis=0)
+                        vis_test[_component] = np.append(vis_test[_component], vis_test_spot[_component][spot_index],
+                                                         axis=0)
+
+        # calculating distances and distance vectors between
+        distance, join_vector = utils.calculate_distance_matrix(points1=centres['primary'][vis_test['primary']],
+                                                                points2=centres['secondary'][vis_test['secondary']],
+                                                                return_join_vector_matrix=True)
+
+        # calculating face normals if needed and adding them into one variable for star and spots
+        gamma, normal = {}, {}
+        # gamma is of dimensions num_of_visible_faces_primary x num_of_visible_faces_secondary
+        for _component in component:
+            component_instance = getattr(self, _component)
+            if component_instance.normals is None:
+                # normals are needed only for mutually visible faces
+                component_instance.normals = np.empty(np.shape(component_instance.face_centres), dtype=np.float)
+                component_instance.normals[vis_test_star[_component]] = component_instance.calculate_normals(
+                    points=component_instance.points,
+                    faces=component_instance.faces[vis_test_star[_component]],
+                    centres=component_instance.face_centres[vis_test_star[_component]])
+            normal[_component] = copy(component_instance.normals)
+            if component_instance.spots:
+                for spot_index, spot in component_instance.spots.items():
+                    if spot.normals is None:
+                        spot.normals = np.empty(np.shape(spot.face_centres), dtype=np.float)
+                        spot.normals[vis_test_spot[_component][spot_index]] = \
+                            component_instance.calculate_normals(
+                                points=spot.points,
+                                faces=spot.faces[vis_test_spot[_component][spot_index]],
+                                centres=spot.face_centres[vis_test_spot[_component][spot_index]])
+                    normal[_component] = np.append(normal[_component], spot.normals)
+
+            # calculating cos of angle gamma between face normal and join vector
+            # gamma[_component] = np.dot()
+
+        ret = {'primary': vis_test['primary'], 'secondary': vis_test['secondary']}
+        # print(np.shape(distance), np.shape(distance_vector))
+
+        return ret['primary'], ret['secondary']
 
 
 
