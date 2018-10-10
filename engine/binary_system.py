@@ -643,12 +643,13 @@ class BinarySystem(System):
 
         if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
             lp = self.libration_potentials()
-            # todo: expose filling factors as funtion
+            # todo: expose filling factors as funtion,
+            # todo: check filling factor calculation for heavier secondary
             self._primary_filling_factor = (lp[1] - self.primary.surface_potential) / (lp[1] - lp[2])
             self._secondary_filling_factor = (lp[1] - self.secondary.surface_potential) / (lp[1] - lp[2])
 
             if ((1 > self.secondary_filling_factor > 0) or (1 > self.primary_filling_factor > 0)) and \
-                    (self.primary_filling_factor - self.secondary_filling_factor > PRECISSION):
+                    (abs(self.primary_filling_factor - self.secondary_filling_factor) > PRECISSION):
                 raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
             if self.primary_filling_factor > 1 or self.secondary_filling_factor > 1:
                 raise ValueError("Non-Physical system: primary_filling_factor or "
@@ -1755,9 +1756,28 @@ class BinarySystem(System):
         if not np.any(points):
             raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
                              "to triangulate".format(component, component_instance.name))
+        # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
+        filling_factor = self.primary_filling_factor if component == 'primary' else self.secondary_filling_factor
+        if filling_factor < -0.02:
+            triangulation = Delaunay(points)
+            triangles_indices = triangulation.convex_hull
+        else:
+            #calculating closest point to the barycentre
+            r_near = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
+            # projection of component's far side surface into ``sphere`` with radius r1
+            projected_points = np.empty(np.shape(points), dtype=float)
 
-        triangulation = Delaunay(points)
-        triangles_indices = triangulation.convex_hull
+            points_to_transform = copy(points)
+            if component == 'secondary':
+                points_to_transform[:, 0] -= 1
+            projected_points = \
+                r_near * points_to_transform / np.linalg.norm(points_to_transform, axis=1)[:, None]
+            if component == 'secondary':
+                projected_points[:, 0] += 1
+
+            triangulation = Delaunay(projected_points)
+            triangles_indices = triangulation.convex_hull
+
         return triangles_indices
 
     def over_contact_surface(self, component=None, points=None):

@@ -55,21 +55,21 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000*u.K, 'freq
 
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
-               surface_potential=3.0,
+               surface_potential=3.4169707984212563,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                discretization_factor=3,
-               spots=spots_metadata['primary'],
+               # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                )
-secondary = Star(mass=0.9*u.solMass,
-                 surface_potential=3.0,
+secondary = Star(mass=1.2*u.solMass,
+                 surface_potential=5.0,
                  synchronicity=1.0,
                  t_eff=7000*u.K,
                  gravity_darkening=0.32,
                  # discretization_factor=3,
-                 spots=spots_metadata['secondary'],
+                 # spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['secondary'],
                  )
 
@@ -97,7 +97,7 @@ bs.build_surface_map(colormap='temperature', components_distance=1)
 
 start_time = time()
 
-a, b = bs.reflection_effect(components_distance=1)
+# a, b = bs.reflection_effect(components_distance=1)
 # print(np.shape(a))
 # dists, dist_vect = utils.calculate_distance_matrix(points1=bs.primary.points, points2=bs.secondary.points,
 #                                                    return_distance_vector_matrix=True)
@@ -106,8 +106,13 @@ a, b = bs.reflection_effect(components_distance=1)
 # print(np.shape(dists))
 
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
-print(bs.morphology)
+crit_primary_potential = bs.critical_potential('primary', 1)
+print('Critical potential for primary component: {}'.format(crit_primary_potential))
 
+crit_secondary_potential = bs.critical_potential('secondary', 1)
+print('Critical potential for secondary component: {}'.format(crit_secondary_potential))
+
+print(bs.primary_filling_factor)
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
@@ -130,7 +135,7 @@ bs.plot(descriptor='surface',
         # normals=True,
         # colormap='gravity_acceleration',
         colormap='temperature',
-        # plot_axis=False,
-        face_mask_primary=a,
-        face_mask_secondary=b,
+        plot_axis=False,
+        # face_mask_primary=a,
+        # face_mask_secondary=b,
         )
