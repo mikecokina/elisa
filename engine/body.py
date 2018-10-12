@@ -413,7 +413,6 @@ class Body(metaclass=ABCMeta):
         if spots:
             self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)}
 
-
     @property
     def point_symmetry_vector(self):
         """
@@ -527,6 +526,23 @@ class Body(metaclass=ABCMeta):
 
         return normals * sgn_vector[:, None]
 
+    def calculate_all_normals(self):
+        """
+        function calculates normals for each face of given body (including spots
+        :return:
+        """
+        if not self.spots:
+            self.normals = self.calculate_normals(points=self.points[:self.base_symmetry_points_number],
+                                                  faces=self.faces[:self.base_symmetry_faces_number],
+                                                  centres=self.face_centres[:self.base_symmetry_faces_number])[
+                self.face_symmetry_vector]
+        else:
+            self.normals = self.calculate_normals(points=self.points, faces=self.faces, centres=self.face_centres)
+            for spot_index in self.spots:
+                self.spots[spot_index].normals = self.calculate_normals(points=self.spots[spot_index].points,
+                                                                        faces=self.spots[spot_index].faces,
+                                                                        centres=self.spots[spot_index].face_centres)
+
     def calculate_surface_centres(self, points=None, faces=None):
         """
         returns centers of every surface face
@@ -540,6 +556,22 @@ class Body(metaclass=ABCMeta):
             points = self.points
             faces = self.faces
         return np.average(points[faces], axis=1)
+
+    def calculate_all_surface_centres(self):
+        """
+        calculates all surface centres for given body(including spots)
+        :return:
+        """
+        if not self.spots:
+            self.face_centres = self.calculate_surface_centres(points=self.points[:self.base_symmetry_points_number],
+                                                               faces=self.faces[:self.base_symmetry_faces_number])[
+                self.face_symmetry_vector]
+        else:
+            self.face_centres = self.calculate_surface_centres(points=self.points, faces=self.faces)
+            for spot_index in self.spots:
+                self.spots[spot_index].face_centres = \
+                    self.calculate_surface_centres(points=self.spots[spot_index].points,
+                                                   faces=self.spots[spot_index].faces)
 
     def calculate_areas(self):
         """

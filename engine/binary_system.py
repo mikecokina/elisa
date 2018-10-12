@@ -35,6 +35,9 @@ import scipy
 from scipy.spatial import Delaunay
 from copy import copy
 
+#temporary
+from time import time
+
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
 
@@ -2279,11 +2282,8 @@ class BinarySystem(System):
             if len(component) == 2:
                 for _component in component:
                     component_instance = getattr(self, _component)
-                    component_instance.face_centres = \
-                        utils.find_face_centres(faces=component_instance.points[component_instance.faces])
-                    if component_instance.spots:
-                        for spot_index, spot in component_instance.spots.items():
-                            spot.face_centres = utils.find_face_centres(faces=spot.points[spot.faces])
+                    component_instance.calculate_all_surface_centres()
+                    component_instance.calculate_all_normals()
 
                 self.reflection_effect(iterations=self.reflection_effect_iterations,
                                        components_distance=components_distance)
@@ -2334,7 +2334,6 @@ class BinarySystem(System):
             raise ValueError('Components distance was not supplied.')
 
         component = self._component_to_list(None)
-
         # this section calculates the visibility of each surface face
         # don't forget to treat self visibility of faces on the same star in over-contact system
 
@@ -2350,17 +2349,25 @@ class BinarySystem(System):
             if self.primary.polar_radius > self.secondary.polar_radius else (- x_corr_primary, 1 - x_corr_secondary)
 
         use_quarter_star_test = self.primary.spots is None and self.secondary.spots is None
-        # selecting faces that have a chance to be visible from other component
-        centres, vis_test, vis_test_star, normal = {}, {}, {}, {}
+
+        #declaring variables
+        centres, vis_test, vis_test_star, gamma, normals = {}, {}, {}, {}, {}
         # centres - dict with all centres concatenated (star and spot) into one matrix for convenience
         # vis_test - dict with bool map for centres to select only faces visible from any face on companion
         # vis_test_star - dict with bool map for component_instance.face_centres star faces visible from any face on
         # companion
-        vis_test_spot = {}
+        # gamma is of dimensions num_of_visible_faces_primary x num_of_visible_faces_secondary
+
+        if not use_quarter_star_test:
+            vis_test_spot = {}
         # vis_test_spot - dict with bool maps for each spot faces visible from any face on companion
+
+
+        # selecting faces that have a chance to be visible from other component
         for _component in component:
             component_instance = getattr(self, _component)
-            centres[_component] = component_instance.face_centres
+            centres[_component] = copy(component_instance.face_centres)
+            normals[_component] = copy(component_instance.normals)
             if use_quarter_star_test:
                 # this branch is activated in case of clean surface where symmetries can be used
                 # excluding quadrants that can be mirrored using symmetries
@@ -2391,38 +2398,31 @@ class BinarySystem(System):
                         centres[_component] = np.append(centres[_component], spot.face_centres, axis=0)
                         vis_test[_component] = np.append(vis_test[_component], vis_test_spot[_component][spot_index],
                                                          axis=0)
+                        normals[_component] = np.append(normals[_component], spot.normals, axis=0)
 
-        # calculating distances and distance vectors between
+        # calculating distances and distance vectors between, join vector is already normalized
         distance, join_vector = utils.calculate_distance_matrix(points1=centres['primary'][vis_test['primary']],
                                                                 points2=centres['secondary'][vis_test['secondary']],
                                                                 return_join_vector_matrix=True)
 
-        # calculating face normals if needed and adding them into one variable for star and spots
-        gamma, normal = {}, {}
-        # gamma is of dimensions num_of_visible_faces_primary x num_of_visible_faces_secondary
-        for _component in component:
-            component_instance = getattr(self, _component)
-            if component_instance.normals is None:
-                # normals are needed only for mutually visible faces
-                component_instance.normals = np.empty(np.shape(component_instance.face_centres), dtype=np.float)
-                component_instance.normals[vis_test_star[_component]] = component_instance.calculate_normals(
-                    points=component_instance.points,
-                    faces=component_instance.faces[vis_test_star[_component]],
-                    centres=component_instance.face_centres[vis_test_star[_component]])
-            normal[_component] = copy(component_instance.normals)
-            if component_instance.spots:
-                for spot_index, spot in component_instance.spots.items():
-                    if spot.normals is None:
-                        spot.normals = np.empty(np.shape(spot.face_centres), dtype=np.float)
-                        spot.normals[vis_test_spot[_component][spot_index]] = \
-                            component_instance.calculate_normals(
-                                points=spot.points,
-                                faces=spot.faces[vis_test_spot[_component][spot_index]],
-                                centres=spot.face_centres[vis_test_spot[_component][spot_index]])
-                    normal[_component] = np.append(normal[_component], spot.normals)
+        # calculating cos of angle gamma between face normal and join vector
+        gamma = {'primary':
+                     np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :], join_vector), axis=2),
+                 'secondary':
+                     np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :], join_vector), axis=2)}
 
-            # calculating cos of angle gamma between face normal and join vector
-            # gamma[_component] = np.dot()
+        # testing mutual visibility of faces by assigning 0 to non visible face combination
+        gamma['primary'][gamma['primary'] < 0] = 0.
+        gamma['secondary'][gamma['secondary'] > 0] = 0.
+
+        #calculating QAB = (cos gamma_a)*cos(gamma_b)/d**2
+        q_ab = -np.divide(np.multiply(gamma['primary'], gamma['secondary']), np.power(distance, 2))
+        # - is there because of used reversed distance vector for secondary component
+
+        #     st = time()
+        #     print('Elapsed time: {0:.5f} s.'.format(time() - st))
+
+
 
         ret = {'primary': vis_test['primary'], 'secondary': vis_test['secondary']}
         # print(np.shape(distance), np.shape(distance_vector))
