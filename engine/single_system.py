@@ -20,7 +20,7 @@ class SingleSystem(System):
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
-        self.is_property(kwargs)
+        utils.invalid_kwarg_checker(kwargs, SingleSystem.ALL_KWARGS, SingleSystem)
         super(SingleSystem, self).__init__(name=name, **kwargs)
 
         # get logger

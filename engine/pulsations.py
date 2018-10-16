@@ -12,11 +12,13 @@ class PulsationMode(object):
     """
     pulsation mode data container
     """
-    KWARGS = ["l", "m", "amplitude", "frequency", "start_phase", 'mode_axis_theta', 'mode_axis_phi']
-    MANDATORY_KWARGS = ["l", "m", "amplitude", "frequency"]
+    KWARGS = ["l", "m", "amplitude", "frequency"]
+
+    OPTIONAL_KWARGS = ["start_phase", 'mode_axis_theta', 'mode_axis_phi']
+    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, **kwargs):
-        utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=PulsationMode.KWARGS, instance=PulsationMode)
+        utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=PulsationMode.ALL_KWARGS, instance=PulsationMode)
 
         # get logger
         self._logger = logging.getLogger(PulsationMode.__name__)
@@ -39,7 +41,7 @@ class PulsationMode(object):
         self.check_mandatory_kwargs(kwargs)
 
         missing_kwargs = []
-        for key in PulsationMode.MANDATORY_KWARGS:
+        for key in PulsationMode.KWARGS:
             if key not in kwargs:
                 missing_kwargs.append("`{}`".format(key))
                 self._logger.error("Property {} "

@@ -3,6 +3,7 @@ import numpy as np
 from engine import const as c
 from astropy import units as u
 import engine.units as U
+from engine import utils
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
 
@@ -10,9 +11,11 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 class Orbit(object):
 
     KWARGS = ['period', 'inclination', 'eccentricity', 'argument_of_periastron']
+    OPTIONAL_KWARGS = []
+    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, **kwargs):
-        self.is_property(kwargs)
+        utils.invalid_kwarg_checker(kwargs, Orbit.ALL_KWARGS, Orbit)
         self._logger = logging.getLogger(Orbit.__name__)
 
         # default valeus of properties
@@ -311,15 +314,3 @@ class Orbit(object):
                            "of class instance {} to {}".format('periastron_distance', Orbit.__name__,
                                                                periastron_distance))
         return periastron_distance
-
-    @classmethod
-    def is_property(cls, kwargs):
-        """
-        method for checking if keyword arguments are valid properties of this class
-
-        :param kwargs: dict
-        :return:
-        """
-        is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.KWARGS]
-        if is_not:
-            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))

@@ -48,7 +48,7 @@ class BinarySystem(System):
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, **kwargs):
-        self.is_property(kwargs)
+        utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, BinarySystem)
         super(BinarySystem, self).__init__(name=name, **kwargs)
 
         # get logger
@@ -2417,7 +2417,7 @@ class BinarySystem(System):
 
         #calculating QAB = (cos gamma_a)*cos(gamma_b)/d**2
         q_ab = -np.divide(np.multiply(gamma['primary'], gamma['secondary']), np.power(distance, 2))
-        # - is there because of used reversed distance vector for secondary component
+        # negative sign is there because of reversed distance vector used for secondary component
 
         #     st = time()
         #     print('Elapsed time: {0:.5f} s.'.format(time() - st))

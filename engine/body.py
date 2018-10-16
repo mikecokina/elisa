@@ -20,6 +20,8 @@ class Body(metaclass=ABCMeta):
 
     ID = 1
     KWARGS = []
+    OPTIONAL_KWARGS = []
+    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
         """

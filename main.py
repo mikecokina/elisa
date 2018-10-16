@@ -33,11 +33,11 @@ spots_metadata = {
 
     "secondary":
         [
-         {"longitude": 0,
-          "latitude": 40,
+         {"longitude": 30,
+          "latitude": 65,
           # "angular_density": 3,
-          "angular_diameter": 30,
-          "temperature_factor": 1.03},
+          "angular_diameter": 45,
+          "temperature_factor": 0.9},
          # {"longitude": 45,
          #  "latitude": 3,
          #  # "angular_density": 3,
@@ -53,22 +53,24 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000*u.K, 'freq
                                      ]
                        }
 
+contact_pot = 2.96657
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
-               surface_potential=3.4169707984212563,
-               # surface_potential=3.5,
+               surface_potential=5,
+               # surface_potential=contact_pot,
                synchronicity=1.0,
                t_eff=7000*u.K,
                gravity_darkening=1.0,
                discretization_factor=3,
-               spots=spots_metadata['primary'],
+               # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                )
 secondary = Star(mass=1.2*u.solMass,
-                 surface_potential=5.0,
+                 surface_potential=4,
+                 # surface_potential=contact_pot,
                  synchronicity=1.0,
-                 t_eff=7000*u.K,
-                 gravity_darkening=0.32,
+                 t_eff=6500*u.K,
+                 gravity_darkening=1.0,
                  # discretization_factor=3,
                  spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['secondary'],
@@ -98,7 +100,7 @@ bs.build_surface_map(colormap='temperature', components_distance=1)
 
 start_time = time()
 
-a, b = bs.reflection_effect(components_distance=1)
+# a, b = bs.reflection_effect(components_distance=1)
 # print(np.shape(a))
 # dists, dist_vect = utils.calculate_distance_matrix(points1=bs.primary.points, points2=bs.secondary.points,
 #                                                    return_distance_vector_matrix=True)
@@ -128,15 +130,15 @@ print(bs.primary_filling_factor)
 #         # plot_axis=False
 #         )
 
-# bs.plot(descriptor='surface',
-#         phase=0,
-#         # components_to_plot='primary',
-#         # components_to_plot='secondary',
-#         # edges=True,
-#         # normals=True,
-#         # colormap='gravity_acceleration',
-#         colormap='temperature',
-#         plot_axis=False,
-#         face_mask_primary=a,
-#         face_mask_secondary=b,
-#         )
+bs.plot(descriptor='surface',
+        phase=0,
+        # components_to_plot='primary',
+        # components_to_plot='secondary',
+        # edges=True,
+        # normals=True,
+        # colormap='gravity_acceleration',
+        colormap='temperature',
+        plot_axis=False,
+        # face_mask_primary=a,
+        # face_mask_secondary=b,
+        )

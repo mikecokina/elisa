@@ -18,8 +18,11 @@ class Star(Body):
               'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening', 'polar_gravity_acceleration',
               'polar_log_g', 'equatorial_radius', 'spots', 'discretization_factor', 'pulsations']
 
+    OPTIONAL_KWARGS = []
+    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
+
     def __init__(self, name=None, **kwargs):
-        self.is_property(kwargs)
+        utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
         super(Star, self).__init__(name=name, **kwargs)
 
         # get logger
@@ -42,7 +45,7 @@ class Star(Body):
         self._pulsations = None
 
         # values of properties
-        for kwarg in Star.KWARGS:
+        for kwarg in Star.ALL_KWARGS:
             if kwarg in kwargs:
                 self._logger.debug("Setting property {} "
                                    "of class instance {} to {}".format(kwarg, Star.__name__, kwargs[kwarg]))
@@ -239,17 +242,6 @@ class Star(Body):
                                        0.25 * self.gravity_darkening)
 
         return t_eff if self.spots else t_eff[self.face_symmetry_vector]
-
-    def is_property(self, kwargs):
-        """
-        method for checking if keyword arguments are valid properties of this class
-
-        :param kwargs: dict
-        :return:
-        """
-        is_not = ['`{}`'.format(k) for k in kwargs if k not in dir(self)]
-        if is_not:
-            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), Star.__name__))
 
     def add_pulsations(self, points=None, faces=None, temperatures=None):
         """

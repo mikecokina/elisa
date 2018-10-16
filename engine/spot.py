@@ -11,11 +11,12 @@ class Spot(object):
     """
     Spot data container
     """
-    KWARGS = ["longitude", "latitude", "angular_density", "angular_diameter", "temperature_factor"]
-    MANDATORY_KWARGS = ["longitude", "latitude", "angular_diameter", "temperature_factor"]
+    KWARGS = ["longitude", "latitude", "angular_diameter", "temperature_factor"]
+    OPTIONAL_KWARGS = ["angular_density"]
+    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, **kwargs):
-        utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.KWARGS, instance=Spot)
+        utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.ALL_KWARGS, instance=Spot)
 
         self._angular_density = None
         self._latitude = None
@@ -156,7 +157,7 @@ class Spot(object):
     def check_mandatory_kwargs(kwargs):
         # keys = list(kwargs.keys()) if 'angular_density' not in kwargs \
         #     else list(set(list(kwargs.keys())) - {'angular_density'})
-        diff = list(set(Spot.MANDATORY_KWARGS) - set(kwargs.keys()))
+        diff = list(set(Spot.KWARGS) - set(Spot.OPTIONAL_KWARGS) - set(kwargs.keys()))
 
         if diff:
             raise ValueError('Missing mandatory argument(s) {} for spot w/ params {}'.format(', '.join(diff), kwargs))
