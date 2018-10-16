@@ -33,6 +33,19 @@ class SingleSystem(System):
         # in case of SingleStar system there is no need for user to define stellar component because it is defined here
         self.star = kwargs['star']
 
+        # default values of properties
+        self._inclination = None
+        self._polar_log_g = None
+        self._rotation_period = None
+
+        # testing if parameters were initialized
+        utils.check_missing_kwargs(SingleSystem.KWARGS, kwargs, instance_of=SingleSystem)
+        # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
+        for kwarg in kwargs:
+            self._logger.debug("Setting property {} "
+                               "of class instance {} to {}".format(kwarg, SingleSystem.__name__, kwargs[kwarg]))
+            setattr(self, kwarg, kwargs[kwarg])
+
         # check if star object doesn't contain any meaningless parameters
         meaningless_params = {'synchronicity': self.star.synchronicity,
                               'backward radius': self.star.backward_radius,
@@ -43,33 +56,6 @@ class SingleSystem(System):
                 meaningless_params[parameter] = None
                 self._logger.info('Parameter `{0}` is meaningless in case of single star system.\n '
                                   'Setting parameter `{0}` value to None'.format(parameter))
-
-        # default values of properties
-        self._inclination = None
-        self._polar_log_g = None
-        self._rotation_period = None
-
-        # testing if parameters were initialized
-        missing_kwargs = []
-        for kwarg in SingleSystem.KWARGS:
-            if kwarg not in kwargs:
-                missing_kwargs.append("`{}`".format(kwarg))
-                self._logger.error("Property {} "
-                                   "of class instance {} was not initialized".format(kwarg, SingleSystem.__name__))
-            else:
-                self._logger.debug("Setting property {} "
-                                   "of class instance {} to {}".format(kwarg, SingleSystem.__name__, kwargs[kwarg]))
-                setattr(self, kwarg, kwargs[kwarg])
-
-        if len(missing_kwargs) != 0:
-            raise ValueError('Mising argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
-                                                                                  SingleSystem.__name__))
-
-        for kwarg in SingleSystem.OPTIONAL_KWARGS:
-            if kwarg in kwargs:
-                setattr(self, kwarg, kwargs[kwarg])
-
-        # setting of optional parameters
 
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)

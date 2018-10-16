@@ -38,19 +38,13 @@ class PulsationMode(object):
 
         self._logger = logging.getLogger(PulsationMode.__name__)
 
-        self.check_mandatory_kwargs(kwargs)
+        utils.check_missing_kwargs(PulsationMode.KWARGS, kwargs, instance_of=PulsationMode)
 
-        missing_kwargs = []
-        for key in PulsationMode.KWARGS:
-            if key not in kwargs:
-                missing_kwargs.append("`{}`".format(key))
-                self._logger.error("Property {} "
-                                   "of class instance {} was not initialized".format(key, PulsationMode.__name__))
-
-        for key in kwargs:
-                self._logger.debug("Setting property {} "
-                                   "of class instance {} to {}".format(key, PulsationMode.__name__, kwargs[key]))
-                setattr(self, key, kwargs.get(key))
+        # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
+        for kwarg in kwargs:
+            self._logger.debug("Setting property {} "
+                               "of class instance {} to {}".format(kwarg, PulsationMode.__name__, kwargs[kwarg]))
+            setattr(self, kwarg, kwargs[kwarg])
 
         # checking validity of parameters
         if abs(self.m) > self.l:
@@ -245,12 +239,3 @@ class PulsationMode(object):
                             'nor astropy.unit.quantity.Quantity instance.')
         if not 0 <= self._mode_axis_phi <= c.FULL_ARC:
             raise ValueError('Value of `mode_axis_phi`: {} is outside bounds (0, 2pi).'.format(self._mode_axis_phi))
-
-
-    @staticmethod
-    def check_mandatory_kwargs(kwargs):
-        keys = list(kwargs.keys())
-        diff = list(set(PulsationMode.MANDATORY_KWARGS) - set(keys))
-
-        if diff:
-            raise ValueError('Missing mandatory argument(s) {} for spot w/ params {}'.format(', '.join(diff), kwargs))

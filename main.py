@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from engine import utils
 from engine import const as c
 from time import time
+from engine.physics import Physics
 
 from scipy.spatial import distance_matrix
 
@@ -53,6 +54,9 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000*u.K, 'freq
                                      ]
                        }
 
+physics = Physics(reflection_effect=True,
+                  reflection_effect_iterations=2)
+
 contact_pot = 2.96657
 start_time = time()
 primary = Star(mass=1.5*u.solMass,
@@ -66,13 +70,13 @@ primary = Star(mass=1.5*u.solMass,
                # pulsations=pulsations_metadata['primary'],
                )
 secondary = Star(mass=1.2*u.solMass,
-                 surface_potential=4,
+                 surface_potential=3.4169707984212563,
                  # surface_potential=contact_pot,
                  synchronicity=1.0,
                  t_eff=6500*u.K,
                  gravity_darkening=1.0,
-                 # discretization_factor=3,
-                 spots=spots_metadata['secondary'],
+                 discretization_factor=2,
+                 # spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['secondary'],
                  )
 
@@ -85,7 +89,6 @@ bs = BinarySystem(primary=primary,
                   inclination=90*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0,
-                  reflection_effect_iterations=0,
                   )
 
 bs.build_surface(components_distance=1)
@@ -115,7 +118,7 @@ print('Critical potential for primary component: {}'.format(crit_primary_potenti
 crit_secondary_potential = bs.critical_potential('secondary', 1)
 print('Critical potential for secondary component: {}'.format(crit_secondary_potential))
 
-print(bs.primary_filling_factor)
+print('Filling factor of secondary: {}'.format(bs.secondary_filling_factor))
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 

@@ -14,11 +14,12 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 
 class Star(Body):
 
-    KWARGS = ['mass', 't_eff', 'vertices', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
-              'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening', 'polar_gravity_acceleration',
-              'polar_log_g', 'equatorial_radius', 'spots', 'discretization_factor', 'pulsations']
+    # KWARGS = ['mass', 't_eff', 'vertices', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
+    #           'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening', 'polar_gravity_acceleration',
+    #           'polar_log_g', 'equatorial_radius', 'spots', 'discretization_factor', 'pulsations']
+    KWARGS = ['mass', 't_eff', 'gravity_darkening', 'discretization_factor']
 
-    OPTIONAL_KWARGS = []
+    OPTIONAL_KWARGS = ['surface_potential', 'polar_log_g', 'synchronicity', 'albedo']
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
@@ -43,6 +44,8 @@ class Star(Body):
         self._potential_gradient_magnitudes = None
         self._polar_potential_gradient = None
         self._pulsations = None
+
+        utils.check_missing_kwargs(Star.KWARGS, kwargs, instance_of=Star)
 
         # values of properties
         for kwarg in Star.ALL_KWARGS:

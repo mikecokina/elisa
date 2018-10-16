@@ -26,13 +26,13 @@ class Orbit(object):
         self._periastron_distance = None
         self._perastron_phase = None
 
+        utils.check_missing_kwargs(Orbit.KWARGS, kwargs, instance_of=Orbit)
+
         # values of properties
-        for kwarg in Orbit.KWARGS:
-            if kwarg in kwargs:
-                if kwargs[kwarg] is not None:
-                    self._logger.debug("Setting property {} "
-                                       "of class instance {} to {}".format(kwarg, Orbit.__name__, kwargs[kwarg]))
-                    setattr(self, kwarg, kwargs[kwarg])
+        for kwarg in kwargs:
+            self._logger.debug("Setting property {} "
+                               "of class instance {} to {}".format(kwarg, Orbit.__name__, kwargs[kwarg]))
+            setattr(self, kwarg, kwargs[kwarg])
 
         self._periastron_distance = self.compute_periastron_distance()
         self._perastron_phase = - self.get_conjuction()["primary_eclipse"]["true_phase"] % 1
