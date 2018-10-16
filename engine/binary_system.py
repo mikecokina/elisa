@@ -106,15 +106,16 @@ class BinarySystem(System):
         # calculation of dependent parameters
         self._semi_major_axis = self.calculate_semi_major_axis()
 
-        # orbit initialisation
+        # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
         self.init_orbit()
 
-        # everything below this shouldn't stay here forever
+        # setup critical surface potentials in periastron
+        self._setup_critical_potential()
         # binary star morphology estimation
         self._morphology = self._estimate_morphology()
 
-        # polar radius of both component
-        self.init_radii(components_distance=self.orbit.periastron_distance)
+        # polar radius of both component in periastron
+        self.setup_components_radii(components_distance=self.orbit.periastron_distance)
 
         # evaluate spots of both components
         # this is not true for all systems!!!
@@ -386,14 +387,14 @@ class BinarySystem(System):
 
     def calculate_semi_major_axis(self):
         """
-        calculates length semi major axis usin 3rd kepler law
+        calculates length semi major axis using 3rd kepler law
 
         :return: np.float
         """
         period = (self._period * units.PERIOD_UNIT).to(u.s)
         return (c.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * c.PI ** 2)) ** (1.0 / 3)
 
-    def init_radii(self, components_distance):
+    def setup_components_radii(self, components_distance):
         fns = [self.calculate_polar_radius, self.calculate_side_radius, self.calculate_backward_radius]
         components = ['primary', 'secondary']
 
@@ -627,22 +628,25 @@ class BinarySystem(System):
             serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
 
+    def _setup_critical_potential(self):
+        """
+        compute and set critical surface potential for both components
+
+        :return:
+        """
+        self.primary.critical_surface_potential = self.critical_potential(
+            component="primary", components_distance=1 - self.eccentricity
+        )
+        self.secondary.critical_surface_potential = self.critical_potential(
+            component="secondary", components_distance=1 - self.eccentricity
+        )
+
     def _estimate_morphology(self):
         """
         Setup binary star class property `morphology`
         :return:
         """
-        PRECISSION = 1e-8
-
-        # fixme: probably should be better to create a new function like setup_critical_potentials()
-
-        primary_critical_potential = self.critical_potential(component="primary",
-                                                             components_distance=1-self.eccentricity)
-        secondary_critical_potential = self.critical_potential(component="secondary",
-                                                               components_distance=1-self.eccentricity)
-
-        self.primary.critical_surface_potential = primary_critical_potential
-        self.secondary.critical_surface_potential = secondary_critical_potential
+        __PRECISSION__ = 1e-8
 
         if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
             lp = self.libration_potentials()
@@ -652,15 +656,15 @@ class BinarySystem(System):
             self._secondary_filling_factor = (lp[1] - self.secondary.surface_potential) / (lp[1] - lp[2])
 
             if ((1 > self.secondary_filling_factor > 0) or (1 > self.primary_filling_factor > 0)) and \
-                    (abs(self.primary_filling_factor - self.secondary_filling_factor) > PRECISSION):
+                    (abs(self.primary_filling_factor - self.secondary_filling_factor) > __PRECISSION__):
                 raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
             if self.primary_filling_factor > 1 or self.secondary_filling_factor > 1:
                 raise ValueError("Non-Physical system: primary_filling_factor or "
                                  "secondary_filling_factor is greater then 1. Filling factor is obtained as following:"
                                  "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
-            if (abs(self.primary_filling_factor) < PRECISSION and self.secondary_filling_factor < 0) or (
-                            self.primary_filling_factor < 0 and abs(self.secondary_filling_factor) < PRECISSION):
+            if (abs(self.primary_filling_factor) < __PRECISSION__ and self.secondary_filling_factor < 0) or (
+                            self.primary_filling_factor < 0 and abs(self.secondary_filling_factor) < __PRECISSION__):
                 return "semi-detached"
             elif self.primary_filling_factor < 0 and self.secondary_filling_factor < 0:
                 return "detached"
@@ -671,12 +675,12 @@ class BinarySystem(System):
 
         else:
             self._primary_filling_factor, self._secondary_filling_factor = None, None
-            if abs(self.primary.surface_potential - primary_critical_potential) < PRECISSION and \
-               abs(self.secondary.surface_potential - secondary_critical_potential) < PRECISSION:
+            if abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__ and \
+               abs(self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__:
                 return "double-contact"
 
-            elif self.primary.surface_potential > primary_critical_potential and (
-                        self.secondary.surface_potential > secondary_critical_potential):
+            elif self.primary.surface_potential > self.primary.critical_surface_potential and (
+                        self.secondary.surface_potential > self.secondary.critical_surface_potential):
                 return "detached"
 
             else:
