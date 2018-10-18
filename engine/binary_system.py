@@ -76,7 +76,7 @@ class BinarySystem(System):
         self._semi_major_axis = None
         self._periastron_phase = None
         self._reflection_effect_iterations = 0
-        
+
         params = {
             "primary": self.primary,
             "secondary": self.secondary
@@ -356,7 +356,7 @@ class BinarySystem(System):
         self._logger.debug("Setting property `reflection_effect_iterations` "
                            "of class instance {} to {}".format(BinarySystem.__name__,
                                                                self._reflection_effect_iterations))
-    
+
     @property
     def semi_major_axis(self):
         """
@@ -1716,36 +1716,11 @@ class BinarySystem(System):
         else:
             return points
 
-    def build_mesh(self, component=None, components_distance=None):
-        """
-        build points of surface for primary or/and secondary component !!! w/o spots yet !!!
-
-        :param component: str or empty
-        :param components_distance: float
-        :return:
-        """
-        if components_distance is None:
-            raise ValueError('Argument `component_distance` was not supplied.')
-        component = self._component_to_list(component)
-
-        for _component in component:
-            component_instance = getattr(self, _component)
-            if component_instance.spots:
-                component_instance.points = self.mesh_over_contact(component=_component) \
-                    if self.morphology == 'over-contact' \
-                    else self.mesh_detached(component=_component, components_distance=components_distance)
-            else:
-                component_instance.points, component_instance.point_symmetry_vector, \
-                    component_instance.base_symmetry_points_number, component_instance.inverse_point_symmetry_matrix = \
-                    self.mesh_over_contact(component=_component, symmetry_output=True) \
-                    if self.morphology == 'over-contact' \
-                    else self.mesh_detached(component=_component, components_distance=components_distance,
-                                            symmetry_output=True)
-
     def detached_system_surface(self, component=None, points=None):
         """
         calculates surface faces from the given component's points in case of detached or semi-contact system
 
+        :param points:
         :param component: str
         :return: np.array - N x 3 array of vertices indices
         """
@@ -1841,6 +1816,31 @@ class BinarySystem(System):
 
         return new_triangles_indices
 
+    def build_mesh(self, component=None, components_distance=None):
+        """
+        build points of surface for primary or/and secondary component !!! w/o spots yet !!!
+
+        :param component: str or empty
+        :param components_distance: float
+        :return:
+        """
+        if components_distance is None:
+            raise ValueError('Argument `component_distance` was not supplied.')
+        component = self._component_to_list(component)
+
+        for _component in component:
+            component_instance = getattr(self, _component)
+            # in case of spoted surface, symmetry is not used
+            _a, _b, _c, _d = self.mesh_over_contact(component=_component, symmetry_output=True) \
+                if self.morphology == 'over-contact' \
+                else self.mesh_detached(
+                component=_component, components_distance=components_distance, symmetry_output=True
+            )
+            component_instance.points = _a
+            component_instance.point_symmetry_vector = _b
+            component_instance.base_symmetry_points_number = _c
+            component_instance.inverse_point_symmetry_matrix = _d
+
     def build_faces(self, component=None):
         """
         function creates faces of the star surface for given components provided you already calculated surface points
@@ -1871,6 +1871,7 @@ class BinarySystem(System):
         """
         if not components_distance:
             raise ValueError('components_distance value was not provided.')
+
         component = self._component_to_list(component)
         if return_surface:
             ret_points, ret_faces = {}, {}
@@ -2418,8 +2419,6 @@ class BinarySystem(System):
 
         #     st = time()
         #     print('Elapsed time: {0:.5f} s.'.format(time() - st))
-
-
 
         ret = {'primary': vis_test['primary'], 'secondary': vis_test['secondary']}
         # print(np.shape(distance), np.shape(distance_vector))
