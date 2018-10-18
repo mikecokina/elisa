@@ -116,9 +116,6 @@ class BinarySystem(System):
         # polar radius of both component in periastron
         self.setup_components_radii(components_distance=self.orbit.periastron_distance)
 
-        # evaluate spots of both components
-        # this is not true for all systems!!!
-        self._evaluate_spots(components_distance=self.orbit.periastron_distance)
 
     @property
     def morphology(self):
@@ -390,7 +387,7 @@ class BinarySystem(System):
                 radius = fn(component, components_distance)
                 setattr(component_instance, param, radius)
 
-    def _evaluate_spots(self, components_distance):
+    def _evaluate_spots(self, components_distance, component=None):
         """
         compute points of each spots and assigns values to spot container instance
 
@@ -407,11 +404,12 @@ class BinarySystem(System):
                     return False
             return True
 
+        component = self._component_to_list(component)
         fns = {
             "primary": (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
             "secondary": (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)
         }
-
+        fns = {_component: fns[_component] for _component in component}
         neck_position = 1e10
         # in case of wuma system, get separation and make additional test of location of each point (if primary
         # spot doesn't intersect with secondary, if does, then such spot will be skipped completly)
@@ -1841,6 +1839,8 @@ class BinarySystem(System):
             component_instance.base_symmetry_points_number = _c
             component_instance.inverse_point_symmetry_matrix = _d
 
+            self._evaluate_spots(components_distance=components_distance, component=_component)
+
     def build_faces(self, component=None):
         """
         function creates faces of the star surface for given components provided you already calculated surface points
@@ -1854,10 +1854,10 @@ class BinarySystem(System):
             component_instance = getattr(self, _component)
             if not component_instance.spots:
                 self.build_surface_with_no_spots(_component)
-
-            self.incorporate_spots_to_surface(component_instance=component_instance,
-                                              surface_fn=self.build_surface_with_spots,
-                                              component=_component)
+            else:
+                self.incorporate_spots_to_surface(component_instance=component_instance,
+                                                  surface_fn=self.build_surface_with_spots,
+                                                  component=_component)
 
     def build_surface(self, components_distance=None, component=None, return_surface=False):
         """
