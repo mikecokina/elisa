@@ -7,9 +7,6 @@ from engine import utils
 from engine.spot import Spot
 
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
-
-
 class Body(metaclass=ABCMeta):
     """
     Abstract class defining bodies that can be modelled by this software

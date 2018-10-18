@@ -8,8 +8,6 @@ from scipy.optimize import fsolve
 from copy import copy
 from scipy.spatial import KDTree
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
-
 
 class System(metaclass=ABCMeta):
     """

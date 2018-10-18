@@ -38,8 +38,6 @@ from copy import copy
 #temporary
 from time import time
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
-
 
 class BinarySystem(System):
     KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'primary_minimum_time',

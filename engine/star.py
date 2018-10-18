@@ -9,8 +9,6 @@ from copy import copy
 from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
-
 
 class Star(Body):
 
