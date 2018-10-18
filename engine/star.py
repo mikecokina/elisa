@@ -43,6 +43,7 @@ class Star(Body):
         self._potential_gradient_magnitudes = None
         self._polar_potential_gradient = None
         self._pulsations = None
+        self._filling_factor = None
 
         # values of properties
         for kwarg in Star.ALL_KWARGS:
@@ -206,10 +207,18 @@ class Star(Body):
     @polar_potential_gradient_magnitude.setter
     def polar_potential_gradient_magnitude(self, potential_gradient_magnitude):
         """
-        :param potential_gradient: float
+        :param potential_gradient_magnitude: float
         :return:
         """
         self._polar_potential_gradient = potential_gradient_magnitude
+
+    @property
+    def filling_factor(self):
+        return self._filling_factor
+
+    @filling_factor.setter
+    def filling_factor(self, filling_factor):
+        self._filling_factor = filling_factor
 
     def calculate_polar_effective_temperature(self):
         """

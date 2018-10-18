@@ -76,12 +76,11 @@ class BinarySystem(System):
         self._semi_major_axis = None
         self._periastron_phase = None
         self._reflection_effect_iterations = 0
-
+        
         params = {
             "primary": self.primary,
             "secondary": self.secondary
         }
-
         params.update(**kwargs)
         self._star_params_validity_check(**params)
         # set attributes and test whether all parameters were initialized
@@ -112,7 +111,7 @@ class BinarySystem(System):
         # setup critical surface potentials in periastron
         self._setup_critical_potential()
         # binary star morphology estimation
-        self._morphology = self._estimate_morphology()
+        self.setup_morphology()
 
         # polar radius of both component in periastron
         self.setup_components_radii(components_distance=self.orbit.periastron_distance)
@@ -120,24 +119,6 @@ class BinarySystem(System):
         # evaluate spots of both components
         # this is not true for all systems!!!
         self._evaluate_spots(components_distance=self.orbit.periastron_distance)
-
-    @property
-    def primary_filling_factor(self):
-        """
-        filling factor for primary components
-
-        :return: (np.)float
-        """
-        return self._primary_filling_factor
-
-    @property
-    def secondary_filling_factor(self):
-        """
-        fillinf catro for secondary component
-
-        :return: (np.)float
-        """
-        return self._secondary_filling_factor
 
     @property
     def morphology(self):
@@ -375,7 +356,7 @@ class BinarySystem(System):
         self._logger.debug("Setting property `reflection_effect_iterations` "
                            "of class instance {} to {}".format(BinarySystem.__name__,
                                                                self._reflection_effect_iterations))
-
+    
     @property
     def semi_major_axis(self):
         """
@@ -641,50 +622,62 @@ class BinarySystem(System):
             component="secondary", components_distance=1 - self.eccentricity
         )
 
-    def _estimate_morphology(self):
+    @staticmethod
+    def compute_filling_factor(surface_potential, lagrangian_points):
+        """
+
+        :param surface_potential:
+        :param lagrangian_points: list; lagrangian points in `order` (in order to ensure that L2)
+        :return:
+        """
+        return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
+
+    def setup_morphology(self):
         """
         Setup binary star class property `morphology`
         :return:
         """
         __PRECISSION__ = 1e-8
-
+        __SETUP_VALUE__ = None
         if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
             lp = self.libration_potentials()
             # todo: expose filling factors as funtion,
-            # todo: check filling factor calculation for heavier secondary
-            self._primary_filling_factor = (lp[1] - self.primary.surface_potential) / (lp[1] - lp[2])
-            self._secondary_filling_factor = (lp[1] - self.secondary.surface_potential) / (lp[1] - lp[2])
+            # todo: check filling factor calculation for heavier secondary !!! order is forced in lagrangian_points() fn !!!
 
-            if ((1 > self.secondary_filling_factor > 0) or (1 > self.primary_filling_factor > 0)) and \
-                    (abs(self.primary_filling_factor - self.secondary_filling_factor) > __PRECISSION__):
+            self.primary.filling_factor = self.compute_filling_factor(self.primary.surface_potential, lp)
+            self.secondary.filling_factor = self.compute_filling_factor(self.secondary.surface_potential, lp)
+
+            if ((1 > self.secondary.filling_factor > 0) or (1 > self.primary.filling_factor > 0)) and \
+                    (abs(self.primary.filling_factor - self.secondary.filling_factor) > __PRECISSION__):
                 raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
-            if self.primary_filling_factor > 1 or self.secondary_filling_factor > 1:
+            if self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
                 raise ValueError("Non-Physical system: primary_filling_factor or "
                                  "secondary_filling_factor is greater then 1. Filling factor is obtained as following:"
                                  "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
-            if (abs(self.primary_filling_factor) < __PRECISSION__ and self.secondary_filling_factor < 0) or (
-                            self.primary_filling_factor < 0 and abs(self.secondary_filling_factor) < __PRECISSION__):
-                return "semi-detached"
-            elif self.primary_filling_factor < 0 and self.secondary_filling_factor < 0:
-                return "detached"
-            elif 1 >= self.primary_filling_factor > 0:
-                return "over-contact"
-            elif self.primary_filling_factor > 1 or self.secondary_filling_factor > 1:
+            if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or (
+                            self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__):
+                __SETUP_VALUE__ = "semi-detached"
+            elif self.primary.filling_factor < 0 and self.secondary.filling_factor < 0:
+                __SETUP_VALUE__ = "detached"
+            elif 1 >= self.primary.filling_factor > 0:
+                __SETUP_VALUE__ = "over-contact"
+            elif self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
                 raise ValueError("Non-Physical system: potential of components is to low.")
 
         else:
-            self._primary_filling_factor, self._secondary_filling_factor = None, None
+            self.primary.filling_factor, self.secondary.filling_factor = None, None
             if abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__ and \
                abs(self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__:
-                return "double-contact"
+                __SETUP_VALUE__ = "double-contact"
 
             elif self.primary.surface_potential > self.primary.critical_surface_potential and (
                         self.secondary.surface_potential > self.secondary.critical_surface_potential):
-                return "detached"
+                __SETUP_VALUE__ = "detached"
 
             else:
                 raise ValueError("Non-Physical system. Change stellar parameters.")
+        self._morphology = __SETUP_VALUE__
 
     def init_orbit(self):
         """
@@ -1743,11 +1736,11 @@ class BinarySystem(System):
                     else self.mesh_detached(component=_component, components_distance=components_distance)
             else:
                 component_instance.points, component_instance.point_symmetry_vector, \
-                component_instance.base_symmetry_points_number, component_instance.inverse_point_symmetry_matrix = \
+                    component_instance.base_symmetry_points_number, component_instance.inverse_point_symmetry_matrix = \
                     self.mesh_over_contact(component=_component, symmetry_output=True) \
-                        if self.morphology == 'over-contact' \
-                        else self.mesh_detached(component=_component, components_distance=components_distance,
-                                                symmetry_output=True)
+                    if self.morphology == 'over-contact' \
+                    else self.mesh_detached(component=_component, components_distance=components_distance,
+                                            symmetry_output=True)
 
     def detached_system_surface(self, component=None, points=None):
         """
@@ -1764,7 +1757,7 @@ class BinarySystem(System):
             raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
                              "to triangulate".format(component, component_instance.name))
         # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
-        filling_factor = self.primary_filling_factor if component == 'primary' else self.secondary_filling_factor
+        filling_factor = self.primary.filling_factor if component == 'primary' else self.secondary.filling_factor
         if filling_factor < -0.02:
             triangulation = Delaunay(points)
             triangles_indices = triangulation.convex_hull
