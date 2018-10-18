@@ -168,6 +168,91 @@ class System(metaclass=ABCMeta):
         """
         pass
 
+    def _incorporate_spots_mesh(self, component_instance=None):
+        if not component_instance.spots:
+            return
+        self._logger.info("Incorporating spot points to component {} mesh".format(component_instance.name))
+
+        if component_instance is None:
+            raise ValueError('Object instance was not given.')
+
+        vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
+        all_points = copy(component_instance.points)
+
+        # average spacing of component surface points
+        avsp = utils.average_spacing(component_instance.polar_radius, component_instance.discretization_factor)
+
+        for spot_index, spot in component_instance.spots.items():
+            # average spacing in spot points
+            avsp_spot = utils.average_spacing(spot.points, spot.angular_density)
+            vertices_to_remove, vertices_test = [], []
+
+            # find nearest points to spot alt center
+            tree = KDTree(all_points)
+            distances, indices = tree.query(spot.boundary_center, k=len(all_points))
+
+            max_dist_to_object_point = spot.max_size + (0.5 * avsp)
+            max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
+
+            # removing star points in spot
+            for dist, ix in zip(distances, indices):
+                if dist > max_dist_to_object_point:
+                    # break, because distancies are ordered by size, so there is no more points of object that
+                    # have to be removed
+                    break
+
+                if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
+                    continue
+                vertices_to_remove.append(ix)
+
+            # simplices of target object for testing whether point lying inside or not of spot boundary, removing
+            # duplicate points on the spot border
+            # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
+            vertices_to_remove = list(set(vertices_to_remove))
+
+            # points and vertices_map update
+            if vertices_to_remove:
+                _points, _vertices_map = list(), list()
+
+                for ix, vertex in list(zip(range(0, len(all_points)), all_points)):
+                    if ix in vertices_to_remove:
+                        # skip point if is marked for removal
+                        continue
+
+                    # append only points of currrent object that do not intervent to spot
+                    # [current, since there should be already spot from previous iteration step]
+                    _points.append(vertex)
+                    _vertices_map.append({"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]})
+
+                for vertex in spot.points:
+                    _points.append(vertex)
+                    _vertices_map.append({"type": "spot", "enum": spot_index})
+
+                all_points = copy(_points)
+                vertices_map = copy(_vertices_map)
+
+        separated_points = self.split_points_of_spots_and_component(all_points, vertices_map, component_instance)
+        self.setup_component_instance_points(component_instance, separated_points)
+
+    @classmethod
+    def split_points_of_spots_and_component(cls, points, vertices_map, component_instance):
+        points = np.array(points)
+        component_points = {
+            "object": points[np.where(np.array(vertices_map) == {'type': "object", 'enum': -1})[0]]
+        }
+        spots_points = {
+            "{}".format(i): points[np.where(np.array(vertices_map) == {'type': "spot", 'enum': i})[0]]
+            for i in range(len(component_instance.spots))
+            if len(np.where(np.array(vertices_map) == {'type': "spot", 'enum': i})[0]) > 0
+        }
+        return {**component_points, **spots_points}
+
+    @staticmethod
+    def setup_component_instance_points(component_instance, points):
+        component_instance.points = points.pop("object")
+        for spot_index, spot_points in points.items():
+            component_instance.spots[int(spot_index)].points = points[spot_index]
+
     def incorporate_spots_to_surface(self, component_instance=None, surface_fn=None, **kwargs):
         # todo: documentation
         """

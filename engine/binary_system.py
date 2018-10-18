@@ -385,7 +385,22 @@ class BinarySystem(System):
                 radius = fn(component, components_distance)
                 setattr(component_instance, param, radius)
 
-    def _evaluate_spots(self, components_distance, component=None):
+    def _setup_spot_instance_angular_density(self, spot_instance, spot_index, component):
+        component_instance = getattr(self, component)
+        if spot_instance.angular_density is None:
+            self._logger.debug(
+                'Angular density of the spot {0} on {2} component was not supplied and discretization factor of'
+                ' star {1} was used.'.format(spot_index, component_instance.discretization_factor, component))
+            spot_instance.angular_density = 0.9 * component_instance.discretization_factor * units.ARC_UNIT
+        if spot_instance.angular_density > 0.5 * spot_instance.angular_diameter:
+            self._logger.debug('Angular density {1} of the spot {0} on {2} component was larger than its '
+                               'angular radius. Therefore value of angular density was set to be equal to '
+                               '0.5 * angular diameter.'.format(spot_index,
+                                                                component_instance.discretization_factor,
+                                                                component))
+            spot_instance.angular_density = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
+
+    def _evaluate_spots_mesh(self, components_distance, component=None):
         """
         compute points of each spots and assigns values to spot container instance
 
@@ -402,20 +417,19 @@ class BinarySystem(System):
                     return False
             return True
 
-        component = self._component_to_list(component)
+        components = self._component_to_list(component)
         fns = {
             "primary": (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
             "secondary": (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)
         }
-        fns = {_component: fns[_component] for _component in component}
-        neck_position = 1e10
+        fns = {_component: fns[_component] for _component in components}
+
         # in case of wuma system, get separation and make additional test of location of each point (if primary
         # spot doesn't intersect with secondary, if does, then such spot will be skipped completly)
-        if self.morphology == "over-contact":
-            neck_position = self.calculate_neck_position()
+        neck_position = self.calculate_neck_position() if self.morphology == "over-contact" else 1e10
 
         for component, functions in fns.items():
-            fn, precalc = functions
+            potential_fn, precalc_fn = functions
             self._logger.info("Evaluating spots for {} component".format(component))
             component_instance = getattr(self, component)
 
@@ -427,36 +441,27 @@ class BinarySystem(System):
             for spot_index, spot_instance in list(component_instance.spots.items()):
                 # lon -> phi, lat -> theta
                 lon, lat = spot_instance.longitude, spot_instance.latitude
-                if spot_instance.angular_density is None:
-                    self._logger.debug(
-                        'Angular density of the spot {0} on {2} component was not supplied and discretization factor of'
-                        ' star {1} was used.'.format(spot_index, component_instance.discretization_factor, component))
-                    spot_instance.angular_density = 0.9 * component_instance.discretization_factor * units.ARC_UNIT
-                if spot_instance.angular_density > 0.5 * spot_instance.angular_diameter:
-                    self._logger.debug('Angular density {1} of the spot {0} on {2} component was larger than its '
-                                       'angular radius. Therefore value of angular density was set to be equal to '
-                                       '0.5 * angular diameter.'.format(spot_index,
-                                                                        component_instance.discretization_factor,
-                                                                        component))
-                    spot_instance.angular_density = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
-                alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
+
+                self._setup_spot_instance_angular_density(spot_instance, spot_index, component)
+                alpha = spot_instance.angular_density
+                diameter = spot_instance.angular_diameter
 
                 # initial containers for current spot
-                boundary_points, spot_points = [], []
+                boundary_points, spot_points = list(), list()
 
                 # initial radial vector
                 radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
                 center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
 
                 args, use = (components_distance, radial_vector[1], radial_vector[2]), False
-                args = precalc(*args)
-                solution, use = self._solver(fn, solver_condition, *args)
+                args = precalc_fn(*args)
+                solution, use = self._solver(potential_fn, solver_condition, *args)
 
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
                     # component spot list and skip current spot computation
-                    self._logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
-                                      "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+                    self._logger.warning("Center of spot {} doesn't satisfy reasonable conditions and "
+                                         "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
 
                     component_instance.remove_spot(spot_index=spot_index)
                     continue
@@ -465,32 +470,32 @@ class BinarySystem(System):
                 spot_center = utils.spherical_to_cartesian([spot_center_r, lon, lat])
 
                 # compute euclidean distance of two points on spot (x0)
-                # we have to obtain distance between center and 1st point in 1st ring of spot
+                # we have to obtain distance between center and 1st point in 1st inner ring of spot
                 args, use = (components_distance, lon, lat + alpha), False
-                args = precalc(*args)
-                solution, use = self._solver(fn, solver_condition, *args)
+                args = precalc_fn(*args)
+                solution, use = self._solver(potential_fn, solver_condition, *args)
 
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
                     # component spot list and skip current spot computation
-                    self._logger.info("First ring of spot {} doesn't satisfy reasonable conditions and "
-                                      "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
+                    self._logger.warning("First inner ring of spot {} doesn't satisfy reasonable conditions and "
+                                         "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
 
                     component_instance.remove_spot(spot_index=spot_index)
                     continue
+
                 x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
 
                 # number of points in latitudal direction
                 # + 1 to obtain same discretization as object itself
                 num_radial = int(np.round((diameter * 0.5) / alpha)) + 1
-                self._logger.debug('Number of rings in spot {} is {}'.format(spot_instance.kwargs_serializer(),
-                                                                             num_radial))
+                self._logger.debug('Number of rings in spot {} is {}'
+                                   ''.format(spot_instance.kwargs_serializer(), num_radial))
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
                 num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
                 deltas = [np.linspace(0., c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 
-                # todo: add condition to die
                 try:
                     for theta_index, theta in enumerate(thetas):
                         # first point of n-th ring of spot (counting start from center)
@@ -507,8 +512,8 @@ class BinarySystem(System):
                             spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
                             args = (components_distance, spherical_delta_vector[1], spherical_delta_vector[2])
-                            args = precalc(*args)
-                            solution, use = self._solver(fn, solver_condition, *args)
+                            args = precalc_fn(*args)
+                            solution, use = self._solver(potential_fn, solver_condition, *args)
 
                             if not use:
                                 component_instance.remove_spot(spot_index=spot_index)
@@ -522,18 +527,15 @@ class BinarySystem(System):
                                 boundary_points.append(spot_point)
 
                 except StopIteration:
-                    self._logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
-                                      "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
-                    print('theta_index: {0}/{1}'.format(theta_index, len(thetas)))
-                    print('spherical delta vector: {}'.format(spherical_delta_vector))
-                    print('solution, use: {0}, {1}'.format(solution, use))
+                    self._logger.warning("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
+                                         "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
                     continue
 
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_spherical(boundary_com)
                 args = components_distance, boundary_com[1], boundary_com[2]
-                args = precalc(*args)
-                solution, _ = self._solver(fn, solver_condition, *args)
+                args = precalc_fn(*args)
+                solution, _ = self._solver(potential_fn, solver_condition, *args)
                 boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
 
                 # first point will be always barycenter of boundary
@@ -723,18 +725,18 @@ class BinarySystem(System):
         need to be wastefully recalculated every iteration in solver
 
         :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
-        :return: tuple: (B, C, D, E) such that: Psi1 = 1/r + A/sqrt(B+r^2+Cr) - D*r + E*x^2
+        :return: tuple: (b, c, d, e) such that: Psi1 = 1/r + a/sqrt(b+r^2+c*r) - d*r + e*x^2
         """
-        d, phi, theta = args  # distance between components, azimut angle, latitude angle (0,180)
+        d, phi, theta = args  # distance between components, azimuth angle, latitude angle (0,180)
 
         cs = np.cos(phi) * np.sin(theta)
 
-        B = np.power(d, 2)
-        C = 2 * d * cs
-        D = (self.mass_ratio * cs) / B
-        E = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
+        b = np.power(d, 2)
+        c = 2 * d * cs
+        d = (self.mass_ratio * cs) / b
+        e = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
 
-        return B, C, D, E
+        return b, c, d, e
 
     def potential_value_primary(self, radius, *args):
         """
@@ -1837,7 +1839,8 @@ class BinarySystem(System):
             component_instance.base_symmetry_points_number = _c
             component_instance.inverse_point_symmetry_matrix = _d
 
-            self._evaluate_spots(components_distance=components_distance, component=_component)
+            self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
+            self._incorporate_spots_mesh(component_instance=getattr(self, _component))
 
     def build_faces(self, component=None):
         """
@@ -1952,7 +1955,6 @@ class BinarySystem(System):
                 component_instance.faces = self.over_contact_surface(component=_component)
             else:
                 component_instance.faces = self.detached_system_surface(component=_component)
-
 
     @staticmethod
     def _component_to_list(component):
