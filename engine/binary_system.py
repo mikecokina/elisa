@@ -114,7 +114,6 @@ class BinarySystem(System):
         # polar radius of both component in periastron
         self.setup_components_radii(components_distance=self.orbit.periastron_distance)
 
-
     @property
     def morphology(self):
         """
@@ -1856,56 +1855,58 @@ class BinarySystem(System):
             if not component_instance.spots:
                 self.build_surface_with_no_spots(_component)
             else:
-                self.incorporate_spots_to_surface(component_instance=component_instance,
-                                                  surface_fn=self.build_surface_with_spots,
-                                                  component=_component)
+                self.build_surface_with_spots(_component)
+                # self.incorporate_spots_to_surface(component_instance=component_instance,
+                #                                   surface_fn=self.build_surface_with_spots,
+                #                                   component=_component)
 
     def build_surface(self, components_distance=None, component=None, return_surface=False):
-        """
-        function for building of general binary star component surfaces including spots
-
-        :param return_surface: bool - if true, function returns dictionary of arrays with all points and faces
-                                      (surface + spots) for each component
-        :param components_distance: distance between components
-        :param component: specify component, use `primary` or `secondary`
-        :return:
-        """
-        if not components_distance:
-            raise ValueError('components_distance value was not provided.')
-
-        component = self._component_to_list(component)
-        if return_surface:
-            ret_points, ret_faces = {}, {}
-
-        for _component in component:
-            component_instance = getattr(self, _component)
-
-            # build surface if there is no spot specified
-            self.build_mesh(component=_component, components_distance=components_distance)
-
-            if not component_instance.spots:
-                self.build_surface_with_no_spots(_component)
-                if return_surface:
-                    ret_points[_component] = copy(component_instance.points)
-                    ret_faces[_component] = copy(component_instance.faces)
-                continue
-
-            self.incorporate_spots_to_surface(component_instance=component_instance,
-                                              surface_fn=self.build_surface_with_spots,
-                                              component=_component)
-
-            if return_surface:
-                ret_points[_component] = copy(component_instance.points)
-                ret_faces[_component] = copy(component_instance.faces)
-                for spot_index, spot in component_instance.spots.items():
-                    n_points = np.shape(ret_points[_component])[0]
-                    ret_points[_component] = np.append(ret_points[_component], spot.points, axis=0)
-                    ret_faces[_component] = np.append(ret_faces[_component], spot.faces + n_points, axis=0)
-
-        if return_surface:
-            return ret_points, ret_faces
-        else:
-            return
+        # """
+        # function for building of general binary star component surfaces including spots
+        #
+        # :param return_surface: bool - if true, function returns dictionary of arrays with all points and faces
+        #                               (surface + spots) for each component
+        # :param components_distance: distance between components
+        # :param component: specify component, use `primary` or `secondary`
+        # :return:
+        # """
+        # if not components_distance:
+        #     raise ValueError('components_distance value was not provided.')
+        #
+        # component = self._component_to_list(component)
+        # if return_surface:
+        #     ret_points, ret_faces = {}, {}
+        #
+        # for _component in component:
+        #     component_instance = getattr(self, _component)
+        #
+        #     # build surface if there is no spot specified
+        #     self.build_mesh(component=_component, components_distance=components_distance)
+        #
+        #     if not component_instance.spots:
+        #         self.build_surface_with_no_spots(_component)
+        #         if return_surface:
+        #             ret_points[_component] = copy(component_instance.points)
+        #             ret_faces[_component] = copy(component_instance.faces)
+        #         continue
+        #
+        #     self.incorporate_spots_to_surface(component_instance=component_instance,
+        #                                       surface_fn=self.build_surface_with_spots,
+        #                                       component=_component)
+        #
+        #     if return_surface:
+        #         ret_points[_component] = copy(component_instance.points)
+        #         ret_faces[_component] = copy(component_instance.faces)
+        #         for spot_index, spot in component_instance.spots.items():
+        #             n_points = np.shape(ret_points[_component])[0]
+        #             ret_points[_component] = np.append(ret_points[_component], spot.points, axis=0)
+        #             ret_faces[_component] = np.append(ret_faces[_component], spot.faces + n_points, axis=0)
+        #
+        # if return_surface:
+        #     return ret_points, ret_faces
+        # else:
+        #     return
+        pass
 
     def build_surface_with_no_spots(self, component=None):
         """
@@ -1948,13 +1949,14 @@ class BinarySystem(System):
             component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
 
     def build_surface_with_spots(self, component=None):
-        component = self._component_to_list(component)
-        for _component in component:
-            component_instance = getattr(self, _component)
-            if self.morphology == 'over-contact':
-                component_instance.faces = self.over_contact_surface(component=_component)
-            else:
-                component_instance.faces = self.detached_system_surface(component=_component)
+        # component = self._component_to_list(component)
+        # for _component in component:
+        #     component_instance = getattr(self, _component)
+        #     if self.morphology == 'over-contact':
+        #         component_instance.faces = self.over_contact_surface(component=_component)
+        #     else:
+        #         component_instance.faces = self.detached_system_surface(component=_component)
+        pass
 
     @staticmethod
     def _component_to_list(component):
