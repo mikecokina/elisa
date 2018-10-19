@@ -1,7 +1,9 @@
-from abc import ABCMeta, abstractmethod
-from astropy import units as u
 import numpy as np
 import logging
+import gc
+
+from abc import ABCMeta, abstractmethod
+from astropy import units as u
 from engine import units as U
 from engine import utils
 from scipy.optimize import fsolve
@@ -254,236 +256,153 @@ class System(metaclass=ABCMeta):
         for spot_index, spot_points in points.items():
             component_instance.spots[int(spot_index)].points = points[spot_index]
 
-    # def incorporate_spots_to_surface(self, component_instance=None, surface_fn=None, **kwargs):
-    #     # todo: documentation
-    #     """
-    #
-    #     :param component_instance:
-    #     :param surface_fn:
-    #     :param kwargs:
-    #     :return:
-    #     """
-    #     if component_instance is None:
-    #         raise ValueError('Object instance was not given.')
-    #     if surface_fn is None:
-    #         raise ValueError('Function for building surfaces was not specified.')
-    #
-    #     vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
-    #     points = copy(component_instance.points)
-    #     # average spacing of component surface points
-    #     avsp = utils.average_spacing(data=component_instance.polar_radius,
-    #                                  mean_angular_distance=component_instance.discretization_factor)
-    #     for spot_index, spot in component_instance.spots.items():
-    #         # average spacing in spot points
-    #         avsp_spot = utils.average_spacing(data=spot.points,
-    #                                           mean_angular_distance=spot.angular_density)
-    #         vertices_to_remove, vertices_test = [], []
-    #
-    #         # find nearest points to spot alt center
-    #         tree = KDTree(points)
-    #         distances, indices = tree.query(spot.boundary_center, k=len(points))
-    #
-    #         max_dist_to_object_point = spot.max_size + (0.5 * avsp)
-    #         max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
-    #
-    #         # removing star points in spot
-    #         for dist, ix in zip(distances, indices):
-    #             if dist > max_dist_to_object_point:
-    #                 # break, because distancies are ordered by size, so there is no more points of object that
-    #                 # have to be removed
-    #                 break
-    #
-    #             if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
-    #                 continue
-    #
-    #             vertices_to_remove.append(ix)
-    #
-    #         # simplices of target object for testing whether point lying inside or not of spot boundary, removing
-    #         # duplicate points on the spot border
-    #         # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
-    #         # print(len(vertices_to_remove))
-    #         vertices_to_remove = list(set(vertices_to_remove))
-    #
-    #         # points and vertices_map update
-    #         if len(vertices_to_remove) != 0:
-    #             _points = []
-    #             _vertices_map = []
-    #             # _vertices_map = {}
-    #             # m_ix = 0
-    #
-    #             for ix, vertex in list(zip(range(0, len(points)), points)):
-    #                 if ix in vertices_to_remove:
-    #                     # skip point if is marked for removal
-    #                     continue
-    #
-    #                 # append only points of currrent object that do not intervent to spot
-    #                 # [current, since there should be already spot from previous iteration step]
-    #                 _points.append(vertex)
-    #                 _vertices_map.append({"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]})
-    #
-    #             for vertex in spot.points:
-    #                 _points.append(vertex)
-    #                 _vertices_map.append({"type": "spot", "enum": spot_index})
-    #
-    #             points = copy(_points)
-    #             vertices_map = copy(_vertices_map)
-    #
-    #             del (_points, _vertices_map)
-    #
-    #     points = np.array(points)
-    #     component_instance.points = np.array(points)
-    #
-    #     # triangulation process
-    #     # self.build_surface_with_no_spots(component)
-    #     if 'component' in kwargs:
-    #         surface_fn(kwargs['component'])
-    #     else:
-    #         surface_fn()
-    #
-    #     spots_instance_indices = list(set([vertices_map[ix]["enum"]
-    #                                        for ix, _ in enumerate(vertices_map) if vertices_map[ix]["type"] == "spot"]))
-    #
-    #     model = {"object": [], "spots": {}}
-    #     spot_candidates = {"simplex": {}, "com": {}, "3rd_enum": {}, "ix": {}}
-    #
-    #     # init variables
-    #     for spot_index in spots_instance_indices:
-    #         model["spots"][spot_index] = []
-    #         for key in ["com", "3rd_enum", "ix"]:
-    #             spot_candidates[key][spot_index] = []
-    #
-    #     # iterate over triagnulation
-    #     for simplex, face, ix in list(zip(component_instance.faces,
-    #                                       component_instance.points[component_instance.faces],
-    #                                       range(component_instance.faces.shape[0]))):
-    #
-    #         # test if each point belongs to spot
-    #         if {'spot'} == set([vertices_map[simplex[_i]]["type"] for _i in range(3)]):
-    #
-    #             # if each point belongs to the same spot, then it is for sure face of that spot
-    #             if vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"] == \
-    #                     vertices_map[simplex[2]]["enum"]:
-    #                 model["spots"][vertices_map[simplex[0]]["enum"]].append(np.array(simplex))
-    #
-    #             else:
-    #                 # if at least one of points of face belongs to different spot, we have to test
-    #                 # which one of those spots current face belongs to
-    #
-    #                 reference_to_spot, trd_enum = None, None
-    #                 # variable trd_enum is enum index of 3rd corner of face;
-    #
-    #                 if vertices_map[simplex[-1]]["enum"] == vertices_map[simplex[0]]["enum"]:
-    #                     reference_to_spot = vertices_map[simplex[-1]]["enum"]
-    #                     trd_enum = vertices_map[simplex[1]]["enum"]
-    #                 elif vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"]:
-    #                     reference_to_spot = vertices_map[simplex[0]]["enum"]
-    #                     trd_enum = vertices_map[simplex[-1]]["enum"]
-    #                 elif vertices_map[simplex[1]]["enum"] == vertices_map[simplex[-1]]["enum"]:
-    #                     reference_to_spot = vertices_map[simplex[1]]["enum"]
-    #                     trd_enum = vertices_map[simplex[0]]["enum"]
-    #
-    #                 if reference_to_spot is not None:
-    #                     spot_candidates["com"][reference_to_spot].append(np.average(face, axis=0))
-    #                     spot_candidates["3rd_enum"][reference_to_spot].append(trd_enum)
-    #                     spot_candidates["ix"][reference_to_spot].append(ix)
-    #         # if at least one of point belongs to the spot and another one to the stellar body, it is neccesary
-    #         # to compute a distance of center of mass  of such surface element from the center of spot
-    #         # and compare whether it is within the spot or outside
-    #         elif {'spot', 'object'}.issubset(set([vertices_map[simplex[_i]]["type"] for _i in range(3)])):
-    #             # inefficient piece of code, do not care about that sicne this condition
-    #             # is not satisfied to many times doesn't
-    #
-    #             # je to hovnokod, treba tu vetvu dajak poludstit
-    #             spots_in_indices = [_i for _i in range(3) if vertices_map[simplex[_i]]["type"] == 'spot']
-    #             spots_enum = np.array([vertices_map[simplex[_i]]["enum"] for _i in range(3)])[spots_in_indices]
-    #
-    #             center = component_instance.spots[spot_index].boundary_center
-    #             size = component_instance.spots[spot_index].max_size
-    #             dist = np.linalg.norm(np.array(np.average(face, axis=0)) - np.array(center))
-    #
-    #             if len(spots_in_indices) == 1:
-    #                 if dist < size:
-    #                     model["spots"][vertices_map[simplex[spots_in_indices[0]]]["enum"]].append(np.array(simplex))
-    #                 else:
-    #                     model["object"].append(np.array(simplex))
-    #             else:
-    #                 if spots_enum[0] != spots_enum[1]:
-    #                     model["object"].append(np.array(simplex))
-    #                 else:
-    #                     model["object"].append(np.array(simplex))
-    #                     # if dist < size:
-    #                     #     model["spots"][vertices_map[simplex[spots_in_indices[0]]]["enum"]].append(np.array(simplex))
-    #                     # else:
-    #                     #     model["object"].append(np.array(simplex))
-    #         elif {'object'} == set([vertices_map[simplex[_i]]["type"] for _i in range(3)]):
-    #             model["object"].append(np.array(simplex))
-    #         else:
-    #             # just in case we forgat something in previous conditions
-    #             model["object"].append(np.array(simplex))
-    #
-    #     if spot_candidates["com"]:
-    #         for spot_index in spot_candidates["com"].keys():
-    #             # get center and size of current spot candidate
-    #             center, size = component_instance.spots[spot_index].boundary_center, \
-    #                            component_instance.spots[spot_index].max_size
-    #
-    #             # compute distance of all center of mass of faces of current
-    #             # spot candidate to the center of this candidate
-    #             dists = [np.linalg.norm(np.array(com) - np.array(center)) for com in spot_candidates["com"][spot_index]]
-    #
-    #             # test if dist is smaller as current spot size;
-    #             # if dist is smaller, then current face belongs to spots otherwise face belongs to t_object itself
-    #
-    #             for idx, dist in enumerate(dists):
-    #                 simplex_index = spot_candidates["ix"][spot_index][idx]
-    #                 if dist < size:
-    #                     model["spots"][spot_index].append(np.array(component_instance.faces[simplex_index]))
-    #                 else:
-    #                     # make the same computation for 3rd vertex of face
-    #                     # it might be confusing, but spot candidate is spot where 2 of 3 vertex of one face belong to
-    #                     # first spot, and the 3rd index belongs to another (neighbour) spot
-    #                     # it has to be alos tested, whether face finally do not belongs to spot candidate;
-    #
-    #                     trd_spot_index = spot_candidates["3rd_enum"][spot_index][idx]
-    #
-    #                     trd_center = component_instance.spots[trd_spot_index].boundary_center
-    #                     trd_size = component_instance.spots[trd_spot_index].max_size
-    #
-    #                     com = spot_candidates["com"][spot_index][idx]
-    #                     dist = np.linalg.norm(np.array(com) - np.array(trd_center))
-    #
-    #                     if dist < trd_size:
-    #                         model["spots"][trd_spot_index].append(np.array(component_instance.faces[simplex_index]))
-    #                     else:
-    #                         model["object"].append(np.array(component_instance.faces[simplex_index]))
-    #
-    #     # remove spots that are totaly overlaped
-    #     for spot_index, _ in list(component_instance.spots.items()):
-    #         if spot_index not in spots_instance_indices:
-    #             self._logger.warning("Spot with index {} doesn't contain any face and will be removed "
-    #                                  "from component {} spot list".format(spot_index, component_instance.name))
-    #             component_instance.remove_spot(spot_index=spot_index)
-    #         else:
-    #             self._logger.debug(
-    #                 "Changing value of parameter points of spot {} / "
-    #                 "component {}".format(spot_index, component_instance.name))
-    #             # get points currently belong to the given spot
-    #             indices = list(set(np.array(model["spots"][spot_index]).flatten()))
-    #             component_instance.spots[spot_index].points = np.array(component_instance.points[indices])
-    #
-    #             self._logger.debug(
-    #                 "Changing value of parameter faces of spot {} / "
-    #                 "component {}".format(spot_index, component_instance.name))
-    #             component_instance.spots[spot_index].faces = model["spots"][spot_index]
-    #             remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
-    #             component_instance.spots[spot_index].faces = \
-    #                 np.array(utils.remap(component_instance.spots[spot_index].faces, remap_dict))
-    #
-    #     self._logger.debug("Changing value of parameter points of object {}".format(component_instance.name))
-    #     indices = list(set(np.array(model["object"]).flatten()))
-    #
-    #     component_instance.points = component_instance.points[indices]
-    #
-    #     self._logger.debug("Changing value of parameter faces of object {}".format(component_instance.name))
-    #     remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
-    #     component_instance.faces = np.array(utils.remap(model["object"], remap_dict))
+    @staticmethod
+    def _prepare_points_and_vertices_map_for_triangulation(component_instance):
+        points = component_instance.points
+        vertices_map = [{"type": "object", "enum": -1}] * len(points)
+        for spot_index, spot_instance in component_instance.spots.items():
+            points = np.concatenate([points, spot_instance.points])
+            vertices_map = np.concatenate(
+                [vertices_map, [{"type": "spot", "enum": spot_index}] * len(spot_instance.points)]
+            )
+        return points, vertices_map
+
+    @staticmethod
+    def _initialize_model_container(vertices_map):
+        model = {"object": [], "spots": {}}
+        spot_candidates = {"simplex": {}, "com": {}, "3rd_enum": {}, "ix": {}}
+        spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
+                                           if vertices_map[ix]["enum"] >= 0]))
+        for spot_index in spots_instance_indices:
+            model["spots"][spot_index] = []
+            for key in ["com", "3rd_enum", "ix"]:
+                spot_candidates[key][spot_index] = []
+        return model, spot_candidates
+
+    @staticmethod
+    def _get_spots_references(vertices_map, simplex):
+        reference_to_spot, trd_enum = None, None
+        # variable trd_enum is enum index of 3rd corner of face;
+
+        if vertices_map[simplex[-1]]["enum"] == vertices_map[simplex[0]]["enum"]:
+            reference_to_spot = vertices_map[simplex[-1]]["enum"]
+            trd_enum = vertices_map[simplex[1]]["enum"]
+        elif vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"]:
+            reference_to_spot = vertices_map[simplex[0]]["enum"]
+            trd_enum = vertices_map[simplex[-1]]["enum"]
+        elif vertices_map[simplex[1]]["enum"] == vertices_map[simplex[-1]]["enum"]:
+            reference_to_spot = vertices_map[simplex[1]]["enum"]
+            trd_enum = vertices_map[simplex[0]]["enum"]
+        return reference_to_spot, trd_enum
+
+    @staticmethod
+    def _resolve_spot_candidates(model, spot_candidates, component_instance):
+        for spot_ix in spot_candidates["com"].keys():
+            # get center and size of current spot candidate
+            center = component_instance.spots[spot_ix].boundary_center
+            size = component_instance.spots[spot_ix].max_size
+
+            # compute distance of all center of mass of faces of current
+            # spot candidate to the center of this candidate
+            dists = [np.linalg.norm(np.array(com) - np.array(center)) for com in spot_candidates["com"][spot_ix]]
+
+            # test if dist is smaller as current spot size;
+            # if dist is smaller, then current face belongs to spots otherwise face belongs to t_object itself
+            for idx, dist in enumerate(dists):
+                simplex_ix = spot_candidates["ix"][spot_ix][idx]
+                if dist < size:
+                    model["spots"][spot_ix].append(np.array(component_instance.faces[simplex_ix]))
+                else:
+                    # make the same computation for 3rd vertex of face
+                    # it might be confusing, but spot candidate is spot where 2 of 3 vertex of one face belong to
+                    # first spot, and the 3rd index belongs to another (neighbour) spot
+                    # it has to be alos tested, whether face finally do not belongs to spot candidate;
+                    trd_spot_index = spot_candidates["3rd_enum"][spot_ix][idx]
+                    trd_center = component_instance.spots[trd_spot_index].boundary_center
+                    trd_size = component_instance.spots[trd_spot_index].max_size
+                    com = spot_candidates["com"][spot_ix][idx]
+                    dist = np.linalg.norm(np.array(com) - np.array(trd_center))
+
+                    if dist < trd_size:
+                        model["spots"][trd_spot_index].append(np.array(component_instance.faces[simplex_ix]))
+                    else:
+                        model["object"].append(np.array(component_instance.faces[simplex_ix]))
+        gc.collect()
+        return model
+
+    @classmethod
+    def _resolve_obvious_spots(cls, points, faces, model, spot_candidates, vmap, component_instance):
+        for simplex, face, ix in list(zip(faces, points[faces], range(faces.shape[0]))):
+            # test if each point belongs to spot
+            if {'spot'} == set([vmap[simplex[_i]]["type"] for _i in range(3)]):
+                # if each point belongs to the same spot, then it is for sure face of that spot
+                if vmap[simplex[0]]["enum"] == vmap[simplex[1]]["enum"] == vmap[simplex[2]]["enum"]:
+                    model["spots"][vmap[simplex[0]]["enum"]].append(np.array(simplex))
+                else:
+                    # if at least one of points of face belongs to different spot, we have to test
+                    # which one of those spots current face belongs to
+                    reference_to_spot, trd_enum = cls._get_spots_references(vmap, simplex)
+
+                    if reference_to_spot is not None:
+                        spot_candidates["com"][reference_to_spot].append(np.average(face, axis=0))
+                        spot_candidates["3rd_enum"][reference_to_spot].append(trd_enum)
+                        spot_candidates["ix"][reference_to_spot].append(ix)
+            # if at least one of point belongs to the spot and another one to the stellar body, it is neccesary
+            # to compute a distance of center of mass  of such surface element from the center of spot
+            # and compare whether it is within the spot or outside
+            elif {'spot', 'object'}.issubset(set([vmap[simplex[_i]]["type"] for _i in range(3)])):
+                simplex_indices_of_spots = [_i for _i in range(3) if vmap[simplex[_i]]["type"] == 'spot']
+                spots_enum = np.array([vmap[simplex[_i]]["enum"] for _i in range(3)])[simplex_indices_of_spots]
+                add_to_model = True
+                for spot_ix in spots_enum:
+                    center = component_instance.spots[spot_ix].boundary_center
+                    size = component_instance.spots[spot_ix].max_size
+                    dist = np.linalg.norm(np.array(np.average(face, axis=0)) - np.array(center))
+                    if dist < size:
+                        add_to_model = False
+                        model["spots"][spot_ix].append(np.array(simplex))
+                        break
+                if add_to_model:
+                    model["object"].append(np.array(simplex))
+            else:
+                # anything else
+                model["object"].append(np.array(simplex))
+
+            gc.collect()
+            return model, spot_candidates
+
+    @classmethod
+    def _split_spots_and_component_faces(cls, points, faces, model, spot_candidates, vmap, component_instance):
+        model, spot_candidates = \
+            cls._resolve_obvious_spots(points, faces, model, spot_candidates, vmap, component_instance)
+        model = cls._resolve_spot_candidates(model, spot_candidates, component_instance)
+        return model
+
+    def _remove_overlaped_spots(self, vertices_map, component_instance):
+        # remove spots that are totaly overlaped
+        spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
+                                           if vertices_map[ix]["enum"] >= 0]))
+        for spot_index, _ in list(component_instance.spots.items()):
+            if spot_index not in spots_instance_indices:
+                self._logger.warning("Spot with index {} doesn't contain any face and will be removed "
+                                     "from component {} spot list".format(spot_index, component_instance.name))
+                component_instance.remove_spot(spot_index=spot_index)
+        gc.collect()
+
+    def _remap_surface_elements(self, model, component_instance):
+        for spot_index, _ in list(component_instance.spots.items()):
+            self._logger.debug(
+                "Changing value of parameter points of spot {} / "
+                "component {}".format(spot_index, component_instance.name))
+            # get points currently belong to the given spot
+            indices = list(set(np.array(model["spots"][spot_index]).flatten()))
+            component_instance.spots[spot_index].points = np.array(component_instance.points[indices])
+
+            self._logger.debug(
+                "Changing value of parameter faces of spot {} / "
+                "component {}".format(spot_index, component_instance.name))
+            component_instance.spots[spot_index].faces = model["spots"][spot_index]
+            remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
+            component_instance.spots[spot_index].faces = \
+                np.array(utils.remap(component_instance.spots[spot_index].faces, remap_dict))
+        gc.collect()

@@ -20,18 +20,20 @@
 
 '''
 
+import numpy as np
+import logging
+import gc
+import scipy
+
 from engine.system import System
 from engine.star import Star
 from engine.orbit import Orbit
 from astropy import units as u
-import numpy as np
-import logging
 from engine import const as c
 from scipy.optimize import newton
 from engine import utils
 from engine import graphics
 from engine import units
-import scipy
 from scipy.spatial import Delaunay
 from copy import copy
 
@@ -562,6 +564,7 @@ class BinarySystem(System):
 
                     spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1],
                                                     spot_center[2]])
+                gc.collect()
 
     def _star_params_validity_check(self, **kwargs):
 
@@ -1856,9 +1859,6 @@ class BinarySystem(System):
                 self.build_surface_with_no_spots(_component)
             else:
                 self.build_surface_with_spots(_component)
-                # self.incorporate_spots_to_surface(component_instance=component_instance,
-                #                                   surface_fn=self.build_surface_with_spots,
-                #                                   component=_component)
 
     def build_surface(self, components_distance=None, component=None, return_surface=False):
         # """
@@ -1948,15 +1948,23 @@ class BinarySystem(System):
             base_face_symmetry_vector = np.arange(component_instance.base_symmetry_faces_number)
             component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
 
+    def _get_surface_builder_fn(self):
+        return self.over_contact_surface if self.morphology == "over-contact" else self.detached_system_surface
+
     def build_surface_with_spots(self, component=None):
-        # component = self._component_to_list(component)
-        # for _component in component:
-        #     component_instance = getattr(self, _component)
-        #     if self.morphology == 'over-contact':
-        #         component_instance.faces = self.over_contact_surface(component=_component)
-        #     else:
-        #         component_instance.faces = self.detached_system_surface(component=_component)
-        pass
+        component = self._component_to_list(component)
+        for _component in component:
+            component_instance = getattr(self, _component)
+            points, vertices_map = self._prepare_points_and_vertices_map_for_triangulation(component_instance)
+
+            surface_fn = self._get_surface_builder_fn()
+            faces = surface_fn(component=_component, points=points)
+            model, spot_candidates = self._initialize_model_container(vertices_map)
+            model = self._split_spots_and_component_faces(
+                points, faces, model, spot_candidates, vertices_map, component_instance
+            )
+            self._remove_overlaped_spots(vertices_map, component_instance)
+            self._remap_surface_elements(model, component_instance)
 
     @staticmethod
     def _component_to_list(component):
