@@ -176,7 +176,7 @@ class System(metaclass=ABCMeta):
         if component_instance is None:
             raise ValueError('Object instance was not given.')
 
-        vertices_map = [{"type": "object", "enum": -1} for _ in component_instance.points]
+        vertices_map = [{"enum": -1} for _ in component_instance.points]
         all_points = copy(component_instance.points)
 
         # average spacing of component surface points
@@ -201,7 +201,7 @@ class System(metaclass=ABCMeta):
                     # have to be removed
                     break
 
-                if vertices_map[ix]["type"] == "spot" and dist > max_dist_to_spot_point:
+                if vertices_map[ix]["enum"] >= 0 and dist > max_dist_to_spot_point:
                     continue
                 vertices_to_remove.append(ix)
 
@@ -222,11 +222,11 @@ class System(metaclass=ABCMeta):
                     # append only points of currrent object that do not intervent to spot
                     # [current, since there should be already spot from previous iteration step]
                     _points.append(vertex)
-                    _vertices_map.append({"type": vertices_map[ix]["type"], "enum": vertices_map[ix]["enum"]})
+                    _vertices_map.append({"enum": vertices_map[ix]["enum"]})
 
                 for vertex in spot.points:
                     _points.append(vertex)
-                    _vertices_map.append({"type": "spot", "enum": spot_index})
+                    _vertices_map.append({"enum": spot_index})
 
                 all_points = copy(_points)
                 vertices_map = copy(_vertices_map)
@@ -238,12 +238,13 @@ class System(metaclass=ABCMeta):
     def split_points_of_spots_and_component(cls, points, vertices_map, component_instance):
         points = np.array(points)
         component_points = {
-            "object": points[np.where(np.array(vertices_map) == {'type': "object", 'enum': -1})[0]]
+            "object": points[np.where(np.array(vertices_map) == {'enum': -1})[0]]
         }
+        # fixme: remove spots with no points left
         spots_points = {
-            "{}".format(i): points[np.where(np.array(vertices_map) == {'type': "spot", 'enum': i})[0]]
+            "{}".format(i): points[np.where(np.array(vertices_map) == {'enum': i})[0]]
             for i in range(len(component_instance.spots))
-            if len(np.where(np.array(vertices_map) == {'type': "spot", 'enum': i})[0]) > 0
+            if len(np.where(np.array(vertices_map) == {'enum': i})[0]) > 0
         }
         return {**component_points, **spots_points}
 
