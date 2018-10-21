@@ -57,6 +57,10 @@ class SingleSystem(System):
                 self._logger.info('Parameter `{0}` is meaningless in case of single star system.\n '
                                   'Setting parameter `{0}` value to None'.format(parameter))
 
+        # making sure that you set all necessary kwargs for Star in BinarySystem
+        star_kwargs = ['polar_log_g']
+        utils.check_missing_kwargs(star_kwargs, self.star.ALL_KWARGS, instance_of=Star)
+
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)
         self.star._polar_log_g = self.polar_log_g

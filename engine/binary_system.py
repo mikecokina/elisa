@@ -92,6 +92,11 @@ class BinarySystem(System):
                                "of class instance {} to {}".format(kwarg, BinarySystem.__name__, kwargs[kwarg]))
             setattr(self, kwarg, kwargs[kwarg])
 
+        # making sure that you set all necessary kwargs for Star in BinarySystem
+        star_kwargs = ['surface_potential', 'synchronicity', 'albedo']
+        for _component in ['primary', 'secondary']:
+            utils.check_missing_kwargs(star_kwargs, params[_component].ALL_KWARGS, instance_of=Star)
+
         # calculation of dependent parameters
         self._semi_major_axis = self.calculate_semi_major_axis()
 
