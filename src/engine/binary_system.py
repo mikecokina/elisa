@@ -617,10 +617,8 @@ class BinarySystem(System):
         """
         __PRECISSION__ = 1e-8
         __SETUP_VALUE__ = None
-        if self.primary.synchronicity == 1 and self.secondary.synchronicity == 1 and self.eccentricity == 0.0:
+        if (self.primary.synchronicity == 1 and self.secondary.synchronicity == 1) and self.eccentricity == 0.0:
             lp = self.libration_potentials()
-            # todo: expose filling factors as funtion,
-            # todo: check filling factor calculation for heavier secondary !!! order is forced in lagrangian_points() fn !!!
 
             self.primary.filling_factor = self.compute_filling_factor(self.primary.surface_potential, lp)
             self.secondary.filling_factor = self.compute_filling_factor(self.secondary.surface_potential, lp)
@@ -645,11 +643,11 @@ class BinarySystem(System):
 
         else:
             self.primary.filling_factor, self.secondary.filling_factor = None, None
-            if abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__ and \
-               abs(self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__:
+            if (abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
+                    (abs(self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
                 __SETUP_VALUE__ = "double-contact"
 
-            elif self.primary.surface_potential > self.primary.critical_surface_potential and (
+            elif (self.primary.surface_potential > self.primary.critical_surface_potential) and (
                         self.secondary.surface_potential > self.secondary.critical_surface_potential):
                 __SETUP_VALUE__ = "detached"
 
