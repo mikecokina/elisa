@@ -118,7 +118,6 @@ print('Critical potential for primary component: {}'.format(crit_primary_potenti
 crit_secondary_potential = bs.critical_potential('secondary', 1)
 print('Critical potential for secondary component: {}'.format(crit_secondary_potential))
 
-print('Filling factor of secondary: {}'.format(bs.secondary_filling_factor))
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
