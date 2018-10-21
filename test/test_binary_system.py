@@ -63,21 +63,30 @@ class TestBinarySystem(unittest.TestCase):
                                     "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
                                     "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
                                     "eccentricity": 0.0, "inclination": c.HALF_PI, "primary_minimum_time": 0.0,
-                                    "phase_shift": 0.0},  # compact spherical components on circular orbit
+                                    "phase_shift": 0.0,
+                                    "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                                    "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0},
+                                   # compact spherical components on circular orbit
 
                                    {"primary_mass": 2.0, "secondary_mass": 1.0,
                                     "primary_surface_potential": 100.0, "secondary_surface_potential": 80.0,
                                     "primary_synchronicity": 400, "secondary_synchronicity": 550,
                                     "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
                                     "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-                                    "phase_shift": 0.0},  # rotationally squashed compact spherical components
+                                    "phase_shift": 0.0,
+                                    "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                                    "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0
+                                    },  # rotationally squashed compact spherical components
 
                                    {"primary_mass": 2.0, "secondary_mass": 1.0,
                                     "primary_surface_potential": 3.5, "secondary_surface_potential": 3.0,
                                     "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
                                     "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
                                     "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-                                    "phase_shift": 0.0},  # close tidally deformed components with asynchronous rotation
+                                    "phase_shift": 0.0,
+                                    "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                                    "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0
+                                    },  # close tidally deformed components with asynchronous rotation
                                                           # on circular orbit
 
                                    {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -85,7 +94,10 @@ class TestBinarySystem(unittest.TestCase):
                                     "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
                                     "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
                                     "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-                                    "phase_shift": 0.0},  # close tidally deformed components with asynchronous rotation
+                                    "phase_shift": 0.0,
+                                    "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                                    "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0
+                                    },  # close tidally deformed components with asynchronous rotation
                                                           # on eccentric orbit
 
                                    {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -94,7 +106,10 @@ class TestBinarySystem(unittest.TestCase):
                                     "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
                                     "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
                                     "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-                                    "phase_shift": 0.0},  # synchronous contact system
+                                    "phase_shift": 0.0,
+                                    "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                                    "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0
+                                    },  # synchronous contact system
 
                                    {"primary_mass": 2.0, "secondary_mass": 1.0,
                                     "primary_surface_potential": 3.159639848886489,
@@ -102,7 +117,10 @@ class TestBinarySystem(unittest.TestCase):
                                     "primary_synchronicity": 1.5, "secondary_synchronicity": 2.0,
                                     "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
                                     "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-                                    "phase_shift": 0.0},  # asynchronous contact system (improbable but whatever...)
+                                    "phase_shift": 0.0,
+                                    "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                                    "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0
+                                    },  # asynchronous contact system (improbable but whatever...)
 
                                    {"primary_mass": 2.0, "secondary_mass": 1.0,
                                     "primary_surface_potential": 2.7,
@@ -110,7 +128,10 @@ class TestBinarySystem(unittest.TestCase):
                                     "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
                                     "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
                                     "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-                                    "phase_shift": 0.0}  # contact system
+                                    "phase_shift": 0.0,
+                                    "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                                    "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0
+                                    }  # contact system
                                    ]
 
     def test_critical_potential(self):
@@ -126,10 +147,12 @@ class TestBinarySystem(unittest.TestCase):
 
         for i, combo in enumerate(self.params_combination):
             primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
-                           synchronicity=combo["primary_synchronicity"])
+                           synchronicity=combo["primary_synchronicity"],
+                           t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"])
 
             secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
-                             synchronicity=combo["secondary_synchronicity"])
+                             synchronicity=combo["secondary_synchronicity"],
+                             t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"])
 
             bs = BinarySystem(primary=primary,
                               secondary=secondary,
@@ -161,10 +184,12 @@ class TestBinarySystem(unittest.TestCase):
 
         for i, combo in enumerate(self.params_combination):
             primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
-                           synchronicity=combo["primary_synchronicity"])
+                           synchronicity=combo["primary_synchronicity"],
+                           t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"])
 
             secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
-                             synchronicity=combo["secondary_synchronicity"])
+                             synchronicity=combo["secondary_synchronicity"],
+                             t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"])
 
             bs = BinarySystem(primary=primary,
                               secondary=secondary,
@@ -186,10 +211,12 @@ class TestBinarySystem(unittest.TestCase):
 
         for i, combo in enumerate(self.params_combination):
             primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
-                           synchronicity=combo["primary_synchronicity"], discretization_factor=alpha)
+                           synchronicity=combo["primary_synchronicity"], discretization_factor=alpha,
+                           t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"])
 
             secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
-                             synchronicity=combo["secondary_synchronicity"], discretization_factor=alpha)
+                             synchronicity=combo["secondary_synchronicity"], discretization_factor=alpha,
+                             t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"])
 
             bs = BinarySystem(primary=primary,
                               secondary=secondary,
