@@ -5,8 +5,6 @@ from astropy import units as u
 import engine.units as U
 from engine import utils
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
-
 
 class Orbit(object):
 

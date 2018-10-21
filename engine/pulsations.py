@@ -5,8 +5,6 @@ from astropy import units as u
 from engine import units as U
 from engine import const as c
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
-
 
 class PulsationMode(object):
     """

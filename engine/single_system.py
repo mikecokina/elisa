@@ -11,8 +11,6 @@ from engine import units as U
 from engine import utils
 from copy import copy
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] : %(name)s : %(message)s')
-
 
 class SingleSystem(System):
     KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'polar_log_g']
@@ -436,7 +434,8 @@ class SingleSystem(System):
             points.append([solution * np.sin(angle), solution * np.cos(angle)])
         return np.array(points)
 
-    def angular_velocity(self, rotation_period):
+    @staticmethod
+    def angular_velocity(rotation_period):
         """
         rotational angular velocity of the star
         :return:
