@@ -12,16 +12,13 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 
 class Body(metaclass=ABCMeta):
     """
-    Abstract class defining bodies that can be modelled by this software
+    Abstract class that defines bodies that can be modelled by this software
     see https://docs.python.org/3.5/library/abc.html for more informations
     units are imported from astropy.units module
     see documentation http://docs.astropy.org/en/stable/units/
     """
 
     ID = 1
-    KWARGS = []
-    OPTIONAL_KWARGS = []
-    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
         """
@@ -59,11 +56,6 @@ class Body(metaclass=ABCMeta):
         # those are used only if case of spots are used
         self.base_symmetry_points = None
         self.base_symmetry_faces = None
-
-        # values of properties
-        for kwarg in self.KWARGS:
-            if kwarg in kwargs:
-                setattr(self, kwarg, kwargs[kwarg])
 
     # Getters and setters
     @property

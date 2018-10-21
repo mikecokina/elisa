@@ -21,11 +21,10 @@ class Planet(Body):
         utils.invalid_kwarg_checker(kwargs, Planet.ALL_KWARGS, Planet)
         super(Planet, self).__init__(name=name, **kwargs)
 
-        # default values of properties
+        utils.check_missing_kwargs(Planet.KWARGS, kwargs, instance_of=Planet)
 
-        # values of properties
-        for kwarg in Planet.KWARGS:
-            if kwarg in kwargs:
-                self._logger.debug("Setting property {} "
-                                   "of class instance {} to {}".format(kwarg, Planet.__name__, kwargs[kwarg]))
-                setattr(self, kwarg, kwargs[kwarg])
+        # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
+        for kwarg in kwargs:
+            self._logger.debug("Setting property {} "
+                               "of class instance {} to {}".format(kwarg, Planet.__name__, kwargs[kwarg]))
+            setattr(self, kwarg, kwargs[kwarg])

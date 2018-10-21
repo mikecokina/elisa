@@ -44,7 +44,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s : [%(levelname)s] :
 class BinarySystem(System):
     KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'primary_minimum_time',
               'phase_shift']
-    OPTIONAL_KWARGS = ['reflection_effect_iterations']
+    OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, **kwargs):
@@ -75,32 +75,27 @@ class BinarySystem(System):
         self._phase_shift = None
         self._semi_major_axis = None
         self._periastron_phase = None
-        self._reflection_effect_iterations = 0
-        
+
         params = {
             "primary": self.primary,
             "secondary": self.secondary
         }
+
         params.update(**kwargs)
         self._star_params_validity_check(**params)
         # set attributes and test whether all parameters were initialized
-        missing_kwargs = []
-        for kwarg in BinarySystem.KWARGS:
-            if kwarg not in kwargs:
-                missing_kwargs.append("`{}`".format(kwarg))
-                self._logger.error("Property {} "
-                                   "of class instance {} was not initialized".format(kwarg, BinarySystem.__name__))
-            else:
-                setattr(self, kwarg, kwargs[kwarg])
 
-        # will show all missing kwargs from KWARGS
-        if missing_kwargs:
-            raise ValueError('Missing argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
-                                                                                   BinarySystem.__name__))
+        utils.check_missing_kwargs(BinarySystem.KWARGS, kwargs, instance_of=BinarySystem)
+        # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
+        for kwarg in kwargs:
+            self._logger.debug("Setting property {} "
+                               "of class instance {} to {}".format(kwarg, BinarySystem.__name__, kwargs[kwarg]))
+            setattr(self, kwarg, kwargs[kwarg])
 
-        for kwarg in BinarySystem.OPTIONAL_KWARGS:
-            if kwarg in kwargs:
-                setattr(self, kwarg, kwargs[kwarg])
+        # making sure that you set all necessary kwargs for Star in BinarySystem
+        star_kwargs = ['surface_potential', 'synchronicity', 'albedo']
+        for _component in ['primary', 'secondary']:
+            utils.check_missing_kwargs(star_kwargs, params[_component].ALL_KWARGS, instance_of=Star)
 
         # calculation of dependent parameters
         self._semi_major_axis = self.calculate_semi_major_axis()
@@ -336,28 +331,6 @@ class BinarySystem(System):
                            "of class instance {} to {}".format(BinarySystem.__name__, self._phase_shift))
 
     @property
-    def reflection_effect_iterations(self):
-        """
-        returns number of iterations (reflections) that will be taken into an account during reflection effect
-        calculation
-
-        :return: int
-        """
-        return self._reflection_effect_iterations
-
-    @reflection_effect_iterations.setter
-    def reflection_effect_iterations(self, iterations):
-        """
-        setter for number of iterations (reflections) that will be taken into an account during reflection effect
-        calculation
-        :param iterations: int
-        """
-        self._reflection_effect_iterations = int(iterations)
-        self._logger.debug("Setting property `reflection_effect_iterations` "
-                           "of class instance {} to {}".format(BinarySystem.__name__,
-                                                               self._reflection_effect_iterations))
-    
-    @property
     def semi_major_axis(self):
         """
         returns semi major axis of the system in default distance unit
@@ -567,6 +540,12 @@ class BinarySystem(System):
                                                     spot_center[2]])
 
     def _star_params_validity_check(self, **kwargs):
+        """
+        checking if star instances have all additional atributes set properly
+
+        :param kwargs: list
+        :return:
+        """
 
         if not isinstance(kwargs.get("primary"), Star):
             raise TypeError("Primary component is not instance of class {}".format(Star.__name__))
@@ -2126,7 +2105,8 @@ class BinarySystem(System):
             components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
 
             # this part decides if both components need to be calculated at once (due to reflection effect)
-            if kwargs['colormap'] == 'temperature' and self.reflection_effect_iterations != 0:
+            # if kwargs['colormap'] == 'temperature' and self.reflection_effect_iterations != 0:
+            if kwargs['colormap'] == 'temperature':
                 points, faces = self.build_surface(components_distance=components_distance,
                                                    return_surface=True)
                 kwargs['points_primary'] = points['primary']
@@ -2282,7 +2262,7 @@ class BinarySystem(System):
                     component_instance.calculate_all_surface_centres()
                     component_instance.calculate_all_normals()
 
-                self.reflection_effect(iterations=self.reflection_effect_iterations,
+                self.reflection_effect(iterations=0,
                                        components_distance=components_distance)
             else:
                 self._logger.debug('Reflection effect can be calculated only when surface map of both components is '

@@ -243,3 +243,21 @@ def find_face_centres(faces=None):
     if faces is None:
         raise ValueError('Faces were not supplied')
     return np.mean(faces, axis=1)
+
+
+def check_missing_kwargs(kwargs=None, instance_kwargs=None, instance_of=None):
+    """
+    checks if all `kwargs` are all in `instance kwargs`
+    :param kwargs: list
+    :param instance_kwargs: list
+    :param instance_of: object
+    :return:
+    """
+    missing_kwargs = []
+    for kwarg in kwargs:
+        if kwarg not in instance_kwargs:
+            missing_kwargs.append("`{}`".format(kwarg))
+
+    if len(missing_kwargs) > 0:
+        raise ValueError('Missing argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
+                                                                               instance_of.__name__))

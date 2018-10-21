@@ -40,9 +40,7 @@ class Spot(object):
 
         self._logger = logging.getLogger(Spot.__name__)
 
-        self.check_mandatory_kwargs(kwargs)
-
-        missing_kwargs = []
+        utils.check_missing_kwargs(Spot.KWARGS, kwargs, instance_of=Spot)
         for key in kwargs:
             set_val = kwargs.get(key)
             self._logger.debug("Setting property {} "
@@ -152,15 +150,6 @@ class Spot(object):
             self._temperature_factor = np.float64(temperature_factor)
         else:
             raise TypeError('Input of variable `temperature_factor` is not (np.)int or (np.)float.')
-
-    @staticmethod
-    def check_mandatory_kwargs(kwargs):
-        # keys = list(kwargs.keys()) if 'angular_density' not in kwargs \
-        #     else list(set(list(kwargs.keys())) - {'angular_density'})
-        diff = list(set(Spot.KWARGS) - set(Spot.OPTIONAL_KWARGS) - set(kwargs.keys()))
-
-        if diff:
-            raise ValueError('Missing mandatory argument(s) {} for spot w/ params {}'.format(', '.join(diff), kwargs))
 
     def calculate_areas(self):
         """
