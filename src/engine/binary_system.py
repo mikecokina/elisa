@@ -272,6 +272,9 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+
+        if not 0 <= self._argument_of_periastron <= c.FULL_ARC:
+            self._argument_of_periastron %= c.FULL_ARC
         self._logger.debug("Setting property argument of periastron "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._argument_of_periastron))
 
@@ -892,12 +895,11 @@ class BinarySystem(System):
             raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
 
         if not np.isnan(solution):
+            args = components_distance, 0.0, c.HALF_PI
             if component == "primary":
-                args = components_distance, 0.0, c.HALF_PI
                 args = self.pre_calculate_for_potential_value_primary(*args)
                 return abs(self.potential_value_primary(solution, *args))
             elif component == 'secondary':
-                args = (components_distance, 0.0, c.HALF_PI)
                 args = self.pre_calculate_for_potential_value_secondary(*args)
                 return abs(self.potential_value_secondary(components_distance - solution, *args))
         else:
@@ -1998,7 +2000,7 @@ class BinarySystem(System):
             stop_phase = kwargs.get('stop_phase', 1.0)
             number_of_points = kwargs.get('number_of_points', 300)
 
-            kwargs['axis_unit'] = kwargs.get('axis_units', u.solRad)
+            kwargs['axis_unit'] = kwargs.get('axis_unit', u.solRad)
             kwargs['frame_of_reference'] = kwargs.get('frame_of_reference', 'primary_component')
 
             if kwargs['axis_unit'] == 'dimensionless':

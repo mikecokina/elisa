@@ -43,9 +43,9 @@ def orbit(**kwargs):
         ax.scatter([0], [0], c='black', s=4)
     elif kwargs['frame_of_reference'] == 'primary_component':
         x, y = kwargs['x_data'], kwargs['y_data']
-        ax.plot(x, y, label='primary')
+        ax.plot(x, y, label='secondary')
         # ax.scatter(x[0], y[0], c='r')
-        ax.scatter([0], [0], c='b', label='secondary')
+        ax.scatter([0], [0], c='b', label='primary')
 
     ax.legend(loc=1)
     ax.set_aspect('equal')

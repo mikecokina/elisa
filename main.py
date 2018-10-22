@@ -10,6 +10,8 @@ from engine import const as c
 from time import time
 from engine.physics import Physics
 
+from conf import config
+
 from scipy.spatial import distance_matrix
 
 spots_metadata = {
@@ -59,42 +61,71 @@ physics = Physics(reflection_effect=True,
 
 contact_pot = 2.96657
 start_time = time()
-primary = Star(mass=1.5*u.solMass,
-               surface_potential=3.184090470476049,
-               # surface_potential=contact_pot,
-               # spots=spots_metadata['primary'],
-               # pulsations=pulsations_metadata['primary'],
-               synchronicity=1.0,
-               t_eff=6500*u.K,
-               gravity_darkening=1.0,
-               discretization_factor=2,
-               )
-secondary = Star(mass=1.0*u.solMass,
-                 surface_potential=30,
-                 # surface_potential=contact_pot,
-                 synchronicity=1.0,
-                 t_eff=10000*u.K,
-                 gravity_darkening=1.0,
-                 discretization_factor=2,
-                 # spots=spots_metadata['primary'],
-                 # pulsations=pulsations_metadata['primary'],
-                )
+
+
+combo =  {"primary_mass": 2.0, "secondary_mass": 1.0,
+                                    "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
+                                    "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+                                    "argument_of_periastron": 90, "gamma": 0.0, "period": 1.0,
+                                    "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                                    "phase_shift": 0.0,
+                                    "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                                    "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0
+                                    }
+
+primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
+                           synchronicity=combo["primary_synchronicity"],
+                           t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"])
+
+secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
+                 synchronicity=combo["secondary_synchronicity"],
+                 t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"])
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=90*u.deg,
-                  gamma=0*u.km/u.s,
-                  period=1*u.d,
-                  eccentricity=0.0,
-                  inclination=90*u.deg,
-                  primary_minimum_time=0.0*u.d,
-                  phase_shift=0.0,
-                  )
+                  argument_of_periastron=combo["argument_of_periastron"],
+                  gamma=combo["gamma"],
+                  period=combo["period"],
+                  eccentricity=combo["eccentricity"],
+                  inclination=combo["inclination"],
+                  primary_minimum_time=combo["primary_minimum_time"],
+                  phase_shift=combo["phase_shift"])
+# primary = Star(mass=1.5*u.solMass,
+#                surface_potential=3.184090470476049,
+#                # surface_potential=contact_pot,
+#                # spots=spots_metadata['primary'],
+#                # pulsations=pulsations_metadata['primary'],
+#                synchronicity=1.0,
+#                t_eff=6500*u.K,
+#                gravity_darkening=1.0,
+#                discretization_factor=2,
+#                )
+# secondary = Star(mass=1.0*u.solMass,
+#                  surface_potential=30,
+#                  # surface_potential=contact_pot,
+#                  synchronicity=1.0,
+#                  t_eff=10000*u.K,
+#                  gravity_darkening=1.0,
+#                  discretization_factor=2,
+#                  # spots=spots_metadata['primary'],
+#                  # pulsations=pulsations_metadata['primary'],
+#                 )
+#
+# bs = BinarySystem(primary=primary,
+#                   secondary=secondary,
+#                   argument_of_periastron=90*u.deg,
+#                   gamma=0*u.km/u.s,
+#                   period=1*u.d,
+#                   eccentricity=0.0,
+#                   inclination=90*u.deg,
+#                   primary_minimum_time=0.0*u.d,
+#                   phase_shift=0.0,
+#                   )
 
-bs.build_surface(components_distance=1)
+# bs.build_surface(components_distance=1)
 # bs.build_surface(components_distance=1, component='primary')
 # bs.build_surface(components_distance=1, component='secondary')
-bs.build_surface_map(colormap='temperature', components_distance=1)
+# bs.build_surface_map(colormap='temperature', components_distance=1)
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=1)
 # bs.build_surface_map(colormap='temperature', component='secondary', components_distance=1)
 # bs.build_temperature_distribution(components_distance=1.0)
@@ -118,6 +149,7 @@ print('Critical potential for primary component: {}'.format(crit_primary_potenti
 crit_secondary_potential = bs.critical_potential('secondary', 1)
 print('Critical potential for secondary component: {}'.format(crit_secondary_potential))
 
+bs.plot('orbit', frame_of_reference='primary_component', axis_unit='dimensionless')
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
@@ -132,15 +164,15 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         # plot_axis=False
 #         )
 
-bs.plot(descriptor='surface',
-        phase=0,
-        # components_to_plot='primary',
-        # components_to_plot='secondary',
-        # edges=True,
-        # normals=True,
-        # colormap='gravity_acceleration',
-        colormap='temperature',
-        plot_axis=False,
-        # face_mask_primary=a,
-        # face_mask_secondary=b,
-        )
+# bs.plot(descriptor='surface',
+#         phase=0,
+#         # components_to_plot='primary',
+#         # components_to_plot='secondary',
+#         # edges=True,
+#         # normals=True,
+#         # colormap='gravity_acceleration',
+#         colormap='temperature',
+#         plot_axis=False,
+#         # face_mask_primary=a,
+#         # face_mask_secondary=b,
+#         )
