@@ -64,7 +64,7 @@ start_time = time()
 
 
 combo =  {"primary_mass": 2.0, "secondary_mass": 1.0,
-                                    "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
+                                    "primary_surface_potential": 4.8, "secondary_surface_potential": 3.9567,
                                     "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
                                     "argument_of_periastron": 90, "gamma": 0.0, "period": 1.0,
                                     "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
@@ -149,7 +149,7 @@ print('Critical potential for primary component: {}'.format(crit_primary_potenti
 crit_secondary_potential = bs.critical_potential('secondary', 1)
 print('Critical potential for secondary component: {}'.format(crit_secondary_potential))
 
-bs.plot('orbit', frame_of_reference='primary_component', axis_unit='dimensionless')
+# bs.plot('orbit', frame_of_reference='primary_component', axis_unit='dimensionless')
 # bs.plot('orbit', frame_of_reference='barycentric')
 # bs.plot('equipotential', plane="zx", phase=bs.orbit.periastron_phase)
 
@@ -164,15 +164,15 @@ bs.plot('orbit', frame_of_reference='primary_component', axis_unit='dimensionles
 #         # plot_axis=False
 #         )
 
-# bs.plot(descriptor='surface',
-#         phase=0,
-#         # components_to_plot='primary',
-#         # components_to_plot='secondary',
-#         # edges=True,
-#         # normals=True,
-#         # colormap='gravity_acceleration',
-#         colormap='temperature',
-#         plot_axis=False,
-#         # face_mask_primary=a,
-#         # face_mask_secondary=b,
-#         )
+bs.plot(descriptor='surface',
+        phase=0,
+        # components_to_plot='primary',
+        # components_to_plot='secondary',
+        # edges=True,
+        # normals=True,
+        # colormap='gravity_acceleration',
+        colormap='temperature',
+        plot_axis=False,
+        # face_mask_primary=a,
+        # face_mask_secondary=b,
+        )

@@ -1653,8 +1653,11 @@ class BinarySystem(System):
             raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
                              "to triangulate".format(component, component_instance.name))
         # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
-        filling_factor = self.primary.filling_factor if component == 'primary' else self.secondary.filling_factor
-        if filling_factor < -0.02:
+        critical_pot = self.primary.critical_surface_potential if component == 'primary' \
+            else self.secondary.critical_surface_potential
+        potential = self.primary.surface_potential if component == 'primary' \
+            else self.secondary.surface_potential
+        if critical_pot - potential < 0.01:
             triangulation = Delaunay(points)
             triangles_indices = triangulation.convex_hull
         else:
