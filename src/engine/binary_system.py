@@ -383,6 +383,7 @@ class BinarySystem(System):
         :param components_distance: float
         :return:
         """
+
         def solver_condition(x, *_args):
             point = utils.spherical_to_cartesian([x, _args[1], _args[2]])
             point[0] = point[0] if component == "primary" else components_distance - point[0]
@@ -535,10 +536,10 @@ class BinarySystem(System):
                                                        for point in boundary_points])
 
                     spot_instance.boundary_center = np.array([components_distance - boundary_center[0],
-                                                             -boundary_center[1], boundary_center[2]])
+                                                              -boundary_center[1], boundary_center[2]])
 
                     spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1],
-                                                    spot_center[2]])
+                                                     spot_center[2]])
                 gc.collect()
 
     def _star_params_validity_check(self, **kwargs):
@@ -635,7 +636,7 @@ class BinarySystem(System):
                                  "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
             if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or (
-                            self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__):
+                    self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__):
                 __SETUP_VALUE__ = "semi-detached"
             elif self.primary.filling_factor < 0 and self.secondary.filling_factor < 0:
                 __SETUP_VALUE__ = "detached"
@@ -646,12 +647,22 @@ class BinarySystem(System):
 
         else:
             self.primary.filling_factor, self.secondary.filling_factor = None, None
+            print(self.primary.surface_potential - self.primary.critical_surface_potential)
+            print(self.secondary.surface_potential - self.secondary.critical_surface_potential)
             if (abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
-                    (abs(self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
+                    (abs(
+                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
                 __SETUP_VALUE__ = "double-contact"
 
+            elif ((abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
+                  (self.secondary.surface_potential > self.secondary.critical_surface_potential)) or \
+                    ((abs(
+                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__)
+                     and (self.primary.surface_potential > self.primary.critical_surface_potential)):
+                __SETUP_VALUE__ = "semi-detached"
+
             elif (self.primary.surface_potential > self.primary.critical_surface_potential) and (
-                        self.secondary.surface_potential > self.secondary.critical_surface_potential):
+                    self.secondary.surface_potential > self.secondary.critical_surface_potential):
                 __SETUP_VALUE__ = "detached"
 
             else:
@@ -685,7 +696,7 @@ class BinarySystem(System):
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-            3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+                3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
     def secondary_potential_derivative_x(self, x, *args):
         """
@@ -698,7 +709,7 @@ class BinarySystem(System):
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-            3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
+                3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
 
     def pre_calculate_for_potential_value_primary(self, *args):
         """
@@ -923,13 +934,14 @@ class BinarySystem(System):
         if component == 'primary':
             F2 = np.power(self.primary.synchronicity, 2)
             domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 + F2 * (
-                self.mass_ratio + 1) * points[:, 0] - self.mass_ratio / np.power(components_distance, 2)
+                    components_distance - points[:, 0]) / r_hat3 + F2 * (
+                                self.mass_ratio + 1) * points[:, 0] - self.mass_ratio / np.power(components_distance, 2)
         elif component == 'secondary':
             F2 = np.power(self.secondary.synchronicity, 2)
             domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 - F2 * (
-                self.mass_ratio + 1) * (components_distance - points[:, 0]) * points[:, 0] + 1 / np.power(
+                    components_distance - points[:, 0]) / r_hat3 - F2 * (
+                                self.mass_ratio + 1) * (components_distance - points[:, 0]) * points[:,
+                                                                                              0] + 1 / np.power(
                 components_distance, 2)
         else:
             raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
@@ -1075,7 +1087,7 @@ class BinarySystem(System):
         fn_map = {'primary': (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
                   'secondary': (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)}
 
-        angles = np.linspace(-3*c.HALF_PI, c.HALF_PI, 300, endpoint=True)
+        angles = np.linspace(-3 * c.HALF_PI, c.HALF_PI, 300, endpoint=True)
         for component in components:
             for angle in angles:
                 if utils.is_plane(plane, 'xy'):
@@ -1138,7 +1150,7 @@ class BinarySystem(System):
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
             return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+                    3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
         periastron_distance = self.orbit.periastron_distance
         xs = np.linspace(- periastron_distance * 3.0, periastron_distance * 3.0, 100)
@@ -1187,6 +1199,7 @@ class BinarySystem(System):
 
         :return: list; [Omega(L3), Omega(L1), Omega(L2)]
         """
+
         def potential(radius):
             theta, d = c.HALF_PI, self.orbit.periastron_distance
             if isinstance(radius, (float, int, np.float, np.int)):
@@ -1200,10 +1213,10 @@ class BinarySystem(System):
 
                 block_a = 1.0 / r
                 block_b = self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(r, 2) - (
-                    2.0 * r * np.cos(phi) * np.sin(theta) * d)))
+                        2.0 * r * np.cos(phi) * np.sin(theta) * d)))
                 block_c = (self.mass_ratio * r * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
                 block_d = 0.5 * (1 + self.mass_ratio) * np.power(r, 2) * (
-                    1 - np.power(np.cos(theta), 2))
+                        1 - np.power(np.cos(theta), 2))
 
                 p_values.append(block_a + block_b - block_c + block_d)
             return p_values
@@ -1286,7 +1299,7 @@ class BinarySystem(System):
         x_meridian, y_meridian, z_meridian = meridian[:, 0], meridian[:, 1], meridian[:, 2]
 
         # calculating the rest (quarter) of the surface
-        thetas = np.linspace(alpha, c.HALF_PI, num=num-1, endpoint=False)
+        thetas = np.linspace(alpha, c.HALF_PI, num=num - 1, endpoint=False)
         r_q, phi_q, theta_q = [], [], []
         for theta in thetas:
             alpha_corrected = alpha / np.sin(theta)
@@ -1318,9 +1331,9 @@ class BinarySystem(System):
         x = np.array([x_a, x_b])
         y = np.array([y_a, y_b])
         z = np.array([z_a, z_b])
-        x = np.concatenate((x, x_eq, x_q, x_meridian,  x_q,  x_eq,  x_q,  x_meridian,  x_q))
-        y = np.concatenate((y, y_eq, y_q, y_meridian, -y_q, -y_eq, -y_q, -y_meridian,  y_q))
-        z = np.concatenate((z, z_eq, z_q, z_meridian,  z_q,  z_eq, -z_q, -z_meridian, -z_q))
+        x = np.concatenate((x, x_eq, x_q, x_meridian, x_q, x_eq, x_q, x_meridian, x_q))
+        y = np.concatenate((y, y_eq, y_q, y_meridian, -y_q, -y_eq, -y_q, -y_meridian, y_q))
+        z = np.concatenate((z, z_eq, z_q, z_meridian, z_q, z_eq, -z_q, -z_meridian, -z_q))
 
         x = -x + components_distance if component == 'secondary' else x
         points = np.column_stack((x, y, z))
@@ -1342,21 +1355,21 @@ class BinarySystem(System):
                 np.array([np.arange(base_symmetry_points_number),  # 1st quadrant
                           np.concatenate(([0, 1],
                                           np.arange(base_symmetry_points_number + quarter_length,
-                                                    base_symmetry_points_number + quarter_length+equator_length),
+                                                    base_symmetry_points_number + quarter_length + equator_length),
                                           np.arange(base_symmetry_points_number,
                                                     base_symmetry_points_number + quarter_length),
                                           np.arange(base_symmetry_points_number - meridian_length,
                                                     base_symmetry_points_number))),  # 2nd quadrant
                           np.concatenate(([0, 1],
                                           np.arange(base_symmetry_points_number + quarter_length,
-                                                    base_symmetry_points_number + quarter_length+equator_length),
-                                          np.arange(base_symmetry_points_number + quarter_length+equator_length,
-                                                    base_symmetry_points_number + 2*quarter_length+equator_length +
+                                                    base_symmetry_points_number + quarter_length + equator_length),
+                                          np.arange(base_symmetry_points_number + quarter_length + equator_length,
+                                                    base_symmetry_points_number + 2 * quarter_length + equator_length +
                                                     meridian_length))),  # 3rd quadrant
-                          np.concatenate((np.arange(2+equator_length),
-                                          np.arange(points_length-quarter_length, points_length),
-                                          np.arange(base_symmetry_points_number + 2*quarter_length + equator_length,
-                                                    base_symmetry_points_number + 2*quarter_length + equator_length +
+                          np.concatenate((np.arange(2 + equator_length),
+                                          np.arange(points_length - quarter_length, points_length),
+                                          np.arange(base_symmetry_points_number + 2 * quarter_length + equator_length,
+                                                    base_symmetry_points_number + 2 * quarter_length + equator_length +
                                                     meridian_length)))  # 4th quadrant
                           ])
 
@@ -1482,23 +1495,24 @@ class BinarySystem(System):
         neck_position, neck_polynome = self.calculate_neck_position(return_polynomial=True)
         # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
         # z axis
-        delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1-self.eccentricity)
+        delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1)
         if component == 'primary':
-            num = 15*int(neck_position // (component_instance.polar_radius * component_instance.discretization_factor))
+            num = 15 * int(
+                neck_position // (component_instance.polar_radius * component_instance.discretization_factor))
             # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
             x_curve = np.linspace(0., neck_position, num=num, endpoint=True)
             z_curve = np.polyval(neck_polynome, x_curve)
             curve = np.column_stack((x_curve, z_curve))
-            neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0)**2, axis=1))
+            neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
             neck_length = np.sum(neck_lengths)
             segment = neck_length / (int(neck_length // delta_z) + 1)
 
             k = 1
             z_ns, line_sum = [], 0.0
-            for ii in range(num-1):
+            for ii in range(num - 1):
                 line_sum += neck_lengths[ii]
                 if line_sum > k * segment:
-                    z_ns.append(x_curve[ii+1])
+                    z_ns.append(x_curve[ii + 1])
                     k += 1
             z_ns.append(neck_position)
             z_ns = np.array(z_ns)
@@ -1506,7 +1520,7 @@ class BinarySystem(System):
             # z_ns = np.linspace(delta_z, neck_position, num=num, endpoint=True)
         else:
             num = 15 * int(
-                (1-neck_position) // (component_instance.polar_radius * component_instance.discretization_factor))
+                (1 - neck_position) // (component_instance.polar_radius * component_instance.discretization_factor))
             # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
             x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
             z_curve = np.polyval(neck_polynome, x_curve)
@@ -1551,7 +1565,7 @@ class BinarySystem(System):
 
             num = int(c.HALF_PI * r_eqn[-1] // delta_z)
             start_val = c.HALF_PI / num
-            phis = np.linspace(start_val, c.HALF_PI, num=num-1, endpoint=False)
+            phis = np.linspace(start_val, c.HALF_PI, num=num - 1, endpoint=False)
             for phi in phis:
                 z_n.append(z)
                 phi_n.append(phi)
@@ -1657,11 +1671,15 @@ class BinarySystem(System):
             else self.secondary.critical_surface_potential
         potential = self.primary.surface_potential if component == 'primary' \
             else self.secondary.surface_potential
-        if critical_pot - potential < 0.01:
+        if potential - critical_pot > 0.01:
+            self._logger.debug('Triangulating surface of {} component using standard method.'.format(component))
             triangulation = Delaunay(points)
             triangles_indices = triangulation.convex_hull
         else:
-            #calculating closest point to the barycentre
+            self._logger.debug('Surface of {} component is near or at critical potential. Therefore custom '
+                               'triangulation method for (near)critical potential surfaces will be '
+                               'used.'.format(component))
+            # calculating closest point to the barycentre
             r_near = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
             # projection of component's far side surface into ``sphere`` with radius r1
             projected_points = np.empty(np.shape(points), dtype=float)
@@ -1776,7 +1794,7 @@ class BinarySystem(System):
                         points_primary.append([solution * np.cos(angle), solution * np.sin(angle)])
                     elif component == 'secondary':
                         points_secondary.append([- (solution * np.cos(angle) - components_distance),
-                                                solution * np.sin(angle)])
+                                                 solution * np.sin(angle)])
 
         neck_points = np.array(points_secondary + points_primary)
         # fitting of the neck with polynomial in order to find minimum
@@ -2286,7 +2304,8 @@ class BinarySystem(System):
                 if component_instance.spots:
                     for spot_index, spot in component_instance.spots.items():
                         if colormap == 'gravity_acceleration':
-                            return_map[_component] = np.append(return_map[_component], spot.potential_gradient_magnitudes)
+                            return_map[_component] = np.append(return_map[_component],
+                                                               spot.potential_gradient_magnitudes)
                         elif colormap == 'temperature':
                             return_map[_component] = np.append(return_map[_component], spot.temperatures)
             return return_map
@@ -2333,7 +2352,7 @@ class BinarySystem(System):
 
         use_quarter_star_test = self.primary.spots is None and self.secondary.spots is None
 
-        #declaring variables
+        # declaring variables
         centres, vis_test, vis_test_star, gamma, normals = {}, {}, {}, {}, {}
         # centres - dict with all centres concatenated (star and spot) into one matrix for convenience
         # vis_test - dict with bool map for centres to select only faces visible from any face on companion
@@ -2344,7 +2363,6 @@ class BinarySystem(System):
         if not use_quarter_star_test:
             vis_test_spot = {}
         # vis_test_spot - dict with bool maps for each spot faces visible from any face on companion
-
 
         # selecting faces that have a chance to be visible from other component
         for _component in component:
@@ -2398,7 +2416,7 @@ class BinarySystem(System):
         gamma['primary'][gamma['primary'] < 0] = 0.
         gamma['secondary'][gamma['secondary'] > 0] = 0.
 
-        #calculating QAB = (cos gamma_a)*cos(gamma_b)/d**2
+        # calculating QAB = (cos gamma_a)*cos(gamma_b)/d**2
         q_ab = -np.divide(np.multiply(gamma['primary'], gamma['secondary']), np.power(distance, 2))
         # negative sign is there because of reversed distance vector used for secondary component
 
@@ -2409,9 +2427,3 @@ class BinarySystem(System):
         # print(np.shape(distance), np.shape(distance_vector))
 
         return ret['primary'], ret['secondary']
-
-
-
-
-
-
