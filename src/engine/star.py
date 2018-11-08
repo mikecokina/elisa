@@ -18,7 +18,7 @@ class Star(Body):
     KWARGS = ['mass', 't_eff', 'gravity_darkening']
 
     OPTIONAL_KWARGS = ['surface_potential', 'polar_log_g', 'synchronicity', 'albedo', 'pulsations',
-                       'discretization_factor']
+                       'discretization_factor', 'spots']
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):

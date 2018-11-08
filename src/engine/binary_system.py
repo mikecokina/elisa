@@ -1685,12 +1685,15 @@ class BinarySystem(System):
             projected_points = np.empty(np.shape(points), dtype=float)
 
             points_to_transform = copy(points)
+            # exact components distance is not necessary, it would require to add extra kwarg to many functions that
+            # use this procedure and this is not demanding computation
+            approx_components_distance = np.mean(points_to_transform[:, 0])
             if component == 'secondary':
-                points_to_transform[:, 0] -= 1
+                points_to_transform[:, 0] -= approx_components_distance
             projected_points = \
                 r_near * points_to_transform / np.linalg.norm(points_to_transform, axis=1)[:, None]
             if component == 'secondary':
-                projected_points[:, 0] += 1
+                projected_points[:, 0] += approx_components_distance
 
             triangulation = Delaunay(projected_points)
             triangles_indices = triangulation.convex_hull
