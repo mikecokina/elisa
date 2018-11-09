@@ -13,3 +13,5 @@
 - common interface helper fns for single and binary system
 
 - sprav funkciu ktora vyrata potencialy z polomerov a gravitacnych zrychleni pri binarnych systemoch(polarnych)
+- daj components distance do fcii pre skvrny (toto co si stratil)
+- zjednot spot mesh creator ak sa da

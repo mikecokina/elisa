@@ -390,6 +390,15 @@ class System(metaclass=ABCMeta):
         gc.collect()
 
     def _remap_surface_elements(self, model, component_instance, points_to_remap):
+        """
+        function remaps all surface points (`points_to_remap`) and faces (star and spots) according to the `model`
+
+        :param model: dict - list of indices of points in `points_to_remap` divided into star and spots sublists
+        :param component_instance: Star object
+        :param points_to_remap: array of all surface points (star + points used in
+        `BinarySystem._split_spots_and_component_faces`)
+        :return:
+        """
         # remapping points and faces of star
         self._logger.debug(
             "Changing value of parameter points of "
@@ -400,9 +409,8 @@ class System(metaclass=ABCMeta):
         self._logger.debug(
             "Changing value of parameter faces "
             "component {}".format(component_instance.name))
-        component_instance.faces = model["object"]
         remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
-        component_instance.faces = np.array(utils.remap(component_instance.faces, remap_dict))
+        component_instance.faces = np.array(utils.remap(model["object"], remap_dict))
 
         # remapping points and faces of spots
         for spot_index, _ in list(component_instance.spots.items()):
@@ -416,8 +424,7 @@ class System(metaclass=ABCMeta):
             self._logger.debug(
                 "Changing value of parameter faces of spot {} / "
                 "component {}".format(spot_index, component_instance.name))
-            component_instance.spots[spot_index].faces = model["spots"][spot_index]
             remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
             component_instance.spots[spot_index].faces = \
-                np.array(utils.remap(component_instance.spots[spot_index].faces, remap_dict))
+                np.array(utils.remap(model["spots"][spot_index], remap_dict))
         gc.collect()
