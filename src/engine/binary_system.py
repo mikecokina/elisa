@@ -1964,7 +1964,7 @@ class BinarySystem(System):
                 points, faces, model, spot_candidates, vertices_map, component_instance
             )
             self._remove_overlaped_spots(vertices_map, component_instance)
-            self._remap_surface_elements(model, component_instance)
+            self._remap_surface_elements(model, component_instance, points)
 
     @staticmethod
     def _component_to_list(component):

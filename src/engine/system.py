@@ -368,8 +368,8 @@ class System(metaclass=ABCMeta):
                 # anything else
                 model["object"].append(np.array(simplex))
 
-            gc.collect()
-            return model, spot_candidates
+        gc.collect()
+        return model, spot_candidates
 
     @classmethod
     def _split_spots_and_component_faces(cls, points, faces, model, spot_candidates, vmap, component_instance):
@@ -389,14 +389,29 @@ class System(metaclass=ABCMeta):
                 component_instance.remove_spot(spot_index=spot_index)
         gc.collect()
 
-    def _remap_surface_elements(self, model, component_instance):
+    def _remap_surface_elements(self, model, component_instance, points_to_remap):
+        # remapping points and faces of star
+        self._logger.debug(
+            "Changing value of parameter points of "
+            "component {}".format(component_instance.name))
+        indices = list(set(np.array(model["object"]).flatten()))
+        component_instance.points = points_to_remap[indices]
+
+        self._logger.debug(
+            "Changing value of parameter faces "
+            "component {}".format(component_instance.name))
+        component_instance.faces = model["object"]
+        remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
+        component_instance.faces = np.array(utils.remap(component_instance.faces, remap_dict))
+
+        # remapping points and faces of spots
         for spot_index, _ in list(component_instance.spots.items()):
             self._logger.debug(
                 "Changing value of parameter points of spot {} / "
                 "component {}".format(spot_index, component_instance.name))
             # get points currently belong to the given spot
             indices = list(set(np.array(model["spots"][spot_index]).flatten()))
-            component_instance.spots[spot_index].points = np.array(component_instance.points[indices])
+            component_instance.spots[spot_index].points = points_to_remap[indices]
 
             self._logger.debug(
                 "Changing value of parameter faces of spot {} / "
