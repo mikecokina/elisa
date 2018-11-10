@@ -1655,10 +1655,11 @@ class BinarySystem(System):
         else:
             return points
 
-    def detached_system_surface(self, component=None, points=None):
+    def detached_system_surface(self, component=None, points=None, components_distance=None):
         """
         calculates surface faces from the given component's points in case of detached or semi-contact system
 
+        :param components_distance: float
         :param points:
         :param component: str
         :return: np.array - N x 3 array of vertices indices
@@ -1689,25 +1690,23 @@ class BinarySystem(System):
             projected_points = np.empty(np.shape(points), dtype=float)
 
             points_to_transform = copy(points)
-            # exact components distance is not necessary, it would require to add extra kwarg to many functions that
-            # use this procedure and this is not demanding computation
-            approx_components_distance = np.mean(points_to_transform[:, 0])
             if component == 'secondary':
-                points_to_transform[:, 0] -= approx_components_distance
+                points_to_transform[:, 0] -= components_distance
             projected_points = \
                 r_near * points_to_transform / np.linalg.norm(points_to_transform, axis=1)[:, None]
             if component == 'secondary':
-                projected_points[:, 0] += approx_components_distance
+                projected_points[:, 0] += components_distance
 
             triangulation = Delaunay(projected_points)
             triangles_indices = triangulation.convex_hull
 
         return triangles_indices
 
-    def over_contact_surface(self, component=None, points=None):
+    def over_contact_surface(self, component=None, points=None, components_distance=None):
         """
         calculates surface faces from the given component's points in case of over-contact system
 
+        :param components_distance: float - not used
         :param points: numpy.array - points to triangulate
         :param component: str - `primary` or `secondary`
         :return: np.array - N x 3 array of vertice indices
@@ -1850,21 +1849,24 @@ class BinarySystem(System):
             self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
             self._incorporate_spots_mesh(component_instance=getattr(self, _component))
 
-    def build_faces(self, component=None):
+    def build_faces(self, component=None, components_distance=None):
         """
         function creates faces of the star surface for given components provided you already calculated surface points
         of the component
 
+        :type components_distance: float
         :param component: `primary` or `secondary` if not supplied both components are calculated
         :return:
         """
+        if not components_distance:
+            raise ValueError('components_distance value was not provided.')
+
         component = self._component_to_list(component)
         for _component in component:
             component_instance = getattr(self, _component)
-            if not component_instance.spots:
-                self.build_surface_with_no_spots(_component)
-            else:
-                self.build_surface_with_spots(_component)
+            self.build_surface_with_spots(_component, components_distance=components_distance) \
+                if component_instance.spots \
+                else self.build_surface_with_no_spots(_component, components_distance=components_distance)
 
     def build_surface(self, components_distance=None, component=None, return_surface=False):
         """
@@ -1895,7 +1897,7 @@ class BinarySystem(System):
                     ret_faces[_component] = copy(component_instance.faces)
                 continue
             else:
-                self.build_surface_with_spots(_component)
+                self.build_surface_with_spots(_component, components_distance=components_distance)
 
             if return_surface:
                 ret_points[_component] = copy(component_instance.points)
@@ -1907,10 +1909,11 @@ class BinarySystem(System):
 
         return (ret_points, ret_faces) if return_surface else None
 
-    def build_surface_with_no_spots(self, component=None):
+    def build_surface_with_no_spots(self, component=None, components_distance=None):
         """
         function for building binary star component surfaces without spots
 
+        :param components_distance: float
         :param component:
         :return:
         """
@@ -1922,7 +1925,8 @@ class BinarySystem(System):
 
             if self.morphology != 'over-contact':
                 points_to_triangulate = component_instance.points[:component_instance.base_symmetry_points_number, :]
-                triangles = self.detached_system_surface(component=_component, points=points_to_triangulate)
+                triangles = self.detached_system_surface(component=_component, points=points_to_triangulate,
+                                                         components_distance=components_distance)
 
             else:
                 neck = np.max(component_instance.points[:, 0]) if component[0] == 'primary' \
@@ -1954,10 +1958,11 @@ class BinarySystem(System):
         """
         return self.over_contact_surface if self.morphology == "over-contact" else self.detached_system_surface
 
-    def build_surface_with_spots(self, component=None):
+    def build_surface_with_spots(self, component=None, components_distance=None):
         """
         function capable of triangulation of spotty stellar surfaces, it merges all surface points, triangulates them
         and then sorts the resulting surface faces under star or spot
+        :param components_distance: float
         :param component: str `primary` or `secondary`
         :return:
         """
@@ -1967,10 +1972,11 @@ class BinarySystem(System):
             points, vertices_map = self._return_all_points(component_instance, return_vertices_map=True)
 
             surface_fn = self._get_surface_builder_fn()
-            faces = surface_fn(component=_component, points=points)
+            faces = surface_fn(component=_component, points=points, components_distance=components_distance)
             model, spot_candidates = self._initialize_model_container(vertices_map)
             model = self._split_spots_and_component_faces(
-                points, faces, model, spot_candidates, vertices_map, component_instance
+                points, faces, model, spot_candidates, vertices_map, component_instance,
+                components_distance=components_distance
             )
             self._remove_overlaped_spots(vertices_map, component_instance)
             self._remap_surface_elements(model, component_instance, points)

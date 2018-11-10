@@ -314,7 +314,7 @@ class System(metaclass=ABCMeta):
         return reference_to_spot, trd_enum
 
     @staticmethod
-    def _resolve_spot_candidates(model, spot_candidates, component_instance):
+    def _resolve_spot_candidates(model, spot_candidates, component_instance, faces, components_distance=None):
         for spot_ix in spot_candidates["com"].keys():
             # get center and size of current spot candidate
             center = component_instance.spots[spot_ix].boundary_center
@@ -329,7 +329,7 @@ class System(metaclass=ABCMeta):
             for idx, dist in enumerate(dists):
                 simplex_ix = spot_candidates["ix"][spot_ix][idx]
                 if dist < size:
-                    model["spots"][spot_ix].append(np.array(component_instance.faces[simplex_ix]))
+                    model["spots"][spot_ix].append(np.array(faces[simplex_ix]))
                 else:
                     # make the same computation for 3rd vertex of face
                     # it might be confusing, but spot candidate is spot where 2 of 3 vertex of one face belong to
@@ -342,9 +342,9 @@ class System(metaclass=ABCMeta):
                     dist = np.linalg.norm(np.array(com) - np.array(trd_center))
 
                     if dist < trd_size:
-                        model["spots"][trd_spot_index].append(np.array(component_instance.faces[simplex_ix]))
+                        model["spots"][trd_spot_index].append(np.array(faces[simplex_ix]))
                     else:
-                        model["object"].append(np.array(component_instance.faces[simplex_ix]))
+                        model["object"].append(np.array(faces[simplex_ix]))
         gc.collect()
         return model
 
@@ -390,21 +390,29 @@ class System(metaclass=ABCMeta):
         return model, spot_candidates
 
     @classmethod
-    def _split_spots_and_component_faces(cls, points, faces, model, spot_candidates, vmap, component_instance):
+    def _split_spots_and_component_faces(cls, points, faces, model, spot_candidates, vmap, component_instance,
+                                         components_distance=None):
         """
         function that sorts faces to model data structure by distinguishing if it belongs to star or spots
 
+        :param components_distance: float
         :param points: array (N_points * 3) - all points of surface
         :param faces: array (N_faces * 3) - all faces of the surface
         :param model: dict - data structure for faces sorting
         :param spot_candidates: initialised data structure for spot candidates
-        :param vmap:
+        :param vmap: vertice map
         :param component_instance: Star object
         :return:
         """
         model, spot_candidates = \
             cls._resolve_obvious_spots(points, faces, model, spot_candidates, vmap, component_instance)
-        model = cls._resolve_spot_candidates(model, spot_candidates, component_instance)
+        model = cls._resolve_spot_candidates(model, spot_candidates, component_instance, faces,
+                                             components_distance=components_distance)
+        # converting lists in model to numpy arrays
+        model['object'] = np.array(model['object'])
+        for spot_ix in spot_candidates["com"].keys():
+            model['spots'][spot_ix] = np.array(model['spots'][spot_ix])
+
         return model
 
     def _remove_overlaped_spots(self, vertices_map, component_instance):
@@ -439,7 +447,8 @@ class System(metaclass=ABCMeta):
             "Changing value of parameter faces "
             "component {}".format(component_instance.name))
 
-        remap_list = np.empty(np.max(model["object"])+1, dtype=int)
+        points_length = np.shape(points_to_remap)[0]
+        remap_list = np.empty(points_length, dtype=int)
         remap_list[indices] = np.arange(np.shape(indices)[0])
         component_instance.faces = remap_list[model["object"]]
 
@@ -456,7 +465,7 @@ class System(metaclass=ABCMeta):
                 "Changing value of parameter faces of spot {} / "
                 "component {}".format(spot_index, component_instance.name))
 
-            remap_list = np.empty(np.max(model["spots"][spot_index]) + 1, dtype=int)
+            remap_list = np.empty(points_length, dtype=int)
             remap_list[indices] = np.arange(np.shape(indices)[0])
             component_instance.spots[spot_index].faces = remap_list[model["spots"][spot_index]]
         gc.collect()

@@ -24,10 +24,10 @@ spots_metadata = {
             {"longitude": 90,
              "latitude": 58,
              # "angular_density": 1,
-             "angular_diameter": 15,
+             "angular_diameter": 17,
              "temperature_factor": 0.9},
-            {"longitude": 85,
-             "latitude": 80,
+            {"longitude": 90,
+             "latitude": 57,
              # "angular_density": 2,
              "angular_diameter": 30,
              "temperature_factor": 1.05},
@@ -45,11 +45,11 @@ spots_metadata = {
              # "angular_density": 3,
              "angular_diameter": 45,
              "temperature_factor": 0.9},
-            # {"longitude": 45,
-            #  "latitude": 3,
-            #  # "angular_density": 3,
-            #  "angular_diameter": 10,
-            #  "temperature_factor": 0.98}
+            {"longitude": 45,
+             "latitude": 3,
+             # "angular_density": 3,
+             "angular_diameter": 10,
+             "temperature_factor": 0.98}
         ]
 }
 
@@ -99,7 +99,7 @@ start_time = time()
 primary = Star(mass=1.5*u.solMass,
                surface_potential=4.6758014080477235,
                # surface_potential=contact_pot,
-               # spots=spots_metadata['primary'],
+               spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                synchronicity=2.0,
                t_eff=6500*u.K,
@@ -175,9 +175,9 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 
 bs.plot(descriptor='surface',
         phase=0,
-        # components_to_plot='primary',
-        components_to_plot='secondary',
-        # edges=True,
+        components_to_plot='primary',
+        # components_to_plot='secondary',
+        edges=True,
         # normals=True,
         # colormap='gravity_acceleration',
         colormap='temperature',
