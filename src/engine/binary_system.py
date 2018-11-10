@@ -513,6 +513,8 @@ class BinarySystem(System):
                                          "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
                     continue
 
+                # todo: subject to rework during change from planar distance to angular distance of spot faces from spot
+                # centre
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_spherical(boundary_com)
                 args = components_distance, boundary_com[1], boundary_com[2]
@@ -521,10 +523,9 @@ class BinarySystem(System):
                 boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
 
                 # first point will be always barycenter of boundary
-                spot_points[0] = boundary_center
+                # spot_points[0] = boundary_center
 
                 # max size from barycenter of boundary to boundary
-                # todo: make sure this value is correct = make an unittests for spots
                 spot_instance.max_size = max([np.linalg.norm(np.array(boundary_center) - np.array(b))
                                               for b in boundary_points])
 
@@ -652,8 +653,6 @@ class BinarySystem(System):
 
         else:
             self.primary.filling_factor, self.secondary.filling_factor = None, None
-            print(self.primary.surface_potential - self.primary.critical_surface_potential)
-            print(self.secondary.surface_potential - self.secondary.critical_surface_potential)
             if (abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
                     (abs(
                         self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
@@ -1949,13 +1948,23 @@ class BinarySystem(System):
             component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
 
     def _get_surface_builder_fn(self):
+        """
+        returns suitable triangulation function depending on morphology
+        :return: function instance that performs generation surface faces
+        """
         return self.over_contact_surface if self.morphology == "over-contact" else self.detached_system_surface
 
     def build_surface_with_spots(self, component=None):
+        """
+        function capable of triangulation of spotty stellar surfaces, it merges all surface points, triangulates them
+        and then sorts the resulting surface faces under star or spot
+        :param component: str `primary` or `secondary`
+        :return:
+        """
         component = self._component_to_list(component)
         for _component in component:
             component_instance = getattr(self, _component)
-            points, vertices_map = self._prepare_points_and_vertices_map_for_triangulation(component_instance)
+            points, vertices_map = self._return_all_points(component_instance, return_vertices_map=True)
 
             surface_fn = self._get_surface_builder_fn()
             faces = surface_fn(component=_component, points=points)

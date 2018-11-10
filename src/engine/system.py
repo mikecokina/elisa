@@ -10,6 +10,9 @@ from scipy.optimize import fsolve
 from copy import copy
 from scipy.spatial import KDTree
 
+#temporary
+from time import time
+
 
 class System(metaclass=ABCMeta):
     """
@@ -257,18 +260,33 @@ class System(metaclass=ABCMeta):
             component_instance.spots[int(spot_index)].points = points[spot_index]
 
     @staticmethod
-    def _prepare_points_and_vertices_map_for_triangulation(component_instance):
-        points = component_instance.points
-        vertices_map = [{"type": "object", "enum": -1}] * len(points)
+    def _return_all_points(component_instance, return_vertices_map=False):
+        """
+        function returns all surface point and faces optionally with corresponding map of vertices
+        :param component_instance: Star object
+        :return: array - all surface points including star and surface points
+        """
+        points = copy(component_instance.points)
         for spot_index, spot_instance in component_instance.spots.items():
             points = np.concatenate([points, spot_instance.points])
-            vertices_map = np.concatenate(
-                [vertices_map, [{"type": "spot", "enum": spot_index}] * len(spot_instance.points)]
-            )
-        return points, vertices_map
+
+        if return_vertices_map:
+            vertices_map = [{"type": "object", "enum": -1}] * len(component_instance.points)
+            for spot_index, spot_instance in component_instance.spots.items():
+                vertices_map = np.concatenate(
+                    [vertices_map, [{"type": "spot", "enum": spot_index}] * len(spot_instance.points)]
+                )
+            return points, vertices_map
+        return points
 
     @staticmethod
     def _initialize_model_container(vertices_map):
+        """
+        initializes basic data structure `model` objects that will contain faces divided by its origin (star or spots)
+        and data structure containing spot candidates with its index, centre,
+        :param vertices_map:
+        :return:
+        """
         model = {"object": [], "spots": {}}
         spot_candidates = {"simplex": {}, "com": {}, "3rd_enum": {}, "ix": {}}
         spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
@@ -373,6 +391,17 @@ class System(metaclass=ABCMeta):
 
     @classmethod
     def _split_spots_and_component_faces(cls, points, faces, model, spot_candidates, vmap, component_instance):
+        """
+        function that sorts faces to model data structure by distinguishing if it belongs to star or spots
+
+        :param points: array (N_points * 3) - all points of surface
+        :param faces: array (N_faces * 3) - all faces of the surface
+        :param model: dict - data structure for faces sorting
+        :param spot_candidates: initialised data structure for spot candidates
+        :param vmap:
+        :param component_instance: Star object
+        :return:
+        """
         model, spot_candidates = \
             cls._resolve_obvious_spots(points, faces, model, spot_candidates, vmap, component_instance)
         model = cls._resolve_spot_candidates(model, spot_candidates, component_instance)
@@ -403,14 +432,16 @@ class System(metaclass=ABCMeta):
         self._logger.debug(
             "Changing value of parameter points of "
             "component {}".format(component_instance.name))
-        indices = list(set(np.array(model["object"]).flatten()))
+        indices = np.unique(model["object"])
         component_instance.points = points_to_remap[indices]
 
         self._logger.debug(
             "Changing value of parameter faces "
             "component {}".format(component_instance.name))
-        remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
-        component_instance.faces = np.array(utils.remap(model["object"], remap_dict))
+
+        remap_list = np.empty(np.max(model["object"])+1, dtype=int)
+        remap_list[indices] = np.arange(np.shape(indices)[0])
+        component_instance.faces = remap_list[model["object"]]
 
         # remapping points and faces of spots
         for spot_index, _ in list(component_instance.spots.items()):
@@ -418,13 +449,14 @@ class System(metaclass=ABCMeta):
                 "Changing value of parameter points of spot {} / "
                 "component {}".format(spot_index, component_instance.name))
             # get points currently belong to the given spot
-            indices = list(set(np.array(model["spots"][spot_index]).flatten()))
+            indices = np.unique(model["spots"][spot_index])
             component_instance.spots[spot_index].points = points_to_remap[indices]
 
             self._logger.debug(
                 "Changing value of parameter faces of spot {} / "
                 "component {}".format(spot_index, component_instance.name))
-            remap_dict = {idx[1]: idx[0] for idx in enumerate(indices)}
-            component_instance.spots[spot_index].faces = \
-                np.array(utils.remap(model["spots"][spot_index], remap_dict))
+
+            remap_list = np.empty(np.max(model["spots"][spot_index]) + 1, dtype=int)
+            remap_list[indices] = np.arange(np.shape(indices)[0])
+            component_instance.spots[spot_index].faces = remap_list[model["spots"][spot_index]]
         gc.collect()
