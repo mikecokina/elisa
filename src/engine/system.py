@@ -9,6 +9,7 @@ from engine import utils
 from scipy.optimize import fsolve
 from copy import copy
 from scipy.spatial import KDTree
+from engine.body import Body
 
 #temporary
 from time import time
@@ -182,7 +183,8 @@ class System(metaclass=ABCMeta):
             raise ValueError('Object instance was not given.')
 
         vertices_map = [{"enum": -1} for _ in component_instance.points]
-        all_points = copy(component_instance.points)
+        # `all_component_points` do not contain points of any spot
+        all_component_points = copy(component_instance.points)
 
         # average spacing of component surface points
         avsp = utils.average_spacing(component_instance.polar_radius, component_instance.discretization_factor)
@@ -193,8 +195,8 @@ class System(metaclass=ABCMeta):
             vertices_to_remove, vertices_test = [], []
 
             # find nearest points to spot alt center
-            tree = KDTree(all_points)
-            distances, indices = tree.query(spot.boundary_center, k=len(all_points))
+            tree = KDTree(all_component_points)
+            distances, indices = tree.query(spot.boundary_center, k=len(all_component_points))
 
             max_dist_to_object_point = spot.max_size + (0.5 * avsp)
             max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
@@ -219,7 +221,7 @@ class System(metaclass=ABCMeta):
             if vertices_to_remove:
                 _points, _vertices_map = list(), list()
 
-                for ix, vertex in list(zip(range(0, len(all_points)), all_points)):
+                for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
                     if ix in vertices_to_remove:
                         # skip point if is marked for removal
                         continue
@@ -233,10 +235,10 @@ class System(metaclass=ABCMeta):
                     _points.append(vertex)
                     _vertices_map.append({"enum": spot_index})
 
-                all_points = copy(_points)
+                all_component_points = copy(_points)
                 vertices_map = copy(_vertices_map)
 
-        separated_points = self.split_points_of_spots_and_component(all_points, vertices_map, component_instance)
+        separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map, component_instance)
         self.setup_component_instance_points(component_instance, separated_points)
 
     @classmethod
@@ -245,13 +247,24 @@ class System(metaclass=ABCMeta):
         component_points = {
             "object": points[np.where(np.array(vertices_map) == {'enum': -1})[0]]
         }
-        # fixme: remove spots with no points left
+        cls.remove_overlaped_spots(
+            component_instance=component_instance,
+            spot_indices=set([int(val["enum"]) for val in vertices_map if val["enum"] > -1])
+        )
         spots_points = {
             "{}".format(i): points[np.where(np.array(vertices_map) == {'enum': i})[0]]
             for i in range(len(component_instance.spots))
             if len(np.where(np.array(vertices_map) == {'enum': i})[0]) > 0
         }
         return {**component_points, **spots_points}
+
+    @staticmethod
+    def remove_overlaped_spots(component_instance: Body, spot_indices):
+        all_spot_indices = set([int(val) for val in component_instance.spots.keys()])
+        spot_indices_to_remove = all_spot_indices.difference(spot_indices)
+
+        for spot_index in spot_indices_to_remove:
+            component_instance.remove_spot(spot_index)
 
     @staticmethod
     def setup_component_instance_points(component_instance, points):

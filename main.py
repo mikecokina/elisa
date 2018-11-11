@@ -31,11 +31,11 @@ spots_metadata = {
              # "angular_density": 2,
              "angular_diameter": 30,
              "temperature_factor": 1.05},
-            {"longitude": 45,
-             "latitude": 90,
-             # "angular_density": 2,
-             "angular_diameter": 30,
-             "temperature_factor": 0.95},
+            # {"longitude": 45,
+            #  "latitude": 90,
+            #  # "angular_density": 2,
+            #  "angular_diameter": 30,
+            #  "temperature_factor": 0.95},
         ],
 
     "secondary":
