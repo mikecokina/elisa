@@ -799,7 +799,7 @@ class BinarySystem(System):
         B = np.power(d, 2)
         C = 2 * d * cs
         D = cs / B
-        E = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
+        E = 0.5 * np.power(self.secondary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
         F = 0.5 - 0.5 * self.mass_ratio
 
         return B, C, D, E, F
@@ -809,7 +809,7 @@ class BinarySystem(System):
         calculates modified kopal potential from point of view of secondary component
 
         :param radius: np.float; spherical variable
-        :param args: tuple: (B, C, D, E, F) such that: Psi2 = q/r + 1/sqrt(B+r^2+Cr) - D*r + E*x^2 + F
+        :param args: tuple: (B, C, D, E, F) such that: Psi2 = q/r + 1/sqrt(B+r^2-Cr) - D*r + E*x^2 + F
         :return: np.float
         """
         B, C, D, E, F = args
@@ -1034,7 +1034,7 @@ class BinarySystem(System):
 
         scipy_solver_init_value = np.array([args[1] / 1e4])
         argss = precalc(*args[1:])
-        solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value,
+        solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value,
                                                     full_output=True, args=argss, xtol=1e-10)
 
         # check for regular solution
