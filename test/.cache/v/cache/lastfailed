@@ -1,1 +1,3 @@
-{}
+{
+  "test_binary_system.py::TestBinarySystem::test_mesh_for_duplicate_points": true
+}

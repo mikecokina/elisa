@@ -513,7 +513,6 @@ class BinarySystem(System):
                                          "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
                     continue
 
-                # todo: subject to rework during change from planar distance to angular distance of spot faces from spot
                 # centre
                 boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
                 boundary_com = utils.cartesian_to_spherical(boundary_com)
@@ -1847,7 +1846,8 @@ class BinarySystem(System):
             component_instance.inverse_point_symmetry_matrix = _d
 
             self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
-            self._incorporate_spots_mesh(component_instance=getattr(self, _component))
+            self._incorporate_spots_mesh(component_instance=getattr(self, _component),
+                                         components_distance=components_distance)
 
     def build_faces(self, component=None, components_distance=None):
         """

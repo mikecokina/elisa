@@ -174,7 +174,7 @@ class System(metaclass=ABCMeta):
         """
         pass
 
-    def _incorporate_spots_mesh(self, component_instance=None):
+    def _incorporate_spots_mesh(self, component_instance=None, components_distance=None):
         if not component_instance.spots:
             return
         self._logger.info("Incorporating spot points to component {} mesh".format(component_instance.name))
@@ -191,24 +191,22 @@ class System(metaclass=ABCMeta):
 
         for spot_index, spot in component_instance.spots.items():
             # average spacing in spot points
-            avsp_spot = utils.average_spacing(spot.points, spot.angular_density)
             vertices_to_remove, vertices_test = [], []
 
-            # find nearest points to spot alt center
-            tree = KDTree(all_component_points)
-            distances, indices = tree.query(spot.boundary_center, k=len(all_component_points))
+            cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.25 * spot.angular_density)
 
-            max_dist_to_object_point = spot.max_size + (0.5 * avsp)
-            max_dist_to_spot_point = spot.max_size + (0.1 * avsp_spot)
+            spot_center = spot.boundary_center if component_instance.name == '0' else \
+                spot.boundary_center - np.array([components_distance, 0., 0.])
 
             # removing star points in spot
-            for dist, ix in zip(distances, indices):
-                if dist > max_dist_to_object_point:
-                    # break, because distancies are ordered by size, so there is no more points of object that
-                    # have to be removed
-                    break
+            # for dist, ix in zip(distances, indices):
+            for ix, _ in enumerate(all_component_points):
+                surface_point = all_component_points[ix] if component_instance.name == '0' else \
+                    all_component_points[ix] - np.array([components_distance, 0., 0.])
+                cos_angle = np.inner(spot_center, surface_point) / \
+                            (np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
 
-                if vertices_map[ix]["enum"] >= 0 and dist > max_dist_to_spot_point:
+                if cos_angle < cos_max_angle_point:
                     continue
                 vertices_to_remove.append(ix)
 
@@ -363,7 +361,7 @@ class System(metaclass=ABCMeta):
 
     @classmethod
     def _resolve_obvious_spots(cls, points, faces, model, spot_candidates, vmap, component_instance):
-        for simplex, face, ix in list(zip(faces, points[faces], range(faces.shape[0]))):
+        for simplex, face_points, ix in list(zip(faces, points[faces], range(faces.shape[0]))):
             # test if each point belongs to spot
             if {'spot'} == set([vmap[simplex[_i]]["type"] for _i in range(3)]):
                 # if each point belongs to the same spot, then it is for sure face of that spot
@@ -375,7 +373,7 @@ class System(metaclass=ABCMeta):
                     reference_to_spot, trd_enum = cls._get_spots_references(vmap, simplex)
 
                     if reference_to_spot is not None:
-                        spot_candidates["com"][reference_to_spot].append(np.average(face, axis=0))
+                        spot_candidates["com"][reference_to_spot].append(np.average(face_points, axis=0))
                         spot_candidates["3rd_enum"][reference_to_spot].append(trd_enum)
                         spot_candidates["ix"][reference_to_spot].append(ix)
             # if at least one of point belongs to the spot and another one to the stellar body, it is neccesary
@@ -387,9 +385,9 @@ class System(metaclass=ABCMeta):
                 add_to_model = True
                 for spot_ix in spots_enum:
                     center = component_instance.spots[spot_ix].boundary_center
-                    size = component_instance.spots[spot_ix].max_size
-                    dist = np.linalg.norm(np.array(np.average(face, axis=0)) - np.array(center))
-                    if dist < size:
+                    face_center = np.average(face_points, axis=0)
+                    cos_angle = np.inner(center, face_center) / (np.linalg.norm(center) * np.linalg.norm(face_center))
+                    if cos_angle < np.cos(0.5 * component_instance.spots[spot_ix].angular_diameter):
                         add_to_model = False
                         model["spots"][spot_ix].append(np.array(simplex))
                         break
