@@ -1832,6 +1832,7 @@ class BinarySystem(System):
             raise ValueError('Argument `component_distance` was not supplied.')
         component = self._component_to_list(component)
 
+        component_com = {'primary': 0.0, 'secondary': components_distance}
         for _component in component:
             component_instance = getattr(self, _component)
             # in case of spoted surface, symmetry is not used
@@ -1847,7 +1848,7 @@ class BinarySystem(System):
 
             self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
             self._incorporate_spots_mesh(component_instance=getattr(self, _component),
-                                         components_distance=components_distance)
+                                         component_com=component_com[_component])
 
     def build_faces(self, component=None, components_distance=None):
         """
@@ -1891,7 +1892,7 @@ class BinarySystem(System):
             self.build_mesh(component=_component, components_distance=components_distance)
 
             if not component_instance.spots:
-                self.build_surface_with_no_spots(_component)
+                self.build_surface_with_no_spots(_component, components_distance=components_distance)
                 if return_surface:
                     ret_points[_component] = copy(component_instance.points)
                     ret_faces[_component] = copy(component_instance.faces)
@@ -1967,6 +1968,7 @@ class BinarySystem(System):
         :return:
         """
         component = self._component_to_list(component)
+        component_com = {'primary': 0.0, 'secondary': components_distance}
         for _component in component:
             component_instance = getattr(self, _component)
             points, vertices_map = self._return_all_points(component_instance, return_vertices_map=True)
@@ -1976,7 +1978,7 @@ class BinarySystem(System):
             model, spot_candidates = self._initialize_model_container(vertices_map)
             model = self._split_spots_and_component_faces(
                 points, faces, model, spot_candidates, vertices_map, component_instance,
-                components_distance=components_distance
+                component_com=component_com[_component]
             )
             self._remove_overlaped_spots(vertices_map, component_instance)
             self._remap_surface_elements(model, component_instance, points)

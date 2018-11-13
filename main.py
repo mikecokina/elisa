@@ -45,8 +45,8 @@ spots_metadata = {
              # "angular_density": 3,
              "angular_diameter": 45,
              "temperature_factor": 0.9},
-            {"longitude": 45,
-             "latitude": 40,
+            {"longitude": 35,
+             "latitude": 41,
              # "angular_density": 3,
              "angular_diameter": 40,
              "temperature_factor": 0.98}
@@ -97,23 +97,23 @@ start_time = time()
 #                   primary_minimum_time=combo["primary_minimum_time"],
 #                   phase_shift=combo["phase_shift"])
 primary = Star(mass=2.0*u.solMass,
-               surface_potential=2.7,
+               surface_potential=4.0275777862997355,
                # surface_potential=contact_pot,
                # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
-               synchronicity=1.0,
+               synchronicity=1.5,
                t_eff=6500*u.K,
                gravity_darkening=1.0,
                discretization_factor=3,
                )
 secondary = Star(mass=1.0*u.solMass,
-                 surface_potential=2.7,
+                 surface_potential=4.0730422801053745,
                  # surface_potential=contact_pot,
-                 synchronicity=1.0,
+                 synchronicity=2.0,
                  t_eff=10000*u.K,
                  gravity_darkening=1.0,
                  discretization_factor=3,
-                 # spots=spots_metadata['secondary'],
+                 spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['primary'],
                 )
 
@@ -122,7 +122,7 @@ bs = BinarySystem(primary=primary,
                   argument_of_periastron=90*u.deg,
                   gamma=0*u.km/u.s,
                   period=1*u.d,
-                  eccentricity=0.0,
+                  eccentricity=0.3,
                   inclination=90*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0,
@@ -132,7 +132,7 @@ bs = BinarySystem(primary=primary,
 components_min_distance = 1 - bs.eccentricity
 start_time = time()
 # bs.build_surface(components_distance=components_min_distance)
-bs.build_surface(components_distance=components_min_distance, component='primary')
+# bs.build_surface(components_distance=components_min_distance, component='primary')
 # bs.build_surface(components_distance=components_min_distance, component='secondary')
 # bs.build_surface_map(colormap='temperature', components_distance=components_min_distance)
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=components_min_distance)
@@ -174,9 +174,9 @@ print
 
 bs.plot(descriptor='surface',
         phase=0,
-        components_to_plot='primary',
-        # components_to_plot='secondary',
-        # edges=True,
+        # components_to_plot='primary',
+        components_to_plot='secondary',
+        edges=True,
         # normals=True,
         # colormap='gravity_acceleration',
         colormap='temperature',

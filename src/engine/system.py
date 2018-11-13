@@ -174,7 +174,7 @@ class System(metaclass=ABCMeta):
         """
         pass
 
-    def _incorporate_spots_mesh(self, component_instance=None, components_distance=None):
+    def _incorporate_spots_mesh(self, component_instance=None, component_com=None):
         if not component_instance.spots:
             return
         self._logger.info("Incorporating spot points to component {} mesh".format(component_instance.name))
@@ -193,16 +193,14 @@ class System(metaclass=ABCMeta):
             # average spacing in spot points
             vertices_to_remove, vertices_test = [], []
 
-            cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.25 * spot.angular_density)
+            cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.angular_density)
 
-            spot_center = spot.boundary_center if component_instance.name == '0' else \
-                spot.boundary_center - np.array([components_distance, 0., 0.])
+            spot_center = spot.boundary_center - np.array([component_com, 0., 0.])
 
             # removing star points in spot
             # for dist, ix in zip(distances, indices):
             for ix, _ in enumerate(all_component_points):
-                surface_point = all_component_points[ix] if component_instance.name == '0' else \
-                    all_component_points[ix] - np.array([components_distance, 0., 0.])
+                surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
                 cos_angle = np.inner(spot_center, surface_point) / \
                             (np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
 
@@ -325,21 +323,20 @@ class System(metaclass=ABCMeta):
         return reference_to_spot, trd_enum
 
     @staticmethod
-    def _resolve_spot_candidates(model, spot_candidates, component_instance, faces, components_distance=None):
+    def _resolve_spot_candidates(model, spot_candidates, component_instance, faces, component_com=None):
         for spot_ix in spot_candidates["com"].keys():
             # get center and size of current spot candidate
-            center = component_instance.spots[spot_ix].boundary_center
-            size = component_instance.spots[spot_ix].max_size
+            center = component_instance.spots[spot_ix].boundary_center - np.array([component_com, 0.0, 0.0])
 
-            # compute distance of all center of mass of faces of current
-            # spot candidate to the center of this candidate
-            dists = [np.linalg.norm(np.array(com) - np.array(center)) for com in spot_candidates["com"][spot_ix]]
+            com = np.array(spot_candidates["com"][spot_ix]) - np.array([component_com, 0.0, 0.0])
+            cos_max_angle = np.cos(0.5*component_instance.spots[spot_ix].angular_diameter)
 
             # test if dist is smaller as current spot size;
             # if dist is smaller, then current face belongs to spots otherwise face belongs to t_object itself
-            for idx, dist in enumerate(dists):
+            for idx, _ in enumerate(spot_candidates["com"][spot_ix]):
+                cos_angle_com = np.inner(center, com[idx]) / (np.linalg.norm(center) * np.linalg.norm(com[idx]))
                 simplex_ix = spot_candidates["ix"][spot_ix][idx]
-                if dist < size:
+                if cos_angle_com > cos_max_angle:
                     model["spots"][spot_ix].append(np.array(faces[simplex_ix]))
                 else:
                     # make the same computation for 3rd vertex of face
@@ -347,12 +344,17 @@ class System(metaclass=ABCMeta):
                     # first spot, and the 3rd index belongs to another (neighbour) spot
                     # it has to be alos tested, whether face finally do not belongs to spot candidate;
                     trd_spot_index = spot_candidates["3rd_enum"][spot_ix][idx]
-                    trd_center = component_instance.spots[trd_spot_index].boundary_center
-                    trd_size = component_instance.spots[trd_spot_index].max_size
-                    com = spot_candidates["com"][spot_ix][idx]
-                    dist = np.linalg.norm(np.array(com) - np.array(trd_center))
+                    trd_center = \
+                        component_instance.spots[trd_spot_index].boundary_center - np.array([component_com, 0.0, 0.0])
+                    trd_cos_max_angle = np.cos(0.5*component_instance.spots[trd_spot_index].angular_diameter)
 
-                    if dist < trd_size:
+                    trd_com = spot_candidates["com"][spot_ix][idx] - np.array([component_com, 0.0, 0.0])
+                    trd_cos_angle_com = \
+                        np.inner(trd_center, trd_com) / (np.linalg.norm(trd_center) * np.linalg.norm(trd_com))
+
+                    print(trd_cos_max_angle, trd_cos_angle_com)
+                    print(trd_cos_max_angle <= trd_cos_angle_com, trd_spot_index)
+                    if trd_cos_max_angle <= trd_cos_angle_com:
                         model["spots"][trd_spot_index].append(np.array(faces[simplex_ix]))
                     else:
                         model["object"].append(np.array(faces[simplex_ix]))
@@ -402,7 +404,7 @@ class System(metaclass=ABCMeta):
 
     @classmethod
     def _split_spots_and_component_faces(cls, points, faces, model, spot_candidates, vmap, component_instance,
-                                         components_distance=None):
+                                         component_com=None):
         """
         function that sorts faces to model data structure by distinguishing if it belongs to star or spots
 
@@ -418,7 +420,7 @@ class System(metaclass=ABCMeta):
         model, spot_candidates = \
             cls._resolve_obvious_spots(points, faces, model, spot_candidates, vmap, component_instance)
         model = cls._resolve_spot_candidates(model, spot_candidates, component_instance, faces,
-                                             components_distance=components_distance)
+                                             component_com=component_com)
         # converting lists in model to numpy arrays
         model['object'] = np.array(model['object'])
         for spot_ix in spot_candidates["com"].keys():

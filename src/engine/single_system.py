@@ -662,7 +662,15 @@ class SingleSystem(System):
 
         :return:
         """
-        self.star.faces = self.single_surface()
+        points, vertices_map = self._return_all_points(self.star, return_vertices_map=True)
+        faces = self.single_surface(points=points)
+        model, spot_candidates = self._initialize_model_container(vertices_map)
+        model = self._split_spots_and_component_faces(
+            points, faces, model, spot_candidates, vertices_map, component_instance,
+            components_distance=components_distance
+        )
+
+        # self.star.faces = self.single_surface()
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -774,7 +782,8 @@ class SingleSystem(System):
         # saving one eighth of the star without spots to be used as reference for faces unaffected by spots
         # self.star.base_symmetry_points = copy(self.star.points[:self.star.base_symmetry_points_number])
         # self.star.base_symmetry_faces = copy(self.star.faces[:self.star.base_symmetry_faces_number])
-        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
+        self.build_surface_with_spots()
+        # self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
         if return_surface:
             ret_points = copy(self.star.points)
             ret_faces = copy(self.star.faces)
