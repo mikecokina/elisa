@@ -1512,7 +1512,7 @@ class BinarySystem(System):
 
             k = 1
             z_ns, line_sum = [], 0.0
-            for ii in range(num - 1):
+            for ii in range(num - 2):
                 line_sum += neck_lengths[ii]
                 if line_sum > k * segment:
                     z_ns.append(x_curve[ii + 1])

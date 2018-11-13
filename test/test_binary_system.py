@@ -233,17 +233,22 @@ class TestBinarySystem(unittest.TestCase):
                               primary_minimum_time=combo["primary_minimum_time"],
                               phase_shift=combo["phase_shift"])
 
-            if bs.morphology == "over-contact":
-                mesh_primary = bs.mesh_over_contact(component='primary')
-                mesh_secondary = bs.mesh_over_contact(component='secondary')
-            else:
-                components_distance = bs.orbit.orbital_motion(phase=phases_to_use[i])[0][0]
-                mesh_primary = bs.mesh_detached(component='primary', components_distance=components_distance)
-                mesh_secondary = bs.mesh_detached(component='secondary', components_distance=components_distance)
+            components_distance = bs.orbit.orbital_motion(phase=phases_to_use[i])[0][0]
 
-            distance1 = round(utils.find_nearest_dist_3d(list(mesh_primary)), 10)
-            distance2 = round(utils.find_nearest_dist_3d(list(mesh_secondary)), 10)
+            bs.build_mesh(components_distance=components_distance)
+
+            distance1 = round(utils.find_nearest_dist_3d(list(bs.primary.points)), 10)
+            distance2 = round(utils.find_nearest_dist_3d(list(bs.secondary.points)), 10)
             print(distance1, distance2)
+            if distance1 < 1e-10:
+                bad_points = []
+                for ii, point in enumerate(bs.primary.points):
+                    for jj, xx in enumerate(bs.primary.points[ii+1:]):
+                        dist = np.linalg.norm(point-xx)
+                        if dist <= 1e-10:
+                            print('Match: {0}, {1}, {2}'.format(point, ii, jj))
+                            bad_points.append(point)
+
             self.assertFalse(distance1 < 1e-10)
             self.assertFalse(distance2 < 1e-10)
 
