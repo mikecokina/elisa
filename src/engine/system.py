@@ -351,7 +351,7 @@ class System(metaclass=ABCMeta):
             if spot_idx_to_assign == -1:
                 model["object"].append(np.array(faces[simplex_ix]))
             else:
-                model["spots"][spot_ix].append(np.array(faces[simplex_ix]))
+                model["spots"][spot_idx_to_assign].append(np.array(faces[simplex_ix]))
 
         gc.collect()
         return model
