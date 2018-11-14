@@ -292,3 +292,20 @@ def check_missing_kwargs(kwargs=None, instance_kwargs=None, instance_of=None):
     if len(missing_kwargs) > 0:
         raise ValueError('Missing argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
                                                                                instance_of.__name__))
+
+
+def check_face_duplicity(faces=None, points=None):
+    """
+    checks if `faces` contains the same faces
+
+    :param faces: np.array of simplices
+    :return:
+    """
+    checklist = [set(xx) for xx in faces]
+    for ii, face1 in enumerate(checklist):
+        for face2 in checklist[ii + 1:]:
+            if face1 == face2:
+                return False
+
+    return True
+

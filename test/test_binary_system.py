@@ -289,7 +289,12 @@ class TestBinarySystem(unittest.TestCase):
                               phase_shift=combo["phase_shift"])
 
             components_distance = bs.orbit.orbital_motion(phase=phases_to_use[i])[0][0]
-            bs.build_surface(components_distance=components_distance)
+            points, faces = bs.build_surface(components_distance=components_distance, return_surface=True)
+
+            duplicity_check1 = utils.check_face_duplicity(faces=faces['primary'], points=points['primary'])
+            duplicity_check2 = utils.check_face_duplicity(faces=faces['secondary'])
+            self.assertTrue(duplicity_check1)
+            self.assertTrue(duplicity_check2)
 
             # distance1 = round(utils.find_nearest_dist_3d(list(bs.primary.points)), 10)
             # distance2 = round(utils.find_nearest_dist_3d(list(bs.secondary.points)), 10)
