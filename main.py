@@ -40,16 +40,36 @@ spots_metadata = {
 
     "secondary":
         [
+            {"longitude": 10,
+             "latitude": 45,
+             # "angular_density": 3,
+             "angular_diameter": 28,
+             "temperature_factor": 0.7},
             {"longitude": 30,
              "latitude": 65,
              # "angular_density": 3,
              "angular_diameter": 45,
-             "temperature_factor": 0.9},
-            {"longitude": 35,
-             "latitude": 41,
+             "temperature_factor": 0.75},
+            {"longitude": 45,
+             "latitude": 40,
              # "angular_density": 3,
              "angular_diameter": 40,
-             "temperature_factor": 0.98}
+             "temperature_factor": 0.80},
+            {"longitude": 50,
+             "latitude": 55,
+             # "angular_density": 3,
+             "angular_diameter": 28,
+             "temperature_factor": 0.85},
+            {"longitude": 25,
+             "latitude": 55,
+             # "angular_density": 3,
+             "angular_diameter": 15,
+             "temperature_factor": 0.9},
+            {"longitude": 0,
+             "latitude": 70,
+             # "angular_density": 3,
+             "angular_diameter": 45,
+             "temperature_factor": 0.95}
         ]
 }
 

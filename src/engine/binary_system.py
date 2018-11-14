@@ -366,21 +366,6 @@ class BinarySystem(System):
                 radius = fn(component, components_distance)
                 setattr(component_instance, param, radius)
 
-    def _setup_spot_instance_discretization_factor(self, spot_instance, spot_index, component):
-        component_instance = getattr(self, component)
-        if spot_instance.discretization_factor is None:
-            self._logger.debug(
-                'Angular density of the spot {0} on {2} component was not supplied and discretization factor of'
-                ' star {1} was used.'.format(spot_index, component_instance.discretization_factor, component))
-            spot_instance.discretization_factor = 0.9 * component_instance.discretization_factor * units.ARC_UNIT
-        if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter:
-            self._logger.debug('Angular density {1} of the spot {0} on {2} component was larger than its '
-                               'angular radius. Therefore value of angular density was set to be equal to '
-                               '0.5 * angular diameter.'.format(spot_index,
-                                                                component_instance.discretization_factor,
-                                                                component))
-            spot_instance.discretization_factor = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
-
     def _evaluate_spots_mesh(self, components_distance, component=None):
         """
         compute points of each spots and assigns values to spot container instance
@@ -424,7 +409,7 @@ class BinarySystem(System):
                 # lon -> phi, lat -> theta
                 lon, lat = spot_instance.longitude, spot_instance.latitude
 
-                self._setup_spot_instance_discretization_factor(spot_instance, spot_index, component)
+                self._setup_spot_instance_discretization_factor(spot_instance, spot_index, component_instance)
                 alpha = spot_instance.discretization_factor
                 diameter = spot_instance.angular_diameter
 
@@ -513,16 +498,7 @@ class BinarySystem(System):
                                          "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
                     continue
 
-                # centre
-                boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
-                boundary_com = utils.cartesian_to_spherical(boundary_com)
-                args = components_distance, boundary_com[1], boundary_com[2]
-                args = precalc_fn(*args)
-                solution, _ = self._solver(potential_fn, solver_condition, *args)
-                boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
-
-                # first point will be always barycenter of boundary
-                # spot_points[0] = boundary_center
+                boundary_center = spot_points[0]
 
                 # max size from barycenter of boundary to boundary
                 spot_instance.max_size = max([np.linalg.norm(np.array(boundary_center) - np.array(b))

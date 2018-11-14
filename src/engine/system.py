@@ -297,13 +297,11 @@ class System(metaclass=ABCMeta):
         :return:
         """
         model = {"object": [], "spots": {}}
-        spot_candidates = {"simplex": {}, "com": {}, "3rd_enum": {}, "ix": {}}
+        spot_candidates = {"simplex": {}, "com": [], "ix": []}
         spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
                                            if vertices_map[ix]["enum"] >= 0]))
         for spot_index in spots_instance_indices:
             model["spots"][spot_index] = []
-            for key in ["com", "3rd_enum", "ix"]:
-                spot_candidates[key][spot_index] = []
         return model, spot_candidates
 
     @staticmethod
@@ -324,80 +322,41 @@ class System(metaclass=ABCMeta):
 
     @staticmethod
     def _resolve_spot_candidates(model, spot_candidates, component_instance, faces, component_com=None):
-        for spot_ix in spot_candidates["com"].keys():
-            # get center and size of current spot candidate
-            center = component_instance.spots[spot_ix].boundary_center - np.array([component_com, 0.0, 0.0])
-
-            com = np.array(spot_candidates["com"][spot_ix]) - np.array([component_com, 0.0, 0.0])
-            cos_max_angle = np.cos(0.5*component_instance.spots[spot_ix].angular_diameter)
-
-            # test if dist is smaller as current spot size;
-            # if dist is smaller, then current face belongs to spots otherwise face belongs to t_object itself
-            for idx, _ in enumerate(spot_candidates["com"][spot_ix]):
-                cos_angle_com = np.inner(center, com[idx]) / (np.linalg.norm(center) * np.linalg.norm(com[idx]))
-                simplex_ix = spot_candidates["ix"][spot_ix][idx]
-                if cos_angle_com > cos_max_angle:
+        # checking each candidate one at a time trough all spots
+        com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
+        cos_max_angle = [np.cos(0.5 * spot.angular_diameter) for spot in component_instance.spots.values()]
+        center = [spot.boundary_center - np.array([component_com, 0.0, 0.0])
+                  for spot in component_instance.spots.values()]
+        for idx, _ in enumerate(spot_candidates["com"]):
+            assigned_test = False
+            simplex_ix = spot_candidates["ix"][idx]
+            for spot_ix, _ in enumerate(component_instance.spots):
+                cos_angle_com = np.inner(center[spot_ix], com[idx]) / \
+                                (np.linalg.norm(center[spot_ix]) * np.linalg.norm(com[idx]))
+                if cos_angle_com > cos_max_angle[spot_ix]:
                     model["spots"][spot_ix].append(np.array(faces[simplex_ix]))
-                else:
-                    # make the same computation for 3rd vertex of face
-                    # it might be confusing, but spot candidate is spot where 2 of 3 vertex of one face belong to
-                    # first spot, and the 3rd index belongs to another (neighbour) spot
-                    # it has to be alos tested, whether face finally do not belongs to spot candidate;
-                    trd_spot_index = spot_candidates["3rd_enum"][spot_ix][idx]
-                    trd_center = \
-                        component_instance.spots[trd_spot_index].boundary_center - np.array([component_com, 0.0, 0.0])
-                    trd_cos_max_angle = np.cos(0.5*component_instance.spots[trd_spot_index].angular_diameter)
+                    assigned_test = True
 
-                    trd_com = spot_candidates["com"][spot_ix][idx] - np.array([component_com, 0.0, 0.0])
-                    trd_cos_angle_com = \
-                        np.inner(trd_center, trd_com) / (np.linalg.norm(trd_center) * np.linalg.norm(trd_com))
+            if not assigned_test:
+                model["object"].append(np.array(faces[simplex_ix]))
 
-                    print(trd_cos_max_angle, trd_cos_angle_com)
-                    print(trd_cos_max_angle <= trd_cos_angle_com, trd_spot_index)
-                    if trd_cos_max_angle <= trd_cos_angle_com:
-                        model["spots"][trd_spot_index].append(np.array(faces[simplex_ix]))
-                    else:
-                        model["object"].append(np.array(faces[simplex_ix]))
         gc.collect()
         return model
 
     @classmethod
-    def _resolve_obvious_spots(cls, points, faces, model, spot_candidates, vmap, component_instance):
+    def _resolve_obvious_spots(cls, points, faces, model, spot_candidates, vmap, component_instance,
+                               component_com=None):
         for simplex, face_points, ix in list(zip(faces, points[faces], range(faces.shape[0]))):
-            # test if each point belongs to spot
-            if {'spot'} == set([vmap[simplex[_i]]["type"] for _i in range(3)]):
-                # if each point belongs to the same spot, then it is for sure face of that spot
-                if vmap[simplex[0]]["enum"] == vmap[simplex[1]]["enum"] == vmap[simplex[2]]["enum"]:
+            # if each point belongs to the same spot, then it is for sure face of that spot
+            condition1 = vmap[simplex[0]]["enum"] == vmap[simplex[1]]["enum"] == vmap[simplex[2]]["enum"]
+            if condition1:
+                if 'spot' == vmap[simplex[0]]["type"]:
                     model["spots"][vmap[simplex[0]]["enum"]].append(np.array(simplex))
                 else:
-                    # if at least one of points of face belongs to different spot, we have to test
-                    # which one of those spots current face belongs to
-                    reference_to_spot, trd_enum = cls._get_spots_references(vmap, simplex)
-
-                    if reference_to_spot is not None:
-                        spot_candidates["com"][reference_to_spot].append(np.average(face_points, axis=0))
-                        spot_candidates["3rd_enum"][reference_to_spot].append(trd_enum)
-                        spot_candidates["ix"][reference_to_spot].append(ix)
-            # if at least one of point belongs to the spot and another one to the stellar body, it is neccesary
-            # to compute a distance of center of mass  of such surface element from the center of spot
-            # and compare whether it is within the spot or outside
-            elif {'spot', 'object'}.issubset(set([vmap[simplex[_i]]["type"] for _i in range(3)])):
-                simplex_indices_of_spots = [_i for _i in range(3) if vmap[simplex[_i]]["type"] == 'spot']
-                spots_enum = np.array([vmap[simplex[_i]]["enum"] for _i in range(3)])[simplex_indices_of_spots]
-                add_to_model = True
-                for spot_ix in spots_enum:
-                    center = component_instance.spots[spot_ix].boundary_center
-                    face_center = np.average(face_points, axis=0)
-                    cos_angle = np.inner(center, face_center) / (np.linalg.norm(center) * np.linalg.norm(face_center))
-                    if cos_angle < np.cos(0.5 * component_instance.spots[spot_ix].angular_diameter):
-                        add_to_model = False
-                        model["spots"][spot_ix].append(np.array(simplex))
-                        break
-                if add_to_model:
                     model["object"].append(np.array(simplex))
             else:
-                # anything else
-                model["object"].append(np.array(simplex))
+                spot_candidates["com"].append(np.average(face_points, axis=0))
+                spot_candidates["ix"].append(ix)
 
         gc.collect()
         return model, spot_candidates
@@ -418,12 +377,13 @@ class System(metaclass=ABCMeta):
         :return:
         """
         model, spot_candidates = \
-            cls._resolve_obvious_spots(points, faces, model, spot_candidates, vmap, component_instance)
+            cls._resolve_obvious_spots(points, faces, model, spot_candidates, vmap, component_instance,
+                                       component_com=component_com)
         model = cls._resolve_spot_candidates(model, spot_candidates, component_instance, faces,
                                              component_com=component_com)
         # converting lists in model to numpy arrays
         model['object'] = np.array(model['object'])
-        for spot_ix in spot_candidates["com"].keys():
+        for spot_ix in component_instance.spots:
             model['spots'][spot_ix] = np.array(model['spots'][spot_ix])
 
         return model
@@ -482,3 +442,20 @@ class System(metaclass=ABCMeta):
             remap_list[indices] = np.arange(np.shape(indices)[0])
             component_instance.spots[spot_index].faces = remap_list[model["spots"][spot_index]]
         gc.collect()
+
+    def _setup_spot_instance_discretization_factor(self, spot_instance, spot_index, component_instance):
+        # component_instance = getattr(self, component)
+        if spot_instance.discretization_factor is None:
+            self._logger.debug(
+                'Angular density of the spot {0} on {2} component was not supplied and discretization factor of'
+                ' star {1} was used.'.format(spot_index, component_instance.discretization_factor,
+                                             component_instance.name))
+            spot_instance.discretization_factor = 0.9 * component_instance.discretization_factor * U.ARC_UNIT
+        if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter:
+            self._logger.debug('Angular density {1} of the spot {0} on {2} component was larger than its '
+                               'angular radius. Therefore value of angular density was set to be equal to '
+                               '0.5 * angular diameter.'.format(spot_index,
+                                                                component_instance.discretization_factor,
+                                                                component_instance.name))
+            spot_instance.discretization_factor = 0.5 * spot_instance.angular_diameter * U.ARC_UNIT
+
