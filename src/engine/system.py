@@ -323,23 +323,35 @@ class System(metaclass=ABCMeta):
 
     @staticmethod
     def _resolve_spot_candidates(model, spot_candidates, component_instance, faces, component_com=None):
+        """
+        resolves spot face candidates by comparing angular distances of face cantres and spot centres, in case of
+        multiple layered spots, face is assigned to the top layer
+
+        :param model:
+        :param spot_candidates:
+        :param component_instance:
+        :param faces:
+        :param component_com:
+        :return:
+        """
         # checking each candidate one at a time trough all spots
         com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
         cos_max_angle = {idx: np.cos(0.5 * spot.angular_diameter) for idx, spot in component_instance.spots.items()}
         center = {idx: spot.boundary_center - np.array([component_com, 0.0, 0.0])
                   for idx, spot in component_instance.spots.items()}
         for idx, _ in enumerate(spot_candidates["com"]):
-            assigned_test = False
+            spot_idx_to_assign = -1
             simplex_ix = spot_candidates["ix"][idx]
             for spot_ix in component_instance.spots:
                 cos_angle_com = np.inner(center[spot_ix], com[idx]) / \
                                 (np.linalg.norm(center[spot_ix]) * np.linalg.norm(com[idx]))
                 if cos_angle_com > cos_max_angle[spot_ix]:
-                    model["spots"][spot_ix].append(np.array(faces[simplex_ix]))
-                    assigned_test = True
+                    spot_idx_to_assign = spot_ix
 
-            if not assigned_test:
+            if spot_idx_to_assign == -1:
                 model["object"].append(np.array(faces[simplex_ix]))
+            else:
+                model["spots"][spot_ix].append(np.array(faces[simplex_ix]))
 
         gc.collect()
         return model
