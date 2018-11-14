@@ -325,13 +325,13 @@ class System(metaclass=ABCMeta):
     def _resolve_spot_candidates(model, spot_candidates, component_instance, faces, component_com=None):
         # checking each candidate one at a time trough all spots
         com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
-        cos_max_angle = [np.cos(0.5 * spot.angular_diameter) for spot in component_instance.spots.values()]
-        center = [spot.boundary_center - np.array([component_com, 0.0, 0.0])
-                  for spot in component_instance.spots.values()]
+        cos_max_angle = {idx: np.cos(0.5 * spot.angular_diameter) for idx, spot in component_instance.spots.items()}
+        center = {idx: spot.boundary_center - np.array([component_com, 0.0, 0.0])
+                  for idx, spot in component_instance.spots.items()}
         for idx, _ in enumerate(spot_candidates["com"]):
             assigned_test = False
             simplex_ix = spot_candidates["ix"][idx]
-            for spot_ix, _ in enumerate(component_instance.spots):
+            for spot_ix in component_instance.spots:
                 cos_angle_com = np.inner(center[spot_ix], com[idx]) / \
                                 (np.linalg.norm(center[spot_ix]) * np.linalg.norm(com[idx]))
                 if cos_angle_com > cos_max_angle[spot_ix]:

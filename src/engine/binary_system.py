@@ -441,9 +441,10 @@ class BinarySystem(System):
 
                 # compute euclidean distance of two points on spot (x0)
                 # we have to obtain distance between center and 1st point in 1st inner ring of spot
-                args, use = (components_distance, lon, lat + alpha), False
-                args = precalc_fn(*args)
-                solution, use = self._solver(potential_fn, solver_condition, *args)
+                args1, use = (components_distance, lon, lat + alpha), False
+                args2 = precalc_fn(*args1)
+                kwargs = {'original_kwargs': args1}
+                solution, use = self._solver(potential_fn, solver_condition, *args2, **kwargs)
 
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
@@ -481,9 +482,10 @@ class BinarySystem(System):
 
                             spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
-                            args = (components_distance, spherical_delta_vector[1], spherical_delta_vector[2])
-                            args = precalc_fn(*args)
-                            solution, use = self._solver(potential_fn, solver_condition, *args)
+                            args1 = (components_distance, spherical_delta_vector[1], spherical_delta_vector[2])
+                            args2 = precalc_fn(*args1)
+                            kwargs = {'original_kwargs': args1}
+                            solution, use = self._solver(potential_fn, solver_condition, *args2, **kwargs)
 
                             if not use:
                                 component_instance.remove_spot(spot_index=spot_index)
