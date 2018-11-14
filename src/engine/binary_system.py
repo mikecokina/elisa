@@ -246,7 +246,7 @@ class BinarySystem(System):
         :param eccentricity: (np.)int, (np.)float
         :return:
         """
-        if eccentricity < 0 or eccentricity > 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
+        if eccentricity < 0 or eccentricity >= 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
             raise TypeError(
                 'Input of variable `eccentricity` is not (np.)int or (np.)float or it is out of boundaries.')
         self._eccentricity = eccentricity
@@ -375,6 +375,8 @@ class BinarySystem(System):
         """
 
         def solver_condition(x, *_args):
+            if isinstance(x, np.ndarray):
+                x = x[0]
             point = utils.spherical_to_cartesian([x, _args[1], _args[2]])
             point[0] = point[0] if component == "primary" else components_distance - point[0]
             # ignore also spots where one of points is situated just on the neck
@@ -420,9 +422,10 @@ class BinarySystem(System):
                 radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
                 center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
 
-                args, use = (components_distance, radial_vector[1], radial_vector[2]), False
-                args = precalc_fn(*args)
-                solution, use = self._solver(potential_fn, solver_condition, *args)
+                args1, use = (components_distance, radial_vector[1], radial_vector[2]), False
+                args2 = precalc_fn(*args1)
+                kwargs = {'original_kwargs': args1}
+                solution, use = self._solver(potential_fn, solver_condition, *args2, **kwargs)
 
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from

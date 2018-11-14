@@ -8,53 +8,6 @@ from numpy.testing import assert_array_almost_equal
 from engine import utils
 
 
-# class TestBinarySystemProperties(unittest.TestCase):
-#
-#     def test_orbit_change(self):
-#         bs = BinarySystem(primary=None, secondary=None)
-#
-#         bs.period = 10.0
-#         bs.eccentricity = 0.6
-#         bs.inclination = 0.25
-#         bs.periastron = 0.2345
-#
-#         bs.init()
-#
-#         self.assertEqual(bs.orbit.eccentricity, 0.6)
-#         self.assertEqual(bs.orbit.inclination, 0.25)
-#         self.assertEqual(bs.orbit.periastron, 0.2345)
-#         self.assertEqual(bs.orbit.period, 10)
-#
-#     def test_binary_system_unit(self):
-#         bs = BinarySystem(primary=None, secondary=None)
-#
-#         bs.period = 432000 * u.s
-#         self.assertEqual(bs.period, 5)
-#         with self.assertRaises(TypeError):
-#             bs.period = '0000'
-#
-#         bs.inclination = 90 * u.deg
-#         self.assertEqual(bs.inclination, 0.5 * np.pi)
-#         with self.assertRaises(TypeError):
-#             bs.inclination = '0000'
-#
-#         bs.periastron = 45 * u.deg
-#         self.assertEqual(bs.periastron, np.pi * 0.25)
-#         with self.assertRaises(TypeError):
-#             bs.inclination = '0000'
-#
-#
-#         # add all
-#
-#     def test_binary_change(self):
-#         bs = BinarySystem(primary=None, secondary=None)
-#
-#         bs.period = 12.0
-#         self.assertEqual(bs.period, 12)
-#
-#         bs.gamma = 2.556
-#         self.assertEqual(bs.gamma, 2.556)
-
 class TestBinarySystem(unittest.TestCase):
 
     def setUp(self):
@@ -239,7 +192,7 @@ class TestBinarySystem(unittest.TestCase):
 
             distance1 = round(utils.find_nearest_dist_3d(list(bs.primary.points)), 10)
             distance2 = round(utils.find_nearest_dist_3d(list(bs.secondary.points)), 10)
-            print(distance1, distance2)
+            # print(distance1, distance2)
             if distance1 < 1e-10:
                 bad_points = []
                 for ii, point in enumerate(bs.primary.points):
@@ -257,5 +210,98 @@ class TestBinarySystem(unittest.TestCase):
         pass
 
     def test_spots(self):
-        # todo: doplnit testy pre rozne patologicke pripady (aj nepatologicke)
-        pass
+        phases_to_use = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        alpha = 3
+        spots_metadata = {
+            "primary":
+                [
+                    {"longitude": 90,
+                     "latitude": 58,
+                     # "angular_density": 1,
+                     "angular_diameter": 17,
+                     "temperature_factor": 0.9},
+                    {"longitude": 90,
+                     "latitude": 57,
+                     # "angular_density": 2,
+                     "angular_diameter": 30,
+                     "temperature_factor": 1.05},
+                    {"longitude": 45,
+                     "latitude": 90,
+                     # "angular_density": 2,
+                     "angular_diameter": 30,
+                     "temperature_factor": 0.95},
+                ],
+
+            "secondary":
+                [
+                    {"longitude": 10,
+                     "latitude": 45,
+                     # "angular_density": 3,
+                     "angular_diameter": 28,
+                     "temperature_factor": 0.7},
+                    {"longitude": 30,
+                     "latitude": 65,
+                     # "angular_density": 3,
+                     "angular_diameter": 45,
+                     "temperature_factor": 0.75},
+                    {"longitude": 45,
+                     "latitude": 40,
+                     # "angular_density": 3,
+                     "angular_diameter": 40,
+                     "temperature_factor": 0.80},
+                    {"longitude": 50,
+                     "latitude": 55,
+                     # "angular_density": 3,
+                     "angular_diameter": 28,
+                     "temperature_factor": 0.85},
+                    {"longitude": 25,
+                     "latitude": 55,
+                     # "angular_density": 3,
+                     "angular_diameter": 15,
+                     "temperature_factor": 0.9},
+                    {"longitude": 0,
+                     "latitude": 70,
+                     # "angular_density": 3,
+                     "angular_diameter": 45,
+                     "temperature_factor": 0.95}
+                ]
+        }
+
+        for i, combo in enumerate(self.params_combination):
+            primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
+                           synchronicity=combo["primary_synchronicity"], discretization_factor=alpha,
+                           t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"],
+                           spots=spots_metadata['primary'])
+
+            secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
+                             synchronicity=combo["secondary_synchronicity"], discretization_factor=alpha,
+                             t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
+                             spots=spots_metadata['secondary'])
+
+            bs = BinarySystem(primary=primary,
+                              secondary=secondary,
+                              argument_of_periastron=combo["argument_of_periastron"],
+                              gamma=combo["gamma"],
+                              period=combo["period"],
+                              eccentricity=combo["eccentricity"],
+                              inclination=combo["inclination"],
+                              primary_minimum_time=combo["primary_minimum_time"],
+                              phase_shift=combo["phase_shift"])
+
+            components_distance = bs.orbit.orbital_motion(phase=phases_to_use[i])[0][0]
+            bs.build_surface(components_distance=components_distance)
+
+            # distance1 = round(utils.find_nearest_dist_3d(list(bs.primary.points)), 10)
+            # distance2 = round(utils.find_nearest_dist_3d(list(bs.secondary.points)), 10)
+            # # print(distance1, distance2)
+            # if distance1 < 1e-10:
+            #     bad_points = []
+            #     for ii, point in enumerate(bs.primary.points):
+            #         for jj, xx in enumerate(bs.primary.points[ii + 1:]):
+            #             dist = np.linalg.norm(point - xx)
+            #             if dist <= 1e-10:
+            #                 print('Match: {0}, {1}, {2}'.format(point, ii, jj))
+            #                 bad_points.append(point)
+            #
+            # self.assertFalse(distance1 < 1e-10)
+            # self.assertFalse(distance2 < 1e-10)

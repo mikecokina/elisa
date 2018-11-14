@@ -126,7 +126,8 @@ class System(metaclass=ABCMeta):
             self._logger.debug("Attempt to solve function {} finished w/ exception: {}".format(fn.__name__, str(e)))
             use = False
 
-        return (solution, use) if condition(solution, *args, **kwargs) else (np.nan, False)
+        args_to_use = kwargs.get('original_kwargs', args)
+        return (solution, use) if condition(solution, *args_to_use) else (np.nan, False)
 
     @abstractmethod
     def build_mesh(self, *args, **kwargs):
