@@ -193,7 +193,7 @@ class System(metaclass=ABCMeta):
             # average spacing in spot points
             vertices_to_remove, vertices_test = [], []
 
-            cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.angular_density)
+            cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.discretization_factor)
 
             spot_center = spot.boundary_center - np.array([component_com, 0., 0.])
 

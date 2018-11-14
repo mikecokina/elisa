@@ -366,20 +366,20 @@ class BinarySystem(System):
                 radius = fn(component, components_distance)
                 setattr(component_instance, param, radius)
 
-    def _setup_spot_instance_angular_density(self, spot_instance, spot_index, component):
+    def _setup_spot_instance_discretization_factor(self, spot_instance, spot_index, component):
         component_instance = getattr(self, component)
-        if spot_instance.angular_density is None:
+        if spot_instance.discretization_factor is None:
             self._logger.debug(
                 'Angular density of the spot {0} on {2} component was not supplied and discretization factor of'
                 ' star {1} was used.'.format(spot_index, component_instance.discretization_factor, component))
-            spot_instance.angular_density = 0.9 * component_instance.discretization_factor * units.ARC_UNIT
-        if spot_instance.angular_density > 0.5 * spot_instance.angular_diameter:
+            spot_instance.discretization_factor = 0.9 * component_instance.discretization_factor * units.ARC_UNIT
+        if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter:
             self._logger.debug('Angular density {1} of the spot {0} on {2} component was larger than its '
                                'angular radius. Therefore value of angular density was set to be equal to '
                                '0.5 * angular diameter.'.format(spot_index,
                                                                 component_instance.discretization_factor,
                                                                 component))
-            spot_instance.angular_density = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
+            spot_instance.discretization_factor = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
 
     def _evaluate_spots_mesh(self, components_distance, component=None):
         """
@@ -424,8 +424,8 @@ class BinarySystem(System):
                 # lon -> phi, lat -> theta
                 lon, lat = spot_instance.longitude, spot_instance.latitude
 
-                self._setup_spot_instance_angular_density(spot_instance, spot_index, component)
-                alpha = spot_instance.angular_density
+                self._setup_spot_instance_discretization_factor(spot_instance, spot_index, component)
+                alpha = spot_instance.discretization_factor
                 diameter = spot_instance.angular_diameter
 
                 # initial containers for current spot
@@ -562,7 +562,7 @@ class BinarySystem(System):
             raise TypeError("Secondary component is not instance of class {}".format(Star.__name__))
 
         # checking if stellar components have all mandatory parameters initialised
-        # tehese parameters are not mandatory in single star system, so validity check cannot be provided
+        # these parameters are not mandatory in single star system, so validity check cannot be provided
         # on whole set of KWARGS in star object
         star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity']
         missing_kwargs = []

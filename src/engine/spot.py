@@ -16,7 +16,7 @@ class Spot(object):
     def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.ALL_KWARGS, instance=Spot)
 
-        self._angular_density = None
+        self._discretization_factor = None
         self._latitude = None
         self._longitude = None
         self._angular_diameter = None
@@ -112,22 +112,22 @@ class Spot(object):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def angular_density(self):
-        return self._angular_density
+    def discretization_factor(self):
+        return self._discretization_factor
 
-    @angular_density.setter
-    def angular_density(self, angular_density):
+    @discretization_factor.setter
+    def discretization_factor(self, discretization_factor):
         """
-        setter for spot angular_density
+        setter for spot discretization_factor (mean angular size of spot face)
         expecting value in degrees or as astropy units instance
 
-        :param angular_density: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :param discretization_factor: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
         """
-        if isinstance(angular_density, u.quantity.Quantity):
-            self._angular_density = np.float64(angular_density.to(units.ARC_UNIT))
-        elif isinstance(angular_density, (int, np.int, float, np.float)):
-            self._angular_density = np.radians(np.float64(angular_density))
+        if isinstance(discretization_factor, u.quantity.Quantity):
+            self._discretization_factor = np.float64(discretization_factor.to(units.ARC_UNIT))
+        elif isinstance(discretization_factor, (int, np.int, float, np.float)):
+            self._discretization_factor = np.radians(np.float64(discretization_factor))
         else:
             raise TypeError('Input of variable `angular_density` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
