@@ -7,11 +7,11 @@
                                                                                   270°; pre i>90°
               - zákryty nastaávajú vtedy ked sekundárna zlozka pretne rovinu yz
 
-- treba doinstalovat python3-tk koli matplotlibu
 
-- observer class main skelleton
 - common interface helper fns for single and binary system
 
 - sprav funkciu ktora vyrata potencialy z polomerov a gravitacnych zrychleni pri binarnych systemoch(polarnych)
-- daj components distance do fcii pre skvrny (toto co si stratil)
-- zjednot spot mesh creator ak sa da
+- daj discretization factor do configu
+- zaved v configu max_discretization factor
+- osetri v binary systeme diskretizacny faktor pre zlozky s velmi rozdielnymi polomerami (pripad ked primar je omnoho
+vacsi alebo omnoho mensi)

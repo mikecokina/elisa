@@ -83,7 +83,7 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000 * u.K, 'fr
 physics = Physics(reflection_effect=True,
                   reflection_effect_iterations=2)
 
-contact_pot = 2.96657
+contact_pot = 5
 start_time = time()
 
 # combo = {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -117,23 +117,23 @@ start_time = time()
 #                   primary_minimum_time=combo["primary_minimum_time"],
 #                   phase_shift=combo["phase_shift"])
 primary = Star(mass=2.0*u.solMass,
-               surface_potential=2.7,
-               # surface_potential=contact_pot,
+               # surface_potential=2.7,
+               surface_potential=contact_pot,
                # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                synchronicity=1.0,
                t_eff=6500*u.K,
                gravity_darkening=1.0,
-               discretization_factor=3,
+               discretization_factor=5,
                )
 secondary = Star(mass=1.0*u.solMass,
-                 surface_potential=2.7,
-                 # surface_potential=contact_pot,
+                 # surface_potential=2.7,
+                 surface_potential=contact_pot,
                  synchronicity=1.0,
                  t_eff=10000*u.K,
                  gravity_darkening=1.0,
-                 discretization_factor=3,
-                 spots=spots_metadata['secondary'],
+                 # discretization_factor=5,
+                 # spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['primary'],
                 )
 
@@ -151,17 +151,17 @@ bs = BinarySystem(primary=primary,
 
 components_min_distance = 1 - bs.eccentricity
 start_time = time()
-# bs.build_surface(components_distance=components_min_distance)
+bs.build_surface(components_distance=components_min_distance)
 # bs.build_surface(components_distance=components_min_distance, component='primary')
 # bs.build_surface(components_distance=components_min_distance, component='secondary')
-# bs.build_surface_map(colormap='temperature', components_distance=components_min_distance)
+bs.build_surface_map(colormap='temperature', components_distance=components_min_distance)
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=components_min_distance)
 # bs.build_surface_map(colormap='temperature', component='secondary', components_distance=components_min_distance)
 # bs.build_temperature_distribution(components_distance=1.0)
 # bs.evaluate_normals()
 # bs.build_surface(components_distance=1)
 
-# a, b = bs.reflection_effect(components_distance=1)
+a, b = bs.reflection_effect(iterations=1, components_distance=1)
 # print(np.shape(a))
 # dists, dist_vect = utils.calculate_distance_matrix(points1=bs.primary.points, points2=bs.secondary.points,
 #                                                    return_distance_vector_matrix=True)
@@ -195,7 +195,7 @@ print
 bs.plot(descriptor='surface',
         phase=0,
         # components_to_plot='primary',
-        components_to_plot='secondary',
+        # components_to_plot='secondary',
         edges=True,
         # normals=True,
         # colormap='gravity_acceleration',

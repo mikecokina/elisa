@@ -115,6 +115,13 @@ class BinarySystem(System):
         # polar radius of both component in periastron
         self.setup_components_radii(components_distance=self.orbit.periastron_distance)
 
+        # if secondary discretization factor was not set, it will be now with respect to primary component
+        if not self.secondary.kwargs.get('discretization_factor'):
+            self._logger.debug("Setting discretization factor of secondary component according discretization factor "
+                               "of primary component.")
+            self.secondary.discretization_factor = self.primary.discretization_factor * self.primary.polar_radius / \
+                                                   self.secondary.polar_radius * u.rad
+
     @property
     def morphology(self):
         """
@@ -1882,12 +1889,7 @@ class BinarySystem(System):
                 self.build_surface_with_spots(_component, components_distance=components_distance)
 
             if return_surface:
-                ret_points[_component] = copy(component_instance.points)
-                ret_faces[_component] = copy(component_instance.faces)
-                for spot_index, spot in component_instance.spots.items():
-                    n_points = np.shape(ret_points[_component])[0]
-                    ret_points[_component] = np.append(ret_points[_component], spot.points, axis=0)
-                    ret_faces[_component] = np.append(ret_faces[_component], spot.faces + n_points, axis=0)
+                ret_points[_component], ret_faces[_component] = component_instance.return_whole_surface()
 
         return (ret_points, ret_faces) if return_surface else None
 
@@ -2148,6 +2150,14 @@ class BinarySystem(System):
                                               components_distance=components_distance, return_map=True)
                 kwargs['primary_cmap'] = cmap['primary']
                 kwargs['secondary_cmap'] = cmap['secondary']
+
+                if kwargs['face_mask_primary'] is not None:
+                    kwargs['primary_triangles'] = kwargs['primary_triangles'][kwargs['face_mask_primary']]
+                    kwargs['primary_cmap'] = kwargs['primary_cmap'][kwargs['face_mask_primary']]
+                if kwargs['face_mask_secondary'] is not None:
+                    kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
+                    kwargs['secondary_cmap'] = kwargs['secondary_cmap'][kwargs['face_mask_secondary']]
+
                 if kwargs['normals']:
                     kwargs['primary_centres'] = self.primary.calculate_surface_centres(
                         kwargs['points_primary'], kwargs['primary_triangles'])
@@ -2199,6 +2209,7 @@ class BinarySystem(System):
                     if kwargs['face_mask_secondary'] is not None:
                         kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
                         kwargs['secondary_cmap'] = kwargs['secondary_cmap'][kwargs['face_mask_secondary']]
+
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 
@@ -2331,7 +2342,7 @@ class BinarySystem(System):
                                                                                     cls.__name__))
 
     def reflection_effect(self, iterations=None, components_distance=None):
-        if iter is None:
+        if iterations is None:
             raise ValueError('Number of iterations for reflection effect was not specified.')
         elif iterations == 0:
             self._logger.debug('Number of reflections in reflection effect was set to zero. Reflection effect will '
@@ -2356,6 +2367,7 @@ class BinarySystem(System):
         (xlim['primary'], xlim['secondary']) = (x_corr_primary, 1 + x_corr_secondary) \
             if self.primary.polar_radius > self.secondary.polar_radius else (- x_corr_primary, 1 - x_corr_secondary)
 
+        #this tests if you can use surface symmetries
         use_quarter_star_test = self.primary.spots is None and self.secondary.spots is None
 
         # declaring variables
@@ -2379,17 +2391,17 @@ class BinarySystem(System):
                 # this branch is activated in case of clean surface where symmetries can be used
                 # excluding quadrants that can be mirrored using symmetries
                 if self.morphology == 'over-contact':
-                    quadrant_exclusion = np.logical_or(component_instance.face_centres[:, 1] > 0,
-                                                       component_instance.face_centres[:, 2] > 0)
+                    quadrant_exclusion = np.logical_or(centres[_component][:, 1] > 0,
+                                                       centres[_component][:, 2] > 0)
                 else:
-                    quadrant_exclusion = np.array([True for _ in component_instance.face_centres[:, 0]])
+                    quadrant_exclusion = np.array([True for _ in centres[_component][:, 0]])
+
                 # excluding faces on far sides of components
-                test1 = component_instance.face_centres[:, 0] >= xlim[_component] if _component == 'primary' else \
-                    component_instance.face_centres[:, 0] <= xlim[_component]
+                test1 = centres[_component][:, 0] >= xlim[_component] if _component == 'primary' else \
+                    centres[_component][:, 0] <= xlim[_component]
                 # this variable contains faces that can seen from base symmetry part of the other star
                 vis_test[_component] = np.logical_and(test1, quadrant_exclusion)
-                vis_test_star[_component] = vis_test[_component]
-                vis_test[_component] = copy(vis_test_star[_component])
+                vis_test_star[_component] = copy(vis_test[_component])
 
             else:
                 vis_test_star[_component] = component_instance.face_centres[:, 0] >= xlim[_component] if \

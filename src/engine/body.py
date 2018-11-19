@@ -5,6 +5,7 @@ import logging
 from engine import units as U
 from engine import utils
 from engine.spot import Spot
+from copy import copy
 
 
 class Body(metaclass=ABCMeta):
@@ -522,13 +523,8 @@ class Body(metaclass=ABCMeta):
         function calculates normals for each face of given body (including spots
         :return:
         """
-        if not self.spots:
-            self.normals = self.calculate_normals(points=self.points[:self.base_symmetry_points_number],
-                                                  faces=self.faces[:self.base_symmetry_faces_number],
-                                                  centres=self.face_centres[:self.base_symmetry_faces_number])[
-                self.face_symmetry_vector]
-        else:
-            self.normals = self.calculate_normals(points=self.points, faces=self.faces, centres=self.face_centres)
+        self.normals = self.calculate_normals(points=self.points, faces=self.faces, centres=self.face_centres)
+        if self.spots:
             for spot_index in self.spots:
                 self.spots[spot_index].normals = self.calculate_normals(points=self.spots[spot_index].points,
                                                                         faces=self.spots[spot_index].faces,
@@ -553,12 +549,8 @@ class Body(metaclass=ABCMeta):
         calculates all surface centres for given body(including spots)
         :return:
         """
-        if not self.spots:
-            self.face_centres = self.calculate_surface_centres(points=self.points[:self.base_symmetry_points_number],
-                                                               faces=self.faces[:self.base_symmetry_faces_number])[
-                self.face_symmetry_vector]
-        else:
-            self.face_centres = self.calculate_surface_centres(points=self.points, faces=self.faces)
+        self.face_centres = self.calculate_surface_centres()
+        if self.spots:
             for spot_index in self.spots:
                 self.spots[spot_index].face_centres = \
                     self.calculate_surface_centres(points=self.spots[spot_index].points,
@@ -579,6 +571,21 @@ class Body(metaclass=ABCMeta):
 
         else:
             return utils.triangle_areas(self.faces, self.points)
+
+    def return_whole_surface(self):
+        """
+        returns all points and faces of the whole star
+        :return:
+        """
+        ret_points = copy(self.points)
+        ret_faces = copy(self.faces)
+        if self.spots:
+            for spot_index, spot in self.spots.items():
+                n_points = np.shape(ret_points)[0]
+                ret_points = np.append(ret_points, spot.points, axis=0)
+                ret_faces = np.append(ret_faces, spot.faces + n_points, axis=0)
+
+        return ret_points, ret_faces
 
     def get_info(self):
         pass

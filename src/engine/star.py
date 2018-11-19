@@ -44,6 +44,7 @@ class Star(Body):
         self._polar_potential_gradient = None
         self._pulsations = None
         self._filling_factor = None
+        self.kwargs = kwargs
 
         utils.check_missing_kwargs(Star.KWARGS, kwargs, instance_of=Star)
 

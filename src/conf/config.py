@@ -11,8 +11,13 @@ config_parser = ConfigParser()
 
 CONFIG_FILE = os.environ.get('ELISA_CONFIG', os.path.expanduser('~/elisa.ini'))
 LOG_CONFIG = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'conf', 'logging.json')
-EXAMPLE_PARAM_1 = "ex1"
-EXAMPLE_PARAM_2 = "ex2"
+# physics
+REFLECTION_EFFECT = True
+REFLECTION_EFFECT_ITERATIONS = 2
+LIMB_DARKENING_LAW = 'cosine'
+# computational
+DISCRETIZATION_FACTOR = 5
+max_discretization_factor = 20
 
 
 def set_up_logging():
@@ -47,12 +52,29 @@ def update_config():
         global LOG_CONFIG
         LOG_CONFIG = config_parser.get('general', 'log_config', fallback=LOG_CONFIG)
 
-        global EXAMPLE_PARAM_1
-        EXAMPLE_PARAM_1 = config_parser.get('general', 'example_param_1', fallback=EXAMPLE_PARAM_1)
+    if config_parser.has_section('physics'):
+        global REFLECTION_EFFECT
+        REFLECTION_EFFECT = config_parser.getboolean('physics', 'reflection_effect', fallback=REFLECTION_EFFECT)
 
-    if config_parser.has_section('any_group'):
-        global EXAMPLE_PARAM_2
-        EXAMPLE_PARAM_2 = config_parser.get('any_group', 'example_param_2', fallback=EXAMPLE_PARAM_2)
+        global REFLECTION_EFFECT_ITERATIONS
+        REFLECTION_EFFECT_ITERATIONS = config_parser.getint('physics', 'reflection_effect_iterations',
+                                                            fallback=REFLECTION_EFFECT_ITERATIONS)
+
+        global LIMB_DARKENING_LAW
+        LIMB_DARKENING_LAW = config_parser.getint('physics', 'limb_darkening_law',
+                                                  fallback=LIMB_DARKENING_LAW)
+        if LIMB_DARKENING_LAW not in ['linear', 'cosine', 'logarithmic', 'square_root']:
+            raise ValueError('{0} is not valid name of limb darkening law. Available limb darkening laws are: `linear` '
+                             'or `cosine`, `logarithmic`, `square_root`'.format(LIMB_DARKENING_LAW))
+
+    if config_parser.has_section('computational'):
+        global DISCRETIZATION_FACTOR
+        DISCRETIZATION_FACTOR = config_parser.getfloat('computational', 'discretization_factor',
+                                                       fallback=DISCRETIZATION_FACTOR)
+
+        global MAX_DISCRETIZATION_FACTOR
+        MAX_DISCRETIZATION_FACTOR = config_parser.getfloat('computational', 'max_discretization_factor',
+                                                           fallback=MAX_DISCRETIZATION_FACTOR)
 
 
 # fixme: import ths file somewher in code instead of previous engine.conf
