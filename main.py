@@ -44,32 +44,32 @@ spots_metadata = {
              "latitude": 45,
              # "angular_density": 3,
              "angular_diameter": 28,
-             "temperature_factor": 0.7},
+             "temperature_factor": 0.3},
             {"longitude": 30,
              "latitude": 65,
              # "angular_density": 3,
              "angular_diameter": 45,
-             "temperature_factor": 0.75},
-            {"longitude": 45,
-             "latitude": 40,
-             # "angular_density": 3,
-             "angular_diameter": 40,
-             "temperature_factor": 0.80},
-            {"longitude": 50,
-             "latitude": 55,
-             # "angular_density": 3,
-             "angular_diameter": 28,
-             "temperature_factor": 0.85},
-            {"longitude": 25,
-             "latitude": 55,
-             # "angular_density": 3,
-             "angular_diameter": 15,
-             "temperature_factor": 0.9},
-            {"longitude": 0,
-             "latitude": 70,
-             # "angular_density": 3,
-             "angular_diameter": 45,
-             "temperature_factor": 0.95}
+             "temperature_factor": 0.3},
+            # {"longitude": 45,
+            #  "latitude": 40,
+            #  # "angular_density": 3,
+            #  "angular_diameter": 40,
+            #  "temperature_factor": 0.80},
+            # {"longitude": 50,
+            #  "latitude": 55,
+            #  # "angular_density": 3,
+            #  "angular_diameter": 28,
+            #  "temperature_factor": 0.85},
+            # {"longitude": 25,
+            #  "latitude": 55,
+            #  # "angular_density": 3,
+            #  "angular_diameter": 15,
+            #  "temperature_factor": 0.9},
+            # {"longitude": 0,
+            #  "latitude": 70,
+            #  # "angular_density": 3,
+            #  "angular_diameter": 45,
+            #  "temperature_factor": 0.95}
         ]
 }
 
@@ -83,7 +83,7 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000 * u.K, 'fr
 physics = Physics(reflection_effect=True,
                   reflection_effect_iterations=2)
 
-contact_pot = 5
+contact_pot = 2.9
 start_time = time()
 
 # combo = {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -122,9 +122,10 @@ primary = Star(mass=2.0*u.solMass,
                # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                synchronicity=1.0,
-               t_eff=6500*u.K,
+               t_eff=5000*u.K,
                gravity_darkening=1.0,
-               discretization_factor=5,
+               discretization_factor=3,
+               albedo=0.6
                )
 secondary = Star(mass=1.0*u.solMass,
                  # surface_potential=2.7,
@@ -133,8 +134,9 @@ secondary = Star(mass=1.0*u.solMass,
                  t_eff=10000*u.K,
                  gravity_darkening=1.0,
                  # discretization_factor=5,
-                 # spots=spots_metadata['secondary'],
+                 spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['primary'],
+                 albedo=0.6
                 )
 
 bs = BinarySystem(primary=primary,
@@ -161,7 +163,10 @@ bs.build_surface_map(colormap='temperature', components_distance=components_min_
 # bs.evaluate_normals()
 # bs.build_surface(components_distance=1)
 
-a, b = bs.reflection_effect(iterations=1, components_distance=1)
+# t1 = np.min(bs.primary.temperatures)
+# a, b = bs.reflection_effect(iterations=2, components_distance=1)
+# t2 = np.min(bs.primary.temperatures)
+# print(t1, t2)
 # print(np.shape(a))
 # dists, dist_vect = utils.calculate_distance_matrix(points1=bs.primary.points, points2=bs.secondary.points,
 #                                                    return_distance_vector_matrix=True)
@@ -194,9 +199,9 @@ print
 
 bs.plot(descriptor='surface',
         phase=0,
-        # components_to_plot='primary',
+        components_to_plot='primary',
         # components_to_plot='secondary',
-        edges=True,
+        # edges=True,
         # normals=True,
         # colormap='gravity_acceleration',
         colormap='temperature',

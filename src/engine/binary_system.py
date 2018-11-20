@@ -47,6 +47,13 @@ class BinarySystem(System):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
+    # this will be removed after full implementation of config system
+    LIMB_DARKENING_LAW = 'cosine'
+    REFLECTION_EFFECT_ITERATIONS = 2
+
+    # this will be removed after full implementation of LD
+    LD_COEFF = 0.5
+
     def __init__(self, primary, secondary, name=None, **kwargs):
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, BinarySystem)
         super(BinarySystem, self).__init__(name=name, **kwargs)
@@ -91,16 +98,6 @@ class BinarySystem(System):
                                "of class instance {} to {}".format(kwarg, BinarySystem.__name__, kwargs[kwarg]))
             setattr(self, kwarg, kwargs[kwarg])
 
-        # making sure that you set all necessary kwargs for Star in BinarySystem
-        star_kwargs = ['surface_potential', 'synchronicity', 'albedo']
-        for _component in ['primary', 'secondary']:
-            utils.check_missing_kwargs(star_kwargs, params[_component].ALL_KWARGS, instance_of=Star)
-
-        # making sure that you set all necessary kwargs for Star in BinarySystem
-        star_kwargs = ['surface_potential', 'synchronicity', 'albedo']
-        for _component in ['primary', 'secondary']:
-            utils.check_missing_kwargs(star_kwargs, params[_component].ALL_KWARGS, instance_of=Star)
-
         # calculation of dependent parameters
         self._semi_major_axis = self.calculate_semi_major_axis()
 
@@ -121,6 +118,8 @@ class BinarySystem(System):
                                "of primary component.")
             self.secondary.discretization_factor = self.primary.discretization_factor * self.primary.polar_radius / \
                                                    self.secondary.polar_radius * u.rad
+
+        # TODO: retrieval of limb darkenig coefficients
 
     @property
     def morphology(self):
@@ -552,7 +551,7 @@ class BinarySystem(System):
         # checking if stellar components have all mandatory parameters initialised
         # these parameters are not mandatory in single star system, so validity check cannot be provided
         # on whole set of KWARGS in star object
-        star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity']
+        star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity', 'albedo']
         missing_kwargs = []
         for component in [self.primary, self.secondary]:
             for kwarg in star_mandatory_kwargs:
@@ -2303,7 +2302,7 @@ class BinarySystem(System):
                     component_instance.calculate_all_surface_centres()
                     component_instance.calculate_all_normals()
 
-                self.reflection_effect(iterations=0,
+                self.reflection_effect(iterations=self.REFLECTION_EFFECT_ITERATIONS,
                                        components_distance=components_distance)
             else:
                 self._logger.debug('Reflection effect can be calculated only when surface map of both components is '
@@ -2367,26 +2366,24 @@ class BinarySystem(System):
         (xlim['primary'], xlim['secondary']) = (x_corr_primary, 1 + x_corr_secondary) \
             if self.primary.polar_radius > self.secondary.polar_radius else (- x_corr_primary, 1 - x_corr_secondary)
 
-        #this tests if you can use surface symmetries
+        # this tests if you can use surface symmetries
         use_quarter_star_test = self.primary.spots is None and self.secondary.spots is None
 
         # declaring variables
-        centres, vis_test, vis_test_star, gamma, normals = {}, {}, {}, {}, {}
+        centres, vis_test, gamma, normals, faces, points, temperatures, areas = {}, {}, {}, {}, {}, {}, {}, {}
         # centres - dict with all centres concatenated (star and spot) into one matrix for convenience
         # vis_test - dict with bool map for centres to select only faces visible from any face on companion
-        # vis_test_star - dict with bool map for component_instance.face_centres star faces visible from any face on
         # companion
         # gamma is of dimensions num_of_visible_faces_primary x num_of_visible_faces_secondary
-
-        if not use_quarter_star_test:
-            vis_test_spot = {}
-        # vis_test_spot - dict with bool maps for each spot faces visible from any face on companion
 
         # selecting faces that have a chance to be visible from other component
         for _component in component:
             component_instance = getattr(self, _component)
+            points[_component], faces[_component] = component_instance.return_whole_surface()
             centres[_component] = copy(component_instance.face_centres)
             normals[_component] = copy(component_instance.normals)
+            temperatures[_component] = copy(component_instance.temperatures)
+            areas[_component] = copy(component_instance.areas)
             if use_quarter_star_test:
                 # this branch is activated in case of clean surface where symmetries can be used
                 # excluding quadrants that can be mirrored using symmetries
@@ -2401,24 +2398,36 @@ class BinarySystem(System):
                     centres[_component][:, 0] <= xlim[_component]
                 # this variable contains faces that can seen from base symmetry part of the other star
                 vis_test[_component] = np.logical_and(test1, quadrant_exclusion)
-                vis_test_star[_component] = copy(vis_test[_component])
 
             else:
-                vis_test_star[_component] = component_instance.face_centres[:, 0] >= xlim[_component] if \
+                vis_test[_component] = component_instance.face_centres[:, 0] >= xlim[_component] if \
                     _component == 'primary' else component_instance.face_centres[:, 0] <= xlim[_component]
-                vis_test[_component] = copy(vis_test_star[_component])
-                if component_instance.spots:
-                    vis_test_spot[_component] = {}
-                    for spot_index, spot in component_instance.spots.items():
-                        vis_test_spot[_component][spot_index] = spot.face_centres[:, 0] >= xlim[_component] if \
-                            _component == 'primary' else spot.face_centres[:, 0] <= xlim[_component]
 
-                        # merge surface and spot face parameters into one variable
-                        centres[_component] = np.append(centres[_component], spot.face_centres, axis=0)
-                        vis_test[_component] = np.append(vis_test[_component], vis_test_spot[_component][spot_index],
-                                                         axis=0)
-                        normals[_component] = np.append(normals[_component], spot.normals, axis=0)
+            if component_instance.spots:
+                for spot_index, spot in component_instance.spots.items():
+                    vis_test_spot = spot.face_centres[:, 0] >= xlim[_component] if \
+                        _component == 'primary' else spot.face_centres[:, 0] <= xlim[_component]
 
+                    # merge surface and spot face parameters into one variable
+                    centres[_component] = np.append(centres[_component], spot.face_centres, axis=0)
+                    vis_test[_component] = np.append(vis_test[_component], vis_test_spot, axis=0)
+                    normals[_component] = np.append(normals[_component], spot.normals, axis=0)
+                    temperatures[_component] = np.append(temperatures[_component], spot.temperatures, axis=0)
+                    areas[_component] = np.append(areas[_component], spot.areas, axis=0)
+
+        # calculating C_A = (albedo_A / D_intB) - scalar
+        # D_intB - bolometric limb darkening factor
+        d_int = {'primary': self.secondary.calculate_bolometric_limb_darkening_factor(self.LIMB_DARKENING_LAW,
+                                                                                      self.LD_COEFF),
+                 'secondary': self.secondary.calculate_bolometric_limb_darkening_factor(self.LIMB_DARKENING_LAW,
+                                                                                        self.LD_COEFF)}
+        c = {'primary': (self.primary.albedo / d_int['secondary']),
+             'secondary': (self.secondary.albedo / d_int['primary'])}
+
+        # setting reflection factor R = 1 + F_irradiated / F_original, initially equal to one everywhere - vector
+        reflection_factor = {_component: np.ones(np.shape(temperatures[_component][vis_test[_component]]),
+                                                 dtype=np.float)
+                             for _component in component}
         # calculating distances and distance vectors between, join vector is already normalized
         distance, join_vector = utils.calculate_distance_matrix(points1=centres['primary'][vis_test['primary']],
                                                                 points2=centres['secondary'][vis_test['secondary']],
@@ -2428,16 +2437,70 @@ class BinarySystem(System):
         gamma = {'primary':
                      np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :], join_vector), axis=2),
                  'secondary':
-                     np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :], join_vector), axis=2)}
+                     -np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :], join_vector), axis=2)}
+        # negative sign is there because of reversed distance vector used for secondary component
 
         # testing mutual visibility of faces by assigning 0 to non visible face combination
         gamma['primary'][gamma['primary'] < 0] = 0.
-        gamma['secondary'][gamma['secondary'] > 0] = 0.
+        gamma['secondary'][gamma['secondary'] < 0] = 0.
 
         # calculating QAB = (cos gamma_a)*cos(gamma_b)/d**2
-        q_ab = -np.divide(np.multiply(gamma['primary'], gamma['secondary']), np.power(distance, 2))
-        # negative sign is there because of reversed distance vector used for secondary component
+        q_ab = np.divide(np.multiply(gamma['primary'], gamma['secondary']), np.power(distance, 2))
 
+        # calculating limb darkening factors for each combination of faces shape (N_faces_primary * N_faces_secondary)
+        d_gamma = {'primary': self.primary.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'],
+                                                                               None, :],
+                                                                 line_of_sight=join_vector,
+                                                                 coefficients=self.LD_COEFF,
+                                                                 limb_darkening_law=self.LIMB_DARKENING_LAW),
+                   'secondary': self.primary.limb_darkening_factor(normal_vector=normals['secondary'][None,
+                                                                                 vis_test['secondary'], :],
+                                                                   line_of_sight=-join_vector,
+                                                                   coefficients=self.LD_COEFF,
+                                                                   limb_darkening_law=self.LIMB_DARKENING_LAW)}
+
+        # for faster convergence, reflection effect is calculated first on cooler component
+        components = ['primary', 'secondary'] if self.primary.t_eff <= self.secondary.t_eff else \
+            ['secondary', 'primary']
+
+        # # exchanging axis on secondary components matrices to be compatibile with reflection effect calculation
+        # gamma['secondary'] = np.swapaxes()
+
+        counterpart = {'primary': 'secondary', 'secondary': 'primary'}
+        axis_to_sum = {'primary': 1, 'secondary': 0}
+        # precalculating matrix part of reflection effect correction
+        matrix_to_sum2 = {_component: q_ab * d_gamma[counterpart[_component]] for _component in component}
+        for _ in range(iterations):
+            for _component in components:
+                counterpart = 'primary' if _component == 'secondary' else 'secondary'
+
+                # calculation of reflection effect correction as
+                # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
+                # calculating vector part of reflection effect correction
+                vector_to_sum1 = reflection_factor[counterpart] * \
+                                 np.power(temperatures[counterpart][vis_test[counterpart]], 4) * \
+                                 areas[counterpart][vis_test[counterpart]]
+                counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
+                    if _component == 'secondary' else np.matmul(matrix_to_sum2['secondary'], vector_to_sum1)
+                reflection_factor[_component] = \
+                    1 + (c[_component] / np.power(temperatures[_component][vis_test[_component]], 4)) * \
+                    counterpart_to_sum
+        
+        for _component in components:
+            # assigning new temperatures according to last iteration as
+            # teff_new = teff_old * reflection_factor^0.25
+            temperatures[_component][vis_test[_component]] = \
+                temperatures[_component][vis_test[_component]] * np.power(reflection_factor[_component], 0.25)
+
+        # redistributing temperatures back to the parent objects
+        for _component in component:
+            component_instance = getattr(self, _component)
+            counter = len(component_instance.temperatures)
+            component_instance.temperatures = temperatures[_component][:counter]
+            if component_instance.spots:
+                for spot_index, spot in component_instance.spots.items():
+                    spot.temperatures = temperatures[_component][counter: counter + len(spot.temperatures)]
+                    counter += len(spot.temperatures)
         #     st = time()
         #     print('Elapsed time: {0:.5f} s.'.format(time() - st))
 

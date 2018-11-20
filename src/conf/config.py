@@ -17,7 +17,7 @@ REFLECTION_EFFECT_ITERATIONS = 2
 LIMB_DARKENING_LAW = 'cosine'
 # computational
 DISCRETIZATION_FACTOR = 5
-max_discretization_factor = 20
+MAX_DISCRETIZATION_FACTOR = 20
 
 
 def set_up_logging():

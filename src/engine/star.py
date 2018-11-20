@@ -350,22 +350,22 @@ class Star(Body):
                 spot.temperatures *= coefficient
 
     @staticmethod
-    def limb_darkening_factor(radius_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None):
+    def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None):
         """
         calculates limb darkening factor for given surface element given by radius vector and line of sight vector
         :param line_of_sight: numpy.array - vector (or vectors) of line of sight
-        :param radius_vector: numpy.array - single or multiple radius vectors
+        :param normal_vector: numpy.array - single or multiple radius vectors
         :param coefficients: np.float in case of linear law
                              np.array in other cases
         :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
         :return:  gravity darkening factor(s), the same type/shape as theta
         """
-        if radius_vector is None:
+        if normal_vector is None:
             raise ValueError('Radius vector(s) was not supplied.')
         if line_of_sight is None:
             raise ValueError('Line of sight vector(s) was not supplied.')
 
-        if line_of_sight.ndim != 1 and np.shape(radius_vector) != np.shape(line_of_sight):
+        if line_of_sight.ndim != 1 and normal_vector.ndim != line_of_sight.ndim:
             raise ValueError('`line_of_sight` should be either one vector or ther same amount of vectors as provided in'
                              ' radius vectors')
 
@@ -383,7 +383,7 @@ class Star(Body):
                 raise ValueError('Invalid number of limb darkening coefficients. Expected 2, given: '
                                  '{}'.format(coefficients))
 
-        cos_theta = np.sum(radius_vector * line_of_sight, axis=-1) / (np.linalg.norm(radius_vector, axis=-1) *
+        cos_theta = np.sum(normal_vector * line_of_sight, axis=-1) / (np.linalg.norm(normal_vector, axis=-1) *
                                                                       np.linalg.norm(line_of_sight, axis=-1))
         if limb_darkening_law in ['linear', 'cosine']:
             return 1 - coefficients + coefficients * cos_theta
