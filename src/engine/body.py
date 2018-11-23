@@ -501,7 +501,7 @@ class Body(metaclass=ABCMeta):
         """
         return U.ARC_UNIT
 
-    def calculate_normals(self, points=None, faces=None, centres=None):
+    def calculate_normals(self, points=None, faces=None, centres=None, com=None):
         """
         returns outward facing normal unit vector for each face of stellar surface
 
@@ -513,27 +513,27 @@ class Body(metaclass=ABCMeta):
         normals = np.array([np.cross(points[xx[1]] - points[xx[0]], points[xx[2]]
                                      - points[xx[0]]) for xx in faces])
         normals /= np.linalg.norm(normals, axis=1)[:, None]
-        centres = self.calculate_surface_centres(points, faces) if centres is None else centres
+        cntr = self.calculate_surface_centres(points, faces) if centres is None else copy(centres)
 
-        sgn_vector = centres[:, 1] * normals[:, 1]
-        centre_sgn = np.empty(np.shape(sgn_vector), dtype=int)
+        corr_centres = cntr - np.array([com, 0, 0])[None, :]
 
-        centre_sgn[sgn_vector >= 0] = 1
-        centre_sgn[sgn_vector < 0] = -1
+        # making sure that normals are properly oriented near the axial planes
+        sgn = np.sign(np.sum(np.multiply(normals, corr_centres), axis=1))
 
-        return normals * centre_sgn[:, None]
+        return normals * sgn[:, None]
 
-    def calculate_all_normals(self):
+    def calculate_all_normals(self, com=None):
         """
         function calculates normals for each face of given body (including spots
         :return:
         """
-        self.normals = self.calculate_normals(points=self.points, faces=self.faces, centres=self.face_centres)
+        self.normals = self.calculate_normals(points=self.points, faces=self.faces, centres=self.face_centres, com=com)
         if self.spots:
             for spot_index in self.spots:
                 self.spots[spot_index].normals = self.calculate_normals(points=self.spots[spot_index].points,
                                                                         faces=self.spots[spot_index].faces,
-                                                                        centres=self.spots[spot_index].face_centres)
+                                                                        centres=self.spots[spot_index].face_centres,
+                                                                        com=com)
 
     def calculate_surface_centres(self, points=None, faces=None):
         """

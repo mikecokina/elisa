@@ -2053,29 +2053,6 @@ class BinarySystem(System):
             raise ValueError('Invalid name of the component. Use `primary` or `secondary`.')
         return component
 
-    # todo: needs rework
-    def evaluate_normals(self, component=None):
-        """
-        evaluate normals for both components using potential gradient (useful before triangulation)
-
-        :param component: str
-        :return:
-        """
-        self._logger.info('Evaluating normals of surface elements')
-        component = self._component_to_list(component)
-        for _component in component:
-            component_instance = getattr(self, _component)
-
-            if component_instance.faces is None or component_instance.points is None:
-                raise ValueError('Faces or/and points of {} component have not been set yet'.format(_component))
-            component_instance.normals = component_instance.calculate_normals(
-                component_instance.points, component_instance.faces)
-
-            if component_instance.spots:
-                for spot_index, spot in component_instance.spots.items():
-                    component_instance.spots[spot_index].normals = component_instance.calculate_normals(
-                        spot.points, spot.faces)
-
     def plot(self, descriptor=None, **kwargs):
         """
         universal plot interface for binary system class, more detailed documentation for each value of descriptor is
@@ -2232,11 +2209,11 @@ class BinarySystem(System):
                     kwargs['primary_centres'] = self.primary.calculate_surface_centres(
                         kwargs['points_primary'], kwargs['primary_triangles'])
                     kwargs['primary_arrows'] = self.primary.calculate_normals(
-                        kwargs['points_primary'], kwargs['primary_triangles'])
+                        kwargs['points_primary'], kwargs['primary_triangles'], com=0)
                     kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
                         kwargs['points_secondary'], kwargs['secondary_triangles'])
                     kwargs['secondary_arrows'] = self.secondary.calculate_normals(
-                        kwargs['points_secondary'], kwargs['secondary_triangles'])
+                        kwargs['points_secondary'], kwargs['secondary_triangles'], com=components_distance)
             else:
                 if kwargs['components_to_plot'] in ['primary', 'both']:
                     points, faces = self.build_surface(component='primary', components_distance=components_distance,
@@ -2253,7 +2230,7 @@ class BinarySystem(System):
                         kwargs['primary_centres'] = self.primary.calculate_surface_centres(
                             kwargs['points_primary'], kwargs['primary_triangles'])
                         kwargs['primary_arrows'] = self.primary.calculate_normals(
-                            kwargs['points_primary'], kwargs['primary_triangles'])
+                            kwargs['points_primary'], kwargs['primary_triangles'], com=0)
 
                     if kwargs['face_mask_primary'] is not None:
                         kwargs['primary_triangles'] = kwargs['primary_triangles'][kwargs['face_mask_primary']]
@@ -2274,7 +2251,7 @@ class BinarySystem(System):
                         kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
                             kwargs['points_secondary'], kwargs['secondary_triangles'])
                         kwargs['secondary_arrows'] = self.secondary.calculate_normals(
-                            kwargs['points_secondary'], kwargs['secondary_triangles'])
+                            kwargs['points_secondary'], kwargs['secondary_triangles'], com=components_distance)
 
                     if kwargs['face_mask_secondary'] is not None:
                         kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
@@ -2368,10 +2345,11 @@ class BinarySystem(System):
         # implementation of reflection effect
         if colormap == 'temperature':
             if len(component) == 2:
+                com = {'primary': 0, 'secondary': components_distance}
                 for _component in component:
                     component_instance = getattr(self, _component)
                     component_instance.calculate_all_surface_centres()
-                    component_instance.calculate_all_normals()
+                    component_instance.calculate_all_normals(com=com[_component])
 
                 self.reflection_effect(iterations=self.REFLECTION_EFFECT_ITERATIONS,
                                        components_distance=components_distance)

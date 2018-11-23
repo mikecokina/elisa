@@ -83,7 +83,7 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000 * u.K, 'fr
 physics = Physics(reflection_effect=True,
                   reflection_effect_iterations=2)
 
-contact_pot = 2.8
+contact_pot = 2.9
 start_time = time()
 
 # combo = {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -119,19 +119,19 @@ start_time = time()
 primary = Star(mass=2.0*u.solMass,
                # surface_potential=2.7,
                surface_potential=contact_pot,
-               spots=spots_metadata['primary'],
+               # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                synchronicity=1.0,
-               t_eff=6000*u.K,
+               t_eff=20000*u.K,
                gravity_darkening=1.0,
-               discretization_factor=3,
+               discretization_factor=5,
                albedo=0.6
                )
 secondary = Star(mass=1.0*u.solMass,
                  # surface_potential=2.7,
                  surface_potential=contact_pot,
                  synchronicity=1.0,
-                 t_eff=6000*u.K,
+                 t_eff=5000*u.K,
                  gravity_darkening=1.0,
                  # discretization_factor=5,
                  spots=spots_metadata['secondary'],

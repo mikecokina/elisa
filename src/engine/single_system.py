@@ -629,7 +629,7 @@ class SingleSystem(System):
             if kwargs['colormap'] is not None:
                 kwargs['cmap'] = self.build_surface_map(colormap=kwargs['colormap'], return_map=True)
             if kwargs['normals']:
-                kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'])
+                kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'], com=0)
                 kwargs['centres'] = self.star.calculate_surface_centres(points=kwargs['mesh'],
                                                                         faces=kwargs['triangles'])
 
