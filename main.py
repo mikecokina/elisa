@@ -124,7 +124,7 @@ primary = Star(mass=2.0*u.solMass,
                synchronicity=1.0,
                t_eff=6000*u.K,
                gravity_darkening=1.0,
-               discretization_factor=5,
+               discretization_factor=3,
                albedo=0.6
                )
 secondary = Star(mass=1.0*u.solMass,

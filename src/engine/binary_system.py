@@ -1834,8 +1834,79 @@ class BinarySystem(System):
             component_instance.inverse_point_symmetry_matrix = _d
 
             self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
-            self._incorporate_spots_mesh(component_instance=getattr(self, _component),
-                                         component_com=component_com[_component])
+            if self.morphology == 'over-contact':
+                self._incorporate_spots_overcontact_mesh(component_instance=getattr(self, _component),
+                                                         component_com=component_com[_component])
+            else:
+                self._incorporate_spots_mesh(component_instance=getattr(self, _component),
+                                             component_com=component_com[_component])
+
+    def _incorporate_spots_overcontact_mesh(self, component_instance=None, component_com=None):
+        if not component_instance.spots:
+            return
+        self._logger.info("Incorporating spot points to component {} mesh".format(component_instance.name))
+
+        if component_instance is None:
+            raise ValueError('Object instance was not given.')
+
+        if component_com is None:
+            raise ValueError('Object centre of mass was not given.')
+
+        vertices_map = [{"enum": -1} for _ in component_instance.points]
+        # `all_component_points` do not contain points of any spot
+        all_component_points = copy(component_instance.points)
+        neck = np.min(all_component_points[:component_instance.base_symmetry_points_number, 0])
+
+        for spot_index, spot in component_instance.spots.items():
+            # average spacing in spot points
+            vertices_to_remove, vertices_test = [], []
+
+            cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.discretization_factor)
+
+            spot_center = spot.boundary_center - np.array([component_com, 0., 0.])
+
+            # removing star points in spot
+            # for dist, ix in zip(distances, indices):
+            for ix, pt in enumerate(all_component_points):
+                surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
+                cos_angle = np.inner(spot_center, surface_point) / \
+                            (np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
+
+                if cos_angle < cos_max_angle_point:
+                    continue
+                elif pt[0] == neck:
+                    continue
+                vertices_to_remove.append(ix)
+
+            # simplices of target object for testing whether point lying inside or not of spot boundary, removing
+            # duplicate points on the spot border
+            # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
+            vertices_to_remove = list(set(vertices_to_remove))
+
+            # points and vertices_map update
+            if vertices_to_remove:
+                _points, _vertices_map = list(), list()
+
+                for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
+                    if ix in vertices_to_remove:
+                        # skip point if is marked for removal
+                        continue
+
+                    # append only points of currrent object that do not intervent to spot
+                    # [current, since there should be already spot from previous iteration step]
+                    _points.append(vertex)
+                    _vertices_map.append({"enum": vertices_map[ix]["enum"]})
+
+                for vertex in spot.points:
+                    _points.append(vertex)
+                    _vertices_map.append({"enum": spot_index})
+
+                all_component_points = copy(_points)
+                vertices_map = copy(_vertices_map)
+
+        separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map,
+                                                                    component_instance)
+        self.setup_component_instance_points(component_instance, separated_points)
 
     def build_faces(self, component=None, components_distance=None):
         """

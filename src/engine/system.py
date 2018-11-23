@@ -183,12 +183,12 @@ class System(metaclass=ABCMeta):
         if component_instance is None:
             raise ValueError('Object instance was not given.')
 
+        if component_com is None:
+            raise ValueError('Object centre of mass was not given.')
+
         vertices_map = [{"enum": -1} for _ in component_instance.points]
         # `all_component_points` do not contain points of any spot
         all_component_points = copy(component_instance.points)
-
-        # average spacing of component surface points
-        avsp = utils.average_spacing(component_instance.polar_radius, component_instance.discretization_factor)
 
         for spot_index, spot in component_instance.spots.items():
             # average spacing in spot points
@@ -235,7 +235,8 @@ class System(metaclass=ABCMeta):
                 all_component_points = copy(_points)
                 vertices_map = copy(_vertices_map)
 
-        separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map, component_instance)
+        separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map,
+                                                                    component_instance)
         self.setup_component_instance_points(component_instance, separated_points)
 
     @classmethod
