@@ -514,9 +514,14 @@ class Body(metaclass=ABCMeta):
                                      - points[xx[0]]) for xx in faces])
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         centres = self.calculate_surface_centres(points, faces) if centres is None else centres
-        sgn_vector = 0.5 * np.sum(np.sign(centres[:, 1:]) * np.sign(normals[:, 1:]), axis=1)
 
-        return normals * sgn_vector[:, None]
+        sgn_vector = centres[:, 1] * normals[:, 1]
+        centre_sgn = np.empty(np.shape(sgn_vector), dtype=int)
+
+        centre_sgn[sgn_vector >= 0] = 1
+        centre_sgn[sgn_vector < 0] = -1
+
+        return normals * centre_sgn[:, None]
 
     def calculate_all_normals(self):
         """
