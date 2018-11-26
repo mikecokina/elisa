@@ -368,9 +368,9 @@ class Star(Body):
         if line_of_sight is None:
             raise ValueError('Line of sight vector(s) was not supplied.')
 
-        if line_of_sight.ndim != 1 and normal_vector.ndim != line_of_sight.ndim:
-            raise ValueError('`line_of_sight` should be either one vector or ther same amount of vectors as provided in'
-                             ' radius vectors')
+        # if line_of_sight.ndim != 1 and normal_vector.ndim != line_of_sight.ndim:
+        #     raise ValueError('`line_of_sight` should be either one vector or ther same amount of vectors as provided in'
+        #                      ' radius vectors')
 
         if coefficients is None:
             raise ValueError('Limb darkening coefficients were not supplied.')
