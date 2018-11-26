@@ -49,7 +49,7 @@ class BinarySystem(System):
 
     # this will be removed after full implementation of config system
     LIMB_DARKENING_LAW = 'cosine'
-    REFLECTION_EFFECT_ITERATIONS = 1
+    REFLECTION_EFFECT_ITERATIONS = 2
 
     # this will be removed after full implementation of LD
     LD_COEFF = 0.5
@@ -2496,7 +2496,11 @@ class BinarySystem(System):
                               np.count_nonzero(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
             distance = np.empty(shape=_shape[:2], dtype=np.float)
             join_vector = np.empty(shape=_shape, dtype=np.float)
+            distance.fill(np.nan)
+            join_vector.fill(np.nan)
 
+            # in case of symmetries, you need to calculate only minority part of distance matrix connected with base
+            # symmetry part of the both surfaces
             distance[:_shape_reduced[0], :], join_vector[:_shape_reduced[0], :, :] = \
                 utils.calculate_distance_matrix(points1=centres['primary'][vis_test_symmetry['primary']],
                                                 points2=centres['secondary'][vis_test['secondary']],
