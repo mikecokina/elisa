@@ -8,9 +8,7 @@ import matplotlib.pyplot as plt
 from engine import utils
 from engine import const as c
 from time import time
-from engine.physics import Physics
 import logging
-
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -24,7 +22,7 @@ spots_metadata = {
             {"longitude": 90,
              "latitude": 58,
              # "angular_density": 1,
-             "angular_diameter": 17,
+             "angular_diameter": 5,
              "temperature_factor": 0.50},
             # {"longitude": 90,
             #  "latitude": 57,
@@ -80,10 +78,7 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000 * u.K, 'fr
                                      ]
                        }
 
-physics = Physics(reflection_effect=True,
-                  reflection_effect_iterations=2)
-
-contact_pot = 2.8
+contact_pot = 2.9
 start_time = time()
 
 # combo = {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -119,7 +114,7 @@ start_time = time()
 primary = Star(mass=2.0*u.solMass,
                # surface_potential=2.7,
                surface_potential=contact_pot,
-               spots=spots_metadata['primary'],
+               # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                synchronicity=1.0,
                t_eff=12000*u.K,
@@ -197,16 +192,16 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         )
 print
 
-bs.plot(descriptor='surface',
-        phase=0,
-        # components_to_plot='primary',
-        components_to_plot='secondary',
-        # edges=True,
-        # normals=True,
-        # colormap='gravity_acceleration',
-        colormap='temperature',
-        # plot_axis=False,
-        # face_mask_primary=a,
-        # face_mask_secondary=b,
-        )
+# bs.plot(descriptor='surface',
+#         phase=0,
+#         # components_to_plot='primary',
+#         components_to_plot='secondary',
+#         # edges=True,
+#         # normals=True,
+#         # colormap='gravity_acceleration',
+#         colormap='temperature',
+#         # plot_axis=False,
+#         # face_mask_primary=a,
+#         # face_mask_secondary=b,
+#         )
 

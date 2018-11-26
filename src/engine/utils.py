@@ -2,6 +2,10 @@ import numpy as np
 import scipy as sp
 import re
 from copy import copy
+from scipy.spatial import distance_matrix as dstm
+
+# temporary
+from time import time
 
 
 def polar_to_cartesian(radius, phi):
@@ -251,10 +255,10 @@ def calculate_distance_matrix(points1=None, points2=None, return_join_vector_mat
     :return:
     """
     # pairwise distance vector matrix
-    distance_vector_matrix = points2[np.newaxis, :, :] - points1[:, np.newaxis, :]
+    distance_vector_matrix = points2[None, :, :] - points1[:, None, :]
     distance_matrix = np.linalg.norm(distance_vector_matrix, axis=2)
 
-    return distance_matrix, distance_vector_matrix / distance_matrix[:, :, np.newaxis] if return_join_vector_matrix \
+    return distance_matrix, distance_vector_matrix / distance_matrix[:, :, None] if return_join_vector_matrix \
         else distance_matrix
 
 

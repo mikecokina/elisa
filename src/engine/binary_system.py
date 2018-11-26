@@ -49,7 +49,7 @@ class BinarySystem(System):
 
     # this will be removed after full implementation of config system
     LIMB_DARKENING_LAW = 'cosine'
-    REFLECTION_EFFECT_ITERATIONS = 4
+    REFLECTION_EFFECT_ITERATIONS = 1
 
     # this will be removed after full implementation of LD
     LD_COEFF = 0.5
@@ -2507,6 +2507,7 @@ class BinarySystem(System):
                 utils.calculate_distance_matrix(points1=aux[_shape_reduced[0]:],
                                                 points2=centres['secondary'][vis_test_symmetry['secondary']],
                                                 return_join_vector_matrix=True)
+
             # calculating cos of angle gamma between face normal and join vector
             gamma = {'primary':
                          np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :],
@@ -2522,6 +2523,7 @@ class BinarySystem(System):
             # calculating QAB = (cos gamma_a)*cos(gamma_b)/d**2
             q_ab = np.divide(np.multiply(gamma['primary'], gamma['secondary']), np.power(distance, 2))
 
+            # st = time()
             d_gamma = \
                 {'primary': self.primary.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'],
                                                                              None, :],
@@ -2535,6 +2537,7 @@ class BinarySystem(System):
                                                                    limb_darkening_law=self.LIMB_DARKENING_LAW)
                  }
 
+            # print('Elapsed time: {0:.5f} s.'.format(time() - st))
             # calculating limb darkening factors for each combination of faces shape
             # (N_faces_primary * N_faces_secondary)
             # precalculating matrix part of reflection effect correction
