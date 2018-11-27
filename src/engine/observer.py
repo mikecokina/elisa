@@ -6,9 +6,10 @@ from os.path import dirname
 
 
 class Observer(object):
-    def __init__(self, passband, observe):
+    def __init__(self, passband, system):
         self._passband = passband
-        self._observe = observe  # co je observe?
+        # specifying what system is observed
+        self._system = system  # co je observe?
 
     @property
     def passband(self):
@@ -25,21 +26,11 @@ class Observer(object):
         file_path = os.path.join(dirname(dirname(__file__)), 'passband', str(passband) + '.csv')
         return pd.read_csv(file_path)
 
-    @classmethod
-    def limb_darkening_linear(cls, gamma, xlin):
-        return 1.0 - (xlin * (1. - abs(np.cos(gamma))))
-
-    @classmethod
-    def limb_darkening_logarithmic(cls, gamma, xlog, ylog):
-        return 1.0 - (xlog * (1.0 - abs(np.cos(gamma)))) - (ylog * abs(np.cos(gamma)) * np.log10(abs(np.cos(gamma))))
-
-    @classmethod
-    def limb_darkening_sqrt(cls, gamma, xsqrt, ysqrt):
-        return 1.0 - (xsqrt * (1.0 - abs(np.cos(gamma)))) - (ysqrt * (1.0 - np.sqrt(abs(np.cos(gamma)))))
-
     def compute_lightcurve(self):
         pass
 
+    def apply_filter(self):
+        pass
 
 if __name__ == '__main__':
     observer = Observer('Generic.Bessell.B')

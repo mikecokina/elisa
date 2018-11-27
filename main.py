@@ -192,16 +192,16 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         )
 print
 
-# bs.plot(descriptor='surface',
-#         phase=0,
-#         # components_to_plot='primary',
-#         components_to_plot='secondary',
-#         # edges=True,
-#         # normals=True,
-#         # colormap='gravity_acceleration',
-#         colormap='temperature',
-#         # plot_axis=False,
-#         # face_mask_primary=a,
-#         # face_mask_secondary=b,
-#         )
+bs.plot(descriptor='surface',
+        phase=0,
+        # components_to_plot='primary',
+        components_to_plot='secondary',
+        # edges=True,
+        # normals=True,
+        # colormap='gravity_acceleration',
+        colormap='temperature',
+        # plot_axis=False,
+        # face_mask_primary=a,
+        # face_mask_secondary=b,
+        )
 

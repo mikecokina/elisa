@@ -24,6 +24,9 @@ class Star(Body):
                        'discretization_factor', 'spots']
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
+    # this will be removed after full implementation of config system
+    ATMOSPHERE_MODEL = 'black_body'
+
     def __init__(self, name=None, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
         super(Star, self).__init__(name=name, **kwargs)
@@ -425,4 +428,53 @@ class Star(Body):
             return np.pi * (1 - coefficients[0] / 3 + 2 * coefficients[1] / 9)
         elif limb_darkening_law == 'square_root':
             return np.pi * (1 - coefficients[0] / 3 - coefficients[1] / 5)
+
+    def calculate_intensity(self, temperatures=None):
+        """
+        calculates overall radiant flux radiated from unit area with certain effective temperature using atmosphere
+        model set in config file
+        :param temperatures: array
+        :return:
+        """
+        if temperatures is None:
+            temperatures = self.temperatures
+
+        if self.ATMOSPHERE_MODEL == 'black_body':
+            return c.S_BOLTZMAN * np.power(temperatures, 4)
+        # here will go other atmosphere models
+
+    def calculate_spectral_intensity(self, temperatures=None, lambda_range=None, steps=None):
+        """
+        calculates overall radiant flux radiated from unit area with certain effective temperature using atmosphere
+        model set in config file
+        :param temperatures: array
+        :return:
+        """
+        if temperatures is None:
+            temperatures = self.temperatures
+
+        if self.ATMOSPHERE_MODEL == 'black_body':
+            pass
+        # here will go other atmosphere models
+
+    def calculate_normal_radiance(self, intensities=None, areas=None):
+        """
+        returns radiance from each face along its normal
+
+        :param intensities: array
+        :param areas: array
+        :return:
+        """
+        if intensities is None:
+            raise ValueError('Intensities for given faces were not supplied.')
+        if areas is None:
+            areas = self.areas
+        if np.shape(intensities) != np.shape(areas):
+            raise ValueError('Intensities and areas does not have the same shapes.')
+
+        # in case of object from BinarySystem there is a factor major_semiaxis^2 missing this can be later renormalized
+        #  using less computational power
+        return intensities * areas
+
+
 
