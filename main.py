@@ -78,7 +78,7 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000 * u.K, 'fr
                                      ]
                        }
 
-contact_pot = 2.9
+contact_pot = 3.35
 start_time = time()
 
 # combo = {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -111,22 +111,22 @@ start_time = time()
 #                   inclination=combo["inclination"],
 #                   primary_minimum_time=combo["primary_minimum_time"],
 #                   phase_shift=combo["phase_shift"])
-primary = Star(mass=2.0*u.solMass,
+primary = Star(mass=1.5*u.solMass,
                # surface_potential=2.7,
                surface_potential=contact_pot,
                # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                synchronicity=1.0,
-               t_eff=12000*u.K,
+               t_eff=7000*u.K,
                gravity_darkening=1.0,
-               discretization_factor=3,
+               discretization_factor=2,
                albedo=0.6
                )
-secondary = Star(mass=1.0*u.solMass,
-                 # surface_potential=2.7,
+secondary = Star(mass=1.3*u.solMass,
+                 # surface_potential=3.529897960151322,
                  surface_potential=contact_pot,
                  synchronicity=1.0,
-                 t_eff=7000*u.K,
+                 t_eff=6800*u.K,
                  gravity_darkening=1.0,
                  # discretization_factor=5,
                  # spots=spots_metadata['secondary'],
@@ -148,10 +148,10 @@ bs = BinarySystem(primary=primary,
 
 components_min_distance = 1 - bs.eccentricity
 start_time = time()
-bs.build_surface(components_distance=components_min_distance)
-# bs.build_surface(components_distance=components_min_distance, component='primary')
-# bs.build_surface(components_distance=components_min_distance, component='secondary')
-bs.build_surface_map(colormap='temperature', components_distance=components_min_distance)
+# bs.build_surface(components_distance=components_min_distance)
+# # bs.build_surface(components_distance=components_min_distance, component='primary')
+# # bs.build_surface(components_distance=components_min_distance, component='secondary')
+# bs.build_surface_map(colormap='temperature', components_distance=components_min_distance)
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=components_min_distance)
 # bs.build_surface_map(colormap='temperature', component='secondary', components_distance=components_min_distance)
 # bs.build_temperature_distribution(components_distance=1.0)
@@ -195,12 +195,12 @@ print
 bs.plot(descriptor='surface',
         phase=0,
         # components_to_plot='primary',
-        components_to_plot='secondary',
+        # components_to_plot='secondary',
         # edges=True,
         # normals=True,
         # colormap='gravity_acceleration',
         colormap='temperature',
-        # plot_axis=False,
+        plot_axis=False,
         # face_mask_primary=a,
         # face_mask_secondary=b,
         )
