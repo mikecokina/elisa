@@ -36,6 +36,8 @@ from engine import graphics
 from engine import units
 from scipy.spatial import Delaunay
 from copy import copy
+from conf import config
+
 
 # temporary
 from time import time
@@ -55,6 +57,8 @@ class BinarySystem(System):
     LD_COEFF = 0.5
 
     def __init__(self, primary, secondary, name=None, **kwargs):
+        config.LIMB_DARKENING_LAW
+
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, BinarySystem)
         super(BinarySystem, self).__init__(name=name, **kwargs)
 

@@ -1,15 +1,29 @@
-import os
-import logging
 import json
+import logging
+import os
 import warnings
-
 from configparser import ConfigParser
 from logging import config as log_conf
 
 config_parser = ConfigParser()
 
+env_variable_config = os.environ.get('ELISA_CONFIG', '')
+venv_config = os.path.join(os.environ.get('VIRTUAL_ENV', ''), 'conf', 'elisa_conf.ini')
+default_config = os.path.join(os.path.dirname(__file__), "elisa_conf.ini")
 
-CONFIG_FILE = os.environ.get('ELISA_CONFIG', os.path.expanduser('~/elisa.ini'))
+# read configuration file
+if os.path.isfile(env_variable_config):
+    config_file = env_variable_config
+elif os.path.isfile(venv_config):
+    config_file = venv_config
+elif os.path.isfile(default_config):
+    config_file = default_config
+else:
+    raise LookupError("Couldn't resolve configuration file. To define it \n "
+                      "  - Set the environment variable ELISA_CONFIG, or \n "
+                      "  - Add conf/elisa_conf.ini under your virtualenv root, or \n ")
+
+CONFIG_FILE = config_file
 LOG_CONFIG = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'conf', 'logging.json')
 # physics
 REFLECTION_EFFECT = True
@@ -61,8 +75,8 @@ def update_config():
                                                             fallback=REFLECTION_EFFECT_ITERATIONS)
 
         global LIMB_DARKENING_LAW
-        LIMB_DARKENING_LAW = config_parser.getint('physics', 'limb_darkening_law',
-                                                  fallback=LIMB_DARKENING_LAW)
+        LIMB_DARKENING_LAW = config_parser.get('physics', 'limb_darkening_law',
+                                               fallback=LIMB_DARKENING_LAW)
         if LIMB_DARKENING_LAW not in ['linear', 'cosine', 'logarithmic', 'square_root']:
             raise ValueError('{0} is not valid name of limb darkening law. Available limb darkening laws are: `linear` '
                              'or `cosine`, `logarithmic`, `square_root`'.format(LIMB_DARKENING_LAW))
@@ -95,3 +109,5 @@ PASSBAND = [
     'Generic.Stromgren.b',
     'Generic.Stromgren.y'
 ]
+
+read_and_update_config()
