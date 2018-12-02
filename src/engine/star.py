@@ -69,6 +69,7 @@ class Star(Body):
     def pulsations(self, pulsations):
         if pulsations:
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
+
     @property
     def critical_surface_potential(self):
         return self._critical_surface_potential
@@ -250,11 +251,12 @@ class Star(Body):
         :return:
         """
         if self.spots:  # temporary
-            gradient_magnitudes = self.potential_gradient_magnitudes if gradient_magnitudes is None else \
-                gradient_magnitudes
+            if gradient_magnitudes is None:
+                gradient_magnitudes = self.potential_gradient_magnitudes
         else:
-            gradient_magnitudes = self.potential_gradient_magnitudes[:self.base_symmetry_faces_number] if \
-                gradient_magnitudes is None else gradient_magnitudes
+            if gradient_magnitudes is None:
+                gradient_magnitudes = self.potential_gradient_magnitudes[:self.base_symmetry_faces_number]
+
         t_eff_polar = self.calculate_polar_effective_temperature()
         t_eff = t_eff_polar * np.power(gradient_magnitudes / self.polar_potential_gradient_magnitude,
                                        0.25 * self.gravity_darkening)
@@ -296,7 +298,6 @@ class Star(Body):
             return 1. / result
 
         if points is not None:
-            self.points
             if faces is None or temperatures is None:
                 raise ValueError('`points` argument is not None but `faces` or `temperature` is. Please supply the '
                                  'missing keyword arguments')

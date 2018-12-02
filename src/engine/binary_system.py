@@ -114,10 +114,10 @@ class BinarySystem(System):
 
         # if secondary discretization factor was not set, it will be now with respect to primary component
         if not self.secondary.kwargs.get('discretization_factor'):
-            self._logger.debug("Setting discretization factor of secondary component according discretization factor "
-                               "of primary component.")
-            self.secondary.discretization_factor = self.primary.discretization_factor * self.primary.polar_radius / \
-                                                   self.secondary.polar_radius * u.rad
+            self._logger.info("Setting discretization factor of secondary component according discretization factor "
+                              "of primary component.")
+            self.secondary.discretization_factor = \
+                self.primary.discretization_factor * self.primary.polar_radius / self.secondary.polar_radius * u.rad
 
         # TODO: retrieval of limb darkenig coefficients
 
@@ -518,6 +518,7 @@ class BinarySystem(System):
                 if component == "primary":
                     spot_instance.points = np.array(spot_points)
                     spot_instance.boundary = np.array(boundary_points)
+                    # fixme: remove boundary center, use center insteadd
                     spot_instance.boundary_center = np.array(boundary_center)
                     spot_instance.center = np.array(spot_center)
                 else:
@@ -1819,7 +1820,7 @@ class BinarySystem(System):
             raise ValueError('Argument `component_distance` was not supplied.')
         component = self._component_to_list(component)
 
-        component_com = {'primary': 0.0, 'secondary': components_distance}
+        component_x_center = {'primary': 0.0, 'secondary': components_distance}
         for _component in component:
             component_instance = getattr(self, _component)
             # in case of spoted surface, symmetry is not used
@@ -1833,13 +1834,14 @@ class BinarySystem(System):
             component_instance.base_symmetry_points_number = _c
             component_instance.inverse_point_symmetry_matrix = _d
 
+            component_instance = getattr(self, _component)
             self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
             if self.morphology == 'over-contact':
-                self._incorporate_spots_overcontact_mesh(component_instance=getattr(self, _component),
-                                                         component_com=component_com[_component])
+                self._incorporate_spots_overcontact_mesh(component_instance=component_instance,
+                                                         component_com=component_x_center[_component])
             else:
-                self._incorporate_spots_mesh(component_instance=getattr(self, _component),
-                                             component_com=component_com[_component])
+                self._incorporate_spots_mesh(component_instance=component_instance,
+                                             component_com=component_x_center[_component])
 
     def _incorporate_spots_overcontact_mesh(self, component_instance=None, component_com=None):
         if not component_instance.spots:
@@ -1869,12 +1871,11 @@ class BinarySystem(System):
             # for dist, ix in zip(distances, indices):
             for ix, pt in enumerate(all_component_points):
                 surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
-                cos_angle = np.inner(spot_center, surface_point) / \
-                            (np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
+                cos_angle = np.inner(spot_center, surface_point) / (
+                    np.linalg.norm(spot_center) * np.linalg.norm(surface_point)
+                )
 
-                if cos_angle < cos_max_angle_point:
-                    continue
-                elif pt[0] == neck:
+                if cos_angle < cos_max_angle_point or pt[0] == neck:
                     continue
                 vertices_to_remove.append(ix)
 
@@ -1946,7 +1947,7 @@ class BinarySystem(System):
         for _component in component:
             component_instance = getattr(self, _component)
 
-            # build surface if there is no spot specified
+            # build mesh and incorporate spots points to given obtained object mesh
             self.build_mesh(component=_component, components_distance=components_distance)
 
             if not component_instance.spots:
@@ -2339,9 +2340,9 @@ class BinarySystem(System):
                                                                                   temperatures=spot.temperatures)
 
                 if colormap == 'temperature':
-                    component_instance.renormalize_temperatures()
                     self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
                                        ''.format(component))
+                    component_instance.renormalize_temperatures()
 
         # implementation of reflection effect
         if colormap == 'temperature':
@@ -2654,3 +2655,69 @@ class BinarySystem(System):
                     counter += len(spot.temperatures)
         #     st = time()
         #     print('Elapsed time: {0:.5f} s.'.format(time() - st))
+
+    def build_surface_gravity(self, component=None, components_distance=None):
+
+        if components_distance is None:
+            raise ValueError('Component distance value was not supplied.')
+
+        component = self._component_to_list(component)
+        for _component in component:
+            component_instance = getattr(self, _component)
+
+            self._logger.debug('Computing surface areas of {} elements.'.format(_component))
+            component_instance.areas = component_instance.calculate_areas()
+
+            # consider to recompute polar radius (or remember consider this problem in case of eccentric orbit)
+
+            # compute and assign potential gradient magnitudes for elements if missing
+            self._logger.debug('Computing potential gradient magnitudes distribution of {} component.'
+                               ''.format(_component))
+            component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
+                component=_component, components_distance=components_distance)
+
+            self._logger.debug('Computing magnitude of {} polar potential gradient.'.format(_component))
+            component_instance.polar_potential_gradient_magnitude = \
+                self.calculate_polar_potential_gradient_magnitude(
+                    component=_component, components_distance=components_distance)
+
+            if component_instance.spots:
+                for spot_index, spot in component_instance.spots.items():
+                    self._logger.debug('Calculating surface areas of {} component / {} spot.'.format(_component,
+                                                                                                     spot_index))
+                    spot.areas = spot.calculate_areas()
+
+                    self._logger.debug('Calculating distribution of potential gradient magnitudes of {} component / '
+                                       '{} spot.'.format(_component, spot_index))
+                    spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
+                        component=_component,
+                        components_distance=components_distance,
+                        points=spot.points, faces=spot.faces)
+
+    def build_temperature_distribution(self, component=None):
+        component = self._component_to_list(component)
+        for _component in component:
+            component_instance = getattr(self, _component)
+
+            self._logger.debug('Computing effective temprature distibution of {} component.'.format(_component))
+            component_instance.temperatures = component_instance.calculate_effective_temperatures()
+            if component_instance.pulsations:
+                self._logger.debug('Adding pulsations to surface temperature distribution '
+                                   'of the {} component.'.format(_component))
+                component_instance.temperatures = component_instance.add_pulsations()
+
+            if component_instance.spots:
+                for spot_index, spot in component_instance.spots.items():
+                    self._logger.debug('Computing temperature distribution of {} component / {} spot'
+                                       ''.format(_component, spot_index))
+                    spot.temperatures = spot.temperature_factor * component_instance.calculate_effective_temperatures(
+                        gradient_magnitudes=spot.potential_gradient_magnitudes)
+                    if component_instance.pulsations:
+                        self._logger.debug('Adding pulsations to temperature distribution of {} component / {} spot'
+                                           ''.format(_component, spot_index))
+                        spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
+                                                                              temperatures=spot.temperatures)
+
+            self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
+                               ''.format(component))
+            component_instance.renormalize_temperatures()

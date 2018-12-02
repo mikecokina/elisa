@@ -381,7 +381,6 @@ class System(metaclass=ABCMeta):
         """
         function that sorts faces to model data structure by distinguishing if it belongs to star or spots
 
-        :param components_distance: float
         :param points: array (N_points * 3) - all points of surface
         :param faces: array (N_faces * 3) - all faces of the surface
         :param model: dict - data structure for faces sorting
