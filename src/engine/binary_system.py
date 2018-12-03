@@ -1559,6 +1559,7 @@ class BinarySystem(System):
             r_meridian_n.append(solution[0])
 
             num = int(c.HALF_PI * r_eqn[-1] // delta_z)
+            num = 1 if num == 0 else num
             start_val = c.HALF_PI / num
             phis = np.linspace(start_val, c.HALF_PI, num=num - 1, endpoint=False)
             for phi in phis:
@@ -2725,3 +2726,7 @@ class BinarySystem(System):
             self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
                                ''.format(component))
             component_instance.renormalize_temperatures()
+
+    def get_eclipse_boundaries(self):
+        # check whether the eclipses even occur
+        pass

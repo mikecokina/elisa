@@ -249,13 +249,13 @@ def binary_surface(**kwargs):
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
 
-    clr = 'b'
+    clr = ['g', 'r']
 
     if kwargs['components_to_plot'] == 'primary':
         plot = ax.plot_trisurf(
             kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
             kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
-            antialiased=True, shade=False, color=clr)
+            antialiased=True, shade=False, color=clr[0])
 
         if kwargs.get('normals', False):
             ax.quiver(
@@ -266,7 +266,7 @@ def binary_surface(**kwargs):
     elif kwargs['components_to_plot'] == 'secondary':
         plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
                                kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
-                               antialiased=True, shade=False, color=clr)
+                               antialiased=True, shade=False, color=clr[1])
 
         if kwargs.get('normals', False):
             ax.quiver(kwargs['secondary_centres'][:, 0], kwargs['secondary_centres'][:, 1],
@@ -280,8 +280,14 @@ def binary_surface(**kwargs):
         triangles = np.concatenate((kwargs['primary_triangles'],
                                     kwargs['secondary_triangles'] + np.shape(kwargs['points_primary'])[0]), axis=0)
 
-        plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
-                               shade=False, color=clr)
+        # plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
+        #                        shade=False, color=clr[0])
+        plot1 = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
+                               kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'], antialiased=True,
+                               shade=False, color=clr[0])
+        plot2 = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
+                               kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
+                               antialiased=True, shade=False, color=clr[1])
         if kwargs.get('normals', False):
             centres = np.concatenate((kwargs['primary_centres'], kwargs['secondary_centres']), axis=0)
             arrows = np.concatenate((kwargs['primary_arrows'], kwargs['secondary_arrows']), axis=0)
@@ -295,31 +301,47 @@ def binary_surface(**kwargs):
                          'Expected values are: `primary`, `secondary` or `both`')
 
     if kwargs.get('edges', False):
-        plot.set_edgecolor('black')
+        if kwargs['components_to_plot'] == 'both':
+            plot1.set_edgecolor('black')
+            plot2.set_edgecolor('black')
+        else:
+            plot.set_edgecolor('black')
 
     if kwargs.get('colormap', False):
         if kwargs['colormap'] == 'temperature':
-            plot.set_cmap(cmap=cm.jet_r)
+            plot1.set_cmap(cmap=cm.jet_r)
+            plot2.set_cmap(cmap=cm.jet_r)
             if kwargs['components_to_plot'] == 'primary':
                 plot.set_array(kwargs['primary_cmap'])
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'])
             elif kwargs['components_to_plot'] == 'both':
-                both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
-                plot.set_array(both_cmaps)
-            colorbar = fig.colorbar(plot, shrink=0.7)
-            colorbar.set_label('T/[K]')
+                # both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
+                plot1.set_array(kwargs['primary_cmap'])
+                plot2.set_array(kwargs['secondary_cmap'])
+                colorbar1 = fig.colorbar(plot1, shrink=0.7)
+                colorbar1.set_label('T/[K]')
+                colorbar2 = fig.colorbar(plot2, shrink=0.7)
+                # colorbar2.set_label('T/[K]')
         elif kwargs['colormap'] == 'gravity_acceleration':
-            plot.set_cmap(cmap=cm.jet_r)
+            plot1.set_cmap(cmap=cm.jet_r)
+            plot2.set_cmap(cmap=cm.jet_r)
             if kwargs['components_to_plot'] == 'primary':
                 plot.set_array(kwargs['primary_cmap'] / np.max(kwargs['primary_cmap']))
+                colorbar = fig.colorbar(plot, shrink=0.7)
+                colorbar.set_label('Normalized gravity acceleration')
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'] / np.max(kwargs['secondary_cmap']))
+                colorbar = fig.colorbar(plot, shrink=0.7)
+                colorbar.set_label('Normalized gravity acceleration')
             elif kwargs['components_to_plot'] == 'both':
                 both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
-                plot.set_array(both_cmaps / np.max(both_cmaps))
-            colorbar = fig.colorbar(plot, shrink=0.7)
-            colorbar.set_label('Normalized gravity acceleration')
+                plot1.set_array(kwargs['primary_cmap'] / np.max(both_cmaps))
+                plot2.set_array(kwargs['secondary_cmap'] / np.max(both_cmaps))
+                colorbar1 = fig.colorbar(plot1, shrink=0.7)
+                # colorbar1.set_label('Normalized gravity acceleration')
+                colorbar2 = fig.colorbar(plot2, shrink=0.7)
+                colorbar1.set_label('Normalized gravity acceleration')
 
     x_min, x_max = 0, 0
     if kwargs['components_to_plot'] == 'both':
