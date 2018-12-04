@@ -102,11 +102,6 @@ def update_config():
                           "to van hamme ld tables doesn't exists\n"
                           "Specifiy it in elisa_conf.ini file".format(VAN_HAMME_LD_TABLES))
 
-    if config_parser.has_section('instrument'):
-        global PASSBAND
-        PASSBAND = config_parser.get('instrument', 'passband', fallback=PASSBAND)
-
-
 PASSBANDS = [
     'bolometric',
     'Generic.Bessell.U',

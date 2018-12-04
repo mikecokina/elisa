@@ -19,10 +19,10 @@ def limb_darkening_sqrt(gamma, xsqrt, ysqrt):
     return 1.0 - (xsqrt * (1.0 - abs(np.cos(gamma)))) - (ysqrt * (1.0 - np.sqrt(abs(np.cos(gamma)))))
 
 
-def get_van_hamme_ld_table(metallicity):
+def get_van_hamme_ld_table(passband, metallicity):
     filename = "{model}.{passband}.{metallicity}.csv".format(
         model=config.LD_KEY_TO_FILE_PREFIX[config.LIMB_DARKENING_LAW],
-        passband=config.PASSBAND,
+        passband=passband,
         metallicity=utils.numeric_metallicity_to_string(metallicity)
     )
     path = os.path.join(config.VAN_HAMME_LD_TABLES, filename)
@@ -45,6 +45,9 @@ class Observer(object):
     def passband(self, passband):
         self._passband = passband
 
+    def get_van_hamme_ld_table(self, metallicity):
+        return get_van_hamme_ld_table(passband=self.passband, metallicity=metallicity)
+
     @staticmethod
     def get_passband_df(passband):
         if passband not in config.PASSBANDS:
@@ -62,4 +65,3 @@ class Observer(object):
 if __name__ == '__main__':
     # todo: handle bolometric in way like lambda x: 1
     observer = Observer('Generic.Bessell.B', system=None)
-    print(get_van_hamme_ld_table(0.5).head())
