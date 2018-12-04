@@ -124,13 +124,13 @@ primary = Star(mass=1.5*u.solMass,
                albedo=0.6
                )
 secondary = Star(mass=1.0*u.solMass,
-                 surface_potential=3.5,
+                 surface_potential=3.388013081485872,
                  # surface_potential=contact_pot,
                  synchronicity=1.5,
                  t_eff=6800*u.K,
                  gravity_darkening=1.0,
                  # discretization_factor=5,
-                 spots=spots_metadata['secondary'],
+                 # spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['primary'],
                  albedo=0.6
                 )
@@ -141,7 +141,7 @@ bs = BinarySystem(primary=primary,
                   gamma=0*u.km/u.s,
                   period=1*u.d,
                   eccentricity=0.0,
-                  inclination=90*u.deg,
+                  inclination=75*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0,
                   )
@@ -158,6 +158,7 @@ start_time = time()
 # bs.build_temperature_distribution(components_distance=1.0)
 # bs.evaluate_normals()
 # bs.build_surface(components_distance=1)
+bs.get_eclipse_boundaries(components_distance=components_min_distance)
 
 # t1 = np.min(bs.primary.temperatures)
 # a, b = bs.reflection_effect(iterations=2, components_distance=1)
@@ -194,15 +195,16 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 print
 
 bs.plot(descriptor='surface',
-        phase=0,
+        phase=0.5,
         # components_to_plot='primary',
         # components_to_plot='secondary',
         edges=True,
         # normals=True,
         # colormap='gravity_acceleration',
         # colormap='temperature',
-        plot_axis=False,
+        # plot_axis=False,
         # face_mask_primary=a,
         # face_mask_secondary=b,
+        # inclination = 80
         )
 

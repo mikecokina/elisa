@@ -587,19 +587,21 @@ class SingleSystem(System):
             kwargs['points'] = (points * U.DISTANCE_UNIT).to(kwargs['axis_unit'])
 
         elif descriptor == 'mesh':
-            KWARGS = ['axis_unit', 'plot_axis']
+            KWARGS = ['axis_unit', 'plot_axis', 'inclination', 'azimuth']
             method_to_call = graphics.single_star_mesh
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
 
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
+            kwargs['inclination'] = kwargs.get('inclination', 90 - np.degrees(self.inclination))
 
             kwargs['mesh'], _ = self.build_surface(return_surface=True)  # potom tu daj ked bude vediet skvrny
             denominator = (1*kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])
+            kwargs['azimuth'] = kwargs.get('azimuth', 0)
 
         elif descriptor == 'wireframe':
-            KWARGS = ['axis_unit', 'plot_axis']
+            KWARGS = ['axis_unit', 'plot_axis', 'inclination', 'azimuth']
             method_to_call = graphics.single_star_wireframe
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
 
@@ -609,9 +611,11 @@ class SingleSystem(System):
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
+            kwargs['inclination'] = kwargs.get('inclination', 90 - np.degrees(self.inclination))
+            kwargs['azimuth'] = kwargs.get('azimuth', 0)
 
         elif descriptor == 'surface':
-            KWARGS = ['axis_unit', 'edges', 'normals', 'colormap', 'plot_axis']
+            KWARGS = ['axis_unit', 'edges', 'normals', 'colormap', 'plot_axis', 'inclination', 'azimuth']
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
             method_to_call = graphics.single_star_surface
 
@@ -619,6 +623,8 @@ class SingleSystem(System):
             kwargs['normals'] = kwargs.get('normals', False)
             kwargs['colormap'] = kwargs.get('colormap', None)
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
+            kwargs['inclination'] = kwargs.get('inclination', 90 - np.degrees(self.inclination))
+            kwargs['azimuth'] = kwargs.get('azimuth', 0)
 
             output = self.build_surface(return_surface=True)
             kwargs['mesh'], kwargs['triangles'] = copy(output[0]), copy(output[1])

@@ -375,6 +375,9 @@ class BinarySystem(System):
                 param = '_{}'.format('_'.join(str(fn.__name__).split('_')[1:]))
                 radius = fn(component, components_distance)
                 setattr(component_instance, param, radius)
+                if self.morphology is not 'over-contact':
+                    radius = self.calculate_forward_radius(component, components_distance)
+                    setattr(component_instance, '_forward_radius', radius)
 
     def _evaluate_spots_mesh(self, components_distance, component=None):
         """
@@ -1066,6 +1069,18 @@ class BinarySystem(System):
         """
 
         args = (component, components_distance, c.PI, c.HALF_PI)
+        return self.calculate_radius(*args)
+
+    def calculate_forward_radius(self, component, components_distance):
+        """
+        calculates forward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method,
+        NOT very usable in over-contact systems
+
+        :param component:
+        :param components_distance:
+        :return:
+        """
+        args = (component, components_distance, 0.0, c.HALF_PI)
         return self.calculate_radius(*args)
 
     def compute_equipotential_boundary(self, components_distance, plane):
@@ -2130,15 +2145,17 @@ class BinarySystem(System):
             kwargs['points_secondary'] = points_secondary
 
         elif descriptor == 'mesh':
-            KWARGS = ['phase', 'components_to_plot', 'plot_axis']
+            KWARGS = ['phase', 'components_to_plot', 'plot_axis', 'inclination', 'azimuth']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
             method_to_call = graphics.binary_mesh
 
             kwargs['phase'] = kwargs.get('phase', 0)
             kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
+            kwargs['inclination'] = kwargs.get('inclination', 90 - np.degrees(self.inclination))
 
-            components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
+            components_distance, azim = self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
+            kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
                 points, _ = self.build_surface(component='primary', components_distance=components_distance,
@@ -2151,15 +2168,17 @@ class BinarySystem(System):
                 kwargs['points_secondary'] = points['secondary']
 
         elif descriptor == 'wireframe':
-            KWARGS = ['phase', 'components_to_plot', 'plot_axis']
+            KWARGS = ['phase', 'components_to_plot', 'plot_axis', 'inclination', 'azimuth']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
             method_to_call = graphics.binary_wireframe
 
             kwargs['phase'] = kwargs.get('phase', 0)
             kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
+            kwargs['inclination'] = kwargs.get('inclination', 90-np.degrees(self.inclination))
 
-            components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
+            components_distance, azim = self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
+            kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
 
             if kwargs['components_to_plot'] in ['primary', 'both']:
                 points, faces = self.build_surface(component='primary', components_distance=components_distance,
@@ -2174,7 +2193,7 @@ class BinarySystem(System):
 
         elif descriptor == 'surface':
             KWARGS = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis', 'face_mask_primary',
-                      'face_mask_secondary']
+                      'face_mask_secondary', 'inclination', 'azimuth']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.binary_surface
@@ -2187,8 +2206,10 @@ class BinarySystem(System):
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
             kwargs['face_mask_primary'] = kwargs.get('face_mask_primary', None)
             kwargs['face_mask_secondary'] = kwargs.get('face_mask_secondary', None)
+            kwargs['inclination'] = kwargs.get('inclination', 90-np.degrees(self.inclination))
 
-            components_distance = self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
+            components_distance, azim = self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
+            kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
 
             # this part decides if both components need to be calculated at once (due to reflection effect)
             # if kwargs['colormap'] == 'temperature' and self.reflection_effect_iterations != 0:
@@ -2741,6 +2762,16 @@ class BinarySystem(System):
                                ''.format(component))
             component_instance.renormalize_temperatures()
 
-    def get_eclipse_boundaries(self):
-        # check whether the eclipses even occur
-        pass
+    def get_eclipse_boundaries(self, components_distance=None):
+        if components_distance is None:
+            raise ValueError('Component distance value was not supplied.')
+
+        # check whether the inclination is high enough to permit eclipses
+        if self.morphology != 'over-contact':
+            cos_i_critical = (self.primary.forward_radius + self.secondary.forward_radius) / components_distance
+            cos_i = np.cos(self.inclination)
+            if cos_i < cos_i_critical:
+                self._logger.debug('Inclination is not sufficient to produce eclipses.')
+                return None
+            pass
+
