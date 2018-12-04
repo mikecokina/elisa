@@ -2662,6 +2662,13 @@ class BinarySystem(System):
         #     print('Elapsed time: {0:.5f} s.'.format(time() - st))
 
     def build_surface_gravity(self, component=None, components_distance=None):
+        """
+        function calculates gravity potential gradient magnitude (surface gravity) for each face
+
+        :param component: `primary` or `secondary`
+        :param components_distance: float
+        :return:
+        """
 
         if components_distance is None:
             raise ValueError('Component distance value was not supplied.')
@@ -2674,6 +2681,7 @@ class BinarySystem(System):
             component_instance.areas = component_instance.calculate_areas()
 
             # consider to recompute polar radius (or remember consider this problem in case of eccentric orbit)
+            # edit: you should do that far before this function
 
             # compute and assign potential gradient magnitudes for elements if missing
             self._logger.debug('Computing potential gradient magnitudes distribution of {} component.'
@@ -2700,11 +2708,17 @@ class BinarySystem(System):
                         points=spot.points, faces=spot.faces)
 
     def build_temperature_distribution(self, component=None):
+        """
+        function calculates temperature distribution on across all faces
+
+        :param component: `primary` or `secondary`
+        :return:
+        """
         component = self._component_to_list(component)
         for _component in component:
             component_instance = getattr(self, _component)
 
-            self._logger.debug('Computing effective temprature distibution of {} component.'.format(_component))
+            self._logger.debug('Computing effective temprature distibution on {} component.'.format(_component))
             component_instance.temperatures = component_instance.calculate_effective_temperatures()
             if component_instance.pulsations:
                 self._logger.debug('Adding pulsations to surface temperature distribution '

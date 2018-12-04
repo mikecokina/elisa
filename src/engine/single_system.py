@@ -238,7 +238,7 @@ class SingleSystem(System):
 
         return - c.G * self.star.mass / radius - 0.5 * np.power(self._angular_velocity * radius * np.sin(theta), 2.0)
 
-    def calculate_potential_gradient_magnitudes(self, points=None, faces=None):
+    def calculate_face_magnitude_gradient(self, points=None, faces=None):
         """
         returns array of absolute values of potential gradients for corresponding faces
 
@@ -647,8 +647,9 @@ class SingleSystem(System):
         # build surface if there is no spot specified
         if not self.star.spots:
             self.build_surface_with_no_spots()
-
-        self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
+        else:
+            self.build_surface_with_spots()
+        # self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
 
     def build_surface(self, return_surface=False):
         """
@@ -700,7 +701,7 @@ class SingleSystem(System):
         self._logger.debug('Computing polar radius')
         self.star._polar_radius = self.calculate_polar_radius()
         self._logger.debug('Computing potential gradient magnitudes distribution accros the stellar surface')
-        self.star.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes()
+        self.star.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient()
         self._logger.debug('Computing magnitude of polar potential gradient.')
         self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
 
@@ -718,8 +719,8 @@ class SingleSystem(System):
 
                 self._logger.debug('Calculating distribution of potential gradient magnitudes of spot:'
                                    ' {}'.format(spot_index))
-                spot.potential_gradient_magnitudes = self.calculate_potential_gradient_magnitudes(points=spot.points,
-                                                                                                  faces=spot.faces)
+                spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(points=spot.points,
+                                                                                            faces=spot.faces)
 
                 if colormap == 'temperature':
                     self._logger.debug('Computing temperature distribution of spot: {}'.format(spot_index))
@@ -873,6 +874,54 @@ class SingleSystem(System):
             spot_instance.boundary_center = spot_points[0]
             spot_instance.center = np.array(spot_center)
 
+    def build_surface_gravity(self):
+        """
+        function calculates gravity potential gradient magnitude (surface gravity) for each face
+
+        :return:
+        """
+
+        self._logger.debug('Computing surface areas of star.')
+        self.star.areas = self.star.calculate_areas()
+
+        # compute and assign potential gradient magnitudes for elements if missing
+        self._logger.debug('Computing potential gradient magnitudes distribution of a star.')
+        self.star.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient()
+
+        self._logger.debug('Computing magnitude of polar potential gradient.')
+        self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
+
+        if self.star.spots:
+            for spot_index, spot in self.star.spots.items():
+                self._logger.debug('Calculating surface areas of {} spot.'.format(spot_index))
+                spot.areas = spot.calculate_areas()
+
+                self._logger.debug('Calculating distribution of potential gradient magnitudes of {} '
+                                   'spot.'.format(spot_index))
+                spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(points=spot.points,
+                                                                                            faces=spot.faces)
+
+    def build_temperature_distribution(self):
+        """
+        function calculates temperature distribution on across all faces
+
+        :return:
+        """
+        self._logger.debug('Computing effective temprature distibution on the star.')
+        self.star.temperatures = self.star.calculate_effective_temperatures()
+        if self.star.pulsations:
+            self._logger.debug('Adding pulsations to surface temperature distribution ')
+            self.star.temperatures = self.star.add_pulsations()
+
+        if self.star.spots:
+            for spot_index, spot in self.star.spots.items():
+                self._logger.debug('Computing temperature distribution of {} spot'.format(spot_index))
+                spot.temperatures = spot.temperature_factor * self.star.calculate_effective_temperatures(
+                    gradient_magnitudes=spot.potential_gradient_magnitudes)
+                if self.star.pulsations:
+                    self._logger.debug('Adding pulsations to temperature distribution of {} spot'.format(spot_index))
+                    spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
+                                                                 temperatures=spot.temperatures)
 
     def compute_lc(self):
         pass

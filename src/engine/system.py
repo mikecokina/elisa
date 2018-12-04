@@ -115,8 +115,7 @@ class System(metaclass=ABCMeta):
         solution, use = np.nan, False
         scipy_solver_init_value = np.array([1. / 10000.])
         try:
-            solution, _, ier, mesg = fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
-                                                        xtol=1e-10)
+            solution, _, ier, mesg = fsolve(fn, scipy_solver_init_value, full_output=True, args=args, xtol=1e-10)
             if ier == 1 and not np.isnan(solution[0]):
                 solution = solution[0]
                 use = True if 1e15 > solution > 0 else False
