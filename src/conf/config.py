@@ -33,6 +33,8 @@ LIMB_DARKENING_LAW = 'cosine'
 DISCRETIZATION_FACTOR = 5
 MAX_DISCRETIZATION_FACTOR = 20
 
+VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.dirname(__file__)), "limbdarkening")
+
 
 def set_up_logging():
     if os.path.isfile(LOG_CONFIG):
@@ -89,6 +91,15 @@ def update_config():
         global MAX_DISCRETIZATION_FACTOR
         MAX_DISCRETIZATION_FACTOR = config_parser.getfloat('computational', 'max_discretization_factor',
                                                            fallback=MAX_DISCRETIZATION_FACTOR)
+
+    if config_parser.has_section('support'):
+        global VAN_HAMME_LD_TABLES
+        VAN_HAMME_LD_TABLES = config_parser.get('support', 'van_hamme_ld_tables', fallback=VAN_HAMME_LD_TABLES)
+
+        if not os.path.isdir(VAN_HAMME_LD_TABLES):
+            warnings.warn("path {}\n"
+                          "to van hamme ld tables doesn't exists\n"
+                          "Specifiy it in elisa_conf.ini file".format(VAN_HAMME_LD_TABLES))
 
 
 # fixme: import ths file somewher in code instead of previous engine.conf
