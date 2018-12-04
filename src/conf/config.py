@@ -34,6 +34,7 @@ DISCRETIZATION_FACTOR = 5
 MAX_DISCRETIZATION_FACTOR = 20
 
 VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.dirname(__file__)), "limbdarkening")
+PASSBAND = 'bolometric'
 
 
 def set_up_logging():
@@ -101,9 +102,12 @@ def update_config():
                           "to van hamme ld tables doesn't exists\n"
                           "Specifiy it in elisa_conf.ini file".format(VAN_HAMME_LD_TABLES))
 
+    if config_parser.has_section('instrument'):
+        global PASSBAND
+        PASSBAND = config_parser.get('instrument', 'passband', fallback=PASSBAND)
 
-# fixme: import ths file somewher in code instead of previous engine.conf
-PASSBAND = [
+
+PASSBANDS = [
     'bolometric',
     'Generic.Bessell.U',
     'Generic.Bessell.B',
@@ -120,5 +124,13 @@ PASSBAND = [
     'Generic.Stromgren.b',
     'Generic.Stromgren.y'
 ]
+
+
+LD_KEY_TO_FILE_PREFIX = {
+    "linear": "lin",
+    "cosine": "lin",
+    "logarithmic": "log",
+    "square_root": "sqrt",
+}
 
 read_and_update_config()
