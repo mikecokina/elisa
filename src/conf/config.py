@@ -4,6 +4,7 @@ import os
 import warnings
 from configparser import ConfigParser
 from logging import config as log_conf
+from os.path import dirname
 
 config_parser = ConfigParser()
 
@@ -24,7 +25,7 @@ else:
                       "  - Add conf/elisa_conf.ini under your virtualenv root, or \n ")
 
 CONFIG_FILE = config_file
-LOG_CONFIG = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'conf', 'logging.json')
+LOG_CONFIG = os.path.join(dirname(__file__), 'logging.json')
 # physics
 REFLECTION_EFFECT = True
 REFLECTION_EFFECT_ITERATIONS = 2
@@ -33,8 +34,7 @@ LIMB_DARKENING_LAW = 'cosine'
 DISCRETIZATION_FACTOR = 5
 MAX_DISCRETIZATION_FACTOR = 20
 
-VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.dirname(__file__)), "limbdarkening")
-PASSBAND = 'bolometric'
+VAN_HAMME_LD_TABLES = os.path.join(dirname(dirname(__file__)), "limbdarkening")
 
 
 def set_up_logging():
@@ -67,7 +67,8 @@ def read_and_update_config(conf_path=None):
 def update_config():
     if config_parser.has_section('general'):
         global LOG_CONFIG
-        LOG_CONFIG = config_parser.get('general', 'log_config', fallback=LOG_CONFIG)
+        LOG_CONFIG = config_parser.get('general', 'log_config') \
+            if config_parser.get('general', 'log_config') else LOG_CONFIG
 
     if config_parser.has_section('physics'):
         global REFLECTION_EFFECT
@@ -121,11 +122,18 @@ PASSBANDS = [
 ]
 
 
-LD_KEY_TO_FILE_PREFIX = {
+LD_LAW_TO_FILE_PREFIX = {
     "linear": "lin",
     "cosine": "lin",
     "logarithmic": "log",
     "square_root": "sqrt",
+}
+
+LD_LAW_CFS_COLUMNS = {
+    "linear": ["xlin"],
+    "cosine": ["xlin"],
+    "logarithmic": ["xlog", "ylog"],
+    "square_root": ["xsqrt", "ysqrt"],
 }
 
 read_and_update_config()
