@@ -375,7 +375,7 @@ class BinarySystem(System):
                 param = '_{}'.format('_'.join(str(fn.__name__).split('_')[1:]))
                 radius = fn(component, components_distance)
                 setattr(component_instance, param, radius)
-                if self.morphology is not 'over-contact':
+                if self.morphology != 'over-contact':
                     radius = self.calculate_forward_radius(component, components_distance)
                     setattr(component_instance, '_forward_radius', radius)
 
@@ -636,7 +636,9 @@ class BinarySystem(System):
                                  "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
             if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or (
-                    self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__):
+                    self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__) or (
+                    abs(self.primary.filling_factor) < __PRECISSION__ and
+                    abs(self.secondary.filling_factor) < __PRECISSION__):
                 __SETUP_VALUE__ = "semi-detached"
             elif self.primary.filling_factor < 0 and self.secondary.filling_factor < 0:
                 __SETUP_VALUE__ = "detached"
@@ -1035,7 +1037,10 @@ class BinarySystem(System):
         if ier == 1 and not np.isnan(solution[0]) and 30 >= solution[0] >= 0:
             return solution[0]
         else:
-            raise ValueError('Invalid value of radius {} was calculated.'.format(solution))
+            if 0 < solution[0] < 1.0:
+                return solution[0]
+            else:
+                raise ValueError('Invalid value of radius {} was calculated.'.format(solution))
 
     def calculate_polar_radius(self, component, components_distance):
         """
@@ -2152,7 +2157,7 @@ class BinarySystem(System):
             kwargs['phase'] = kwargs.get('phase', 0)
             kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-            kwargs['inclination'] = kwargs.get('inclination', 90 - np.degrees(self.inclination))
+            kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
 
             components_distance, azim = self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
             kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
@@ -2175,7 +2180,7 @@ class BinarySystem(System):
             kwargs['phase'] = kwargs.get('phase', 0)
             kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-            kwargs['inclination'] = kwargs.get('inclination', 90-np.degrees(self.inclination))
+            kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
 
             components_distance, azim = self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
             kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
@@ -2206,7 +2211,7 @@ class BinarySystem(System):
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
             kwargs['face_mask_primary'] = kwargs.get('face_mask_primary', None)
             kwargs['face_mask_secondary'] = kwargs.get('face_mask_secondary', None)
-            kwargs['inclination'] = kwargs.get('inclination', 90-np.degrees(self.inclination))
+            kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
 
             components_distance, azim = self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
             kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
@@ -2762,16 +2767,33 @@ class BinarySystem(System):
                                ''.format(component))
             component_instance.renormalize_temperatures()
 
+    def get_critical_inclination(self, components_distance=None):
+        if components_distance is None:
+            raise ValueError('Component distance value was not supplied.')
+
+        if self.morphology != 'over-contact':
+            radius1 = np.mean([self.primary.side_radius, self.primary.forward_radius, self.primary.backward_radius,
+                               self.primary.polar_radius])
+            radius2 = np.mean([self.secondary.side_radius, self.secondary.forward_radius,
+                               self.secondary.backward_radius, self.secondary.polar_radius])
+            cos_i_critical = (radius1 + radius2) / components_distance
+            return np.degrees(np.arccos(cos_i_critical))
+
     def get_eclipse_boundaries(self, components_distance=None):
         if components_distance is None:
             raise ValueError('Component distance value was not supplied.')
 
-        # check whether the inclination is high enough to permit eclipses
+        # check whether the inclination is high enough to enable eclipses
         if self.morphology != 'over-contact':
-            cos_i_critical = (self.primary.forward_radius + self.secondary.forward_radius) / components_distance
+            radius1, radius2 = self.primary.forward_radius, self.secondary.forward_radius
+            cos_i_critical = (radius1 + radius2) / components_distance
             cos_i = np.cos(self.inclination)
+            print('critical inclination: {} deg'.format(np.degrees(np.arccos(cos_i_critical))))
             if cos_i < cos_i_critical:
                 self._logger.debug('Inclination is not sufficient to produce eclipses.')
                 return None
-            pass
+
+            sin_azimut = np.sqrt(np.power(cos_i_critical, 2) + np.power(np.sin(self.inclination), 2))
+            # return cos_i = np.cos(self.inclination)
+
 

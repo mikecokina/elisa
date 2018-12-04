@@ -123,7 +123,7 @@ def single_star_mesh(**kwargs):
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.elev = kwargs['inclination']
+    ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
     ax.scatter(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2], s=2)
@@ -156,7 +156,7 @@ def binary_mesh(**kwargs):
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
-    ax.elev = kwargs['inclination']
+    ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
     if kwargs['components_to_plot'] in ['primary', 'both']:
         ax.scatter(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1], kwargs['points_primary'][:, 2], s=5,
@@ -208,7 +208,7 @@ def single_star_surface(**kwargs):
     fig = plt.figure(figsize=(7, 7))
     ax = axes3d.Axes3D(fig)
     ax.set_aspect('equal')
-    ax.elev = kwargs['inclination']
+    ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
     star_plot = ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2],
@@ -255,7 +255,7 @@ def binary_surface(**kwargs):
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
-    ax.elev = kwargs['inclination']
+    ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
     clr = ['g', 'r']
@@ -390,7 +390,7 @@ def single_star_wireframe(**kwargs):
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.elev = kwargs['inclination']
+    ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
     star_plot = ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2],
@@ -417,7 +417,7 @@ def binary_wireframe(**kwargs):
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
-    ax.elev = kwargs['inclination']
+    ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
     if kwargs['components_to_plot'] == 'primary':
