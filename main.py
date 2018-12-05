@@ -78,8 +78,8 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000 * u.K, 'fr
                                      ]
                        }
 
-contact_pot = 2.875844632141054
-# contact_pot = 3.5
+# contact_pot = 2.875844632141054
+contact_pot = 4.0
 start_time = time()
 
 # combo = {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -124,8 +124,8 @@ primary = Star(mass=2.0*u.solMass,
                albedo=0.6
                )
 secondary = Star(mass=1.0*u.solMass,
-                 # surface_potential=3.388013081485872,
-                 surface_potential=contact_pot,
+                 surface_potential=5.0,
+                 # surface_potential=contact_pot,
                  synchronicity=1.0,
                  t_eff=6800*u.K,
                  gravity_darkening=1.0,
@@ -141,7 +141,7 @@ bs = BinarySystem(primary=primary,
                   gamma=0*u.km/u.s,
                   period=1*u.d,
                   eccentricity=0.0,
-                  inclination=34.80278483*u.deg,
+                  inclination=80*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0,
                   )
@@ -158,7 +158,8 @@ start_time = time()
 # bs.build_temperature_distribution(components_distance=1.0)
 # bs.evaluate_normals()
 # bs.build_surface(components_distance=1)
-# bs.get_eclipse_boundaries(components_distance=components_min_distance)
+azim = bs.get_eclipse_boundaries(components_distance=components_min_distance)
+azim = np.degrees(azim)
 crit_incl = bs.get_critical_inclination(components_distance=components_min_distance)
 
 # t1 = np.min(bs.primary.temperatures)
@@ -206,6 +207,7 @@ bs.plot(descriptor='surface',
         # plot_axis=False,
         # face_mask_primary=a,
         # face_mask_secondary=b,
-        inclination=crit_incl
+        # inclination=crit_incl,
+        azimuth=azim[0],
         )
 

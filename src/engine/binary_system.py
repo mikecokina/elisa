@@ -525,8 +525,6 @@ class BinarySystem(System):
                 if component == "primary":
                     spot_instance.points = np.array(spot_points)
                     spot_instance.boundary = np.array(boundary_points)
-                    # fixme: remove boundary center, use center insteadd
-                    spot_instance.boundary_center = np.array(boundary_center)
                     spot_instance.center = np.array(spot_center)
                 else:
                     spot_instance.points = np.array([np.array([components_distance - point[0], -point[1], point[2]])
@@ -534,9 +532,6 @@ class BinarySystem(System):
 
                     spot_instance.boundary = np.array([np.array([components_distance - point[0], -point[1], point[2]])
                                                        for point in boundary_points])
-
-                    spot_instance.boundary_center = np.array([components_distance - boundary_center[0],
-                                                              -boundary_center[1], boundary_center[2]])
 
                     spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1],
                                                      spot_center[2]])
@@ -2785,15 +2780,20 @@ class BinarySystem(System):
 
         # check whether the inclination is high enough to enable eclipses
         if self.morphology != 'over-contact':
-            radius1, radius2 = self.primary.forward_radius, self.secondary.forward_radius
-            cos_i_critical = (radius1 + radius2) / components_distance
-            cos_i = np.cos(self.inclination)
-            print('critical inclination: {} deg'.format(np.degrees(np.arccos(cos_i_critical))))
-            if cos_i < cos_i_critical:
+            radius1 = np.mean([self.primary.side_radius, self.primary.forward_radius, self.primary.backward_radius,
+                               self.primary.polar_radius])
+            radius2 = np.mean([self.secondary.side_radius, self.secondary.forward_radius,
+                               self.secondary.backward_radius, self.secondary.polar_radius])
+            sin_i_critical = (radius1 + radius2) / components_distance
+            sin_i = np.sin(self.inclination)
+            if sin_i < sin_i_critical:
                 self._logger.debug('Inclination is not sufficient to produce eclipses.')
                 return None
-
-            sin_azimut = np.sqrt(np.power(cos_i_critical, 2) + np.power(np.sin(self.inclination), 2))
-            # return cos_i = np.cos(self.inclination)
+            radius1 = self.primary.forward_radius
+            radius2 = self.secondary.forward_radius
+            sin_i_critical = (radius1 + radius2) / components_distance
+            azimuth = np.arcsin(np.sqrt(np.power(sin_i_critical, 2) - np.power(np.cos(self.inclination), 2)))
+            azimuths = np.array([c.FULL_ARC - azimuth, azimuth, c.PI - azimuth, c.PI + azimuth])
+            return azimuths
 
 
