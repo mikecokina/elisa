@@ -522,7 +522,7 @@ class Body(metaclass=ABCMeta):
 
         return normals * sgn[:, None]
 
-    def calculate_all_normals(self, com=None):
+    def set_all_normals(self, com=None):
         """
         function calculates normals for each face of given body (including spots
         :return:
@@ -549,7 +549,7 @@ class Body(metaclass=ABCMeta):
             faces = self.faces
         return np.average(points[faces], axis=1)
 
-    def calculate_all_surface_centres(self):
+    def set_all_surface_centres(self):
         """
         calculates all surface centres for given body(including spots)
         :return:

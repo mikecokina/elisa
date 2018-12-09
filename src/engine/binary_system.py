@@ -20,27 +20,28 @@
 
 '''
 
-import numpy as np
-import logging
 import gc
-import scipy
-
-from engine.system import System
-from engine.star import Star
-from engine.orbit import Orbit
-from astropy import units as u
-from engine import const as c
-from scipy.optimize import newton
-from engine import utils
-from engine import graphics
-from engine import units
-from scipy.spatial import Delaunay
+import logging
 from copy import copy
+
+import numpy as np
+import scipy
+from astropy import units as u
+from scipy.optimize import newton
+from scipy.spatial import Delaunay
+
 from conf import config
+from engine import const as c
+from engine import graphics
+from engine import ld
+from engine import units
+from engine import utils
+from engine.orbit import Orbit
+from engine.star import Star
+from engine.system import System
 
 
 # temporary
-from time import time
 
 
 class BinarySystem(System):
@@ -123,7 +124,7 @@ class BinarySystem(System):
             self.secondary.discretization_factor = \
                 self.primary.discretization_factor * self.primary.polar_radius / self.secondary.polar_radius * u.rad
 
-        # TODO: retrieval of limb darkenig coefficients
+            # TODO: retrieval of limb darkenig coefficients
 
     @property
     def morphology(self):
@@ -631,9 +632,10 @@ class BinarySystem(System):
                                  "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
             if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or (
-                    self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__) or (
-                    abs(self.primary.filling_factor) < __PRECISSION__ and
-                    abs(self.secondary.filling_factor) < __PRECISSION__):
+                            self.primary.filling_factor < 0 and abs(
+                        self.secondary.filling_factor) < __PRECISSION__) or (
+                            abs(self.primary.filling_factor) < __PRECISSION__ and
+                            abs(self.secondary.filling_factor) < __PRECISSION__):
                 __SETUP_VALUE__ = "semi-detached"
             elif self.primary.filling_factor < 0 and self.secondary.filling_factor < 0:
                 __SETUP_VALUE__ = "detached"
@@ -646,18 +648,18 @@ class BinarySystem(System):
             self.primary.filling_factor, self.secondary.filling_factor = None, None
             if (abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
                     (abs(
-                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
+                            self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
                 __SETUP_VALUE__ = "double-contact"
 
             elif ((abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
-                  (self.secondary.surface_potential > self.secondary.critical_surface_potential)) or \
+                          (self.secondary.surface_potential > self.secondary.critical_surface_potential)) or \
                     ((abs(
-                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__)
+                            self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__)
                      and (self.primary.surface_potential > self.primary.critical_surface_potential)):
                 __SETUP_VALUE__ = "semi-detached"
 
             elif (self.primary.surface_potential > self.primary.critical_surface_potential) and (
-                    self.secondary.surface_potential > self.secondary.critical_surface_potential):
+                        self.secondary.surface_potential > self.secondary.critical_surface_potential):
                 __SETUP_VALUE__ = "detached"
 
             else:
@@ -691,7 +693,7 @@ class BinarySystem(System):
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+            3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
     def secondary_potential_derivative_x(self, x, *args):
         """
@@ -704,7 +706,7 @@ class BinarySystem(System):
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
+            3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
 
     def pre_calculate_for_potential_value_primary(self, *args):
         """
@@ -929,14 +931,14 @@ class BinarySystem(System):
         if component == 'primary':
             F2 = np.power(self.primary.synchronicity, 2)
             domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                    components_distance - points[:, 0]) / r_hat3 + F2 * (
-                                self.mass_ratio + 1) * points[:, 0] - self.mass_ratio / np.power(components_distance, 2)
+                components_distance - points[:, 0]) / r_hat3 + F2 * (
+                self.mass_ratio + 1) * points[:, 0] - self.mass_ratio / np.power(components_distance, 2)
         elif component == 'secondary':
             F2 = np.power(self.secondary.synchronicity, 2)
             domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                    components_distance - points[:, 0]) / r_hat3 - F2 * (
-                                self.mass_ratio + 1) * (components_distance - points[:, 0]) * points[:,
-                                                                                              0] + 1 / np.power(
+                components_distance - points[:, 0]) / r_hat3 - F2 * (
+                self.mass_ratio + 1) * (components_distance - points[:, 0]) * points[:,
+                                                                              0] + 1 / np.power(
                 components_distance, 2)
         else:
             raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
@@ -1160,7 +1162,7 @@ class BinarySystem(System):
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
             return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                    3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+                3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
         periastron_distance = self.orbit.periastron_distance
         xs = np.linspace(- periastron_distance * 3.0, periastron_distance * 3.0, 100)
@@ -1223,10 +1225,10 @@ class BinarySystem(System):
 
                 block_a = 1.0 / r
                 block_b = self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(r, 2) - (
-                        2.0 * r * np.cos(phi) * np.sin(theta) * d)))
+                    2.0 * r * np.cos(phi) * np.sin(theta) * d)))
                 block_c = (self.mass_ratio * r * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
                 block_d = 0.5 * (1 + self.mass_ratio) * np.power(r, 2) * (
-                        1 - np.power(np.cos(theta), 2))
+                    1 - np.power(np.cos(theta), 2))
 
                 p_values.append(block_a + block_b - block_c + block_d)
             return p_values
@@ -2376,8 +2378,8 @@ class BinarySystem(System):
                 com = {'primary': 0, 'secondary': components_distance}
                 for _component in component:
                     component_instance = getattr(self, _component)
-                    component_instance.calculate_all_surface_centres()
-                    component_instance.calculate_all_normals(com=com[_component])
+                    component_instance.set_all_surface_centres()
+                    component_instance.set_all_normals(com=com[_component])
 
                 self.reflection_effect(iterations=self.REFLECTION_EFFECT_ITERATIONS,
                                        components_distance=components_distance)
@@ -2434,9 +2436,9 @@ class BinarySystem(System):
 
         # if stars are too close and with too different radii, you can see more (less) than a half of the stellare
         # surface, calculating excess angle
-        sinTheta = np.abs(self.primary.polar_radius - self.secondary.polar_radius) / components_distance
-        x_corr_primary = self.primary.polar_radius * sinTheta
-        x_corr_secondary = self.secondary.polar_radius * sinTheta
+        sin_theta = np.abs(self.primary.polar_radius - self.secondary.polar_radius) / components_distance
+        x_corr_primary = self.primary.polar_radius * sin_theta
+        x_corr_secondary = self.secondary.polar_radius * sin_theta
 
         # visibility of faces is given by their x position
         xlim = {}
@@ -2467,7 +2469,7 @@ class BinarySystem(System):
             if use_quarter_star_test:
                 # this branch is activated in case of clean surface where symmetries can be used
                 # excluding quadrants that can be mirrored using symmetries
-                if self.morphology == 'over-contact':
+                if self.morphology == 'over-contfact':
                     quadrant_exclusion = np.logical_or(y_test, z_test)
                 else:
                     quadrant_exclusion = np.array([True for _ in centres[_component][:, 0]])
@@ -2556,16 +2558,19 @@ class BinarySystem(System):
 
             # st = time()
             d_gamma = \
-                {'primary': self.primary.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'],
-                                                                             None, :],
-                                                               line_of_sight=join_vector,
-                                                               coefficients=self.LD_COEFF,
-                                                               limb_darkening_law=self.LIMB_DARKENING_LAW),
-                 'secondary': self.secondary.limb_darkening_factor(normal_vector=normals['secondary'][None,
-                                                                                 vis_test['secondary'], :],
-                                                                   line_of_sight=-join_vector,
-                                                                   coefficients=self.LD_COEFF,
-                                                                   limb_darkening_law=self.LIMB_DARKENING_LAW)
+                {
+                    'primary': ld.limb_darkening_factor(
+                        normal_vector=normals['primary'][vis_test['primary'], None, :],
+                        line_of_sight=join_vector,
+                        coefficients=self.LD_COEFF,
+                        limb_darkening_law=self.LIMB_DARKENING_LAW
+                    ),
+                    'secondary': ld.limb_darkening_factor(
+                        normal_vector=normals['secondary'][None, vis_test['secondary'], :],
+                        line_of_sight=-join_vector,
+                        coefficients=self.LD_COEFF,
+                        limb_darkening_law=self.LIMB_DARKENING_LAW
+                    )
                  }
 
             # print('Elapsed time: {0:.5f} s.'.format(time() - st))
@@ -2592,7 +2597,7 @@ class BinarySystem(System):
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component][:symmetry_to_use[_component]] = \
                         1 + (c[_component] / np.power(temperatures[_component][vis_test_symmetry[_component]], 4)) * \
-                        counterpart_to_sum
+                            counterpart_to_sum
 
                     # using symmetry to redistribute reflection factor R
                     refl_fact_aux = np.empty(shape=np.shape(temperatures[_component]))
@@ -2635,7 +2640,7 @@ class BinarySystem(System):
             # (N_faces_primary * N_faces_secondary)
             d_gamma = \
                 {'primary': self.primary.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'],
-                                                                                                None, :],
+                                                                             None, :],
                                                                line_of_sight=join_vector,
                                                                coefficients=self.LD_COEFF,
                                                                limb_darkening_law=self.LIMB_DARKENING_LAW),
@@ -2644,7 +2649,7 @@ class BinarySystem(System):
                                                                    line_of_sight=-join_vector,
                                                                    coefficients=self.LD_COEFF,
                                                                    limb_darkening_law=self.LIMB_DARKENING_LAW)
-                }
+                 }
 
             # precalculating matrix part of reflection effect correction
             matrix_to_sum2 = {_component: q_ab * d_gamma[counterpart[_component]] for _component in component}
@@ -2662,7 +2667,7 @@ class BinarySystem(System):
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component] = \
                         1 + (c[_component] / np.power(temperatures[_component][vis_test[_component]], 4)) * \
-                        counterpart_to_sum
+                            counterpart_to_sum
 
             for _component in components:
                 # assigning new temperatures according to last iteration as
@@ -2679,8 +2684,8 @@ class BinarySystem(System):
                 for spot_index, spot in component_instance.spots.items():
                     spot.temperatures = temperatures[_component][counter: counter + len(spot.temperatures)]
                     counter += len(spot.temperatures)
-        #     st = time()
-        #     print('Elapsed time: {0:.5f} s.'.format(time() - st))
+                    #     st = time()
+                    #     print('Elapsed time: {0:.5f} s.'.format(time() - st))
 
     def build_surface_gravity(self, component=None, components_distance=None):
         """
@@ -2728,14 +2733,16 @@ class BinarySystem(System):
                         components_distance=components_distance,
                         points=spot.points, faces=spot.faces)
 
-    def build_temperature_distribution(self, component=None):
+    def build_temperature_distribution(self, component=None, components_distance=None):
         """
         function calculates temperature distribution on across all faces
 
+        :param components_distance:
         :param component: `primary` or `secondary`
         :return:
         """
         component = self._component_to_list(component)
+
         for _component in component:
             component_instance = getattr(self, _component)
 
@@ -2761,6 +2768,19 @@ class BinarySystem(System):
             self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
                                ''.format(component))
             component_instance.renormalize_temperatures()
+
+        if 'primary' in component and 'secondary' in component:
+            self.reflection_effect(iterations=self.REFLECTION_EFFECT_ITERATIONS,
+                                   components_distance=components_distance)
+
+    def build_faces_orientation(self, component=None, components_distance=None):
+        component = self._component_to_list(component)
+        com_x = {'primary': 0, 'secondary': components_distance}
+
+        for _component in component:
+            component_instance = getattr(self, _component)
+            component_instance.set_all_surface_centres()
+            component_instance.set_all_normals(com=com_x[_component])
 
     def get_critical_inclination(self, components_distance=None):
         if components_distance is None:
@@ -2795,5 +2815,3 @@ class BinarySystem(System):
             azimuth = np.arcsin(np.sqrt(np.power(sin_i_critical, 2) - np.power(np.cos(self.inclination), 2)))
             azimuths = np.array([c.FULL_ARC - azimuth, azimuth, c.PI - azimuth, c.PI + azimuth])
             return azimuths
-
-
