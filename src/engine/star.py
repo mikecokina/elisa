@@ -16,10 +16,6 @@ from time import time
 
 
 class Star(Body):
-
-    # KWARGS = ['mass', 't_eff', 'vertices', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
-    #           'polar_radius', 'surface_potential', 'backward_radius', 'gravity_darkening', 'polar_gravity_acceleration',
-    #           'polar_log_g', 'equatorial_radius', 'spots', 'discretization_factor', 'pulsations']
     KWARGS = ['mass', 't_eff', 'gravity_darkening']
 
     OPTIONAL_KWARGS = ['surface_potential', 'polar_log_g', 'synchronicity', 'albedo', 'pulsations',
@@ -44,8 +40,8 @@ class Star(Body):
         self._synchronicity = None
         self._forward_radius = None
         self._side_radius = None
-        self._polar_gravity_acceleration = None
         self._polar_log_g = None
+        self._log_g = None
         self._equatorial_radius = None
         self._critical_surface_potential = None
         self._potential_gradient_magnitudes = None
@@ -62,6 +58,14 @@ class Star(Body):
                 self._logger.debug("Setting property {} "
                                    "of class instance {} to {}".format(kwarg, Star.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
+
+    @property
+    def log_g(self):
+        return self._log_g
+
+    @log_g.setter
+    def log_g(self, log_g):
+        self._log_g = log_g
 
     @property
     def pulsations(self):
@@ -173,18 +177,9 @@ class Star(Body):
         return self._equatorial_radius
 
     @property
-    def polar_gravity_acceleration(self):
-        """
-        returns polar gravity acceleration in default units
-
-        :return: float
-        """
-        return self._polar_gravity_acceleration
-
-    @property
     def polar_log_g(self):
         """
-        returns logarythm of polar surface gravity in SI
+        returns logarithm of polar surface gravity in SI
 
         :return: float
         """

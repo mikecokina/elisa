@@ -23,6 +23,7 @@ class Orbit(object):
         self._argument_of_periastron = None
         self._periastron_distance = None
         self._perastron_phase = None
+        self._semimajor_axis = None
 
         utils.check_missing_kwargs(Orbit.KWARGS, kwargs, instance_of=Orbit)
 
@@ -35,6 +36,20 @@ class Orbit(object):
         self._periastron_distance = self.compute_periastron_distance()
         self._perastron_phase = - self.get_conjuction()["primary_eclipse"]["true_phase"] % 1
 
+    @property
+    def semimajor_axis(self):
+        """
+        :return:
+        """
+        return self._semimajor_axis
+
+    @semimajor_axis.setter
+    def semimajor_axis(self, semimajor_axis):
+        """
+        :return:
+        """
+        self._semimajor_axis = semimajor_axis
+    
     @property
     def periastron_phase(self):
         """

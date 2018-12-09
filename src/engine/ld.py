@@ -5,7 +5,10 @@ import numpy as np
 from conf import config
 from engine import utils
 
+import logging
+
 config.set_up_logging()
+logger = logging.getLogger("ld")
 
 
 def get_van_hamme_ld_table(passband, metallicity):
@@ -20,9 +23,9 @@ def get_van_hamme_ld_table(passband, metallicity):
     return pd.read_csv(path)
 
 
-def interpolate_on_ld_grid(self, metallicity, author=None):
-    self._logger.debug('interpolating ld coefficients')
-    ld_table = self.get_van_hamme_ld_table(metallicity)
+def interpolate_on_ld_grid(passband, metallicity, author=None):
+    logger.debug('interpolating ld coefficients')
+    ld_table = get_van_hamme_ld_table(passband=passband, metallicity=metallicity)
     # todo: implement kind of interp function
 
 
@@ -101,4 +104,4 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
 
 
 if __name__ == '__main__':
-    pass
+    interpolate_on_ld_grid(passband='Generic.Bessell.B', metallicity=0.0)

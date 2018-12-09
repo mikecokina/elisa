@@ -36,6 +36,8 @@ class Spot(object):
         self.potential_gradient_magnitudes = None
         self.temperatures = None
 
+        self._log_g =None
+
         self._logger = logging.getLogger(Spot.__name__)
 
         utils.check_missing_kwargs(Spot.KWARGS, kwargs, instance_of=Spot)
@@ -47,6 +49,14 @@ class Spot(object):
 
     def kwargs_serializer(self):
         return {kwarg: getattr(self, kwarg) for kwarg in self.KWARGS if getattr(self, kwarg) is not None}
+
+    @property
+    def log_g(self):
+        return self._log_g
+
+    @log_g.setter
+    def log_g(self, log_g):
+        self._log_g = log_g
 
     @property
     def longitude(self):
