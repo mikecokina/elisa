@@ -2606,8 +2606,8 @@ class BinarySystem(System):
                     counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component][:symmetry_to_use[_component]] = \
-                        1 + (_c[_component] / np.power(temperatures[_component][vis_test_symmetry[_component]], 4)) * \
-                            counterpart_to_sum
+                        1 + (_c[_component] / np.power(temperatures[_component][vis_test_symmetry[_component]], 4) *
+                             areas[_component][vis_test_symmetry[_component]]) * counterpart_to_sum
 
                     # using symmetry to redistribute reflection factor R
                     refl_fact_aux = np.empty(shape=np.shape(temperatures[_component]))
@@ -2675,7 +2675,8 @@ class BinarySystem(System):
                     counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component] = 1 + (_c[_component] / np.power(
-                        temperatures[_component][vis_test[_component]], 4)) * counterpart_to_sum
+                        temperatures[_component][vis_test[_component]], 4) * areas[_component][vis_test[_component]]) \
+                                                    * counterpart_to_sum
 
             for _component in components:
                 # assigning new temperatures according to last iteration as

@@ -78,8 +78,8 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000 * u.K, 'fr
                                      ]
                        }
 
-# contact_pot = 2.875844632141054
-contact_pot = 4.0
+contact_pot = 2.875844632141054
+# contact_pot = 4.0
 start_time = time()
 
 # combo = {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -124,8 +124,8 @@ primary = Star(mass=2.0*u.solMass,
                albedo=0.6
                )
 secondary = Star(mass=1.0*u.solMass,
-                 surface_potential=5.0,
-                 # surface_potential=contact_pot,
+                 # surface_potential=5.0,
+                 surface_potential=contact_pot,
                  synchronicity=1.0,
                  t_eff=6800*u.K,
                  gravity_darkening=1.0,
@@ -203,7 +203,7 @@ bs.plot(descriptor='surface',
         edges=True,
         # normals=True,
         # colormap='gravity_acceleration',
-        # colormap='temperature',
+        colormap='temperature',
         # plot_axis=False,
         # face_mask_primary=a,
         # face_mask_secondary=b,
