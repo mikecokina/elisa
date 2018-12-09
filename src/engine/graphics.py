@@ -318,12 +318,19 @@ def binary_surface(**kwargs):
 
     if kwargs.get('colormap', False):
         if kwargs['colormap'] == 'temperature':
-            plot1.set_cmap(cmap=cm.jet_r)
-            plot2.set_cmap(cmap=cm.jet_r)
+            if kwargs['components_to_plot'] == 'both':
+                plot1.set_cmap(cmap=cm.jet_r)
+                plot2.set_cmap(cmap=cm.jet_r)
+            else:
+                plot.set_cmap(cmap=cm.jet_r)
             if kwargs['components_to_plot'] == 'primary':
                 plot.set_array(kwargs['primary_cmap'])
+                colorbar = fig.colorbar(plot, shrink=0.7)
+                colorbar.set_label('T/[K]')
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'])
+                colorbar = fig.colorbar(plot, shrink=0.7)
+                colorbar.set_label('T/[K]')
             elif kwargs['components_to_plot'] == 'both':
                 # both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                 plot1.set_array(kwargs['primary_cmap'])

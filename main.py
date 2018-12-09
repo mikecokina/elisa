@@ -82,43 +82,13 @@ contact_pot = 2.875844632141054
 # contact_pot = 4.0
 start_time = time()
 
-# combo = {"primary_mass": 2.0, "secondary_mass": 1.0,
-#          "primary_surface_potential": 3.869707694558656, "secondary_surface_potential": 4.04941512902796,
-#          # "primary_surface_potential": 5, "secondary_surface_potential": 5,
-#          "primary_synchronicity": 1, "secondary_synchronicity": 4,
-#          "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-#          "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-#          "phase_shift": 0.0,
-#          "primary_t_eff": 5000, "secondary_t_eff": 5000,
-#          "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0
-#          }  # rotationally squashed compact spherical components
-#
-# primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
-#                synchronicity=combo["primary_synchronicity"],
-#                t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"])
-#
-# secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
-#                  synchronicity=combo["secondary_synchronicity"],
-#                  t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
-#                  spots=spots_metadata['secondary']
-#                  )
-#
-# bs = BinarySystem(primary=primary,
-#                   secondary=secondary,
-#                   argument_of_periastron=combo["argument_of_periastron"],
-#                   gamma=combo["gamma"],
-#                   period=combo["period"],
-#                   eccentricity=combo["eccentricity"],
-#                   inclination=combo["inclination"],
-#                   primary_minimum_time=combo["primary_minimum_time"],
-#                   phase_shift=combo["phase_shift"])
 primary = Star(mass=2.0*u.solMass,
                # surface_potential=2.7,
                surface_potential=contact_pot,
                # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                synchronicity=1.0,
-               t_eff=7000*u.K,
+               t_eff=10000*u.K,
                gravity_darkening=1.0,
                discretization_factor=5,
                albedo=0.6
@@ -199,7 +169,7 @@ print
 bs.plot(descriptor='surface',
         phase=0.0,
         # components_to_plot='primary',
-        # components_to_plot='secondary',
+        components_to_plot='secondary',
         edges=True,
         # normals=True,
         # colormap='gravity_acceleration',

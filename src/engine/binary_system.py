@@ -50,15 +50,10 @@ class BinarySystem(System):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
-    # this will be removed after full implementation of config system
-    LIMB_DARKENING_LAW = 'cosine'
-    REFLECTION_EFFECT_ITERATIONS = 2
-
     # this will be removed after full implementation of LD
     LD_COEFF = 0.5
 
     def __init__(self, primary, secondary, name=None, **kwargs):
-        config.LIMB_DARKENING_LAW
 
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, BinarySystem)
         super(BinarySystem, self).__init__(name=name, **kwargs)
@@ -2384,7 +2379,7 @@ class BinarySystem(System):
                     component_instance.set_all_surface_centres()
                     component_instance.set_all_normals(com=com[_component])
 
-                self.reflection_effect(iterations=self.REFLECTION_EFFECT_ITERATIONS,
+                self.reflection_effect(iterations=config.REFLECTION_EFFECT_ITERATIONS,
                                        components_distance=components_distance)
             else:
                 self._logger.debug('Reflection effect can be calculated only when surface map of both components is '
@@ -2440,6 +2435,9 @@ class BinarySystem(System):
         return xlim
 
     def reflection_effect(self, iterations=None, components_distance=None):
+        if not config.REFLECTION_EFFECT:
+            self._logger.debug('Reflection effect is switched off.')
+            return
         if iterations is None:
             raise ValueError('Number of iterations for reflection effect was not specified.')
         elif iterations == 0:
@@ -2509,8 +2507,8 @@ class BinarySystem(System):
         # calculating C_A = (albedo_A / D_intB) - scalar
         # D_intB - bolometric limb darkening factor
         d_int = {
-            'primary': ld.calculate_bolometric_limb_darkening_factor(self.LIMB_DARKENING_LAW, self.LD_COEFF),
-            'secondary': ld.calculate_bolometric_limb_darkening_factor(self.LIMB_DARKENING_LAW, self.LD_COEFF)
+            'primary': ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, self.LD_COEFF),
+            'secondary': ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, self.LD_COEFF)
         }
 
         _c = {
@@ -2573,13 +2571,13 @@ class BinarySystem(System):
                         normal_vector=normals['primary'][vis_test['primary'], None, :],
                         line_of_sight=join_vector,
                         coefficients=self.LD_COEFF,
-                        limb_darkening_law=self.LIMB_DARKENING_LAW
+                        limb_darkening_law=config.LIMB_DARKENING_LAW
                     ),
                     'secondary': ld.limb_darkening_factor(
                         normal_vector=normals['secondary'][None, vis_test['secondary'], :],
                         line_of_sight=-join_vector,
                         coefficients=self.LD_COEFF,
-                        limb_darkening_law=self.LIMB_DARKENING_LAW
+                        limb_darkening_law=config.LIMB_DARKENING_LAW
                     )
                 }
 
@@ -2653,12 +2651,12 @@ class BinarySystem(System):
                                                                              None, :],
                                                                line_of_sight=join_vector,
                                                                coefficients=self.LD_COEFF,
-                                                               limb_darkening_law=self.LIMB_DARKENING_LAW),
+                                                               limb_darkening_law=config.LIMB_DARKENING_LAW),
                  'secondary': self.secondary.limb_darkening_factor(normal_vector=normals['secondary'][None,
                                                                                  vis_test['secondary'], :],
                                                                    line_of_sight=-join_vector,
                                                                    coefficients=self.LD_COEFF,
-                                                                   limb_darkening_law=self.LIMB_DARKENING_LAW)
+                                                                   limb_darkening_law=config.LIMB_DARKENING_LAW)
                  }
 
             # precalculating matrix part of reflection effect correction
@@ -2806,7 +2804,7 @@ class BinarySystem(System):
             component_instance.renormalize_temperatures()
 
         if 'primary' in component and 'secondary' in component:
-            self.reflection_effect(iterations=self.REFLECTION_EFFECT_ITERATIONS,
+            self.reflection_effect(iterations=config.REFLECTION_EFFECT_ITERATIONS,
                                    components_distance=components_distance)
 
     def build_faces_orientation(self, component=None, components_distance=None):
