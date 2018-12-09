@@ -1,26 +1,45 @@
 import os
 import pandas as pd
 import numpy as np
+import logging
 
 from conf import config
-from engine import utils
+from engine import utils, const
 
-import logging
 
 config.set_up_logging()
 logger = logging.getLogger("ld")
 
 
-def get_van_hamme_ld_table(passband, metallicity):
-    filename = "{model}.{passband}.{metallicity}.csv".format(
-        model=config.LD_LAW_TO_FILE_PREFIX[config.LIMB_DARKENING_LAW],
+def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
+    law = law or config.LIMB_DARKENING_LAW
+    return "{model}.{passband}.{metallicity}.csv".format(
+        model=config.LD_LAW_TO_FILE_PREFIX[law],
         passband=passband,
         metallicity=utils.numeric_metallicity_to_string(metallicity)
     )
+
+
+def get_van_hamme_ld_table(passband, metallicity, law=None):
+    law = law or config.LIMB_DARKENING_LAW
+    filename = get_van_hamme_ld_table_filename(passband, metallicity, law=law)
     path = os.path.join(config.VAN_HAMME_LD_TABLES, filename)
     if not os.path.isfile(path):
         raise FileNotFoundError("there is no file like {}".format(path))
     return pd.read_csv(path)
+
+
+def get_van_hamme_ld_table_by_name(fname):
+    path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
+    if not os.path.isfile(path):
+        raise FileNotFoundError("there is no file like {}".format(path))
+    return pd.read_csv(path)
+
+
+def get_relevant_ld_tables(passband, metallicity):
+    surrounded = utils.find_surounded(const.VAN_HAMME_METALLICITY_LIST_LD, metallicity)
+    files = [get_van_hamme_ld_table_filename(passband, m) for m in surrounded]
+    return files
 
 
 def interpolate_on_ld_grid(passband, metallicity, author=None):
@@ -104,4 +123,5 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
 
 
 if __name__ == '__main__':
-    interpolate_on_ld_grid(passband='Generic.Bessell.B', metallicity=0.0)
+    # interpolate_on_ld_grid(passband='Generic.Bessell.B', metallicity=0.0)
+    print(get_relevant_ld_tables(passband='Generic.Bessell.B', metallicity=0.9))

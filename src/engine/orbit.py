@@ -1,9 +1,10 @@
 import logging
 import numpy as np
+import engine.units as eu
+
+from engine import utils
 from engine import const as c
 from astropy import units as u
-import engine.units as U
-from engine import utils
 
 
 class Orbit(object):
@@ -95,7 +96,7 @@ class Orbit(object):
         :return:
         """
         if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(U.ARC_UNIT))
+            self._inclination = np.float64(inclination.to(eu.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
             self._inclination = np.float64(inclination)
         else:
@@ -142,13 +143,13 @@ class Orbit(object):
         :return:
         """
         if isinstance(argument_of_periastron, u.quantity.Quantity):
-            self._argument_of_periastron = np.float64(argument_of_periastron.to(U.ARC_UNIT))
+            self._argument_of_periastron = np.float64(argument_of_periastron.to(eu.ARC_UNIT))
         elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
             self._argument_of_periastron = np.float64(argument_of_periastron)
         else:
             raise TypeError('Input of variable `argument_of_periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        if not 0 <= self._argument_of_periastron <= c.FULL_ARC:
+        if not 0 <= argument_of_periastron <= c.FULL_ARC:
             self._argument_of_periastron %= c.FULL_ARC
 
     @classmethod
