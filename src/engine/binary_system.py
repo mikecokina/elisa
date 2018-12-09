@@ -80,7 +80,7 @@ class BinarySystem(System):
         self._orbit = None
         self._primary_minimum_time = None
         self._phase_shift = None
-        self._semimajor_axis = None
+        self._semi_major_axis = None
         self._periastron_phase = None
 
         params = {
@@ -99,7 +99,7 @@ class BinarySystem(System):
             setattr(self, kwarg, kwargs[kwarg])
 
         # calculation of dependent parameters
-        self._semimajor_axis = self.calculate_semimajor_axis()
+        self._semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
         self.init_orbit()
@@ -111,9 +111,6 @@ class BinarySystem(System):
 
         # polar radius of both component in periastron
         self.setup_components_radii(components_distance=self.orbit.periastron_distance)
-
-        # setup semimajor axis
-        self.setup_orbit_semimajor_axis()
 
         # if secondary discretization factor was not set, it will be now with respect to primary component
         if not self.secondary.kwargs.get('discretization_factor'):
@@ -343,15 +340,15 @@ class BinarySystem(System):
                            "of class instance {} to {}".format(BinarySystem.__name__, self._phase_shift))
 
     @property
-    def semimajor_axis(self):
+    def semi_major_axis(self):
         """
         returns semi major axis of the system in default distance unit
 
         :return: np.float
         """
-        return self._semimajor_axis
+        return self._semi_major_axis
 
-    def calculate_semimajor_axis(self):
+    def calculate_semi_major_axis(self):
         """
         calculates length semi major axis using 3rd kepler law
 
@@ -2109,7 +2106,7 @@ class BinarySystem(System):
             ellipse = self.orbit.orbital_motion(phase=phases)
             # if axis are without unit a = 1
             if kwargs['axis_unit'] != u.dimensionless_unscaled:
-                a = self._semimajor_axis * units.DISTANCE_UNIT.to(kwargs['axis_unit'])
+                a = self._semi_major_axis * units.DISTANCE_UNIT.to(kwargs['axis_unit'])
                 radius = a * ellipse[:, 0]
             else:
                 radius = ellipse[:, 0]
@@ -2857,18 +2854,21 @@ class BinarySystem(System):
         component = self._component_to_list(component)
 
         for _componet in component:
+            components_instance = getattr(self, _componet)
+
             mass_ratio = self.mass_ratio if _componet == "primary" else 1.0 / self.mass_ratio
 
-            polar_radius = self.primary.polar_radius if _componet == "primary" else self.secondary.polar_radius
+            polar_radius = components_instance.polar_radius
             x_com = (mass_ratio * components_distance) / (1.0 + mass_ratio)
+            semi_major_axis = self.semi_major_axis.value
 
             primary_mass, secondary_mass = self.primary.mass, self.secondary.mass
             if _componet == "secondary":
                 primary_mass, secondary_mass = secondary_mass, primary_mass
 
-            r_vector = np.array([0.0, 0.0, polar_radius * self.orbit.semimajor_axis])
-            centrifugal_distance = np.array([x_com * self.orbit.semimajor_axis, 0.0, 0.0])
-            actual_distance = np.array([components_distance * self.orbit.semimajor_axis, 0., 0.])
+            r_vector = np.array([0.0, 0.0, polar_radius * semi_major_axis])
+            centrifugal_distance = np.array([x_com * semi_major_axis, 0.0, 0.0])
+            actual_distance = np.array([components_distance * semi_major_axis, 0., 0.])
             h_vector = r_vector - actual_distance
             angular_velocity = self.angular_velocity(components_distance=components_distance)
 
@@ -2880,10 +2880,6 @@ class BinarySystem(System):
 
             # magnitude of polar gravity acceleration in physical CGS units
             return np.linalg.norm(g) * 1e2
-
-    def setup_orbit_semimajor_axis(self):
-        self.orbit.semimajor_axis = (((((self.period * 86400.0) ** 2) * (const.G * (
-            self.primary.mass + self.secondary.mass))) / (4.0 * np.pi ** 2)) ** (1.0 / 3.0))
 
     def angular_velocity(self, components_distance=None):
         if components_distance is None:

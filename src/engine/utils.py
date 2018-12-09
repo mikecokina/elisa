@@ -302,3 +302,37 @@ def numeric_metallicity_to_string(metallicity):
     sign = "p" if metallicity >= 0 else "m"
     leadzeronum = "%02d" % (metallicity * 10) if metallicity >= 0 else "%02d" % (metallicity * -10)
     return "{sign}{leadzeronum}".format(sign=sign, leadzeronum=leadzeronum)
+
+
+def find_nearest_value(array, value):
+    array = np.array(array)
+    value = array[(np.abs(array - value)).argmin()]
+    index = np.where(array == value)[0][0]
+    # index = array.tolist().index(value)
+    return [value, index]
+
+
+def find_surounded(array, value):
+    # find surounded value in passed array
+    arr, ret = np.array(array[:]), []
+    f_nst = find_nearest_value(arr, value)
+    ret.append(f_nst[0])
+
+    new_arr = []
+    if f_nst[0] > value:
+        for i in range(0, len(arr)):
+            if arr[i] < f_nst[0]:
+                new_arr.append(arr[i])
+    else:
+        for i in range(0, len(arr)):
+            if arr[i] > f_nst[0]:
+                new_arr.append(arr[i])
+
+    arr = new_arr[:]
+    del new_arr
+
+    # arr = np.delete(arr, f_nst[1], 0)
+    ret.append(find_nearest_value(arr, value)[0])
+    ret = sorted(ret)
+    # test
+    return ret if ret[0] < value < ret[1] else False
