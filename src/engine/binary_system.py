@@ -31,7 +31,7 @@ from scipy.optimize import newton
 from scipy.spatial import Delaunay
 
 from conf import config
-from engine import const as c
+from engine import const
 from engine import graphics
 from engine import ld
 from engine import units
@@ -234,7 +234,7 @@ class BinarySystem(System):
             raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
-        if not 0 <= self.inclination <= c.PI:
+        if not 0 <= self.inclination <= const.PI:
             raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
 
         self._logger.debug("Setting property inclination "
@@ -289,8 +289,8 @@ class BinarySystem(System):
             raise TypeError('Input of variable `periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
-        if not 0 <= self._argument_of_periastron <= c.FULL_ARC:
-            self._argument_of_periastron %= c.FULL_ARC
+        if not 0 <= self._argument_of_periastron <= const.FULL_ARC:
+            self._argument_of_periastron %= const.FULL_ARC
         self._logger.debug("Setting property argument of periastron "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._argument_of_periastron))
 
@@ -360,7 +360,7 @@ class BinarySystem(System):
         :return: np.float
         """
         period = (self._period * units.PERIOD_UNIT).to(u.s)
-        return (c.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * c.PI ** 2)) ** (1.0 / 3)
+        return (const.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * const.PI ** 2)) ** (1.0 / 3)
 
     def setup_components_radii(self, components_distance):
         fns = [self.calculate_polar_radius, self.calculate_side_radius, self.calculate_backward_radius]
@@ -479,12 +479,12 @@ class BinarySystem(System):
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
                 num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
-                deltas = [np.linspace(0., c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
+                deltas = [np.linspace(0., const.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 
                 try:
                     for theta_index, theta in enumerate(thetas):
                         # first point of n-th ring of spot (counting start from center)
-                        default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
+                        default_spherical_vector = [1.0, lon % const.FULL_ARC, theta]
 
                         for delta_index, delta in enumerate(deltas[theta_index]):
                             # rotating default spherical vector around spot center vector and thus generating concentric
@@ -903,7 +903,7 @@ class BinarySystem(System):
             raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
 
         if not np.isnan(solution):
-            args = components_distance, 0.0, c.HALF_PI
+            args = components_distance, 0.0, const.HALF_PI
             if component == "primary":
                 args = self.pre_calculate_for_potential_value_primary(*args)
                 return abs(self.potential_value_primary(solution, *args))
@@ -1058,7 +1058,7 @@ class BinarySystem(System):
         :param components_distance: float
         :return: float; side radius
         """
-        args = (component, components_distance, c.HALF_PI, c.HALF_PI)
+        args = (component, components_distance, const.HALF_PI, const.HALF_PI)
         return self.calculate_radius(*args)
 
     def calculate_backward_radius(self, component, components_distance):
@@ -1070,7 +1070,7 @@ class BinarySystem(System):
         :return: float; polar radius
         """
 
-        args = (component, components_distance, c.PI, c.HALF_PI)
+        args = (component, components_distance, const.PI, const.HALF_PI)
         return self.calculate_radius(*args)
 
     def calculate_forward_radius(self, component, components_distance):
@@ -1082,7 +1082,7 @@ class BinarySystem(System):
         :param components_distance:
         :return:
         """
-        args = (component, components_distance, 0.0, c.HALF_PI)
+        args = (component, components_distance, 0.0, const.HALF_PI)
         return self.calculate_radius(*args)
 
     def compute_equipotential_boundary(self, components_distance, plane):
@@ -1099,13 +1099,13 @@ class BinarySystem(System):
         fn_map = {'primary': (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
                   'secondary': (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)}
 
-        angles = np.linspace(-3 * c.HALF_PI, c.HALF_PI, 300, endpoint=True)
+        angles = np.linspace(-3 * const.HALF_PI, const.HALF_PI, 300, endpoint=True)
         for component in components:
             for angle in angles:
                 if utils.is_plane(plane, 'xy'):
-                    args, use = (components_distance, angle, c.HALF_PI), False
+                    args, use = (components_distance, angle, const.HALF_PI), False
                 elif utils.is_plane(plane, 'yz'):
-                    args, use = (components_distance, c.HALF_PI, angle), False
+                    args, use = (components_distance, const.HALF_PI, angle), False
                 elif utils.is_plane(plane, 'zx'):
                     args, use = (components_distance, 0.0, angle), False
                 else:
@@ -1213,7 +1213,7 @@ class BinarySystem(System):
         """
 
         def potential(radius):
-            theta, d = c.HALF_PI, self.orbit.periastron_distance
+            theta, d = const.HALF_PI, self.orbit.periastron_distance
             if isinstance(radius, (float, int, np.float, np.int)):
                 radius = [radius]
             elif not isinstance(radius, (list, np.array)):
@@ -1221,7 +1221,7 @@ class BinarySystem(System):
 
             p_values = []
             for r in radius:
-                phi, r = (0.0, r) if r >= 0 else (c.PI, abs(r))
+                phi, r = (0.0, r) if r >= 0 else (const.PI, abs(r))
 
                 block_a = 1.0 / r
                 block_b = self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(r, 2) - (
@@ -1260,7 +1260,7 @@ class BinarySystem(System):
                                                                                 others quadrants
         """
         component_instance = getattr(self, component)
-        if component_instance.discretization_factor > c.HALF_PI:
+        if component_instance.discretization_factor > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
         alpha = component_instance.discretization_factor
@@ -1277,12 +1277,12 @@ class BinarySystem(System):
                              '`primary` or `secondary`.'.format(component))
 
         # calculating points on equator
-        num = int(c.PI // alpha)
+        num = int(const.PI // alpha)
         r_eq = []
-        phi_eq = np.linspace(0., c.PI, num=num + 1)
-        theta_eq = np.array([c.HALF_PI for _ in phi_eq])
+        phi_eq = np.linspace(0., const.PI, num=num + 1)
+        theta_eq = np.array([const.HALF_PI for _ in phi_eq])
         for phi in phi_eq:
-            args = (components_distance, phi, c.HALF_PI)
+            args = (components_distance, phi, const.HALF_PI)
             args = precalc(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                         xtol=1e-12)
@@ -1296,10 +1296,10 @@ class BinarySystem(System):
 
         # calculating points on phi = 0 meridian
         r_meridian = []
-        num = int(c.HALF_PI // alpha)
-        phi_meridian = np.array([c.PI for _ in range(num - 1)] + [0 for _ in range(num)])
-        theta_meridian = np.concatenate((np.linspace(c.HALF_PI - alpha, alpha, num=num - 1),
-                                         np.linspace(0., c.HALF_PI, num=num, endpoint=False)))
+        num = int(const.HALF_PI // alpha)
+        phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
+        theta_meridian = np.concatenate((np.linspace(const.HALF_PI - alpha, alpha, num=num - 1),
+                                         np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
         for ii, theta in enumerate(theta_meridian):
             args = (components_distance, phi_meridian[ii], theta)
             args = precalc(*args)
@@ -1311,12 +1311,12 @@ class BinarySystem(System):
         x_meridian, y_meridian, z_meridian = meridian[:, 0], meridian[:, 1], meridian[:, 2]
 
         # calculating the rest (quarter) of the surface
-        thetas = np.linspace(alpha, c.HALF_PI, num=num - 1, endpoint=False)
+        thetas = np.linspace(alpha, const.HALF_PI, num=num - 1, endpoint=False)
         r_q, phi_q, theta_q = [], [], []
         for theta in thetas:
             alpha_corrected = alpha / np.sin(theta)
-            num = int(c.PI // alpha_corrected)
-            alpha_corrected = c.PI / (num + 1)
+            num = int(const.PI // alpha_corrected)
+            alpha_corrected = const.PI / (num + 1)
             phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
             phi_q += phi_q_add
             for phi in phi_q_add:
@@ -1412,7 +1412,7 @@ class BinarySystem(System):
                                                                                 others quadrants
         """
         component_instance = getattr(self, component)
-        if component_instance.discretization_factor > c.HALF_PI:
+        if component_instance.discretization_factor > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
         alpha = component_instance.discretization_factor
@@ -1436,12 +1436,12 @@ class BinarySystem(System):
                              'Expecting `primary` or `secondary`.'.format(component))
 
         # calculating points on farside equator
-        num = int(c.HALF_PI // alpha)
+        num = int(const.HALF_PI // alpha)
         r_eq1 = []
-        phi_eq1 = np.linspace(c.HALF_PI, c.PI, num=num + 1)
-        theta_eq1 = np.array([c.HALF_PI for _ in phi_eq1])
+        phi_eq1 = np.linspace(const.HALF_PI, const.PI, num=num + 1)
+        theta_eq1 = np.array([const.HALF_PI for _ in phi_eq1])
         for phi in phi_eq1:
-            args = (components_distance, phi, c.HALF_PI)
+            args = (components_distance, phi, const.HALF_PI)
             args = precalc(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
                                                         xtol=1e-12)
@@ -1455,9 +1455,9 @@ class BinarySystem(System):
 
         # calculating points on phi = pi meridian
         r_meridian1 = []
-        num = int(c.HALF_PI // alpha)
-        phi_meridian1 = np.array([c.PI for _ in range(num)])
-        theta_meridian1 = np.linspace(0., c.HALF_PI - alpha, num=num)
+        num = int(const.HALF_PI // alpha)
+        phi_meridian1 = np.array([const.PI for _ in range(num)])
+        theta_meridian1 = np.linspace(0., const.HALF_PI - alpha, num=num)
         for ii, theta in enumerate(theta_meridian1):
             args = (components_distance, phi_meridian1[ii], theta)
             args = precalc(*args)
@@ -1470,9 +1470,9 @@ class BinarySystem(System):
 
         # calculating points on phi = pi/2 meridian, perpendicular to component`s radius vector
         r_meridian2 = []
-        num = int(c.HALF_PI // alpha) - 1
-        phi_meridian2 = np.array([c.HALF_PI for _ in range(num)])
-        theta_meridian2 = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
+        num = int(const.HALF_PI // alpha) - 1
+        phi_meridian2 = np.array([const.HALF_PI for _ in range(num)])
+        theta_meridian2 = np.linspace(alpha, const.HALF_PI, num=num, endpoint=False)
         for ii, theta in enumerate(theta_meridian2):
             args = (components_distance, phi_meridian2[ii], theta)
             args = precalc(*args)
@@ -1484,13 +1484,13 @@ class BinarySystem(System):
         x_meridian2, y_meridian2, z_meridian2 = meridian2[:, 0], meridian2[:, 1], meridian2[:, 2]
 
         # calculating the rest of the surface on farside
-        thetas = np.linspace(alpha, c.HALF_PI, num=num, endpoint=False)
+        thetas = np.linspace(alpha, const.HALF_PI, num=num, endpoint=False)
         r_q1, phi_q1, theta_q1 = [], [], []
         for theta in thetas:
             alpha_corrected = alpha / np.sin(theta)
-            num = int(c.HALF_PI // alpha_corrected)
-            alpha_corrected = c.HALF_PI / (num + 1)
-            phi_q_add = [c.HALF_PI + alpha_corrected * ii for ii in range(1, num + 1)]
+            num = int(const.HALF_PI // alpha_corrected)
+            alpha_corrected = const.HALF_PI / (num + 1)
+            phi_q_add = [const.HALF_PI + alpha_corrected * ii for ii in range(1, num + 1)]
             phi_q1 += phi_q_add
             for phi in phi_q_add:
                 theta_q1.append(theta)
@@ -1560,8 +1560,8 @@ class BinarySystem(System):
         r_n, phi_n, z_n = [], [], []
         for z in z_ns:
             z_eqn.append(z)
-            phi_eqn.append(c.HALF_PI)
-            args = (c.HALF_PI, z)
+            phi_eqn.append(const.HALF_PI)
+            args = (const.HALF_PI, z)
             args = precal_cylindrical(*args)
             solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
                                                         args=args, xtol=1e-12)
@@ -1575,10 +1575,10 @@ class BinarySystem(System):
                                                         args=args, xtol=1e-12)
             r_meridian_n.append(solution[0])
 
-            num = int(c.HALF_PI * r_eqn[-1] // delta_z)
+            num = int(const.HALF_PI * r_eqn[-1] // delta_z)
             num = 1 if num == 0 else num
-            start_val = c.HALF_PI / num
-            phis = np.linspace(start_val, c.HALF_PI, num=num - 1, endpoint=False)
+            start_val = const.HALF_PI / num
+            phis = np.linspace(start_val, const.HALF_PI, num=num - 1, endpoint=False)
             for phi in phis:
                 z_n.append(z)
                 phi_n.append(phi)
@@ -1786,10 +1786,10 @@ class BinarySystem(System):
                   'secondary': (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)}
 
         # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
-        angles = np.linspace(0., c.HALF_PI, 100, endpoint=True)
+        angles = np.linspace(0., const.HALF_PI, 100, endpoint=True)
         for component in components:
             for angle in angles:
-                args, use = (components_distance, angle, c.HALF_PI), False
+                args, use = (components_distance, angle, const.HALF_PI), False
 
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
                 args = fn_map[component][1](*args)
@@ -2116,7 +2116,7 @@ class BinarySystem(System):
             else:
                 radius = ellipse[:, 0]
             azimuth = ellipse[:, 1]
-            x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth - c.PI / 2.0)
+            x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth - const.PI / 2.0)
             if kwargs['frame_of_reference'] == 'barycentric':
                 kwargs['x1_data'] = - self.mass_ratio * x / (1 + self.mass_ratio)
                 kwargs['y1_data'] = - self.mass_ratio * y / (1 + self.mass_ratio)
@@ -2419,6 +2419,23 @@ class BinarySystem(System):
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not),
                                                                                     cls.__name__))
 
+    def faces_visibility_x_limits(self, components_distance):
+        # this section calculates the visibility of each surface face
+        # don't forget to treat self visibility of faces on the same star in over-contact system
+
+        # if stars are too close and with too different radii, you can see more (less) than a half of the stellare
+        # surface, calculating excess angle
+
+        sin_theta = np.abs(self.primary.polar_radius - self.secondary.polar_radius) / components_distance
+        x_corr_primary = self.primary.polar_radius * sin_theta
+        x_corr_secondary = self.secondary.polar_radius * sin_theta
+
+        # visibility of faces is given by their x position
+        xlim = {}
+        (xlim['primary'], xlim['secondary']) = (x_corr_primary, 1 + x_corr_secondary) \
+            if self.primary.polar_radius > self.secondary.polar_radius else (- x_corr_primary, 1 - x_corr_secondary)
+        return xlim
+
     def reflection_effect(self, iterations=None, components_distance=None):
         if iterations is None:
             raise ValueError('Number of iterations for reflection effect was not specified.')
@@ -2431,19 +2448,8 @@ class BinarySystem(System):
             raise ValueError('Components distance was not supplied.')
 
         component = self._component_to_list(None)
-        # this section calculates the visibility of each surface face
-        # don't forget to treat self visibility of faces on the same star in over-contact system
 
-        # if stars are too close and with too different radii, you can see more (less) than a half of the stellare
-        # surface, calculating excess angle
-        sin_theta = np.abs(self.primary.polar_radius - self.secondary.polar_radius) / components_distance
-        x_corr_primary = self.primary.polar_radius * sin_theta
-        x_corr_secondary = self.secondary.polar_radius * sin_theta
-
-        # visibility of faces is given by their x position
-        xlim = {}
-        (xlim['primary'], xlim['secondary']) = (x_corr_primary, 1 + x_corr_secondary) \
-            if self.primary.polar_radius > self.secondary.polar_radius else (- x_corr_primary, 1 - x_corr_secondary)
+        xlim = self.faces_visibility_x_limits(components_distance=components_distance)
 
         # this tests if you can use surface symmetries
         use_quarter_star_test = self.primary.spots is None and self.secondary.spots is None
@@ -2465,14 +2471,13 @@ class BinarySystem(System):
             temperatures[_component] = copy(component_instance.temperatures)
             areas[_component] = copy(component_instance.areas)
 
-            y_test, z_test = centres[_component][:, 1] > 0, centres[_component][:, 2] > 0
             if use_quarter_star_test:
+                y_test, z_test = centres[_component][:, 1] > 0, centres[_component][:, 2] > 0
                 # this branch is activated in case of clean surface where symmetries can be used
                 # excluding quadrants that can be mirrored using symmetries
-                if self.morphology == 'over-contfact':
-                    quadrant_exclusion = np.logical_or(y_test, z_test)
-                else:
-                    quadrant_exclusion = np.array([True for _ in centres[_component][:, 0]])
+                quadrant_exclusion = np.logical_or(y_test, z_test) \
+                    if self.morphology == 'over-contfact' \
+                    else np.array([True] * len(centres[_component]))
 
                 single_quadrant = np.logical_and(y_test, z_test)
                 # excluding faces on far sides of components
@@ -2500,17 +2505,20 @@ class BinarySystem(System):
 
         # calculating C_A = (albedo_A / D_intB) - scalar
         # D_intB - bolometric limb darkening factor
-        d_int = {'primary': self.secondary.calculate_bolometric_limb_darkening_factor(self.LIMB_DARKENING_LAW,
-                                                                                      self.LD_COEFF),
-                 'secondary': self.secondary.calculate_bolometric_limb_darkening_factor(self.LIMB_DARKENING_LAW,
-                                                                                        self.LD_COEFF)}
-        c = {'primary': (self.primary.albedo / d_int['secondary']),
-             'secondary': (self.secondary.albedo / d_int['primary'])}
+        d_int = {
+            'primary': ld.calculate_bolometric_limb_darkening_factor(self.LIMB_DARKENING_LAW, self.LD_COEFF),
+            'secondary': ld.calculate_bolometric_limb_darkening_factor(self.LIMB_DARKENING_LAW, self.LD_COEFF)
+        }
+
+        _c = {
+            'primary': (self.primary.albedo / d_int['secondary']),
+            'secondary': (self.secondary.albedo / d_int['primary'])
+        }
 
         # setting reflection factor R = 1 + F_irradiated / F_original, initially equal to one everywhere - vector
-        reflection_factor = {_component: np.ones(np.shape(temperatures[_component][vis_test[_component]]),
-                                                 dtype=np.float)
-                             for _component in component}
+        reflection_factor = {
+            _component: np.array([1] * sum(vis_test[_component]), dtype=np.float) for _component in component
+        }
 
         counterpart = {'primary': 'secondary', 'secondary': 'primary'}
 
@@ -2520,13 +2528,13 @@ class BinarySystem(System):
 
         if use_quarter_star_test:
             # calculating distances and distance vectors between, join vector is already normalized
-            _shape = (np.count_nonzero(vis_test['primary']), np.count_nonzero(vis_test['secondary']), 3)
-            _shape_reduced = (np.count_nonzero(vis_test['primary'][:self.primary.base_symmetry_faces_number]),
-                              np.count_nonzero(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
+            _shape = (np.count_nonzero(vis_test['primary']), sum(vis_test['secondary']), 3)
+            _shape_reduced = (sum(vis_test['primary'][:self.primary.base_symmetry_faces_number]),
+                              sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
             distance = np.empty(shape=_shape[:2], dtype=np.float)
             join_vector = np.empty(shape=_shape, dtype=np.float)
-            distance.fill(np.nan)
-            join_vector.fill(np.nan)
+            distance.fill(1)
+            join_vector.fill(0)
 
             # in case of symmetries, you need to calculate only minority part of distance matrix connected with base
             # symmetry part of the both surfaces
@@ -2542,12 +2550,11 @@ class BinarySystem(System):
                                                 return_join_vector_matrix=True)
 
             # calculating cos of angle gamma between face normal and join vector
-            gamma = {'primary':
-                         np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :],
-                                            join_vector), axis=2),
-                     'secondary':
-                         -np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
-                                             join_vector), axis=2)}
+            gamma = {
+                'primary': np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :],
+                                              join_vector), axis=2),
+                'secondary': - np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
+                                                  join_vector), axis=2)}
 
             # testing mutual visibility of faces by assigning 0 to non visible face combination
             gamma['primary'][gamma['primary'] < 0] = 0.
@@ -2577,10 +2584,10 @@ class BinarySystem(System):
             # calculating limb darkening factors for each combination of faces shape
             # (N_faces_primary * N_faces_secondary)
             # precalculating matrix part of reflection effect correction
-            matrix_to_sum2 = {'primary':
-                                  q_ab[:_shape_reduced[0], :] * d_gamma['secondary'][:_shape_reduced[0], :],
-                              'secondary':
-                                  q_ab[:, :_shape_reduced[1]] * d_gamma['primary'][:, :_shape_reduced[1]]}
+            matrix_to_sum2 = {
+                'primary': q_ab[:_shape_reduced[0], :] * d_gamma['secondary'][:_shape_reduced[0], :],
+                'secondary': q_ab[:, :_shape_reduced[1]] * d_gamma['primary'][:, :_shape_reduced[1]]
+            }
             symmetry_to_use = {'primary': _shape_reduced[0], 'secondary': _shape_reduced[1]}
             for _ in range(iterations):
                 for _component in components:
@@ -2596,7 +2603,7 @@ class BinarySystem(System):
                     counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component][:symmetry_to_use[_component]] = \
-                        1 + (c[_component] / np.power(temperatures[_component][vis_test_symmetry[_component]], 4)) * \
+                        1 + (_c[_component] / np.power(temperatures[_component][vis_test_symmetry[_component]], 4)) * \
                             counterpart_to_sum
 
                     # using symmetry to redistribute reflection factor R
@@ -2660,14 +2667,12 @@ class BinarySystem(System):
                     # calculation of reflection effect correction as
                     # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
                     # calculating vector part of reflection effect correction
-                    vector_to_sum1 = reflection_factor[counterpart] * \
-                                     np.power(temperatures[counterpart][vis_test[counterpart]], 4) * \
-                                     areas[counterpart][vis_test[counterpart]]
+                    vector_to_sum1 = reflection_factor[counterpart] * np.power(
+                        temperatures[counterpart][vis_test[counterpart]], 4) * areas[counterpart][vis_test[counterpart]]
                     counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
-                    reflection_factor[_component] = \
-                        1 + (c[_component] / np.power(temperatures[_component][vis_test[_component]], 4)) * \
-                            counterpart_to_sum
+                    reflection_factor[_component] = 1 + (_c[_component] / np.power(
+                        temperatures[_component][vis_test[_component]], 4)) * counterpart_to_sum
 
             for _component in components:
                 # assigning new temperatures according to last iteration as
@@ -2813,5 +2818,5 @@ class BinarySystem(System):
             radius2 = self.secondary.forward_radius
             sin_i_critical = (radius1 + radius2) / components_distance
             azimuth = np.arcsin(np.sqrt(np.power(sin_i_critical, 2) - np.power(np.cos(self.inclination), 2)))
-            azimuths = np.array([c.FULL_ARC - azimuth, azimuth, c.PI - azimuth, c.PI + azimuth])
+            azimuths = np.array([const.FULL_ARC - azimuth, azimuth, const.PI - azimuth, const.PI + azimuth])
             return azimuths

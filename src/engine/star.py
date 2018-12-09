@@ -358,38 +358,6 @@ class Star(Body):
             for spot_index, spot in self.spots.items():
                 spot.temperatures *= coefficient
 
-    @staticmethod
-    def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coefficients=None):
-        """
-        Calculates limb darkening factor D(int) used when calculating flux from given intensity on surface.
-        D(int) = integral over hemisphere (D(theta)cos(theta)
-
-        :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
-        :param coefficients: np.float in case of linear law
-                             np.array in other cases
-        :return: float - bolometric_limb_darkening_factor (scalar for the whole star)
-        """
-        if coefficients is None:
-            raise ValueError('Limb darkening coefficients were not supplied.')
-        elif limb_darkening_law is None:
-            raise ValueError('Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, '
-                             '`square_root`.')
-        elif limb_darkening_law in ['linear', 'cosine']:
-            if not np.isscalar(coefficients):
-                raise ValueError('Only one scalar limb darkening coefficient is required for linear cosine law. You '
-                                 'used: {}'.format(coefficients))
-        elif limb_darkening_law in ['logarithmic', 'square_root']:
-            if not np.shape(coefficients) == (2,):
-                raise ValueError('Invalid number of limb darkening coefficients. Expected 2, given: '
-                                 '{}'.format(coefficients))
-
-        if limb_darkening_law in ['linear', 'cosine']:
-            return np.pi * (1 - coefficients / 3)
-        elif limb_darkening_law == 'logarithmic':
-            return np.pi * (1 - coefficients[0] / 3 + 2 * coefficients[1] / 9)
-        elif limb_darkening_law == 'square_root':
-            return np.pi * (1 - coefficients[0] / 3 - coefficients[1] / 5)
-
     def calculate_intensity(self, temperatures=None):
         """
         calculates overall radiant flux radiated from unit area with certain effective temperature using atmosphere
