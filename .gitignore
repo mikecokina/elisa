@@ -10,3 +10,5 @@ sandbox.py
 limbdarkening.tar
 env36/*
 limbdarkening/*.csv
+*.log
+__main__.py
