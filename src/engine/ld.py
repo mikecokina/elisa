@@ -1,14 +1,23 @@
-import os
-import pandas as pd
-import numpy as np
 import logging
+import os
+
+import numpy as np
+import pandas as pd
 
 from conf import config
 from engine import utils, const
+from scipy import interpolate
 
 
 config.set_up_logging()
 logger = logging.getLogger("ld")
+
+
+def get_metallicity_from_ld_table_filename(filename):
+    m = str(filename).split(".")[-2]
+    sign = 1 if str(m).startswith("p") else -1
+    value = int(m[1:]) / 10.0
+    return value * sign
 
 
 def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
@@ -37,15 +46,52 @@ def get_van_hamme_ld_table_by_name(fname):
 
 
 def get_relevant_ld_tables(passband, metallicity):
+    # todo: make better decision which values should be used
     surrounded = utils.find_surounded(const.VAN_HAMME_METALLICITY_LIST_LD, metallicity)
     files = [get_van_hamme_ld_table_filename(passband, m) for m in surrounded]
     return files
 
 
-def interpolate_on_ld_grid(passband, metallicity, author=None):
+def interpolate_on_ld_grid(passband, temperature, log_g, metallicity, author=None):
+    config.LIMB_DARKENING_LAW = "square_root"
+
     logger.debug('interpolating ld coefficients')
-    ld_table = get_van_hamme_ld_table(passband=passband, metallicity=metallicity)
-    # todo: implement kind of interp function
+    relevant_tables = get_relevant_ld_tables(passband=passband, metallicity=metallicity)
+    csv_columns = config.LD_LAW_COLS_ORDER[config.LIMB_DARKENING_LAW]
+    all_columns = csv_columns + ["metallicity"]
+    df = pd.DataFrame(columns=all_columns)
+
+    for table in relevant_tables:
+        _df = get_van_hamme_ld_table_by_name(table)[csv_columns]
+        _df["metallicity"] = get_metallicity_from_ld_table_filename(table)
+        df = df.append(_df)
+
+    xyz_domain = np.array([np.array(val) for val in df[config.LD_DOMAIN_COLS].to_records(index=False)]).tolist()
+    xyz_values = df[config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].to_records(index=False).tolist()
+
+    uvw_domain = pd.DataFrame({
+        "temperature": temperature,
+        "gravity": log_g,
+        "metallicity": [metallicity] * len(temperature)
+    })[config.LD_DOMAIN_COLS].to_records(index=False).tolist()
+
+    xyz_domain = np.asarray([np.asarray(val) for val in xyz_domain])
+    uvw_domain = np.asarray([np.asarray(val) for val in uvw_domain])
+    xyz_values = np.asarray([np.asarray(val) for val in xyz_values])
+
+    uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
+
+    result_df = pd.DataFrame({
+        "temperature": temperature,
+        "log_g": log_g,
+        "metallicity": [metallicity] * len(temperature),
+    })
+
+    for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
+        result_df[col] = vals
+
+    return result_df
+
 
 
 def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None):
@@ -123,5 +169,23 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
 
 
 if __name__ == '__main__':
-    # interpolate_on_ld_grid(passband='Generic.Bessell.B', metallicity=0.0)
-    print(get_relevant_ld_tables(passband='Generic.Bessell.B', metallicity=0.9))
+    _temperature = [
+        5551.36,
+        5552.25,
+        6531.81,
+        7825.66,
+        9874.85
+    ]
+
+    _metallicity = 0.11
+
+    _logg = [
+        4.12,
+        3.92,
+        2.85,
+        2.99,
+        3.11
+    ]
+
+    interpolate_on_ld_grid(passband='Generic.Bessell.B', temperature=_temperature,
+                           log_g=_logg, metallicity=_metallicity)

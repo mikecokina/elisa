@@ -22,7 +22,7 @@ elif os.path.isfile(default_config):
 else:
     raise LookupError("Couldn't resolve configuration file. To define it \n "
                       "  - Set the environment variable ELISA_CONFIG, or \n "
-                      "  - Add conf/elisa_conf.ini under your virtualenv root, or \n ")
+                      "  - Add conf/elisa_conf.ini under your virtualenv root \n ")
 
 CONFIG_FILE = config_file
 LOG_CONFIG = os.path.join(dirname(__file__), 'logging.json')
@@ -55,8 +55,7 @@ def read_and_update_config(conf_path=None):
             "Couldn't find configuration file. Using default settings.\n"
             "   To customize configuration using file either\n"
             "    - specify config with environment variable ELISA_CONFIG\n"
-            "    - place your config to default location ~/elisa.ini"
-        )
+            "  -   add conf/elisa_conf.ini under your virtualenv root \n")
         warnings.warn(msg, Warning)
         return
 
@@ -135,5 +134,17 @@ LD_LAW_CFS_COLUMNS = {
     "logarithmic": ["xlog", "ylog"],
     "square_root": ["xsqrt", "ysqrt"],
 }
+
+
+BASIC_COLS = ["temperature", "gravity"]
+LD_LAW_COLS_ORDER = {
+    "linear": BASIC_COLS + LD_LAW_CFS_COLUMNS["linear"],
+    "cosine": BASIC_COLS + LD_LAW_CFS_COLUMNS["cosine"],
+    "logarithmic": BASIC_COLS + LD_LAW_CFS_COLUMNS["logarithmic"],
+    "square_root": BASIC_COLS + LD_LAW_CFS_COLUMNS["square_root"]
+}
+
+LD_DOMAIN_COLS = ["temperature", "gravity", "metallicity"]
+
 
 read_and_update_config()

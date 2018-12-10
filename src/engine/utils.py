@@ -335,4 +335,4 @@ def find_surounded(array, value):
     ret.append(find_nearest_value(arr, value)[0])
     ret = sorted(ret)
     # test
-    return ret if ret[0] < value < ret[1] else False
+    return ret if ret[0] < value < ret[1] else [value]
