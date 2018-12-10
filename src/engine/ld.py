@@ -14,13 +14,27 @@ logger = logging.getLogger("ld")
 
 
 def get_metallicity_from_ld_table_filename(filename):
+    """
+    get metallicity as number from filename
+
+    :param filename: str
+    :return: float
+    """
     m = str(filename).split(".")[-2]
     sign = 1 if str(m).startswith("p") else -1
-    value = int(m[1:]) / 10.0
+    value = float(m[1:]) / 10.0
     return value * sign
 
 
 def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
+    """
+    get filename with stored coefficients for given passband, metallicity and limb darkening law
+
+    :param passband: str
+    :param metallicity: str
+    :param law: str
+    :return: str
+    """
     law = law or config.LIMB_DARKENING_LAW
     return "{model}.{passband}.{metallicity}.csv".format(
         model=config.LD_LAW_TO_FILE_PREFIX[law],
@@ -30,6 +44,14 @@ def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
 
 
 def get_van_hamme_ld_table(passband, metallicity, law=None):
+    """
+    get content of van hamme table
+
+    :param passband: str
+    :param metallicity: str
+    :param law: str
+    :return: pandas.DataFrame
+    """
     law = law or config.LIMB_DARKENING_LAW
     filename = get_van_hamme_ld_table_filename(passband, metallicity, law=law)
     path = os.path.join(config.VAN_HAMME_LD_TABLES, filename)
@@ -39,6 +61,12 @@ def get_van_hamme_ld_table(passband, metallicity, law=None):
 
 
 def get_van_hamme_ld_table_by_name(fname):
+    """
+    get content of van hamme table
+
+    :param fname: str
+    :return: pandas.DataFrame
+    """
     path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
     if not os.path.isfile(path):
         raise FileNotFoundError("there is no file like {}".format(path))
@@ -46,6 +74,13 @@ def get_van_hamme_ld_table_by_name(fname):
 
 
 def get_relevant_ld_tables(passband, metallicity):
+    """
+    get filename of van hamme tables for surrounded metallicities and given passband
+
+    :param passband: str
+    :param metallicity: str
+    :return: list
+    """
     # todo: make better decision which values should be used
     surrounded = utils.find_surounded(const.VAN_HAMME_METALLICITY_LIST_LD, metallicity)
     files = [get_van_hamme_ld_table_filename(passband, m) for m in surrounded]
@@ -53,6 +88,16 @@ def get_relevant_ld_tables(passband, metallicity):
 
 
 def interpolate_on_ld_grid(passband, temperature, log_g, metallicity, author=None):
+    """
+    get limb darkening coefficients based on van hamme tables for given temperatures, log_gs and metallicity
+
+    :param passband: str
+    :param temperature: iterable float
+    :param log_g: iterable float
+    :param metallicity: float
+    :param author: str
+    :return: pandas.DataFrame
+    """
     config.LIMB_DARKENING_LAW = "square_root"
 
     logger.debug('interpolating ld coefficients')
@@ -91,7 +136,6 @@ def interpolate_on_ld_grid(passband, temperature, log_g, metallicity, author=Non
         result_df[col] = vals
 
     return result_df
-
 
 
 def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None):
