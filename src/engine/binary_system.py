@@ -2463,43 +2463,27 @@ class BinarySystem(System):
         # selecting faces that have a chance to be visible from other component
         for _component in component:
             component_instance = getattr(self, _component)
-            points[_component], faces[_component] = component_instance.return_whole_surface()
-            centres[_component] = copy(component_instance.face_centres)
-            normals[_component] = copy(component_instance.normals)
-            temperatures[_component] = copy(component_instance.temperatures)
-            areas[_component] = copy(component_instance.areas)
 
-            if use_quarter_star_test:
-                y_test, z_test = centres[_component][:, 1] > 0, centres[_component][:, 2] > 0
-                # this branch is activated in case of clean surface where symmetries can be used
-                # excluding quadrants that can be mirrored using symmetries
-                quadrant_exclusion = np.logical_or(y_test, z_test) \
-                    if self.morphology == 'over-contfact' \
-                    else np.array([True] * len(centres[_component]))
+            points[_component], faces[_component], centres[_component], normals[_component], temperatures[_component], \
+            areas[_component] = self.init_surface_variables(component_instance)
 
-                single_quadrant = np.logical_and(y_test, z_test)
-                # excluding faces on far sides of components
-                test1 = centres[_component][:, 0] >= xlim[_component] if _component == 'primary' else \
-                    centres[_component][:, 0] <= xlim[_component]
-                # this variable contains faces that can seen from base symmetry part of the other star
-                vis_test[_component] = np.logical_and(test1, quadrant_exclusion)
-                vis_test_symmetry[_component] = np.logical_and(test1, single_quadrant)
-
-            else:
-                vis_test[_component] = component_instance.face_centres[:, 0] >= xlim[_component] if \
-                    _component == 'primary' else component_instance.face_centres[:, 0] <= xlim[_component]
+            # test for visibility of star faces
+            vis_test[_component], vis_test_symmetry[_component] = \
+                self.get_visibility_tests(centres[_component], use_quarter_star_test, xlim[_component], _component)
 
             if component_instance.spots:
+                # including spots into overall surface
                 for spot_index, spot in component_instance.spots.items():
-                    vis_test_spot = spot.face_centres[:, 0] >= xlim[_component] if \
-                        _component == 'primary' else spot.face_centres[:, 0] <= xlim[_component]
+                    vis_test_spot = self.visibility_test(spot.face_centres, xlim[_component], _component)
 
                     # merge surface and spot face parameters into one variable
-                    centres[_component] = np.append(centres[_component], spot.face_centres, axis=0)
-                    vis_test[_component] = np.append(vis_test[_component], vis_test_spot, axis=0)
-                    normals[_component] = np.append(normals[_component], spot.normals, axis=0)
-                    temperatures[_component] = np.append(temperatures[_component], spot.temperatures, axis=0)
-                    areas[_component] = np.append(areas[_component], spot.areas, axis=0)
+                    centres[_component], normals[_component], temperatures[_component], areas[_component], \
+                    vis_test[_component] = \
+                        self.include_spot_to_surface_variables(centres[_component], spot.face_centres,
+                                                               normals[_component], spot.normals,
+                                                               temperatures[_component], spot.temperatures,
+                                                               areas[_component], spot.areas,
+                                                               vis_test[_component], vis_test_spot)
 
         # calculating C_A = (albedo_A / D_intB) - scalar
         # D_intB - bolometric limb darkening factor
@@ -2531,8 +2515,6 @@ class BinarySystem(System):
                               sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
             distance = np.empty(shape=_shape[:2], dtype=np.float)
             join_vector = np.empty(shape=_shape, dtype=np.float)
-            # distance.fill(1)
-            # join_vector.fill(0)
 
             # in case of symmetries, you need to calculate only minority part of distance matrix connected with base
             # symmetry part of the both surfaces
@@ -2567,15 +2549,13 @@ class BinarySystem(System):
                 - np.sum(np.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
                                      join_vector[_shape_reduced[0]:, :_shape_reduced[1], :]), axis=2)
 
-            # gamma = {
-            #     'primary': np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :],
-            #                                   join_vector), axis=2),
-            #     'secondary': - np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
-            #                                       join_vector), axis=2)}
-
             # testing mutual visibility of faces by assigning 0 to non visible face combination
-            gamma['primary'][gamma['primary'] < 0] = 0.
-            gamma['secondary'][gamma['secondary'] < 0] = 0.
+            gamma['primary'][:, :_shape_reduced[1]][gamma['primary'][:, :_shape_reduced[1]] < 0] = 0.
+            gamma['primary'][:_shape_reduced[0], _shape_reduced[1]:][gamma['primary'][:_shape_reduced[0],
+                                                                     _shape_reduced[1]:] < 0] = 0.
+            gamma['secondary'][:_shape_reduced[0], :][gamma['secondary'][:_shape_reduced[0], :] < 0] = 0.
+            gamma['secondary'][_shape_reduced[0]:, :_shape_reduced[1]][gamma['secondary'][_shape_reduced[0]:,
+                                                                       :_shape_reduced[1]] < 0] = 0.
 
             # calculating QAB = (cos gamma_a)*cos(gamma_b)/d**2
             q_ab = np.empty(shape=_shape[:2], dtype=np.float)
@@ -2587,8 +2567,6 @@ class BinarySystem(System):
                 np.divide(np.multiply(gamma['primary'][:_shape_reduced[0], _shape_reduced[1]:],
                                       gamma['secondary'][:_shape_reduced[0], _shape_reduced[1]:]),
                           np.power(distance[:_shape_reduced[0], _shape_reduced[1]:], 2))
-
-            # q_ab = np.divide(np.multiply(gamma['primary'], gamma['secondary']), np.power(distance, 2))
 
             # st = time()
             d_gamma = \
@@ -2746,6 +2724,91 @@ class BinarySystem(System):
                                        '{} spot.'.format(_component, spot_index))
 
                     spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
+
+    def init_surface_variables(self, component_instance):
+        """
+        function copies basic parameters of the stellar surface (points, faces, normals, temperatures and areas) of
+        given star instance into new arrays during calculation of reflection effect
+
+        :param component_instance:
+        :return:
+        """
+        points, faces = component_instance.return_whole_surface()
+        centres = copy(component_instance.face_centres)
+        normals = copy(component_instance.normals)
+        temperatures = copy(component_instance.temperatures)
+        areas = copy(component_instance.areas)
+        return points, faces, centres, normals, temperatures, areas
+
+    def get_visibility_tests(self, centres, q_test, xlim, component):
+        """
+        function calculates tests for visibilities of faces from other component, used in reflection effect
+
+        :param centres: np.array of face centres
+        :param q_test: use_quarter_star_test
+        :param xlim: visibility threshold in x axis for given component
+        :param component: `primary` or `secondary`
+        :return: visual tests for normal and symmetrical star
+        """
+        if q_test:
+            y_test, z_test = centres[:, 1] > 0, centres[:, 2] > 0
+            # this branch is activated in case of clean surface where symmetries can be used
+            # excluding quadrants that can be mirrored using symmetries
+            quadrant_exclusion = np.logical_or(y_test, z_test) \
+                if self.morphology == 'over-contfact' \
+                else np.array([True] * len(centres))
+
+            single_quadrant = np.logical_and(y_test, z_test)
+            # excluding faces on far sides of components
+            test1 = self.visibility_test(centres, xlim, component)
+            # this variable contains faces that can seen from base symmetry part of the other star
+            vis_test = np.logical_and(test1, quadrant_exclusion)
+            vis_test_symmetry = np.logical_and(test1, single_quadrant)
+
+        else:
+            vis_test = centres[:, 0] >= xlim if \
+                component == 'primary' else centres[:, 0] <= xlim
+            vis_test_symmetry = None
+
+        return vis_test, vis_test_symmetry
+
+    @staticmethod
+    def visibility_test(centres, xlim, component):
+        """
+        tests if given faces are visible from the other star
+
+        :param centres:
+        :param xlim: visibility threshold in x axis for given component
+        :return:
+        """
+        return centres[:, 0] >= xlim if component == 'primary' else centres[:, 0] <= xlim
+
+    def include_spot_to_surface_variables(self, centres, spot_centres, normals, spot_normals,
+                                          temperatures, spot_temperatures, areas, spot_areas, vis_test, vis_test_spot):
+        """
+        function includes surface parameters of spot faces into global arrays containing parameters from whole surface
+        used in reflection effect
+
+        :param centres:
+        :param spot_centres: spot centres to append to `centres`
+        :param normals:
+        :param spot_normals: spot normals to append to `normals`
+        :param temperatures:
+        :param spot_temperatures: spot temperatures to append to `temperatures`
+        :param areas:
+        :param spot_areas: spot areas to append to `areas`
+        :param vis_test:
+        :param vis_test_spot: spot visibility test to append to `vis_test`
+        :return:
+        """
+        centres = np.append(centres, spot_centres, axis=0)
+        normals = np.append(normals, spot_normals, axis=0)
+        temperatures = np.append(temperatures, spot_temperatures, axis=0)
+        areas = np.append(areas, spot_areas, axis=0)
+        vis_test = np.append(vis_test, vis_test_spot, axis=0)
+
+        return centres, normals, temperatures, areas, vis_test
+
 
     def build_surface_gravity(self, component=None, components_distance=None):
         """
