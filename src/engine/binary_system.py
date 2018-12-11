@@ -2531,8 +2531,8 @@ class BinarySystem(System):
                               sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
             distance = np.empty(shape=_shape[:2], dtype=np.float)
             join_vector = np.empty(shape=_shape, dtype=np.float)
-            distance.fill(1)
-            join_vector.fill(0)
+            # distance.fill(1)
+            # join_vector.fill(0)
 
             # in case of symmetries, you need to calculate only minority part of distance matrix connected with base
             # symmetry part of the both surfaces
@@ -2548,18 +2548,47 @@ class BinarySystem(System):
                                                 return_join_vector_matrix=True)
 
             # calculating cos of angle gamma between face normal and join vector
-            gamma = {
-                'primary': np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :],
-                                              join_vector), axis=2),
-                'secondary': - np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
-                                                  join_vector), axis=2)}
+            # initialising gammma matrices
+            gamma = {'primary': np.empty(shape=_shape[:2], dtype=np.float),
+                     'secondary': np.empty(shape=_shape[:2], dtype=np.float)}
+
+            # calculating only necessary components of the matrix (near left and upper edge) because of surface symmetry
+            gamma['primary'][:, :_shape_reduced[1]] = \
+                np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :],
+                                   join_vector[:, :_shape_reduced[1], :]), axis=2)
+            gamma['primary'][:_shape_reduced[0], _shape_reduced[1]:] = \
+                np.sum(np.multiply(normals['primary'][vis_test_symmetry['primary']][:, None, :],
+                                   join_vector[:_shape_reduced[0], _shape_reduced[1]:, :]), axis=2)
+
+            gamma['secondary'][:_shape_reduced[0], :] = \
+                - np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
+                                     join_vector[:_shape_reduced[0], :, :]), axis=2)
+            gamma['secondary'][_shape_reduced[0]:, :_shape_reduced[1]] = \
+                - np.sum(np.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
+                                     join_vector[_shape_reduced[0]:, :_shape_reduced[1], :]), axis=2)
+
+            # gamma = {
+            #     'primary': np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :],
+            #                                   join_vector), axis=2),
+            #     'secondary': - np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
+            #                                       join_vector), axis=2)}
 
             # testing mutual visibility of faces by assigning 0 to non visible face combination
             gamma['primary'][gamma['primary'] < 0] = 0.
             gamma['secondary'][gamma['secondary'] < 0] = 0.
 
             # calculating QAB = (cos gamma_a)*cos(gamma_b)/d**2
-            q_ab = np.divide(np.multiply(gamma['primary'], gamma['secondary']), np.power(distance, 2))
+            q_ab = np.empty(shape=_shape[:2], dtype=np.float)
+            q_ab[:, :_shape_reduced[1]] = \
+                np.divide(np.multiply(gamma['primary'][:, :_shape_reduced[1]],
+                                      gamma['secondary'][:, :_shape_reduced[1]]),
+                          np.power(distance[:, :_shape_reduced[1]], 2))
+            q_ab[:_shape_reduced[0], _shape_reduced[1]:] = \
+                np.divide(np.multiply(gamma['primary'][:_shape_reduced[0], _shape_reduced[1]:],
+                                      gamma['secondary'][:_shape_reduced[0], _shape_reduced[1]:]),
+                          np.power(distance[:_shape_reduced[0], _shape_reduced[1]:], 2))
+
+            # q_ab = np.divide(np.multiply(gamma['primary'], gamma['secondary']), np.power(distance, 2))
 
             # st = time()
             d_gamma = \
@@ -2601,8 +2630,8 @@ class BinarySystem(System):
                     counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component][:symmetry_to_use[_component]] = \
-                        1 + (_c[_component] / np.power(temperatures[_component][vis_test_symmetry[_component]], 4) *
-                             areas[_component][vis_test_symmetry[_component]]) * counterpart_to_sum
+                        1 + (_c[_component] / np.power(temperatures[_component][vis_test_symmetry[_component]], 4)) * \
+                        counterpart_to_sum
 
                     # using symmetry to redistribute reflection factor R
                     refl_fact_aux = np.empty(shape=np.shape(temperatures[_component]))
@@ -2644,16 +2673,15 @@ class BinarySystem(System):
             # calculating limb darkening factors for each combination of faces shape
             # (N_faces_primary * N_faces_secondary)
             d_gamma = \
-                {'primary': self.primary.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'],
-                                                                             None, :],
-                                                               line_of_sight=join_vector,
-                                                               coefficients=self.LD_COEFF,
-                                                               limb_darkening_law=config.LIMB_DARKENING_LAW),
-                 'secondary': self.secondary.limb_darkening_factor(normal_vector=normals['secondary'][None,
-                                                                                 vis_test['secondary'], :],
-                                                                   line_of_sight=-join_vector,
-                                                                   coefficients=self.LD_COEFF,
-                                                                   limb_darkening_law=config.LIMB_DARKENING_LAW)
+                {'primary': ld.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'], None, :],
+                                                     line_of_sight=join_vector,
+                                                     coefficients=self.LD_COEFF,
+                                                     limb_darkening_law=config.LIMB_DARKENING_LAW),
+                'secondary': ld.limb_darkening_factor(normal_vector=normals['secondary'][None, vis_test['secondary'],
+                                                                    :],
+                                                      line_of_sight=-join_vector,
+                                                      coefficients=self.LD_COEFF,
+                                                      limb_darkening_law=config.LIMB_DARKENING_LAW)
                  }
 
             # precalculating matrix part of reflection effect correction
@@ -2670,7 +2698,7 @@ class BinarySystem(System):
                     counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component] = 1 + (_c[_component] / np.power(
-                        temperatures[_component][vis_test[_component]], 4) * areas[_component][vis_test[_component]]) \
+                        temperatures[_component][vis_test[_component]], 4)) \
                                                     * counterpart_to_sum
 
             for _component in components:
@@ -2693,6 +2721,7 @@ class BinarySystem(System):
 
     def build_log_of_cgs_surface_gravity(self, component=None, components_distance=None):
         # todo: consider to put this function into build surface gravity
+        # what it is for
         if components_distance is None:
             raise ValueError('Component distance value was not supplied.')
 

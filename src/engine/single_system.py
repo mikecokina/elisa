@@ -100,6 +100,131 @@ class SingleSystem(System):
             serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
 
+    def _evaluate_spots(self):
+        """
+        compute points of each spots and assigns values to spot container instance
+
+        :return:
+        """
+
+        # fixme: it's not crutial, but this function and same function in binary system should on the same place
+        def solver_condition(x, *_args, **_kwargs):
+            return True
+
+        self._logger.info("Evaluating spots.")
+
+        if not self.star.spots:
+            self._logger.info("No spots to evaluate.")
+            return
+
+        # iterate over spots
+        for spot_index, spot_instance in list(self.star.spots.items()):
+            # lon -> phi, lat -> theta
+            lon, lat = spot_instance.longitude, spot_instance.latitude
+            if spot_instance.angular_density is None:
+                self._logger.debug('Angular density of the spot {0} was not supplied and discretization factor of star '
+                                   '{1} was used.'.format(spot_index, self.star.discretization_factor))
+                spot_instance.angular_density = 0.9 * self.star.discretization_factor * U.ARC_UNIT
+            alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
+
+            # initial containers for current spot
+            boundary_points, spot_points = [], []
+
+            # initial radial vector
+            radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
+            center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
+
+            args, use = (radial_vector[2],), False
+
+            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+
+            if not use:
+                # in case of spots, each point should be usefull, otherwise remove spot from
+                # component spot list and skip current spot computation
+                self._logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
+                                  "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+
+                self.star.remove_spot(spot_index=spot_index)
+                continue
+
+            spot_center_r = solution
+            spot_center = utils.spherical_to_cartesian([spot_center_r, lon, lat])
+
+            # compute euclidean distance of two points on spot (x0)
+            # we have to obtain distance between center and 1st point in 1st ring of spot
+            args, use = (lat + alpha,), False
+            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+            if not use:
+                # in case of spots, each point should be usefull, otherwise remove spot from
+                # component spot list and skip current spot computation
+                self._logger.info("First ring of spot {} doesn't satisfy reasonable conditions and "
+                                  "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
+
+                self.star.remove_spot(spot_index=spot_index)
+                continue
+
+            x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
+
+            # number of points in latitudal direction
+            num_radial = int(np.round((diameter * 0.5) / alpha)) + 1
+            thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
+
+            num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
+            deltas = [np.linspace(0., c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
+
+            # todo: add condition to die
+            try:
+                for theta_index, theta in enumerate(thetas):
+                    # first point of n-th ring of spot (counting start from center)
+                    default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
+
+                    for delta_index, delta in enumerate(deltas[theta_index]):
+                        # rotating default spherical vector around spot center vector and thus generating concentric
+                        # circle of points around centre of spot
+                        delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
+                                                                vector=utils.spherical_to_cartesian(
+                                                                    default_spherical_vector),
+                                                                degrees=False)
+
+                        spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
+
+                        args = (spherical_delta_vector[2],)
+                        solution, use = self._solver(self.potential_fn, solver_condition, *args)
+
+                        if not use:
+                            self.star.remove_spot(spot_index=spot_index)
+                            raise StopIteration
+
+                        spot_point = utils.spherical_to_cartesian([solution, spherical_delta_vector[1],
+                                                                   spherical_delta_vector[2]])
+                        spot_points.append(spot_point)
+
+                        if theta_index == len(thetas) - 1:
+                            boundary_points.append(spot_point)
+
+            except StopIteration:
+                self._logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
+                                  "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+                return
+
+            boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
+            boundary_com = utils.cartesian_to_spherical(boundary_com)
+            solution, _ = self._solver(self.potential_fn, solver_condition, *(boundary_com[2],))
+            boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
+
+            # first point will be always barycenter of boundary
+            spot_points[0] = boundary_center
+
+            # max size from barycenter of boundary to boundary
+            # todo: make sure this value is correct = make an unittests for spots
+            spot_instance.max_size = max([np.linalg.norm(np.array(boundary_center) - np.array(b))
+                                          for b in boundary_points])
+
+            spot_instance.points = np.array(spot_points)
+            spot_instance.boundary = np.array(boundary_points)
+            spot_instance.boundary_center = np.array(boundary_center)
+            spot_instance.center = np.array(spot_center)
+
     @classmethod
     def is_property(cls, kwargs):
         """

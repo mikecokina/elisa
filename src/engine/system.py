@@ -195,7 +195,7 @@ class System(metaclass=ABCMeta):
 
             cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.discretization_factor)
 
-            spot_center = spot.boundary_center - np.array([component_com, 0., 0.])
+            spot_center = spot.center - np.array([component_com, 0., 0.])
 
             # removing star points in spot
             # for dist, ix in zip(distances, indices):
@@ -337,7 +337,7 @@ class System(metaclass=ABCMeta):
         # checking each candidate one at a time trough all spots
         com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
         cos_max_angle = {idx: np.cos(0.5 * spot.angular_diameter) for idx, spot in component_instance.spots.items()}
-        center = {idx: spot.boundary_center - np.array([component_com, 0.0, 0.0])
+        center = {idx: spot.center - np.array([component_com, 0.0, 0.0])
                   for idx, spot in component_instance.spots.items()}
         for idx, _ in enumerate(spot_candidates["com"]):
             spot_idx_to_assign = -1

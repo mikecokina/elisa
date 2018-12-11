@@ -78,8 +78,8 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000 * u.K, 'fr
                                      ]
                        }
 
-contact_pot = 2.875844632141054
-# contact_pot = 4.0
+# contact_pot = 2.875844632141054
+contact_pot = 3.3
 start_time = time()
 
 primary = Star(mass=2.0*u.solMass,
@@ -90,7 +90,7 @@ primary = Star(mass=2.0*u.solMass,
                synchronicity=1.0,
                t_eff=10000*u.K,
                gravity_darkening=1.0,
-               discretization_factor=5,
+               discretization_factor=3,
                albedo=0.6
                )
 secondary = Star(mass=1.0*u.solMass,
@@ -119,18 +119,18 @@ bs = BinarySystem(primary=primary,
 
 components_min_distance = 1 - bs.eccentricity
 start_time = time()
-# bs.build_surface(components_distance=components_min_distance)
+bs.build_surface(components_distance=components_min_distance)
 # # bs.build_surface(components_distance=components_min_distance, component='primary')
 # # bs.build_surface(components_distance=components_min_distance, component='secondary')
-# bs.build_surface_map(colormap='temperature', components_distance=components_min_distance)
+bs.build_surface_map(colormap='temperature', components_distance=components_min_distance)
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=components_min_distance)
 # bs.build_surface_map(colormap='temperature', component='secondary', components_distance=components_min_distance)
 # bs.build_temperature_distribution(components_distance=1.0)
 # bs.evaluate_normals()
 # bs.build_surface(components_distance=1)
-azim = bs.get_eclipse_boundaries(components_distance=components_min_distance)
-azim = np.degrees(azim)
-crit_incl = bs.get_critical_inclination(components_distance=components_min_distance)
+# azim = bs.get_eclipse_boundaries(components_distance=components_min_distance)
+# azim = np.degrees(azim)
+# crit_incl = bs.get_critical_inclination(components_distance=components_min_distance)
 
 # t1 = np.min(bs.primary.temperatures)
 # a, b = bs.reflection_effect(iterations=2, components_distance=1)
@@ -166,18 +166,18 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         )
 print
 
-bs.plot(descriptor='surface',
-        phase=0.0,
-        # components_to_plot='primary',
-        components_to_plot='secondary',
-        edges=True,
-        # normals=True,
-        # colormap='gravity_acceleration',
-        colormap='temperature',
-        # plot_axis=False,
-        # face_mask_primary=a,
-        # face_mask_secondary=b,
-        # inclination=crit_incl,
-        azimuth=azim[0],
-        )
+# bs.plot(descriptor='surface',
+#         phase=0.0,
+#         # components_to_plot='primary',
+#         # components_to_plot='secondary',
+#         # edges=True,
+#         # normals=True,
+#         # colormap='gravity_acceleration',
+#         colormap='temperature',
+#         # plot_axis=False,
+#         # face_mask_primary=a,
+#         # face_mask_secondary=b,
+#         # inclination=crit_incl,
+#         # azimuth=azim[0],
+#         )
 
