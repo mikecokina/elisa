@@ -1271,28 +1271,22 @@ class BinarySystem(System):
         else:
             raise ValueError('Invalid value of `component` argument: `{}`. Expecting '
                              '`primary` or `secondary`.'.format(component))
+        # number of points on half of the equator
+        num = int(const.PI // alpha)
 
         # calculating points on equator
-        num = int(const.PI // alpha)
-        r_eq = []
-        phi_eq = np.linspace(0., const.PI, num=num + 1)
-        theta_eq = np.array([const.HALF_PI for _ in phi_eq])
-        for phi in phi_eq:
-            args = (components_distance, phi, const.HALF_PI)
-            args = precalc(*args)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
-                                                        xtol=1e-12)
-            r_eq.append(solution[0])
-        r_eq = np.array(r_eq)
-        equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
+        args = alpha, components_distance, precalc, fn, scipy_solver_init_value, num
+        equator = self.get_points_on_equator(*args)
+
         # assigning equator points and nearside and farside points A and B
         x_a, x_eq, x_b = equator[0, 0], equator[1: -1, 0], equator[-1, 0]
         y_a, y_eq, y_b = equator[0, 1], equator[1: -1, 1], equator[-1, 1]
         z_a, z_eq, z_b = equator[0, 2], equator[1: -1, 2], equator[-1, 2]
 
         # calculating points on phi = 0 meridian
+        # meridian = self.get_points_on_meridian(*args)
+
         r_meridian = []
-        num = int(const.HALF_PI // alpha)
         phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
         theta_meridian = np.concatenate((np.linspace(const.HALF_PI - alpha, alpha, num=num - 1),
                                          np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
@@ -1384,6 +1378,43 @@ class BinarySystem(System):
             return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
         else:
             return points
+
+    @staticmethod
+    def get_points_on_equator(*argss):
+        """
+        function returns points lying on the equator
+        :param args:
+        :return: near_point, equator_points, far_point
+        """
+        alpha, components_distance, precalc, fn, solver_init_value, num = argss
+
+        r_eq = []
+        phi_eq = np.linspace(0., const.PI, num=num + 1)
+        theta_eq = np.array([const.HALF_PI for _ in phi_eq])
+        for phi in phi_eq:
+            args = (components_distance, phi, const.HALF_PI)
+            args = precalc(*args)
+            solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
+            r_eq.append(solution[0])
+        r_eq = np.array(r_eq)
+        return utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
+
+    @staticmethod
+    def get_points_on_meridian(*argss):
+        alpha, components_distance, precalc, fn, solver_init_value, num = argss
+
+        r_meridian = []
+        phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
+        theta_meridian = np.concatenate((np.linspace(const.HALF_PI - alpha, alpha, num=num - 1),
+                                         np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
+        for ii, theta in enumerate(theta_meridian):
+            args = (components_distance, phi_meridian[ii], theta)
+            args = precalc(*args)
+            solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args,
+                                                        xtol=1e-12)
+            r_meridian.append(solution[0])
+        r_meridian = np.array(r_meridian)
+        return utils.spherical_to_cartesian(np.column_stack((r_meridian, phi_meridian, theta_meridian)))
 
     def mesh_over_contact(self, component=None, symmetry_output=False):
         """
@@ -2828,7 +2859,6 @@ class BinarySystem(System):
         """
         if cos < 0 it will be redefined as 0
         :param gamma:
-        :param shape:
         :param shape_reduced:
         :return:
         """
@@ -2874,7 +2904,6 @@ class BinarySystem(System):
         :param normals:
         :param join_vector:
         :param vis_test:
-        :param vis_test_symmetry:
         :return:
         """
         d_gamma = {'primary': np.empty(shape=shape, dtype=np.float),
