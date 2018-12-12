@@ -138,19 +138,23 @@ def interpolate_on_ld_grid(passband, temperature, log_g, metallicity, author=Non
     return result_df
 
 
-def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None):
+def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None,
+                          cos_theta=None):
     """
     calculates limb darkening factor for given surface element given by radius vector and line of sight vector
+
     :param line_of_sight: numpy.array - vector (or vectors) of line of sight (normalized to 1 !!!)
     :param normal_vector: numpy.array - single or multiple normal vectors (normalized to 1 !!!)
     :param coefficients: np.float in case of linear law
                          np.array in other cases
     :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
+    :param cos_theta: - if supplied, function will skip calculation of its own cos theta and will disregard
+    `normal_vector` and `line_of_sight`
     :return:  gravity darkening factor(s), the same type/shape as theta
     """
-    if normal_vector is None:
+    if normal_vector is None and cos_theta is None:
         raise ValueError('Normal vector(s) was not supplied.')
-    if line_of_sight is None:
+    if line_of_sight is None and cos_theta is None:
         raise ValueError('Line of sight vector(s) was not supplied.')
 
     # if line_of_sight.ndim != 1 and normal_vector.ndim != line_of_sight.ndim:
@@ -171,7 +175,9 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
             raise ValueError('Invalid number of limb darkening coefficients. Expected 2, given: '
                              '{}'.format(coefficients))
 
-    cos_theta = np.sum(normal_vector * line_of_sight, axis=-1)
+    if cos_theta is None:
+        cos_theta = np.sum(normal_vector * line_of_sight, axis=-1)
+
     if limb_darkening_law in ['linear', 'cosine']:
         return 1 - coefficients + coefficients * cos_theta
     elif limb_darkening_law == 'logarithmic':

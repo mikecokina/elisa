@@ -627,10 +627,10 @@ class BinarySystem(System):
                                  "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
             if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or (
-                            self.primary.filling_factor < 0 and abs(
-                        self.secondary.filling_factor) < __PRECISSION__) or (
-                            abs(self.primary.filling_factor) < __PRECISSION__ and
-                            abs(self.secondary.filling_factor) < __PRECISSION__):
+                    self.primary.filling_factor < 0 and abs(
+                self.secondary.filling_factor) < __PRECISSION__) or (
+                    abs(self.primary.filling_factor) < __PRECISSION__ and
+                    abs(self.secondary.filling_factor) < __PRECISSION__):
                 __SETUP_VALUE__ = "semi-detached"
             elif self.primary.filling_factor < 0 and self.secondary.filling_factor < 0:
                 __SETUP_VALUE__ = "detached"
@@ -643,18 +643,19 @@ class BinarySystem(System):
             self.primary.filling_factor, self.secondary.filling_factor = None, None
             if (abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
                     (abs(
-                            self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
+                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
                 __SETUP_VALUE__ = "double-contact"
 
-            elif ((abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
-                          (self.secondary.surface_potential > self.secondary.critical_surface_potential)) or \
+            elif (not (not (abs(
+                    self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) or not (
+                    self.secondary.surface_potential > self.secondary.critical_surface_potential))) or \
                     ((abs(
-                            self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__)
+                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__)
                      and (self.primary.surface_potential > self.primary.critical_surface_potential)):
                 __SETUP_VALUE__ = "semi-detached"
 
             elif (self.primary.surface_potential > self.primary.critical_surface_potential) and (
-                        self.secondary.surface_potential > self.secondary.critical_surface_potential):
+                    self.secondary.surface_potential > self.secondary.critical_surface_potential):
                 __SETUP_VALUE__ = "detached"
 
             else:
@@ -688,7 +689,7 @@ class BinarySystem(System):
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-            3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+                3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
     def secondary_potential_derivative_x(self, x, *args):
         """
@@ -701,7 +702,7 @@ class BinarySystem(System):
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-            3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
+                3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
 
     def pre_calculate_for_potential_value_primary(self, *args):
         """
@@ -926,14 +927,14 @@ class BinarySystem(System):
         if component == 'primary':
             F2 = np.power(self.primary.synchronicity, 2)
             domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 + F2 * (
-                self.mass_ratio + 1) * points[:, 0] - self.mass_ratio / np.power(components_distance, 2)
+                    components_distance - points[:, 0]) / r_hat3 + F2 * (
+                                self.mass_ratio + 1) * points[:, 0] - self.mass_ratio / np.power(components_distance, 2)
         elif component == 'secondary':
             F2 = np.power(self.secondary.synchronicity, 2)
             domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 - F2 * (
-                self.mass_ratio + 1) * (components_distance - points[:, 0]) * points[:,
-                                                                              0] + 1 / np.power(
+                    components_distance - points[:, 0]) / r_hat3 - F2 * (
+                                self.mass_ratio + 1) * (components_distance - points[:, 0]) * points[:,
+                                                                                              0] + 1 / np.power(
                 components_distance, 2)
         else:
             raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
@@ -1157,7 +1158,7 @@ class BinarySystem(System):
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
             return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+                    3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
         periastron_distance = self.orbit.periastron_distance
         xs = np.linspace(- periastron_distance * 3.0, periastron_distance * 3.0, 100)
@@ -1220,10 +1221,10 @@ class BinarySystem(System):
 
                 block_a = 1.0 / r
                 block_b = self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(r, 2) - (
-                    2.0 * r * np.cos(phi) * np.sin(theta) * d)))
+                        2.0 * r * np.cos(phi) * np.sin(theta) * d)))
                 block_c = (self.mass_ratio * r * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
                 block_d = 0.5 * (1 + self.mass_ratio) * np.power(r, 2) * (
-                    1 - np.power(np.cos(theta), 2))
+                        1 - np.power(np.cos(theta), 2))
 
                 p_values.append(block_a + block_b - block_c + block_d)
             return p_values
@@ -1889,7 +1890,7 @@ class BinarySystem(System):
             for ix, pt in enumerate(all_component_points):
                 surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
                 cos_angle = np.inner(spot_center, surface_point) / (
-                    np.linalg.norm(spot_center) * np.linalg.norm(surface_point)
+                        np.linalg.norm(spot_center) * np.linalg.norm(surface_point)
                 )
 
                 if cos_angle < cos_max_angle_point or pt[0] == neck:
@@ -2431,6 +2432,7 @@ class BinarySystem(System):
             if self.primary.polar_radius > self.secondary.polar_radius else (- x_corr_primary, 1 - x_corr_secondary)
         return xlim
 
+    # noinspection PyTypeChecker
     def reflection_effect(self, iterations=None, components_distance=None):
         if not config.REFLECTION_EFFECT:
             self._logger.debug('Reflection effect is switched off.')
@@ -2499,7 +2501,7 @@ class BinarySystem(System):
 
         # setting reflection factor R = 1 + F_irradiated / F_original, initially equal to one everywhere - vector
         reflection_factor = {
-            _component: np.array([1] * sum(vis_test[_component]), dtype=np.float) for _component in component
+            _component: np.ones((np.sum(vis_test[_component]),), dtype=np.float) for _component in component
         }
 
         counterpart = {'primary': 'secondary', 'secondary': 'primary'}
@@ -2510,82 +2512,25 @@ class BinarySystem(System):
 
         if use_quarter_star_test:
             # calculating distances and distance vectors between, join vector is already normalized
-            _shape = (np.count_nonzero(vis_test['primary']), sum(vis_test['secondary']), 3)
-            _shape_reduced = (sum(vis_test['primary'][:self.primary.base_symmetry_faces_number]),
-                              sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
-            distance = np.empty(shape=_shape[:2], dtype=np.float)
-            join_vector = np.empty(shape=_shape, dtype=np.float)
+            _shape, _shape_reduced = self. get_distance_matrix_shape(vis_test)
 
-            # in case of symmetries, you need to calculate only minority part of distance matrix connected with base
-            # symmetry part of the both surfaces
-            distance[:_shape_reduced[0], :], join_vector[:_shape_reduced[0], :, :] = \
-                utils.calculate_distance_matrix(points1=centres['primary'][vis_test_symmetry['primary']],
-                                                points2=centres['secondary'][vis_test['secondary']],
-                                                return_join_vector_matrix=True)
-
-            aux = centres['primary'][vis_test['primary']]
-            distance[_shape_reduced[0]:, :_shape_reduced[1]], join_vector[_shape_reduced[0]:, :_shape_reduced[1], :] = \
-                utils.calculate_distance_matrix(points1=aux[_shape_reduced[0]:],
-                                                points2=centres['secondary'][vis_test_symmetry['secondary']],
-                                                return_join_vector_matrix=True)
+            distance, join_vector = self.get_symmetrical_distance_matrix(_shape, _shape_reduced, centres, vis_test,
+                                                                         vis_test_symmetry)
 
             # calculating cos of angle gamma between face normal and join vector
             # initialising gammma matrices
-            gamma = {'primary': np.empty(shape=_shape[:2], dtype=np.float),
-                     'secondary': np.empty(shape=_shape[:2], dtype=np.float)}
-
-            # calculating only necessary components of the matrix (near left and upper edge) because of surface symmetry
-            gamma['primary'][:, :_shape_reduced[1]] = \
-                np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :],
-                                   join_vector[:, :_shape_reduced[1], :]), axis=2)
-            gamma['primary'][:_shape_reduced[0], _shape_reduced[1]:] = \
-                np.sum(np.multiply(normals['primary'][vis_test_symmetry['primary']][:, None, :],
-                                   join_vector[:_shape_reduced[0], _shape_reduced[1]:, :]), axis=2)
-
-            gamma['secondary'][:_shape_reduced[0], :] = \
-                - np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
-                                     join_vector[:_shape_reduced[0], :, :]), axis=2)
-            gamma['secondary'][_shape_reduced[0]:, :_shape_reduced[1]] = \
-                - np.sum(np.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
-                                     join_vector[_shape_reduced[0]:, :_shape_reduced[1], :]), axis=2)
+            gamma = self.get_symmetrical_gammma(_shape[:2], _shape_reduced, normals, join_vector, vis_test,
+                                                vis_test_symmetry)
 
             # testing mutual visibility of faces by assigning 0 to non visible face combination
-            gamma['primary'][:, :_shape_reduced[1]][gamma['primary'][:, :_shape_reduced[1]] < 0] = 0.
-            gamma['primary'][:_shape_reduced[0], _shape_reduced[1]:][gamma['primary'][:_shape_reduced[0],
-                                                                     _shape_reduced[1]:] < 0] = 0.
-            gamma['secondary'][:_shape_reduced[0], :][gamma['secondary'][:_shape_reduced[0], :] < 0] = 0.
-            gamma['secondary'][_shape_reduced[0]:, :_shape_reduced[1]][gamma['secondary'][_shape_reduced[0]:,
-                                                                       :_shape_reduced[1]] < 0] = 0.
+            self.check_symmetric_gamma_for_negative_num(gamma, _shape_reduced)
 
             # calculating QAB = (cos gamma_a)*cos(gamma_b)/d**2
-            q_ab = np.empty(shape=_shape[:2], dtype=np.float)
-            q_ab[:, :_shape_reduced[1]] = \
-                np.divide(np.multiply(gamma['primary'][:, :_shape_reduced[1]],
-                                      gamma['secondary'][:, :_shape_reduced[1]]),
-                          np.power(distance[:, :_shape_reduced[1]], 2))
-            q_ab[:_shape_reduced[0], _shape_reduced[1]:] = \
-                np.divide(np.multiply(gamma['primary'][:_shape_reduced[0], _shape_reduced[1]:],
-                                      gamma['secondary'][:_shape_reduced[0], _shape_reduced[1]:]),
-                          np.power(distance[:_shape_reduced[0], _shape_reduced[1]:], 2))
+            q_ab = self.get_symmetrical_q_ab(_shape[:2], _shape_reduced, gamma, distance)
 
-            # st = time()
-            d_gamma = \
-                {
-                    'primary': ld.limb_darkening_factor(
-                        normal_vector=normals['primary'][vis_test['primary'], None, :],
-                        line_of_sight=join_vector,
-                        coefficients=self.LD_COEFF,
-                        limb_darkening_law=config.LIMB_DARKENING_LAW
-                    ),
-                    'secondary': ld.limb_darkening_factor(
-                        normal_vector=normals['secondary'][None, vis_test['secondary'], :],
-                        line_of_sight=-join_vector,
-                        coefficients=self.LD_COEFF,
-                        limb_darkening_law=config.LIMB_DARKENING_LAW
-                    )
-                }
+            # calculating limb darkening factor for each combination of surface faces
+            d_gamma = self.get_symmetrical_d_gamma(_shape[:2], _shape_reduced, normals, join_vector, vis_test)
 
-            # print('Elapsed time: {0:.5f} s.'.format(time() - st))
             # calculating limb darkening factors for each combination of faces shape
             # (N_faces_primary * N_faces_secondary)
             # precalculating matrix part of reflection effect correction
@@ -2655,11 +2600,11 @@ class BinarySystem(System):
                                                      line_of_sight=join_vector,
                                                      coefficients=self.LD_COEFF,
                                                      limb_darkening_law=config.LIMB_DARKENING_LAW),
-                'secondary': ld.limb_darkening_factor(normal_vector=normals['secondary'][None, vis_test['secondary'],
-                                                                    :],
-                                                      line_of_sight=-join_vector,
-                                                      coefficients=self.LD_COEFF,
-                                                      limb_darkening_law=config.LIMB_DARKENING_LAW)
+                 'secondary': ld.limb_darkening_factor(normal_vector=normals['secondary'][None, vis_test['secondary'], :
+                                                                                          ],
+                                                       line_of_sight=-join_vector,
+                                                       coefficients=self.LD_COEFF,
+                                                       limb_darkening_law=config.LIMB_DARKENING_LAW)
                  }
 
             # precalculating matrix part of reflection effect correction
@@ -2686,16 +2631,7 @@ class BinarySystem(System):
                     temperatures[_component][vis_test[_component]] * np.power(reflection_factor[_component], 0.25)
 
         # redistributing temperatures back to the parent objects
-        for _component in component:
-            component_instance = getattr(self, _component)
-            counter = len(component_instance.temperatures)
-            component_instance.temperatures = temperatures[_component][:counter]
-            if component_instance.spots:
-                for spot_index, spot in component_instance.spots.items():
-                    spot.temperatures = temperatures[_component][counter: counter + len(spot.temperatures)]
-                    counter += len(spot.temperatures)
-                    #     st = time()
-                    #     print('Elapsed time: {0:.5f} s.'.format(time() - st))
+        self.redistribute_temperatures(temperatures)
 
     def build_log_of_cgs_surface_gravity(self, component=None, components_distance=None):
         # todo: consider to put this function into build surface gravity
@@ -2725,7 +2661,8 @@ class BinarySystem(System):
 
                     spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
 
-    def init_surface_variables(self, component_instance):
+    @staticmethod
+    def init_surface_variables(component_instance):
         """
         function copies basic parameters of the stellar surface (points, faces, normals, temperatures and areas) of
         given star instance into new arrays during calculation of reflection effect
@@ -2783,7 +2720,8 @@ class BinarySystem(System):
         """
         return centres[:, 0] >= xlim if component == 'primary' else centres[:, 0] <= xlim
 
-    def include_spot_to_surface_variables(self, centres, spot_centres, normals, spot_normals,
+    @staticmethod
+    def include_spot_to_surface_variables(centres, spot_centres, normals, spot_normals,
                                           temperatures, spot_temperatures, areas, spot_areas, vis_test, vis_test_spot):
         """
         function includes surface parameters of spot faces into global arrays containing parameters from whole surface
@@ -2809,6 +2747,180 @@ class BinarySystem(System):
 
         return centres, normals, temperatures, areas, vis_test
 
+    def get_distance_matrix_shape(self, vis_test):
+        """
+        calculates shapes of distance and join vector matrices along with shapes of symetrical parts of those matrices
+        used in reflection effect
+
+        :param vis_test:
+        :return:
+        """
+        shape = (np.sum(vis_test['primary']), np.sum(vis_test['secondary']), 3)
+        shape_reduced = (np.sum(vis_test['primary'][:self.primary.base_symmetry_faces_number]),
+                          np.sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
+        return shape, shape_reduced
+
+    @staticmethod
+    def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis_test_symmetry):
+        """
+        function uses symmetries of the stellar component in order to reduce time in calculation distance matrix
+        :param shape: desired shape of join vector matrix
+        :param shape_reduced: shape of the surface symmetries, (faces above those indices are symmetrical to the ones
+        below)
+        :param centres:
+        :param vis_test:
+        :param vis_test_symmetry:
+        :return: distance - distance matrix
+                 join vector - matrix of unit vectors pointing between each two faces on opposite stars
+        """
+        distance = np.empty(shape=shape[:2], dtype=np.float)
+        join_vector = np.empty(shape=shape, dtype=np.float)
+
+        # in case of symmetries, you need to calculate only minority part of distance matrix connected with base
+        # symmetry part of the both surfaces
+        distance[:shape_reduced[0], :], join_vector[:shape_reduced[0], :, :] = \
+            utils.calculate_distance_matrix(points1=centres['primary'][vis_test_symmetry['primary']],
+                                            points2=centres['secondary'][vis_test['secondary']],
+                                            return_join_vector_matrix=True)
+
+        aux = centres['primary'][vis_test['primary']]
+        distance[shape_reduced[0]:, :shape_reduced[1]], join_vector[shape_reduced[0]:, :shape_reduced[1], :] = \
+            utils.calculate_distance_matrix(points1=aux[shape_reduced[0]:],
+                                            points2=centres['secondary'][vis_test_symmetry['secondary']],
+                                            return_join_vector_matrix=True)
+        return distance, join_vector
+
+    @staticmethod
+    def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test, vis_test_symmetry):
+        """
+        function uses surface symmetries to calculate cosine of angles between join vector and surface normals
+
+        :param shape: desired shape of gamma
+        :param shape_reduced: shape of the surface symmetries, (faces above those indices are symmetrical to the ones
+        below)
+        :param normals:
+        :param join_vector:
+        :param vis_test:
+        :param vis_test_symmetry:
+        :return: gamma - cos(angle(normal, join_vector))
+        """
+        gamma = {'primary': np.empty(shape=shape, dtype=np.float),
+                 'secondary': np.empty(shape=shape, dtype=np.float)}
+
+        # calculating only necessary components of the matrix (near left and upper edge) because of surface symmetry
+        gamma['primary'][:, :shape_reduced[1]] = \
+            np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :],
+                               join_vector[:, :shape_reduced[1], :]), axis=2)
+        gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = \
+            np.sum(np.multiply(normals['primary'][vis_test_symmetry['primary']][:, None, :],
+                               join_vector[:shape_reduced[0], shape_reduced[1]:, :]), axis=2)
+
+        gamma['secondary'][:shape_reduced[0], :] = \
+            - np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
+                                 join_vector[:shape_reduced[0], :, :]), axis=2)
+        gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = \
+            - np.sum(np.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
+                                 join_vector[shape_reduced[0]:, :shape_reduced[1], :]), axis=2)
+        return gamma
+
+    @staticmethod
+    def check_symmetric_gamma_for_negative_num(gamma, shape_reduced):
+        """
+        if cos < 0 it will be redefined as 0
+        :param gamma:
+        :param shape:
+        :param shape_reduced:
+        :return:
+        """
+        gamma['primary'][:, :shape_reduced[1]][gamma['primary'][:, :shape_reduced[1]] < 0] = 0.
+        gamma['primary'][:shape_reduced[0], shape_reduced[1]:][gamma['primary'][:shape_reduced[0],
+                                                               shape_reduced[1]:] < 0] = 0.
+        gamma['secondary'][:shape_reduced[0], :][gamma['secondary'][:shape_reduced[0], :] < 0] = 0.
+        gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]][gamma['secondary'][shape_reduced[0]:,
+                                                                 :shape_reduced[1]] < 0] = 0.
+
+    @staticmethod
+    def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
+        """
+        function uses surface symmetries to calculate parameter QAB = (cos gamma_a)*cos(gamma_b)/d**2 in reflection
+        effect
+
+        :param shape: desired shape of q_ab
+        :param shape_reduced: shape of the surface symmetries, (faces above those indices are symmetrical to the ones
+        below)
+        :param gamma:
+        :param distance:
+        :return:
+        """
+        q_ab = np.empty(shape=shape, dtype=np.float)
+        q_ab[:, :shape_reduced[1]] = \
+            np.divide(np.multiply(gamma['primary'][:, :shape_reduced[1]],
+                                  gamma['secondary'][:, :shape_reduced[1]]),
+                      np.power(distance[:, :shape_reduced[1]], 2))
+        q_ab[:shape_reduced[0], shape_reduced[1]:] = \
+            np.divide(np.multiply(gamma['primary'][:shape_reduced[0], shape_reduced[1]:],
+                                  gamma['secondary'][:shape_reduced[0], shape_reduced[1]:]),
+                      np.power(distance[:shape_reduced[0], shape_reduced[1]:], 2))
+        return q_ab
+
+    def get_symmetrical_d_gamma(self, shape, shape_reduced, normals, join_vector, vis_test):
+        """
+        function uses surface symmetries to calculate limb darkening factor matrices for each components that are used
+        in reflection effect
+
+        :param shape: desired shape of limb darkening matrices d_gamma
+        :param shape_reduced: shape of the surface symmetries, (faces above those indices are symmetrical to the ones
+        below)
+        :param normals:
+        :param join_vector:
+        :param vis_test:
+        :param vis_test_symmetry:
+        :return:
+        """
+        d_gamma = {'primary': np.empty(shape=shape, dtype=np.float),
+                   'secondary': np.empty(shape=shape, dtype=np.float)}
+
+        cos_theta = np.sum(normals['primary'][vis_test['primary'], None, :] *
+                           join_vector[:, :shape_reduced[1], :], axis=-1)
+        d_gamma['primary'][:, :shape_reduced[1]] = ld.limb_darkening_factor(
+            coefficients=self.LD_COEFF,
+            limb_darkening_law=config.LIMB_DARKENING_LAW,
+            cos_theta=cos_theta)
+
+        aux_normals = normals['primary'][vis_test['primary']]
+        cos_theta = np.sum(aux_normals[:shape_reduced[0], None, :] *
+                           join_vector[:shape_reduced[0], shape_reduced[1]:, :], axis=-1)
+        d_gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = ld.limb_darkening_factor(
+            coefficients=self.LD_COEFF,
+            limb_darkening_law=config.LIMB_DARKENING_LAW,
+            cos_theta=cos_theta)
+
+        cos_theta = np.sum(normals['secondary'][None, vis_test['secondary'], :] *
+                           join_vector[:shape_reduced[0], :, :], axis=-1)
+        d_gamma['secondary'][:shape_reduced[0], :] = ld.limb_darkening_factor(
+            coefficients=self.LD_COEFF,
+            limb_darkening_law=config.LIMB_DARKENING_LAW,
+            cos_theta=cos_theta)
+
+        aux_normals = normals['secondary'][vis_test['secondary']]
+        cos_theta = np.sum(aux_normals[None, :shape_reduced[1], :] *
+                           join_vector[shape_reduced[0]:, :shape_reduced[1], :], axis=-1)
+        d_gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
+            coefficients=self.LD_COEFF,
+            limb_darkening_law=config.LIMB_DARKENING_LAW,
+            cos_theta=cos_theta)
+
+        return d_gamma
+
+    def redistribute_temperatures(self, temperatures):
+        for _component in ['primary', 'secondary']:
+            component_instance = getattr(self, _component)
+            counter = len(component_instance.temperatures)
+            component_instance.temperatures = temperatures[_component][:counter]
+            if component_instance.spots:
+                for spot_index, spot in component_instance.spots.items():
+                    spot.temperatures = temperatures[_component][counter: counter + len(spot.temperatures)]
+                    counter += len(spot.temperatures)
 
     def build_surface_gravity(self, component=None, components_distance=None):
         """
