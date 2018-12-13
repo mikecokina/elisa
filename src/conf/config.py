@@ -33,6 +33,7 @@ LIMB_DARKENING_LAW = 'cosine'
 # computational
 DISCRETIZATION_FACTOR = 5
 MAX_DISCRETIZATION_FACTOR = 20
+NUMBER_OF_THREADS = os.cpu_count()
 
 VAN_HAMME_LD_TABLES = os.path.join(dirname(dirname(__file__)), "limbdarkening")
 
@@ -92,6 +93,10 @@ def update_config():
         global MAX_DISCRETIZATION_FACTOR
         MAX_DISCRETIZATION_FACTOR = config_parser.getfloat('computational', 'max_discretization_factor',
                                                            fallback=MAX_DISCRETIZATION_FACTOR)
+
+        global NUMBER_OF_THREADS
+        NUMBER_OF_THREADS = config_parser.getint('computational', 'number_of_threads',
+                                                 fallback=MAX_DISCRETIZATION_FACTOR)
 
     if config_parser.has_section('support'):
         global VAN_HAMME_LD_TABLES

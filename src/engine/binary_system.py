@@ -42,6 +42,7 @@ from engine.system import System
 
 
 # temporary
+from time import time
 
 
 class BinarySystem(System):
@@ -1271,55 +1272,28 @@ class BinarySystem(System):
         else:
             raise ValueError('Invalid value of `component` argument: `{}`. Expecting '
                              '`primary` or `secondary`.'.format(component))
-        # number of points on half of the equator
-        num = int(const.PI // alpha)
 
-        # calculating points on equator
-        args = alpha, components_distance, precalc, fn, scipy_solver_init_value, num
-        equator = self.get_points_on_equator(*args)
+        # pre calculating azimuths for surface points on quarter of the star surface
+        phi, theta, separator = self.pre_calc_azimuths_for_detached_points(alpha)
 
+        # calculating mesh in cartesian coordinates for quarter of the star
+        args = phi, theta, components_distance, precalc, fn, scipy_solver_init_value
+        points_q = self.get_surface_points(*args)
+
+        equator = points_q[:separator[0], :]
         # assigning equator points and nearside and farside points A and B
         x_a, x_eq, x_b = equator[0, 0], equator[1: -1, 0], equator[-1, 0]
         y_a, y_eq, y_b = equator[0, 1], equator[1: -1, 1], equator[-1, 1]
         z_a, z_eq, z_b = equator[0, 2], equator[1: -1, 2], equator[-1, 2]
 
         # calculating points on phi = 0 meridian
-        # meridian = self.get_points_on_meridian(*args)
-
-        r_meridian = []
-        phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
-        theta_meridian = np.concatenate((np.linspace(const.HALF_PI - alpha, alpha, num=num - 1),
-                                         np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
-        for ii, theta in enumerate(theta_meridian):
-            args = (components_distance, phi_meridian[ii], theta)
-            args = precalc(*args)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
-                                                        xtol=1e-12)
-            r_meridian.append(solution[0])
-        r_meridian = np.array(r_meridian)
-        meridian = utils.spherical_to_cartesian(np.column_stack((r_meridian, phi_meridian, theta_meridian)))
+        meridian = points_q[separator[0]: separator[1], :]
         x_meridian, y_meridian, z_meridian = meridian[:, 0], meridian[:, 1], meridian[:, 2]
 
-        # calculating the rest (quarter) of the surface
-        thetas = np.linspace(alpha, const.HALF_PI, num=num - 1, endpoint=False)
-        r_q, phi_q, theta_q = [], [], []
-        for theta in thetas:
-            alpha_corrected = alpha / np.sin(theta)
-            num = int(const.PI // alpha_corrected)
-            alpha_corrected = const.PI / (num + 1)
-            phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
-            phi_q += phi_q_add
-            for phi in phi_q_add:
-                theta_q.append(theta)
-                args = (components_distance, phi, theta)
-                args = precalc(*args)
-                solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
-                                                            xtol=1e-12)
-                r_q.append(solution[0])
-
-        r_q, phi_q, theta_q = np.array(r_q), np.array(phi_q), np.array(theta_q)
-        quarter = utils.spherical_to_cartesian(np.column_stack((r_q, phi_q, theta_q)))
+        # the rest of the surface
+        quarter = points_q[separator[1]:, :]
         x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
+
 
         # stiching together 4 quarters of stellar surface in order:
         # north hemisphere: left_quadrant (from companion point of view):
@@ -1380,41 +1354,60 @@ class BinarySystem(System):
             return points
 
     @staticmethod
-    def get_points_on_equator(*argss):
+    def pre_calc_azimuths_for_detached_points(alpha):
         """
-        function returns points lying on the equator
-        :param args:
-        :return: near_point, equator_points, far_point
+
+        :param alpha:
+        :return:
         """
-        alpha, components_distance, precalc, fn, solver_init_value, num = argss
+        separator = []
 
-        r_eq = []
-        phi_eq = np.linspace(0., const.PI, num=num + 1)
-        theta_eq = np.array([const.HALF_PI for _ in phi_eq])
-        for phi in phi_eq:
-            args = (components_distance, phi, const.HALF_PI)
-            args = precalc(*args)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
-            r_eq.append(solution[0])
-        r_eq = np.array(r_eq)
-        return utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
+        # azimuths for points on equator
+        num = int(const.PI // alpha)
+        phi = np.linspace(0., const.PI, num=num + 1)
+        theta = np.array([const.HALF_PI for _ in phi])
+        separator.append(np.shape(theta)[0])
 
-    @staticmethod
-    def get_points_on_meridian(*argss):
-        alpha, components_distance, precalc, fn, solver_init_value, num = argss
-
-        r_meridian = []
+        # azimuths for points on meridian
+        num = int(const.HALF_PI // alpha)
         phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
         theta_meridian = np.concatenate((np.linspace(const.HALF_PI - alpha, alpha, num=num - 1),
                                          np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
-        for ii, theta in enumerate(theta_meridian):
-            args = (components_distance, phi_meridian[ii], theta)
+
+        phi = np.concatenate((phi, phi_meridian))
+        theta = np.concatenate((theta, theta_meridian))
+        separator.append(np.shape(theta)[0])
+
+        # azimuths for rest of the quarter
+        num = int(const.HALF_PI // alpha)
+        thetas = np.linspace(alpha, const.HALF_PI, num=num - 1, endpoint=False)
+        phi_q, theta_q = [], []
+        for tht in thetas:
+            alpha_corrected = alpha / np.sin(tht)
+            num = int(const.PI // alpha_corrected)
+            alpha_corrected = const.PI / (num + 1)
+            phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
+            phi_q += phi_q_add
+            theta_q += [tht for _ in phi_q_add]
+
+        phi = np.concatenate((phi, phi_q))
+        theta = np.concatenate((theta, theta_q))
+
+        return phi, theta, separator
+
+    @staticmethod
+    def get_surface_points(*argss):
+        phi, theta, components_distance, precalc, fn, solver_init_value = argss
+
+        r = []
+        for ii, phii in enumerate(phi):
+            args = (components_distance, phii, theta[ii])
             args = precalc(*args)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args,
-                                                        xtol=1e-12)
-            r_meridian.append(solution[0])
-        r_meridian = np.array(r_meridian)
-        return utils.spherical_to_cartesian(np.column_stack((r_meridian, phi_meridian, theta_meridian)))
+            solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
+            r.append(solution[0])
+
+        r = np.array(r)
+        return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
     def mesh_over_contact(self, component=None, symmetry_output=False):
         """
