@@ -29,6 +29,7 @@ import scipy
 from astropy import units as u
 from scipy.optimize import newton
 from scipy.spatial import Delaunay
+from multiprocessing import Pool
 
 from conf import config
 from engine import const
@@ -39,7 +40,6 @@ from engine import utils
 from engine.orbit import Orbit
 from engine.star import Star
 from engine.system import System
-
 
 # temporary
 from time import time
@@ -713,16 +713,20 @@ class BinarySystem(System):
         :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
         :return: tuple: (b, c, d, e) such that: Psi1 = 1/r + a/sqrt(b+r^2+c*r) - d*r + e*x^2
         """
-        d, phi, theta = args  # distance between components, azimuth angle, latitude angle (0,180)
+        distance, phi, theta = args  # distance between components, azimuth angle, latitude angle (0,180)
 
         cs = np.cos(phi) * np.sin(theta)
 
-        b = np.power(d, 2)
-        c = 2 * d * cs
+        b = np.power(distance, 2)
+        c = 2 * distance * cs
         d = (self.mass_ratio * cs) / b
         e = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
 
-        return b, c, d, e
+        if np.isscalar(phi):
+            return b, c, d, e
+        else:
+            bb = b * np.ones(np.shape(phi))
+            return np.column_stack((bb, c, d, e))
 
     def potential_value_primary(self, radius, *args):
         """
@@ -782,17 +786,22 @@ class BinarySystem(System):
         :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
         :return: tuple: (B, C, D, E, F) such that: Psi2 = q/r + 1/sqrt(B+r^2+Cr) - D*r + E*x^2 + F
         """
-        d, phi, theta = args  # distance between components, azimut angle, latitude angle (0,180)
+        distance, phi, theta = args  # distance between components, azimut angle, latitude angle (0,180)
 
         cs = np.cos(phi) * np.sin(theta)
 
-        B = np.power(d, 2)
-        C = 2 * d * cs
+        B = np.power(distance, 2)
+        C = 2 * distance * cs
         D = cs / B
         E = 0.5 * np.power(self.secondary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
         F = 0.5 - 0.5 * self.mass_ratio
 
-        return B, C, D, E, F
+        if np.isscalar(phi):
+            return B, C, D, E, F
+        else:
+            BB = B * np.ones(np.shape(phi))
+            FF = F * np.ones(np.shape(phi))
+            return np.column_stack((BB, C, D, E, FF))
 
     def potential_value_secondary(self, radius, *args):
         """
@@ -1261,7 +1270,6 @@ class BinarySystem(System):
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
         alpha = component_instance.discretization_factor
-        scipy_solver_init_value = np.array([1. / 10000.])
 
         if component == 'primary':
             fn = self.potential_primary_fn
@@ -1277,7 +1285,8 @@ class BinarySystem(System):
         phi, theta, separator = self.pre_calc_azimuths_for_detached_points(alpha)
 
         # calculating mesh in cartesian coordinates for quarter of the star
-        args = phi, theta, components_distance, precalc, fn, scipy_solver_init_value
+        args = phi, theta, components_distance, precalc, fn
+        # points_q = self.get_surface_points_multithread(*args)
         points_q = self.get_surface_points(*args)
 
         equator = points_q[:separator[0], :]
@@ -1293,7 +1302,6 @@ class BinarySystem(System):
         # the rest of the surface
         quarter = points_q[separator[1]:, :]
         x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
-
 
         # stiching together 4 quarters of stellar surface in order:
         # north hemisphere: left_quadrant (from companion point of view):
@@ -1356,6 +1364,8 @@ class BinarySystem(System):
     @staticmethod
     def pre_calc_azimuths_for_detached_points(alpha):
         """
+        returns azimuths for the whole quarter surface in specific order (near point, equator, far point and the rest)
+        separator gives you information about position of these sections
 
         :param alpha:
         :return:
@@ -1397,17 +1407,71 @@ class BinarySystem(System):
 
     @staticmethod
     def get_surface_points(*argss):
-        phi, theta, components_distance, precalc, fn, solver_init_value = argss
+        """
+        function solves radius for given azimuths that are passed in *argss
 
+        :param argss:
+        :return:
+        """
+        phi, theta, components_distance, precalc, fn = argss
+
+        pre_calc_vals = precalc(*(components_distance, phi, theta))
+
+        solver_init_value = np.array([1. / 10000.])
         r = []
         for ii, phii in enumerate(phi):
-            args = (components_distance, phii, theta[ii])
-            args = precalc(*args)
+            # args = (components_distance, phii, theta[ii])
+            # args = precalc(*args)
+            args = tuple(pre_calc_vals[ii, :])
             solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
             r.append(solution[0])
 
         r = np.array(r)
         return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
+
+    @staticmethod
+    def get_surface_point_multithread(*args):
+        """
+        function solves radius for given azimuths that are passed in *argss
+
+        :param argss:
+        :return:
+        """
+        fn = args[0]
+        solver_init_value = np.array([1. / 10000.])
+        solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args[1:], xtol=1e-12)
+        print(type(solution[0]))
+        return solution[0]
+
+    def get_surface_points_multithread(self, *argss):
+        """
+        function solves radius for given azimuths that are passed in *argss via multithreading approach
+
+        :param argss:
+        :return:
+        """
+
+        phi, theta, components_distance, precalc, fn = argss
+
+        precalc_vals = list(precalc(*(components_distance, phi, theta)))
+        precalc_vals[0] = precalc_vals[0] * np.ones(np.shape(phi))
+
+        aux = [[precalc_vals[ii][jj] for ii in range(len(precalc_vals))] for jj in range(len(precalc_vals[1]))]
+        args = [tuple([fn] + ax) for ax in aux]
+
+        pool = Pool(processes=config.NUMBER_OF_THREADS)
+
+        p = pool.apply_async(self.r_solving_thread, args=args)
+        radius = p.get(timeout=1)
+        print(radius)
+
+        return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
+
+    def r_solving_thread(self, *args):
+        # phi, theta, components_distance, precalc, fn = args
+
+        points_thread = self.get_surface_points(*args)
+        return points_thread
 
     def mesh_over_contact(self, component=None, symmetry_output=False):
         """
@@ -2536,7 +2600,7 @@ class BinarySystem(System):
 
         if use_quarter_star_test:
             # calculating distances and distance vectors between, join vector is already normalized
-            _shape, _shape_reduced = self. get_distance_matrix_shape(vis_test)
+            _shape, _shape_reduced = self.get_distance_matrix_shape(vis_test)
 
             distance, join_vector = self.get_symmetrical_distance_matrix(_shape, _shape_reduced, centres, vis_test,
                                                                          vis_test_symmetry)
@@ -2625,7 +2689,7 @@ class BinarySystem(System):
                                                      coefficients=self.LD_COEFF,
                                                      limb_darkening_law=config.LIMB_DARKENING_LAW),
                  'secondary': ld.limb_darkening_factor(normal_vector=normals['secondary'][None, vis_test['secondary'], :
-                                                                                          ],
+                                                                     ],
                                                        line_of_sight=-join_vector,
                                                        coefficients=self.LD_COEFF,
                                                        limb_darkening_law=config.LIMB_DARKENING_LAW)
@@ -2781,7 +2845,7 @@ class BinarySystem(System):
         """
         shape = (np.sum(vis_test['primary']), np.sum(vis_test['secondary']), 3)
         shape_reduced = (np.sum(vis_test['primary'][:self.primary.base_symmetry_faces_number]),
-                          np.sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
+                         np.sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
         return shape, shape_reduced
 
     @staticmethod
