@@ -1286,8 +1286,8 @@ class BinarySystem(System):
 
         # calculating mesh in cartesian coordinates for quarter of the star
         args = phi, theta, components_distance, precalc, fn
-        # points_q = self.get_surface_points_multithread(*args)
-        points_q = self.get_surface_points(*args)
+        points_q = self.get_surface_points_multithread(*args)
+        # points_q = self.get_surface_points(*args)
 
         equator = points_q[:separator[0], :]
         # assigning equator points and nearside and farside points A and B
@@ -1420,8 +1420,6 @@ class BinarySystem(System):
         solver_init_value = np.array([1. / 10000.])
         r = []
         for ii, phii in enumerate(phi):
-            # args = (components_distance, phii, theta[ii])
-            # args = precalc(*args)
             args = tuple(pre_calc_vals[ii, :])
             solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
             r.append(solution[0])
@@ -1440,7 +1438,6 @@ class BinarySystem(System):
         fn = args[0]
         solver_init_value = np.array([1. / 10000.])
         solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args[1:], xtol=1e-12)
-        print(type(solution[0]))
         return solution[0]
 
     def get_surface_points_multithread(self, *argss):
@@ -1453,24 +1450,25 @@ class BinarySystem(System):
 
         phi, theta, components_distance, precalc, fn = argss
 
-        precalc_vals = list(precalc(*(components_distance, phi, theta)))
-        precalc_vals[0] = precalc_vals[0] * np.ones(np.shape(phi))
+        precalc_vals = precalc(*(components_distance, phi, theta))
+        # precalc_vals[0] = precalc_vals[0] * np.ones(np.shape(phi))
 
-        aux = [[precalc_vals[ii][jj] for ii in range(len(precalc_vals))] for jj in range(len(precalc_vals[1]))]
-        args = [tuple([fn] + ax) for ax in aux]
+        args = [tuple(precalc_vals[ii, :]) for ii in range(np.shape(precalc_vals)[0])]
+        args = [(fn,) + arg for arg in args]
 
         pool = Pool(processes=config.NUMBER_OF_THREADS)
 
-        p = pool.apply_async(self.r_solving_thread, args=args)
-        radius = p.get(timeout=1)
-        print(radius)
+        # r = self.get_surface_point_multithread(*args[0])
 
+        # p = pool.apply_async(self.get_surface_point_multithread, args=args)
+        radius = pool.starmap(self.get_surface_point_multithread, args)
+        # radius = p.get()
         return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
     def r_solving_thread(self, *args):
         # phi, theta, components_distance, precalc, fn = args
 
-        points_thread = self.get_surface_points(*args)
+        points_thread = self.get_surface_point_multithread(*args)
         return points_thread
 
     def mesh_over_contact(self, component=None, symmetry_output=False):
