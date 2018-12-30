@@ -4,7 +4,8 @@ Limbdarkening models
     **url:** https://mega.nz/#!XY9zBAaS!zsZSN0KMnW5hXnr5m5WchQv6BtTqo4odVv73ZrxD3dY
 
     Contain limb darkening models for given limbdarkening models, passbands and metalicities
-    Extract content of ``limbdarkening.tar`` archive to this directory
+    Extract content of ``limbdarkening.tar`` archive to any directory and setup ``support.van_hamme_ld_tables``
+    in ``elisa_config.ini``.
 
 Metallicity sign
 ~~~~~~~~~~~~~~~~

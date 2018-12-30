@@ -6,6 +6,13 @@ from configparser import ConfigParser
 from logging import config as log_conf
 from os.path import dirname
 
+
+def level_up(path, n=0):
+    for i in range(n):
+        path = dirname(path)
+    return path
+
+
 config_parser = ConfigParser()
 
 env_variable_config = os.environ.get('ELISA_CONFIG', '')
@@ -35,7 +42,10 @@ DISCRETIZATION_FACTOR = 5
 MAX_DISCRETIZATION_FACTOR = 20
 NUMBER_OF_THREADS = os.cpu_count()
 
-VAN_HAMME_LD_TABLES = os.path.join(dirname(dirname(__file__)), "limbdarkening")
+# support data
+VAN_HAMME_LD_TABLES = os.path.join(level_up(__file__, 3), "limbdarkening", "vh")
+CK04_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "ck04")
+K93_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "k93")
 
 
 def set_up_logging():
@@ -106,6 +116,23 @@ def update_config():
             warnings.warn("path {}\n"
                           "to van hamme ld tables doesn't exists\n"
                           "Specifiy it in elisa_conf.ini file".format(VAN_HAMME_LD_TABLES))
+
+        global CK04_ATM_TABLES
+        CK04_ATM_TABLES = config_parser.get('support', 'castelli_kurucz_04_atm_tables', fallback=CK04_ATM_TABLES)
+
+        if not os.path.isdir(CK04_ATM_TABLES):
+            warnings.warn("path {}\n"
+                          "to castelli-kurucz 2004 atmosphere atlas doesn't exists\n"
+                          "Specifiy it in elisa_conf.ini file".format(CK04_ATM_TABLES))
+
+        global K93_ATM_TABLES
+        K93_ATM_TABLES = config_parser.get('support', 'castelli_kurucz_04_atm_tables', fallback=K93_ATM_TABLES)
+
+        if not os.path.isdir(K93_ATM_TABLES):
+            warnings.warn("path {}\n"
+                          "to kurucz 1993 atmosphere atlas doesn't exists\n"
+                          "Specifiy it in elisa_conf.ini file".format(K93_ATM_TABLES))
+
 
 PASSBANDS = [
     'bolometric',
