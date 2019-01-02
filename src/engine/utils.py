@@ -298,6 +298,10 @@ def check_missing_kwargs(kwargs=None, instance_kwargs=None, instance_of=None):
                                                                                instance_of.__name__))
 
 
+def numeric_logg_to_string(logg):
+    return "g%02d" % (logg * 10)
+
+
 def numeric_metallicity_to_string(metallicity):
     sign = "p" if metallicity >= 0 else "m"
     leadzeronum = "%02d" % (metallicity * 10) if metallicity >= 0 else "%02d" % (metallicity * -10)

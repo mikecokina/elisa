@@ -9,6 +9,11 @@ postup
 sandbox.py
 limbdarkening.tar
 env36/*
+limbdarkening/*/*.csv
 limbdarkening/*.csv
+atmosphere/*/*.csv
+atmosphere/*.csv
+
+
 *.log
 __main__.py
