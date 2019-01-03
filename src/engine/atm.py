@@ -1,14 +1,13 @@
 import logging
 import os
-
 import numpy as np
 import pandas as pd
-
 from conf import config
 from engine import utils, const
 
 from queue import Queue
 from threading import Thread
+from scipy import integrate
 
 config.set_up_logging()
 logger = logging.getLogger("atm")
@@ -40,14 +39,15 @@ ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
 }
 
 class AtmDataContainer(object):
-    def __init__(self, model, temperature, logg, metallicity):
+    def __init__(self, model: pd.DataFrame, temperature: float, logg: float, metallicity: float):
         self.model = model
         self.temperature = temperature
         self.logg = logg
         self.metallicity = metallicity
         self.flux_unit = "flam"
         self.wave_unit = "angstrom"
-        self.flux_to_si_mult = 1e-7 * 1e4 * 1e10 * (1.0/np.pi)
+        # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
+        self.flux_to_si_mult = 1e-7 * 1e4 * 1e10  # * (1.0/np.pi)
         self.wave_to_si_mult = 1e-10
 
 
@@ -281,8 +281,12 @@ def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_
             break
 
 
-def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers):
-    pass
+def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: list):
+    return [
+        np.pi * integrate.simps(adc.model["flux"] * adc.flux_to_si_mult,
+                                adc.model["wave"] * adc.wave_to_si_mult)
+        for adc in atm_data_containers
+    ]
 
 
 if __name__ == "__main__":
@@ -304,4 +308,5 @@ if __name__ == "__main__":
         3.11
     ]
 
-    print(nearest_atm_tables(_temperature, _logg, _metallicity, "ck")[4])
+    atm_containers = nearest_atm_tables(_temperature, _logg, _metallicity, "ck")
+    i = compute_integral_si_intensity_from_atm_data_containers(atm_containers)
