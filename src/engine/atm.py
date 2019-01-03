@@ -51,7 +51,22 @@ class AtmDataContainer(object):
         self.wave_to_si_mult = 1e-10
 
 
+class IntensityContainer(object):
+    def __init__(self, intensity, temperature, logg, metallicity):
+        self.intensity = intensity
+        self.temperature = temperature
+        self.logg = logg
+        self.metallicity = metallicity
+
+
 def atm_file_prefix_to_quantity_list(qname, atlas):
+    """
+    get list of available values for given atm domain quantity, e.g. list of temperatures available in atlas CK04
+
+    :param qname: str
+    :param atlas: str
+    :return: list
+    """
     atlas = validated_atlas(atlas)
     return getattr(
         const,
@@ -62,6 +77,13 @@ def atm_file_prefix_to_quantity_list(qname, atlas):
     )
 
 def validated_atlas(atlas):
+    """
+    get validated atm atlas, e.g. `castelli` or `ck04` transform to `ck`, it match folder
+    and file prefix for given atlas
+
+    :param atlas: str
+    :return: str
+    """
     try:
         return ATLAS_TO_ATM_FILE_PREFIX[atlas]
     except KeyError:
@@ -70,9 +92,15 @@ def validated_atlas(atlas):
 
 
 def parse_domain_quantities_from_atm_table_filename(filename):
+    """
+    parse filename to given quantities, e.g. ckm05_3500_g15.csv parse to tuple (-0.5, 3500, 1.5)
+
+    :param filename: str
+    :return: tuple
+    """
     return get_temperature_from_atm_table_filename(filename), \
-           get_logg_from_atm_table_filename(filename), \
-           get_metallicity_from_atm_table_filename(filename)
+        get_logg_from_atm_table_filename(filename), \
+        get_metallicity_from_atm_table_filename(filename)
 
 
 def get_metallicity_from_atm_table_filename(filename):
@@ -150,6 +178,12 @@ def get_atm_table(temperature, logg, metallicity, atlas):
 
 
 def get_list_of_all_atm_tables(atlas):
+    """
+    get list of all available atm table files stored in configured location
+
+    :param atlas: str
+    :return: list
+    """
     source = ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
     matches = []
     for root, dirnames, filenames in os.walk(source):
@@ -247,7 +281,7 @@ def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_
             break
 
 
-def get_nearest_atm_data():
+def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers):
     pass
 
 
