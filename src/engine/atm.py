@@ -191,7 +191,7 @@ def nearest_atm_tables_list(temperature, logg, metallicity, atlas):
 
 def nearest_atm_tables(temperature, logg, metallicity, atlas):
     # todo: make configurable
-    n_threads = 4
+    n_threads = 2
 
     fpaths = nearest_atm_tables_list(temperature, logg, metallicity, atlas)
 
@@ -219,7 +219,7 @@ def nearest_atm_tables(temperature, logg, metallicity, atlas):
 
         for t in threads:
             t.join()
-        logger.debug("amt multithread reader finished all jobs")
+        logger.debug("atm multithread reader finished all jobs")
     except KeyboardInterrupt:
         raise
     finally:
@@ -244,7 +244,7 @@ def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_
             result_queue.put(atm_container)
         except Exception as we:
             error_queue.put(we)
-        break
+            break
 
 
 def get_nearest_atm_data():
@@ -270,4 +270,4 @@ if __name__ == "__main__":
         3.11
     ]
 
-    print(nearest_atm_tables(_temperature, _logg, _metallicity, "ck")[0])
+    print(nearest_atm_tables(_temperature, _logg, _metallicity, "ck")[4])
