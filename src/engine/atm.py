@@ -191,7 +191,7 @@ def nearest_atm_tables_list(temperature, logg, metallicity, atlas):
 
 def nearest_atm_tables(temperature, logg, metallicity, atlas):
     # todo: make configurable
-    n_threads = 2
+    n_threads = 4
 
     fpaths = nearest_atm_tables_list(temperature, logg, metallicity, atlas)
 
