@@ -7,6 +7,9 @@ import pandas as pd
 from conf import config
 from engine import utils, const
 
+from queue import Queue
+from threading import Thread
+
 config.set_up_logging()
 logger = logging.getLogger("atm")
 
@@ -53,8 +56,9 @@ def atm_file_prefix_to_quantity_list(qname, atlas):
     return getattr(
         const,
         "{}_{}".format(
-        str(atlas).upper(),
-        str(ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname]))
+            str(atlas).upper(),
+            str(ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname])
+        )
     )
 
 def validated_atlas(atlas):
@@ -186,14 +190,61 @@ def nearest_atm_tables_list(temperature, logg, metallicity, atlas):
 
 
 def nearest_atm_tables(temperature, logg, metallicity, atlas):
+    # todo: make configurable
+    n_threads = 4
+
     fpaths = nearest_atm_tables_list(temperature, logg, metallicity, atlas)
-    models = list()
-    for fpath in fpaths:
-        if not os.path.isfile(fpath):
-            raise FileNotFoundError("file {} doesn't exist. it seems your model could be not physical".format(fpath))
-        t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(fpath))
-        models.append(AtmDataContainer(pd.read_csv(fpath), t, l, m))
+
+    path_queue = Queue(maxsize=len(fpaths) + n_threads)
+    result_queue = Queue()
+    error_queue = Queue()
+
+    threads = list()
+    try:
+        for fpath in fpaths:
+            if not os.path.isfile(fpath):
+                raise FileNotFoundError(
+                    "file {} doesn't exist. it seems your model could be not physical".format(fpath))
+            path_queue.put(fpath)
+
+        for _ in range(n_threads):
+            path_queue.put("TERMINATOR")
+
+        logger.debug("initialising multithread atm table reader")
+        for _ in range(n_threads):
+            t = Thread(target=multithread_atm_tables_reader, args=(path_queue, error_queue, result_queue))
+            threads.append(t)
+            t.daemon = True
+            t.start()
+
+        for t in threads:
+            t.join()
+        logger.debug("amt multithread reader finished all jobs")
+    except KeyboardInterrupt:
+        raise
+    finally:
+        if not error_queue.empty():
+            raise error_queue.get()
+
+    models = [qval for qval in utils.IterableQueue(result_queue)]
     return models
+
+
+def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_queue: Queue):
+    while True:
+        file_path = path_queue.get(timeout=1)
+
+        if file_path == "TERMINATOR":
+            break
+        if not error_queue.empty():
+            break
+        try:
+            t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(file_path))
+            atm_container = AtmDataContainer(pd.read_csv(file_path), t, l, m)
+            result_queue.put(atm_container)
+        except Exception as we:
+            error_queue.put(we)
+        break
 
 
 def get_nearest_atm_data():
