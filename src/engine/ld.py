@@ -98,7 +98,6 @@ def interpolate_on_ld_grid(passband, temperature, log_g, metallicity, author=Non
     :param author: str
     :return: pandas.DataFrame
     """
-    config.LIMB_DARKENING_LAW = "square_root"
 
     logger.debug('interpolating ld coefficients')
     relevant_tables = get_relevant_ld_tables(passband=passband, metallicity=metallicity)

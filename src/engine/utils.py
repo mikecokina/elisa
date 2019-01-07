@@ -1,3 +1,5 @@
+from queue import Empty
+
 import numpy as np
 import scipy as sp
 import re
@@ -340,3 +342,20 @@ def find_surounded(array, value):
     ret = sorted(ret)
     # test
     return ret if ret[0] < value < ret[1] else [value]
+
+
+class IterableQueue(object):
+    """ Transform standard python Queue instance to iterable one"""
+
+    def __init__(self, source_queue):
+        """
+        :param source_queue: queue.Queue, (mandatory)
+        """
+        self.source_queue = source_queue
+
+    def __iter__(self):
+        while True:
+            try:
+                yield self.source_queue.get_nowait()
+            except Empty:
+                return
