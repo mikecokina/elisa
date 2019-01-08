@@ -62,7 +62,7 @@ class SingleSystem(System):
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)
         self.star._polar_log_g = self.polar_log_g
-        self.star._polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
+        # self.star.polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
         # this is also check if star surface is closed
         self.init_radii()
 
@@ -328,7 +328,8 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self.star.mass / self.star.polar_gravity_acceleration, 0.5)
+        polar_gravity_acceleration = np.power(10, self.star.polar_log_g)
+        return np.power(c.G * self.star.mass / polar_gravity_acceleration, 0.5)
 
     def calculate_equatorial_radius(self):
         """

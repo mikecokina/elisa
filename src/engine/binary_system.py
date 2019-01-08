@@ -41,6 +41,9 @@ from engine.orbit import Orbit
 from engine.star import Star
 from engine.system import System
 
+from queue import Queue
+from threading import Thread
+
 # temporary
 from time import time
 
@@ -1447,7 +1450,6 @@ class BinarySystem(System):
         :param argss:
         :return:
         """
-
         phi, theta, components_distance, precalc, fn = argss
 
         precalc_vals = precalc(*(components_distance, phi, theta))
@@ -1455,6 +1457,32 @@ class BinarySystem(System):
 
         args = [tuple(precalc_vals[ii, :]) for ii in range(np.shape(precalc_vals)[0])]
         args = [(fn,) + arg for arg in args]
+
+        n_threads = config.NUMBER_OF_THREADS
+        arg_queue = Queue(maxsize=len(args) + n_threads)
+        result_queue = Queue()
+        error_queue = Queue()
+
+        threads = list()
+        try:
+            for ii in range(np.shape(precalc_vals)[0]):
+                arg_queue.put((fn,) + tuple(precalc_vals[ii, :]))
+
+            for _ in range(n_threads):
+                arg_queue.put("TERMINATOR")
+
+            self._logger.debug("Initialising multithread surface point solver.")
+            for _ in range(n_threads):
+                t = Thread(target=self.get_surface_point_multithread, args=(arg_queue, error_queue, result_queue))
+                threads.append(t)
+                t.daemon = True
+                t.start()
+
+        except KeyboardInterrupt:
+            raise
+        finally:
+            if not error_queue.empty():
+                raise error_queue.get()
 
         pool = Pool(processes=config.NUMBER_OF_THREADS)
 

@@ -65,6 +65,11 @@ class Star(Body):
 
     @log_g.setter
     def log_g(self, log_g):
+        """
+        setter for log g array
+        :param log_g:
+        :return:
+        """
         self._log_g = log_g
 
     @property
