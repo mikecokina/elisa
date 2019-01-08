@@ -1510,12 +1510,6 @@ class BinarySystem(System):
         result_list = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
 
 
-    def r_solving_thread(self, *args):
-        # phi, theta, components_distance, precalc, fn = args
-
-        points_thread = self.get_surface_point_multithread(*args)
-        return points_thread
-
     def mesh_over_contact(self, component=None, symmetry_output=False):
         """
         creates surface mesh of given binary star component in case of over-contact system
