@@ -22,9 +22,10 @@
 
 import gc
 import logging
+from queue import Empty
+
 import numpy as np
 import scipy
-import atexit
 
 from copy import copy
 from astropy import units as u
@@ -40,17 +41,13 @@ from engine.orbit import Orbit
 from engine.star import Star
 from engine.system import System
 
-from multiprocessing import Queue
+from multiprocessing import Queue, Manager
 from multiprocessing import Process
 
 from multiprocessing import Pool
 
 # temporary
 from time import time
-
-
-def kill_get_surface_point_worker(worker):
-    worker.terminate()
 
 
 class BinarySystem(System):
@@ -1443,31 +1440,35 @@ class BinarySystem(System):
         :param args:
         :return:
         """
+        def writer():
+            for idx, preacalc_vals_arg in enumerate(preacalc_vals_args):
+                args_queue.put((idx, ) + preacalc_vals_arg)
+            for _ in range(n_threads):
+                args_queue.put("TERMINATOR")
 
-        def get_surface_point_worker():
+        def worker():
             """
             function solves radius for given azimuths that are passed in *args
             """
             while True:
-                break
-            # while True:
-            #     # fixme: increase timeout
-            #     xargs = args_queue.get(timeout=1)
-            #     # if args_queue.empty():
-            #     if xargs == "TERMINATOR":
-            #         self._logger.info("Terminated")
-            #         break
-            #     try:
-            #         _idx, _args = xargs[0], xargs[1:]
-            #         solver_init_value = np.array([1. / 10000.])
-            #         solution, _, ier, _ = scipy.optimize.fsolve(potential_fn, solver_init_value, full_output=True,
-            #                                                     args=_args, xtol=1e-12)
-            #         result_queue.put([_idx, solution[0]])
-            #     except Exception as we:
-            #         error_queue.put(we)
-            #         break
+                # fixme: increase timeout
+                try:
+                    xargs = args_queue.get(timeout=1)
+                except Empty:
+                    continue
 
-        # atexit.register(kill_get_surface_point_worker, get_surface_point_worker)
+                if xargs == "TERMINATOR":
+                    self._logger.debug("Worker terminated")
+                    break
+                try:
+                    _idx, _args = xargs[0], xargs[1:]
+                    solver_init_value = np.array([1. / 10000.])
+                    solution, _, ier, _ = scipy.optimize.fsolve(potential_fn, solver_init_value, full_output=True,
+                                                                args=_args, xtol=1e-12)
+                    result_list.append([_idx, solution[0]])
+                except Exception as we:
+                    error_list.append(we)
+                    break
 
         phi, theta, components_distance, precalc_fn, potential_fn = args
         precalc_vals = precalc_fn(*(components_distance, phi, theta))
@@ -1476,54 +1477,38 @@ class BinarySystem(System):
 
         preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
         n_threads = config.NUMBER_OF_THREADS
-        # args_queue = Queue(maxsize=len(preacalc_vals_args) + n_threads)
-        # result_queue = Queue()
-        q = Queue()
 
-        procs = list()
+        args_queue = Queue(maxsize=len(preacalc_vals_args) + n_threads)
+        manager = Manager()
+
+        result_list = manager.list()
+        error_list = manager.list()
+
+        jobs = list()
+
+        writer_proc = Process(target=writer)
+        writer_proc.daemon = True
+        writer_proc.start()
+        jobs.append(writer_proc)
+
         try:
-            for idx, preacalc_vals_arg in enumerate(preacalc_vals_args):
-                # args_queue.put((idx, ) + preacalc_vals_arg)
-                q.put(preacalc_vals_arg)
             for _ in range(n_threads):
-                q.put('TERMINATOR')
-                # args_queue.put("TERMINATOR")
-            self._logger.debug("Initialising multithread surface point solver.")
-            for _ in range(n_threads):
-                p = Process(target=get_surface_point_worker)
-                procs.append(p)
+                p = Process(target=worker)
+                jobs.append(p)
                 p.daemon = True
                 p.start()
-            # args_queue.close()
-            # args_queue.join_thread()
-            #
-            # result_queue.close()
-            # result_queue.join_thread()
-            #
-            self._logger.info("All threads are running")
-            for p in procs:
+            for p in jobs:
                 p.join()
         except KeyboardInterrupt:
             raise
         finally:
             pass
-            # if not error_queue.empty():
-            #     raise error_queue.get(timeout=1)
 
-        # result = [val for val in utils.IterableQueue(result_queue)]
-        # result = sorted(result, key=lambda x: x[0])
-        # print(result)
-        # q.close()
-        # q.join_thread()
+        if len(error_list) > 0:
+            raise Exception("error occured: {}".format("\n".join(error_list)))
 
-        # pool = Pool(processes=config.NUMBER_OF_THREADS)
-        #
-        # # r = self.get_surface_point_multithread(*args[0])
-        #
-        # # p = pool.apply_async(self.get_surface_point_multithread, args=args)
-        # radius = pool.starmap(self.get_surface_point_multithread, args)
-        # # radius = p.get()
-        # return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
+        result_list = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
+
 
     def r_solving_thread(self, *args):
         # phi, theta, components_distance, precalc, fn = args
