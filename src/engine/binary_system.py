@@ -24,6 +24,7 @@ import gc
 import logging
 import numpy as np
 import scipy
+import atexit
 
 from copy import copy
 from astropy import units as u
@@ -46,6 +47,10 @@ from multiprocessing import Pool
 
 # temporary
 from time import time
+
+
+def kill_get_surface_point_worker(worker):
+    worker.terminate()
 
 
 class BinarySystem(System):
@@ -1275,11 +1280,11 @@ class BinarySystem(System):
         alpha = component_instance.discretization_factor
 
         if component == 'primary':
-            fn = self.potential_primary_fn
-            precalc = self.pre_calculate_for_potential_value_primary
+            potential_fn = self.potential_primary_fn
+            precalc_fn = self.pre_calculate_for_potential_value_primary
         elif component == 'secondary':
-            fn = self.potential_secondary_fn
-            precalc = self.pre_calculate_for_potential_value_secondary
+            potential_fn = self.potential_secondary_fn
+            precalc_fn = self.pre_calculate_for_potential_value_secondary
         else:
             raise ValueError('Invalid value of `component` argument: `{}`. Expecting '
                              '`primary` or `secondary`.'.format(component))
@@ -1288,9 +1293,10 @@ class BinarySystem(System):
         phi, theta, separator = self.pre_calc_azimuths_for_detached_points(alpha)
 
         # calculating mesh in cartesian coordinates for quarter of the star
-        args = phi, theta, components_distance, precalc, fn
-        # points_q = self.get_surface_points_multithread(*args)
-        points_q = self.get_surface_points(*args)
+        args = phi, theta, components_distance, precalc_fn, potential_fn
+        points_q = self.get_surface_points_multiproc(*args)
+
+        # points_q = self.get_surface_points(*args)
 
         equator = points_q[:separator[0], :]
         # assigning equator points and nearside and farside points A and B
@@ -1413,7 +1419,7 @@ class BinarySystem(System):
         """
         function solves radius for given azimuths that are passed in *argss
 
-        :param argss:
+        :param args:
         :return:
         """
         phi, theta, components_distance, precalc, fn = args
@@ -1430,68 +1436,94 @@ class BinarySystem(System):
         r = np.array(r)
         return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
-    @staticmethod
-    def get_surface_point_multithread(*args):
-        """
-        function solves radius for given azimuths that are passed in *argss
-
-        :param argss:
-        :return:
-        """
-        fn = args[0]
-        solver_init_value = np.array([1. / 10000.])
-        solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args[1:], xtol=1e-12)
-        return solution[0]
-
-    def get_surface_points_multithread(self, *argss):
+    def get_surface_points_multiproc(self, *args):
         """
         function solves radius for given azimuths that are passed in *argss via multithreading approach
 
-        :param argss:
+        :param args:
         :return:
         """
-        phi, theta, components_distance, precalc, fn = argss
 
-        precalc_vals = precalc(*(components_distance, phi, theta))
-        # precalc_vals[0] = precalc_vals[0] * np.ones(np.shape(phi))
+        def get_surface_point_worker():
+            """
+            function solves radius for given azimuths that are passed in *args
+            """
+            while True:
+                break
+            # while True:
+            #     # fixme: increase timeout
+            #     xargs = args_queue.get(timeout=1)
+            #     # if args_queue.empty():
+            #     if xargs == "TERMINATOR":
+            #         self._logger.info("Terminated")
+            #         break
+            #     try:
+            #         _idx, _args = xargs[0], xargs[1:]
+            #         solver_init_value = np.array([1. / 10000.])
+            #         solution, _, ier, _ = scipy.optimize.fsolve(potential_fn, solver_init_value, full_output=True,
+            #                                                     args=_args, xtol=1e-12)
+            #         result_queue.put([_idx, solution[0]])
+            #     except Exception as we:
+            #         error_queue.put(we)
+            #         break
 
-        args = [tuple(precalc_vals[ii, :]) for ii in range(np.shape(precalc_vals)[0])]
-        args = [(fn,) + arg for arg in args]
+        # atexit.register(kill_get_surface_point_worker, get_surface_point_worker)
 
+        phi, theta, components_distance, precalc_fn, potential_fn = args
+        precalc_vals = precalc_fn(*(components_distance, phi, theta))
+        potential_fn = "potential_primary_fn" if potential_fn == self.potential_primary_fn else "secondary_primary_fn"
+        potential_fn = getattr(self, potential_fn)
+
+        preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
         n_threads = config.NUMBER_OF_THREADS
-        arg_queue = Queue(maxsize=len(args) + n_threads)
-        result_queue = Queue()
-        error_queue = Queue()
+        # args_queue = Queue(maxsize=len(preacalc_vals_args) + n_threads)
+        # result_queue = Queue()
+        q = Queue()
 
-        threads = list()
+        procs = list()
         try:
-            for ii in range(np.shape(precalc_vals)[0]):
-                arg_queue.put((fn,) + tuple(precalc_vals[ii, :]))
-
+            for idx, preacalc_vals_arg in enumerate(preacalc_vals_args):
+                # args_queue.put((idx, ) + preacalc_vals_arg)
+                q.put(preacalc_vals_arg)
             for _ in range(n_threads):
-                arg_queue.put("TERMINATOR")
-
+                q.put('TERMINATOR')
+                # args_queue.put("TERMINATOR")
             self._logger.debug("Initialising multithread surface point solver.")
             for _ in range(n_threads):
-                t = Thread(target=self.get_surface_point_multithread, args=(arg_queue, error_queue, result_queue))
-                threads.append(t)
-                t.daemon = True
-                t.start()
-
+                p = Process(target=get_surface_point_worker)
+                procs.append(p)
+                p.daemon = True
+                p.start()
+            # args_queue.close()
+            # args_queue.join_thread()
+            #
+            # result_queue.close()
+            # result_queue.join_thread()
+            #
+            self._logger.info("All threads are running")
+            for p in procs:
+                p.join()
         except KeyboardInterrupt:
             raise
         finally:
-            if not error_queue.empty():
-                raise error_queue.get()
+            pass
+            # if not error_queue.empty():
+            #     raise error_queue.get(timeout=1)
 
-        pool = Pool(processes=config.NUMBER_OF_THREADS)
+        # result = [val for val in utils.IterableQueue(result_queue)]
+        # result = sorted(result, key=lambda x: x[0])
+        # print(result)
+        # q.close()
+        # q.join_thread()
 
-        # r = self.get_surface_point_multithread(*args[0])
-
-        # p = pool.apply_async(self.get_surface_point_multithread, args=args)
-        radius = pool.starmap(self.get_surface_point_multithread, args)
-        # radius = p.get()
-        return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
+        # pool = Pool(processes=config.NUMBER_OF_THREADS)
+        #
+        # # r = self.get_surface_point_multithread(*args[0])
+        #
+        # # p = pool.apply_async(self.get_surface_point_multithread, args=args)
+        # radius = pool.starmap(self.get_surface_point_multithread, args)
+        # # radius = p.get()
+        # return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
     def r_solving_thread(self, *args):
         # phi, theta, components_distance, precalc, fn = args

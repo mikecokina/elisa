@@ -1,8 +1,8 @@
-from queue import Empty
-
 import numpy as np
 import scipy as sp
 import re
+
+from queue import Empty
 from copy import copy
 from scipy.spatial import distance_matrix as dstm
 
