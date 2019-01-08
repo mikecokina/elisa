@@ -1468,7 +1468,6 @@ class BinarySystem(System):
                     result_list.append([_idx, solution[0]])
                 except Exception as we:
                     error_list.append(we)
-                    break
 
         phi, theta, components_distance, precalc_fn, potential_fn = args
         precalc_vals = precalc_fn(*(components_distance, phi, theta))
