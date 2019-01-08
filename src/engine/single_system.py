@@ -1055,7 +1055,7 @@ class SingleSystem(System):
                     spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                  temperatures=spot.temperatures)
 
-    def compute_lc(self):
+    def compute_lightcurve(self):
         pass
 
     def get_info(self):

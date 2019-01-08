@@ -86,7 +86,7 @@ class System(metaclass=ABCMeta):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @abstractmethod
-    def compute_lc(self):
+    def compute_lightcurve(self):
         pass
 
     @abstractmethod
