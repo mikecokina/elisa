@@ -44,7 +44,6 @@ from engine.system import System
 from multiprocessing import Queue, Manager
 from multiprocessing import Process
 
-from multiprocessing import Pool
 
 # temporary
 from time import time
@@ -1433,6 +1432,38 @@ class BinarySystem(System):
         r = np.array(r)
         return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
+    @staticmethod
+    def get_surface_points_queue_writer(*args):
+        args_queue, preacalc_vals_args, n_threads = args
+        for idx, preacalc_vals_arg in enumerate(preacalc_vals_args):
+            args_queue.put((idx,) + preacalc_vals_arg)
+        for _ in range(n_threads):
+            args_queue.put("TERMINATOR")
+
+    @staticmethod
+    def get_surface_points_worker(*args):
+        """
+        function solves radius for given azimuths that are passed in *args
+        """
+        args_queue, result_list, error_list, potential_fn = args
+        while True:
+            # fixme: increase timeout
+            try:
+                xargs = args_queue.get(timeout=1)
+            except Empty:
+                continue
+
+            if xargs == "TERMINATOR":
+                break
+            try:
+                _idx, _args = xargs[0], xargs[1:]
+                solver_init_value = np.array([1. / 10000.])
+                solution, _, ier, _ = scipy.optimize.fsolve(potential_fn, solver_init_value, full_output=True,
+                                                            args=_args, xtol=1e-12)
+                result_list.append([_idx, solution[0]])
+            except Exception as we:
+                error_list.append(we)
+
     def get_surface_points_multiproc(self, *args):
         """
         function solves radius for given azimuths that are passed in *argss via multithreading approach
@@ -1440,34 +1471,6 @@ class BinarySystem(System):
         :param args:
         :return:
         """
-        def writer():
-            for idx, preacalc_vals_arg in enumerate(preacalc_vals_args):
-                args_queue.put((idx, ) + preacalc_vals_arg)
-            for _ in range(n_threads):
-                args_queue.put("TERMINATOR")
-
-        def worker():
-            """
-            function solves radius for given azimuths that are passed in *args
-            """
-            while True:
-                # fixme: increase timeout
-                try:
-                    xargs = args_queue.get(timeout=1)
-                except Empty:
-                    continue
-
-                if xargs == "TERMINATOR":
-                    self._logger.debug("Worker terminated")
-                    break
-                try:
-                    _idx, _args = xargs[0], xargs[1:]
-                    solver_init_value = np.array([1. / 10000.])
-                    solution, _, ier, _ = scipy.optimize.fsolve(potential_fn, solver_init_value, full_output=True,
-                                                                args=_args, xtol=1e-12)
-                    result_list.append([_idx, solution[0]])
-                except Exception as we:
-                    error_list.append(we)
 
         phi, theta, components_distance, precalc_fn, potential_fn = args
         precalc_vals = precalc_fn(*(components_distance, phi, theta))
@@ -1485,14 +1488,16 @@ class BinarySystem(System):
 
         jobs = list()
 
-        writer_proc = Process(target=writer)
+        writer_proc = Process(target=self.get_surface_points_queue_writer,
+                              args=(args_queue, preacalc_vals_args, n_threads))
         writer_proc.daemon = True
         writer_proc.start()
         jobs.append(writer_proc)
 
         try:
             for _ in range(n_threads):
-                p = Process(target=worker)
+                p = Process(target=self.get_surface_points_worker,
+                            args=(args_queue, result_list, error_list, potential_fn))
                 jobs.append(p)
                 p.daemon = True
                 p.start()
