@@ -1471,7 +1471,7 @@ class BinarySystem(System):
 
         phi, theta, components_distance, precalc_fn, potential_fn = args
         precalc_vals = precalc_fn(*(components_distance, phi, theta))
-        potential_fn = "potential_primary_fn" if potential_fn == self.potential_primary_fn else "secondary_primary_fn"
+        potential_fn = "potential_primary_fn" if potential_fn == self.potential_primary_fn else "potential_secondary_fn"
         potential_fn = getattr(self, potential_fn)
 
         preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
@@ -1506,8 +1506,8 @@ class BinarySystem(System):
         if len(error_list) > 0:
             raise Exception("error occured: {}".format("\n".join(error_list)))
 
-        result_list = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
-
+        r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
+        return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
     def mesh_over_contact(self, component=None, symmetry_output=False):
         """
