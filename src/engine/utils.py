@@ -184,7 +184,6 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
 #     return np.matmul(matrix, vector)
 
 
-
 def average_spacing_cgal(data=None, neighbours=6):
     """
     Average Spacing - calculates average distance between points using average distances to `neighbours` number of
@@ -342,6 +341,19 @@ def find_surounded(array, value):
     ret = sorted(ret)
     # test
     return ret if ret[0] < value < ret[1] else [value]
+
+
+def calculate_cos_theta(normals, line_of_sight_vector):
+    """
+    calculates cosine between two set of vectors
+    - matrix(N * 3), matrix(3) - cosine between each matrix(N * 3) and matrix(3)
+    - matrix(N * 3), matrix(M * 3) - cosine between each combination of matrix(N * 3) and matrix(M * 3)
+    :param normals:
+    :param line_of_sight_vector:
+    :return:
+    """
+    return np.sum(np.multiply(normals, line_of_sight_vector[None, :])) if np.ndim(line_of_sight_vector) == 1 else \
+        np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]))
 
 
 class IterableQueue(object):

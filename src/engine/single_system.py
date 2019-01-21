@@ -718,7 +718,7 @@ class SingleSystem(System):
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
 
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-            kwargs['inclination'] = kwargs.get('inclination', 90 - np.degrees(self.inclination))
+            kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
 
             kwargs['mesh'], _ = self.build_surface(return_surface=True)  # potom tu daj ked bude vediet skvrny
             denominator = (1*kwargs['axis_unit'].to(U.DISTANCE_UNIT))
@@ -737,7 +737,7 @@ class SingleSystem(System):
             denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
             kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
-            kwargs['inclination'] = kwargs.get('inclination', 90 - np.degrees(self.inclination))
+            kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
             kwargs['azimuth'] = kwargs.get('azimuth', 0)
 
         elif descriptor == 'surface':
@@ -749,7 +749,7 @@ class SingleSystem(System):
             kwargs['normals'] = kwargs.get('normals', False)
             kwargs['colormap'] = kwargs.get('colormap', None)
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-            kwargs['inclination'] = kwargs.get('inclination', 90 - np.degrees(self.inclination))
+            kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
             kwargs['azimuth'] = kwargs.get('azimuth', 0)
 
             output = self.build_surface(return_surface=True)
@@ -1054,6 +1054,12 @@ class SingleSystem(System):
                     self._logger.debug('Adding pulsations to temperature distribution of {} spot'.format(spot_index))
                     spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                  temperatures=spot.temperatures)
+
+    def get_total_flux(self, line_of_sight_vector):
+        # calculating visibility of the faces
+        cos_theta = np.sum(np.multiply(self.star.normals[:, None], line_of_sight_vector[None, :]))
+
+        pass
 
     def compute_lightcurve(self):
         pass

@@ -13,7 +13,7 @@ limbdarkening/*/*.csv
 limbdarkening/*.csv
 atmosphere/*/*.csv
 atmosphere/*.csv
-
+conf/elisa_conf.ini
 
 *.log
 __main__.py

@@ -38,6 +38,7 @@ ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
     "metallicity": "METALLICITY_LIST_ATM"
 }
 
+
 class AtmDataContainer(object):
     def __init__(self, model: pd.DataFrame, temperature: float, logg: float, metallicity: float):
         self.model = model
@@ -63,8 +64,8 @@ def atm_file_prefix_to_quantity_list(qname, atlas):
     """
     get list of available values for given atm domain quantity, e.g. list of temperatures available in atlas CK04
 
-    :param qname: str
-    :param atlas: str
+    :param qname: str - e.g. `temperature`, `metallicity`, `gravity`
+    :param atlas: str - e.g. `castelli` or `ck04`
     :return: list
     """
     atlas = validated_atlas(atlas)
@@ -76,12 +77,13 @@ def atm_file_prefix_to_quantity_list(qname, atlas):
         )
     )
 
+
 def validated_atlas(atlas):
     """
-    get validated atm atlas, e.g. `castelli` or `ck04` transform to `ck`, it match folder
+    get validated atm atlas, e.g. `castelli` or `ck04` transform to `ck`, it matches folder
     and file prefix for given atlas
 
-    :param atlas: str
+    :param atlas: str - e.g. `castelli` or `ck04`
     :return: str
     """
     try:
@@ -115,6 +117,7 @@ def get_metallicity_from_atm_table_filename(filename):
     value = float(m[1:]) / 10.0
     return value * sign
 
+
 def get_temperature_from_atm_table_filename(filename):
     return float(str(filename).split("_")[1])
 
@@ -132,7 +135,7 @@ def get_atm_table_filename(temperature, logg, metallicity, atlas):
     :param temperature: float
     :param logg: float
     :param metallicity: float
-    :param atlas: str
+    :param atlas: str- e.g. `castelli` or `ck04`
     :return: str
     """
     prefix = validated_atlas(atlas)
@@ -148,7 +151,7 @@ def get_atm_directory(metallicity, atlas):
     get table directory name based on given descriptive  evalues
 
     :param metallicity: float
-    :param atlas: str
+    :param atlas: str - e.g. `castelli` or `ck04`
     :return: str
     """
     prefix = validated_atlas(atlas)
@@ -164,7 +167,7 @@ def get_atm_table(temperature, logg, metallicity, atlas):
     :param temperature: float
     :param logg: float
     :param metallicity: float
-    :param atlas: str
+    :param atlas: str - e.g. `castelli` or `ck04`
     :return: pandas.DataFrame
     """
     directory = get_atm_directory(metallicity, atlas)
@@ -181,7 +184,7 @@ def get_list_of_all_atm_tables(atlas):
     """
     get list of all available atm table files stored in configured location
 
-    :param atlas: str
+    :param atlas: str - e.g. `castelli` or `ck04`
     :return: list
     """
     source = ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
@@ -193,11 +196,21 @@ def get_list_of_all_atm_tables(atlas):
     return matches
 
 
-def get_relevant_atm_tables(temperature, logg, metallicity, atlas):
+def get_relevant_atm_tables(temperature, logg, metallicity, atlas, method):
     pass
 
 
 def nearest_atm_tables_list(temperature, logg, metallicity, atlas):
+    """
+    returns files that contains atmospheric model for parameters closest to the given atmospheric parameters
+    `temperature`, `logg` and `metallicity`
+
+    :param temperature: list
+    :param logg: list
+    :param metallicity: list
+    :param atlas: str - e.g. `castelli` or `ck04`
+    :return:
+    """
     atlas = validated_atlas(atlas)
 
     t_array = atm_file_prefix_to_quantity_list("temperature", atlas)
@@ -224,8 +237,17 @@ def nearest_atm_tables_list(temperature, logg, metallicity, atlas):
 
 
 def nearest_atm_tables(temperature, logg, metallicity, atlas):
-    # todo: make configurable
-    n_threads = 4
+    """
+    returns spectrum profile for the atmospheric model that is the closest to the given parameters `temperature`, `logg`
+    and `metallicity`
+
+    :param temperature: list
+    :param logg: list
+    :param metallicity: list
+    :param atlas: str - e.g. `castelli` or `ck04`
+    :return:
+    """
+    n_threads = config.NUMBER_OF_THREADS
 
     fpaths = nearest_atm_tables_list(temperature, logg, metallicity, atlas)
 
@@ -282,6 +304,11 @@ def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_
 
 
 def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: list):
+    """
+    returns bolometric intensity
+    :param atm_data_containers:
+    :return:
+    """
     return [
         np.pi * integrate.simps(adc.model["flux"] * adc.flux_to_si_mult,
                                 adc.model["wave"] * adc.wave_to_si_mult)

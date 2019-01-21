@@ -1290,9 +1290,8 @@ class BinarySystem(System):
 
         # calculating mesh in cartesian coordinates for quarter of the star
         args = phi, theta, components_distance, precalc_fn, potential_fn
-        points_q = self.get_surface_points_multiproc(*args)
-
-        # points_q = self.get_surface_points(*args)
+        points_q = self.get_surface_points(*args) if config.NUMBER_OF_THREADS == 1 else \
+            self.get_surface_points_multiproc(*args)
 
         equator = points_q[:separator[0], :]
         # assigning equator points and nearside and farside points A and B
