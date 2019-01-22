@@ -13,7 +13,7 @@ from copy import copy
 
 
 class SingleSystem(System):
-    KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'polar_log_g']
+    KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'polar_log_g', 'reference_time']
     OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
@@ -32,9 +32,9 @@ class SingleSystem(System):
         self.star = kwargs['star']
 
         # default values of properties
-        self._inclination = None
         self._polar_log_g = None
         self._rotation_period = None
+        self._reference_time = None
 
         # testing if parameters were initialized
         utils.check_missing_kwargs(SingleSystem.KWARGS, kwargs, instance_of=SingleSystem)
@@ -265,38 +265,6 @@ class SingleSystem(System):
                              .format(rotation_period))
 
     @property
-    def inclination(self):
-        """
-        inclination of single star system
-
-        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        """
-        return self._inclination
-
-    @inclination.setter
-    def inclination(self, inclination):
-        """
-        set orbit inclination of binary star system, if unit is not specified, default unit is assumed
-
-        :param inclination: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-
-        if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(U.ARC_UNIT))
-        elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64(inclination)
-        else:
-            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-        if not 0 <= self.inclination <= c.PI:
-            raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
-
-        self._logger.debug("Setting property inclination "
-                           "of class instance {} to {}".format(SingleSystem.__name__, self._inclination))
-
-    @property
     def polar_log_g(self):
         """
         returns logarithm of polar surface gravity in SI
@@ -321,6 +289,33 @@ class SingleSystem(System):
         else:
             raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+
+    @property
+    def reference_time(self):
+        """
+        returns time of 0th longitude passing plane defined by rotation axis and line of sight
+
+        :return: numpy.float
+        """
+        return self._reference_time
+
+    @reference_time.setter
+    def reference_time(self, reference_time):
+        """
+        setter for reference time of 0th longitude passing plane defined by rotation axis and line of sight
+
+        :param reference_time: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        if isinstance(reference_time, u.quantity.Quantity):
+            self._reference_time = np.float64(reference_time.to(U.PERIOD_UNIT))
+        elif isinstance(reference_time, (int, np.int, float, np.float)):
+            self._reference_time = np.float64(reference_time)
+        else:
+            raise TypeError('Input of variable `reference_time` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        self._logger.debug("Setting property primary_minimum_time "
+                           "of class instance {} to {}".format(SingleSystem.__name__, self._reference_time))
 
     def calculate_polar_radius(self):
         """
@@ -1055,14 +1050,11 @@ class SingleSystem(System):
                     spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                  temperatures=spot.temperatures)
 
-    def get_total_flux(self, line_of_sight_vector):
-        # calculating visibility of the faces
-        cos_theta = np.sum(np.multiply(self.star.normals[:, None], line_of_sight_vector[None, :]))
-
-        pass
-
-    def compute_lightcurve(self):
-        pass
+    def compute_lightcurve(self, time):
+        # calculating line of sights vector from time vector
+        # defining
+        line_of_sight = utils.get_line_of_sight(time, self.reference_time, self.inclination, self.rotation_period)
+        print(line_of_sight)
 
     def get_info(self):
         pass

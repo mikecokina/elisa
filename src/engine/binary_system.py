@@ -37,6 +37,7 @@ from engine import graphics
 from engine import ld
 from engine import units
 from engine import utils
+from engine import ld
 from engine.orbit import Orbit
 from engine.star import Star
 from engine.system import System
@@ -78,7 +79,6 @@ class BinarySystem(System):
         self._mass_ratio = self.secondary.mass / self.primary.mass
 
         # default values of properties
-        self._inclination = None
         self._period = None
         self._eccentricity = None
         self._argument_of_periastron = None
@@ -124,7 +124,10 @@ class BinarySystem(System):
             self.secondary.discretization_factor = \
                 self.primary.discretization_factor * self.primary.polar_radius / self.secondary.polar_radius * u.rad
 
-            # TODO: retrieval of limb darkenig coefficients
+        # TODO: retrieval of limb darkenig coefficients
+        # self.primary.ld_coeff_bolometric = ld.interpolate_on_ld_grid('bolometric',
+        #                                                              self.primary.t_eff,
+        #                                                              self.primary.)
 
     @property
     def morphology(self):
@@ -193,7 +196,7 @@ class BinarySystem(System):
     @period.setter
     def period(self, period):
         """
-        set orbital period of bonary star system, if unit is not specified, default period unit is assumed
+        set orbital period of binary star system, if unit is not specified, default period unit is assumed
 
         :param period: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
@@ -207,38 +210,6 @@ class BinarySystem(System):
                             'nor astropy.unit.quantity.Quantity instance.')
         self._logger.debug("Setting property period "
                            "of class instance {} to {}".format(BinarySystem.__name__, self._period))
-
-    @property
-    def inclination(self):
-        """
-        inclination of binary star system
-
-        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        """
-        return self._inclination
-
-    @inclination.setter
-    def inclination(self, inclination):
-        """
-        set orbit inclination of binary star system, if unit is not specified, default unit is assumed
-
-        :param inclination: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-
-        if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(units.ARC_UNIT))
-        elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64((inclination * u.deg).to(units.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-        if not 0 <= self.inclination <= const.PI:
-            raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
-
-        self._logger.debug("Setting property inclination "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._inclination))
 
     @property
     def eccentricity(self):

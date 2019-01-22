@@ -5,6 +5,7 @@ import re
 from queue import Empty
 from copy import copy
 from scipy.spatial import distance_matrix as dstm
+from engine import const as c
 
 # temporary
 from time import time
@@ -354,6 +355,27 @@ def calculate_cos_theta(normals, line_of_sight_vector):
     """
     return np.sum(np.multiply(normals, line_of_sight_vector[None, :])) if np.ndim(line_of_sight_vector) == 1 else \
         np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]))
+
+
+def get_line_of_sight(time, ref_t, inclination, period):
+    """
+    returns line of sight vector for given time of observation times `time`, using reference time `ref_t` (time of
+    primary minima or 0th longitude passing plane given by rotation axis and line of sight), inclination of the system
+    and period of the rotation of given system
+
+    :param time: array - times of observations
+    :param ref_t: float - reference time (e.g. primary minimum)
+    :param inclination:
+    :param period:
+    :return:
+    """
+    phase = np.divide((time - ref_t), period) % 1
+    phi = c.FULL_ARC * phase
+    line_of_sight_spherical = np.empty((len(time), 3), dtype=np.float)
+    line_of_sight_spherical[:, 0] = 1
+    line_of_sight_spherical[:, 1] = c.FULL_ARC * phase
+    line_of_sight_spherical[:, 2] = inclination
+    return spherical_to_cartesian(line_of_sight_spherical)
 
 
 class IterableQueue(object):

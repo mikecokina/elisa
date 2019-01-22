@@ -19,7 +19,7 @@ class Star(Body):
     KWARGS = ['mass', 't_eff', 'gravity_darkening']
 
     OPTIONAL_KWARGS = ['surface_potential', 'polar_log_g', 'synchronicity', 'albedo', 'pulsations',
-                       'discretization_factor', 'spots']
+                       'discretization_factor', 'spots', 'metallicity']
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     # this will be removed after full implementation of config system
@@ -48,6 +48,7 @@ class Star(Body):
         self._polar_potential_gradient = None
         self._pulsations = None
         self._filling_factor = None
+        self._metallicity = None
         self.kwargs = kwargs
 
         utils.check_missing_kwargs(Star.KWARGS, kwargs, instance_of=Star)
@@ -60,7 +61,29 @@ class Star(Body):
                 setattr(self, kwarg, kwargs[kwarg])
 
     @property
+    def metallicity(self):
+        """
+        returns metallicity of the star, measured as log10(N_Fe/N_H)
+        :return:
+        """
+        return self._metallicity
+
+    @metallicity.setter
+    def metallicity(self, metallicity):
+        if isinstance(metallicity, (int, np.int, float, np.float)):
+            self._metallicity = metallicity
+        else:
+            raise TypeError('Input of variable `metallicity` is not (np.)int or (np.)float '
+                            'instance.')
+        self._logger.debug("Setting property metalllicity "
+                           "of class instance {} to {}".format(Star.__name__, self._metallicity))
+
+    @property
     def log_g(self):
+        """
+        returns surface gravity array
+        :return:
+        """
         return self._log_g
 
     @log_g.setter

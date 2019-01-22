@@ -164,7 +164,6 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         components_to_plot='secondary',
 #         # plot_axis=False
 #         )
-print
 
 # bs.plot(descriptor='surface',
 #         phase=0.4,

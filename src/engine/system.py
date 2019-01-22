@@ -8,8 +8,8 @@ from engine import units as U
 from engine import utils
 from scipy.optimize import fsolve
 from copy import copy
-from scipy.spatial import KDTree
 from engine.body import Body
+from engine import const as c
 
 #temporary
 from time import time
@@ -38,6 +38,8 @@ class System(metaclass=ABCMeta):
             System.ID += 1
         else:
             self._name = str(name)
+
+        self._inlination = None
 
     @property
     def name(self):
@@ -84,6 +86,38 @@ class System(metaclass=ABCMeta):
         else:
             raise TypeError('Value of variable `gamma` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+
+    @property
+    def inclination(self):
+        """
+        inclination of system, angle between z axis and line of sight
+
+        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        """
+        return self._inclination
+
+    @inclination.setter
+    def inclination(self, inclination):
+        """
+        set orbit inclination of system, if unit is not specified, default unit is assumed
+
+        :param inclination: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+
+        if isinstance(inclination, u.quantity.Quantity):
+            self._inclination = np.float64(inclination.to(U.ARC_UNIT))
+        elif isinstance(inclination, (int, np.int, float, np.float)):
+            self._inclination = np.float64(inclination)
+        else:
+            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
+        if not 0 <= self.inclination <= c.PI:
+            raise ValueError('Inclination value of {} is out of bounds (0, pi).'.format(self.inclination))
+
+        self._logger.debug("Setting property inclination "
+                           "of class instance {} to {}".format(System.__name__, self._inclination))
 
     @abstractmethod
     def compute_lightcurve(self):
