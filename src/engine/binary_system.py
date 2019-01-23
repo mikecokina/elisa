@@ -1450,7 +1450,7 @@ class BinarySystem(System):
         preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
         n_threads = config.NUMBER_OF_THREADS
 
-        args_queue = Queue(maxsize=len(preacalc_vals_args) + n_threads)
+        args_queue = Queue(maxsize=int(len(preacalc_vals_args) + n_threads))
         manager = Manager()
 
         result_list = manager.list()
