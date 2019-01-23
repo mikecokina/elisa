@@ -12,10 +12,11 @@ config.set_up_logging()
 
 class Observer(object):
     def __init__(self, passband, system):
+        self._logger = logging.getLogger(Observer.__name__)
+        self._logger.info("initialising Observer instance")
         self._passband = passband
         # specifying what system is observed
         self._system = system  # co je observe?
-        self._logger = logging.getLogger(Observer.__name__)
 
     @property
     def passband(self):
@@ -37,8 +38,17 @@ class Observer(object):
         file_path = os.path.join(dirname(dirname(dirname(__file__))), 'passband', str(passband) + '.csv')
         return pd.read_csv(file_path)
 
-    def compute_lightcurve(self):
-        pass
+    def observe(self, from_phase, to_phase):
+        self._logger.info("observetaion start w/ following configuration {<add>}")
+
+        # generate phase points
+        # start multiprocess
+        # start writer and write generator of binary systems
+        # start worker, init yielded binary system
+        # build all in system
+        # compute lightcurve point
+        print(self._system.initial_kwargs)
+        self._logger.info("observation finished")
 
     def apply_filter(self):
         pass

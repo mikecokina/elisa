@@ -28,7 +28,7 @@ class System(metaclass=ABCMeta):
 
     def __init__(self, name=None, **kwargs):
         self._logger = logging.getLogger(System.__name__)
-        self._initial_kwargs = kwargs.copy()
+        self.initial_kwargs = kwargs.copy()
 
         # default params
         self._gamma = None
