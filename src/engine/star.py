@@ -9,6 +9,8 @@ from engine import const as c
 from copy import copy
 from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
+from astropy import units as u
+from engine import units as U
 
 
 # temporary
@@ -49,6 +51,7 @@ class Star(Body):
         self._pulsations = None
         self._filling_factor = None
         self._metallicity = None
+        self._polar_log_g = None
         self.kwargs = kwargs
 
         utils.check_missing_kwargs(Star.KWARGS, kwargs, instance_of=Star)
@@ -59,6 +62,34 @@ class Star(Body):
                 self._logger.debug("Setting property {} "
                                    "of class instance {} to {}".format(kwarg, Star.__name__, kwargs[kwarg]))
                 setattr(self, kwarg, kwargs[kwarg])
+
+    @property
+    def polar_log_g(self):
+        """
+        returns logarithm of polar surface gravity in SI
+
+        :return: float
+        """
+        return self._polar_log_g
+
+    @polar_log_g.setter
+    def polar_log_g(self, log_g):
+        """
+        setter for polar surface gravity, if unit is not specified in astropy.units format, value in m/s^2 is assumed
+
+        :param log_g:
+        :return:
+        """
+        if isinstance(log_g, u.quantity.Quantity):
+            self._polar_log_g = np.float64(log_g.to(U.LOG_ACCELERATION_UNIT))
+        elif isinstance(log_g, (int, np.int, float, np.float)):
+            # self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(U.LOG_ACCELERATION_UNIT))
+            self._polar_log_g = np.float64(log_g)
+        else:
+            raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        self._logger.debug("Setting property polar_log_g "
+                           "of class instance {} to {}".format(Star.__name__, self._polar_log_g))
 
     @property
     def metallicity(self):

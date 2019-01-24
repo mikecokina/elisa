@@ -1,4 +1,4 @@
-from engine.binary_system import BinarySystem
+from engine.binary_system.binary_system import BinarySystem
 from engine.single_system import SingleSystem
 from engine.star import Star
 from engine.planet import Planet
@@ -109,7 +109,7 @@ bs = BinarySystem(primary=primary,
                   secondary=secondary,
                   argument_of_periastron=90*u.deg,
                   gamma=0*u.km/u.s,
-                  period=1*u.d,
+                  period=2*u.d,
                   eccentricity=0.0,
                   inclination=80*u.deg,
                   primary_minimum_time=0.0*u.d,
@@ -142,7 +142,7 @@ bs.build_surface_map(colormap='temperature', components_distance=components_min_
 # print(np.shape(dists), np.shape(dist_vect))
 # dists = distance_matrix(bs.primary.points, bs.secondary.points)
 # print(np.shape(dists))
-
+bs.calculate_polar_gravity_acceleration('primary', 1.0)
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 crit_primary_potential = bs.critical_potential('primary', components_distance=components_min_distance)
 print('Critical potential for primary component: {}'.format(crit_primary_potential))
@@ -165,18 +165,18 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         # plot_axis=False
 #         )
 
-# bs.plot(descriptor='surface',
-#         phase=0.4,
-#         # components_to_plot='primary',
-#         components_to_plot='secondary',
-#         # edges=True,
-#         # normals=True,
-#         # colormap='gravity_acceleration',
-#         colormap='temperature',
-#         # plot_axis=False,
-#         # face_mask_primary=a,
-#         # face_mask_secondary=b,
-#         # inclination=crit_incl,
-#         # azimuth=azim[0],
-#         )
+bs.plot(descriptor='surface',
+        phase=0.4,
+        # components_to_plot='primary',
+        # components_to_plot='secondary',
+        # edges=True,
+        # normals=True,
+        # colormap='gravity_acceleration',
+        colormap='temperature',
+        # plot_axis=False,
+        # face_mask_primary=a,
+        # face_mask_secondary=b,
+        # inclination=crit_incl,
+        # azimuth=azim[0],
+        )
 

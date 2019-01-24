@@ -13,7 +13,7 @@ from copy import copy
 
 
 class SingleSystem(System):
-    KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'polar_log_g', 'reference_time']
+    KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'reference_time']
     OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
@@ -32,7 +32,6 @@ class SingleSystem(System):
         self.star = kwargs['star']
 
         # default values of properties
-        self._polar_log_g = None
         self._rotation_period = None
         self._reference_time = None
 
@@ -61,7 +60,6 @@ class SingleSystem(System):
 
         # calculation of dependent parameters
         self._angular_velocity = self.angular_velocity(self.rotation_period)
-        self.star._polar_log_g = self.polar_log_g
         # self.star.polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
         # this is also check if star surface is closed
         self.init_radii()
@@ -263,32 +261,6 @@ class SingleSystem(System):
         if self._rotation_period <= 0:
             raise ValueError('Period of rotation must be non-zero positive value. Your value: {0}.'
                              .format(rotation_period))
-
-    @property
-    def polar_log_g(self):
-        """
-        returns logarithm of polar surface gravity in SI
-
-        :return: float
-        """
-        return self._polar_log_g
-
-    @polar_log_g.setter
-    def polar_log_g(self, log_g):
-        """
-        setter for polar surface gravity, if unit is not specified in astropy.units format, value in m/s^2 is assumed
-
-        :param log_g:
-        :return:
-        """
-        if isinstance(log_g, u.quantity.Quantity):
-            self._polar_log_g = np.float64(log_g.to(U.LOG_ACCELERATION_UNIT))
-        elif isinstance(log_g, (int, np.int, float, np.float)):
-            # self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(U.LOG_ACCELERATION_UNIT))
-            self._polar_log_g = np.float64(log_g)
-        else:
-            raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
 
     @property
     def reference_time(self):
