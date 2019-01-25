@@ -577,6 +577,16 @@ class Body(metaclass=ABCMeta):
         else:
             return utils.triangle_areas(self.faces, self.points)
 
+    def calculate_all_areas(self):
+        """
+        calculates areas for all faces on the surface including spots and assigns values to its corresponding variables
+        :return:
+        """
+        self.areas = self.calculate_areas()
+        if self.spots:
+            for spot_index, spot in self.spots.items():
+                spot.areas = spot.calculate_areas()
+
     def return_whole_surface(self):
         """
         returns all points and faces of the whole star

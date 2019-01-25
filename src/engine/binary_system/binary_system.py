@@ -981,10 +981,12 @@ class BinarySystem(System):
         :return: surface gravity or log10 of surface gravity
         """
         component_instance = getattr(self, component)
-        generalised_gradient = \
+        component_instance.polar_potential_gradient_magnitude = \
             self.calculate_polar_potential_gradient_magnitude(component=component,
                                                               components_distance=components_distance)
-        gradient = const.G * component_instance.mass * generalised_gradient / np.power(self.semi_major_axis, 2)
+        gradient = \
+            const.G * component_instance.mass * component_instance.polar_potential_gradient_magnitude / \
+            np.power(self.semi_major_axis, 2)
         gradient = gradient / self.mass_ratio if component == 'secondary' else gradient
         return np.log10(gradient) if logg else gradient
 
@@ -2301,57 +2303,20 @@ class BinarySystem(System):
 
             # compute and assign surface areas of elements if missing
             self._logger.debug('Computing surface areas of {} elements.'.format(_component))
-            component_instance.areas = component_instance.calculate_areas()
+            component_instance.calculate_all_areas()
 
-            # compute and assign potential gradient magnitudes for elements if missing
-            self._logger.debug('Computing potential gradient magnitudes distribution of {} component.'
-                               ''.format(_component))
-            component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
-                component=_component, components_distance=components_distance)
-
-            self._logger.debug('Computing magnitude of {} polar potential gradient.'.format(_component))
-            component_instance.polar_potential_gradient_magnitude = \
-                self.calculate_polar_potential_gradient_magnitude(
-                    component=_component, components_distance=components_distance)
+            self.build_surface_gravity(component=_component,
+                                       components_distance=components_distance)
 
             # compute and assign temperature of elements
             if colormap == 'temperature':
                 self._logger.debug('Computing effective temprature distibution of {} component.'.format(_component))
-                component_instance.temperatures = component_instance.calculate_effective_temperatures()
+                # component_instance.temperatures = component_instance.calculate_effective_temperatures()
+                self.build_temperature_distribution(component=_component, components_distance=components_distance)
                 if component_instance.pulsations:
                     self._logger.debug('Adding pulsations to surface temperature distribution '
                                        'of the {} component.'.format(_component))
                     component_instance.temperatures = component_instance.add_pulsations()
-
-            if component_instance.spots:
-                for spot_index, spot in component_instance.spots.items():
-                    self._logger.debug('Calculating surface areas of {} component / {} spot.'.format(_component,
-                                                                                                     spot_index))
-                    spot.areas = spot.calculate_areas()
-
-                    self._logger.debug('Calculating distribution of potential gradient magnitudes of {} component / '
-                                       '{} spot.'.format(_component, spot_index))
-                    spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
-                        component=_component,
-                        components_distance=components_distance,
-                        points=spot.points, faces=spot.faces)
-
-                    if colormap == 'temperature':
-                        self._logger.debug('Computing temperature distribution of {} component / {} spot'
-                                           ''.format(_component, spot_index))
-                        spot.temperatures = spot.temperature_factor * \
-                                            component_instance.calculate_effective_temperatures(
-                                                gradient_magnitudes=spot.potential_gradient_magnitudes)
-                        if component_instance.pulsations:
-                            self._logger.debug('Adding pulsations to temperature distribution of {} component / {} spot'
-                                               ''.format(_component, spot_index))
-                            spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
-                                                                                  temperatures=spot.temperatures)
-
-                if colormap == 'temperature':
-                    self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
-                                       ''.format(component))
-                    component_instance.renormalize_temperatures()
 
         # implementation of reflection effect
         if colormap == 'temperature':
@@ -2617,34 +2582,6 @@ class BinarySystem(System):
         # redistributing temperatures back to the parent objects
         self.redistribute_temperatures(temperatures)
 
-    def build_log_of_cgs_surface_gravity(self, component=None, components_distance=None):
-        # todo: consider to put this function into build surface gravity
-        # what it is for
-        if components_distance is None:
-            raise ValueError('Component distance value was not supplied.')
-
-        component = static.component_to_list(component)
-        for _component in component:
-            self._logger.debug('Computing surface cgs unit gravity of {} elements.'.format(_component))
-            component_instance = getattr(self, _component)
-            cgs_polar_gravity = self.polar_gravity_acceleration(_component, components_distance)
-
-            polar_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude(_component,
-                                                                                         components_distance)
-            gravity_scalling_factor = cgs_polar_gravity / polar_gradient_magnitude
-
-            component_instance._log_g = np.log10(
-                gravity_scalling_factor * component_instance.potential_gradient_magnitudes)
-
-            if component_instance.spots:
-                for spot_index, spot in component_instance.spots.items():
-                    self._logger.debug('Calculating surface cgs unit gravity of {} component / {} spot.'
-                                       ''.format(_component, spot_index))
-                    self._logger.debug('Calculating distribution of potential gradient magnitudes of {} component / '
-                                       '{} spot.'.format(_component, spot_index))
-
-                    spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
-
     def get_visibility_tests(self, centres, q_test, xlim, component):
         """
         function calculates tests for visibilities of faces from other component, used in reflection effect
@@ -2739,6 +2676,12 @@ class BinarySystem(System):
         return d_gamma
 
     def redistribute_temperatures(self, temperatures):
+        """
+        in this function array of `temperatures` is parsed into chunks that belong to stellar surface and spots
+
+        :param temperatures: np.array - temperatures from the whole surface, ordered: surface, spot1, spot2...
+        :return:
+        """
         for _component in ['primary', 'secondary']:
             component_instance = getattr(self, _component)
             counter = len(component_instance.temperatures)
@@ -2764,35 +2707,32 @@ class BinarySystem(System):
         for _component in component:
             component_instance = getattr(self, _component)
 
-            self._logger.debug('Computing surface areas of {} elements.'.format(_component))
-            component_instance.areas = component_instance.calculate_areas()
+            polar_gravity = self.calculate_polar_gravity_acceleration(_component, components_distance, logg=False)
 
-            # consider to recompute polar radius (or remember consider this problem in case of eccentric orbit)
-            # edit: you should do that far before this function
+            component_instance.polar_potential_gradient_magnitude = \
+                self.calculate_polar_potential_gradient_magnitude(_component, components_distance)
+            gravity_scalling_factor = polar_gravity / component_instance.polar_potential_gradient_magnitude
 
-            # compute and assign potential gradient magnitudes for elements if missing
             self._logger.debug('Computing potential gradient magnitudes distribution of {} component.'
                                ''.format(_component))
             component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
                 component=_component, components_distance=components_distance)
 
-            self._logger.debug('Computing magnitude of {} polar potential gradient.'.format(_component))
-            component_instance.polar_potential_gradient_magnitude = \
-                self.calculate_polar_potential_gradient_magnitude(
-                    component=_component, components_distance=components_distance)
+            component_instance._log_g = np.log10(
+                gravity_scalling_factor * component_instance.potential_gradient_magnitudes)
 
             if component_instance.spots:
                 for spot_index, spot in component_instance.spots.items():
-                    self._logger.debug('Calculating surface areas of {} component / {} spot.'.format(_component,
-                                                                                                     spot_index))
-                    spot.areas = spot.calculate_areas()
-
+                    self._logger.debug('Calculating surface SI unit gravity of {} component / {} spot.'
+                                       ''.format(_component, spot_index))
                     self._logger.debug('Calculating distribution of potential gradient magnitudes of {} component / '
                                        '{} spot.'.format(_component, spot_index))
                     spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
                         component=_component,
                         components_distance=components_distance,
                         points=spot.points, faces=spot.faces)
+
+                    spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
 
     def build_temperature_distribution(self, component=None, components_distance=None):
         """
@@ -2842,40 +2782,6 @@ class BinarySystem(System):
             component_instance = getattr(self, _component)
             component_instance.set_all_surface_centres()
             component_instance.set_all_normals(com=com_x[_component])
-
-    def polar_gravity_acceleration(self, component=None, components_distance=None):
-        if components_distance is None:
-            raise ValueError('Component distance value was not supplied.')
-
-        component = static.component_to_list(component)
-
-        for _componet in component:
-            components_instance = getattr(self, _componet)
-
-            mass_ratio = self.mass_ratio if _componet == "primary" else 1.0 / self.mass_ratio
-
-            polar_radius = components_instance.polar_radius
-            x_com = (mass_ratio * components_distance) / (1.0 + mass_ratio)
-            semi_major_axis = self.semi_major_axis.value
-
-            primary_mass, secondary_mass = self.primary.mass, self.secondary.mass
-            if _componet == "secondary":
-                primary_mass, secondary_mass = secondary_mass, primary_mass
-
-            r_vector = np.array([0.0, 0.0, polar_radius * semi_major_axis])
-            centrifugal_distance = np.array([x_com * semi_major_axis, 0.0, 0.0])
-            actual_distance = np.array([components_distance * semi_major_axis, 0., 0.])
-            h_vector = r_vector - actual_distance
-            angular_velocity = self.angular_velocity(components_distance=components_distance)
-
-            block_a = - ((const.G * primary_mass) / np.linalg.norm(r_vector) ** 3) * r_vector
-            block_b = - ((const.G * secondary_mass) / np.linalg.norm(h_vector) ** 3) * h_vector
-            block_c = - (angular_velocity ** 2) * centrifugal_distance
-
-            g = block_a + block_b + block_c
-
-            # magnitude of polar gravity acceleration in physical CGS units
-            return np.linalg.norm(g) * 1e2
 
     def angular_velocity(self, components_distance=None):
         if components_distance is None:

@@ -47,7 +47,7 @@ class Star(Body):
         self._equatorial_radius = None
         self._critical_surface_potential = None
         self._potential_gradient_magnitudes = None
-        self._polar_potential_gradient = None
+        self._polar_potential_gradient_magnitude = None
         self._pulsations = None
         self._filling_factor = None
         self._metallicity = None
@@ -268,7 +268,7 @@ class Star(Body):
 
         :return: float
         """
-        return self._polar_potential_gradient
+        return self._polar_potential_gradient_magnitude
 
     @polar_potential_gradient_magnitude.setter
     def polar_potential_gradient_magnitude(self, potential_gradient_magnitude):
@@ -276,7 +276,7 @@ class Star(Body):
         :param potential_gradient_magnitude: float
         :return:
         """
-        self._polar_potential_gradient = potential_gradient_magnitude
+        self._polar_potential_gradient_magnitude = potential_gradient_magnitude
 
     @property
     def filling_factor(self):
