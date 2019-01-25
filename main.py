@@ -82,22 +82,22 @@ pulsations_metadata = {'primary': [{'l': 4, 'm': 3, 'amplitude': 1000 * u.K, 'fr
 contact_pot = 3.3
 start_time = time()
 
-primary = Star(mass=2.0*u.solMass,
-               # surface_potential=2.7,
-               surface_potential=contact_pot,
+primary = Star(mass=3.321317*u.solMass,
+               surface_potential=9.16267,
+               # surface_potential=contact_pot,
                # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                synchronicity=1.0,
-               t_eff=10000*u.K,
+               t_eff=12500*u.K,
                gravity_darkening=1.0,
                discretization_factor=3,
                albedo=0.6
                )
-secondary = Star(mass=1.0*u.solMass,
-                 # surface_potential=5.0,
-                 surface_potential=contact_pot,
+secondary = Star(mass=1.898*u.solMass,
+                 surface_potential=8.68958,
+                 # surface_potential=contact_pot,
                  synchronicity=1.0,
-                 t_eff=6800*u.K,
+                 t_eff=8742*u.K,
                  gravity_darkening=1.0,
                  # discretization_factor=5,
                  # spots=spots_metadata['secondary'],
@@ -107,11 +107,11 @@ secondary = Star(mass=1.0*u.solMass,
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=90*u.deg,
-                  gamma=0*u.km/u.s,
-                  period=2*u.d,
+                  argument_of_periastron=0*u.deg,
+                  gamma=-2.34*u.km/u.s,
+                  period=4.74922*u.d,
                   eccentricity=0.0,
-                  inclination=80*u.deg,
+                  inclination=84.96*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0,
                   )
@@ -142,7 +142,11 @@ bs.build_surface_map(colormap='temperature', components_distance=components_min_
 # print(np.shape(dists), np.shape(dist_vect))
 # dists = distance_matrix(bs.primary.points, bs.secondary.points)
 # print(np.shape(dists))
-bs.calculate_polar_gravity_acceleration('primary', 1.0)
+logg_p = bs.calculate_polar_gravity_acceleration('primary', 1.0, logg=True)
+logg_s = bs.calculate_polar_gravity_acceleration('secondary', 1.0, logg=True)
+print('log g for primary: {}'.format(logg_p))
+print('log g for secondary: {}'.format(logg_s))
+
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 crit_primary_potential = bs.critical_potential('primary', components_distance=components_min_distance)
 print('Critical potential for primary component: {}'.format(crit_primary_potential))
@@ -165,18 +169,18 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         # plot_axis=False
 #         )
 
-bs.plot(descriptor='surface',
-        phase=0.4,
-        # components_to_plot='primary',
-        # components_to_plot='secondary',
-        # edges=True,
-        # normals=True,
-        # colormap='gravity_acceleration',
-        colormap='temperature',
-        # plot_axis=False,
-        # face_mask_primary=a,
-        # face_mask_secondary=b,
-        # inclination=crit_incl,
-        # azimuth=azim[0],
-        )
+# bs.plot(descriptor='surface',
+#         phase=0.4,
+#         # components_to_plot='primary',
+#         # components_to_plot='secondary',
+#         # edges=True,
+#         # normals=True,
+#         # colormap='gravity_acceleration',
+#         colormap='temperature',
+#         # plot_axis=False,
+#         # face_mask_primary=a,
+#         # face_mask_secondary=b,
+#         # inclination=crit_incl,
+#         # azimuth=azim[0],
+#         )
 

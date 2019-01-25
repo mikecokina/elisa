@@ -971,40 +971,22 @@ class BinarySystem(System):
         return np.power(np.power(domega_dx, 2) + np.power(domega_dz, 2), 0.5)
 
     def calculate_polar_gravity_acceleration(self, component, components_distance, logg=False):
+        """
+        calculates polar gravity acceleration for component of binary system, calculated from gradient of roche
+        potential d_Omega/dr using transformation g = d_Psi/dr = (GM_component/semi_major_axis**2) * d_Omega/dr
+        ( * 1/q in case of secondary component )
+        :param component: `primary` or `secondary`
+        :param components_distance: float (in SMA units)
+        :param logg: if true log g is returned
+        :return: surface gravity or log10 of surface gravity
+        """
         component_instance = getattr(self, component)
         generalised_gradient = \
             self.calculate_polar_potential_gradient_magnitude(component=component,
                                                               components_distance=components_distance)
-
         gradient = const.G * component_instance.mass * generalised_gradient / np.power(self.semi_major_axis, 2)
-        print(gradient)
-
-        # component_instance = getattr(self, component)
-        # distance = self.semi_major_axis * components_distance
-        # radius = self.semi_major_axis * component_instance.polar_radius
-        # print(radius)
-        # points = np.array([0., 0., radius]) if component == 'primary' \
-        #     else np.array([distance, 0., radius])
-        # r3 = np.power(np.linalg.norm(points), 3)
-        # r_hat3 = np.power(np.linalg.norm(points - np.array([distance, 0., 0.])), 3)
-        # if component == 'primary':
-        #     domega_dx = self.mass_ratio * distance / r_hat3 \
-        #                 - self.mass_ratio / np.power(distance, 2)
-        # elif component == 'secondary':
-        #     domega_dx = - points[0] / r3 + self.mass_ratio * (distance - points[0]) / r_hat3 \
-        #                 + 1. / np.power(distance, 2)
-        # else:
-        #     raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
-        #                      .format(component))
-        # domega_dz = - points[2] * (1. / r3 + self.mass_ratio / r_hat3)
-        # print(np.power(np.power(domega_dx, 2) + np.power(domega_dz, 2), 0.5))
-        # calculating polar gravity accelerations
-
-        # distance = component_distance * self.semi_major_axis  # transformation to SI
-        # angular_velocity_sqr = np.power(self.angular_velocity(distance), 2)
-        # ax = (const.G * self.secondary.mass * distance) / \
-        #      np.power(np.power(distance, 2) + np.power(self.primary.polar_radius, 2), 1.5) - \
-        #      (angular_velocity_sqr * distance * self.mass_ratio) / (self.mass_ratio + 1)
+        gradient = gradient / self.mass_ratio if component == 'secondary' else gradient
+        return np.log10(gradient) if logg else gradient
 
     def calculate_radius(self, *args):
         """
@@ -2320,11 +2302,6 @@ class BinarySystem(System):
             # compute and assign surface areas of elements if missing
             self._logger.debug('Computing surface areas of {} elements.'.format(_component))
             component_instance.areas = component_instance.calculate_areas()
-
-            # # compute and assign polar radius if missing
-            # self._logger.debug('Computing polar radius of {} component.'.format(_component))
-            # component_instance._polar_radius = self.calculate_polar_radius(
-            #     component=_component, components_distance=components_distance)
 
             # compute and assign potential gradient magnitudes for elements if missing
             self._logger.debug('Computing potential gradient magnitudes distribution of {} component.'
