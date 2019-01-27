@@ -47,6 +47,8 @@ VAN_HAMME_LD_TABLES = os.path.join(level_up(__file__, 3), "limbdarkening", "vh")
 CK04_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "ck04")
 K93_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "k93")
 
+SUPPRESS_WARNINGS = False
+
 
 def set_up_logging():
     if os.path.isfile(LOG_CONFIG):
@@ -76,6 +78,9 @@ def read_and_update_config(conf_path=None):
 
 def update_config():
     if config_parser.has_section('general'):
+        global SUPPRESS_WARNINGS
+        SUPPRESS_WARNINGS = config_parser.getboolean('general', 'suppress_warnings', fallback=SUPPRESS_WARNINGS)
+
         global LOG_CONFIG
         LOG_CONFIG = config_parser.get('general', 'log_config') \
             if config_parser.get('general', 'log_config') else LOG_CONFIG
@@ -112,7 +117,7 @@ def update_config():
         global VAN_HAMME_LD_TABLES
         VAN_HAMME_LD_TABLES = config_parser.get('support', 'van_hamme_ld_tables', fallback=VAN_HAMME_LD_TABLES)
 
-        if not os.path.isdir(VAN_HAMME_LD_TABLES):
+        if not os.path.isdir(VAN_HAMME_LD_TABLES) and not SUPPRESS_WARNINGS:
             warnings.warn("path {}\n"
                           "to van hamme ld tables doesn't exists\n"
                           "Specifiy it in elisa_conf.ini file".format(VAN_HAMME_LD_TABLES))
@@ -120,7 +125,7 @@ def update_config():
         global CK04_ATM_TABLES
         CK04_ATM_TABLES = config_parser.get('support', 'castelli_kurucz_04_atm_tables', fallback=CK04_ATM_TABLES)
 
-        if not os.path.isdir(CK04_ATM_TABLES):
+        if not os.path.isdir(CK04_ATM_TABLES) and not SUPPRESS_WARNINGS:
             warnings.warn("path {}\n"
                           "to castelli-kurucz 2004 atmosphere atlas doesn't exists\n"
                           "Specifiy it in elisa_conf.ini file".format(CK04_ATM_TABLES))
