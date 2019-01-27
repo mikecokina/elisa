@@ -1,8 +1,7 @@
 import numpy as np
 import logging
-from engine import ld
 
-from engine.body import Body
+from engine.base.body import Body
 from engine.pulsations import PulsationMode
 from engine import utils
 from engine import const as c
@@ -11,10 +10,6 @@ from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
 from astropy import units as u
 from engine import units as U
-
-
-# temporary
-from time import time
 
 
 class Star(Body):

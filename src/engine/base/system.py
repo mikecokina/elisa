@@ -5,14 +5,10 @@ import gc
 from abc import ABCMeta, abstractmethod
 from astropy import units as u
 from engine import units as U
-from engine import utils
 from scipy.optimize import fsolve
 from copy import copy
-from engine.body import Body
 from engine import const as c
-
-#temporary
-from time import time
+from engine.base.body import Body
 
 
 class System(metaclass=ABCMeta):

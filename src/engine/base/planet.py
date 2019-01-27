@@ -1,6 +1,4 @@
-from engine.body import Body
-from astropy import units as u
-import numpy as np
+from engine.base.body import Body
 import logging
 from engine import utils
 

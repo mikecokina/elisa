@@ -1,7 +1,8 @@
-from abc import ABCMeta
-from astropy import units as u
 import numpy as np
 import logging
+
+from abc import ABCMeta
+from astropy import units as u
 from engine import units as U
 from engine import utils
 from engine.spot import Spot
