@@ -1,4 +1,4 @@
-from engine.binary_system.binary_system import BinarySystem
+from engine.binary_system.binary_system import sys
 from engine.single_system import SingleSystem
 from engine.star import Star
 from engine.planet import Planet
