@@ -126,7 +126,7 @@ def update_config():
                           "Specifiy it in elisa_conf.ini file".format(CK04_ATM_TABLES))
 
         global K93_ATM_TABLES
-        K93_ATM_TABLES = config_parser.get('support', 'castelli_kurucz_04_atm_tables', fallback=K93_ATM_TABLES)
+        K93_ATM_TABLES = config_parser.get('support', 'kurucz_93_atm_tables', fallback=K93_ATM_TABLES)
 
         if not os.path.isdir(K93_ATM_TABLES):
             warnings.warn("path {}\n"
