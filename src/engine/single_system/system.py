@@ -23,7 +23,7 @@ class SingleSystem(System):
         super(SingleSystem, self).__init__(name=name, **kwargs)
 
         # get logger
-        self._logger = logger.getLogger(SingleSystem.__name__, suppres=suppress_logger)
+        self._logger = logger.getLogger(name=SingleSystem.__name__, suppress=suppress_logger)
         self._logger.info("Initialising object {}".format(SingleSystem.__name__))
 
         self._logger.debug("Setting property components "
