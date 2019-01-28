@@ -116,7 +116,7 @@ class System(metaclass=ABCMeta):
                            "of class instance {} to {}".format(System.__name__, self._inclination))
 
     @abstractmethod
-    def compute_lightcurve(self):
+    def compute_lightcurve(self, *args, **kwargs):
         pass
 
     @abstractmethod

@@ -14,4 +14,6 @@ def observe_worker(*args):
     initial_sys_args, system_cls, xargs = args
     self.system = system_cls(name=str(uuid4()), **initial_sys_args)
 
+    self.system.build_mesh(components_distance=1, suppress_parallelism=True)
+
 

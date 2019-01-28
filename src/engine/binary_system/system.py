@@ -87,6 +87,7 @@ class BinarySystem(System):
         self._phase_shift = None
         self._semi_major_axis = None
         self._periastron_phase = None
+        self._morphology = None
 
         params = {
             "primary": self.primary,
@@ -638,9 +639,6 @@ class BinarySystem(System):
             else:
                 raise ValueError("Non-Physical system. Change stellar parameters.")
         self._morphology = __SETUP_VALUE__
-
-    def compute_lightcurve(self):
-        pass
 
     def get_info(self):
         pass
@@ -1228,7 +1226,7 @@ class BinarySystem(System):
         lagrangian_points = self.lagrangian_points()
         return potential(lagrangian_points)
 
-    def mesh_detached(self, component, components_distance, symmetry_output=False):
+    def mesh_detached(self, component, components_distance, symmetry_output=False, **kwargs):
         """
         creates surface mesh of given binary star component in case of detached (semi-detached) system
 
@@ -1251,6 +1249,7 @@ class BinarySystem(System):
                                                                                 mapped basic symmetry quadrant to all
                                                                                 others quadrants
         """
+        suppress_parallelism = kwargs.get("suppress_parallelism", True)
         component_instance = getattr(self, component)
         if component_instance.discretization_factor > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
@@ -1273,7 +1272,7 @@ class BinarySystem(System):
         # calculating mesh in cartesian coordinates for quarter of the star
         args = phi, theta, components_distance, precalc_fn, potential_fn
 
-        points_q = static.get_surface_points(*args) if config.NUMBER_OF_THREADS == 1 else \
+        points_q = static.get_surface_points(*args) if config.NUMBER_OF_THREADS == 1 or suppress_parallelism else \
             self.get_surface_points_multiproc(*args)
 
         equator = points_q[:separator[0], :]
@@ -1378,7 +1377,7 @@ class BinarySystem(System):
         r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
         return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
-    def mesh_over_contact(self, component=None, symmetry_output=False):
+    def mesh_over_contact(self, component=None, symmetry_output=False, **kwargs):
         # todo: simplyfy this method
         """
         creates surface mesh of given binary star component in case of over-contact system
@@ -1401,6 +1400,7 @@ class BinarySystem(System):
                                                                                 mapped basic symmetry quadrant to all
                                                                                 others quadrants
         """
+        suppress_parallelism = kwargs.get("suppress_parallelism", True)
         component_instance = getattr(self, component)
         if component_instance.discretization_factor > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
@@ -2461,6 +2461,18 @@ class BinarySystem(System):
 
         return ((2.0 * np.pi) / (self.period * 86400.0 * (components_distance ** 2))) * np.sqrt(
             (1.0 - self.eccentricity) * (1.0 + self.eccentricity))  # $\rad.sec^{-1}$
+
+    def compute_lightcurve(self, *args, **kwargs):
+        pass
+
+    def _compute_circular_synchronous_lightcurve(self, *args, **kwargs):
+        pass
+
+    def _compute_circular_spotify_asynchronous_lightcurve(self, *args, **kwargs):
+        pass
+
+    def _compute_eccentric_lightcurve(self, *args, **kwargs):
+        pass
 
     # ### build methods
     # todo/idea: remove these definitions and call methods from `build` modul

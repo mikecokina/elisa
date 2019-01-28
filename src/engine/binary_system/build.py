@@ -175,7 +175,7 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
     return
 
 
-def build_mesh(self, component=None, components_distance=None):
+def build_mesh(self, component=None, components_distance=None, **kwargs):
     """
     build points of surface for primary or/and secondary component !!! w/o spots yet !!!
 
@@ -192,10 +192,10 @@ def build_mesh(self, component=None, components_distance=None):
     for _component in component:
         component_instance = getattr(self, _component)
         # in case of spoted surface, symmetry is not used
-        _a, _b, _c, _d = self.mesh_over_contact(component=_component, symmetry_output=True) \
+        _a, _b, _c, _d = self.mesh_over_contact(component=_component, symmetry_output=True, **kwargs) \
             if self.morphology == 'over-contact' \
             else self.mesh_detached(
-            component=_component, components_distance=components_distance, symmetry_output=True
+            component=_component, components_distance=components_distance, symmetry_output=True, **kwargs
         )
         component_instance.points = _a
         component_instance.point_symmetry_vector = _b
