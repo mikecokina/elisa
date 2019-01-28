@@ -1,10 +1,10 @@
-import logging
-from engine.base.system import System
-from engine.base.star import Star
 import numpy as np
 import scipy
+
+from engine.base.system import System
+from engine.base.star import Star
 from scipy.spatial import Delaunay
-from engine import graphics
+from engine import graphics, log
 from engine import const as c
 from astropy import units as u
 from engine import units as U
@@ -18,12 +18,12 @@ class SingleSystem(System):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name=None, suppress_logger=True, **kwargs):
         utils.invalid_kwarg_checker(kwargs, SingleSystem.ALL_KWARGS, SingleSystem)
         super(SingleSystem, self).__init__(name=name, **kwargs)
 
         # get logger
-        self._logger = logging.getLogger(SingleSystem.__name__)
+        self._logger = log.getLogger(SingleSystem.__name__, suppres=suppress_logger)
         self._logger.info("Initialising object {}".format(SingleSystem.__name__))
 
         self._logger.debug("Setting property components "
