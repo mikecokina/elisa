@@ -2,7 +2,7 @@ import numpy as np
 
 from abc import ABCMeta
 from astropy import units as u
-from engine import units as U, log
+from engine import units as U, logger
 from engine import utils
 from engine.spot import Spot
 from copy import copy
@@ -23,7 +23,7 @@ class Body(metaclass=ABCMeta):
         Parameters of abstract class Body
         """
         self.initial_kwargs = kwargs.copy()
-        self._logger = log.getLogger(Body.__name__, suppress=suppress_logger)
+        self._logger = logger.getLogger(Body.__name__, suppress=suppress_logger)
 
         if name is None:
             self._name = str(Body.ID)

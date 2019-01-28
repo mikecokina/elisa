@@ -1,5 +1,5 @@
 from engine.base.body import Body
-from engine import utils, log
+from engine import utils, logger
 
 
 class Planet(Body):
@@ -11,7 +11,7 @@ class Planet(Body):
 
     def __init__(self, name=None, suppress_logger=False, **kwargs):
         # get logger
-        self._logger = log.getLogger(Planet.__name__, suppress=suppress_logger)
+        self._logger = logger.getLogger(Planet.__name__, suppress=suppress_logger)
 
         utils.invalid_kwarg_checker(kwargs, Planet.ALL_KWARGS, Planet)
         super(Planet, self).__init__(name=name, **kwargs)

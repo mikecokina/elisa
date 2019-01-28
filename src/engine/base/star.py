@@ -2,7 +2,7 @@ import numpy as np
 
 from engine.base.body import Body
 from engine.pulsations import PulsationMode
-from engine import utils, log
+from engine import utils, logger
 from engine import const as c
 from copy import copy
 from scipy.special import sph_harm, lpmv
@@ -26,7 +26,7 @@ class Star(Body):
         super(Star, self).__init__(name=name, **kwargs)
 
         # get logger
-        self._logger = log.getLogger(Star.__name__, suppress=suppress_logger)
+        self._logger = logger.getLogger(Star.__name__, suppress=suppress_logger)
 
         # default values of properties
         self._surface_potential = None

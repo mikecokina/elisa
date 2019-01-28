@@ -21,7 +21,6 @@
 '''
 
 import gc
-import logging
 
 from copy import copy
 from multiprocessing.pool import Pool
@@ -33,7 +32,7 @@ from scipy.optimize import newton
 from scipy.spatial import Delaunay
 
 from conf import config
-from engine import const, log
+from engine import const, logger
 from engine import graphics
 from engine import ld
 from engine import units
@@ -66,7 +65,7 @@ class BinarySystem(System):
         )
 
         # get logger
-        self._logger = log.getLogger(name=BinarySystem.__name__, suppress=suppress_logger)
+        self._logger = logger.getLogger(name=BinarySystem.__name__, suppress=suppress_logger)
         self._logger.info("Initialising object {}".format(BinarySystem.__name__))
         self._suppress_logger = suppress_logger
 

@@ -3,7 +3,7 @@ import gc
 
 from abc import ABCMeta, abstractmethod
 from astropy import units as u
-from engine import units as U, log
+from engine import units as U, logger
 from scipy.optimize import fsolve
 from copy import copy
 from engine import const as c
@@ -22,7 +22,7 @@ class System(metaclass=ABCMeta):
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, suppress_logger=False, **kwargs):
-        self._logger = log.getLogger(System.__name__, suppress=suppress_logger)
+        self._logger = logger.getLogger(System.__name__, suppress=suppress_logger)
         self.initial_kwargs = kwargs.copy()
 
         # default params

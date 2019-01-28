@@ -4,7 +4,7 @@ import scipy
 from engine.base.system import System
 from engine.base.star import Star
 from scipy.spatial import Delaunay
-from engine import graphics, log
+from engine import graphics, logger
 from engine import const as c
 from astropy import units as u
 from engine import units as U
@@ -23,7 +23,7 @@ class SingleSystem(System):
         super(SingleSystem, self).__init__(name=name, **kwargs)
 
         # get logger
-        self._logger = log.getLogger(SingleSystem.__name__, suppres=suppress_logger)
+        self._logger = logger.getLogger(SingleSystem.__name__, suppres=suppress_logger)
         self._logger.info("Initialising object {}".format(SingleSystem.__name__))
 
         self._logger.debug("Setting property components "
