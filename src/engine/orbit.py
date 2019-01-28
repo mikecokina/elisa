@@ -1,8 +1,7 @@
-import logging
 import numpy as np
 import engine.units as eu
 
-from engine import utils
+from engine import utils, log
 from engine import const as c
 from astropy import units as u
 
@@ -13,9 +12,9 @@ class Orbit(object):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, **kwargs):
+    def __init__(self, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Orbit.ALL_KWARGS, Orbit)
-        self._logger = logging.getLogger(Orbit.__name__)
+        self._logger = log.Logger(name=Orbit.__name__, suppress=suppress_logger)
 
         # default valeus of properties
         self._period = None

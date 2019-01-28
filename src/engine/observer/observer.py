@@ -1,13 +1,14 @@
 import logging
 import os
+from multiprocessing.pool import Pool
+
 import pandas as pd
 import numpy as np
 
-from multiprocessing import Queue, Manager, Process
 from os.path import dirname
 from conf import config
 from engine.binary_system.system import BinarySystem
-from engine.observer import static
+from engine.observer import static, mp
 
 config.set_up_logging()
 
@@ -18,7 +19,10 @@ class Observer(object):
         self._logger.info("initialising Observer instance")
         self._passband = passband
         # specifying what system is observed
-        self._system = system  # co je observe?
+        self._system = system
+        self._system_cls = type(self._system)
+
+        self._system._suppress_logger = True
 
     @property
     def passband(self):
@@ -49,6 +53,7 @@ class Observer(object):
             phases = np.linspace(start=from_phase, stop=to_phase, endpoint=True)
 
         self._logger.info("observetaion start w/ following configuration {<add>}")
+        self._logger.warning("logger will be suppressed due multiprocessing incompatibility")
         """
         distance, azimut angle, true anomaly and phase
                            np.array((r1, az1, ni1, phs1),
@@ -57,39 +62,19 @@ class Observer(object):
                                     (rN, azN, niN, phsN))
         """
         orbital_motion = self._system.orbit.orbital_motion(phase=phases)
+        args = mp.prepare_observe_args(orbital_motion)
 
-        args_queue = Queue(maxsize=int(len(orbital_motion) + config.NUMBER_OF_THREADS))
-        manager = Manager()
+        pool = Pool(processes=config.NUMBER_OF_THREADS)
+        res = [pool.apply_async(mp.observe_worker,
+                                (self._system.initial_kwargs, self._system_cls, _args)) for _args in args]
+        pool.close()
+        pool.join()
+        result_list = [np.array(r.get()) for r in res]
 
-        result_list, error_list = manager.list(), manager.list
-        jobs = list()
-
-        writer_proc = Process(target=static.queue_writer,
-                              args=(args_queue, orbital_motion, config.NUMBER_OF_THREADS))
-
-        writer_proc.daemon = True
-        writer_proc.start()
-        jobs.append(writer_proc)
-
-        try:
-            for _ in range(config.NUMBER_OF_THREADS):
-                p = Process(target=static.worker,
-                            args=(args_queue, result_list, error_list, self._system.initial_kwargs))
-                jobs.append(p)
-                p.daemon = True
-                p.start()
-            for p in jobs:
-                p.join()
-        except KeyboardInterrupt:
-            raise
-        finally:
-            pass
-
-        if len(error_list) > 0:
-            raise Exception("error occured: {}".format("\n".join(error_list)))
-
+        print(result_list)
         # r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
-        print(self._system.initial_kwargs)
+        # return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
+
         self._logger.info("observation finished")
 
     def apply_filter(self):

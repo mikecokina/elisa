@@ -1,9 +1,8 @@
 import numpy as np
-import logging
 
 from abc import ABCMeta
 from astropy import units as u
-from engine import units as U
+from engine import units as U, log
 from engine import utils
 from engine.spot import Spot
 from copy import copy
@@ -19,11 +18,12 @@ class Body(metaclass=ABCMeta):
 
     ID = 1
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name=None, suppress_logger=False, **kwargs):
         """
         Parameters of abstract class Body
         """
-        self._logger = logging.getLogger(Body.__name__)
+        self.initial_kwargs = kwargs.copy()
+        self._logger = log.Logger(Body.__name__, suppress=suppress_logger)
 
         if name is None:
             self._name = str(Body.ID)

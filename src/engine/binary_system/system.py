@@ -33,7 +33,7 @@ from scipy.optimize import newton
 from scipy.spatial import Delaunay
 
 from conf import config
-from engine import const
+from engine import const, log
 from engine import graphics
 from engine import ld
 from engine import units
@@ -53,13 +53,22 @@ class BinarySystem(System):
     # this will be removed after full implementation of LD
     LD_COEFF = 0.5
 
-    def __init__(self, primary, secondary, name=None, **kwargs):
+    def __init__(self, primary, secondary, name=None, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, BinarySystem)
-        super(BinarySystem, self).__init__(name=name, **kwargs)
+        super(BinarySystem, self).__init__(name=name, suppress_logger=suppress_logger, **kwargs)
+
+        self.initial_kwargs.update(
+            dict(
+                primary=Star(name="star.dump.primary", suppress_logger=True, **primary.initial_kwargs),
+                secondary=Star(name="star.dump.secondary", suppress_logger=True, **secondary.initial_kwargs),
+                suppress_logger=True
+            )
+        )
 
         # get logger
-        self._logger = logging.getLogger(BinarySystem.__name__)
+        self._logger = log.getLogger(name=BinarySystem.__name__, suppress=suppress_logger)
         self._logger.info("Initialising object {}".format(BinarySystem.__name__))
+        self._suppress_logger = suppress_logger
 
         self._logger.debug("Setting property components of class instance {}".format(BinarySystem.__name__))
 
@@ -138,7 +147,7 @@ class BinarySystem(System):
         """
         self._logger.debug("Re/Initializing orbit in class instance {} ".format(BinarySystem.__name__))
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
-        self._orbit = Orbit(**orbit_kwargs)
+        self._orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
 
     @property
     def morphology(self):

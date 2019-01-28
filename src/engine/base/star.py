@@ -1,9 +1,8 @@
 import numpy as np
-import logging
 
 from engine.base.body import Body
 from engine.pulsations import PulsationMode
-from engine import utils
+from engine import utils, log
 from engine import const as c
 from copy import copy
 from scipy.special import sph_harm, lpmv
@@ -22,12 +21,12 @@ class Star(Body):
     # this will be removed after full implementation of config system
     ATMOSPHERE_MODEL = 'black_body'
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name=None, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
         super(Star, self).__init__(name=name, **kwargs)
 
         # get logger
-        self._logger = logging.getLogger(Star.__name__)
+        self._logger = log.getLogger(Star.__name__, suppress=suppress_logger)
 
         # default values of properties
         self._surface_potential = None

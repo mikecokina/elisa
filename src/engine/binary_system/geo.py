@@ -1,7 +1,7 @@
 import numpy as np
 
 from engine import const
-from engine.binary_system.binary_system import BinarySystem
+from engine.binary_system.system import BinarySystem
 
 
 def get_critical_inclination(binary: BinarySystem, components_distance: float):
