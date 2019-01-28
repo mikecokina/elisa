@@ -1,7 +1,7 @@
-from engine.binary_system.binary_system import sys
-from engine.single_system import SingleSystem
-from engine.star import Star
-from engine.planet import Planet
+from engine.binary_system.system import BinarySystem
+from engine.single_system.system import SingleSystem
+from engine.base.star import Star
+from engine.base.planet import Planet
 from astropy import units as u
 import numpy as np
 import matplotlib.pyplot as plt
@@ -142,10 +142,10 @@ bs.build_surface_map(colormap='temperature', components_distance=components_min_
 # print(np.shape(dists), np.shape(dist_vect))
 # dists = distance_matrix(bs.primary.points, bs.secondary.points)
 # print(np.shape(dists))
-logg_p = bs.calculate_polar_gravity_acceleration('primary', 1.0, logg=True)
-logg_s = bs.calculate_polar_gravity_acceleration('secondary', 1.0, logg=True)
-print('log g for primary: {}'.format(logg_p))
-print('log g for secondary: {}'.format(logg_s))
+# logg_p = bs.calculate_polar_gravity_acceleration('primary', 1.0, logg=True)
+# logg_s = bs.calculate_polar_gravity_acceleration('secondary', 1.0, logg=True)
+# print('log g for primary: {}'.format(logg_p))
+# print('log g for secondary: {}'.format(logg_s))
 
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 crit_primary_potential = bs.critical_potential('primary', components_distance=components_min_distance)
@@ -169,18 +169,18 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         # plot_axis=False
 #         )
 
-bs.plot(descriptor='surface',
-        phase=0.4,
-        # components_to_plot='primary',
-        # components_to_plot='secondary',
-        # edges=True,
-        # normals=True,
-        # colormap='gravity_acceleration',
-        colormap='temperature',
-        # plot_axis=False,
-        # face_mask_primary=a,
-        # face_mask_secondary=b,
-        # inclination=crit_incl,
-        # azimuth=azim[0],
-        )
+# bs.plot(descriptor='surface',
+#         phase=0.4,
+#         # components_to_plot='primary',
+#         # components_to_plot='secondary',
+#         # edges=True,
+#         # normals=True,
+#         # colormap='gravity_acceleration',
+#         colormap='temperature',
+#         # plot_axis=False,
+#         # face_mask_primary=a,
+#         # face_mask_secondary=b,
+#         # inclination=crit_incl,
+#         # azimuth=azim[0],
+#         )
 

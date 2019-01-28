@@ -7,6 +7,7 @@ from astropy import units as u
 from numpy.testing import assert_array_almost_equal
 from engine import utils
 from unit_test import test_utils
+from engine.single_system import static, build
 
 
 class TestBinarySystem(unittest.TestCase):

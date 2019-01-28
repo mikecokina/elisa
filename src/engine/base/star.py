@@ -15,8 +15,8 @@ from engine import units as U
 class Star(Body):
     KWARGS = ['mass', 't_eff', 'gravity_darkening']
 
-    OPTIONAL_KWARGS = ['surface_potential', 'polar_log_g', 'synchronicity', 'albedo', 'pulsations',
-                       'discretization_factor', 'spots', 'metallicity']
+    OPTIONAL_KWARGS = ['surface_potential', 'synchronicity', 'albedo', 'pulsations',
+                       'discretization_factor', 'spots', 'metallicity', 'polar_log_g']
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     # this will be removed after full implementation of config system
@@ -46,7 +46,6 @@ class Star(Body):
         self._pulsations = None
         self._filling_factor = None
         self._metallicity = None
-        self._polar_log_g = None
         self.kwargs = kwargs
 
         utils.check_missing_kwargs(Star.KWARGS, kwargs, instance_of=Star)
@@ -68,18 +67,18 @@ class Star(Body):
         return self._polar_log_g
 
     @polar_log_g.setter
-    def polar_log_g(self, log_g):
+    def polar_log_g(self, polar_log_g):
         """
         setter for polar surface gravity, if unit is not specified in astropy.units format, value in m/s^2 is assumed
 
         :param log_g:
         :return:
         """
-        if isinstance(log_g, u.quantity.Quantity):
-            self._polar_log_g = np.float64(log_g.to(U.LOG_ACCELERATION_UNIT))
-        elif isinstance(log_g, (int, np.int, float, np.float)):
+        if isinstance(polar_log_g, u.quantity.Quantity):
+            self._polar_log_g = np.float64(polar_log_g.to(U.LOG_ACCELERATION_UNIT))
+        elif isinstance(polar_log_g, (int, np.int, float, np.float)):
             # self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(U.LOG_ACCELERATION_UNIT))
-            self._polar_log_g = np.float64(log_g)
+            self._polar_log_g = np.float64(polar_log_g)
         else:
             raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -229,15 +228,6 @@ class Star(Body):
         :return: float
         """
         return self._equatorial_radius
-
-    @property
-    def polar_log_g(self):
-        """
-        returns logarithm of polar surface gravity in SI
-
-        :return: float
-        """
-        return self._polar_log_g
 
     @property
     def potential_gradient_magnitudes(self):

@@ -1,6 +1,6 @@
 import logging
-from engine.system import System
-from engine.star import Star
+from engine.base.system import System
+from engine.base.star import Star
 import numpy as np
 import scipy
 from scipy.spatial import Delaunay
@@ -10,6 +10,7 @@ from astropy import units as u
 from engine import units as U
 from engine import utils
 from copy import copy
+from engine.single_system import static, build
 
 
 class SingleSystem(System):
@@ -54,13 +55,8 @@ class SingleSystem(System):
                 self._logger.info('Parameter `{0}` is meaningless in case of single star system.\n '
                                   'Setting parameter `{0}` value to None'.format(parameter))
 
-        # making sure that you set all necessary kwargs for Star in BinarySystem
-        star_kwargs = ['polar_log_g']
-        utils.check_missing_kwargs(star_kwargs, self.star.ALL_KWARGS, instance_of=Star)
-
         # calculation of dependent parameters
-        self._angular_velocity = self.angular_velocity(self.rotation_period)
-        # self.star.polar_gravity_acceleration = np.power(10, self.polar_log_g)  # surface polar gravity
+        self._angular_velocity = static.angular_velocity(self.rotation_period)
         # this is also check if star surface is closed
         self.init_radii()
 
@@ -86,17 +82,59 @@ class SingleSystem(System):
         self._logger.info('Reinitialising class instance {}'.format(SingleSystem.__name__))
         self.__init__(**self._kwargs_serializer())
 
-    def _kwargs_serializer(self):
+    @property
+    def rotation_period(self):
         """
-        creating dictionary of keyword arguments of SingleSystem class in order to be able to reinitialize the class
-        instance in init()
+        returns rotation period of single system star in default period unit
+        :return: float
+        """
+        return self._rotation_period
 
-        :return: dict
+    @rotation_period.setter
+    def rotation_period(self, rotation_period):
         """
-        serialized_kwargs = {}
-        for kwarg in self.KWARGS:
-            serialized_kwargs[kwarg] = getattr(self, kwarg)
-        return serialized_kwargs
+        setter for rotational period of star in single star system, if unit is not specified, default period unit is
+        assumed
+        :param rotation_period:
+        :return:
+        """
+        if isinstance(rotation_period, u.quantity.Quantity):
+            self._rotation_period = np.float64(rotation_period.to(U.PERIOD_UNIT))
+        elif isinstance(rotation_period, (int, np.int, float, np.float)):
+            self._rotation_period = np.float64(rotation_period)
+        else:
+            raise TypeError('Input of variable `rotation_period` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        if self._rotation_period <= 0:
+            raise ValueError('Period of rotation must be non-zero positive value. Your value: {0}.'
+                             .format(rotation_period))
+
+    @property
+    def reference_time(self):
+        """
+        returns time of 0th longitude passing plane defined by rotation axis and line of sight
+
+        :return: numpy.float
+        """
+        return self._reference_time
+
+    @reference_time.setter
+    def reference_time(self, reference_time):
+        """
+        setter for reference time of 0th longitude passing plane defined by rotation axis and line of sight
+
+        :param reference_time: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        if isinstance(reference_time, u.quantity.Quantity):
+            self._reference_time = np.float64(reference_time.to(U.PERIOD_UNIT))
+        elif isinstance(reference_time, (int, np.int, float, np.float)):
+            self._reference_time = np.float64(reference_time)
+        else:
+            raise TypeError('Input of variable `reference_time` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        self._logger.debug("Setting property primary_minimum_time "
+                           "of class instance {} to {}".format(SingleSystem.__name__, self._reference_time))
 
     def _evaluate_spots(self):
         """
@@ -104,7 +142,6 @@ class SingleSystem(System):
 
         :return:
         """
-
         # fixme: it's not crutial, but this function and same function in binary system should on the same place
         def solver_condition(x, *_args, **_kwargs):
             return True
@@ -169,8 +206,6 @@ class SingleSystem(System):
 
             num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
             deltas = [np.linspace(0., c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
-
-            # todo: add condition to die
             try:
                 for theta_index, theta in enumerate(thetas):
                     # first point of n-th ring of spot (counting start from center)
@@ -214,7 +249,6 @@ class SingleSystem(System):
             spot_points[0] = boundary_center
 
             # max size from barycenter of boundary to boundary
-            # todo: make sure this value is correct = make an unittests for spots
             spot_instance.max_size = max([np.linalg.norm(np.array(boundary_center) - np.array(b))
                                           for b in boundary_points])
 
@@ -235,59 +269,17 @@ class SingleSystem(System):
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
 
-    @property
-    def rotation_period(self):
+    def _kwargs_serializer(self):
         """
-        returns rotation period of single system star in default period unit
-        :return: float
-        """
-        return self._rotation_period
+        creating dictionary of keyword arguments of SingleSystem class in order to be able to reinitialize the class
+        instance in init()
 
-    @rotation_period.setter
-    def rotation_period(self, rotation_period):
+        :return: dict
         """
-        setter for rotational period of star in single star system, if unit is not specified, default period unit is
-        assumed
-        :param rotation_period:
-        :return:
-        """
-        if isinstance(rotation_period, u.quantity.Quantity):
-            self._rotation_period = np.float64(rotation_period.to(U.PERIOD_UNIT))
-        elif isinstance(rotation_period, (int, np.int, float, np.float)):
-            self._rotation_period = np.float64(rotation_period)
-        else:
-            raise TypeError('Input of variable `rotation_period` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        if self._rotation_period <= 0:
-            raise ValueError('Period of rotation must be non-zero positive value. Your value: {0}.'
-                             .format(rotation_period))
-
-    @property
-    def reference_time(self):
-        """
-        returns time of 0th longitude passing plane defined by rotation axis and line of sight
-
-        :return: numpy.float
-        """
-        return self._reference_time
-
-    @reference_time.setter
-    def reference_time(self, reference_time):
-        """
-        setter for reference time of 0th longitude passing plane defined by rotation axis and line of sight
-
-        :param reference_time: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(reference_time, u.quantity.Quantity):
-            self._reference_time = np.float64(reference_time.to(U.PERIOD_UNIT))
-        elif isinstance(reference_time, (int, np.int, float, np.float)):
-            self._reference_time = np.float64(reference_time)
-        else:
-            raise TypeError('Input of variable `reference_time` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug("Setting property primary_minimum_time "
-                           "of class instance {} to {}".format(SingleSystem.__name__, self._reference_time))
+        serialized_kwargs = {}
+        for kwarg in self.KWARGS:
+            serialized_kwargs[kwarg] = getattr(self, kwarg)
+        return serialized_kwargs
 
     def calculate_polar_radius(self):
         """
@@ -378,7 +370,7 @@ class SingleSystem(System):
         """
         return self.surface_potential(radius, *args) - self.star.surface_potential
 
-    def compute_equipotential_boundary(self):
+    def calculate_equipotential_boundary(self):
         """
         calculates a equipotential boundary of star in zx(yz) plane
 
@@ -400,14 +392,6 @@ class SingleSystem(System):
 
             points.append([solution * np.sin(angle), solution * np.cos(angle)])
         return np.array(points)
-
-    @staticmethod
-    def angular_velocity(rotation_period):
-        """
-        rotational angular velocity of the star
-        :return:
-        """
-        return c.FULL_ARC / (rotation_period * U.PERIOD_UNIT).to(u.s).value
 
     def critical_break_up_radius(self):
         """
@@ -613,48 +597,6 @@ class SingleSystem(System):
         triangles_indices = triangulation.convex_hull
         return triangles_indices
 
-    def build_surface_with_no_spots(self):
-        """
-        function is calling surface building function for single systems without spots and assigns star's surface to
-        star object as its property
-        :return:
-        """
-        points_length = np.shape(self.star.points[:self.star.base_symmetry_points_number, :])[0]
-        # triangulating only one eighth of the star
-        points_to_triangulate = np.append(self.star.points[:self.star.base_symmetry_points_number, :],
-                                          [[0, 0, 0]], axis=0)
-        triangles = self.single_surface(points=points_to_triangulate)
-        # removing faces from triangulation, where origin point is included
-        triangles = triangles[~(triangles >= points_length).any(1)]
-        triangles = triangles[~((points_to_triangulate[triangles] == 0.).all(1)).any(1)]
-        # setting number of base symmetry faces
-        self.star.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
-        # lets exploit axial symmetry and fill the rest of the surface of the star
-        all_triangles = [inv[triangles] for inv in self.star.inverse_point_symmetry_matrix]
-        self.star.faces = np.concatenate(all_triangles, axis=0)
-
-        base_face_symmetry_vector = np.arange(self.star.base_symmetry_faces_number)
-        self.star.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(8)])
-
-    def build_surface_with_spots(self):
-        """
-        function for triangulation of surface with spots
-
-        :return:
-        """
-        points, vertices_map = self._return_all_points(self.star, return_vertices_map=True)
-        faces = self.single_surface(points=points)
-        model, spot_candidates = self._initialize_model_container(vertices_map)
-        model = self._split_spots_and_component_faces(
-            points, faces, model, spot_candidates, vertices_map, self.star,
-            component_com=0
-        )
-
-        self._remove_overlaped_spots(vertices_map, self.star)
-        self._remap_surface_elements(model, self.star, points)
-
-        # self.star.faces = self.single_surface()
-
     def plot(self, descriptor=None, **kwargs):
         """
         universal plot interface for single system class, more detailed documentation for each value of descriptor is
@@ -675,7 +617,7 @@ class SingleSystem(System):
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
 
             method_to_call = graphics.equipotential_single_star
-            points = self.compute_equipotential_boundary()
+            points = self.calculate_equipotential_boundary()
 
             kwargs['points'] = (points * U.DISTANCE_UNIT).to(kwargs['axis_unit'])
 
@@ -736,133 +678,6 @@ class SingleSystem(System):
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
 
         method_to_call(**kwargs)
-
-    def build_faces(self):
-        """
-        function creates faces of the star surface provided you already calculated surface points of the star
-
-        :return:
-        """
-        # build surface if there is no spot specified
-        if not self.star.spots:
-            self.build_surface_with_no_spots()
-        else:
-            self.build_surface_with_spots()
-        # self.incorporate_spots_to_surface(component_instance=self.star, surface_fn=self.build_surface_with_spots)
-
-    def build_surface(self, return_surface=False):
-        """
-        function for building of general system component points and surfaces including spots
-
-        :param return_surface: bool - if true, function returns arrays with all points and faces (surface + spots)
-        :param component: specify component, use `primary` or `secondary`
-        :type: str
-        :return:
-        """
-        self.build_mesh()
-
-        # build surface if there is no spot specified
-        if not self.star.spots:
-            self.build_surface_with_no_spots()
-            if return_surface:
-                return self.star.points, self.star.faces
-            else:
-                return
-
-        # saving one eighth of the star without spots to be used as reference for faces unaffected by spots
-        # self.star.base_symmetry_points = copy(self.star.points[:self.star.base_symmetry_points_number])
-        # self.star.base_symmetry_faces = copy(self.star.faces[:self.star.base_symmetry_faces_number])
-        self.build_surface_with_spots()
-
-        if return_surface:
-            ret_points = copy(self.star.points)
-            ret_faces = copy(self.star.faces)
-            for spot_index, spot in self.star.spots.items():
-                n_points = np.shape(ret_points)[0]
-                ret_faces = np.append(ret_faces, spot.faces+n_points, axis=0)
-                ret_points = np.append(ret_points, spot.points, axis=0)
-            return ret_points, ret_faces
-
-    def build_surface_map(self, colormap=None, return_map=False):
-        """
-        function calculates surface maps (temperature or gravity acceleration) for star and spot faces and it can return
-        them as one array if return_map=True
-
-        :param return_map: if True function returns arrays with surface map including star and spot segments
-        :param colormap: str - `temperature` or `gravity`
-        :return:
-        """
-        if colormap is None:
-            raise ValueError('Specify colormap to calculate (`temperature` or `gravity_acceleration`).')
-
-        self._logger.debug('Computing surface areas of stellar surface.')
-        self.star.areas = self.star.calculate_areas()
-        self._logger.debug('Computing polar radius')
-        self.star._polar_radius = self.calculate_polar_radius()
-        self._logger.debug('Computing potential gradient magnitudes distribution accros the stellar surface')
-        self.star.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient()
-        self._logger.debug('Computing magnitude of polar potential gradient.')
-        self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
-
-        if colormap == 'temperature':
-            self._logger.debug('Computing effective temprature distibution of stellar surface.')
-            self.star.temperatures = self.star.calculate_effective_temperatures()
-            if self.star.pulsations:
-                self._logger.debug('Adding pulsations to surface temperature distribution of the star.')
-                self.star.temperatures = self.star.add_pulsations()
-
-        if self.star.spots:
-            for spot_index, spot in self.star.spots.items():
-                self._logger.debug('Calculating surface areas of spot: {}'.format(spot_index))
-                spot.areas = spot.calculate_areas()
-
-                self._logger.debug('Calculating distribution of potential gradient magnitudes of spot:'
-                                   ' {}'.format(spot_index))
-                spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(points=spot.points,
-                                                                                            faces=spot.faces)
-
-                if colormap == 'temperature':
-                    self._logger.debug('Computing temperature distribution of spot: {}'.format(spot_index))
-                    spot.temperatures = spot.temperature_factor * \
-                                        self.star.calculate_effective_temperatures(gradient_magnitudes=
-                                                                                   spot.potential_gradient_magnitudes)
-                    if self.star.pulsations:
-                        self._logger.debug('Adding pulsations to temperature distribution of spot: '
-                                           '{}'.format(spot_index))
-                        spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
-                                                                     temperatures=spot.temperatures)
-            self._logger.debug('Renormalizing temperature map of star surface.')
-            self.star.renormalize_temperatures()
-
-        if return_map:
-            if colormap == 'temperature':
-                ret_list = copy(self.star.temperatures)
-            elif colormap == 'gravity_acceleration':
-                ret_list = copy(self.star.potential_gradient_magnitudes)
-
-            if self.star.spots:
-                for spot_index, spot in self.star.spots.items():
-                    if colormap == 'temperature':
-                        ret_list = np.append(ret_list, spot.temperatures)
-                    elif colormap == 'gravity_acceleration':
-                        ret_list = np.append(ret_list, spot.potential_gradient_magnitudes)
-            return ret_list
-        return
-
-    def build_mesh(self):
-        """
-        build points of surface for including spots
-        """
-        _a, _b, _c, _d = self.mesh(symmetry_output=True)
-
-        self.star.points = _a
-        self.star.point_symmetry_vector = _b
-        self.star.base_symmetry_points_number = _c
-        self.star.inverse_point_symmetry_matrix = _d
-
-        self._evaluate_spots_mesh()
-        self._incorporate_spots_mesh(component_instance=self.star,
-                                     component_com=0)
 
     def _evaluate_spots_mesh(self):
         """
@@ -973,33 +788,6 @@ class SingleSystem(System):
             spot_instance.boundary_center = spot_points[0]
             spot_instance.center = np.array(spot_center)
 
-    def build_surface_gravity(self):
-        """
-        function calculates gravity potential gradient magnitude (surface gravity) for each face
-
-        :return:
-        """
-
-        self._logger.debug('Computing surface areas of star.')
-        self.star.areas = self.star.calculate_areas()
-
-        # compute and assign potential gradient magnitudes for elements if missing
-        self._logger.debug('Computing potential gradient magnitudes distribution of a star.')
-        self.star.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient()
-
-        self._logger.debug('Computing magnitude of polar potential gradient.')
-        self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
-
-        if self.star.spots:
-            for spot_index, spot in self.star.spots.items():
-                self._logger.debug('Calculating surface areas of {} spot.'.format(spot_index))
-                spot.areas = spot.calculate_areas()
-
-                self._logger.debug('Calculating distribution of potential gradient magnitudes of {} '
-                                   'spot.'.format(spot_index))
-                spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(points=spot.points,
-                                                                                            faces=spot.faces)
-
     def build_temperature_distribution(self):
         """
         function calculates temperature distribution on across all faces
@@ -1030,3 +818,44 @@ class SingleSystem(System):
 
     def get_info(self):
         pass
+
+    def build_faces(self):
+        """
+            function creates faces of the star surface provided you already calculated surface points of the star
+
+            :return:
+            """
+        build.build_faces(self)
+
+    def build_surface(self, return_surface=False):
+        """
+        function for building of general system component points and surfaces including spots
+
+        :param return_surface: bool - if true, function returns arrays with all points and faces (surface + spots)
+        :param component: specify component, use `primary` or `secondary`
+        :type: str
+        :return:
+        """
+        return build.build_surface(self, return_surface=return_surface)
+
+    def build_surface_map(self, colormap=None, return_map=False):
+        """
+        function calculates surface maps (temperature or gravity acceleration) for star and spot faces and it can return
+        them as one array if return_map=True
+
+        :param return_map: if True function returns arrays with surface map including star and spot segments
+        :param colormap: str - `temperature` or `gravity`
+        :return:
+        """
+        return build.build_surface_map(self, colormap=colormap, return_map=return_map)
+
+    def build_mesh(self):
+        """
+        build points of surface for including spots
+        """
+        build.build_mesh(self)
+
+
+
+
+

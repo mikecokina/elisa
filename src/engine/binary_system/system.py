@@ -913,7 +913,7 @@ class BinarySystem(System):
 
     def calculate_face_magnitude_gradient(self, component, components_distance, points=None, faces=None):
         """
-        return array of face mean of magnitude gradients
+        return array of face magnitude gradients calculated as a mean of magnitude gradients on vertices
 
         :param component:
         :param components_distance:
