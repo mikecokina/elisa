@@ -17,3 +17,9 @@ class Logger(object):
 
     def debug(self, *args, **kwargs):
         pass
+
+    def warning(self, *args, **kwargs):
+        pass
+
+    def warn(self, *args, **kwargs):
+        pass
