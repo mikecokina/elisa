@@ -378,6 +378,25 @@ def get_line_of_sight(time, ref_t, inclination, period):
     return spherical_to_cartesian(line_of_sight_spherical)
 
 
+def convert_gravity_acceleration_array(colormap, units):
+    """
+    function converts gravity acceleration array from log_g(SI) units to other units such as `log_cgs`, `SI`, `cgs`
+
+    :param colormap: array
+    :param units: str - `log_cgs`, `SI`, `cgs`, `log_SI`
+    :return:
+    """
+    if units == 'log_cgs':
+        colormap += 2
+    elif units == 'SI':
+        colormap = np.power(10, colormap)
+    elif units == 'cgs':
+        colormap = np.power(10, colormap + 2)
+    elif units == 'log_SI':
+        pass
+    return colormap
+
+
 class IterableQueue(object):
     """ Transform standard python Queue instance to iterable one"""
 

@@ -2003,7 +2003,7 @@ class BinarySystem(System):
 
         elif descriptor == 'surface':
             KWARGS = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis', 'face_mask_primary',
-                      'face_mask_secondary', 'inclination', 'azimuth']
+                      'face_mask_secondary', 'inclination', 'azimuth', 'units']
             utils.invalid_kwarg_checker(kwargs, KWARGS, BinarySystem.plot)
 
             method_to_call = graphics.binary_surface
@@ -2017,6 +2017,7 @@ class BinarySystem(System):
             kwargs['face_mask_primary'] = kwargs.get('face_mask_primary', None)
             kwargs['face_mask_secondary'] = kwargs.get('face_mask_secondary', None)
             kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
+            kwargs['units'] = kwargs.get('units', 'logg_cgs')
 
             components_distance, azim = self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
             kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
@@ -2063,6 +2064,9 @@ class BinarySystem(System):
                         cmap = self.build_surface_map(colormap=kwargs['colormap'], component='primary',
                                                       components_distance=components_distance, return_map=True)
                         kwargs['primary_cmap'] = cmap['primary']
+                        if kwargs['colormap'] == 'gravity_acceleration':
+                            kwargs['primary_cmap'] = \
+                                utils.convert_gravity_acceleration_array(kwargs['primary_cmap'], kwargs['units'])
 
                     if kwargs['normals']:
                         kwargs['primary_centres'] = self.primary.calculate_surface_centres(
@@ -2084,6 +2088,9 @@ class BinarySystem(System):
                         cmap = self.build_surface_map(colormap=kwargs['colormap'], component='secondary',
                                                       components_distance=components_distance, return_map=True)
                         kwargs['secondary_cmap'] = cmap['secondary']
+                        if kwargs['colormap'] == 'gravity_acceleration':
+                            kwargs['secondary_cmap'] = \
+                                utils.convert_gravity_acceleration_array(kwargs['secondary_cmap'], kwargs['units'])
 
                     if kwargs['normals']:
                         kwargs['secondary_centres'] = self.secondary.calculate_surface_centres(
@@ -2094,6 +2101,7 @@ class BinarySystem(System):
                     if kwargs['face_mask_secondary'] is not None:
                         kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
                         kwargs['secondary_cmap'] = kwargs['secondary_cmap'][kwargs['face_mask_secondary']]
+
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))

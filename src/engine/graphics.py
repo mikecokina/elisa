@@ -228,7 +228,8 @@ def single_star_surface(**kwargs):
         if kwargs['colormap'] == 'temperature':
             colorbar.set_label('T/[K]')
         elif kwargs['colormap'] == 'gravity_acceleration':
-            colorbar.set_label('g')
+            set_g_colorbar_label(colorbar, kwargs['units'])
+
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
@@ -326,38 +327,38 @@ def binary_surface(**kwargs):
             if kwargs['components_to_plot'] == 'primary':
                 plot.set_array(kwargs['primary_cmap'])
                 colorbar = fig.colorbar(plot, shrink=0.7)
-                colorbar.set_label('T/[K]')
+                set_T_colorbar_label(colorbar, extra='primary')
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'])
                 colorbar = fig.colorbar(plot, shrink=0.7)
-                colorbar.set_label('T/[K]')
+                set_T_colorbar_label(colorbar, extra='secondary')
             elif kwargs['components_to_plot'] == 'both':
                 # both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                 plot1.set_array(kwargs['primary_cmap'])
                 plot2.set_array(kwargs['secondary_cmap'])
                 colorbar1 = fig.colorbar(plot1, shrink=0.7)
-                colorbar1.set_label('T/[K]')
+                set_T_colorbar_label(colorbar1, extra='primary')
                 colorbar2 = fig.colorbar(plot2, shrink=0.7)
-                # colorbar2.set_label('T/[K]')
+                set_T_colorbar_label(colorbar2, extra='secondary')
         elif kwargs['colormap'] == 'gravity_acceleration':
             plot1.set_cmap(cmap=cm.jet_r)
             plot2.set_cmap(cmap=cm.jet_r)
             if kwargs['components_to_plot'] == 'primary':
-                plot.set_array(kwargs['primary_cmap'] / np.max(kwargs['primary_cmap']))
-                colorbar = fig.colorbar(plot, shrink=0.7)
-                colorbar.set_label('Normalized gravity acceleration')
+                plot.set_array(kwargs['primary_cmap'])
+                colorbar1 = fig.colorbar(plot, shrink=0.7)
+                set_g_colorbar_label(colorbar1, kwargs['units'])
             elif kwargs['components_to_plot'] == 'secondary':
-                plot.set_array(kwargs['secondary_cmap'] / np.max(kwargs['secondary_cmap']))
-                colorbar = fig.colorbar(plot, shrink=0.7)
-                colorbar.set_label('Normalized gravity acceleration')
+                plot.set_array(kwargs['secondary_cmap'])
+                colorbar1 = fig.colorbar(plot, shrink=0.7)
+                set_g_colorbar_label(colorbar1, kwargs['units'])
             elif kwargs['components_to_plot'] == 'both':
-                both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
-                plot1.set_array(kwargs['primary_cmap'] / np.max(both_cmaps))
-                plot2.set_array(kwargs['secondary_cmap'] / np.max(both_cmaps))
+                # both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
+                plot1.set_array(kwargs['primary_cmap'])
+                plot2.set_array(kwargs['secondary_cmap'])
                 colorbar1 = fig.colorbar(plot1, shrink=0.7)
-                # colorbar1.set_label('Normalized gravity acceleration')
+                set_g_colorbar_label(colorbar1, kwargs['units'], extra='primary')
                 colorbar2 = fig.colorbar(plot2, shrink=0.7)
-                colorbar1.set_label('Normalized gravity acceleration')
+                set_g_colorbar_label(colorbar2, kwargs['units'], extra='secondary')
 
     x_min, x_max = 0, 0
     if kwargs['components_to_plot'] == 'both':
@@ -380,10 +381,38 @@ def binary_surface(**kwargs):
         ax.set_ylabel('y')
         ax.set_zlabel('z')
     else:
-         ax.set_axis_off()
+        ax.set_axis_off()
 
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
+
+
+def set_g_colorbar_label(colorbar, kwarg, extra=''):
+    """
+    function sets label of the colorbar for gravity acceleration surface function
+
+    :param colorbar:
+    :param kwarg:
+    :return:
+    """
+    if kwarg == 'log_cgs':
+        colorbar.set_label(extra + ' log(g/[cgs])')
+    elif kwarg == 'log_SI':
+        colorbar.set_label(extra + ' log(g/[SI])')
+    elif kwarg == 'SI':
+        colorbar.set_label(extra + r' $g/[m s^{-2}]$')
+    elif kwarg == 'cgs':
+        colorbar.set_label(extra + r' $g/[cm s^{-2}]$')
+
+def set_T_colorbar_label(colorbar, extra=''):
+    """
+    function sets label of the colorbar for effective temperature surface function
+
+    :param colorbar:
+    :param kwarg:
+    :return:
+    """
+    colorbar.set_label(extra + r' $T_{eff}/[K]$')
 
 
 def single_star_wireframe(**kwargs):

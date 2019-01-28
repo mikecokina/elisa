@@ -100,7 +100,7 @@ secondary = Star(mass=1.898*u.solMass,
                  t_eff=8742*u.K,
                  gravity_darkening=1.0,
                  # discretization_factor=5,
-                 # spots=spots_metadata['secondary'],
+                 spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['primary'],
                  albedo=0.6
                 )
@@ -109,7 +109,7 @@ bs = BinarySystem(primary=primary,
                   secondary=secondary,
                   argument_of_periastron=0*u.deg,
                   gamma=-2.34*u.km/u.s,
-                  period=4.74922*u.d,
+                  period=3.74922*u.d,
                   eccentricity=0.0,
                   inclination=84.96*u.deg,
                   primary_minimum_time=0.0*u.d,
@@ -169,18 +169,19 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         # plot_axis=False
 #         )
 
-# bs.plot(descriptor='surface',
-#         phase=0.4,
-#         # components_to_plot='primary',
-#         # components_to_plot='secondary',
-#         # edges=True,
-#         # normals=True,
-#         # colormap='gravity_acceleration',
-#         colormap='temperature',
-#         # plot_axis=False,
-#         # face_mask_primary=a,
-#         # face_mask_secondary=b,
-#         # inclination=crit_incl,
-#         # azimuth=azim[0],
-#         )
+bs.plot(descriptor='surface',
+        phase=0.4,
+        # components_to_plot='primary',
+        # components_to_plot='secondary',
+        # edges=True,
+        # normals=True,
+        # colormap='gravity_acceleration',
+        colormap='temperature',
+        # plot_axis=False,
+        # face_mask_primary=a,
+        # face_mask_secondary=b,
+        # inclination=crit_incl,
+        # azimuth=azim[0],
+        units='SI'
+        )
 

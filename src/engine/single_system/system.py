@@ -650,7 +650,7 @@ class SingleSystem(System):
             kwargs['azimuth'] = kwargs.get('azimuth', 0)
 
         elif descriptor == 'surface':
-            KWARGS = ['axis_unit', 'edges', 'normals', 'colormap', 'plot_axis', 'inclination', 'azimuth']
+            KWARGS = ['axis_unit', 'edges', 'normals', 'colormap', 'plot_axis', 'inclination', 'azimuth', 'units']
             utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
             method_to_call = graphics.single_star_surface
 
@@ -660,6 +660,7 @@ class SingleSystem(System):
             kwargs['plot_axis'] = kwargs.get('plot_axis', True)
             kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
             kwargs['azimuth'] = kwargs.get('azimuth', 0)
+            kwargs['units'] = kwargs.get('units', 'logg_cgs')
 
             output = self.build_surface(return_surface=True)
             kwargs['mesh'], kwargs['triangles'] = copy(output[0]), copy(output[1])
@@ -669,6 +670,8 @@ class SingleSystem(System):
 
             if kwargs['colormap'] is not None:
                 kwargs['cmap'] = self.build_surface_map(colormap=kwargs['colormap'], return_map=True)
+                if kwargs['colormap'] == 'gravity_acceleration':
+                    kwargs['cmap'] = utils.convert_gravity_acceleration_array(kwargs['cmap'], kwargs['units'])
             if kwargs['normals']:
                 kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'], com=0)
                 kwargs['centres'] = self.star.calculate_surface_centres(points=kwargs['mesh'],

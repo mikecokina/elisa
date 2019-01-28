@@ -161,15 +161,14 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
         for _component in component:
             component_instance = getattr(self, _component)
             if colormap == 'gravity_acceleration':
-                return_map[_component] = copy(component_instance.potential_gradient_magnitudes)
+                return_map[_component] = copy(component_instance._log_g)
             elif colormap == 'temperature':
                 return_map[_component] = copy(component_instance.temperatures)
 
             if component_instance.spots:
                 for spot_index, spot in component_instance.spots.items():
                     if colormap == 'gravity_acceleration':
-                        return_map[_component] = np.append(return_map[_component],
-                                                           spot.potential_gradient_magnitudes)
+                        return_map[_component] = np.append(return_map[_component], spot._log_g)
                     elif colormap == 'temperature':
                         return_map[_component] = np.append(return_map[_component], spot.temperatures)
         return return_map

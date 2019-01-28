@@ -106,37 +106,19 @@ def build_surface_map(self, colormap=None, return_map=False):
     if colormap is None:
         raise ValueError('Specify colormap to calculate (`temperature` or `gravity_acceleration`).')
 
-    self._logger.debug('Computing surface areas of stellar surface.')
-    self.star.areas = self.star.calculate_areas()
-    self._logger.debug('Computing polar radius')
-    self.star._polar_radius = self.calculate_polar_radius()
-    self._logger.debug('Computing potential gradient magnitudes distribution accros the stellar surface')
-    self.star.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient()
-    self._logger.debug('Computing magnitude of polar potential gradient.')
-    self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
+    build_surface_gravity(self)
 
     if colormap == 'temperature':
-        self._logger.debug('Computing effective temprature distibution of stellar surface.')
-        self.star.temperatures = self.star.calculate_effective_temperatures()
+        build_temperature_distribution(self)
+        # self._logger.debug('Computing effective temprature distibution of stellar surface.')
+        # self.star.temperatures = self.star.calculate_effective_temperatures()
         if self.star.pulsations:
             self._logger.debug('Adding pulsations to surface temperature distribution of the star.')
             self.star.temperatures = self.star.add_pulsations()
 
     if self.star.spots:
         for spot_index, spot in self.star.spots.items():
-            self._logger.debug('Calculating surface areas of spot: {}'.format(spot_index))
-            spot.areas = spot.calculate_areas()
-
-            self._logger.debug('Calculating distribution of potential gradient magnitudes of spot:'
-                               ' {}'.format(spot_index))
-            spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(points=spot.points,
-                                                                                        faces=spot.faces)
-
             if colormap == 'temperature':
-                self._logger.debug('Computing temperature distribution of spot: {}'.format(spot_index))
-                spot.temperatures = spot.temperature_factor * \
-                                    self.star.calculate_effective_temperatures(gradient_magnitudes=
-                                                                               spot.potential_gradient_magnitudes)
                 if self.star.pulsations:
                     self._logger.debug('Adding pulsations to temperature distribution of spot: '
                                        '{}'.format(spot_index))
@@ -149,14 +131,14 @@ def build_surface_map(self, colormap=None, return_map=False):
         if colormap == 'temperature':
             ret_list = copy(self.star.temperatures)
         elif colormap == 'gravity_acceleration':
-            ret_list = copy(self.star.potential_gradient_magnitudes)
+            ret_list = copy(self.star.log_g)
 
         if self.star.spots:
             for spot_index, spot in self.star.spots.items():
                 if colormap == 'temperature':
                     ret_list = np.append(ret_list, spot.temperatures)
                 elif colormap == 'gravity_acceleration':
-                    ret_list = np.append(ret_list, spot.potential_gradient_magnitudes)
+                    ret_list = np.append(ret_list, spot.log_g)
         return ret_list
     return
 
