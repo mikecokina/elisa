@@ -1430,9 +1430,9 @@ class BinarySystem(System):
 
         # generating the azimuths for neck
         neck_position, neck_polynomial = self.calculate_neck_position(return_polynomial=True)
-        phi_neck, theta_neck, separator_neck = \
-            static.pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial,
-                                                                 component_instance.polar_radius)
+        # phi_neck, theta_neck, separator_neck = \
+        #     static.pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial,
+        #                                                          polar_radius=component_instance.polar_radius)
 
 
         # calculating points on farside equator
@@ -1506,13 +1506,13 @@ class BinarySystem(System):
 
         # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
         # z axis
-        # delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1)
+        delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1)
         if component == 'primary':
             num = 15 * int(
                 neck_position // (component_instance.polar_radius * component_instance.discretization_factor))
             # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
             x_curve = np.linspace(0., neck_position, num=num, endpoint=True)
-            z_curve = np.polyval(neck_polynome, x_curve)
+            z_curve = np.polyval(neck_polynomial, x_curve)
             curve = np.column_stack((x_curve, z_curve))
             neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
             neck_length = np.sum(neck_lengths)
@@ -1534,7 +1534,7 @@ class BinarySystem(System):
                 (1 - neck_position) // (component_instance.polar_radius * component_instance.discretization_factor))
             # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
             x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
-            z_curve = np.polyval(neck_polynome, x_curve)
+            z_curve = np.polyval(neck_polynomial, x_curve)
             curve = np.column_stack((x_curve, z_curve))
             neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
             neck_length = np.sum(neck_lengths)
