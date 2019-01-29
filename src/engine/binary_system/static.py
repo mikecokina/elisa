@@ -167,79 +167,134 @@ def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
 
 
 def compute_filling_factor(surface_potential, lagrangian_points):
-        """
+    """
 
-        :param surface_potential:
-        :param lagrangian_points: list; lagrangian points in `order` (in order to ensure that L2)
-        :return:
-        """
-        return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
+    :param surface_potential:
+    :param lagrangian_points: list; lagrangian points in `order` (in order to ensure that L2)
+    :return:
+    """
+    return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
 
 
 def pre_calc_azimuths_for_detached_points(alpha):
-        """
-        returns azimuths for the whole quarter surface in specific order (near point, equator, far point and the rest)
-        separator gives you information about position of these sections
+    """
+    returns azimuths for the whole quarter surface in specific order (near point, equator, far point and the rest)
+    separator gives you information about position of these sections
 
-        :param alpha:
-        :return:
-        """
-        separator = []
+    :param alpha:
+    :return:
+    """
+    separator = []
 
-        # azimuths for points on equator
-        num = int(const.PI // alpha)
-        phi = np.linspace(0., const.PI, num=num + 1)
-        theta = np.array([const.HALF_PI for _ in phi])
-        separator.append(np.shape(theta)[0])
+    # azimuths for points on equator
+    num = int(const.PI // alpha)
+    phi = np.linspace(0., const.PI, num=num + 1)
+    theta = np.array([const.HALF_PI for _ in phi])
+    separator.append(np.shape(theta)[0])
 
-        # azimuths for points on meridian
-        num = int(const.HALF_PI // alpha)
-        phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
-        theta_meridian = np.concatenate((np.linspace(const.HALF_PI - alpha, alpha, num=num - 1),
-                                         np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
+    # azimuths for points on meridian
+    num = int(const.HALF_PI // alpha)
+    phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
+    theta_meridian = np.concatenate((np.linspace(const.HALF_PI - alpha, alpha, num=num - 1),
+                                     np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
 
-        phi = np.concatenate((phi, phi_meridian))
-        theta = np.concatenate((theta, theta_meridian))
-        separator.append(np.shape(theta)[0])
+    phi = np.concatenate((phi, phi_meridian))
+    theta = np.concatenate((theta, theta_meridian))
+    separator.append(np.shape(theta)[0])
 
-        # azimuths for rest of the quarter
-        num = int(const.HALF_PI // alpha)
-        thetas = np.linspace(alpha, const.HALF_PI, num=num - 1, endpoint=False)
-        phi_q, theta_q = [], []
-        for tht in thetas:
-            alpha_corrected = alpha / np.sin(tht)
-            num = int(const.PI // alpha_corrected)
-            alpha_corrected = const.PI / (num + 1)
-            phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
-            phi_q += phi_q_add
-            theta_q += [tht for _ in phi_q_add]
+    # azimuths for rest of the quarter
+    num = int(const.HALF_PI // alpha)
+    thetas = np.linspace(alpha, const.HALF_PI, num=num - 1, endpoint=False)
+    phi_q, theta_q = [], []
+    for tht in thetas:
+        alpha_corrected = alpha / np.sin(tht)
+        num = int(const.PI // alpha_corrected)
+        alpha_corrected = const.PI / (num + 1)
+        phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
+        phi_q += phi_q_add
+        theta_q += [tht for _ in phi_q_add]
 
-        phi = np.concatenate((phi, phi_q))
-        theta = np.concatenate((theta, theta_q))
+    phi = np.concatenate((phi, phi_q))
+    theta = np.concatenate((theta, theta_q))
 
-        return phi, theta, separator
+    return phi, theta, separator
+
+
+def pre_calc_azimuths_for_overcontact_farside_points(alpha):
+    """
+    calculates azimuths (directions) to the surface points of over-contact component on its far-side
+
+    :param alpha: discretization factor
+    :return:
+    """
+    separator = []
+
+    # calculating points on farside equator
+    num = int(const.HALF_PI // alpha)
+    phi = np.linspace(const.HALF_PI, const.PI, num=num + 1)
+    theta = np.array([const.HALF_PI for _ in phi])
+    separator.append(np.shape(theta)[0])
+
+    # calculating points on phi = pi meridian
+    phi_meridian1 = np.array([const.PI for _ in range(num)])
+    theta_meridian1 = np.linspace(0., const.HALF_PI - alpha, num=num)
+    phi = np.concatenate((phi, phi_meridian1))
+    theta = np.concatenate((theta, theta_meridian1))
+    separator.append(np.shape(theta)[0])
+
+    # calculating points on phi = pi/2 meridian, perpendicular to component`s distance vector
+    num -= 1
+    phi_meridian2 = np.array([const.HALF_PI for _ in range(num)])
+    theta_meridian2 = np.linspace(alpha, const.HALF_PI, num=num, endpoint=False)
+    phi = np.concatenate((phi, phi_meridian2))
+    theta = np.concatenate((theta, theta_meridian2))
+    separator.append(np.shape(theta)[0])
+
+    # calculating the rest of the surface on farside
+    thetas = np.linspace(alpha, const.HALF_PI, num=num, endpoint=False)
+    phi_q1, theta_q1 = [], []
+    for tht in thetas:
+        alpha_corrected = alpha / np.sin(tht)
+        num = int(const.HALF_PI // alpha_corrected)
+        alpha_corrected = const.HALF_PI / (num + 1)
+        phi_q_add = [const.HALF_PI + alpha_corrected * ii for ii in range(1, num + 1)]
+        phi_q1 += phi_q_add
+        theta_q1 += [tht for _ in phi_q_add]
+    phi = np.concatenate((phi, phi_q1))
+    theta = np.concatenate((theta, theta_q1))
+    separator.append(np.shape(theta)[0])
+
+    return phi, theta, separator
+
+
+def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial, polar_radius):
+    # generating the neck
+
+    # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
+    # z axis
+    delta_z = alpha * polar_radius
 
 
 def get_surface_points(*args):
-        """
-        function solves radius for given azimuths that are passed in *argss
+    """
+    function solves radius for given azimuths that are passed in *argss
 
-        :param args:
-        :return:
-        """
-        phi, theta, components_distance, precalc, fn = args
+    :param args:
+    :return:
+    """
+    phi, theta, components_distance, precalc, fn = args
 
-        pre_calc_vals = precalc(*(components_distance, phi, theta))
+    pre_calc_vals = precalc(*(components_distance, phi, theta))
 
-        solver_init_value = np.array([1. / 10000.])
-        r = []
-        for ii, phii in enumerate(phi):
-            args = tuple(pre_calc_vals[ii, :])
-            solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
-            r.append(solution[0])
+    solver_init_value = np.array([1. / 10000.])
+    r = []
+    for ii, phii in enumerate(phi):
+        args = tuple(pre_calc_vals[ii, :])
+        solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
+        r.append(solution[0])
 
-        r = np.array(r)
-        return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
+    r = np.array(r)
+    return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
 
 def component_to_list(component):

@@ -1425,6 +1425,16 @@ class BinarySystem(System):
             raise ValueError('Invalid value of `component` argument: `{}`. '
                              'Expecting `primary` or `secondary`.'.format(component))
 
+        # precalculating azimuths for farside points
+        phi_farside, theta_farside, separator_farside = static.pre_calc_azimuths_for_overcontact_farside_points(alpha)
+
+        # generating the azimuths for neck
+        neck_position, neck_polynomial = self.calculate_neck_position(return_polynomial=True)
+        phi_neck, theta_neck, separator_neck = \
+            static.pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial,
+                                                                 component_instance.polar_radius)
+
+
         # calculating points on farside equator
         num = int(const.HALF_PI // alpha)
         r_eq1 = []
@@ -1458,7 +1468,7 @@ class BinarySystem(System):
         meridian1 = utils.spherical_to_cartesian(np.column_stack((r_meridian1, phi_meridian1, theta_meridian1)))
         x_meridian1, y_meridian1, z_meridian1 = meridian1[:, 0], meridian1[:, 1], meridian1[:, 2]
 
-        # calculating points on phi = pi/2 meridian, perpendicular to component`s radius vector
+        # calculating points on phi = pi/2 meridian, perpendicular to component`s distance vector
         r_meridian2 = []
         num = int(const.HALF_PI // alpha) - 1
         phi_meridian2 = np.array([const.HALF_PI for _ in range(num)])
@@ -1493,11 +1503,10 @@ class BinarySystem(System):
         quarter = utils.spherical_to_cartesian(np.column_stack((r_q1, phi_q1, theta_q1)))
         x_q1, y_q1, z_q1 = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
-        # generating the neck
-        neck_position, neck_polynome = self.calculate_neck_position(return_polynomial=True)
+
         # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
         # z axis
-        delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1)
+        # delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1)
         if component == 'primary':
             num = 15 * int(
                 neck_position // (component_instance.polar_radius * component_instance.discretization_factor))
@@ -2110,7 +2119,6 @@ class BinarySystem(System):
                     if kwargs['face_mask_secondary'] is not None:
                         kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
                         kwargs['secondary_cmap'] = kwargs['secondary_cmap'][kwargs['face_mask_secondary']]
-
 
         else:
             raise ValueError("Incorrect descriptor `{}`".format(descriptor))
