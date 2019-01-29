@@ -817,7 +817,7 @@ class SingleSystem(System):
         # calculating line of sights vector from time vector
         # defining
         line_of_sight = utils.get_line_of_sight(time, self.reference_time, self.inclination, self.rotation_period)
-        print(line_of_sight)
+        # print(line_of_sight)
 
     def get_info(self):
         pass

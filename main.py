@@ -100,7 +100,7 @@ secondary = Star(mass=1.898*u.solMass,
                  t_eff=8742*u.K,
                  gravity_darkening=1.0,
                  # discretization_factor=5,
-                 spots=spots_metadata['secondary'],
+                 # spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['primary'],
                  albedo=0.6
                 )

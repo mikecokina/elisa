@@ -2029,6 +2029,7 @@ class BinarySystem(System):
 
             components_distance, azim = self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
             kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
+            kwargs['morphology'] = self.morphology
 
             # this part decides if both components need to be calculated at once (due to reflection effect)
             # if kwargs['colormap'] == 'temperature' and self.reflection_effect_iterations != 0:

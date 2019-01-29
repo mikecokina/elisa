@@ -286,18 +286,20 @@ def binary_surface(**kwargs):
                       color='black', length=0.05)
 
     elif kwargs['components_to_plot'] == 'both':
-        points = np.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
-        triangles = np.concatenate((kwargs['primary_triangles'],
+        if kwargs['morphology'] == 'over-contact':
+            points = np.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
+            triangles = np.concatenate((kwargs['primary_triangles'],
                                     kwargs['secondary_triangles'] + np.shape(kwargs['points_primary'])[0]), axis=0)
 
-        # plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
-        #                        shade=False, color=clr[0])
-        plot1 = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
-                               kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'], antialiased=True,
-                               shade=False, color=clr[0])
-        plot2 = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
-                               kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
-                               antialiased=True, shade=False, color=clr[1])
+            plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
+                                   shade=False, color=clr[0])
+        else:
+            plot1 = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
+                                    kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
+                                    antialiased=True, shade=False, color=clr[0])
+            plot2 = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
+                                    kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
+                                    antialiased=True, shade=False, color=clr[1])
         if kwargs.get('normals', False):
             centres = np.concatenate((kwargs['primary_centres'], kwargs['secondary_centres']), axis=0)
             arrows = np.concatenate((kwargs['primary_arrows'], kwargs['secondary_arrows']), axis=0)
@@ -311,7 +313,7 @@ def binary_surface(**kwargs):
                          'Expected values are: `primary`, `secondary` or `both`')
 
     if kwargs.get('edges', False):
-        if kwargs['components_to_plot'] == 'both':
+        if kwargs['components_to_plot'] == 'both' and kwargs['morphology'] != 'over-contact':
             plot1.set_edgecolor('black')
             plot2.set_edgecolor('black')
         else:
@@ -319,7 +321,7 @@ def binary_surface(**kwargs):
 
     if kwargs.get('colormap', False):
         if kwargs['colormap'] == 'temperature':
-            if kwargs['components_to_plot'] == 'both':
+            if kwargs['components_to_plot'] == 'both' and kwargs['morphology'] != 'over-contact':
                 plot1.set_cmap(cmap=cm.jet_r)
                 plot2.set_cmap(cmap=cm.jet_r)
             else:
@@ -333,16 +335,28 @@ def binary_surface(**kwargs):
                 colorbar = fig.colorbar(plot, shrink=0.7)
                 set_T_colorbar_label(colorbar, extra='secondary')
             elif kwargs['components_to_plot'] == 'both':
-                # both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
-                plot1.set_array(kwargs['primary_cmap'])
-                plot2.set_array(kwargs['secondary_cmap'])
-                colorbar1 = fig.colorbar(plot1, shrink=0.7)
-                set_T_colorbar_label(colorbar1, extra='primary')
-                colorbar2 = fig.colorbar(plot2, shrink=0.7)
-                set_T_colorbar_label(colorbar2, extra='secondary')
+                if kwargs['morphology'] == 'over-contact':
+                    both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
+                    plot.set_array(both_cmaps)
+                    colorbar = fig.colorbar(plot, shrink=0.7)
+                    set_T_colorbar_label(colorbar)
+                else:
+                    plot1.set_array(kwargs['primary_cmap'])
+                    plot2.set_array(kwargs['secondary_cmap'])
+                    colorbar1 = fig.colorbar(plot1, shrink=0.7)
+                    set_T_colorbar_label(colorbar1, extra='primary')
+                    colorbar2 = fig.colorbar(plot2, shrink=0.7)
+                    set_T_colorbar_label(colorbar2, extra='secondary')
         elif kwargs['colormap'] == 'gravity_acceleration':
-            plot1.set_cmap(cmap=cm.jet_r)
-            plot2.set_cmap(cmap=cm.jet_r)
+            try:
+                plot1.set_cmap(cmap=cm.jet_r)
+                plot2.set_cmap(cmap=cm.jet_r)
+            except:
+                pass
+            try:
+                plot.set_cmap(cmap=cm.jet_r)
+            except:
+                pass
             if kwargs['components_to_plot'] == 'primary':
                 plot.set_array(kwargs['primary_cmap'])
                 colorbar1 = fig.colorbar(plot, shrink=0.7)
@@ -352,13 +366,18 @@ def binary_surface(**kwargs):
                 colorbar1 = fig.colorbar(plot, shrink=0.7)
                 set_g_colorbar_label(colorbar1, kwargs['units'])
             elif kwargs['components_to_plot'] == 'both':
-                # both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
-                plot1.set_array(kwargs['primary_cmap'])
-                plot2.set_array(kwargs['secondary_cmap'])
-                colorbar1 = fig.colorbar(plot1, shrink=0.7)
-                set_g_colorbar_label(colorbar1, kwargs['units'], extra='primary')
-                colorbar2 = fig.colorbar(plot2, shrink=0.7)
-                set_g_colorbar_label(colorbar2, kwargs['units'], extra='secondary')
+                if kwargs['morphology'] == 'over-contact':
+                    both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
+                    plot.set_array(both_cmaps)
+                    colorbar = fig.colorbar(plot, shrink=0.7)
+                    set_g_colorbar_label(colorbar, kwargs['units'])
+                else:
+                    plot1.set_array(kwargs['primary_cmap'])
+                    plot2.set_array(kwargs['secondary_cmap'])
+                    colorbar1 = fig.colorbar(plot1, shrink=0.7)
+                    set_g_colorbar_label(colorbar1, kwargs['units'], extra='primary')
+                    colorbar2 = fig.colorbar(plot2, shrink=0.7)
+                    set_g_colorbar_label(colorbar2, kwargs['units'], extra='secondary')
 
     x_min, x_max = 0, 0
     if kwargs['components_to_plot'] == 'both':
@@ -403,6 +422,7 @@ def set_g_colorbar_label(colorbar, kwarg, extra=''):
         colorbar.set_label(extra + r' $g/[m s^{-2}]$')
     elif kwarg == 'cgs':
         colorbar.set_label(extra + r' $g/[cm s^{-2}]$')
+
 
 def set_T_colorbar_label(colorbar, extra=''):
     """

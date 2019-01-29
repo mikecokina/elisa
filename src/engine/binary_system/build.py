@@ -162,6 +162,7 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
             component_instance = getattr(self, _component)
             if colormap == 'gravity_acceleration':
                 return_map[_component] = copy(component_instance._log_g)
+                # return_map[_component] = copy(component_instance.potential_gradient_magnitudes)
             elif colormap == 'temperature':
                 return_map[_component] = copy(component_instance.temperatures)
 
