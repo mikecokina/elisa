@@ -1,8 +1,8 @@
 import numpy as np
 from copy import copy
 
-from conf import config
-from engine.single_system import static
+from elisa.conf import config
+from elisa.engine.single_system import static
 
 
 def build_surface_with_no_spots(self):

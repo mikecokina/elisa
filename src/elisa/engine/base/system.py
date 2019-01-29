@@ -3,11 +3,11 @@ import gc
 
 from abc import ABCMeta, abstractmethod
 from astropy import units as u
-from engine import units as U, logger
+from elisa.engine import units as U, logger
 from scipy.optimize import fsolve
 from copy import copy
-from engine import const as c
-from engine.base.body import Body
+from elisa.engine import const as c
+from elisa.engine.base.body import Body
 
 
 class System(metaclass=ABCMeta):

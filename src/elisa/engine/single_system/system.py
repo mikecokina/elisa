@@ -1,16 +1,16 @@
 import numpy as np
 import scipy
 
-from engine.base.system import System
-from engine.base.star import Star
+from elisa.engine.base.system import System
+from elisa.engine.base.star import Star
 from scipy.spatial import Delaunay
-from engine import graphics, logger
-from engine import const as c
+from elisa.engine import graphics, logger
+from elisa.engine import const as c
 from astropy import units as u
-from engine import units as U
-from engine import utils
+from elisa.engine import units as U
+from elisa.engine import utils
 from copy import copy
-from engine.single_system import static, build
+from elisa.engine.single_system import static, build
 
 
 class SingleSystem(System):

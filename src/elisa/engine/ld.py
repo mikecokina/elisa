@@ -4,8 +4,8 @@ import os
 import numpy as np
 import pandas as pd
 
-from conf import config
-from engine import utils, const
+from elisa.conf import config
+from elisa.engine import utils, const
 from scipy import interpolate
 
 

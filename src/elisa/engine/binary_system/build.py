@@ -1,8 +1,8 @@
 import numpy as np
 from copy import copy
 
-from conf import config
-from engine.binary_system import static
+from elisa.conf import config
+from elisa.engine.binary_system import static
 
 
 def build_surface_gravity(self, component: str or list=None, components_distance: float=None):

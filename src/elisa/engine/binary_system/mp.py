@@ -1,7 +1,7 @@
 import numpy as np
 import scipy
 
-from engine.binary_system import model
+from elisa.engine.binary_system import model
 
 
 def prepare_get_surface_points_args(preacalc_vals_args, mass_ratio, surface_potential):

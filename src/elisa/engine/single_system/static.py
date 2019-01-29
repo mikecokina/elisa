@@ -3,10 +3,10 @@ from copy import copy
 
 import scipy
 
-from engine import utils, const
-from engine import const as c
+from elisa.engine import utils, const
+from elisa.engine import const as c
 from astropy import units as u
-from engine import units as U
+from elisa.engine import units as U
 
 
 def angular_velocity(rotation_period):

@@ -1,8 +1,8 @@
 from astropy import units as u
-from engine import units
+from elisa.engine import units
 import numpy as np
 import logging
-from engine import utils
+from elisa.engine import utils
 
 
 class Spot(object):

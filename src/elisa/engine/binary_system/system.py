@@ -31,16 +31,16 @@ from astropy import units as u
 from scipy.optimize import newton
 from scipy.spatial import Delaunay
 
-from conf import config
-from engine import const, logger
-from engine import graphics
-from engine import ld
-from engine import units
-from engine import utils
-from engine.binary_system import static, build, mp
-from engine.orbit import Orbit
-from engine.base.star import Star
-from engine.base.system import System
+from elisa.conf import config
+from elisa.engine import const, logger
+from elisa.engine import graphics
+from elisa.engine import ld
+from elisa.engine import units
+from elisa.engine import utils
+from elisa.engine.binary_system import static, build, mp
+from elisa.engine.orbit import Orbit
+from elisa.engine.base.star import Star
+from elisa.engine.base.system import System
 
 
 class BinarySystem(System):

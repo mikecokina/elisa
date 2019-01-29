@@ -1,5 +1,5 @@
-from engine.base.body import Body
-from engine import utils, logger
+from elisa.engine.base.body import Body
+from elisa.engine import utils, logger
 
 
 class Planet(Body):

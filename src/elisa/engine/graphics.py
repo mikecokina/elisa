@@ -1,4 +1,4 @@
-from engine import utils
+from elisa.engine import utils
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from astropy import units as u

@@ -2,9 +2,9 @@ import numpy as np
 
 from abc import ABCMeta
 from astropy import units as u
-from engine import units as U, logger
-from engine import utils
-from engine.spot import Spot
+from elisa.engine import units as U, logger
+from elisa.engine import utils
+from elisa.engine.spot import Spot
 from copy import copy
 
 

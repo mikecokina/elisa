@@ -1,14 +1,14 @@
 import numpy as np
 
-from engine.base.body import Body
-from engine.pulsations import PulsationMode
-from engine import utils, logger
-from engine import const as c
+from elisa.engine.base.body import Body
+from elisa.engine.pulsations import PulsationMode
+from elisa.engine import utils, logger
+from elisa.engine import const as c
 from copy import copy
 from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
 from astropy import units as u
-from engine import units as U
+from elisa.engine import units as U
 
 
 class Star(Body):

@@ -5,7 +5,7 @@ import re
 from queue import Empty
 from copy import copy
 from scipy.spatial import distance_matrix as dstm
-from engine import const as c
+from elisa.engine import const as c
 
 # temporary
 from time import time

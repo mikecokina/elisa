@@ -1,9 +1,9 @@
 import numpy as np
 import logging
-from engine import utils
+from elisa.engine import utils
 from astropy import units as u
-from engine import units as U
-from engine import const as c
+from elisa.engine import units as U
+from elisa.engine import const as c
 
 
 class PulsationMode(object):

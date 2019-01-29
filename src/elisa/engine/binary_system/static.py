@@ -5,7 +5,7 @@ from copy import copy
 
 import scipy
 
-from engine import utils, const
+from elisa.engine import utils, const
 
 
 def visibility_test(centres, xlim, component):

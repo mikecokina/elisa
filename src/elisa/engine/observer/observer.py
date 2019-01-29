@@ -6,9 +6,9 @@ import pandas as pd
 import numpy as np
 
 from os.path import dirname
-from conf import config
-from engine.binary_system.system import BinarySystem
-from engine.observer import static, mp
+from elisa.conf import config
+from elisa.engine.binary_system.system import BinarySystem
+from elisa.engine.observer import static, mp
 
 config.set_up_logging()
 
