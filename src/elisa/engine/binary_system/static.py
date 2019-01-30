@@ -267,12 +267,90 @@ def pre_calc_azimuths_for_overcontact_farside_points(alpha):
     return phi, theta, separator
 
 
-def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial, polar_radius):
+def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial, polar_radius, component):
     # generating the neck
 
     # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
     # z axis
     delta_z = alpha * polar_radius
+
+    # test radii on neck_position
+    r_neck = []
+    separator = []
+
+    if component == 'primary':
+        num = 15 * int(neck_position // (polar_radius * alpha))
+        # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
+        x_curve = np.linspace(0., neck_position, num=num, endpoint=True)
+        z_curve = np.polyval(neck_polynomial, x_curve)
+
+        # radius on the neck
+        mid_r = np.min(z_curve)
+
+        curve = np.column_stack((x_curve, z_curve))
+        neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
+        neck_length = np.sum(neck_lengths)
+        segment = neck_length / (int(neck_length // delta_z) + 1)
+
+        k = 1
+        z_ns, line_sum = [], 0.0
+        for ii in range(num - 2):
+            line_sum += neck_lengths[ii]
+            if line_sum > k * segment:
+                z_ns.append(x_curve[ii + 1])
+                r_neck.append(z_curve[ii])
+                k += 1
+        z_ns.append(neck_position)
+        r_neck.append(mid_r)
+        z_ns = np.array(z_ns)
+    else:
+        num = 15 * int((1 - neck_position) // (polar_radius * alpha))
+        # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
+        x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
+        z_curve = np.polyval(neck_polynomial, x_curve)
+
+        # radius on the neck
+        mid_r = np.min(z_curve)
+
+        curve = np.column_stack((x_curve, z_curve))
+        neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
+        neck_length = np.sum(neck_lengths)
+        segment = neck_length / (int(neck_length // delta_z) + 1)
+
+        k = 1
+        z_ns, line_sum = [1 - neck_position], 0.0
+        r_neck.append(mid_r)
+        for ii in range(num - 2):
+            line_sum += neck_lengths[ii]
+            if line_sum > k * segment:
+                z_ns.append(1 - x_curve[ii + 1])
+                r_neck.append(z_curve[ii])
+                k += 1
+
+        z_ns = np.array(z_ns)
+
+    # equator azimuths
+    phi = np.array([const.HALF_PI for _ in z_ns])
+    z = z_ns
+    separator.append(np.shape(z)[0])
+    # meridian azimuths
+    phi = np.concatenate((phi, np.array([0 for _ in z_ns])))
+    z = np.concatenate((z, z_ns))
+    separator.append(np.shape(z)[0])
+
+    phi_n, z_n = [], []
+    for ii, zz in enumerate(z_ns):
+        num = int(const.HALF_PI * r_neck[ii] // delta_z)
+        num = 1 if num == 0 else num
+        start_val = const.HALF_PI / num
+        phis = np.linspace(start_val, const.HALF_PI, num=num - 1, endpoint=False)
+        z_n += [zz for _ in phis]
+        phi_n += [phi for phi in phis]
+    phi = np.concatenate((phi, np.array(phi_n)))
+    z = np.concatenate((z, np.array(z_n)))
+    separator.append(np.shape(z)[0])
+
+    return phi, z, separator
 
 
 def get_surface_points(*args):
