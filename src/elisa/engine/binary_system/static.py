@@ -375,6 +375,28 @@ def get_surface_points(*args):
     return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
 
+def get_surface_points_cylindrical(*args):
+    """
+    function solves radius for given azimuths that are passed in *argss
+
+    :param args:
+    :return:
+    """
+    phi, z, precalc, fn = args
+
+    pre_calc_vals = precalc(*(phi, z))
+
+    solver_init_value = np.array([1. / 10000.])
+    r = []
+    for ii, phii in enumerate(phi):
+        args = tuple(pre_calc_vals[ii, :])
+        solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
+        r.append(solution[0])
+
+    r = np.array(r)
+    return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))
+
+
 def component_to_list(component):
     """
     converts component name string into list

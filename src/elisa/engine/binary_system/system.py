@@ -725,7 +725,12 @@ class BinarySystem(System):
         e = np.power(qq - z, 2)
         f = np.power(np.sin(phi), 2)
 
-        return a, b, c, d, e, f
+        if np.isscalar(phi):
+            return a, b, c, d, e, f
+        else:
+            cc = c * np.ones(np.shape(phi))
+            dd = d * np.ones(np.shape(phi))
+            return np.column_stack((a, b, cc, dd, e, f))
 
     def potential_value_primary_cylindrical(self, radius, *args):
         """
@@ -799,7 +804,12 @@ class BinarySystem(System):
         e = np.power(np.sin(phi), 2)
         f = 0.5 - 0.5 * self.mass_ratio - 0.5 * qq
 
-        return a, b, c, d, e, f
+        if np.isscalar(phi):
+            return a, b, c, d, e, f
+        else:
+            cc = c * np.ones(np.shape(phi))
+            ff = f * np.ones(np.shape(phi))
+            return np.column_stack((a, b, cc, d, e, ff))
 
     def potential_value_secondary_cylindrical(self, radius, *args):
         """
@@ -1428,189 +1438,53 @@ class BinarySystem(System):
         # precalculating azimuths for farside points
         phi_farside, theta_farside, separator_farside = static.pre_calc_azimuths_for_overcontact_farside_points(alpha)
 
-        # # generating the azimuths for neck
+        # generating the azimuths for neck
         neck_position, neck_polynomial = self.calculate_neck_position(return_polynomial=True)
-        phi_neck, theta_neck, separator_neck = \
+        phi_neck, z_neck, separator_neck = \
             static.pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial,
                                                                  polar_radius=component_instance.polar_radius,
                                                                  component=component)
 
-        # calculating points on farside equator
-        num = int(const.HALF_PI // alpha)
-        r_eq1 = []
-        phi_eq1 = np.linspace(const.HALF_PI, const.PI, num=num + 1)
-        theta_eq1 = np.array([const.HALF_PI for _ in phi_eq1])
-        for phi in phi_eq1:
-            args = (components_distance, phi, const.HALF_PI)
-            args = precalc(*args)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
-                                                        xtol=1e-12)
-            r_eq1.append(solution[0])
-        r_eq1 = np.array(r_eq1)
-        equator1 = utils.spherical_to_cartesian(np.column_stack((r_eq1, phi_eq1, theta_eq1)))
-        # assigning equator points and point A
-        x_eq1, x_a = equator1[: -1, 0], equator1[-1, 0],
-        y_eq1, y_a = equator1[: -1, 1], equator1[-1, 1],
-        z_eq1, z_a = equator1[: -1, 2], equator1[-1, 2],
+        # solving points on farside
+        args = phi_farside, theta_farside, components_distance, precalc, fn
+        # here implement multiprocessing
+        points_farside = static.get_surface_points(*args)
 
-        # calculating points on phi = pi meridian
-        r_meridian1 = []
-        num = int(const.HALF_PI // alpha)
-        phi_meridian1 = np.array([const.PI for _ in range(num)])
-        theta_meridian1 = np.linspace(0., const.HALF_PI - alpha, num=num)
-        for ii, theta in enumerate(theta_meridian1):
-            args = (components_distance, phi_meridian1[ii], theta)
-            args = precalc(*args)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
-                                                        xtol=1e-12)
-            r_meridian1.append(solution[0])
-        r_meridian1 = np.array(r_meridian1)
-        meridian1 = utils.spherical_to_cartesian(np.column_stack((r_meridian1, phi_meridian1, theta_meridian1)))
-        x_meridian1, y_meridian1, z_meridian1 = meridian1[:, 0], meridian1[:, 1], meridian1[:, 2]
+        # assigning equator points and point A (the point on the tip of the farside equator)
+        equator_farside = points_farside[:separator_farside[0], :]
+        x_eq1, x_a = equator_farside[: -1, 0], equator_farside[-1, 0]
+        y_eq1, y_a = equator_farside[: -1, 1], equator_farside[-1, 1]
+        z_eq1, z_a = equator_farside[: -1, 2], equator_farside[-1, 2]
 
-        # calculating points on phi = pi/2 meridian, perpendicular to component`s distance vector
-        r_meridian2 = []
-        num = int(const.HALF_PI // alpha) - 1
-        phi_meridian2 = np.array([const.HALF_PI for _ in range(num)])
-        theta_meridian2 = np.linspace(alpha, const.HALF_PI, num=num, endpoint=False)
-        for ii, theta in enumerate(theta_meridian2):
-            args = (components_distance, phi_meridian2[ii], theta)
-            args = precalc(*args)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
-                                                        xtol=1e-12)
-            r_meridian2.append(solution[0])
-        r_meridian2 = np.array(r_meridian2)
-        meridian2 = utils.spherical_to_cartesian(np.column_stack((r_meridian2, phi_meridian2, theta_meridian2)))
-        x_meridian2, y_meridian2, z_meridian2 = meridian2[:, 0], meridian2[:, 1], meridian2[:, 2]
+        # assigning points on phi = pi
+        meridian_farside1 = points_farside[separator_farside[0]: separator_farside[1], :]
+        x_meridian1, y_meridian1, z_meridian1 = \
+            meridian_farside1[:, 0], meridian_farside1[:, 1], meridian_farside1[:, 2]
 
-        # calculating the rest of the surface on farside
-        thetas = np.linspace(alpha, const.HALF_PI, num=num, endpoint=False)
-        r_q1, phi_q1, theta_q1 = [], [], []
-        for theta in thetas:
-            alpha_corrected = alpha / np.sin(theta)
-            num = int(const.HALF_PI // alpha_corrected)
-            alpha_corrected = const.HALF_PI / (num + 1)
-            phi_q_add = [const.HALF_PI + alpha_corrected * ii for ii in range(1, num + 1)]
-            phi_q1 += phi_q_add
-            for phi in phi_q_add:
-                theta_q1.append(theta)
-                args = (components_distance, phi, theta)
-                args = precalc(*args)
-                solution, _, ier, _ = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=args,
-                                                            xtol=1e-12)
-                r_q1.append(solution[0])
-        r_q1, phi_q1, theta_q1 = np.array(r_q1), np.array(phi_q1), np.array(theta_q1)
-        quarter = utils.spherical_to_cartesian(np.column_stack((r_q1, phi_q1, theta_q1)))
+        # assigning points on phi = pi/2 meridian, perpendicular to component`s distance vector
+        meridian_farside2 = points_farside[separator_farside[1]: separator_farside[2], :]
+        x_meridian2, y_meridian2, z_meridian2 = \
+            meridian_farside2[:, 0], meridian_farside2[:, 1], meridian_farside2[:, 2]
+
+        # assigning the rest of the surface on farside
+        quarter = points_farside[separator_farside[2]:, :]
         x_q1, y_q1, z_q1 = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
+        # solving points on neck
+        args = phi_neck, z_neck, precal_cylindrical, fn_cylindrical
+        points_neck = static.get_surface_points_cylindrical(*args)
 
-        # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
-        # z axis
-        delta_z = alpha * self.calculate_polar_radius(component=component, components_distance=1)
-        # test radii on neck_position
-        r_neck = []
+        # assigning equator points on neck
+        r_eqn = points_neck[:separator_neck[0], :]
+        z_eqn, y_eqn, x_eqn = r_eqn[:, 0], r_eqn[:, 1], r_eqn[:, 2]
 
-        if component == 'primary':
-            num = 15 * int(
-                neck_position // (component_instance.polar_radius * component_instance.discretization_factor))
-            # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
-            x_curve = np.linspace(0., neck_position, num=num, endpoint=True)
-            z_curve = np.polyval(neck_polynomial, x_curve)
-            mid_r = np.min(z_curve)
-            curve = np.column_stack((x_curve, z_curve))
-            neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
-            neck_length = np.sum(neck_lengths)
-            segment = neck_length / (int(neck_length // delta_z) + 1)
+        # assigning points on phi = 0 meridian, perpendicular to component`s distance vector
+        r_meridian_n = points_neck[separator_neck[0]: separator_neck[1], :]
+        z_meridian_n, y_meridian_n, x_meridian_n = r_meridian_n[:, 0], r_meridian_n[:, 1], r_meridian_n[:, 2]
 
-            k = 1
-            z_ns, line_sum = [], 0.0
-            for ii in range(num - 2):
-                line_sum += neck_lengths[ii]
-                if line_sum > k * segment:
-                    z_ns.append(x_curve[ii + 1])
-                    r_neck.append(z_curve[ii])
-                    k += 1
-            z_ns.append(neck_position)
-            r_neck.append(mid_r)
-            z_ns = np.array(z_ns)
-            # num = int(neck_position // delta_z) + 1
-            # z_ns = np.linspace(delta_z, neck_position, num=num, endpoint=True)
-        else:
-            num = 15 * int(
-                (1 - neck_position) // (component_instance.polar_radius * component_instance.discretization_factor))
-            # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
-            x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
-            z_curve = np.polyval(neck_polynomial, x_curve)
-            mid_r = np.min(z_curve)
-            curve = np.column_stack((x_curve, z_curve))
-            neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
-            neck_length = np.sum(neck_lengths)
-            segment = neck_length / (int(neck_length // delta_z) + 1)
-
-            k = 1
-            z_ns, line_sum = [1 - neck_position], 0.0
-            r_neck.append(mid_r)
-            for ii in range(num - 2):
-                line_sum += neck_lengths[ii]
-                if line_sum > k * segment:
-                    z_ns.append(1 - x_curve[ii + 1])
-                    r_neck.append(z_curve[ii])
-                    k += 1
-
-            z_ns = np.array(z_ns)
-
-            # num = int((1 - neck_position) // delta_z) + 1
-            # z_ns = np.linspace(delta_z, 1.0 - neck_position, num=num, endpoint=True)
-
-        # generating equatorial, polar part and rest of the neck
-        r_eqn, phi_eqn, z_eqn = [], [], []
-        r_meridian_n, phi_meridian_n, z_meridian_n = [], [], []
-        r_n, phi_n, z_n = [], [], []
-        for ii, z in enumerate(z_ns):
-            z_eqn.append(z)
-            phi_eqn.append(const.HALF_PI)
-            args = (const.HALF_PI, z)
-            args = precal_cylindrical(*args)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
-                                                        args=args, xtol=1e-12)
-            r_eqn.append(solution[0])
-
-            z_meridian_n.append(z)
-            phi_meridian_n.append(0.)
-            args = (0., z)
-            args = precal_cylindrical(*args)
-            solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
-                                                        args=args, xtol=1e-12)
-            r_meridian_n.append(solution[0])
-
-            num = int(const.HALF_PI * r_neck[ii] // delta_z)
-            num = 1 if num == 0 else num
-            start_val = const.HALF_PI / num
-            phis = np.linspace(start_val, const.HALF_PI, num=num - 1, endpoint=False)
-            for phi in phis:
-                z_n.append(z)
-                phi_n.append(phi)
-                args = (phi, z)
-                args = precal_cylindrical(*args)
-                solution, _, ier, _ = scipy.optimize.fsolve(fn_cylindrical, scipy_solver_init_value, full_output=True,
-                                                            args=args, xtol=1e-12)
-                r_n.append(solution[0])
-
-        r_eqn = np.array(r_eqn)
-        z_eqn = np.array(z_eqn)
-        phi_eqn = np.array(phi_eqn)
-        z_eqn, y_eqn, x_eqn = utils.cylindrical_to_cartesian(r_eqn, phi_eqn, z_eqn)
-
-        r_meridian_n = np.array(r_meridian_n)
-        z_meridian_n = np.array(z_meridian_n)
-        phi_meridian_n = np.array(phi_meridian_n)
-        z_meridian_n, y_meridian_n, x_meridian_n = \
-            utils.cylindrical_to_cartesian(r_meridian_n, phi_meridian_n, z_meridian_n)
-
-        r_n = np.array(r_n)
-        z_n = np.array(z_n)
-        phi_n = np.array(phi_n)
-        z_n, y_n, x_n = utils.cylindrical_to_cartesian(r_n, phi_n, z_n)
+        # assigning the rest of the surface on neck
+        r_n = points_neck[separator_neck[1]:, :]
+        z_n, y_n, x_n = r_n[:, 0], r_n[:, 1], r_n[:, 2]
 
         # building point blocks similar to those in detached system (equator pts, meridian pts and quarter pts)
         x_eq = np.concatenate((x_eqn, x_eq1), axis=0)

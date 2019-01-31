@@ -112,18 +112,26 @@ def spherical_to_cartesian(spherical_points):
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
-def cylindrical_to_cartesian(radius, phi, z):
+def cylindrical_to_cartesian(cylindrical_points):
     """
-    converts cylindrical coordinates to cartesian
+    converts cylindrical coordinates into cartesian, if input is one point, output is 1D vector
 
-    :param radius: : np.array
-    :param phi: np.array
-    :param z: np.array
-    :return:
+    :param cylindrical_points: numpy_array([[r1, phi1, z1],
+                                            [r2, phi2, z2],
+                                             ...
+                                            [rn, phin, zn]])
+    :return: numpy_array([[x1, y1, z1],
+                          [x2, y2, z2],
+                           ...
+                          [xn, yn, zn]])
     """
-    x = radius * np.cos(phi)
-    y = radius * np.sin(phi)
-    return x, y, z
+    cylindrical_points = np.array(cylindrical_points)
+    cylindrical_points = np.expand_dims(cylindrical_points, axis=0) if len(np.shape(cylindrical_points)) == 1 \
+        else cylindrical_points
+    x = cylindrical_points[:, 0] * np.cos(cylindrical_points[:, 1])
+    y = cylindrical_points[:, 0] * np.sin(cylindrical_points[:, 1])
+    points = np.column_stack((x, y, cylindrical_points[:, 2]))
+    return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
 def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
