@@ -605,3 +605,39 @@ class Body(metaclass=ABCMeta):
 
     def get_info(self):
         pass
+
+    def return_all_points(self, return_vertices_map=False):
+        """
+        function returns all surface point and faces optionally with corresponding map of vertices
+        :param return_vertices_map:
+        :param self: Star object
+        :return: array - all surface points including star and surface points
+        """
+        points = copy(self.points)
+        for spot_index, spot_instance in self.spots.items():
+            points = np.concatenate([points, spot_instance.points])
+
+        if return_vertices_map:
+            vertices_map = [{"type": "object", "enum": -1}] * len(self.points)
+            for spot_index, spot_instance in self.spots.items():
+                vertices_map = np.concatenate(
+                    [vertices_map, [{"type": "spot", "enum": spot_index}] * len(spot_instance.points)]
+                )
+            return points, vertices_map
+        return points
+
+    @staticmethod
+    def initialize_model_container(vertices_map):
+        """
+        initializes basic data structure `model` objects that will contain faces divided by its origin (star or spots)
+        and data structure containing spot candidates with its index, centre,
+        :param vertices_map:
+        :return:
+        """
+        model = {"object": [], "spots": {}}
+        spot_candidates = {"simplex": {}, "com": [], "ix": []}
+        spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
+                                           if vertices_map[ix]["enum"] >= 0]))
+        for spot_index in spots_instance_indices:
+            model["spots"][spot_index] = []
+        return model, spot_candidates

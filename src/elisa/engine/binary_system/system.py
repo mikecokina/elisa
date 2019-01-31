@@ -2369,29 +2369,29 @@ class BinarySystem(System):
     # ### build methods
     # todo/idea: remove these definitions and call methods from `build` modul
 
-    def build_surface_gravity(self, *args, **kwargs):
-        return build.build_surface_gravity(self, *args, **kwargs)
+    def build_surface_gravity(self, component: str or list=None, components_distance: float=None):
+        return build.build_surface_gravity(self, component, components_distance)
 
-    def build_faces_orientation(self, *args, **kwargs):
-        return build.build_faces_orientation(self, *args, **kwargs)
+    def build_faces_orientation(self, component: str or list=None, components_distance: float=None):
+        return build.build_faces_orientation(self, component, components_distance)
 
-    def build_temperature_distribution(self, *args, **kwargs):
-        return build.build_temperature_distribution(self, *args, **kwargs)
+    def build_temperature_distribution(self, component=None, components_distance=None):
+        return build.build_temperature_distribution(self, component, components_distance)
 
-    def build_surface_map(self, *args, **kwargs):
-        return build.build_surface_map(self, *args, **kwargs)
+    def build_surface_map(self, colormap=None, component=None, components_distance=None, return_map=False):
+        return build.build_surface_map(self, colormap, component, components_distance, return_map)
 
-    def build_mesh(self, *args, **kwargs):
-        return build.build_mesh(self, *args, **kwargs)
+    def build_mesh(self, component=None, components_distance=None, **kwargs):
+        return build.build_mesh(self, component, components_distance)
 
-    def build_faces(self, *args, **kwargs):
-        return build.build_faces(self, *args, **kwargs)
+    def build_faces(self, component=None, components_distance=None):
+        return build.build_faces(self, component, components_distance)
 
-    def build_surface(self, *args, **kwargs):
-        return build.build_surface(self, *args, **kwargs)
+    def build_surface(self, component=None, components_distance=None, **kwargs):
+        return build.build_surface(self, component, components_distance, **kwargs)
 
-    def build_surface_with_no_spots(self, *args, **kwargs):
-        return build.build_surface_with_no_spots(self, *args, **kwargs)
+    def build_surface_with_no_spots(self, component=None, components_distance=None):
+        return build.build_surface_with_no_spots(self, component, components_distance)
 
-    def build_surface_with_spots(self, *args, **kwargs):
-        return build.build_surface_with_spots(self, *args, **kwargs)
+    def build_surface_with_spots(self, component=None, components_distance=None):
+        return build.build_surface_with_spots(self, component, components_distance)

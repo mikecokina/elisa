@@ -205,6 +205,7 @@ class System(metaclass=ABCMeta):
         pass
 
     def _incorporate_spots_mesh(self, component_instance=None, component_com=None):
+        # todo: move all incorporation methods to body
         if not component_instance.spots:
             return
         self._logger.info("Incorporating spot points to component {} mesh".format(component_instance.name))
@@ -298,42 +299,6 @@ class System(metaclass=ABCMeta):
         component_instance.points = points.pop("object")
         for spot_index, spot_points in points.items():
             component_instance.spots[int(spot_index)].points = points[spot_index]
-
-    @staticmethod
-    def _return_all_points(component_instance, return_vertices_map=False):
-        """
-        function returns all surface point and faces optionally with corresponding map of vertices
-        :param component_instance: Star object
-        :return: array - all surface points including star and surface points
-        """
-        points = copy(component_instance.points)
-        for spot_index, spot_instance in component_instance.spots.items():
-            points = np.concatenate([points, spot_instance.points])
-
-        if return_vertices_map:
-            vertices_map = [{"type": "object", "enum": -1}] * len(component_instance.points)
-            for spot_index, spot_instance in component_instance.spots.items():
-                vertices_map = np.concatenate(
-                    [vertices_map, [{"type": "spot", "enum": spot_index}] * len(spot_instance.points)]
-                )
-            return points, vertices_map
-        return points
-
-    @staticmethod
-    def _initialize_model_container(vertices_map):
-        """
-        initializes basic data structure `model` objects that will contain faces divided by its origin (star or spots)
-        and data structure containing spot candidates with its index, centre,
-        :param vertices_map:
-        :return:
-        """
-        model = {"object": [], "spots": {}}
-        spot_candidates = {"simplex": {}, "com": [], "ix": []}
-        spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
-                                           if vertices_map[ix]["enum"] >= 0]))
-        for spot_index in spots_instance_indices:
-            model["spots"][spot_index] = []
-        return model, spot_candidates
 
     @staticmethod
     def _get_spots_references(vertices_map, simplex):
