@@ -1,7 +1,7 @@
-from astropy import units as u
-from elisa.engine import units
 import numpy as np
-import logging
+
+from astropy import units as u
+from elisa.engine import units, logger
 from elisa.engine import utils
 
 
@@ -9,12 +9,14 @@ class Spot(object):
     """
     Spot data container
     """
-    KWARGS = ["longitude", "latitude", "angular_diameter", "temperature_factor"]
+    MANDATORY_KWARGS = ["longitude", "latitude", "angular_diameter", "temperature_factor"]
     OPTIONAL_KWARGS = ["angular_density"]
-    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, **kwargs):
+    def __init__(self, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.ALL_KWARGS, instance=Spot)
+        utils.check_missing_kwargs(Spot.MANDATORY_KWARGS, kwargs, instance_of=Spot)
+        self._logger = logger.getLogger(Spot.__name__, suppress=suppress_logger)
 
         self._discretization_factor = None
         self._latitude = None
@@ -25,7 +27,6 @@ class Spot(object):
         self.boundary = None
         self.boundary_center = None
         self.center = None
-        self.max_size = None
 
         self.points = None
         self.normals = None
@@ -36,11 +37,8 @@ class Spot(object):
         self.potential_gradient_magnitudes = None
         self.temperatures = None
 
-        self._log_g =None
+        self._log_g = None
 
-        self._logger = logging.getLogger(Spot.__name__)
-
-        utils.check_missing_kwargs(Spot.KWARGS, kwargs, instance_of=Spot)
         for key in kwargs:
             set_val = kwargs.get(key)
             self._logger.debug("Setting property {} "
@@ -48,7 +46,7 @@ class Spot(object):
             setattr(self, key, set_val)
 
     def kwargs_serializer(self):
-        return {kwarg: getattr(self, kwarg) for kwarg in self.KWARGS if getattr(self, kwarg) is not None}
+        return {kwarg: getattr(self, kwarg) for kwarg in self.MANDATORY_KWARGS if getattr(self, kwarg) is not None}
 
     @property
     def log_g(self):

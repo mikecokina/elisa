@@ -1,6 +1,6 @@
 import numpy as np
-from copy import copy
 
+from copy import copy
 from elisa.conf import config
 from elisa.engine.binary_system import static
 
@@ -205,12 +205,10 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
 
         component_instance = getattr(self, _component)
         self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
-        if self.morphology == 'over-contact':
-            self._incorporate_spots_overcontact_mesh(component_instance=component_instance,
-                                                     component_com=component_x_center[_component])
-        else:
-            self._incorporate_spots_mesh(component_instance=component_instance,
-                                         component_com=component_x_center[_component])
+        # if self.morphology == 'over-contact':
+        #     component_instance.incorporate_spots_overcontact_mesh(component_com=component_x_center[_component])
+        # else:
+        component_instance.incorporate_spots_mesh(component_com=component_x_center[_component])
 
 
 def build_faces(self, component=None, components_distance=None):
@@ -234,7 +232,7 @@ def build_faces(self, component=None, components_distance=None):
             else self.build_surface_with_no_spots(_component, components_distance=components_distance)
 
 
-def build_surface(self, components_distance=None, component=None, return_surface=False):
+def build_surface(self, component=None, components_distance=None, return_surface=False):
     """
     function for building of general binary star component surfaces including spots
 
@@ -321,6 +319,7 @@ def build_surface_with_spots(self, component=None, components_distance=None):
     """
     function capable of triangulation of spotty stellar surfaces, it merges all surface points, triangulates them
     and then sorts the resulting surface faces under star or spot
+
     :param self:
     :param components_distance: float
     :param component: str `primary` or `secondary`
@@ -330,14 +329,13 @@ def build_surface_with_spots(self, component=None, components_distance=None):
     component_com = {'primary': 0.0, 'secondary': components_distance}
     for _component in component:
         component_instance = getattr(self, _component)
-        points, vertices_map = self._return_all_points(component_instance, return_vertices_map=True)
+        points, vertices_map = component_instance.return_all_points(return_vertices_map=True)
 
         surface_fn = self._get_surface_builder_fn()
         faces = surface_fn(component=_component, points=points, components_distance=components_distance)
-        model, spot_candidates = self._initialize_model_container(vertices_map)
-        model = self._split_spots_and_component_faces(
-            points, faces, model, spot_candidates, vertices_map, component_instance,
-            component_com=component_com[_component]
+        model, spot_candidates = component_instance.initialize_model_container(vertices_map)
+        model = component_instance.split_spots_and_component_faces(
+            points, faces, model, spot_candidates, vertices_map, component_com[_component]
         )
-        self._remove_overlaped_spots(vertices_map, component_instance)
-        self._remap_surface_elements(model, component_instance, points)
+        component_instance.remove_overlaped_spots(vertices_map)
+        component_instance.remap_surface_elements(model, points)

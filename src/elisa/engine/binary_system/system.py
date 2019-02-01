@@ -29,7 +29,7 @@ import numpy as np
 import scipy
 from astropy import units as u
 from scipy.optimize import newton
-from scipy.spatial import Delaunay
+from scipy.spatial.qhull import Delaunay
 
 from elisa.conf import config
 from elisa.engine import const, logger
@@ -44,10 +44,10 @@ from elisa.engine.base.system import System
 
 
 class BinarySystem(System):
-    KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'primary_minimum_time',
-              'phase_shift']
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
+                        'primary_minimum_time', 'phase_shift']
     OPTIONAL_KWARGS = []
-    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     # this will be removed after full implementation of LD
     LD_COEFF = 0.5
@@ -146,7 +146,7 @@ class BinarySystem(System):
         :return:
         """
         self._logger.debug("Re/Initializing orbit in class instance {} ".format(BinarySystem.__name__))
-        orbit_kwargs = {key: getattr(self, key) for key in Orbit.KWARGS}
+        orbit_kwargs = {key: getattr(self, key) for key in Orbit.MANDATORY_KWARGS}
         self._orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
 
     @property
@@ -416,7 +416,7 @@ class BinarySystem(System):
                 # lon -> phi, lat -> theta
                 lon, lat = spot_instance.longitude, spot_instance.latitude
 
-                self._setup_spot_instance_discretization_factor(spot_instance, spot_index, component_instance)
+                component_instance.setup_spot_instance_discretization_factor(spot_instance, spot_index)
                 alpha = spot_instance.discretization_factor
                 diameter = spot_instance.angular_diameter
 
@@ -507,13 +507,6 @@ class BinarySystem(System):
                     self._logger.warning("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
                                          "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
                     continue
-
-                boundary_center = spot_points[0]
-
-                # max size from barycenter of boundary to boundary
-                spot_instance.max_size = max([np.linalg.norm(np.array(boundary_center) - np.array(b))
-                                              for b in boundary_points])
-
                 if component == "primary":
                     spot_instance.points = np.array(spot_points)
                     spot_instance.boundary = np.array(boundary_points)
@@ -566,7 +559,7 @@ class BinarySystem(System):
         :return: dict
         """
         serialized_kwargs = {}
-        for kwarg in self.KWARGS:
+        for kwarg in self.ALL_KWARGS:
             serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
 
@@ -1594,7 +1587,9 @@ class BinarySystem(System):
 
         return triangles_indices
 
-    def over_contact_surface(self, component=None, points=None):
+    def over_contact_surface(self, component=None, points=None, **kwargs):
+        # do not remove kwargs, keep compatible interface w/ detached where components distance has to be provided
+        # in this case,m components distance is sinked in kwargs and not used
         """
         calculates surface faces from the given component's points in case of over-contact system
 
@@ -1602,6 +1597,7 @@ class BinarySystem(System):
         :param component: str - `primary` or `secondary`
         :return: np.array - N x 3 array of vertice indices
         """
+
         component_instance = getattr(self, component)
         if points is None:
             points = component_instance.points
@@ -1711,72 +1707,6 @@ class BinarySystem(System):
             return neck_position, polynomial_fit
         else:
             return neck_position
-
-    def _incorporate_spots_overcontact_mesh(self, component_instance=None, component_com=None):
-        if not component_instance.spots:
-            return
-        self._logger.info("Incorporating spot points to component {} mesh".format(component_instance.name))
-
-        if component_instance is None:
-            raise ValueError('Object instance was not given.')
-
-        if component_com is None:
-            raise ValueError('Object centre of mass was not given.')
-
-        vertices_map = [{"enum": -1} for _ in component_instance.points]
-        # `all_component_points` do not contain points of any spot
-        all_component_points = copy(component_instance.points)
-        neck = np.min(all_component_points[:component_instance.base_symmetry_points_number, 0])
-
-        for spot_index, spot in component_instance.spots.items():
-            # average spacing in spot points
-            vertices_to_remove, vertices_test = [], []
-
-            cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.discretization_factor)
-
-            spot_center = spot.boundary_center - np.array([component_com, 0., 0.])
-
-            # removing star points in spot
-            # for dist, ix in zip(distances, indices):
-            for ix, pt in enumerate(all_component_points):
-                surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
-                cos_angle = np.inner(spot_center, surface_point) / (
-                    np.linalg.norm(spot_center) * np.linalg.norm(surface_point)
-                )
-
-                if cos_angle < cos_max_angle_point or pt[0] == neck:
-                    continue
-                vertices_to_remove.append(ix)
-
-            # simplices of target object for testing whether point lying inside or not of spot boundary, removing
-            # duplicate points on the spot border
-            # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
-            vertices_to_remove = list(set(vertices_to_remove))
-
-            # points and vertices_map update
-            if vertices_to_remove:
-                _points, _vertices_map = list(), list()
-
-                for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
-                    if ix in vertices_to_remove:
-                        # skip point if is marked for removal
-                        continue
-
-                    # append only points of currrent object that do not intervent to spot
-                    # [current, since there should be already spot from previous iteration step]
-                    _points.append(vertex)
-                    _vertices_map.append({"enum": vertices_map[ix]["enum"]})
-
-                for vertex in spot.points:
-                    _points.append(vertex)
-                    _vertices_map.append({"enum": spot_index})
-
-                all_component_points = copy(_points)
-                vertices_map = copy(_vertices_map)
-
-        separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map,
-                                                                    component_instance)
-        self.setup_component_instance_points(component_instance, separated_points)
 
     def _get_surface_builder_fn(self):
         """
@@ -2387,8 +2317,8 @@ class BinarySystem(System):
     def build_faces(self, component=None, components_distance=None):
         return build.build_faces(self, component, components_distance)
 
-    def build_surface(self, component=None, components_distance=None, **kwargs):
-        return build.build_surface(self, component, components_distance, **kwargs)
+    def build_surface(self, component=None, components_distance=None, return_surface=False):
+        return build.build_surface(self, component, components_distance, return_surface)
 
     def build_surface_with_no_spots(self, component=None, components_distance=None):
         return build.build_surface_with_no_spots(self, component, components_distance)

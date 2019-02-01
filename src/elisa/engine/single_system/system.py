@@ -1,24 +1,24 @@
+from copy import copy
+
 import numpy as np
 import scipy
-
-from elisa.engine.base.system import System
-from elisa.engine.base.star import Star
-from scipy.spatial import Delaunay
-from elisa.engine import graphics, logger
-from elisa.engine import const as c
 from astropy import units as u
+from scipy.spatial.qhull import Delaunay
+
+from elisa.engine import const as c
+from elisa.engine import graphics, logger
 from elisa.engine import units as U
 from elisa.engine import utils
-from copy import copy
+from elisa.engine.base.system import System
 from elisa.engine.single_system import static, build
 
 
 class SingleSystem(System):
-    KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'reference_time']
+    MANDATORY_KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'reference_time']
     OPTIONAL_KWARGS = []
-    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name=None, suppress_logger=True, **kwargs):
+    def __init__(self, name=None, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, SingleSystem.ALL_KWARGS, SingleSystem)
         super(SingleSystem, self).__init__(name=name, **kwargs)
 
@@ -142,6 +142,7 @@ class SingleSystem(System):
 
         :return:
         """
+
         # fixme: it's not crutial, but this function and same function in binary system should on the same place
         def solver_condition(x, *_args, **_kwargs):
             return True
@@ -248,10 +249,6 @@ class SingleSystem(System):
             # first point will be always barycenter of boundary
             spot_points[0] = boundary_center
 
-            # max size from barycenter of boundary to boundary
-            spot_instance.max_size = max([np.linalg.norm(np.array(boundary_center) - np.array(b))
-                                          for b in boundary_points])
-
             spot_instance.points = np.array(spot_points)
             spot_instance.boundary = np.array(boundary_points)
             spot_instance.boundary_center = np.array(boundary_center)
@@ -277,7 +274,7 @@ class SingleSystem(System):
         :return: dict
         """
         serialized_kwargs = {}
-        for kwarg in self.KWARGS:
+        for kwarg in self.ALL_KWARGS:
             serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
 
@@ -299,7 +296,7 @@ class SingleSystem(System):
         args, use = c.HALF_PI, False
         scipy_solver_init_value = np.array([1 / 1000.0])
         solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
-                                                        full_output=True, args=args)
+                                                    full_output=True, args=args)
         # check if star is closed
         if ier == 1 and not np.isnan(solution[0]):
             solution = solution[0]
@@ -439,7 +436,7 @@ class SingleSystem(System):
 
         # calculating equatorial part
         r_eq = np.array([self.star.equatorial_radius for ii in range(N)])
-        phi_eq = np.array([characterictic_angle*ii for ii in range(N)])
+        phi_eq = np.array([characterictic_angle * ii for ii in range(N)])
         theta_eq = np.array([c.HALF_PI for ii in range(N)])
         # converting quarter of equator to cartesian
         equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
@@ -447,7 +444,7 @@ class SingleSystem(System):
 
         # calculating radii for each latitude and generating one eighth of surface of the star without poles and equator
         num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
-        thetas = np.linspace(characterictic_angle, c.HALF_PI-characterictic_angle, num=num, endpoint=True)
+        thetas = np.linspace(characterictic_angle, c.HALF_PI - characterictic_angle, num=num, endpoint=True)
         r_q, phi_q, theta_q = [], [], []
         # also generating meridian line
         r_mer, phi_mer, theta_mer = [], [], []
@@ -459,8 +456,8 @@ class SingleSystem(System):
             radius = solution[0]
             num = int(c.HALF_PI * radius * np.sin(theta) // characterictic_distance)
             r_q += [radius for xx in range(1, num)]
-            M = c.HALF_PI/num
-            phi_q += [xx*M for xx in range(1, num)]
+            M = c.HALF_PI / num
+            phi_q += [xx * M for xx in range(1, num)]
             theta_q += [theta for xx in range(1, num)]
 
             r_mer.append(radius)
@@ -487,12 +484,12 @@ class SingleSystem(System):
         #           south hemisphere: south_pole, x_meridian, xy_quarter, y_meridian, y-x_quarter, -x_meridian,
         #                             -x-y_quarter, -y_meridian, -yx_quarter
 
-        x = np.concatenate((np.array([0]), x_mer, x_eq, x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq, -x_q,  y_mer,  y_eq,
-                            y_q, np.array([0]), x_mer,  x_q, -y_mer, -y_q, -x_mer, -x_q,  y_mer,  y_q))
-        y = np.concatenate((np.array([0]), y_mer, y_eq, y_q,  x_mer,  x_eq,  x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq,
-                            -x_q, np.array([0]), y_mer,  y_q,  x_mer,  x_q, -y_mer, -y_q, -x_mer, -x_q))
-        z = np.concatenate((np.array([self.star.polar_radius]), z_mer, z_eq, z_q,  z_mer,  z_eq,  z_q,  z_mer,  z_eq,
-                            z_q,  z_mer,  z_eq,  z_q, np.array([-self.star.polar_radius]), -z_mer, -z_q, -z_mer, -z_q,
+        x = np.concatenate((np.array([0]), x_mer, x_eq, x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq, -x_q, y_mer, y_eq,
+                            y_q, np.array([0]), x_mer, x_q, -y_mer, -y_q, -x_mer, -x_q, y_mer, y_q))
+        y = np.concatenate((np.array([0]), y_mer, y_eq, y_q, x_mer, x_eq, x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq,
+                            -x_q, np.array([0]), y_mer, y_q, x_mer, x_q, -y_mer, -y_q, -x_mer, -x_q))
+        z = np.concatenate((np.array([self.star.polar_radius]), z_mer, z_eq, z_q, z_mer, z_eq, z_q, z_mer, z_eq,
+                            z_q, z_mer, z_eq, z_q, np.array([-self.star.polar_radius]), -z_mer, -z_q, -z_mer, -z_q,
                             -z_mer, -z_q, -z_mer, -z_q))
 
         if symmetry_output:
@@ -522,18 +519,18 @@ class SingleSystem(System):
                                               np.arange(1 + meridian_length + quarter_equator_length,
                                                         base_symmetry_points_number - meridian_length)))
 
-            south_pole_index = 4*(base_symmetry_points_number - meridian_length) - 3
-            reduced_bspn = base_symmetry_points_number-meridian_length  # auxiliary variable1
+            south_pole_index = 4 * (base_symmetry_points_number - meridian_length) - 3
+            reduced_bspn = base_symmetry_points_number - meridian_length  # auxiliary variable1
             reduced_bspn2 = base_symmetry_points_number - quarter_equator_length
             inverse_symmetry_matrix = \
                 np.array([
-                    np.arange(base_symmetry_points_number+1),  # 1st quadrant (north hem)
+                    np.arange(base_symmetry_points_number + 1),  # 1st quadrant (north hem)
                     # 2nd quadrant (north hem)
-                    np.concatenate(([0], np.arange(reduced_bspn, 2*base_symmetry_points_number-meridian_length))),
+                    np.concatenate(([0], np.arange(reduced_bspn, 2 * base_symmetry_points_number - meridian_length))),
                     # 3rd quadrant (north hem)
-                    np.concatenate(([0], np.arange(2*reduced_bspn - 1, 3*reduced_bspn + meridian_length -1))),
+                    np.concatenate(([0], np.arange(2 * reduced_bspn - 1, 3 * reduced_bspn + meridian_length - 1))),
                     # 4th quadrant (north hem)
-                    np.concatenate(([0], np.arange(3*reduced_bspn - 2, 4*reduced_bspn - 3),
+                    np.concatenate(([0], np.arange(3 * reduced_bspn - 2, 4 * reduced_bspn - 3),
                                     np.arange(1, meridian_length + 2))),
                     # 1st quadrant (south hemisphere)
                     np.concatenate((np.arange(south_pole_index, meridian_length + 1 + south_pole_index),
@@ -547,31 +544,32 @@ class SingleSystem(System):
                                               reduced_bspn2 + south_pole_index),
                                     np.arange(base_symmetry_points_number,
                                               base_symmetry_points_number + quarter_equator_length),
-                                    np.arange(reduced_bspn2 + south_pole_index, 2*reduced_bspn2 - meridian_length - 1 +
+                                    np.arange(reduced_bspn2 + south_pole_index,
+                                              2 * reduced_bspn2 - meridian_length - 1 +
                                               south_pole_index),
-                                    [2*base_symmetry_points_number-meridian_length-1])),
+                                    [2 * base_symmetry_points_number - meridian_length - 1])),
                     # 3rd quadrant (south hem)
                     np.concatenate(([south_pole_index],
-                                    np.arange(2*reduced_bspn2 - 2*meridian_length - 1 + south_pole_index,
-                                              2*reduced_bspn2 - meridian_length - 1 + south_pole_index),
-                                    np.arange(2*base_symmetry_points_number - meridian_length - 1,
-                                              2*base_symmetry_points_number - meridian_length + quarter_equator_length
+                                    np.arange(2 * reduced_bspn2 - 2 * meridian_length - 1 + south_pole_index,
+                                              2 * reduced_bspn2 - meridian_length - 1 + south_pole_index),
+                                    np.arange(2 * base_symmetry_points_number - meridian_length - 1,
+                                              2 * base_symmetry_points_number - meridian_length + quarter_equator_length
                                               - 1),
-                                    np.arange(2*reduced_bspn2 - meridian_length - 1 + south_pole_index,
-                                              3*reduced_bspn2 - 2*meridian_length - 2 + south_pole_index),
-                                    [3*reduced_bspn + meridian_length - 2])),
+                                    np.arange(2 * reduced_bspn2 - meridian_length - 1 + south_pole_index,
+                                              3 * reduced_bspn2 - 2 * meridian_length - 2 + south_pole_index),
+                                    [3 * reduced_bspn + meridian_length - 2])),
                     # 4th quadrant (south hem)
                     np.concatenate(([south_pole_index],
-                                    np.arange(3*reduced_bspn2 - 3*meridian_length - 2 + south_pole_index,
-                                              3*reduced_bspn2 - 2*meridian_length - 2 + south_pole_index),
-                                    np.arange(3*reduced_bspn + meridian_length - 2,
-                                              3*reduced_bspn + meridian_length - 2 +
+                                    np.arange(3 * reduced_bspn2 - 3 * meridian_length - 2 + south_pole_index,
+                                              3 * reduced_bspn2 - 2 * meridian_length - 2 + south_pole_index),
+                                    np.arange(3 * reduced_bspn + meridian_length - 2,
+                                              3 * reduced_bspn + meridian_length - 2 +
                                               quarter_equator_length),
-                                    np.arange(3*reduced_bspn2 - 2*meridian_length - 2 + south_pole_index, len(x)),
+                                    np.arange(3 * reduced_bspn2 - 2 * meridian_length - 2 + south_pole_index, len(x)),
                                     np.arange(1 + south_pole_index, meridian_length + south_pole_index + 1),
                                     [1 + meridian_length]
                                     ))
-                          ])
+                ])
 
             return np.column_stack((x, y, z)), symmetry_vector, base_symmetry_points_number + 1, inverse_symmetry_matrix
         else:
@@ -630,9 +628,9 @@ class SingleSystem(System):
             kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
 
             kwargs['mesh'], _ = self.build_surface(return_surface=True)  # potom tu daj ked bude vediet skvrny
-            denominator = (1*kwargs['axis_unit'].to(U.DISTANCE_UNIT))
+            denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
             kwargs['mesh'] /= denominator
-            kwargs['equatorial_radius'] = self.star.equatorial_radius*U.DISTANCE_UNIT.to(kwargs['axis_unit'])
+            kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
             kwargs['azimuth'] = kwargs.get('azimuth', 0)
 
         elif descriptor == 'wireframe':
@@ -835,7 +833,6 @@ class SingleSystem(System):
         function for building of general system component points and surfaces including spots
 
         :param return_surface: bool - if true, function returns arrays with all points and faces (surface + spots)
-        :param component: specify component, use `primary` or `secondary`
         :type: str
         :return:
         """
@@ -857,8 +854,3 @@ class SingleSystem(System):
         build points of surface for including spots
         """
         build.build_mesh(self)
-
-
-
-
-
