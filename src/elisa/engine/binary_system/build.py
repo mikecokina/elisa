@@ -234,7 +234,7 @@ def build_faces(self, component=None, components_distance=None):
             else self.build_surface_with_no_spots(_component, components_distance=components_distance)
 
 
-def build_surface(self, components_distance=None, component=None, return_surface=False):
+def build_surface(self, component=None, components_distance=None, return_surface=False, **kwargs):
     """
     function for building of general binary star component surfaces including spots
 
@@ -255,7 +255,7 @@ def build_surface(self, components_distance=None, component=None, return_surface
         component_instance = getattr(self, _component)
 
         # build mesh and incorporate spots points to given obtained object mesh
-        self.build_mesh(component=_component, components_distance=components_distance)
+        self.build_mesh(component=_component, components_distance=components_distance, **kwargs)
 
         if not component_instance.spots:
             self.build_surface_with_no_spots(_component, components_distance=components_distance)
@@ -330,11 +330,11 @@ def build_surface_with_spots(self, component=None, components_distance=None):
     component_com = {'primary': 0.0, 'secondary': components_distance}
     for _component in component:
         component_instance = getattr(self, _component)
-        points, vertices_map = self._return_all_points(component_instance, return_vertices_map=True)
+        points, vertices_map = component_instance.return_all_points(return_vertices_map=True)
 
         surface_fn = self._get_surface_builder_fn()
         faces = surface_fn(component=_component, points=points, components_distance=components_distance)
-        model, spot_candidates = self._initialize_model_container(vertices_map)
+        model, spot_candidates = component_instance.initialize_model_container(vertices_map)
         model = self._split_spots_and_component_faces(
             points, faces, model, spot_candidates, vertices_map, component_instance,
             component_com=component_com[_component]

@@ -1282,8 +1282,14 @@ class BinarySystem(System):
         # calculating mesh in cartesian coordinates for quarter of the star
         args = phi, theta, components_distance, precalc_fn, potential_fn
 
-        points_q = static.get_surface_points(*args) if config.NUMBER_OF_THREADS == 1 or suppress_parallelism else \
-            self.get_surface_points_multiproc(*args)
+        if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
+            self._logger.debug('Calculating surface points of {0} component in mesh_detached function using single '
+                               'process method.'.format(component))
+            points_q = static.get_surface_points(*args)
+        else:
+            self._logger.debug('Calculating surface points of {0} component in mesh_detached function using multi '
+                               'process method.'.format(component))
+            points_q = self.get_surface_points_multiproc(*args)
 
         equator = points_q[:separator[0], :]
         # assigning equator points and nearside and farside points A and B
@@ -1387,8 +1393,37 @@ class BinarySystem(System):
         r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
         return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
+    def get_surface_points_multiproc_cylindrical(self, *args):
+        """
+        function solves radius for given azimuths that are passed in *argss via multithreading approach
+
+        :param args:
+        :return:
+        """
+
+        phi, z, precalc_fn, potential_fn = args
+        precalc_vals = precalc_fn(*(phi, z))
+        preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
+
+        if potential_fn == self.potential_primary_cylindrical_fn:
+            potential_fn_str_repr = "static_potential_primary_cylindrical_fn"
+            surface_potential = self.primary.surface_potential
+        else:
+            potential_fn_str_repr = "static_potential_secondary_cylindrical_fn"
+            surface_potential = self.secondary.surface_potential
+
+        pool = Pool(processes=config.NUMBER_OF_THREADS)
+        res = [pool.apply_async(mp.get_surface_points_worker,
+                                (potential_fn_str_repr, args))
+               for args in mp.prepare_get_surface_points_args(preacalc_vals_args,  self.mass_ratio, surface_potential)]
+
+        pool.close()
+        pool.join()
+        result_list = [np.array(r.get()) for r in res]
+        r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
+        return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))
+
     def mesh_over_contact(self, component=None, symmetry_output=False, **kwargs):
-        # todo: simplyfy this method
         """
         creates surface mesh of given binary star component in case of over-contact system
 
@@ -1416,7 +1451,6 @@ class BinarySystem(System):
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
         alpha = component_instance.discretization_factor
-        scipy_solver_init_value = np.array([1. / 10000.])
 
         # calculating distance between components
         components_distance = self.orbit.orbital_motion(phase=0)[0][0]
@@ -1448,7 +1482,14 @@ class BinarySystem(System):
         # solving points on farside
         args = phi_farside, theta_farside, components_distance, precalc, fn
         # here implement multiprocessing
-        points_farside = static.get_surface_points(*args)
+        if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
+            self._logger.debug('Calculating farside points of {0} component in mesh_overcontact function using single '
+                               'process method'.format(component))
+            points_farside = static.get_surface_points(*args)
+        else:
+            self._logger.debug('Calculating farside points of {0} component in mesh_overcontact function using multi '
+                               'process method'.format(component))
+            points_farside = self.get_surface_points_multiproc(*args)
 
         # assigning equator points and point A (the point on the tip of the farside equator)
         equator_farside = points_farside[:separator_farside[0], :]
@@ -1472,7 +1513,14 @@ class BinarySystem(System):
 
         # solving points on neck
         args = phi_neck, z_neck, precal_cylindrical, fn_cylindrical
-        points_neck = static.get_surface_points_cylindrical(*args)
+        if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
+            self._logger.debug('Calculating neck points of {0} component in mesh_overcontact function using single '
+                               'process method'.format(component))
+            points_neck = static.get_surface_points_cylindrical(*args)
+        else:
+            self._logger.debug('Calculating neck points of {0} component in mesh_overcontact function using multi '
+                               'process method'.format(component))
+            points_neck = self.get_surface_points_multiproc_cylindrical(*args)
 
         # assigning equator points on neck
         r_eqn = points_neck[:separator_neck[0], :]
@@ -1922,12 +1970,13 @@ class BinarySystem(System):
             components_distance, azim = self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
             kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
             kwargs['morphology'] = self.morphology
+            kwg = {'suppress_parallelism': False}
 
             # this part decides if both components need to be calculated at once (due to reflection effect)
             # if kwargs['colormap'] == 'temperature' and self.reflection_effect_iterations != 0:
             if kwargs['colormap'] == 'temperature':
                 points, faces = self.build_surface(components_distance=components_distance,
-                                                   return_surface=True)
+                                                   return_surface=True, **kwg)
                 kwargs['points_primary'] = points['primary']
                 kwargs['primary_triangles'] = faces['primary']
                 kwargs['points_secondary'] = points['secondary']
@@ -1957,7 +2006,7 @@ class BinarySystem(System):
             else:
                 if kwargs['components_to_plot'] in ['primary', 'both']:
                     points, faces = self.build_surface(component='primary', components_distance=components_distance,
-                                                       return_surface=True)
+                                                       return_surface=True, **kwg)
                     kwargs['points_primary'] = points['primary']
                     kwargs['primary_triangles'] = faces['primary']
 
@@ -1981,7 +2030,7 @@ class BinarySystem(System):
 
                 if kwargs['components_to_plot'] in ['secondary', 'both']:
                     points, faces = self.build_surface(component='secondary', components_distance=components_distance,
-                                                       return_surface=True)
+                                                       return_surface=True, **kwg)
                     kwargs['points_secondary'] = points['secondary']
                     kwargs['secondary_triangles'] = faces['secondary']
 
@@ -2370,28 +2419,29 @@ class BinarySystem(System):
     # todo/idea: remove these definitions and call methods from `build` modul
 
     def build_surface_gravity(self, component: str or list=None, components_distance: float=None):
-        return build.build_surface_gravity(self, component, components_distance)
+        return build.build_surface_gravity(self, component=component, components_distance=components_distance)
 
     def build_faces_orientation(self, component: str or list=None, components_distance: float=None):
-        return build.build_faces_orientation(self, component, components_distance)
+        return build.build_faces_orientation(self, component=component, components_distance=components_distance)
 
     def build_temperature_distribution(self, component=None, components_distance=None):
-        return build.build_temperature_distribution(self, component, components_distance)
+        return build.build_temperature_distribution(self, component=component, components_distance=components_distance)
 
     def build_surface_map(self, colormap=None, component=None, components_distance=None, return_map=False):
-        return build.build_surface_map(self, colormap, component, components_distance, return_map)
+        return build.build_surface_map(self, colormap=colormap, component=component,
+                                       components_distance=components_distance, return_map=return_map)
 
     def build_mesh(self, component=None, components_distance=None, **kwargs):
-        return build.build_mesh(self, component, components_distance)
+        return build.build_mesh(self, component=component, components_distance=components_distance, **kwargs)
 
     def build_faces(self, component=None, components_distance=None):
-        return build.build_faces(self, component, components_distance)
+        return build.build_faces(self, component=component, components_distance=components_distance)
 
     def build_surface(self, component=None, components_distance=None, **kwargs):
-        return build.build_surface(self, component, components_distance, **kwargs)
+        return build.build_surface(self, component=component, components_distance=components_distance, **kwargs)
 
     def build_surface_with_no_spots(self, component=None, components_distance=None):
-        return build.build_surface_with_no_spots(self, component, components_distance)
+        return build.build_surface_with_no_spots(self, component=component, components_distance=components_distance)
 
     def build_surface_with_spots(self, component=None, components_distance=None):
-        return build.build_surface_with_spots(self, component, components_distance)
+        return build.build_surface_with_spots(self, component=component, components_distance=components_distance)

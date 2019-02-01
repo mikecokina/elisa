@@ -119,7 +119,7 @@ bs = BinarySystem(primary=primary,
 
 components_min_distance = 1 - bs.eccentricity
 start_time = time()
-bs.build_surface(components_distance=components_min_distance)
+bs.build_surface(components_distance=components_min_distance, )
 # # bs.build_surface(components_distance=components_min_distance, component='primary')
 # # bs.build_surface(components_distance=components_min_distance, component='secondary')
 bs.build_surface_map(colormap='temperature', components_distance=components_min_distance)
