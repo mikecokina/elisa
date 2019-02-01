@@ -8,12 +8,14 @@ from astropy import units as u
 
 class Orbit(object):
 
-    KWARGS = ['period', 'inclination', 'eccentricity', 'argument_of_periastron']
+    MANDATORY_KWARGS = ['period', 'inclination', 'eccentricity', 'argument_of_periastron']
     OPTIONAL_KWARGS = []
-    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Orbit.ALL_KWARGS, Orbit)
+        utils.check_missing_kwargs(Orbit.MANDATORY_KWARGS, kwargs, instance_of=Orbit)
+
         self._logger = logger.getLogger(name=Orbit.__name__, suppress=suppress_logger)
 
         # default valeus of properties
@@ -24,8 +26,6 @@ class Orbit(object):
         self._periastron_distance = None
         self._perastron_phase = None
         self._semimajor_axis = None
-
-        utils.check_missing_kwargs(Orbit.KWARGS, kwargs, instance_of=Orbit)
 
         # values of properties
         for kwarg in kwargs:

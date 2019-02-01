@@ -1,11 +1,13 @@
-import numpy as np
-
+import gc
 from abc import ABCMeta
-from astropy import units as u
-from elisa.engine import units as U, logger
-from elisa.engine import utils
-from elisa.engine.spot import Spot
 from copy import copy
+
+import numpy as np
+from astropy import units as u
+
+from elisa.engine import units, logger
+from elisa.engine import utils
+from elisa.engine.base.spot import Spot
 
 
 class Body(metaclass=ABCMeta):
@@ -56,7 +58,6 @@ class Body(metaclass=ABCMeta):
         self.base_symmetry_points = None
         self.base_symmetry_faces = None
 
-    # Getters and setters
     @property
     def name(self):
         """
@@ -100,9 +101,9 @@ class Body(metaclass=ABCMeta):
         :param mass: int, np.int, float, np.float, astropy.unit.quantity.Quantity
         """
         if isinstance(mass, u.quantity.Quantity):
-            self._mass = np.float64(mass.to(U.MASS_UNIT))
+            self._mass = np.float64(mass.to(units.MASS_UNIT))
         elif isinstance(mass, (int, np.int, float, np.float)):
-            self._mass = np.float64(mass * u.solMass.to(U.MASS_UNIT))
+            self._mass = np.float64(mass * u.solMass.to(units.MASS_UNIT))
         else:
             raise TypeError('Your input is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity instance.')
 
@@ -127,7 +128,7 @@ class Body(metaclass=ABCMeta):
         :param t_eff: int, np.int, float, np.float, astropy.unit.quantity.Quantity
         """
         if isinstance(t_eff, u.quantity.Quantity):
-            self._t_eff = np.float64(t_eff.to(U.TEMPERATURE_UNIT))
+            self._t_eff = np.float64(t_eff.to(units.TEMPERATURE_UNIT))
         elif isinstance(t_eff, (int, np.int, float, np.float)):
             self._t_eff = np.float64(t_eff)
         else:
@@ -334,7 +335,7 @@ class Body(metaclass=ABCMeta):
         :return:
         """
         if isinstance(polar_radius, u.quantity.Quantity):
-            self._polar_radius = np.float64(polar_radius.to(U.DISTANCE_UNIT))
+            self._polar_radius = np.float64(polar_radius.to(units.DISTANCE_UNIT))
         elif isinstance(polar_radius, (int, np.int, float, np.float)):
             self._polar_radius = np.float64(polar_radius)
         else:
@@ -359,7 +360,7 @@ class Body(metaclass=ABCMeta):
         :return:
         """
         if isinstance(discretization_factor, u.quantity.Quantity):
-            self._discretization_factor = np.float64(discretization_factor.to(U.ARC_UNIT))
+            self._discretization_factor = np.float64(discretization_factor.to(units.ARC_UNIT))
         elif isinstance(discretization_factor, (int, np.int, float, np.float)):
             self._discretization_factor = np.radians(np.float64(discretization_factor))
         else:
@@ -392,9 +393,6 @@ class Body(metaclass=ABCMeta):
         if np.shape(centres)[0] != np.shape(self.faces)[0]:
             raise ValueError('Number of surface centres doesn`t equal to number of faces')
         self._face_centers = centres
-
-    def remove_spot(self, spot_index):
-        del(self._spots[spot_index])
 
     @property
     def spots(self):
@@ -452,6 +450,7 @@ class Body(metaclass=ABCMeta):
                              '{}'.format(np.shape(symmetry_vector)[0], np.shape(self.faces)[0]))
         self._face_symmetry_vector = symmetry_vector
 
+    # <units>
     @property
     def mass_unit(self):
         """
@@ -460,7 +459,7 @@ class Body(metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return U.MASS_UNIT
+        return units.MASS_UNIT
 
     @property
     def temperature_unit(self):
@@ -470,7 +469,7 @@ class Body(metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return U.TEMPERATURE_UNIT
+        return units.TEMPERATURE_UNIT
 
     @property
     def distance_unit(self):
@@ -480,7 +479,7 @@ class Body(metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return U.DISTANCE_UNIT
+        return units.DISTANCE_UNIT
 
     @property
     def time_unit(self):
@@ -490,7 +489,7 @@ class Body(metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return U.TIME_UNIT
+        return units.TIME_UNIT
 
     @property
     def arc_unit(self):
@@ -500,7 +499,12 @@ class Body(metaclass=ABCMeta):
 
         :return: astropy.unit.quantity.Quantity
         """
-        return U.ARC_UNIT
+        return units.ARC_UNIT
+
+    # </units>
+
+    def remove_spot(self, spot_index):
+        del (self._spots[spot_index])
 
     def calculate_normals(self, points=None, faces=None, centres=None, com=None):
         """
@@ -603,9 +607,6 @@ class Body(metaclass=ABCMeta):
 
         return ret_points, ret_faces
 
-    def get_info(self):
-        pass
-
     def return_all_points(self, return_vertices_map=False):
         """
         function returns all surface point and faces optionally with corresponding map of vertices
@@ -626,6 +627,259 @@ class Body(metaclass=ABCMeta):
             return points, vertices_map
         return points
 
+    def setup_body_points(self, points):
+        self.points = points.pop("object")
+        for spot_index, spot_points in points.items():
+            self.spots[int(spot_index)].points = points[spot_index]
+
+    def remove_overlaped_spots(self, vertices_map):
+        # remove spots that are totaly overlaped
+        spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
+                                           if vertices_map[ix]["enum"] >= 0]))
+        for spot_index, _ in list(self.spots.items()):
+            if spot_index not in spots_instance_indices:
+                self._logger.warning("spot with index {} doesn't contain any face "
+                                     "and will be removed from component {} spot list"
+                                     "".format(spot_index, self.name))
+                self.remove_spot(spot_index=spot_index)
+        gc.collect()
+
+    def remap_surface_elements(self, model, points_to_remap):
+        """
+        function remaps all surface points (`points_to_remap`) and faces (star and spots) according to the `model`
+
+        :param model: dict - list of indices of points in `points_to_remap` divided into star and spots sublists
+        :param points_to_remap: array of all surface points (star + points used in `_split_spots_and_component_faces`)
+        :return:
+        """
+        # remapping points and faces of star
+        self._logger.debug("changing value of parameter points of component {}".format(self.name))
+        indices = np.unique(model["object"])
+        self.points = points_to_remap[indices]
+
+        self._logger.debug("changing value of parameter faces component {}".format(self.name))
+
+        points_length = np.shape(points_to_remap)[0]
+        remap_list = np.empty(points_length, dtype=int)
+        remap_list[indices] = np.arange(np.shape(indices)[0])
+        self.faces = remap_list[model["object"]]
+
+        # remapping points and faces of spots
+        for spot_index, _ in list(self.spots.items()):
+            self._logger.debug("changing value of parameter points of spot {} / component {}"
+                               "".format(spot_index, self.name))
+            # get points currently belong to the given spot
+            indices = np.unique(model["spots"][spot_index])
+            self.spots[spot_index].points = points_to_remap[indices]
+
+            self._logger.debug("changing value of parameter faces of spot {} / component {}"
+                               "".format(spot_index, self.name))
+
+            remap_list = np.empty(points_length, dtype=int)
+            remap_list[indices] = np.arange(np.shape(indices)[0])
+            self.spots[spot_index].faces = remap_list[model["spots"][spot_index]]
+        gc.collect()
+
+    def setup_spot_instance_discretization_factor(self, spot_instance, spot_index):
+        # component_instance = getattr(self, component)
+        if spot_instance.discretization_factor is None:
+            self._logger.debug('angular density of the spot {0} on {2} component was not supplied '
+                               'and discretization factor of star {1} was used.'
+                               ''.format(spot_index, self.discretization_factor, self.name))
+            spot_instance.discretization_factor = 0.9 * self.discretization_factor * units.ARC_UNIT
+        if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter:
+            self._logger.debug('angular density {1} of the spot {0} on {2} component was larger than its '
+                               'angular radius. Therefore value of angular density was set to be equal to '
+                               '0.5 * angular diameter'
+                               ''.format(spot_index, self.discretization_factor, self.name))
+            spot_instance.discretization_factor = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
+
+    def incorporate_spots_mesh(self, component_com=None):
+        if not self.spots:
+            self._logger.debug("not spots found, skipping incorporating spots to mesh".format(self.name))
+            return
+        self._logger.info("incorporating spot points to component {} mesh".format(self.name))
+
+        if component_com is None:
+            raise ValueError('object centre of mass was not given')
+
+        vertices_map = [{"enum": -1} for _ in self.points]
+        # `all_component_points` do not contain points of any spot
+        all_component_points = copy(self.points)
+        neck = np.min(all_component_points[:self.base_symmetry_points_number, 0])
+
+        for spot_index, spot in self.spots.items():
+            # average spacing in spot points
+            vertices_to_remove, vertices_test = [], []
+            cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.discretization_factor)
+            spot_center = spot.center - np.array([component_com, 0., 0.])
+
+            # removing star points in spot
+            # for dist, ix in zip(distances, indices):
+            for ix, pt in enumerate(all_component_points):
+                surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
+                cos_angle = \
+                    np.inner(spot_center, surface_point) / (
+                        np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
+
+                if cos_angle < cos_max_angle_point or np.linalg.norm(pt[0] - neck) < 1e-9:
+                    continue
+                vertices_to_remove.append(ix)
+
+            # simplices of target object for testing whether point lying inside or not of spot boundary, removing
+            # duplicate points on the spot border
+            # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
+            vertices_to_remove = list(set(vertices_to_remove))
+
+            # points and vertices_map update
+            if vertices_to_remove:
+                _points, _vertices_map = list(), list()
+
+                for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
+                    if ix in vertices_to_remove:
+                        # skip point if is marked for removal
+                        continue
+
+                    # append only points of currrent object that do not intervent to spot
+                    # [current, since there should be already spot from previous iteration step]
+                    _points.append(vertex)
+                    _vertices_map.append({"enum": vertices_map[ix]["enum"]})
+
+                for vertex in spot.points:
+                    _points.append(vertex)
+                    _vertices_map.append({"enum": spot_index})
+
+                all_component_points = copy(_points)
+                vertices_map = copy(_vertices_map)
+
+        separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map)
+        self.setup_body_points(separated_points)
+
+    # def incorporate_spots_overcontact_mesh(self, component_com=None):
+    #     if not self.spots:
+    #         return
+    #     self._logger.info("incorporating spot points to component {} mesh".format(self.name))
+    #
+    #     if self is None:
+    #         raise ValueError('object instance was not given')
+    #
+    #     if component_com is None:
+    #         raise ValueError('object centre of mass was not given')
+    #
+    #     vertices_map = [{"enum": -1} for _ in self.points]
+    #     # `all_component_points` do not contain points of any spot
+    #     all_component_points = copy(self.points)
+    #     neck = np.min(all_component_points[:self.base_symmetry_points_number, 0])
+    #
+    #     for spot_index, spot in self.spots.items():
+    #         # average spacing in spot points
+    #         vertices_to_remove, vertices_test = [], []
+    #         cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.discretization_factor)
+    #         spot_center = spot.center - np.array([component_com, 0., 0.])
+    #
+    #         # removing star points in spot
+    #         # for dist, ix in zip(distances, indices):
+    #         for ix, pt in enumerate(all_component_points):
+    #             surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
+    #             cos_angle = np.inner(spot_center, surface_point) / (
+    #                 np.linalg.norm(spot_center) * np.linalg.norm(surface_point)
+    #             )
+    #
+    #             if cos_angle < cos_max_angle_point or pt[0] == neck:
+    #                 continue
+    #             vertices_to_remove.append(ix)
+    #
+    #         # simplices of target object for testing whether point lying inside or not of spot boundary, removing
+    #         # duplicate points on the spot border
+    #         # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
+    #         vertices_to_remove = list(set(vertices_to_remove))
+    #
+    #         # points and vertices_map update
+    #         if vertices_to_remove:
+    #             _points, _vertices_map = list(), list()
+    #
+    #             for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
+    #                 if ix in vertices_to_remove:
+    #                     # skip point if is marked for removal
+    #                     continue
+    #
+    #                 # append only points of currrent object that do not intervent to spot
+    #                 # [current, since there should be already spot from previous iteration step]
+    #                 _points.append(vertex)
+    #                 _vertices_map.append({"enum": vertices_map[ix]["enum"]})
+    #
+    #             for vertex in spot.points:
+    #                 _points.append(vertex)
+    #                 _vertices_map.append({"enum": spot_index})
+    #
+    #             all_component_points = copy(_points)
+    #             vertices_map = copy(_vertices_map)
+    #
+    #     separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map)
+    #     self.setup_body_points(separated_points)
+
+    def split_points_of_spots_and_component(self, points, vertices_map):
+        points = np.array(points)
+        component_points = {
+            "object": points[np.where(np.array(vertices_map) == {'enum': -1})[0]]
+        }
+        self.remove_overlaped_spots_by_spot_index(
+            spot_indices=set([int(val["enum"]) for val in vertices_map if val["enum"] > -1])
+        )
+        spots_points = {
+            "{}".format(i): points[np.where(np.array(vertices_map) == {'enum': i})[0]]
+            for i in range(len(self.spots))
+            if len(np.where(np.array(vertices_map) == {'enum': i})[0]) > 0
+        }
+        return {**component_points, **spots_points}
+
+    def remove_overlaped_spots_by_spot_index(self, spot_indices):
+        all_spot_indices = set([int(val) for val in self.spots.keys()])
+        spot_indices_to_remove = all_spot_indices.difference(spot_indices)
+
+        for spot_index in spot_indices_to_remove:
+            self.remove_spot(spot_index)
+
+    def split_spots_and_component_faces(self, points, faces, model, spot_candidates, vmap, component_com=None):
+        """
+        function that sorts faces to model data structure by distinguishing if it belongs to star or spots
+
+        :param component_com:
+        :param points: array (N_points * 3) - all points of surface
+        :param faces: array (N_faces * 3) - all faces of the surface
+        :param model: dict - data structure for faces sorting
+        :param spot_candidates: initialised data structure for spot candidates
+        :param vmap: vertice map
+        :return:
+        """
+        model, spot_candidates = \
+            self._resolve_obvious_spots(points, faces, model, spot_candidates, vmap)
+        model = self._resolve_spot_candidates(model, spot_candidates, self, faces,
+                                              component_com=component_com)
+        # converting lists in model to numpy arrays
+        model['object'] = np.array(model['object'])
+        for spot_ix in self.spots:
+            model['spots'][spot_ix] = np.array(model['spots'][spot_ix])
+
+        return model
+
+    @classmethod
+    def _resolve_obvious_spots(cls, points, faces, model, spot_candidates, vmap):
+        for simplex, face_points, ix in list(zip(faces, points[faces], range(faces.shape[0]))):
+            # if each point belongs to the same spot, then it is for sure face of that spot
+            condition1 = vmap[simplex[0]]["enum"] == vmap[simplex[1]]["enum"] == vmap[simplex[2]]["enum"]
+            if condition1:
+                if 'spot' == vmap[simplex[0]]["type"]:
+                    model["spots"][vmap[simplex[0]]["enum"]].append(np.array(simplex))
+                else:
+                    model["object"].append(np.array(simplex))
+            else:
+                spot_candidates["com"].append(np.average(face_points, axis=0))
+                spot_candidates["ix"].append(ix)
+
+        gc.collect()
+        return model, spot_candidates
+
     @staticmethod
     def initialize_model_container(vertices_map):
         """
@@ -641,3 +895,54 @@ class Body(metaclass=ABCMeta):
         for spot_index in spots_instance_indices:
             model["spots"][spot_index] = []
         return model, spot_candidates
+
+    @staticmethod
+    def _get_spots_references(vertices_map, simplex):
+        reference_to_spot, trd_enum = None, None
+        # variable trd_enum is enum index of 3rd corner of face;
+
+        if vertices_map[simplex[-1]]["enum"] == vertices_map[simplex[0]]["enum"]:
+            reference_to_spot = vertices_map[simplex[-1]]["enum"]
+            trd_enum = vertices_map[simplex[1]]["enum"]
+        elif vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"]:
+            reference_to_spot = vertices_map[simplex[0]]["enum"]
+            trd_enum = vertices_map[simplex[-1]]["enum"]
+        elif vertices_map[simplex[1]]["enum"] == vertices_map[simplex[-1]]["enum"]:
+            reference_to_spot = vertices_map[simplex[1]]["enum"]
+            trd_enum = vertices_map[simplex[0]]["enum"]
+        return reference_to_spot, trd_enum
+
+    @staticmethod
+    def _resolve_spot_candidates(model, spot_candidates, component_instance, faces, component_com=None):
+        """
+        resolves spot face candidates by comparing angular distances of face cantres and spot centres, in case of
+        multiple layered spots, face is assigned to the top layer
+
+        :param model:
+        :param spot_candidates:
+        :param component_instance:
+        :param faces:
+        :param component_com:
+        :return:
+        """
+        # checking each candidate one at a time trough all spots
+        com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
+        cos_max_angle = {idx: np.cos(0.5 * spot.angular_diameter) for idx, spot in component_instance.spots.items()}
+        center = {idx: spot.center - np.array([component_com, 0.0, 0.0])
+                  for idx, spot in component_instance.spots.items()}
+        for idx, _ in enumerate(spot_candidates["com"]):
+            spot_idx_to_assign = -1
+            simplex_ix = spot_candidates["ix"][idx]
+            for spot_ix in component_instance.spots:
+                cos_angle_com = np.inner(center[spot_ix], com[idx]) / \
+                                (np.linalg.norm(center[spot_ix]) * np.linalg.norm(com[idx]))
+                if cos_angle_com > cos_max_angle[spot_ix]:
+                    spot_idx_to_assign = spot_ix
+
+            if spot_idx_to_assign == -1:
+                model["object"].append(np.array(faces[simplex_ix]))
+            else:
+                model["spots"][spot_idx_to_assign].append(np.array(faces[simplex_ix]))
+
+        gc.collect()
+        return model

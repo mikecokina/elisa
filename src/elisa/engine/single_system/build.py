@@ -155,7 +155,7 @@ def build_mesh(self):
     self.star.inverse_point_symmetry_matrix = _d
 
     self._evaluate_spots_mesh()
-    self._incorporate_spots_mesh(component_instance=self.star,
+    self._incorporate_spots_mesh(self=self.star,
                                  component_com=0)
 
 
