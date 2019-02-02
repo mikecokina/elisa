@@ -11,6 +11,7 @@ from elisa.engine import units as U
 from elisa.engine import utils
 from elisa.engine.base.system import System
 from elisa.engine.single_system import static, build
+from elisa.engine.single_system.plot import Plot
 
 
 class SingleSystem(System):
@@ -28,6 +29,8 @@ class SingleSystem(System):
 
         self._logger.debug("Setting property components "
                            "of class instance {}".format(SingleSystem.__name__))
+
+        self.plot = Plot(self)
 
         # in case of SingleStar system there is no need for user to define stellar component because it is defined here
         self.star = kwargs['star']
@@ -594,91 +597,6 @@ class SingleSystem(System):
         triangulation = Delaunay(points)
         triangles_indices = triangulation.convex_hull
         return triangles_indices
-
-    def plot(self, descriptor=None, **kwargs):
-        """
-        universal plot interface for single system class, more detailed documentation for each value of descriptor is
-        available in graphics library
-
-        :param descriptor: str (defines type of plot):
-                               equpotential - plots orbit in orbital plane
-                               mesh - plots surface points mesh
-                               surface - plots stellar surface
-        :param kwargs: dict (depends on descriptor value, see individual functions in graphics.py)
-        :return:
-        """
-        if 'axis_unit' not in kwargs:
-            kwargs['axis_unit'] = u.solRad
-
-        if descriptor == 'equipotential':
-            KWARGS = ['axis_unit']
-            utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
-
-            method_to_call = graphics.equipotential_single_star
-            points = self.calculate_equipotential_boundary()
-
-            kwargs['points'] = (points * U.DISTANCE_UNIT).to(kwargs['axis_unit'])
-
-        elif descriptor == 'mesh':
-            KWARGS = ['axis_unit', 'plot_axis', 'inclination', 'azimuth']
-            method_to_call = graphics.single_star_mesh
-            utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
-
-            kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-            kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
-
-            kwargs['mesh'], _ = self.build_surface(return_surface=True)  # potom tu daj ked bude vediet skvrny
-            denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
-            kwargs['mesh'] /= denominator
-            kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
-            kwargs['azimuth'] = kwargs.get('azimuth', 0)
-
-        elif descriptor == 'wireframe':
-            KWARGS = ['axis_unit', 'plot_axis', 'inclination', 'azimuth']
-            method_to_call = graphics.single_star_wireframe
-            utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
-
-            kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-
-            kwargs['mesh'], kwargs['triangles'] = self.build_surface(return_surface=True)
-            denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
-            kwargs['mesh'] /= denominator
-            kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
-            kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
-            kwargs['azimuth'] = kwargs.get('azimuth', 0)
-
-        elif descriptor == 'surface':
-            KWARGS = ['axis_unit', 'edges', 'normals', 'colormap', 'plot_axis', 'inclination', 'azimuth', 'units']
-            utils.invalid_kwarg_checker(kwargs, KWARGS, SingleSystem.plot)
-            method_to_call = graphics.single_star_surface
-
-            kwargs['edges'] = kwargs.get('edges', False)
-            kwargs['normals'] = kwargs.get('normals', False)
-            kwargs['colormap'] = kwargs.get('colormap', None)
-            kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-            kwargs['inclination'] = kwargs.get('inclination', np.degrees(self.inclination))
-            kwargs['azimuth'] = kwargs.get('azimuth', 0)
-            kwargs['units'] = kwargs.get('units', 'logg_cgs')
-
-            output = self.build_surface(return_surface=True)
-            kwargs['mesh'], kwargs['triangles'] = copy(output[0]), copy(output[1])
-            denominator = (1 * kwargs['axis_unit'].to(U.DISTANCE_UNIT))
-            kwargs['mesh'] /= denominator
-            kwargs['equatorial_radius'] = self.star.equatorial_radius * U.DISTANCE_UNIT.to(kwargs['axis_unit'])
-
-            if kwargs['colormap'] is not None:
-                kwargs['cmap'] = self.build_surface_map(colormap=kwargs['colormap'], return_map=True)
-                if kwargs['colormap'] == 'gravity_acceleration':
-                    kwargs['cmap'] = utils.convert_gravity_acceleration_array(kwargs['cmap'], kwargs['units'])
-            if kwargs['normals']:
-                kwargs['arrows'] = self.star.calculate_normals(points=kwargs['mesh'], faces=kwargs['triangles'], com=0)
-                kwargs['centres'] = self.star.calculate_surface_centres(points=kwargs['mesh'],
-                                                                        faces=kwargs['triangles'])
-
-        else:
-            raise ValueError("Incorrect descriptor `{}`".format(descriptor))
-
-        method_to_call(**kwargs)
 
     def _evaluate_spots_mesh(self):
         """

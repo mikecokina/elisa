@@ -65,11 +65,10 @@ def build_surface(self, return_surface=False):
     function for building of general system component points and surfaces including spots
 
     :param return_surface: bool - if true, function returns arrays with all points and faces (surface + spots)
-    :param component: specify component, use `primary` or `secondary`
     :type: str
     :return:
     """
-    build_mesh(self)
+    self.build_mesh(self)
 
     # build surface if there is no spot specified
     if not self.star.spots:

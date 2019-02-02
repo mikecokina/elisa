@@ -138,7 +138,7 @@ def single_star_mesh(**kwargs):
         ax.set_ylabel(y_label)
         ax.set_zlabel(z_label)
     else:
-         ax.set_axis_off()
+        ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
 
