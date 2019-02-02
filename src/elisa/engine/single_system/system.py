@@ -80,7 +80,7 @@ class SingleSystem(System):
         :return:
         """
         self._logger.info('Reinitialising class instance {}'.format(SingleSystem.__name__))
-        self.__init__(**self._kwargs_serializer())
+        self.__init__(**self.kwargs_serializer())
 
     @property
     def rotation_period(self):
@@ -266,7 +266,7 @@ class SingleSystem(System):
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
 
-    def _kwargs_serializer(self):
+    def kwargs_serializer(self):
         """
         creating dictionary of keyword arguments of SingleSystem class in order to be able to reinitialize the class
         instance in init()

@@ -1635,7 +1635,7 @@ class BinarySystem(System):
 
         return triangles_indices
 
-    def over_contact_surface(self, component=None, points=None, **kwargs):
+    def over_contact_system_surface(self, component=None, points=None, **kwargs):
         # do not remove kwargs, keep compatible interface w/ detached where components distance has to be provided
         # in this case,m components distance is sinked in kwargs and not used
         """
@@ -1761,7 +1761,7 @@ class BinarySystem(System):
         returns suitable triangulation function depending on morphology
         :return: function instance that performs generation surface faces
         """
-        return self.over_contact_surface if self.morphology == "over-contact" else self.detached_system_surface
+        return self.over_contact_system_surface if self.morphology == "over-contact" else self.detached_system_surface
 
     def plot(self, descriptor=None, **kwargs):
         """
@@ -2348,7 +2348,7 @@ class BinarySystem(System):
     # ### build methods
     # todo/idea: remove these definitions and call methods from `build` modul
 
-    def build_surface_gravity(self, component: str or list=None, components_distance: float=None):
+    def build_surface_gravity(self, component: str or list=None, components_distance: float or np.dtype=None):
         return build.build_surface_gravity(self, component, components_distance)
 
     def build_faces_orientation(self, component: str or list=None, components_distance: float=None):

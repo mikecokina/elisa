@@ -128,8 +128,7 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
         self._logger.debug('Computing surface areas of {} elements.'.format(_component))
         component_instance.calculate_all_areas()
 
-        self.build_surface_gravity(component=_component,
-                                   components_distance=components_distance)
+        self.build_surface_gravity(component=_component, components_distance=components_distance)
 
         # compute and assign temperature of elements
         if colormap == 'temperature':
@@ -208,6 +207,7 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
         # if self.morphology == 'over-contact':
         #     component_instance.incorporate_spots_overcontact_mesh(component_com=component_x_center[_component])
         # else:
+        # fixme: solve unification for single star, detached system and over contact system
         component_instance.incorporate_spots_mesh(component_com=component_x_center[_component])
 
 
@@ -296,7 +296,7 @@ def build_surface_with_no_spots(self, component=None, components_distance=None):
             points_to_triangulate = \
                 np.append(component_instance.points[:component_instance.base_symmetry_points_number, :],
                           np.array([[neck, 0, 0]]), axis=0)
-            triangles = self.over_contact_surface(component=_component, points=points_to_triangulate)
+            triangles = self.over_contact_system_surface(component=_component, points=points_to_triangulate)
             # filtering out triangles containing last point in `points_to_triangulate`
             triangles = triangles[(triangles < component_instance.base_symmetry_points_number).all(1)]
 
@@ -337,5 +337,5 @@ def build_surface_with_spots(self, component=None, components_distance=None):
         model = component_instance.split_spots_and_component_faces(
             points, faces, model, spot_candidates, vertices_map, component_com[_component]
         )
-        component_instance.remove_overlaped_spots(vertices_map)
+        component_instance.remove_overlaped_spots_by_vertex_map(vertices_map)
         component_instance.remap_surface_elements(model, points)

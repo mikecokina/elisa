@@ -632,7 +632,7 @@ class Body(metaclass=ABCMeta):
         for spot_index, spot_points in points.items():
             self.spots[int(spot_index)].points = points[spot_index]
 
-    def remove_overlaped_spots(self, vertices_map):
+    def remove_overlaped_spots_by_vertex_map(self, vertices_map):
         # remove spots that are totaly overlaped
         spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
                                            if vertices_map[ix]["enum"] >= 0]))
@@ -854,8 +854,7 @@ class Body(metaclass=ABCMeta):
         """
         model, spot_candidates = \
             self._resolve_obvious_spots(points, faces, model, spot_candidates, vmap)
-        model = self._resolve_spot_candidates(model, spot_candidates, self, faces,
-                                              component_com=component_com)
+        model = self._resolve_spot_candidates(model, spot_candidates, faces, component_com=component_com)
         # converting lists in model to numpy arrays
         model['object'] = np.array(model['object'])
         for spot_ix in self.spots:
@@ -912,28 +911,26 @@ class Body(metaclass=ABCMeta):
             trd_enum = vertices_map[simplex[0]]["enum"]
         return reference_to_spot, trd_enum
 
-    @staticmethod
-    def _resolve_spot_candidates(model, spot_candidates, component_instance, faces, component_com=None):
+    def _resolve_spot_candidates(self, model, spot_candidates, faces, component_com=None):
         """
         resolves spot face candidates by comparing angular distances of face cantres and spot centres, in case of
         multiple layered spots, face is assigned to the top layer
 
         :param model:
         :param spot_candidates:
-        :param component_instance:
         :param faces:
         :param component_com:
         :return:
         """
         # checking each candidate one at a time trough all spots
         com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
-        cos_max_angle = {idx: np.cos(0.5 * spot.angular_diameter) for idx, spot in component_instance.spots.items()}
+        cos_max_angle = {idx: np.cos(0.5 * spot.angular_diameter) for idx, spot in self.spots.items()}
         center = {idx: spot.center - np.array([component_com, 0.0, 0.0])
-                  for idx, spot in component_instance.spots.items()}
+                  for idx, spot in self.spots.items()}
         for idx, _ in enumerate(spot_candidates["com"]):
             spot_idx_to_assign = -1
             simplex_ix = spot_candidates["ix"][idx]
-            for spot_ix in component_instance.spots:
+            for spot_ix in self.spots:
                 cos_angle_com = np.inner(center[spot_ix], com[idx]) / \
                                 (np.linalg.norm(center[spot_ix]) * np.linalg.norm(com[idx]))
                 if cos_angle_com > cos_max_angle[spot_ix]:
