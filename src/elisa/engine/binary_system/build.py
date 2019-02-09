@@ -28,8 +28,8 @@ def build_surface_gravity(self, component: str or list=None, components_distance
             self.calculate_polar_potential_gradient_magnitude(_component, components_distance)
         gravity_scalling_factor = polar_gravity / component_instance.polar_potential_gradient_magnitude
 
-        self._logger.debug('Computing potential gradient magnitudes distribution of {} component.'
-                           ''.format(_component))
+        self._logger.debug('computing potential gradient magnitudes distribution '
+                           'of {} component'.format(_component))
         component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
             component=_component, components_distance=components_distance)
 
@@ -38,10 +38,10 @@ def build_surface_gravity(self, component: str or list=None, components_distance
 
         if component_instance.spots:
             for spot_index, spot in component_instance.spots.items():
-                self._logger.debug('Calculating surface SI unit gravity of {} component / {} spot.'
-                                   ''.format(_component, spot_index))
-                self._logger.debug('Calculating distribution of potential gradient magnitudes of {} component / '
-                                   '{} spot.'.format(_component, spot_index))
+                self._logger.debug('calculating surface SI unit gravity of {} '
+                                   'component / {} spot'.format(_component, spot_index))
+                self._logger.debug('calculating distribution of potential gradient '
+                                   'magnitudes of spot index: {} / {} component'.format(spot_index, _component))
                 spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
                     component=_component,
                     components_distance=components_distance,
@@ -74,17 +74,19 @@ def build_temperature_distribution(self, component=None, components_distance=Non
     for _component in component:
         component_instance = getattr(self, _component)
 
-        self._logger.debug('Computing effective temprature distibution on {} component.'.format(_component))
+        self._logger.debug('computing effective temperature distibution on {} component '
+                           '/ name: {}'.format(_component, component_instance.name))
         component_instance.temperatures = component_instance.calculate_effective_temperatures()
         if component_instance.pulsations:
-            self._logger.debug('Adding pulsations to surface temperature distribution '
-                               'of the {} component.'.format(_component))
+            self._logger.debug('adding pulsations to surface temperature distribution '
+                               'of the component instance: {}  / name: {}'
+                               ''.format(_component, component_instance.name))
             component_instance.temperatures = component_instance.add_pulsations()
 
         if component_instance.spots:
             for spot_index, spot in component_instance.spots.items():
-                self._logger.debug('Computing temperature distribution of {} component / {} spot'
-                                   ''.format(_component, spot_index))
+                self._logger.debug('computing temperature distribution of spot {} / {} component'
+                                   ''.format(spot_index, _component))
                 spot.temperatures = spot.temperature_factor * component_instance.calculate_effective_temperatures(
                     gradient_magnitudes=spot.potential_gradient_magnitudes)
                 if component_instance.pulsations:
@@ -93,8 +95,7 @@ def build_temperature_distribution(self, component=None, components_distance=Non
                     spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
                                                                           temperatures=spot.temperatures)
 
-        self._logger.debug('Renormalizing temperature map of {0} component due to presence of spots'
-                           ''.format(component))
+        self._logger.debug('renormalizing temperature map of components due to presence of spots'.format(component))
         component_instance.renormalize_temperatures()
 
     if 'primary' in component and 'secondary' in component:
@@ -125,7 +126,7 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
         component_instance = getattr(self, _component)
 
         # compute and assign surface areas of elements if missing
-        self._logger.debug('Computing surface areas of {} elements.'.format(_component))
+        self._logger.debug('computing surface areas of {} elements'.format(_component))
         component_instance.calculate_all_areas()
 
         self.build_surface_gravity(component=_component, components_distance=components_distance)
@@ -339,3 +340,12 @@ def build_surface_with_spots(self, component=None, components_distance=None):
         )
         component_instance.remove_overlaped_spots_by_vertex_map(vertices_map)
         component_instance.remap_surface_elements(model, points)
+
+
+def compute_all_surface_areas(self, component):
+    component = static.component_to_list(component)
+    for _component in component:
+        component_instance = getattr(self, _component)
+        self._logger.debug('computing surface areas of component: {} / name: {}'
+                           ''.format(component_instance, component_instance.name))
+        component_instance.calculate_all_areas()

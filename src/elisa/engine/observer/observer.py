@@ -52,7 +52,7 @@ class Observer(object):
         if phases is None:
             phases = np.linspace(start=from_phase, stop=to_phase, endpoint=True)
 
-        self._logger.info("observetaion start w/ following configuration {<add>}")
+        self._logger.info("observation start w/ following configuration {<add>}")
         # self._logger.warning("logger will be suppressed due multiprocessing incompatibility")
         """
         distance, azimut angle, true anomaly and phase
@@ -63,8 +63,7 @@ class Observer(object):
         """
         orbital_motion = self._system.orbit.orbital_motion(phase=phases)
         args = mp.prepare_observe_args(orbital_motion)
-
-        self._system.compute_lightcurve(*args)
+        self._system.compute_lightcurve()
 
 
         # pool = Pool(processes=config.NUMBER_OF_THREADS)

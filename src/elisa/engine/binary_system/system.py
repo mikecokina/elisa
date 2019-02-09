@@ -37,7 +37,7 @@ from elisa.engine import graphics
 from elisa.engine import ld
 from elisa.engine import units
 from elisa.engine import utils
-from elisa.engine.binary_system import static, build, mp
+from elisa.engine.binary_system import static, build, mp, lc
 from elisa.engine.binary_system.plot import Plot
 from elisa.engine.orbit import Orbit
 from elisa.engine.base.star import Star
@@ -605,7 +605,8 @@ class BinarySystem(System):
                 raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
             if self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
                 raise ValueError("Non-Physical system: primary_filling_factor or "
-                                 "secondary_filling_factor is greater then 1. Filling factor is obtained as following:"
+                                 "secondary_filling_factor is greater then 1\n"
+                                 "Filling factor is obtained as following:"
                                  "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
             if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or (
@@ -1623,12 +1624,12 @@ class BinarySystem(System):
         potential = self.primary.surface_potential if component == 'primary' \
             else self.secondary.surface_potential
         if potential - critical_pot > 0.01:
-            self._logger.debug('Triangulating surface of {} component using standard method.'.format(component))
+            self._logger.debug('triangulating surface of {} component using standard method'.format(component))
             triangulation = Delaunay(points)
             triangles_indices = triangulation.convex_hull
         else:
-            self._logger.debug('Surface of {} component is near or at critical potential. '
-                               'Therefore custom triangulation method for (near)critical '
+            self._logger.debug('surface of {} component is near or at critical potential; '
+                               'therefore custom triangulation method for (near)critical '
                                'potential surfaces will be used.'.format(component))
             # calculating closest point to the barycentre
             r_near = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
@@ -2126,11 +2127,18 @@ class BinarySystem(System):
         return ((2.0 * np.pi) / (self.period * 86400.0 * (components_distance ** 2))) * np.sqrt(
             (1.0 - self.eccentricity) * (1.0 + self.eccentricity))  # $\rad.sec^{-1}$
 
-    def compute_lightcurve(self, *args, **kwargs):
-        pass
+    def compute_lightcurve(self, **kwargs):
+        if self.eccentricity == 0 and self.primary.synchronicity == 1 and self.secondary.synchronicity == 1:
+            return self._compute_circular_synchronous_lightcurve(**kwargs)
+        elif self.eccentricity == 0 and (self.primary.synchronicity != 1 or self.secondary.synchronicity != 1) \
+                and (self.primary.has_spots() or self.secondary.has_spots()):
+            return self._compute_circular_spotify_asynchronous_lightcurve(**kwargs)
+        elif 1 > self.eccentricity > 0:
+            return self._compute_eccentric_lightcurve(**kwargs)
+        raise NotImplementedError("not implemented or invalid")
 
-    def _compute_circular_synchronous_lightcurve(self, *args, **kwargs):
-        pass
+    def _compute_circular_synchronous_lightcurve(self, **kwargs):
+        return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
     def _compute_circular_spotify_asynchronous_lightcurve(self, *args, **kwargs):
         pass
@@ -2167,3 +2175,15 @@ class BinarySystem(System):
 
     def build_surface_with_spots(self, component=None, components_distance=None):
         return build.build_surface_with_spots(self, component, components_distance)
+
+    # this makes no sence but don't have a time to make it better
+    def build_surface_areas(self, component=None):
+        return build.compute_all_surface_areas(self, component=component)
+
+    def build(self, component=None, components_distance=None):
+        self.build_mesh(component, components_distance)
+        self.build_faces(component, components_distance)
+        self.build_surface_areas(component)
+        self.build_faces_orientation(component, components_distance)
+        self.build_surface_gravity(component, components_distance)
+        self.build_temperature_distribution(component, components_distance)

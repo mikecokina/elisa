@@ -165,27 +165,27 @@ def build_surface_gravity(self):
     :return:
     """
 
-    self._logger.debug('Computing surface areas of star.')
+    self._logger.debug('computing surface areas of star')
     self.star.areas = self.star.calculate_areas()
 
     # compute and assign potential gradient magnitudes for elements if missing
-    self._logger.debug('Computing potential gradient magnitudes distribution of a star.')
+    self._logger.debug('computing potential gradient magnitudes distribution of a star')
     self.star.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient()
 
-    self._logger.debug('Computing magnitude of polar potential gradient.')
+    self._logger.debug('computing magnitude of polar potential gradient')
     self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
     gravity_scalling_factor = np.power(10, self.star.polar_log_g) / self.star.polar_potential_gradient_magnitude
     self.star._log_g = np.log10(gravity_scalling_factor * self.star.potential_gradient_magnitudes)
 
     if self.star.spots:
         for spot_index, spot in self.star.spots.items():
-            self._logger.debug('Calculating surface areas of {} spot.'.format(spot_index))
+            self._logger.debug('calculating surface areas of {} spot'.format(spot_index))
             spot.areas = spot.calculate_areas()
 
-            self._logger.debug('Calculating distribution of potential gradient magnitudes of {} '
-                               'spot.'.format(spot_index))
+            self._logger.debug('calculating distribution of potential '
+                               'gradient magnitudes of {} spot'.format(spot_index))
             spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(points=spot.points,
-                                                                                       faces=spot.faces)
+                                                                                        faces=spot.faces)
             spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
 
             
