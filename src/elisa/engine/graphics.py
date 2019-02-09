@@ -230,7 +230,6 @@ def single_star_surface(**kwargs):
         elif kwargs['colormap'] == 'gravity_acceleration':
             set_g_colorbar_label(colorbar, kwargs['units'])
 
-
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])

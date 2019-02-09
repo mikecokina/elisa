@@ -103,19 +103,24 @@ class BinarySystem(System):
         utils.check_missing_kwargs(BinarySystem.KWARGS, kwargs, instance_of=BinarySystem)
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
         for kwarg in kwargs:
-            self._logger.debug("Setting property {} "
+            self._logger.debug("setting property {} "
                                "of class instance {} to {}".format(kwarg, BinarySystem.__name__, kwargs[kwarg]))
             setattr(self, kwarg, kwargs[kwarg])
 
         # calculation of dependent parameters
+        self._logger.debug("computing semi-major axis")
         self._semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
+        self._logger.debug("in binary star system, initializing orbit instance")
         self.init_orbit()
 
         # setup critical surface potentials in periastron
-        self._setup_critical_potential()
+        self._logger.debug("setting up critical surface potentials of components in periastron")
+        self._setup_periastron_critical_potential()
+
         # binary star morphology estimation
+        self._logger.debug("setting up morphological classification of binary system")
         self.setup_morphology()
 
         # polar radius of both component in periastron
@@ -123,8 +128,8 @@ class BinarySystem(System):
 
         # if secondary discretization factor was not set, it will be now with respect to primary component
         if not self.secondary.kwargs.get('discretization_factor'):
-            self._logger.info("Setting discretization factor of secondary component according discretization factor "
-                              "of primary component.")
+            self._logger.info("setting discretization factor of secondary component "
+                              "according discretization factor of primary component.")
             self.secondary.discretization_factor = \
                 self.primary.discretization_factor * self.primary.polar_radius / self.secondary.polar_radius * u.rad
 
@@ -148,7 +153,8 @@ class BinarySystem(System):
 
         :return:
         """
-        self._logger.debug("Re/Initializing orbit in class instance {} ".format(BinarySystem.__name__))
+        self._logger.debug("re/initializing orbit in class instance {} / {}"
+                           "".format(BinarySystem.__name__, BinarySystem.name))
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.MANDATORY_KWARGS}
         self._orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
 
@@ -285,8 +291,8 @@ class BinarySystem(System):
 
         if not 0 <= self._argument_of_periastron <= const.FULL_ARC:
             self._argument_of_periastron %= const.FULL_ARC
-        self._logger.debug("Setting property argument of periastron "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._argument_of_periastron))
+        self._logger.debug("setting property argument of periastron of class instance {} to {}"
+                           "".format(BinarySystem.__name__, self._argument_of_periastron))
 
     @property
     def primary_minimum_time(self):
@@ -312,8 +318,8 @@ class BinarySystem(System):
         else:
             raise TypeError('Input of variable `primary_minimum_time` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug("Setting property primary_minimum_time "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._primary_minimum_time))
+        self._logger.debug("setting property primary_minimum_time of class instance {} to {}"
+                           "".format(BinarySystem.__name__, self._primary_minimum_time))
 
     @property
     def phase_shift(self):
@@ -335,8 +341,8 @@ class BinarySystem(System):
         :return:
         """
         self._phase_shift = phase_shift
-        self._logger.debug("Setting property phase_shift "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._phase_shift))
+        self._logger.debug("setting property phase_shift of class instance {} to {}"
+                           "".format(BinarySystem.__name__, self._phase_shift))
 
     @property
     def semi_major_axis(self):
@@ -363,10 +369,9 @@ class BinarySystem(System):
         for component in components:
             component_instance = getattr(self, component)
             for fn in fns:
-                self._logger.debug('Initialising {} for {} component'.format(
-                    ' '.join(str(fn.__name__).split('_')[1:]),
-                    component
-                ))
+                self._logger.debug('initialising {} for {} component'.format(
+                    ' '.join(str(fn.__name__).split('_')[1:]), component))
+
                 param = '_{}'.format('_'.join(str(fn.__name__).split('_')[1:]))
                 radius = fn(component, components_distance)
                 setattr(component_instance, param, radius)
@@ -406,12 +411,12 @@ class BinarySystem(System):
         neck_position = self.calculate_neck_position() if self.morphology == "over-contact" else 1e10
 
         for component, functions in fns.items():
+            self._logger.info("evaluating spots for {} component".format(component))
             potential_fn, precalc_fn = functions
-            self._logger.info("Evaluating spots for {} component".format(component))
             component_instance = getattr(self, component)
 
             if not component_instance.spots:
-                self._logger.info("No spots to evaluate for {} component. Continue.".format(component))
+                self._logger.info("no spots to evaluate for {} component - continue.".format(component))
                 continue
 
             # iterate over spots
@@ -438,8 +443,9 @@ class BinarySystem(System):
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
                     # component spot list and skip current spot computation
-                    self._logger.warning("Center of spot {} doesn't satisfy reasonable conditions and "
-                                         "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+                    self._logger.warning("center of spot {} doesn't satisfy reasonable "
+                                         "conditions and entire spot will be omitted"
+                                         "".format(spot_instance.kwargs_serializer()))
 
                     component_instance.remove_spot(spot_index=spot_index)
                     continue
@@ -457,8 +463,9 @@ class BinarySystem(System):
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
                     # component spot list and skip current spot computation
-                    self._logger.warning("First inner ring of spot {} doesn't satisfy reasonable conditions and "
-                                         "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
+                    self._logger.warning("first inner ring of spot {} doesn't satisfy reasonable "
+                                         "conditions and entire spot will be omitted"
+                                         "".format(spot_instance.kwargs_serializer()))
 
                     component_instance.remove_spot(spot_index=spot_index)
                     continue
@@ -468,7 +475,7 @@ class BinarySystem(System):
                 # number of points in latitudal direction
                 # + 1 to obtain same discretization as object itself
                 num_radial = int(np.round((diameter * 0.5) / alpha)) + 1
-                self._logger.debug('Number of rings in spot {} is {}'
+                self._logger.debug('number of rings in spot {} is {}'
                                    ''.format(spot_instance.kwargs_serializer(), num_radial))
                 thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
 
@@ -507,8 +514,9 @@ class BinarySystem(System):
                                 boundary_points.append(spot_point)
 
                 except StopIteration:
-                    self._logger.warning("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
-                                         "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
+                    self._logger.warning("at least 1 point of spot {} doesn't satisfy "
+                                         "reasonable conditions and entire spot will be omitted"
+                                         "".format(spot_instance.kwargs_serializer()))
                     continue
                 if component == "primary":
                     spot_instance.points = np.array(spot_points)
@@ -521,8 +529,8 @@ class BinarySystem(System):
                     spot_instance.boundary = np.array([np.array([components_distance - point[0], -point[1], point[2]])
                                                        for point in boundary_points])
 
-                    spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1],
-                                                     spot_center[2]])
+                    spot_instance.center = \
+                        np.array([components_distance - spot_center[0], -spot_center[1], spot_center[2]])
                 gc.collect()
 
     def _star_params_validity_check(self, **kwargs):
@@ -551,8 +559,8 @@ class BinarySystem(System):
 
             component_name = 'primary' if component == self.primary else 'secondary'
             if len(missing_kwargs) != 0:
-                raise ValueError('Mising argument(s): {} in {} component Star class'.format(
-                    ', '.join(missing_kwargs), component_name))
+                raise ValueError('Mising argument(s): {} in {} component Star class'
+                                 ''.format(', '.join(missing_kwargs), component_name))
 
     def _kwargs_serializer(self):
         """
@@ -566,7 +574,7 @@ class BinarySystem(System):
             serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
 
-    def _setup_critical_potential(self):
+    def _setup_periastron_critical_potential(self):
         """
         compute and set critical surface potential for both components
 
@@ -887,8 +895,8 @@ class BinarySystem(System):
                 args = self.pre_calculate_for_potential_value_secondary(*args)
                 return abs(self.potential_value_secondary(components_distance - solution, *args))
         else:
-            raise ValueError("Iteration process to solve critical potential seems to lead nowhere (critical potential "
-                             "_solver has failed).")
+            raise ValueError("Iteration process to solve critical potential seems "
+                             "to lead nowhere (critical potential _solver has failed).")
 
     def calculate_potential_gradient(self, component, components_distance, points=None):
         """
@@ -917,8 +925,9 @@ class BinarySystem(System):
                 components_distance - points[:, 0]) * points[:, 0] + 1 / np.power(
                 components_distance, 2)
         else:
-            raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
-                             .format(component))
+            raise ValueError('Invalid value `{}` of argument `component`. '
+                             'Use `primary` or `secondary`.'.format(component))
+
         domega_dy = - points[:, 1] * (1 / r3 + self.mass_ratio / r_hat3 - f2 * (self.mass_ratio + 1))
         domega_dz = - points[:, 2] * (1 / r3 + self.mass_ratio / r_hat3)
         return -np.column_stack((domega_dx, domega_dy, domega_dz))
@@ -973,8 +982,8 @@ class BinarySystem(System):
             domega_dx = - points[0] / r3 + self.mass_ratio * (components_distance - points[0]) / r_hat3 \
                         + 1. / np.power(components_distance, 2)
         else:
-            raise ValueError('Invalid value `{}` of argument `component`. Use `primary` or `secondary`.'
-                             .format(component))
+            raise ValueError('Invalid value `{}` of argument `component`. '
+                             'Use `primary` or `secondary`.'.format(component))
         domega_dz = - points[2] * (1. / r3 + self.mass_ratio / r_hat3)
         return np.power(np.power(domega_dx, 2) + np.power(domega_dz, 2), 0.5)
 
@@ -1018,8 +1027,8 @@ class BinarySystem(System):
             fn = self.potential_secondary_fn
             precalc = self.pre_calculate_for_potential_value_secondary
         else:
-            raise ValueError('Invalid value of `component` argument {}. Expecting `primary` or `secondary`.'
-                             .format(args[0]))
+            raise ValueError('Invalid value of `component` argument {}. '
+                             'Expecting `primary` or `secondary`.'.format(args[0]))
 
         scipy_solver_init_value = np.array([args[1] / 1e4])
         argss = precalc(*args[1:])
@@ -1279,12 +1288,13 @@ class BinarySystem(System):
         args = phi, theta, components_distance, precalc_fn, potential_fn
 
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
-            self._logger.debug('Calculating surface points of {0} component in mesh_detached function using single '
-                               'process method.'.format(component))
+            self._logger.debug('calculating surface points of {0} component in mesh_detached '
+                               'function using single process method'.format(component))
+
             points_q = static.get_surface_points(*args)
         else:
-            self._logger.debug('Calculating surface points of {0} component in mesh_detached function using multi '
-                               'process method.'.format(component))
+            self._logger.debug('calculating surface points of {0} component in mesh_detached '
+                               'function using multi process method'.format(component))
             points_q = self.get_surface_points_multiproc(*args)
 
         equator = points_q[:separator[0], :]
@@ -1479,12 +1489,12 @@ class BinarySystem(System):
         args = phi_farside, theta_farside, components_distance, precalc, fn
         # here implement multiprocessing
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
-            self._logger.debug('Calculating farside points of {0} component in mesh_overcontact function using single '
-                               'process method'.format(component))
+            self._logger.debug('calculating farside points of {0} component in mesh_overcontact '
+                               'function using single process method'.format(component))
             points_farside = static.get_surface_points(*args)
         else:
-            self._logger.debug('Calculating farside points of {0} component in mesh_overcontact function using multi '
-                               'process method'.format(component))
+            self._logger.debug('calculating farside points of {0} component in mesh_overcontact '
+                               'function using multi process method'.format(component))
             points_farside = self.get_surface_points_multiproc(*args)
 
         # assigning equator points and point A (the point on the tip of the farside equator)
@@ -1510,12 +1520,12 @@ class BinarySystem(System):
         # solving points on neck
         args = phi_neck, z_neck, precal_cylindrical, fn_cylindrical
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
-            self._logger.debug('Calculating neck points of {0} component in mesh_overcontact function using single '
-                               'process method'.format(component))
+            self._logger.debug('calculating neck points of {0} component in mesh_overcontact '
+                               'function using single process method'.format(component))
             points_neck = static.get_surface_points_cylindrical(*args)
         else:
-            self._logger.debug('Calculating neck points of {0} component in mesh_overcontact function using multi '
-                               'process method'.format(component))
+            self._logger.debug('calculating neck points of {0} component in mesh_overcontact '
+                               'function using multi process method'.format(component))
             points_neck = self.get_surface_points_multiproc_cylindrical(*args)
 
         # assigning equator points on neck
@@ -1604,8 +1614,9 @@ class BinarySystem(System):
             points = component_instance.points
 
         if not np.any(points):
-            raise ValueError("{} component, with class instance name {} do not contain any valid surface point "
-                             "to triangulate".format(component, component_instance.name))
+            raise ValueError("{} component, with class instance name {} do not "
+                             "contain any valid surface point to triangulate"
+                             "".format(component, component_instance.name))
         # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
         critical_pot = self.primary.critical_surface_potential if component == 'primary' \
             else self.secondary.critical_surface_potential
@@ -1616,9 +1627,9 @@ class BinarySystem(System):
             triangulation = Delaunay(points)
             triangles_indices = triangulation.convex_hull
         else:
-            self._logger.debug('Surface of {} component is near or at critical potential. Therefore custom '
-                               'triangulation method for (near)critical potential surfaces will be '
-                               'used.'.format(component))
+            self._logger.debug('Surface of {} component is near or at critical potential. '
+                               'Therefore custom triangulation method for (near)critical '
+                               'potential surfaces will be used.'.format(component))
             # calculating closest point to the barycentre
             r_near = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
             # projection of component's far side surface into ``sphere`` with radius r1
@@ -1711,8 +1722,11 @@ class BinarySystem(System):
         components_distance = 1.0
         components = ['primary', 'secondary']
         points_primary, points_secondary = [], []
-        fn_map = {'primary': (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
-                  'secondary': (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)}
+
+        fn_map = {
+            'primary': (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
+            'secondary': (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)
+        }
 
         # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
         angles = np.linspace(0., const.HALF_PI, 100, endpoint=True)
@@ -1776,8 +1790,8 @@ class BinarySystem(System):
         """
         is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.ALL_KWARGS]
         if is_not:
-            raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not),
-                                                                                    cls.__name__))
+            raise AttributeError('Arguments {} are not valid {} properties.'
+                                 ''.format(', '.join(is_not), cls.__name__))
 
     def faces_visibility_x_limits(self, components_distance):
         # this section calculates the visibility of each surface face
@@ -1799,13 +1813,13 @@ class BinarySystem(System):
     # noinspection PyTypeChecker
     def reflection_effect(self, iterations=None, components_distance=None):
         if not config.REFLECTION_EFFECT:
-            self._logger.debug('Reflection effect is switched off.')
+            self._logger.debug('reflection effect is switched off')
             return
         if iterations is None:
             raise ValueError('Number of iterations for reflection effect was not specified.')
         elif iterations == 0:
-            self._logger.debug('Number of reflections in reflection effect was set to zero. Reflection effect will '
-                               'not be calculated.')
+            self._logger.debug('number of reflections in reflection effect was set to zero. '
+                               'Reflection effect will not be calculated')
             return
 
         if components_distance is None:
