@@ -445,5 +445,8 @@ class Star(Body):
         #  using less computational power
         return intensities * areas
 
+    def has_spots(self):
+        return not len(self._spots) == 0
+
 
 
