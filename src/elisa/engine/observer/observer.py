@@ -63,8 +63,12 @@ class Observer(object):
         """
         orbital_motion = self._system.orbit.orbital_motion(phase=phases)
         args = mp.prepare_observe_args(orbital_motion)
-        self._system.compute_lightcurve()
-
+        self._system.compute_lightcurve(
+            **dict(
+                orbital_motion=args,
+                passband=self.passband
+            )
+        )
 
         # pool = Pool(processes=config.NUMBER_OF_THREADS)
         # res = [pool.apply_async(mp.observe_worker,
@@ -81,4 +85,5 @@ class Observer(object):
 
     def apply_filter(self):
         pass
+
 

@@ -2138,6 +2138,25 @@ class BinarySystem(System):
         raise NotImplementedError("not implemented or invalid")
 
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        print(kwargs)
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
     def _compute_circular_spotify_asynchronous_lightcurve(self, *args, **kwargs):
