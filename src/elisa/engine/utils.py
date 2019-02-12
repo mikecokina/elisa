@@ -326,7 +326,7 @@ def find_nearest_value(array, value):
     return [value, index]
 
 
-def find_surounded(array, value):
+def find_surrounded(array, value):
     # find surounded value in passed array
     arr, ret = np.array(array[:]), []
     f_nst = find_nearest_value(arr, value)

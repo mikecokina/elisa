@@ -82,7 +82,7 @@ def get_relevant_ld_tables(passband, metallicity):
     :return: list
     """
     # todo: make better decision which values should be used
-    surrounded = utils.find_surounded(const.VAN_HAMME_METALLICITY_LIST_LD, metallicity)
+    surrounded = utils.find_surrounded(const.VAN_HAMME_METALLICITY_LIST_LD, metallicity)
     files = [get_van_hamme_ld_table_filename(passband, m) for m in surrounded]
     return files
 

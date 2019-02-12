@@ -46,6 +46,7 @@ NUMBER_OF_THREADS = int(os.cpu_count())
 VAN_HAMME_LD_TABLES = os.path.join(level_up(__file__, 3), "limbdarkening", "vh")
 CK04_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "ck04")
 K93_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "k93")
+ATM_ATLAS = "ck04"
 
 SUPPRESS_WARNINGS = False
 
@@ -137,6 +138,9 @@ def update_config():
             warnings.warn("path {}\n"
                           "to kurucz 1993 atmosphere atlas doesn't exists\n"
                           "Specifiy it in elisa_conf.ini file".format(K93_ATM_TABLES))
+
+        global ATM_ATLAS
+        ATM_ATLAS = config_parser.get('support', 'atlas', fallback=ATM_ATLAS)
 
 
 PASSBANDS = [

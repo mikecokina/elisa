@@ -67,10 +67,10 @@ class BinarySystem(System):
 
         # get logger
         self._logger = logger.getLogger(name=BinarySystem.__name__, suppress=suppress_logger)
-        self._logger.info("Initialising object {}".format(BinarySystem.__name__))
+        self._logger.info("initialising object {}".format(BinarySystem.__name__))
         self._suppress_logger = suppress_logger
 
-        self._logger.debug("Setting property components of class instance {}".format(BinarySystem.__name__))
+        self._logger.debug("setting property components of class instance {}".format(BinarySystem.__name__))
 
         self.plot = Plot(self)
 
@@ -550,7 +550,7 @@ class BinarySystem(System):
         # checking if stellar components have all mandatory parameters initialised
         # these parameters are not mandatory in single star system, so validity check cannot be provided
         # on whole set of KWARGS in star object
-        star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity', 'albedo']
+        star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity', 'albedo', 'metallicity']
         missing_kwargs = []
         for component in [self.primary, self.secondary]:
             for kwarg in star_mandatory_kwargs:
@@ -2138,25 +2138,6 @@ class BinarySystem(System):
         raise NotImplementedError("not implemented or invalid")
 
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        print(kwargs)
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
     def _compute_circular_spotify_asynchronous_lightcurve(self, *args, **kwargs):

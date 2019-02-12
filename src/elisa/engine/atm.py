@@ -1,10 +1,10 @@
+import itertools
 import logging
 import os
 from collections import Iterable
 from queue import Queue
 from threading import Thread
 
-import itertools
 import numpy as np
 import pandas as pd
 from scipy import integrate
@@ -196,10 +196,6 @@ def get_list_of_all_atm_tables(atlas):
     return matches
 
 
-def get_relevant_atm_tables(temperature, logg, metallicity, atlas, method):
-    pass
-
-
 def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_queue: Queue):
     while True:
         file_path = path_queue.get(timeout=1)
@@ -208,6 +204,10 @@ def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_
             break
         if not error_queue.empty():
             break
+        if file_path is None:
+            # consider put here an empty container
+            result_queue.put(None)
+            continue
         try:
             t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(file_path))
             atm_container = AtmDataContainer(pd.read_csv(file_path), t, l, m)
@@ -215,6 +215,43 @@ def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_
         except Exception as we:
             error_queue.put(we)
             break
+
+
+def multithread_atm_tables_reader_runner(fpaths):
+    n_threads = config.NUMBER_OF_THREADS
+
+    path_queue = Queue(maxsize=len(fpaths) + n_threads)
+    result_queue = Queue()
+    error_queue = Queue()
+
+    threads = list()
+    try:
+        for fpath in fpaths:
+            if isinstance(fpath, str):
+                if not os.path.isfile(fpath):
+                    raise FileNotFoundError("file {} doesn't exist. it seems your model "
+                                            "could be not physical".format(fpath))
+            path_queue.put(fpath)
+
+        for _ in range(n_threads):
+            path_queue.put("TERMINATOR")
+
+        logger.debug("initialising multithread atm table reader")
+        for _ in range(n_threads):
+            t = Thread(target=multithread_atm_tables_reader, args=(path_queue, error_queue, result_queue))
+            threads.append(t)
+            t.daemon = True
+            t.start()
+
+        for t in threads:
+            t.join()
+        logger.debug("atm multithread reader finished all jobs")
+    except KeyboardInterrupt:
+        raise
+    finally:
+        if not error_queue.empty():
+            raise error_queue.get()
+    return result_queue
 
 
 def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: list):
@@ -232,7 +269,7 @@ def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: 
 
 class NearestAtm(object):
     @staticmethod
-    def nearest_atm_files_list(temperature, logg, metallicity, atlas):
+    def atm_files(temperature, logg, metallicity, atlas):
         """
         returns files that contains atmospheric model for parameters closest to the given atmospheric parameters
         `temperature`, `logg` and `metallicity`
@@ -268,54 +305,80 @@ class NearestAtm(object):
         return list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + "/" + fnames + ".csv")
 
     @staticmethod
-    def nearest_atm_tables(temperature, logg, metallicity, atlas):
+    def atm_tables(fpaths):
         """
         returns spectrum profile for the atmospheric model that is the closest to the given parameters `temperature`, `logg`
         and `metallicity`
 
-        :param temperature: list
-        :param logg: list
-        :param metallicity: list
-        :param atlas: str - e.g. `castelli` or `ck04`
         :return:
         """
-        n_threads = config.NUMBER_OF_THREADS
-
-        fpaths = NearestAtm.nearest_atm_files_list(temperature, logg, metallicity, atlas)
-
-        path_queue = Queue(maxsize=len(fpaths) + n_threads)
-        result_queue = Queue()
-        error_queue = Queue()
-
-        threads = list()
-        try:
-            for fpath in fpaths:
-                if not os.path.isfile(fpath):
-                    raise FileNotFoundError("file {} doesn't exist. it seems your model "
-                                            "could be not physical".format(fpath))
-                path_queue.put(fpath)
-
-            for _ in range(n_threads):
-                path_queue.put("TERMINATOR")
-
-            logger.debug("initialising multithread atm table reader")
-            for _ in range(n_threads):
-                t = Thread(target=multithread_atm_tables_reader, args=(path_queue, error_queue, result_queue))
-                threads.append(t)
-                t.daemon = True
-                t.start()
-
-            for t in threads:
-                t.join()
-            logger.debug("atm multithread reader finished all jobs")
-        except KeyboardInterrupt:
-            raise
-        finally:
-            if not error_queue.empty():
-                raise error_queue.get()
-
+        result_queue = multithread_atm_tables_reader_runner(fpaths)
         models = [qval for qval in utils.IterableQueue(result_queue)]
         return models
+
+    @staticmethod
+    def radiance(temperature, logg, metallicity, atlas, constraint):
+        atlas = validated_atlas(atlas)
+        # todo: need full implementaion
+        atm_files = NearestAtm.atm_files(temperature, logg, metallicity, atlas)
+        atm_tables = NearestAtm.atm_tables(atm_files)
+        return compute_integral_si_intensity_from_atm_data_containers(atm_tables)
+
+
+class NaiveInterpolatedAtm(object):
+    @staticmethod
+    def radiance(temperature: Iterable, logg: Iterable, metallicity: float, atlas: str):
+        # validate_atm(temperature, logg, metallicity, atlas)
+        atm_files = NaiveInterpolatedAtm.atm_files(temperature, logg, metallicity, atlas)
+        atm_tables = NaiveInterpolatedAtm.atm_tables(atm_files)
+        localized_atm = NaiveInterpolatedAtm.interpolate(atm_tables)
+        return compute_integral_si_intensity_from_atm_data_containers(localized_atm)
+
+    @staticmethod
+    def interpolate(atm_tables):
+        left, right = atm_tables[:len(atm_tables) // 2], atm_tables[len(atm_tables) // 2:]
+        # todo: implement
+        return left
+
+    @staticmethod
+    def atm_tables(fpaths):
+        result_queue = multithread_atm_tables_reader_runner(fpaths)
+        models = [qval for qval in utils.IterableQueue(result_queue)]
+        return models
+
+    @staticmethod
+    def atm_files(temperature: Iterable, logg: Iterable, metallicity: float, atlas: str):
+        atlas = validated_atlas(atlas)
+
+        g_array = atm_file_prefix_to_quantity_list("gravity", atlas)
+        m_array = atm_file_prefix_to_quantity_list("metallicity", atlas)
+        t_array = atm_file_prefix_to_quantity_list("temperature", atlas)
+
+        g = [utils.find_nearest_value(g_array, _logg)[0] for _logg in logg]
+        m = utils.find_nearest_value(m_array, metallicity)[0]
+        t = [_t if len(_t) == 2 else _t + [np.nan]
+             for _t in [utils.find_surrounded(t_array, _temp) for _temp in temperature]]
+        t = np.array(t).T
+
+        domain_df = pd.DataFrame({
+            "temp": list(t[0]) + list(t[1]),
+            "logg": list(g) + list(g),
+            "mh": [m] * len(g) * 2
+        })
+
+        directory = get_atm_directory(m, atlas)
+        # in case when temperature is same as one of temperatures on grid, sourrounded value is only one number
+        # and what we have to do is just read a atm table and do not any interpolation
+        fnames = str(atlas) + \
+                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
+                 domain_df["temp"].apply(lambda x: str(int(x) if not np.isnan(x) else '__NaN__')) + "_" + \
+                 domain_df["logg"].apply(lambda x: utils.numeric_logg_to_string(x))
+        return [
+            path if '__NaN__' not in path
+            else None
+            for path in
+            list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
+        ]
 
 
 def build_atm_validation_hypertable(atlas):
@@ -350,7 +413,7 @@ def validate_temperature(temperature: Iterable, atlas: str):
     invalid = any([True if (allowed[-1] < t or allowed[-1] < t) else False for t in temperature])
     if invalid:
         raise ValueError("any temperature in system atmosphere is out of bound; "
-                         "it is ussualy caused by invalid physical model")
+                         "it is usually caused by invalid physical model")
     return True
 
 
@@ -361,7 +424,7 @@ def validate_metallicity(metallicity: Iterable, atlas: str):
     out_of_bound = is_out_of_bound(allowed, metallicity, out_of_bound_tol)
     if any(out_of_bound):
         raise ValueError("any metallicity in system atmosphere is out of bound, allowed values "
-                         "are in range <{}, {}>; it is ussualy caused by invalid physical model"
+                         "are in range <{}, {}>; it is usually caused by invalid physical model"
                          "".format(min(allowed) - out_of_bound_tol, max(allowed) + out_of_bound_tol))
     return True
 
@@ -383,7 +446,7 @@ def _validate_logg(temperature, logg, atlas):
                         ]["gravity"], [g], 0.1)[0] for t, g in zip(temperature, logg)]
     if any(invalid):
         raise ValueError("any gravity (logg) in system atmosphere is out of bound; "
-                         "it is ussualy caused by invalid physical model")
+                         "it is usually caused by invalid physical model")
     return True
 
 
@@ -396,42 +459,4 @@ def validate_atm(temperature, logg, metallicity, atlas):
 
 
 if __name__ == "__main__":
-    _temperature = [
-        5551.36,
-        5552.25,
-        6531.81,
-        7825.66,
-        9874.85
-    ]
-
-    _metallicity = 0.11
-
-    _logg = [
-        4.12,
-        3.92,
-        2.85,
-        2.99,
-        3.11
-    ]
-
-    validate_atm(_temperature, _logg, _metallicity, "ck04")
-
-
-
-
-
-
-
-
-    # atm_containers = NearestAtm.nearest_atm_tables(_temperature, _logg, _metallicity, "ck")
-    # i = compute_integral_si_intensity_from_atm_data_containers(atm_containers)
-
-    # print(nearest_atm_files_list(temperature=[10005], logg=[0.1], metallicity=[0.1], atlas="ck"))
-
-    # find nearest loggs
-    # find nearest [M/H]
-    # find surounded Ts
-    # validity check
-    # get relevant atm tables
-    # interpolate T - passbadn restriction or not (switch)
-    # return interpolated containers
+    pass
