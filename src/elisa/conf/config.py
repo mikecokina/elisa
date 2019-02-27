@@ -43,6 +43,7 @@ MAX_DISCRETIZATION_FACTOR = 20
 NUMBER_OF_THREADS = int(os.cpu_count())
 
 # support data
+PASSBAND_TABLES = os.path.join(level_up(__file__, 3), "passband")
 VAN_HAMME_LD_TABLES = os.path.join(level_up(__file__, 3), "limbdarkening", "vh")
 CK04_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "ck04")
 K93_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "k93")
@@ -141,6 +142,9 @@ def update_config():
 
         global ATM_ATLAS
         ATM_ATLAS = config_parser.get('support', 'atlas', fallback=ATM_ATLAS)
+
+        global PASSBAND_TABLES
+        PASSBAND_TABLES = config_parser.get('support', 'passband_tables', fallback=PASSBAND_TABLES)
 
 
 PASSBANDS = [

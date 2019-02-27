@@ -198,20 +198,21 @@ def get_list_of_all_atm_tables(atlas):
 
 def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_queue: Queue):
     while True:
-        file_path = path_queue.get(timeout=1)
+        args = path_queue.get(timeout=1)
 
-        if file_path == "TERMINATOR":
+        if args == "TERMINATOR":
             break
         if not error_queue.empty():
             break
+        index, file_path = args
         if file_path is None:
             # consider put here an empty container
-            result_queue.put(None)
+            result_queue.put((index, None))
             continue
         try:
             t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(file_path))
             atm_container = AtmDataContainer(pd.read_csv(file_path), t, l, m)
-            result_queue.put(atm_container)
+            result_queue.put((index, atm_container))
         except Exception as we:
             error_queue.put(we)
             break
@@ -226,12 +227,12 @@ def multithread_atm_tables_reader_runner(fpaths):
 
     threads = list()
     try:
-        for fpath in fpaths:
+        for index, fpath in enumerate(fpaths):
             if isinstance(fpath, str):
                 if not os.path.isfile(fpath):
                     raise FileNotFoundError("file {} doesn't exist. it seems your model "
                                             "could be not physical".format(fpath))
-            path_queue.put(fpath)
+            path_queue.put((index, fpath))
 
         for _ in range(n_threads):
             path_queue.put("TERMINATOR")
@@ -327,23 +328,66 @@ class NearestAtm(object):
 
 class NaiveInterpolatedAtm(object):
     @staticmethod
-    def radiance(temperature: Iterable, logg: Iterable, metallicity: float, atlas: str):
+    def radiance(temperature: Iterable, logg: Iterable, metallicity: float, atlas: str, **kwargs):
         # validate_atm(temperature, logg, metallicity, atlas)
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, logg, metallicity, atlas)
         atm_tables = NaiveInterpolatedAtm.atm_tables(atm_files)
-        localized_atm = NaiveInterpolatedAtm.interpolate(atm_tables)
+        localized_atm = NaiveInterpolatedAtm.interpolate(atm_tables,
+                                                         **dict(left_bandwidth=kwargs['left_bandwidth'],
+                                                                right_bandwidth=kwargs['right_bandwidth'],
+                                                                temperature=temperature))
         return compute_integral_si_intensity_from_atm_data_containers(localized_atm)
 
     @staticmethod
-    def interpolate(atm_tables):
-        left, right = atm_tables[:len(atm_tables) // 2], atm_tables[len(atm_tables) // 2:]
-        # todo: implement
-        return left
+    def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth):
+        """
+
+        :param atm_container:
+        :param left_bandwidth:
+        :param right_bandwidth:
+        :return:
+        """
+        if atm_container is not None:
+            # todo: it assumes that wave unit is angstrom and this is reason, why there is bandwidth multiplied by 10
+            # todo: fix it to general values based on atm container units info
+            valid_indices = list(
+                atm_container.model.index[
+                    atm_container.model["wave"].between(left_bandwidth * 10, right_bandwidth * 10, inclusive=True)
+                ])
+            left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
+            right_extention_index = valid_indices[-1] + 1 if valid_indices[-1] > 1 else valid_indices[-1]
+            atm_container.model = atm_container.model.iloc[
+                sorted(valid_indices + [left_extention_index] + [right_extention_index])
+            ]
+
+    @staticmethod
+    def compute_interpolation_weights(temperatures, top_atm_containers, bottom_atm_containers):
+        top_temperatures = np.array([a.temperature for a in top_atm_containers])
+        bottom_temperatures = np.array([a.temperature if a is not None else 0.0 for a in bottom_atm_containers])
+        return (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
+
+    @staticmethod
+    def interpolate(atm_tables, **kwargs):
+        temperature = kwargs.pop("temperature")
+        bottom_atm, top_atm = atm_tables[:len(atm_tables) // 2], atm_tables[len(atm_tables) // 2:]
+        left_bandwidth, right_bandwidth = kwargs.pop("left_bandwidth"), kwargs.pop("right_bandwidth")
+
+        # no set needed, values are mutable, and all are modified in ``strip_atm_container_by_bandwidth`` method
+        [NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in bottom_atm]
+        [NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in top_atm]
+        interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
+
+        # todo: continue here
+
+        print(interpolation_weights)
+
+        return top_atm
 
     @staticmethod
     def atm_tables(fpaths):
         result_queue = multithread_atm_tables_reader_runner(fpaths)
         models = [qval for qval in utils.IterableQueue(result_queue)]
+        models = [val[1] for val in sorted(models, key=lambda x: x[0])]
         return models
 
     @staticmethod
@@ -356,7 +400,7 @@ class NaiveInterpolatedAtm(object):
 
         g = [utils.find_nearest_value(g_array, _logg)[0] for _logg in logg]
         m = utils.find_nearest_value(m_array, metallicity)[0]
-        t = [_t if len(_t) == 2 else _t + [np.nan]
+        t = [_t if len(_t) == 2 else [np.nan] + _t
              for _t in [utils.find_surrounded(t_array, _temp) for _temp in temperature]]
         t = np.array(t).T
 
