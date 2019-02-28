@@ -114,8 +114,6 @@ class Observer(object):
 
         self._logger.info("observation finished")
 
-    def apply_filter(self):
-        pass
 
 if __name__ == "__main__":
     o = Observer(passband=['Generic.Bessell.B', 'Generic.Bessell.V'], system=None)

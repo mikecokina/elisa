@@ -7,7 +7,7 @@ from threading import Thread
 
 import numpy as np
 import pandas as pd
-from scipy import integrate
+from scipy import integrate, interpolate
 
 from elisa.conf import config
 from elisa.engine import utils, const
@@ -59,6 +59,355 @@ class IntensityContainer(object):
         self.temperature = temperature
         self.logg = logg
         self.metallicity = metallicity
+
+
+class NearestAtm(object):
+    @staticmethod
+    def atm_files(temperature, logg, metallicity, atlas):
+        """
+        returns files that contains atmospheric model for parameters closest to the given atmospheric parameters
+        `temperature`, `logg` and `metallicity`
+
+        :param temperature: list
+        :param logg: list
+        :param metallicity: list
+        :param atlas: str - e.g. `castelli` or `ck04`
+        :return:
+        """
+        atlas = validated_atlas(atlas)
+
+        t_array = atm_file_prefix_to_quantity_list("temperature", atlas)
+        g_array = atm_file_prefix_to_quantity_list("gravity", atlas)
+        m_array = atm_file_prefix_to_quantity_list("metallicity", atlas)
+
+        t = [utils.find_nearest_value(t_array, _t)[0] for _t in temperature]
+        g = [utils.find_nearest_value(g_array, _g)[0] for _g in logg]
+        m = utils.find_nearest_value(m_array, metallicity)[0]
+
+        domain_df = pd.DataFrame({
+            "temp": t,
+            "logg": g,
+            "mh": [m] * len(t)
+        })
+
+        directory = get_atm_directory(m, atlas)
+        fnames = str(atlas) + \
+                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
+                 domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
+                 domain_df["logg"].apply(lambda x: utils.numeric_logg_to_string(x))
+
+        return list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + "/" + fnames + ".csv")
+
+    @staticmethod
+    def atm_tables(fpaths):
+        """
+        returns spectrum profile for the atmospheric model that is the closest to the given parameters `temperature`, `logg`
+        and `metallicity`
+
+        :return:
+        """
+        result_queue = multithread_atm_tables_reader_runner(fpaths)
+        models = [qval for qval in utils.IterableQueue(result_queue)]
+        return models
+
+    @staticmethod
+    def radiance(temperature, logg, metallicity, atlas, **kwargs):
+        atlas = validated_atlas(atlas)
+        # todo: need full implementaion (with passband: see approach in NaiveInterpolatedAtm)
+        atm_files = NearestAtm.atm_files(temperature, logg, metallicity, atlas)
+        atm_tables = NearestAtm.atm_tables(atm_files)
+        return compute_integral_si_intensity_from_atm_data_containers(atm_tables)
+
+
+class NaiveInterpolatedAtm(object):
+    @staticmethod
+    def radiance(temperature: Iterable, logg: Iterable, metallicity: float, atlas: str, **kwargs):
+        """
+        compute radiance for given atmospheric parametres with regards to given passbands
+
+        :param temperature: Iterable
+        :param logg: Iterable
+        :param metallicity: float
+        :param atlas: str
+        :param kwargs:
+        :**kwargs options**:
+                * **left_bandwidth** * -- float; maximal allowed wavelength from left
+                * **right_bandwidth** * -- float; maximal allowed wavelength from right
+                * **passband** * -- elisa.observer.observer.PassbandContainer
+        :return: list
+        """
+        # validate_atm(temperature, logg, metallicity, atlas)
+        atm_files = NaiveInterpolatedAtm.atm_files(temperature, logg, metallicity, atlas)
+        atm_tables = NaiveInterpolatedAtm.atm_tables(atm_files)
+        localized_atm_containers = NaiveInterpolatedAtm.interpolate(
+            atm_tables,
+            **dict(left_bandwidth=kwargs['left_bandwidth'],
+                   right_bandwidth=kwargs['right_bandwidth'],
+                   temperature=temperature,
+                   logg=logg,
+                   metallicity=metallicity)
+        )
+
+        return compute_integral_si_intensity_from_atm_data_containers(localized_atm_containers)
+
+    @staticmethod
+    def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth):
+        """
+        strip atmosphere container model by given bandwidth (add +/- 1 value behind boundary)
+
+        :param atm_container: AtmDataContainer
+        :param left_bandwidth: float
+        :param right_bandwidth: float
+        :return: AtmDataContainer
+        """
+        if atm_container is not None:
+            # todo: it assumes that wave unit is angstrom and this is reason, why there is bandwidth multiplied by 10
+            # todo: fix it to general values based on atm container units info
+            valid_indices = list(
+                atm_container.model.index[
+                    atm_container.model["wave"].between(left_bandwidth * 10, right_bandwidth * 10, inclusive=True)
+                ])
+            left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
+            right_extention_index = valid_indices[-1] + 1 \
+                if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
+            atm_container.model = atm_container.model.iloc[
+                sorted(valid_indices + [left_extention_index] + [right_extention_index])
+            ]
+
+    @staticmethod
+    def compute_interpolation_weights(temperatures, top_atm_containers, bottom_atm_containers):
+        top_temperatures = np.array([a.temperature for a in top_atm_containers])
+        bottom_temperatures = np.array([a.temperature if a is not None else 0.0 for a in bottom_atm_containers])
+        return (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
+
+    @staticmethod
+    def compute_unknown_intensity(weight, top_atm_container, bottom_atm_container):
+        """
+        Depends on weight will compute (interpolate) intensities from surounded intensities
+        related to given temperature.
+        In case that top and bottom atmosphere model are not on the same wavelength then as base is taken a wavelength
+        from top. Get values on the same wavelength as in case of top atmosphere, akima 1d interpolation is used
+        and intensities (fluxes) are artificialy computed.
+
+
+        :param weight: Iterable of float`s
+        :param top_atm_container: AtmDataContainer
+        :param bottom_atm_container: AtmDataContainer
+        :return: tuple of list (flux, wave)
+        """
+        if bottom_atm_container is not None:
+            do_akima = False if np.all(np.array(top_atm_container.model["wave"], dtype="float")
+                                       == np.array(bottom_atm_container.model["wave"], dtype="float")) else True
+        else:
+            return top_atm_container.model["flux"], top_atm_container.model["wave"]
+
+        if do_akima:
+            wavelength = top_atm_container.model["wave"]
+            akima = interpolate.Akima1DInterpolator(bottom_atm_container.model["wave"],
+                                                    bottom_atm_container.model["flux"])
+            bottom_atm_container.model = pd.DataFrame({
+                "flux": np.array(akima(wavelength)),
+                "wave": np.array(wavelength)
+            })
+
+        intensity = weight * (
+            top_atm_container.model["flux"] - bottom_atm_container.model["flux"]) + bottom_atm_container.model["flux"]
+
+        return intensity, top_atm_container.model["wave"]
+
+    @staticmethod
+    def interpolate(atm_tables, **kwargs):
+        """
+        for given `on grid` tables of stellar atmospheres stored in `atm_tables` list will compute atmospheres
+        for given parametres (temperature, logg, metallicity)
+
+        atm_tables contain extended list of AtmDataContainer`s;
+        first part (half) of atm_tables contain bottom atmospheres related to given temperature and second half of list
+        contain atmospheres from top of temperature.
+        In case that temperature match exactly atmospheric model, that model is stored in `top` atm_tables and in
+        bottom is stored None value
+
+        e.g.
+
+        temperature = [7825.66, 4500, 19874.85]
+        atm_tables = [<t1 - 7750>, None, <t3 - 19000>, <t4 - 8000>, <t5 - 4500>, <t6 - 20000>]
+
+        bottom: <t1 - 7750>, None, <t3 - 19000>
+        top: <t4 - 8000>, <t5 - 4500>, <t6 - 20000>
+
+        :param atm_tables: list of AtmDataContainer`s
+        :param kwargs:
+        :**kwargs options**:
+                * **temperature** * -- Iterable
+                * **logg** * -- Iterable
+                * **metallicity** * -- float
+                * **left_bandwidth** * -- float; maximal allowed wavelength from left
+                * **right_bandwidth** * -- float; maximal allowed wavelength from right
+        :return: list of AtmDataContainer`s
+        """
+
+        temperature = kwargs.pop("temperature")
+        logg = kwargs.pop("logg")
+        metallicity = kwargs.pop("metallicity")
+
+        bottom_atm, top_atm = atm_tables[:len(atm_tables) // 2], atm_tables[len(atm_tables) // 2:]
+        left_bandwidth, right_bandwidth = kwargs.pop("left_bandwidth"), kwargs.pop("right_bandwidth")
+
+        # no set needed, values are mutable, and all are modified in ``strip_atm_container_by_bandwidth`` method
+        [NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in bottom_atm]
+        [NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in top_atm]
+        interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
+
+        interpolated_atm_containers = list()
+
+        for weight, temperature, bottom, top in zip(interpolation_weights, temperature, bottom_atm, top_atm):
+            intensity, wavelength = NaiveInterpolatedAtm.compute_unknown_intensity(weight, top, bottom)
+            interpolated_atm_containers.append(
+                AtmDataContainer(
+                    model=pd.DataFrame({"flux": np.array(intensity), "wave": np.array(wavelength)}),
+                    temperature=temperature,
+                    logg=logg,
+                    metallicity=metallicity
+                )
+            )
+        return interpolated_atm_containers
+
+    @staticmethod
+    def atm_tables(fpaths):
+        """
+        read atmosphere tables as pandas.DataFrame`s
+
+        :param fpaths: Iterable, list of paths to desired atm csv files
+        :return: list of pandas.DataFrame`s
+        """
+        result_queue = multithread_atm_tables_reader_runner(fpaths)
+        models = [qval for qval in utils.IterableQueue(result_queue)]
+        models = [val[1] for val in sorted(models, key=lambda x: x[0])]
+        return models
+
+    @staticmethod
+    def atm_files(temperature: Iterable, logg: Iterable, metallicity: float, atlas: str):
+        """
+        For given parameters will find out related atm csv tables and return list of paths to this csv files
+
+        :param temperature: Iterable
+        :param logg: Iterable
+        :param metallicity: float
+        :param atlas: str
+        :return: list; list of str
+        """
+        atlas = validated_atlas(atlas)
+
+        g_array = atm_file_prefix_to_quantity_list("gravity", atlas)
+        m_array = atm_file_prefix_to_quantity_list("metallicity", atlas)
+        t_array = atm_file_prefix_to_quantity_list("temperature", atlas)
+
+        g = [utils.find_nearest_value(g_array, _logg)[0] for _logg in logg]
+        m = utils.find_nearest_value(m_array, metallicity)[0]
+        t = [_t if len(_t) == 2 else [np.nan] + _t
+             for _t in [utils.find_surrounded(t_array, _temp) for _temp in temperature]]
+        t = np.array(t).T
+
+        domain_df = pd.DataFrame({
+            "temp": list(t[0]) + list(t[1]),
+            "logg": list(g) + list(g),
+            "mh": [m] * len(g) * 2
+        })
+
+        directory = get_atm_directory(m, atlas)
+        # in case when temperature is same as one of temperatures on grid, sourrounded value is only one number
+        # and what we have to do is just read a atm table and do not any interpolation
+        fnames = str(atlas) + \
+                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
+                 domain_df["temp"].apply(lambda x: str(int(x) if not np.isnan(x) else '__NaN__')) + "_" + \
+                 domain_df["logg"].apply(lambda x: utils.numeric_logg_to_string(x))
+        return [
+            path if '__NaN__' not in path
+            else None
+            for path in
+            list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
+        ]
+
+
+def apply_passband():
+    pass
+
+
+def build_atm_validation_hypertable(atlas):
+    atlas = validated_atlas(atlas)
+    all_files = get_list_of_all_atm_tables(atlas)
+    filenames = (os.path.basename(f) for f in all_files)
+    quantities = sorted([parse_domain_quantities_from_atm_table_filename(f) for f in filenames], key=lambda x: x[0])
+    temp_qroups = itertools.groupby(quantities, key=lambda x: x[0])
+    hypertable = {
+        str(int(temp_qroup[0])):
+            {
+                "gravity": sorted(set(np.array(list(temp_qroup[1])).T[1])),
+                # mettalicity is stored in this dict just because of consitency
+                "metallicity": atm_file_prefix_to_quantity_list("metallicity", atlas)
+            }
+        for temp_qroup in temp_qroups
+    }
+    return hypertable
+
+
+def is_out_of_bound(in_arr: Iterable, values: Iterable, tolerance: float):
+    values = [values] if not isinstance(values, Iterable) else values
+    top, bottom = max(in_arr) + tolerance, min(in_arr) - tolerance
+    return [False if bottom <= val <= top else True for val in values]
+
+
+# pay attention to those methods bellow
+# in the future for different atm model might happen that function won't be valid anymore
+def validate_temperature(temperature: Iterable, atlas: str):
+    atlas = validated_atlas(atlas)
+    allowed = sorted(atm_file_prefix_to_quantity_list("temperature", atlas))
+    invalid = any([True if (allowed[-1] < t or allowed[-1] < t) else False for t in temperature])
+    if invalid:
+        raise ValueError("any temperature in system atmosphere is out of bound; "
+                         "it is usually caused by invalid physical model")
+    return True
+
+
+def validate_metallicity(metallicity: Iterable, atlas: str):
+    out_of_bound_tol = 0.1  # how far `out of bound` can any value of metallicity runs
+    atlas = validated_atlas(atlas)
+    allowed = sorted(atm_file_prefix_to_quantity_list("metallicity", atlas))
+    out_of_bound = is_out_of_bound(allowed, metallicity, out_of_bound_tol)
+    if any(out_of_bound):
+        raise ValueError("any metallicity in system atmosphere is out of bound, allowed values "
+                         "are in range <{}, {}>; it is usually caused by invalid physical model"
+                         "".format(min(allowed) - out_of_bound_tol, max(allowed) + out_of_bound_tol))
+    return True
+
+
+def validate_logg(logg, atlas: str):
+    # not implemented, naive implementation is uselles
+    # proper `like` implementaion is _validate_logg
+    pass
+
+
+def _validate_logg(temperature, logg, atlas):
+    # it has a different name beacuse there is a different interface
+    validation_hypertable = build_atm_validation_hypertable(atlas)
+    allowed = sorted(atm_file_prefix_to_quantity_list("temperature", atlas))
+
+    invalid = [
+        is_out_of_bound(validation_hypertable[
+                            str(int(utils.find_nearest_value(allowed, t)[0]))
+                        ]["gravity"], [g], 0.1)[0] for t, g in zip(temperature, logg)]
+    if any(invalid):
+        raise ValueError("any gravity (logg) in system atmosphere is out of bound; "
+                         "it is usually caused by invalid physical model")
+    return True
+
+
+def validate_atm(temperature, logg, metallicity, atlas):
+    metallicity = [metallicity] * len(temperature) if not isinstance(metallicity, Iterable) else metallicity
+    validate_temperature(temperature, atlas)
+    validate_metallicity(metallicity, atlas)
+    _validate_logg(temperature, logg, atlas)
+    return True
 
 
 def atm_file_prefix_to_quantity_list(qname, atlas):
@@ -257,249 +606,17 @@ def multithread_atm_tables_reader_runner(fpaths):
 
 def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: list):
     """
-    returns bolometric intensity
-    :param atm_data_containers:
-    :return:
+    Returns intensity from given atmosphere models.
+    If models are already strip by passband, result is also striped
+
+    :param atm_data_containers: Iterable; list of AtmDataContainer`s
+    :return: list; integrated `flux` from each AtmDataContainer on `wave` in given container
     """
     return [
         np.pi * integrate.simps(adc.model["flux"] * adc.flux_to_si_mult,
                                 adc.model["wave"] * adc.wave_to_si_mult)
         for adc in atm_data_containers
     ]
-
-
-class NearestAtm(object):
-    @staticmethod
-    def atm_files(temperature, logg, metallicity, atlas):
-        """
-        returns files that contains atmospheric model for parameters closest to the given atmospheric parameters
-        `temperature`, `logg` and `metallicity`
-
-        :param temperature: list
-        :param logg: list
-        :param metallicity: list
-        :param atlas: str - e.g. `castelli` or `ck04`
-        :return:
-        """
-        atlas = validated_atlas(atlas)
-
-        t_array = atm_file_prefix_to_quantity_list("temperature", atlas)
-        g_array = atm_file_prefix_to_quantity_list("gravity", atlas)
-        m_array = atm_file_prefix_to_quantity_list("metallicity", atlas)
-
-        t = [utils.find_nearest_value(t_array, _t)[0] for _t in temperature]
-        g = [utils.find_nearest_value(g_array, _g)[0] for _g in logg]
-        m = utils.find_nearest_value(m_array, metallicity)[0]
-
-        domain_df = pd.DataFrame({
-            "temp": t,
-            "logg": g,
-            "mh": [m] * len(t)
-        })
-
-        directory = get_atm_directory(m, atlas)
-        fnames = str(atlas) + \
-                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
-                 domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
-                 domain_df["logg"].apply(lambda x: utils.numeric_logg_to_string(x))
-
-        return list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + "/" + fnames + ".csv")
-
-    @staticmethod
-    def atm_tables(fpaths):
-        """
-        returns spectrum profile for the atmospheric model that is the closest to the given parameters `temperature`, `logg`
-        and `metallicity`
-
-        :return:
-        """
-        result_queue = multithread_atm_tables_reader_runner(fpaths)
-        models = [qval for qval in utils.IterableQueue(result_queue)]
-        return models
-
-    @staticmethod
-    def radiance(temperature, logg, metallicity, atlas, constraint):
-        atlas = validated_atlas(atlas)
-        # todo: need full implementaion
-        atm_files = NearestAtm.atm_files(temperature, logg, metallicity, atlas)
-        atm_tables = NearestAtm.atm_tables(atm_files)
-        return compute_integral_si_intensity_from_atm_data_containers(atm_tables)
-
-
-class NaiveInterpolatedAtm(object):
-    @staticmethod
-    def radiance(temperature: Iterable, logg: Iterable, metallicity: float, atlas: str, **kwargs):
-        # validate_atm(temperature, logg, metallicity, atlas)
-        atm_files = NaiveInterpolatedAtm.atm_files(temperature, logg, metallicity, atlas)
-        atm_tables = NaiveInterpolatedAtm.atm_tables(atm_files)
-        localized_atm = NaiveInterpolatedAtm.interpolate(atm_tables,
-                                                         **dict(left_bandwidth=kwargs['left_bandwidth'],
-                                                                right_bandwidth=kwargs['right_bandwidth'],
-                                                                temperature=temperature))
-        return compute_integral_si_intensity_from_atm_data_containers(localized_atm)
-
-    @staticmethod
-    def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth):
-        """
-
-        :param atm_container:
-        :param left_bandwidth:
-        :param right_bandwidth:
-        :return:
-        """
-        if atm_container is not None:
-            # todo: it assumes that wave unit is angstrom and this is reason, why there is bandwidth multiplied by 10
-            # todo: fix it to general values based on atm container units info
-            valid_indices = list(
-                atm_container.model.index[
-                    atm_container.model["wave"].between(left_bandwidth * 10, right_bandwidth * 10, inclusive=True)
-                ])
-            left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
-            right_extention_index = valid_indices[-1] + 1 if valid_indices[-1] > 1 else valid_indices[-1]
-            atm_container.model = atm_container.model.iloc[
-                sorted(valid_indices + [left_extention_index] + [right_extention_index])
-            ]
-
-    @staticmethod
-    def compute_interpolation_weights(temperatures, top_atm_containers, bottom_atm_containers):
-        top_temperatures = np.array([a.temperature for a in top_atm_containers])
-        bottom_temperatures = np.array([a.temperature if a is not None else 0.0 for a in bottom_atm_containers])
-        return (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
-
-    @staticmethod
-    def interpolate(atm_tables, **kwargs):
-        temperature = kwargs.pop("temperature")
-        bottom_atm, top_atm = atm_tables[:len(atm_tables) // 2], atm_tables[len(atm_tables) // 2:]
-        left_bandwidth, right_bandwidth = kwargs.pop("left_bandwidth"), kwargs.pop("right_bandwidth")
-
-        # no set needed, values are mutable, and all are modified in ``strip_atm_container_by_bandwidth`` method
-        [NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in bottom_atm]
-        [NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in top_atm]
-        interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
-
-        # todo: continue here
-
-        print(interpolation_weights)
-
-        return top_atm
-
-    @staticmethod
-    def atm_tables(fpaths):
-        result_queue = multithread_atm_tables_reader_runner(fpaths)
-        models = [qval for qval in utils.IterableQueue(result_queue)]
-        models = [val[1] for val in sorted(models, key=lambda x: x[0])]
-        return models
-
-    @staticmethod
-    def atm_files(temperature: Iterable, logg: Iterable, metallicity: float, atlas: str):
-        atlas = validated_atlas(atlas)
-
-        g_array = atm_file_prefix_to_quantity_list("gravity", atlas)
-        m_array = atm_file_prefix_to_quantity_list("metallicity", atlas)
-        t_array = atm_file_prefix_to_quantity_list("temperature", atlas)
-
-        g = [utils.find_nearest_value(g_array, _logg)[0] for _logg in logg]
-        m = utils.find_nearest_value(m_array, metallicity)[0]
-        t = [_t if len(_t) == 2 else [np.nan] + _t
-             for _t in [utils.find_surrounded(t_array, _temp) for _temp in temperature]]
-        t = np.array(t).T
-
-        domain_df = pd.DataFrame({
-            "temp": list(t[0]) + list(t[1]),
-            "logg": list(g) + list(g),
-            "mh": [m] * len(g) * 2
-        })
-
-        directory = get_atm_directory(m, atlas)
-        # in case when temperature is same as one of temperatures on grid, sourrounded value is only one number
-        # and what we have to do is just read a atm table and do not any interpolation
-        fnames = str(atlas) + \
-                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
-                 domain_df["temp"].apply(lambda x: str(int(x) if not np.isnan(x) else '__NaN__')) + "_" + \
-                 domain_df["logg"].apply(lambda x: utils.numeric_logg_to_string(x))
-        return [
-            path if '__NaN__' not in path
-            else None
-            for path in
-            list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
-        ]
-
-
-def build_atm_validation_hypertable(atlas):
-    atlas = validated_atlas(atlas)
-    all_files = get_list_of_all_atm_tables(atlas)
-    filenames = (os.path.basename(f) for f in all_files)
-    quantities = sorted([parse_domain_quantities_from_atm_table_filename(f) for f in filenames], key=lambda x: x[0])
-    temp_qroups = itertools.groupby(quantities, key=lambda x: x[0])
-    hypertable = {
-        str(int(temp_qroup[0])):
-            {
-                "gravity": sorted(set(np.array(list(temp_qroup[1])).T[1])),
-                # mettalicity is stored in this dict just because of consitency
-                "metallicity": atm_file_prefix_to_quantity_list("metallicity", atlas)
-            }
-        for temp_qroup in temp_qroups
-    }
-    return hypertable
-
-
-def is_out_of_bound(in_arr: Iterable, values: Iterable, tolerance: float):
-    values = [values] if not isinstance(values, Iterable) else values
-    top, bottom = max(in_arr) + tolerance, min(in_arr) - tolerance
-    return [False if bottom <= val <= top else True for val in values]
-
-
-# pay attention to those methods bellow
-# in the future for different atm model might happen that function won't be valid anymore
-def validate_temperature(temperature: Iterable, atlas: str):
-    atlas = validated_atlas(atlas)
-    allowed = sorted(atm_file_prefix_to_quantity_list("temperature", atlas))
-    invalid = any([True if (allowed[-1] < t or allowed[-1] < t) else False for t in temperature])
-    if invalid:
-        raise ValueError("any temperature in system atmosphere is out of bound; "
-                         "it is usually caused by invalid physical model")
-    return True
-
-
-def validate_metallicity(metallicity: Iterable, atlas: str):
-    out_of_bound_tol = 0.1  # how far `out of bound` can any value of metallicity runs
-    atlas = validated_atlas(atlas)
-    allowed = sorted(atm_file_prefix_to_quantity_list("metallicity", atlas))
-    out_of_bound = is_out_of_bound(allowed, metallicity, out_of_bound_tol)
-    if any(out_of_bound):
-        raise ValueError("any metallicity in system atmosphere is out of bound, allowed values "
-                         "are in range <{}, {}>; it is usually caused by invalid physical model"
-                         "".format(min(allowed) - out_of_bound_tol, max(allowed) + out_of_bound_tol))
-    return True
-
-
-def validate_logg(logg, atlas: str):
-    # not implemented, naive implementation is uselles
-    # proper `like` implementaion is _validate_logg
-    pass
-
-
-def _validate_logg(temperature, logg, atlas):
-    # it has a different name beacuse there is a different interface
-    validation_hypertable = build_atm_validation_hypertable(atlas)
-    allowed = sorted(atm_file_prefix_to_quantity_list("temperature", atlas))
-
-    invalid = [
-        is_out_of_bound(validation_hypertable[
-                            str(int(utils.find_nearest_value(allowed, t)[0]))
-                        ]["gravity"], [g], 0.1)[0] for t, g in zip(temperature, logg)]
-    if any(invalid):
-        raise ValueError("any gravity (logg) in system atmosphere is out of bound; "
-                         "it is usually caused by invalid physical model")
-    return True
-
-
-def validate_atm(temperature, logg, metallicity, atlas):
-    metallicity = [metallicity] * len(temperature) if not isinstance(metallicity, Iterable) else metallicity
-    validate_temperature(temperature, atlas)
-    validate_metallicity(metallicity, atlas)
-    _validate_logg(temperature, logg, atlas)
-    return True
 
 
 if __name__ == "__main__":
