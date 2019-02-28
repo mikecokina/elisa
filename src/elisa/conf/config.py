@@ -192,4 +192,7 @@ LD_LAW_COLS_ORDER = {
 LD_DOMAIN_COLS = ["temperature", "gravity", "metallicity"]
 
 
+ATM_MODEL_DATAFRAME_FLUX = "flux"
+ATM_MODEL_DATAFRAME_WAVE = "wave"
+
 read_and_update_config()

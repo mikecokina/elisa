@@ -10,6 +10,7 @@ import pandas as pd
 from scipy import integrate, interpolate
 
 from elisa.conf import config
+from elisa.conf.config import ATM_MODEL_DATAFRAME_FLUX, ATM_MODEL_DATAFRAME_WAVE
 from elisa.engine import utils, const
 
 config.set_up_logging()
@@ -165,7 +166,7 @@ class NaiveInterpolatedAtm(object):
             # todo: fix it to general values based on atm container units info
             valid_indices = list(
                 atm_container.model.index[
-                    atm_container.model["wave"].between(left_bandwidth * 10, right_bandwidth * 10, inclusive=True)
+                    atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth * 10, right_bandwidth * 10, inclusive=True)
                 ])
             left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
             right_extention_index = valid_indices[-1] + 1 \
@@ -196,24 +197,28 @@ class NaiveInterpolatedAtm(object):
         :return: tuple of list (flux, wave)
         """
         if bottom_atm_container is not None:
-            do_akima = False if np.all(np.array(top_atm_container.model["wave"], dtype="float")
-                                       == np.array(bottom_atm_container.model["wave"], dtype="float")) else True
+            do_akima = False \
+                if np.all(
+                np.array(top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE], dtype="float") ==
+                np.array(bottom_atm_container.model[ATM_MODEL_DATAFRAME_WAVE], dtype="float")) \
+                else True
         else:
-            return top_atm_container.model["flux"], top_atm_container.model["wave"]
+            return top_atm_container.model[ATM_MODEL_DATAFRAME_FLUX], top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
 
         if do_akima:
-            wavelength = top_atm_container.model["wave"]
-            akima = interpolate.Akima1DInterpolator(bottom_atm_container.model["wave"],
-                                                    bottom_atm_container.model["flux"])
+            wavelength = top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
+            akima = interpolate.Akima1DInterpolator(bottom_atm_container.model[ATM_MODEL_DATAFRAME_WAVE],
+                                                    bottom_atm_container.model[ATM_MODEL_DATAFRAME_FLUX])
             bottom_atm_container.model = pd.DataFrame({
-                "flux": np.array(akima(wavelength)),
-                "wave": np.array(wavelength)
+                ATM_MODEL_DATAFRAME_FLUX: np.array(akima(wavelength)),
+                ATM_MODEL_DATAFRAME_WAVE: np.array(wavelength)
             })
 
         intensity = weight * (
-            top_atm_container.model["flux"] - bottom_atm_container.model["flux"]) + bottom_atm_container.model["flux"]
+            top_atm_container.model[ATM_MODEL_DATAFRAME_FLUX] - bottom_atm_container.model[ATM_MODEL_DATAFRAME_FLUX]
+        ) + bottom_atm_container.model[ATM_MODEL_DATAFRAME_FLUX]
 
-        return intensity, top_atm_container.model["wave"]
+        return intensity, top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
 
     @staticmethod
     def interpolate(atm_tables, **kwargs):
@@ -264,7 +269,12 @@ class NaiveInterpolatedAtm(object):
             intensity, wavelength = NaiveInterpolatedAtm.compute_unknown_intensity(weight, top, bottom)
             interpolated_atm_containers.append(
                 AtmDataContainer(
-                    model=pd.DataFrame({"flux": np.array(intensity), "wave": np.array(wavelength)}),
+                    model=pd.DataFrame(
+                        {
+                            ATM_MODEL_DATAFRAME_FLUX: np.array(intensity),
+                            ATM_MODEL_DATAFRAME_WAVE: np.array(wavelength)
+                        }
+                    ),
                     temperature=temperature,
                     logg=logg,
                     metallicity=metallicity
@@ -613,8 +623,8 @@ def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: 
     :return: list; integrated `flux` from each AtmDataContainer on `wave` in given container
     """
     return [
-        np.pi * integrate.simps(adc.model["flux"] * adc.flux_to_si_mult,
-                                adc.model["wave"] * adc.wave_to_si_mult)
+        np.pi * integrate.simps(adc.model[ATM_MODEL_DATAFRAME_FLUX] * adc.flux_to_si_mult,
+                                adc.model[ATM_MODEL_DATAFRAME_WAVE] * adc.wave_to_si_mult)
         for adc in atm_data_containers
     ]
 
