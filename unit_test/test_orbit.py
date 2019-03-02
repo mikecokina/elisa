@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-from engine.orbit import Orbit
-import engine.const as c
+from elisa.engine.orbit import Orbit
+import elisa.engine.const as c
 from astropy import units as u
 
 

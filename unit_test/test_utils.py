@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from engine import utils
+from elisa.engine import utils
 from numpy import testing
 
 

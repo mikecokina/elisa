@@ -1,10 +1,7 @@
 import unittest
-from engine.star import Star
-from engine.single_system import SingleSystem
+from elisa.engine.base.star import Star
+from elisa.engine.single_system.system import SingleSystem
 from astropy import units as u
-import numpy as np
-from engine import utils
-from numpy import testing
 
 
 class TestPulsations(unittest.TestCase):

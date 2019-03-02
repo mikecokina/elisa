@@ -1,13 +1,12 @@
 import unittest
 import numpy as np
-from engine.binary_system import BinarySystem
-from engine.star import Star
-import engine.const as c
+from elisa.engine.binary_system.system import BinarySystem
+from elisa.engine.base.star import Star
+import elisa.engine.const as c
 from astropy import units as u
 from numpy.testing import assert_array_almost_equal
-from engine import utils
+from elisa.engine import utils
 from unit_test import test_utils
-from engine.single_system import static, build
 
 
 class TestBinarySystem(unittest.TestCase):
@@ -115,12 +114,12 @@ class TestBinarySystem(unittest.TestCase):
             primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
                            synchronicity=combo["primary_synchronicity"],
                            t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"],
-                           albedo=combo['primary_albedo'])
+                           albedo=combo['primary_albedo'], metallicity=0.0)
 
             secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
                              synchronicity=combo["secondary_synchronicity"],
                              t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
-                             albedo=combo['secondary_albedo'])
+                             albedo=combo['secondary_albedo'], metallicity=0.0)
 
             bs = BinarySystem(primary=primary,
                               secondary=secondary,
@@ -156,12 +155,12 @@ class TestBinarySystem(unittest.TestCase):
             primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
                            synchronicity=combo["primary_synchronicity"],
                            t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"],
-                           albedo=combo['primary_albedo'])
+                           albedo=combo['primary_albedo'], metallicity=0.0)
 
             secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
                              synchronicity=combo["secondary_synchronicity"],
                              t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
-                             albedo=combo['secondary_albedo'])
+                             albedo=combo['secondary_albedo'], metallicity=0.0)
 
             bs = BinarySystem(primary=primary,
                               secondary=secondary,
@@ -185,12 +184,12 @@ class TestBinarySystem(unittest.TestCase):
             primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
                            synchronicity=combo["primary_synchronicity"], discretization_factor=alpha,
                            t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"],
-                           albedo=combo['primary_albedo'])
+                           albedo=combo['primary_albedo'], metallicity=0.0)
 
             secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
                              synchronicity=combo["secondary_synchronicity"], discretization_factor=alpha,
                              t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
-                             albedo=combo['secondary_albedo'])
+                             albedo=combo['secondary_albedo'], metallicity=0.0)
 
             bs = BinarySystem(primary=primary,
                               secondary=secondary,
@@ -288,13 +287,13 @@ class TestBinarySystem(unittest.TestCase):
                            synchronicity=combo["primary_synchronicity"], discretization_factor=alpha,
                            t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"],
                            spots=spots_metadata['primary'],
-                           albedo=combo['primary_albedo'])
+                           albedo=combo['primary_albedo'], metallicity=0.0)
 
             secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
                              synchronicity=combo["secondary_synchronicity"], discretization_factor=alpha,
                              t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
                              spots=spots_metadata['secondary'],
-                             albedo=combo['secondary_albedo'])
+                             albedo=combo['secondary_albedo'], metallicity=0.0)
 
             bs = BinarySystem(primary=primary,
                               secondary=secondary,

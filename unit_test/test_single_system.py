@@ -1,11 +1,9 @@
 import unittest
 import numpy as np
-from engine.single_system import SingleSystem
-from engine.star import Star
-import engine.const as c
+from elisa.engine.single_system.system import SingleSystem
+from elisa.engine.base.star import Star
 from astropy import units as u
-from numpy.testing import assert_array_almost_equal
-from engine import utils
+from elisa.engine import utils
 from numpy import testing
 
 
