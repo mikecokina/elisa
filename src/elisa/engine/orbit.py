@@ -2,7 +2,7 @@ import numpy as np
 import elisa.engine.units as eu
 
 from elisa.engine import utils, logger
-from elisa.engine import const as c
+from elisa.engine import const
 from astropy import units as u
 
 
@@ -97,12 +97,14 @@ class Orbit(object):
         if isinstance(inclination, u.quantity.Quantity):
             self._inclination = np.float64(inclination.to(eu.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
+            # fixme: when inclination is served with unit, bottom condition 0 <= etc.
+            # fixme: will carsh, see how it is solved in argument_of_periastron (to the same for base.system)
             self._inclination = np.float64(inclination)
         else:
             raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
-        if not 0 <= self.inclination <= c.PI:
+        if not 0 <= self.inclination <= const.PI:
             raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
 
     @property
@@ -136,20 +138,21 @@ class Orbit(object):
     @argument_of_periastron.setter
     def argument_of_periastron(self, argument_of_periastron):
         """
-        setter for argument of periastron of binary system orbit
+        setter for argument of periastron, if unit is not supplied, value in degrees is assumed
 
-        :param argument_of_periastron: numpy.float
+        :param argument_of_periastron: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
         """
         if isinstance(argument_of_periastron, u.quantity.Quantity):
             self._argument_of_periastron = np.float64(argument_of_periastron.to(eu.ARC_UNIT))
         elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
-            self._argument_of_periastron = np.float64(argument_of_periastron)
+            self._argument_of_periastron = np.float64((argument_of_periastron * u.deg).to(eu.ARC_UNIT))
         else:
             raise TypeError('Input of variable `argument_of_periastron` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        if not 0 <= argument_of_periastron <= c.FULL_ARC:
-            self._argument_of_periastron %= c.FULL_ARC
+
+        if not 0 <= self._argument_of_periastron <= const.FULL_ARC:
+            self._argument_of_periastron %= const.FULL_ARC
 
     @classmethod
     def true_phase(cls, phase=None, phase_shift=None):
@@ -170,7 +173,7 @@ class Orbit(object):
         :param phase: numpy.array
         :return: numpy.array
         """
-        return c.FULL_ARC * phase
+        return const.FULL_ARC * phase
 
     def mean_anomaly_fn(self, eccentric_anomaly=None, *args):
         """
@@ -196,7 +199,7 @@ class Orbit(object):
                                              tol=1e-10)
             if not np.isnan(solution):
                 if solution < 0:
-                    solution += c.FULL_ARC
+                    solution += const.FULL_ARC
                 return solution
             else:
                 return False
@@ -214,7 +217,7 @@ class Orbit(object):
         """
         true_anomaly = 2.0 * np.arctan(
             np.sqrt((1.0 + self.eccentricity) / (1.0 - self.eccentricity)) * np.tan(eccentric_anomaly / 2.0))
-        true_anomaly[true_anomaly < 0] += c.FULL_ARC
+        true_anomaly[true_anomaly < 0] += const.FULL_ARC
         return true_anomaly
 
     def relative_radius(self, true_anomaly=None):
@@ -228,7 +231,7 @@ class Orbit(object):
 
     def true_anomaly_to_azimuth(self, true_anomaly=None):
         azimut = true_anomaly + self.argument_of_periastron
-        azimut %= c.FULL_ARC
+        azimut %= const.FULL_ARC
         return azimut
 
     def orbital_motion(self, phase=None):
@@ -275,29 +278,30 @@ class Orbit(object):
         # determining order of eclipses
         conjuction_arc_list = []
         try:
-            if 0 <= self.inclination <= c.PI / 2.0:
-                conjuction_arc_list = [c.PI / 2.0, 3.0 * c.PI / 2.0]
-            elif c.PI / 2.0 < self.inclination <= c.PI:
-                conjuction_arc_list = [3.0 * c.PI / 2.0, c.PI / 2.0]
+            if 0 <= self.inclination <= const.PI / 2.0:
+                conjuction_arc_list = [const.PI / 2.0, 3.0 * const.PI / 2.0]
+            elif const.PI / 2.0 < self.inclination <= const.PI:
+                conjuction_arc_list = [3.0 * const.PI / 2.0, const.PI / 2.0]
         except:
             raise TypeError('Invalid type of {0}.inclination.'.format(Orbit.__name__))
 
         conjunction_quantities = {}
         for alpha, idx in list(zip(conjuction_arc_list, ['primary_eclipse', 'secondary_eclipse'])):
             # true anomaly of conjunction (measured from periastron counter-clokwise)
-            true_anomaly_of_conjuction = (alpha - self.argument_of_periastron) % c.FULL_ARC  # \nu_{con}
+            true_anomaly_of_conjuction = (alpha - self.argument_of_periastron) % const.FULL_ARC  # \nu_{con}
 
             # eccentric anomaly of conjunction (measured from apse line)
             eccentric_anomaly_of_conjunction = (2.0 * np.arctan(
                 np.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) *
-                np.tan(true_anomaly_of_conjuction / 2.0))) % c.FULL_ARC
+                np.tan(true_anomaly_of_conjuction / 2.0))) % const.FULL_ARC
 
             # mean anomaly of conjunction (measured from apse line)
             mean_anomaly_of_conjunction = (eccentric_anomaly_of_conjunction -
-                                           self.eccentricity * np.sin(eccentric_anomaly_of_conjunction)) % c.FULL_ARC
+                                           self.eccentricity *
+                                           np.sin(eccentric_anomaly_of_conjunction)) % const.FULL_ARC
 
             # true phase of conjunction (measured from apse line)
-            true_phase_of_conjunction = (mean_anomaly_of_conjunction / c.FULL_ARC) % 1.0
+            true_phase_of_conjunction = (mean_anomaly_of_conjunction / const.FULL_ARC) % 1.0
 
             conjunction_quantities[idx] = {}
             conjunction_quantities[idx]["true_anomaly"] = true_anomaly_of_conjuction

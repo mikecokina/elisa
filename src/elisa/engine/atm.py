@@ -12,6 +12,7 @@ from scipy import integrate, interpolate
 from elisa.conf import config
 from elisa.conf.config import ATM_MODEL_DATAFRAME_FLUX, ATM_MODEL_DATAFRAME_WAVE
 from elisa.engine import utils, const
+from elisa.conf.config import PASSBAND_DATAFRAME_WAVE, PASSBAND_DATAFRAME_THROUGHPUT
 
 config.set_up_logging()
 logger = logging.getLogger("atm")
@@ -148,8 +149,8 @@ class NaiveInterpolatedAtm(object):
                    logg=logg,
                    metallicity=metallicity)
         )
-
-        return compute_integral_si_intensity_from_atm_data_containers(localized_atm_containers)
+        passbanded_atm_containers = apply_passband(localized_atm_containers, kwargs["passband"])
+        return compute_integral_si_intensity_from_passbanded_dict(passbanded_atm_containers)
 
     @staticmethod
     def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth):
@@ -162,11 +163,9 @@ class NaiveInterpolatedAtm(object):
         :return: AtmDataContainer
         """
         if atm_container is not None:
-            # todo: it assumes that wave unit is angstrom and this is reason, why there is bandwidth multiplied by 10
-            # todo: fix it to general values based on atm container units info
             valid_indices = list(
                 atm_container.model.index[
-                    atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth * 10, right_bandwidth * 10, inclusive=True)
+                    atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth, right_bandwidth, inclusive=True)
                 ])
             left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
             right_extention_index = valid_indices[-1] + 1 \
@@ -174,6 +173,7 @@ class NaiveInterpolatedAtm(object):
             atm_container.model = atm_container.model.iloc[
                 sorted(valid_indices + [left_extention_index] + [right_extention_index])
             ]
+            return atm_container
 
     @staticmethod
     def compute_interpolation_weights(temperatures, top_atm_containers, bottom_atm_containers):
@@ -265,7 +265,7 @@ class NaiveInterpolatedAtm(object):
 
         interpolated_atm_containers = list()
 
-        for weight, temperature, bottom, top in zip(interpolation_weights, temperature, bottom_atm, top_atm):
+        for weight, t, g, bottom, top in zip(interpolation_weights, temperature, logg, bottom_atm, top_atm):
             intensity, wavelength = NaiveInterpolatedAtm.compute_unknown_intensity(weight, top, bottom)
             interpolated_atm_containers.append(
                 AtmDataContainer(
@@ -275,8 +275,8 @@ class NaiveInterpolatedAtm(object):
                             ATM_MODEL_DATAFRAME_WAVE: np.array(wavelength)
                         }
                     ),
-                    temperature=temperature,
-                    logg=logg,
+                    temperature=t,
+                    logg=g,
                     metallicity=metallicity
                 )
             )
@@ -339,8 +339,29 @@ class NaiveInterpolatedAtm(object):
         ]
 
 
-def apply_passband():
-    pass
+def apply_passband(atm_containers: list, passband: dict):
+    passbanded_atm_containers = dict()
+    for band, band_container in passband.items():
+        passbanded_atm_containers[band] = list()
+        for atm_container in atm_containers:
+            # strip atm container on passband bandwidth (reason to do it is, that container
+            # is stripped on maximal bandwidth defined by all bands, not just by given single band)
+            atm_container = NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(
+                atm_container=atm_container,
+                left_bandwidth=band_container.left_bandwidth,
+                right_bandwidth=band_container.right_bandwidth
+            )
+            # found passband throughput on atm defined wavelength
+            passband_df = pd.DataFrame(
+                {
+                    PASSBAND_DATAFRAME_THROUGHPUT: band_container.akima(atm_container.model[ATM_MODEL_DATAFRAME_WAVE]),
+                    PASSBAND_DATAFRAME_WAVE: atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
+                }
+            )
+            passband_df.fillna(0.0, inplace=True)
+            atm_container.model[ATM_MODEL_DATAFRAME_FLUX] *= passband_df[PASSBAND_DATAFRAME_THROUGHPUT]
+            passbanded_atm_containers[band].append(atm_container)
+    return passbanded_atm_containers
 
 
 def build_atm_validation_hypertable(atlas):
@@ -612,6 +633,14 @@ def multithread_atm_tables_reader_runner(fpaths):
         if not error_queue.empty():
             raise error_queue.get()
     return result_queue
+
+
+def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict: dict):
+
+    return {
+        band: compute_integral_si_intensity_from_atm_data_containers(passbanded_atm)
+        for band, passbanded_atm in passbaned_dict.items()
+    }
 
 
 def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: list):

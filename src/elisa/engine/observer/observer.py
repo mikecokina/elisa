@@ -20,6 +20,9 @@ class PassbandContainer(object):
         self.right_bandwidth = right_bandwidth
         self.akima = akima
         self.table = table
+        self.wave_unit = "angstrom"
+        # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
+        self.wave_to_si_mult = 1e-10
 
 
 class Observer(object):
@@ -45,19 +48,22 @@ class Observer(object):
         passband = [passband] if isinstance(passband, str) else passband
         for band in passband:
             if band in ['bolometric']:
-                df = pd.DataFrame({"throughput": [1.0, 1.0], "wavelength": [0.0, 1e6]})
+                df = pd.DataFrame(
+                    {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
+                     config.PASSBAND_DATAFRAME_WAVE: [0.0, 1e6]})
                 akima = self.bolometric
                 right_bandwidth = 1e6
                 left_bandwidth = 0.0
             else:
                 df = self.get_passband_df(band)
-                left_bandwidth = min(df["wavelength"])
-                right_bandwidth = max(df["wavelength"])
-                akima = interpolate.Akima1DInterpolator(df["wavelength"], df["throughput"])
+                left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
+                right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
+                akima = interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
+                                                        df[config.PASSBAND_DATAFRAME_THROUGHPUT])
 
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
             self.passband[band] = PassbandContainer(
-                table=df, akima=akima, left_bandwidth=right_bandwidth, right_bandwidth=left_bandwidth)
+                table=df, akima=akima, left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
 
     def setup_bandwidth(self, left_bandwidth, right_bandwidth):
         if left_bandwidth > self.left_bandwidth:
@@ -71,7 +77,9 @@ class Observer(object):
         if passband not in config.PASSBANDS:
             raise ValueError('Invalid or unsupported passband function')
         file_path = os.path.join(config.PASSBAND_TABLES, str(passband) + '.csv')
-        return pd.read_csv(file_path)
+        df = pd.read_csv(file_path)
+        df[config.PASSBAND_DATAFRAME_WAVE] = df[config.PASSBAND_DATAFRAME_WAVE] * 10.0
+        return df
 
     def observe(self, from_phase: float = None, to_phase: float = None, phase_step: float = None,
                 phases: list or set = None):

@@ -195,4 +195,8 @@ LD_DOMAIN_COLS = ["temperature", "gravity", "metallicity"]
 ATM_MODEL_DATAFRAME_FLUX = "flux"
 ATM_MODEL_DATAFRAME_WAVE = "wave"
 
+PASSBAND_DATAFRAME_THROUGHPUT = "throughput"
+PASSBAND_DATAFRAME_WAVE = "wavelength"
+
+
 read_and_update_config()
