@@ -250,3 +250,26 @@ class TestNaiveInterpolation(unittest.TestCase):
             config.ATM_MODEL_DATAFRAME_WAVE: np.arange(2, 10, 1)
         })
         assert_frame_equal(expected, obtained)
+
+    def test_inplace_in_strip_atm_container_by_bandwidth(self):
+        model = pd.DataFrame({
+            config.ATM_MODEL_DATAFRAME_FLUX: np.arange(0, 10, 1),
+            config.ATM_MODEL_DATAFRAME_WAVE: np.arange(0, 10, 1)
+        })
+        container = AtmDataContainer(
+            model=model,
+            temperature=3600.0,
+            logg=4.3,
+            metallicity=0.0
+        )
+
+        # disable inplace
+        striped = atm.strip_atm_container_by_bandwidth(container, left_bandwidth=2, right_bandwidth=5, inplace=False)
+        assert_array_equal(np.arange(1, 7, 1), striped.model[config.ATM_MODEL_DATAFRAME_WAVE])
+
+        # enable inplace and use same container as before (shouldn't be overwriten)
+        striped = atm.strip_atm_container_by_bandwidth(container, left_bandwidth=0, right_bandwidth=5, inplace=True)
+        assert_array_equal(np.arange(0, 7, 1), striped.model[config.ATM_MODEL_DATAFRAME_WAVE])
+
+        assert_array_equal(striped.model[config.ATM_MODEL_DATAFRAME_WAVE],
+                           container.model[config.ATM_MODEL_DATAFRAME_WAVE])
