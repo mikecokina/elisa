@@ -11,8 +11,8 @@ from scipy import integrate, interpolate
 
 from elisa.conf import config
 from elisa.conf.config import ATM_MODEL_DATAFRAME_FLUX, ATM_MODEL_DATAFRAME_WAVE
-from elisa.engine import utils, const
 from elisa.conf.config import PASSBAND_DATAFRAME_WAVE, PASSBAND_DATAFRAME_THROUGHPUT
+from elisa.engine import utils, const
 
 config.set_up_logging()
 logger = logging.getLogger("atm")
@@ -652,7 +652,6 @@ def multithread_atm_tables_reader_runner(fpaths):
 
 
 def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict: dict):
-
     return {
         band: compute_integral_si_intensity_from_atm_data_containers(passbanded_atm)
         for band, passbanded_atm in passbaned_dict.items()
@@ -668,9 +667,15 @@ def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: 
     :return: list; integrated `flux` from each AtmDataContainer on `wave` in given container
     """
     # todo: implement intensity contauner instead of simple float values
+
     return [
-        np.pi * integrate.simps(adc.model[ATM_MODEL_DATAFRAME_FLUX] * adc.flux_to_si_mult,
-                                adc.model[ATM_MODEL_DATAFRAME_WAVE] * adc.wave_to_si_mult)
+        IntensityContainer(
+            intensity=np.pi * integrate.simps(adc.model[ATM_MODEL_DATAFRAME_FLUX] * adc.flux_to_si_mult,
+                                              adc.model[ATM_MODEL_DATAFRAME_WAVE] * adc.wave_to_si_mult),
+            temperature=adc.temperature,
+            logg=adc.logg,
+            metallicity=adc.metallicity
+        )
         for adc in atm_data_containers
     ]
 
