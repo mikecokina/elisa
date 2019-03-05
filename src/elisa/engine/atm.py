@@ -7,6 +7,7 @@ from threading import Thread
 
 import numpy as np
 import pandas as pd
+from copy import copy
 from scipy import integrate, interpolate
 
 from elisa.conf import config
@@ -249,11 +250,11 @@ class NaiveInterpolatedAtm(object):
         bottom_atm, top_atm = atm_tables[:len(atm_tables) // 2], atm_tables[len(atm_tables) // 2:]
         left_bandwidth, right_bandwidth = kwargs.pop("left_bandwidth"), kwargs.pop("right_bandwidth")
 
-        # no set needed, values are mutable, and all are modified in ``strip_atm_container_by_bandwidth`` method
-        [strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in top_atm]
+        [strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth, inplace=True) for a in top_atm]
         # strip bottom container by top container bandtwidth to avoid to get NaN in akima interpolation
         # in ``compute_unknown_intensity`` based on top atm container wavelength
-        [strip_atm_container_by_bandwidth(a, b.left_bandwidth, b.right_bandwidth) for a, b in zip(bottom_atm, top_atm)]
+        [strip_atm_container_by_bandwidth(a, b.left_bandwidth, b.right_bandwidth, inplace=True)
+         for a, b in zip(bottom_atm, top_atm)]
         interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
         interpolated_atm_containers = list()
 
@@ -331,10 +332,11 @@ class NaiveInterpolatedAtm(object):
         ]
 
 
-def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth):
+def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=False):
     """
     strip atmosphere container model by given bandwidth (add +/- 1 value behind boundary)
 
+    :param inplace: bool
     :param atm_container: AtmDataContainer
     :param left_bandwidth: float
     :param right_bandwidth: float
@@ -348,6 +350,8 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
         left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
         right_extention_index = valid_indices[-1] + 1 \
             if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
+
+        atm_container = atm_container if inplace else copy(atm_container)
         atm_container.model = atm_container.model.iloc[
             sorted(valid_indices + [left_extention_index] + [right_extention_index])
         ]
@@ -365,7 +369,8 @@ def apply_passband(atm_containers: list, passband: dict):
             atm_container = strip_atm_container_by_bandwidth(
                 atm_container=atm_container,
                 left_bandwidth=band_container.left_bandwidth,
-                right_bandwidth=band_container.right_bandwidth
+                right_bandwidth=band_container.right_bandwidth,
+                inplace=False
             )
             # found passband throughput on atm defined wavelength
             passband_df = pd.DataFrame(
