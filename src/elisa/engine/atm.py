@@ -671,8 +671,6 @@ def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: 
     :param atm_data_containers: Iterable; list of AtmDataContainer`s
     :return: list; integrated `flux` from each AtmDataContainer on `wave` in given container
     """
-    # todo: implement intensity contauner instead of simple float values
-
     return [
         IntensityContainer(
             intensity=np.pi * integrate.simps(adc.model[ATM_MODEL_DATAFRAME_FLUX] * adc.flux_to_si_mult,
