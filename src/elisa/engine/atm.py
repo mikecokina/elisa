@@ -23,16 +23,20 @@ ATLAS_TO_ATM_FILE_PREFIX = {
     "castelli": "ck",
     "castelli-kurucz": "ck",
     "ck": "ck",
-    "ck04": "ck"
-    # implement kurucz 93
+    "ck04": "ck",
+    "kurucz": "k",
+    "k": "k",
+    "k93": "k"
 }
 
 ATLAS_TO_BASE_DIR = {
     "castelli": config.CK04_ATM_TABLES,
     "castelli-kurucz": config.CK04_ATM_TABLES,
     "ck": config.CK04_ATM_TABLES,
-    "ck04": config.CK04_ATM_TABLES
-    # implement kurucz 93
+    "ck04": config.CK04_ATM_TABLES,
+    "kurucz": config.K93_ATM_TABLES,
+    "k": config.K93_ATM_TABLES,
+    "k93": config.K93_ATM_TABLES
 }
 
 ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
@@ -44,7 +48,7 @@ ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
 
 class AtmDataContainer(object):
     def __init__(self, model: pd.DataFrame, temperature: float, logg: float, metallicity: float):
-        self.model = model
+        self._model = None
         self.temperature = temperature
         self.logg = logg
         self.metallicity = metallicity
@@ -53,6 +57,20 @@ class AtmDataContainer(object):
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
         self.flux_to_si_mult = 1e-7 * 1e4 * 1e10  # * (1.0/np.pi)
         self.wave_to_si_mult = 1e-10
+        self.left_bandwidth = None
+        self.right_bandwidth = None
+
+        setattr(self, 'model', model)
+
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, df: pd.DataFrame):
+        self._model = df
+        self.left_bandwidth = min(df[ATM_MODEL_DATAFRAME_WAVE])
+        self.right_bandwidth = max(df[ATM_MODEL_DATAFRAME_WAVE])
 
 
 class IntensityContainer(object):
@@ -101,34 +119,23 @@ class NearestAtm(object):
         return list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + "/" + fnames + ".csv")
 
     @staticmethod
-    def atm_tables(fpaths):
-        """
-        returns spectrum profile for the atmospheric model that is the closest to the given parameters `temperature`, `logg`
-        and `metallicity`
-
-        :return:
-        """
-        result_queue = multithread_atm_tables_reader_runner(fpaths)
-        models = [qval for qval in utils.IterableQueue(result_queue)]
-        return models
-
-    @staticmethod
     def radiance(temperature, logg, metallicity, atlas, **kwargs):
         atlas = validated_atlas(atlas)
-        # todo: need full implementaion (with passband: see approach in NaiveInterpolatedAtm)
+        validate_atm(temperature, logg, metallicity, atlas)
         atm_files = NearestAtm.atm_files(temperature, logg, metallicity, atlas)
-        atm_tables = NearestAtm.atm_tables(atm_files)
-        return compute_integral_si_intensity_from_atm_data_containers(atm_tables)
+        atm_containers = read_atm_tables(atm_files)
+        passbanded_atm_containers = apply_passband(atm_containers, kwargs["passband"])
+        return compute_integral_si_intensity_from_passbanded_dict(passbanded_atm_containers)
 
 
 class NaiveInterpolatedAtm(object):
     @staticmethod
-    def radiance(temperature: Iterable, logg: Iterable, metallicity: float, atlas: str, **kwargs):
+    def radiance(temperature: list, logg: list, metallicity: float, atlas: str, **kwargs):
         """
         compute radiance for given atmospheric parametres with regards to given passbands
 
-        :param temperature: Iterable
-        :param logg: Iterable
+        :param temperature: list
+        :param logg: list
         :param metallicity: float
         :param atlas: str
         :param kwargs:
@@ -138,11 +145,12 @@ class NaiveInterpolatedAtm(object):
                 * **passband** * -- elisa.observer.observer.PassbandContainer
         :return: list
         """
+        # fixme: uncomment following line
         # validate_atm(temperature, logg, metallicity, atlas)
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, logg, metallicity, atlas)
-        atm_tables = NaiveInterpolatedAtm.atm_tables(atm_files)
+        atm_containers = read_atm_tables(atm_files)
         localized_atm_containers = NaiveInterpolatedAtm.interpolate(
-            atm_tables,
+            atm_containers,
             **dict(left_bandwidth=kwargs['left_bandwidth'],
                    right_bandwidth=kwargs['right_bandwidth'],
                    temperature=temperature,
@@ -153,30 +161,7 @@ class NaiveInterpolatedAtm(object):
         return compute_integral_si_intensity_from_passbanded_dict(passbanded_atm_containers)
 
     @staticmethod
-    def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth):
-        """
-        strip atmosphere container model by given bandwidth (add +/- 1 value behind boundary)
-
-        :param atm_container: AtmDataContainer
-        :param left_bandwidth: float
-        :param right_bandwidth: float
-        :return: AtmDataContainer
-        """
-        if atm_container is not None:
-            valid_indices = list(
-                atm_container.model.index[
-                    atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth, right_bandwidth, inclusive=True)
-                ])
-            left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
-            right_extention_index = valid_indices[-1] + 1 \
-                if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
-            atm_container.model = atm_container.model.iloc[
-                sorted(valid_indices + [left_extention_index] + [right_extention_index])
-            ]
-            return atm_container
-
-    @staticmethod
-    def compute_interpolation_weights(temperatures, top_atm_containers, bottom_atm_containers):
+    def compute_interpolation_weights(temperatures: list, top_atm_containers: list, bottom_atm_containers: list):
         top_temperatures = np.array([a.temperature for a in top_atm_containers])
         bottom_temperatures = np.array([a.temperature if a is not None else 0.0 for a in bottom_atm_containers])
         return (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
@@ -213,6 +198,12 @@ class NaiveInterpolatedAtm(object):
                 ATM_MODEL_DATAFRAME_FLUX: np.array(akima(wavelength)),
                 ATM_MODEL_DATAFRAME_WAVE: np.array(wavelength)
             })
+            bottom_atm_container.model.fillna(0.0, inplace=True)
+
+        # reset index is neccessary; otherwise add/mult/... method od DataFrame
+        # leads to nan if left and right frame differ in indices
+        top_atm_container.model.reset_index(drop=True, inplace=True)
+        bottom_atm_container.model.reset_index(drop=True, inplace=True)
 
         intensity = weight * (
             top_atm_container.model[ATM_MODEL_DATAFRAME_FLUX] - bottom_atm_container.model[ATM_MODEL_DATAFRAME_FLUX]
@@ -259,10 +250,11 @@ class NaiveInterpolatedAtm(object):
         left_bandwidth, right_bandwidth = kwargs.pop("left_bandwidth"), kwargs.pop("right_bandwidth")
 
         # no set needed, values are mutable, and all are modified in ``strip_atm_container_by_bandwidth`` method
-        [NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in bottom_atm]
-        [NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in top_atm]
+        [strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth) for a in top_atm]
+        # strip bottom container by top container bandtwidth to avoid to get NaN in akima interpolation
+        # in ``compute_unknown_intensity`` based on top atm container wavelength
+        [strip_atm_container_by_bandwidth(a, b.left_bandwidth, b.right_bandwidth) for a, b in zip(bottom_atm, top_atm)]
         interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
-
         interpolated_atm_containers = list()
 
         for weight, t, g, bottom, top in zip(interpolation_weights, temperature, logg, bottom_atm, top_atm):
@@ -339,6 +331,30 @@ class NaiveInterpolatedAtm(object):
         ]
 
 
+def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth):
+    """
+    strip atmosphere container model by given bandwidth (add +/- 1 value behind boundary)
+
+    :param atm_container: AtmDataContainer
+    :param left_bandwidth: float
+    :param right_bandwidth: float
+    :return: AtmDataContainer
+    """
+    if atm_container is not None:
+        valid_indices = list(
+            atm_container.model.index[
+                atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth, right_bandwidth, inclusive=True)
+            ])
+        left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
+        right_extention_index = valid_indices[-1] + 1 \
+            if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
+        atm_container.model = atm_container.model.iloc[
+            sorted(valid_indices + [left_extention_index] + [right_extention_index])
+        ]
+        atm_container.model = atm_container.model.drop_duplicates(ATM_MODEL_DATAFRAME_WAVE)
+        return atm_container
+
+
 def apply_passband(atm_containers: list, passband: dict):
     passbanded_atm_containers = dict()
     for band, band_container in passband.items():
@@ -346,7 +362,7 @@ def apply_passband(atm_containers: list, passband: dict):
         for atm_container in atm_containers:
             # strip atm container on passband bandwidth (reason to do it is, that container
             # is stripped on maximal bandwidth defined by all bands, not just by given single band)
-            atm_container = NaiveInterpolatedAtm.strip_atm_container_by_bandwidth(
+            atm_container = strip_atm_container_by_bandwidth(
                 atm_container=atm_container,
                 left_bandwidth=band_container.left_bandwidth,
                 right_bandwidth=band_container.right_bandwidth
@@ -651,11 +667,25 @@ def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: 
     :param atm_data_containers: Iterable; list of AtmDataContainer`s
     :return: list; integrated `flux` from each AtmDataContainer on `wave` in given container
     """
+    # todo: implement intensity contauner instead of simple float values
     return [
         np.pi * integrate.simps(adc.model[ATM_MODEL_DATAFRAME_FLUX] * adc.flux_to_si_mult,
                                 adc.model[ATM_MODEL_DATAFRAME_WAVE] * adc.wave_to_si_mult)
         for adc in atm_data_containers
     ]
+
+
+def read_atm_tables(fpaths):
+    """
+    returns spectrum profile for the atmospheric model that is the closest to the given parameters `temperature`, `logg`
+    and `metallicity`
+
+    :return:
+    """
+    result_queue = multithread_atm_tables_reader_runner(fpaths)
+    models = [qval for qval in utils.IterableQueue(result_queue)]
+    models = [val[1] for val in sorted(models, key=lambda x: x[0])]
+    return models
 
 
 if __name__ == "__main__":

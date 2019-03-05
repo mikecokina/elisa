@@ -27,6 +27,9 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     primary_radiance = \
         atm.NaiveInterpolatedAtm.radiance(_temperature, _logg, self.primary.metallicity, config.ATM_ATLAS, **kwargs)
 
+    # primary_radiance = \
+    #     atm.NearestAtm.radiance(_temperature, _logg, self.primary.metallicity, config.ATM_ATLAS, **kwargs)
+
 
 if __name__ == "__main__":
     pass

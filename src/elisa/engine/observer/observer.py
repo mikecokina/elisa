@@ -1,28 +1,41 @@
 import logging
 import os
-import pandas as pd
-import numpy as np
 
-from multiprocessing.pool import Pool
+import numpy as np
+import pandas as pd
 from scipy import interpolate
-from os.path import dirname
+
 from elisa.conf import config
 from elisa.engine.binary_system.system import BinarySystem
+from elisa.engine.observer import mp
 from elisa.engine.single_system.system import SingleSystem
-from elisa.engine.observer import static, mp
 
 config.set_up_logging()
 
 
 class PassbandContainer(object):
-    def __init__(self, table, akima, left_bandwidth, right_bandwidth):
-        self.left_bandwidth = left_bandwidth
-        self.right_bandwidth = right_bandwidth
-        self.akima = akima
-        self.table = table
+    def __init__(self, table):
+        self.left_bandwidth = None
+        self.right_bandwidth = None
+        self.akima = None
+        self._table = None
         self.wave_unit = "angstrom"
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
         self.wave_to_si_mult = 1e-10
+
+        setattr(self, 'table', table)
+
+    @property
+    def table(self):
+        return self._table
+
+    @table.setter
+    def table(self, df: pd.DataFrame):
+        self._table = df
+        self.akima = interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
+                                                     df[config.PASSBAND_DATAFRAME_THROUGHPUT])
+        self.left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
+        self.right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
 
 
 class Observer(object):
@@ -58,12 +71,9 @@ class Observer(object):
                 df = self.get_passband_df(band)
                 left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
                 right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
-                akima = interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
-                                                        df[config.PASSBAND_DATAFRAME_THROUGHPUT])
 
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
-            self.passband[band] = PassbandContainer(
-                table=df, akima=akima, left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
+            self.passband[band] = PassbandContainer(table=df)
 
     def setup_bandwidth(self, left_bandwidth, right_bandwidth):
         if left_bandwidth > self.left_bandwidth:
