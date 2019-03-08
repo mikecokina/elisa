@@ -290,7 +290,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_pol
         curve = np.column_stack((x_curve, z_curve))
         neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
         neck_length = np.sum(neck_lengths)
-        segment = neck_length / (int(neck_length // delta_z) + 1)
+        segment = neck_length / (int(neck_length // delta_z))
 
         k = 1
         z_ns, line_sum = [], 0.0
@@ -315,7 +315,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_pol
         curve = np.column_stack((x_curve, z_curve))
         neck_lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
         neck_length = np.sum(neck_lengths)
-        segment = neck_length / (int(neck_length // delta_z) + 1)
+        segment = neck_length / (int(neck_length // delta_z))
 
         k = 1
         z_ns, line_sum = [1 - neck_position], 0.0

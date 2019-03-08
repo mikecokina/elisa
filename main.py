@@ -1,18 +1,18 @@
-from engine.binary_system.system import BinarySystem
-from engine.single_system.system import SingleSystem
-from engine.base.star import Star
-from engine.base.planet import Planet
+from elisa.engine.binary_system.system import BinarySystem
+from elisa.engine.single_system.system import SingleSystem
+from elisa.engine.base.star import Star
+from elisa.engine.base.planet import Planet
 from astropy import units as u
 import numpy as np
 import matplotlib.pyplot as plt
-from engine import utils
-from engine import const as c
+from elisa.engine import utils
+from elisa.engine import const as c
 from time import time
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-from conf import config
+from elisa.conf import config
 
 from scipy.spatial import distance_matrix
 
@@ -85,13 +85,14 @@ start_time = time()
 primary = Star(mass=3.321317*u.solMass,
                surface_potential=9.16267,
                # surface_potential=contact_pot,
-               spots=spots_metadata['primary'],
+               # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
                synchronicity=1.0,
                t_eff=12500*u.K,
                gravity_darkening=1.0,
                discretization_factor=3,
-               albedo=0.6
+               albedo=0.6,
+               metallicity=0
                )
 secondary = Star(mass=1.898*u.solMass,
                  surface_potential=8.68958,
@@ -102,7 +103,8 @@ secondary = Star(mass=1.898*u.solMass,
                  # discretization_factor=5,
                  # spots=spots_metadata['secondary'],
                  # pulsations=pulsations_metadata['primary'],
-                 albedo=0.6
+                 albedo=0.6,
+                 metallicity=0
                 )
 
 bs = BinarySystem(primary=primary,
@@ -126,26 +128,12 @@ bs.build_surface_map(colormap='temperature', components_distance=components_min_
 # bs.build_surface_map(colormap='temperature', component='primary', components_distance=components_min_distance)
 # bs.build_surface_map(colormap='temperature', component='secondary', components_distance=components_min_distance)
 # bs.build_temperature_distribution(components_distance=1.0)
-# bs.evaluate_normals()
-# bs.build_surface(components_distance=1)
-# azim = bs.get_eclipse_boundaries(components_distance=components_min_distance)
-# azim = np.degrees(azim)
-# crit_incl = bs.get_critical_inclination(components_distance=components_min_distance)
 
-# t1 = np.min(bs.primary.temperatures)
-# a, b = bs.reflection_effect(iterations=2, components_distance=1)
-# t2 = np.min(bs.primary.temperatures)
-# print(t1, t2)
-# print(np.shape(a))
-# dists, dist_vect = utils.calculate_distance_matrix(points1=bs.primary.points, points2=bs.secondary.points,
-#                                                    return_distance_vector_matrix=True)
-# print(np.shape(dists), np.shape(dist_vect))
-# dists = distance_matrix(bs.primary.points, bs.secondary.points)
-# print(np.shape(dists))
-# logg_p = bs.calculate_polar_gravity_acceleration('primary', 1.0, logg=True)
-# logg_s = bs.calculate_polar_gravity_acceleration('secondary', 1.0, logg=True)
-# print('log g for primary: {}'.format(logg_p))
-# print('log g for secondary: {}'.format(logg_s))
+areas = bs.primary.areas
+print(max(areas)/min(areas))
+
+plt.hist(areas, 100)
+plt.show()
 
 print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
 crit_primary_potential = bs.critical_potential('primary', components_distance=components_min_distance)
@@ -169,19 +157,19 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         # plot_axis=False
 #         )
 
-bs.plot(descriptor='surface',
-        phase=0.4,
-        # components_to_plot='primary',
-        # components_to_plot='secondary',
-        # edges=True,
-        # normals=True,
-        # colormap='gravity_acceleration',
-        colormap='temperature',
-        # plot_axis=False,
-        # face_mask_primary=a,
-        # face_mask_secondary=b,
-        # inclination=crit_incl,
-        # azimuth=azim[0],
-        units='SI'
-        )
+# bs.plot.surface(
+#         phase=0.4,
+#         # components_to_plot='primary',
+#         # components_to_plot='secondary',
+#         # edges=True,
+#         # normals=True,
+#         # colormap='gravity_acceleration',
+#         colormap='temperature',
+#         # plot_axis=False,
+#         # face_mask_primary=a,
+#         # face_mask_secondary=b,
+#         # inclination=crit_incl,
+#         # azimuth=azim[0],
+#         units='SI'
+#         )
 

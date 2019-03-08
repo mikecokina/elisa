@@ -39,7 +39,7 @@ class Plot(object):
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.mesh)
 
         kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-        kwargs['inclination'] = kwargs.get('inclination', np.degrees(self._self.inclination))
+        kwargs['inclination'] = np.degrees(kwargs.get('inclination', self._self.inclination))
 
         kwargs['mesh'], _ = self._self.build_surface(return_surface=True)  # potom tu daj ked bude vediet skvrny
         denominator = (1 * kwargs['axis_unit'].to(units.DISTANCE_UNIT))
@@ -61,7 +61,7 @@ class Plot(object):
         denominator = (1 * kwargs['axis_unit'].to(units.DISTANCE_UNIT))
         kwargs['mesh'] /= denominator
         kwargs['equatorial_radius'] = self._self.star.equatorial_radius * units.DISTANCE_UNIT.to(kwargs['axis_unit'])
-        kwargs['inclination'] = kwargs.get('inclination', np.degrees(self._self.inclination))
+        kwargs['inclination'] = np.degrees(kwargs.get('inclination', self._self.inclination))
         kwargs['azimuth'] = kwargs.get('azimuth', 0)
 
         graphics.single_star_wireframe(**kwargs)
@@ -77,7 +77,7 @@ class Plot(object):
         kwargs['normals'] = kwargs.get('normals', False)
         kwargs['colormap'] = kwargs.get('colormap', None)
         kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-        kwargs['inclination'] = kwargs.get('inclination', np.degrees(self._self.inclination))
+        kwargs['inclination'] = np.degrees(kwargs.get('inclination', self._self.inclination))
         kwargs['azimuth'] = kwargs.get('azimuth', 0)
         kwargs['units'] = kwargs.get('units', 'logg_cgs')
 

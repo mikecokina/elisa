@@ -37,7 +37,8 @@ from elisa.engine import graphics
 from elisa.engine import ld
 from elisa.engine import units
 from elisa.engine import utils
-from elisa.engine.binary_system import static, build, mp, lc
+# from elisa.engine.binary_system import static, build, mp, lc
+from elisa.engine.binary_system import static, build, mp
 from elisa.engine.binary_system.plot import Plot
 from elisa.engine.orbit import Orbit
 from elisa.engine.base.star import Star
@@ -2137,8 +2138,8 @@ class BinarySystem(System):
             return self._compute_eccentric_lightcurve(**kwargs)
         raise NotImplementedError("not implemented or invalid")
 
-    def _compute_circular_synchronous_lightcurve(self, **kwargs):
-        return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
+    # def _compute_circular_synchronous_lightcurve(self, **kwargs):
+    #     return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
     def _compute_circular_spotify_asynchronous_lightcurve(self, *args, **kwargs):
         pass

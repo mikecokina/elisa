@@ -68,7 +68,7 @@ def build_surface(self, return_surface=False):
     :type: str
     :return:
     """
-    self.build_mesh(self)
+    self.build_mesh()
 
     # build surface if there is no spot specified
     if not self.star.spots:
@@ -154,8 +154,7 @@ def build_mesh(self):
     self.star.inverse_point_symmetry_matrix = _d
 
     self._evaluate_spots_mesh()
-    self._incorporate_spots_mesh(self=self.star,
-                                 component_com=0)
+    self.star.incorporate_spots_mesh(component_com=0)
 
 
 def build_surface_gravity(self):
