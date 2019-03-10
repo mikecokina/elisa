@@ -18,7 +18,8 @@ class TestSingleSystem(unittest.TestCase):
                                     'gamma': 0*u.km/u.s,
                                     'inclination': 90*u.deg,
                                     'rotation_period': 30*u.d,
-                                    'polar_log_g': 4.1 * u.dex(u.cm / u.s ** 2)},  # sun-like basic star
+                                    'polar_log_g': 4.1 * u.dex(u.cm / u.s ** 2),
+                                    'reference_time': 0.0*u.d}, # sun-like basic star
 
                                    {'mass': 1.0 * u.solMass,
                                     't_eff': 5700 * u.K,
@@ -28,7 +29,9 @@ class TestSingleSystem(unittest.TestCase):
                                     'gamma': 0 * u.km / u.s,
                                     'inclination': 90 * u.deg,
                                     'rotation_period': 0.382 * u.d,
-                                    'polar_log_g': 4.1 * u.dex(u.cm / u.s ** 2)},  # sun-like very fast rotating star
+                                    'polar_log_g': 4.1 * u.dex(u.cm / u.s ** 2),
+                                    'reference_time': 0.0*u.d
+                                    },  # sun-like very fast rotating star
                                    ]
 
     def test_for_duplicate_points(self):
@@ -37,14 +40,15 @@ class TestSingleSystem(unittest.TestCase):
                      t_eff=combo['t_eff'],
                      gravity_darkening=combo['gravity_darkening'],
                      discretization_factor=combo['discretization_factor'],
-                     spots=combo['spots']
+                     spots=combo['spots'],
+                     polar_log_g=combo['polar_log_g']
                      )
 
             single = SingleSystem(star=s,
                                   gamma=combo['gamma'],
                                   inclination=combo['inclination'],
                                   rotation_period=combo['rotation_period'],
-                                  polar_log_g=combo['polar_log_g'])
+                                  reference_time=combo['reference_time'])
 
             single.build_mesh()
             distance1 = round(utils.find_nearest_dist_3d(list(s.points)), 10)
@@ -60,14 +64,15 @@ class TestSingleSystem(unittest.TestCase):
                      t_eff=combo['t_eff'],
                      gravity_darkening=combo['gravity_darkening'],
                      discretization_factor=combo['discretization_factor'],
-                     spots=combo['spots']
+                     spots=combo['spots'],
+                     polar_log_g=combo['polar_log_g']
                      )
 
             single = SingleSystem(star=s,
                                   gamma=combo['gamma'],
                                   inclination=combo['inclination'],
                                   rotation_period=combo['rotation_period'],
-                                  polar_log_g=combo['polar_log_g'])
+                                  reference_time=combo['reference_time'])
 
             points, faces = single.build_surface(return_surface=True)
             points_faces = points[faces]
