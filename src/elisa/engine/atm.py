@@ -414,7 +414,7 @@ def is_out_of_bound(in_arr: Iterable, values: Iterable, tolerance: float):
 def validate_temperature(temperature: Iterable, atlas: str):
     atlas = validated_atlas(atlas)
     allowed = sorted(atm_file_prefix_to_quantity_list("temperature", atlas))
-    invalid = any([True if (allowed[-1] < t or allowed[-1] < t) else False for t in temperature])
+    invalid = any([True if (allowed[-1] < t or t < allowed[0]) else False for t in temperature])
     if invalid:
         raise ValueError("any temperature in system atmosphere is out of bound; "
                          "it is usually caused by invalid physical model")

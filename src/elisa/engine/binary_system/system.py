@@ -113,7 +113,7 @@ class BinarySystem(System):
         self._semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
-        self._logger.debug("in binary star system, initializing orbit instance")
+        self._logger.debug("Initializing orbit instance in BinarySystem")
         self.init_orbit()
 
         # setup critical surface potentials in periastron
@@ -133,12 +133,6 @@ class BinarySystem(System):
                               "according discretization factor of primary component.")
             self.secondary.discretization_factor = \
                 self.primary.discretization_factor * self.primary.polar_radius / self.secondary.polar_radius * u.rad
-
-        # TODO: retrieval of limb darkenig coefficients
-        # self.primary.polar_log_g =
-        # self.primary.ld_coeff_bolometric = ld.interpolate_on_ld_grid(passband='bolometric',
-        #                                                              temperature=self.primary.t_eff,
-        #                                                              log_g=self.primary.polar_log_g)
 
     def init(self):
         """
