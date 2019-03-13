@@ -84,6 +84,33 @@ class System(metaclass=ABCMeta):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
+    def period(self):
+        """
+        returns orbital period of binary system
+
+        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        """
+        return self._period
+
+    @period.setter
+    def period(self, period):
+        """
+        set orbital period of binary star system, if unit is not specified, default period unit is assumed
+
+        :param period: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        if isinstance(period, u.quantity.Quantity):
+            self._period = np.float64(period.to(units.PERIOD_UNIT))
+        elif isinstance(period, (int, np.int, float, np.float)):
+            self._period = np.float64(period)
+        else:
+            raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        self._logger.debug("Setting property period "
+                           "of class instance {} to {}".format(BinarySystem.__name__, self._period))
+
+    @property
     def inclination(self):
         """
         inclination of system, angle between z axis and line of sight

@@ -1,14 +1,10 @@
 from elisa.engine.binary_system.system import BinarySystem
-from elisa.engine.single_system.system import SingleSystem
 from elisa.engine.base.star import Star
-from elisa.engine.base.planet import Planet
 from astropy import units as u
-import numpy as np
 import matplotlib.pyplot as plt
-from elisa.engine import utils
-from elisa.engine import const as c
 from time import time
 import logging
+from elisa.engine.observer.observer import Observer
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -83,7 +79,7 @@ contact_pot = 3.3
 start_time = time()
 
 primary = Star(mass=3.321317*u.solMass,
-               surface_potential=9.16267,
+               surface_potential=3.1,
                # surface_potential=contact_pot,
                # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
@@ -95,7 +91,7 @@ primary = Star(mass=3.321317*u.solMass,
                metallicity=0
                )
 secondary = Star(mass=1.898*u.solMass,
-                 surface_potential=8.68958,
+                 surface_potential=3.1,
                  # surface_potential=contact_pot,
                  synchronicity=1.0,
                  t_eff=8742*u.K,
@@ -129,18 +125,21 @@ bs.build_surface_map(colormap='temperature', components_distance=components_min_
 # bs.build_surface_map(colormap='temperature', component='secondary', components_distance=components_min_distance)
 # bs.build_temperature_distribution(components_distance=1.0)
 
-areas = bs.primary.areas
-print(max(areas)/min(areas))
+# areas = bs.primary.areas
+# print(max(areas)/min(areas))
+#
+# plt.hist(areas, 100)
+# plt.show()
 
-plt.hist(areas, 100)
-plt.show()
+# print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
+# crit_primary_potential = bs.critical_potential('primary', components_distance=components_min_distance)
+# print('Critical potential for primary component: {}'.format(crit_primary_potential))
+#
+# crit_secondary_potential = bs.critical_potential('secondary', components_distance=components_min_distance)
+# print('Critical potential for secondary component: {}'.format(crit_secondary_potential))
 
-print('Elapsed time: {0:.5f} s.'.format(time() - start_time))
-crit_primary_potential = bs.critical_potential('primary', components_distance=components_min_distance)
-print('Critical potential for primary component: {}'.format(crit_primary_potential))
-
-crit_secondary_potential = bs.critical_potential('secondary', components_distance=components_min_distance)
-print('Critical potential for secondary component: {}'.format(crit_secondary_potential))
+o = Observer(passband=['Generic.Bessell.V'], system=bs)
+o.observe(from_phase=0, to_phase=1.0, phase_step=0.1)
 
 # bs.plot('orbit', frame_of_reference='primary_component', axis_unit='dimensionless')
 # bs.plot('orbit', frame_of_reference='barycentric')
@@ -158,18 +157,19 @@ print('Critical potential for secondary component: {}'.format(crit_secondary_pot
 #         )
 
 # bs.plot.surface(
-#         phase=0.4,
+#         phase=0.24,
 #         # components_to_plot='primary',
 #         # components_to_plot='secondary',
 #         # edges=True,
 #         # normals=True,
-#         # colormap='gravity_acceleration',
-#         colormap='temperature',
-#         # plot_axis=False,
+#         colormap='gravity_acceleration',
+#         # colormap='temperature',
+#         plot_axis=False,
 #         # face_mask_primary=a,
 #         # face_mask_secondary=b,
 #         # inclination=crit_incl,
 #         # azimuth=azim[0],
-#         units='SI'
+#         # units='SI'
+#         units='log_cgs'
 #         )
 

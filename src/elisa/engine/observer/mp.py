@@ -1,10 +1,6 @@
 from uuid import uuid4
 
 
-def prepare_observe_args(orbital_motion):
-    return ((idx, ) + position for idx, position in enumerate(orbital_motion))
-
-
 def observe_worker(*args):
     class Self(object):
         def __init__(self):

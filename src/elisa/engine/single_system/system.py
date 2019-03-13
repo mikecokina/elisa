@@ -12,10 +12,11 @@ from elisa.engine import utils
 from elisa.engine.base.system import System
 from elisa.engine.single_system import static, build
 from elisa.engine.single_system.plot import Plot
+from elisa.engine.orbit import Orbit
 
 
 class SingleSystem(System):
-    MANDATORY_KWARGS = ['star', 'gamma', 'inclination', 'rotation_period', 'reference_time']
+    MANDATORY_KWARGS = ['star', 'gamma', 'inclination', 'rotation_period']
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
@@ -37,7 +38,9 @@ class SingleSystem(System):
 
         # default values of properties
         self._rotation_period = None
-        self._reference_time = None
+
+        # arguments for orbit placeholder
+        self._period = self.rotation_period
 
         # testing if parameters were initialized
         utils.check_missing_kwargs(SingleSystem.KWARGS, kwargs, instance_of=SingleSystem)
@@ -111,33 +114,6 @@ class SingleSystem(System):
         if self._rotation_period <= 0:
             raise ValueError('Period of rotation must be non-zero positive value. Your value: {0}.'
                              .format(rotation_period))
-
-    @property
-    def reference_time(self):
-        """
-        returns time of 0th longitude passing plane defined by rotation axis and line of sight
-
-        :return: numpy.float
-        """
-        return self._reference_time
-
-    @reference_time.setter
-    def reference_time(self, reference_time):
-        """
-        setter for reference time of 0th longitude passing plane defined by rotation axis and line of sight
-
-        :param reference_time: (np.)int, (np.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(reference_time, u.quantity.Quantity):
-            self._reference_time = np.float64(reference_time.to(U.PERIOD_UNIT))
-        elif isinstance(reference_time, (int, np.int, float, np.float)):
-            self._reference_time = np.float64(reference_time)
-        else:
-            raise TypeError('Input of variable `reference_time` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug("Setting property primary_minimum_time "
-                           "of class instance {} to {}".format(SingleSystem.__name__, self._reference_time))
 
     def _evaluate_spots(self):
         """
@@ -772,3 +748,14 @@ class SingleSystem(System):
         build points of surface for including spots
         """
         build.build_mesh(self)
+
+    @staticmethod
+    def prepare_positions(phase=None):
+        """
+
+        :param phase:
+        :return:
+        """
+        idx = np.arange(np.shape(phase)[0])
+        azimuth = c.FULL_ARC * phase
+        return np.column_stack((idx, azimuth, phase))

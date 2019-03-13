@@ -40,6 +40,11 @@ class PassbandContainer(object):
 
 class Observer(object):
     def __init__(self, passband: list or str, system: BinarySystem or SingleSystem):
+        """
+        initializer for observer class
+        :param passband: string - for valid filter name see config.py file
+        :param system:
+        """
         self._logger = logging.getLogger(Observer.__name__)
         self._logger.info("initialising Observer instance")
         # specifying what kind of system is observed
@@ -97,7 +102,7 @@ class Observer(object):
             raise ValueError("missing arguments")
 
         if phases is None:
-            phases = np.linspace(start=from_phase, stop=to_phase, endpoint=True)
+            phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
 
         self._logger.info("observation start w/ following configuration {<add>}")
         # self._logger.warning("logger will be suppressed due multiprocessing incompatibility")
@@ -108,8 +113,10 @@ class Observer(object):
                                     ...
                                     (rN, azN, niN, phsN))
         """
-        orbital_motion = self._system.orbit.orbital_motion(phase=phases)
-        args = mp.prepare_observe_args(orbital_motion)
+        # prepares secondary component relative positions with respect to primary component in case of Binary System
+        # in case of Single system, placeholder is in place
+        args = self._system.prepare_positions(phase=phases)
+        print(args)
         self._system.compute_lightcurve(
             **dict(
                 orbital_motion=args,

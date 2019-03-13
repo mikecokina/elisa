@@ -2122,15 +2122,38 @@ class BinarySystem(System):
         return ((2.0 * np.pi) / (self.period * 86400.0 * (components_distance ** 2))) * np.sqrt(
             (1.0 - self.eccentricity) * (1.0 + self.eccentricity))  # $\rad.sec^{-1}$
 
+    def prepare_positions(self, phase=None):
+        """
+        returns indices and positions of secondary component relative to primary component
+        :param phase: list - list of phases at which to calculate the positions
+        :return:
+        """
+        orbital_motion = self.orbit.orbital_motion(phase=phase)
+        idx = np.arange(np.shape(phase)[0])
+        return np.hstack((idx[:, np.newaxis], orbital_motion))
+
     def compute_lightcurve(self, **kwargs):
+        """
+        this function decides which light curve generator function is used, depending on the basic properties of the
+        binary system
+
+        :param kwargs: - arguments to be passed into light curve generator functions
+        :return:
+        """
         if self.eccentricity == 0 and self.primary.synchronicity == 1 and self.secondary.synchronicity == 1:
+            self._logger.debug('Implementing light cure generator function for synchronous binary system with circular '
+                               'orbit.')
             return self._compute_circular_synchronous_lightcurve(**kwargs)
         elif self.eccentricity == 0 and (self.primary.synchronicity != 1 or self.secondary.synchronicity != 1) \
                 and (self.primary.has_spots() or self.secondary.has_spots()):
+            self._logger.debug('Implementing light cure generator function for asynchronous binary system with '
+                               'circular orbit.')
             return self._compute_circular_spotify_asynchronous_lightcurve(**kwargs)
         elif 1 > self.eccentricity > 0:
+            self._logger.debug('Implementing light cure generator function for asynchronous binary system with '
+                               'circular orbit.')
             return self._compute_eccentric_lightcurve(**kwargs)
-        raise NotImplementedError("not implemented or invalid")
+        raise NotImplementedError("Orbit type not implemented or invalid")
 
     # def _compute_circular_synchronous_lightcurve(self, **kwargs):
     #     return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
