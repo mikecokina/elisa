@@ -2155,8 +2155,9 @@ class BinarySystem(System):
             return self._compute_eccentric_lightcurve(**kwargs)
         raise NotImplementedError("Orbit type not implemented or invalid")
 
-    # def _compute_circular_synchronous_lightcurve(self, **kwargs):
-    #     return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
+    def _compute_circular_synchronous_lightcurve(self, **kwargs):
+        # return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
+        pass
 
     def _compute_circular_spotify_asynchronous_lightcurve(self, *args, **kwargs):
         pass

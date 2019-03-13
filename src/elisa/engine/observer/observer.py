@@ -119,7 +119,7 @@ class Observer(object):
         print(args)
         self._system.compute_lightcurve(
             **dict(
-                orbital_motion=args,
+                positions=args,
                 passband=self.passband,
                 left_bandwidth=self.left_bandwidth,
                 right_bandwidth=self.right_bandwidth

@@ -705,7 +705,7 @@ class SingleSystem(System):
                     spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                  temperatures=spot.temperatures)
 
-    def compute_lightcurve(self, time):
+    def compute_lightcurve(self, **kwargs):
         # calculating line of sights vector from time vector
         # defining
         line_of_sight = utils.get_line_of_sight(time, self.reference_time, self.inclination, self.rotation_period)
@@ -752,9 +752,9 @@ class SingleSystem(System):
     @staticmethod
     def prepare_positions(phase=None):
         """
-
-        :param phase:
-        :return:
+        returns indices, azimuths and phases in which light curve will be calculated
+        :param phase: list
+        :return: np.array([index, azimuth_of_line_of_sight, phase])
         """
         idx = np.arange(np.shape(phase)[0])
         azimuth = c.FULL_ARC * phase
