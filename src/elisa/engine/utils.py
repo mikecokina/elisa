@@ -365,18 +365,16 @@ def calculate_cos_theta(normals, line_of_sight_vector):
         np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]))
 
 
-def get_line_of_sight_single_system(phase, inclination, period):
+def get_line_of_sight_single_system(phase=None, inclination=None):
     """
     returns line of sight vector for given phase, inclination of the system
     and period of the rotation of given system
 
     :param phase: list
     :param inclination:
-    :param period:
     :return:
     """
-    phi = c.FULL_ARC * phase
-    line_of_sight_spherical = np.empty((len(time), 3), dtype=np.float)
+    line_of_sight_spherical = np.empty((len(phase), 3), dtype=np.float)
     line_of_sight_spherical[:, 0] = 1
     line_of_sight_spherical[:, 1] = c.FULL_ARC * phase
     line_of_sight_spherical[:, 2] = inclination

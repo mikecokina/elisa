@@ -708,7 +708,7 @@ class SingleSystem(System):
     def compute_lightcurve(self, **kwargs):
         # calculating line of sights vector from time vector
         # defining
-        line_of_sight = utils.get_line_of_sight(time, self.reference_time, self.inclination, self.rotation_period)
+        positions = kwargs['positions'][2]
         # print(line_of_sight)
 
     def get_info(self):
@@ -749,13 +749,18 @@ class SingleSystem(System):
         """
         build.build_mesh(self)
 
-    @staticmethod
-    def prepare_positions(phase=None):
+    def calculate_lines_of_sight(self, phase=None):
         """
-        returns indices, azimuths and phases in which light curve will be calculated
+        returns vector oriented in direction star - observer
+
         :param phase: list
-        :return: np.array([index, azimuth_of_line_of_sight, phase])
+        :return: np.array([index, spherical coordinates of line of sight vector])
         """
         idx = np.arange(np.shape(phase)[0])
-        azimuth = c.FULL_ARC * phase
-        return np.column_stack((idx, azimuth, phase))
+
+        line_of_sight_spherical = np.empty((np.shape(phase)[0], 3), dtype=np.float)
+        line_of_sight_spherical[:, 0] = 1
+        line_of_sight_spherical[:, 1] = c.FULL_ARC * phase
+        line_of_sight_spherical[:, 2] = self.inclination
+        line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
+        return np.hstack((idx[:, np.newaxis], line_of_sight))

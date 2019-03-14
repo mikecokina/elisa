@@ -79,7 +79,7 @@ contact_pot = 3.3
 start_time = time()
 
 primary = Star(mass=3.321317*u.solMass,
-               surface_potential=3.1,
+               surface_potential=4.0,
                # surface_potential=contact_pot,
                # spots=spots_metadata['primary'],
                # pulsations=pulsations_metadata['primary'],
@@ -91,7 +91,7 @@ primary = Star(mass=3.321317*u.solMass,
                metallicity=0
                )
 secondary = Star(mass=1.898*u.solMass,
-                 surface_potential=3.1,
+                 surface_potential=4.0,
                  # surface_potential=contact_pot,
                  synchronicity=1.0,
                  t_eff=8742*u.K,
@@ -105,10 +105,10 @@ secondary = Star(mass=1.898*u.solMass,
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=0*u.deg,
+                  argument_of_periastron=180*u.deg,
                   gamma=-2.34*u.km/u.s,
                   period=3.74922*u.d,
-                  eccentricity=0.0,
+                  eccentricity=0.1,
                   inclination=84.96*u.deg,
                   primary_minimum_time=0.0*u.d,
                   phase_shift=0.0,
@@ -138,6 +138,7 @@ bs.build_surface_map(colormap='temperature', components_distance=components_min_
 # crit_secondary_potential = bs.critical_potential('secondary', components_distance=components_min_distance)
 # print('Critical potential for secondary component: {}'.format(crit_secondary_potential))
 
+print(bs.orbit.argument_of_periastron)
 o = Observer(passband=['Generic.Bessell.V'], system=bs)
 o.observe(from_phase=0, to_phase=1.0, phase_step=0.1)
 

@@ -92,6 +92,7 @@ class BinarySystem(System):
         self._semi_major_axis = None
         self._periastron_phase = None
         self._morphology = None
+        self._inclination = None
 
         params = {
             "primary": self.primary,
@@ -338,6 +339,34 @@ class BinarySystem(System):
         self._phase_shift = phase_shift
         self._logger.debug("setting property phase_shift of class instance {} to {}"
                            "".format(BinarySystem.__name__, self._phase_shift))
+
+    @property
+    def inclination(self):
+        """
+        returns inclination of binary system orbit
+
+        :return: numpy.float
+        """
+        return self._inclination
+
+    @inclination.setter
+    def inclination(self, inclination):
+        """
+        setter for inclination of binary system orbit
+
+        :param inclination: numpy.float
+        :return:
+        """
+        if isinstance(inclination, u.quantity.Quantity):
+            self._inclination = np.float64(inclination.to(units.ARC_UNIT))
+        elif isinstance(inclination, (int, np.int, float, np.float)):
+            self._inclination = np.float64(inclination)
+        else:
+            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+
+        if not 0 <= self.inclination <= const.PI:
+            raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
 
     @property
     def semi_major_axis(self):
@@ -2122,7 +2151,7 @@ class BinarySystem(System):
         return ((2.0 * np.pi) / (self.period * 86400.0 * (components_distance ** 2))) * np.sqrt(
             (1.0 - self.eccentricity) * (1.0 + self.eccentricity))  # $\rad.sec^{-1}$
 
-    def prepare_positions(self, phase=None):
+    def calculate_lines_of_sight(self, phase=None):
         """
         returns indices and positions of secondary component relative to primary component
         :param phase: list - list of phases at which to calculate the positions

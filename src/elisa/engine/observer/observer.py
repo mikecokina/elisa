@@ -115,7 +115,7 @@ class Observer(object):
         """
         # prepares secondary component relative positions with respect to primary component in case of Binary System
         # in case of Single system, placeholder is in place
-        args = self._system.prepare_positions(phase=phases)
+        args = self._system.calculate_lines_of_sight(phase=phases)
         print(args)
         self._system.compute_lightcurve(
             **dict(

@@ -94,18 +94,7 @@ class Orbit(object):
         :param inclination: numpy.float
         :return:
         """
-        if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(eu.ARC_UNIT))
-        elif isinstance(inclination, (int, np.int, float, np.float)):
-            # fixme: when inclination is served with unit, bottom condition 0 <= etc.
-            # fixme: will carsh, see how it is solved in argument_of_periastron (to the same for base.system)
-            self._inclination = np.float64(inclination)
-        else:
-            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-        if not 0 <= self.inclination <= const.PI:
-            raise ValueError('Eccentricity value of {} is out of bounds (0, pi).'.format(self.inclination))
+        self._inclination = inclination
 
     @property
     def eccentricity(self):
@@ -143,16 +132,7 @@ class Orbit(object):
         :param argument_of_periastron: (np.)int, (np.)float, astropy.unit.quantity.Quantity
         :return:
         """
-        if isinstance(argument_of_periastron, u.quantity.Quantity):
-            self._argument_of_periastron = np.float64(argument_of_periastron.to(eu.ARC_UNIT))
-        elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
-            self._argument_of_periastron = np.float64((argument_of_periastron * u.deg).to(eu.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `argument_of_periastron` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-        if not 0 <= self._argument_of_periastron <= const.FULL_ARC:
-            self._argument_of_periastron %= const.FULL_ARC
+        self._argument_of_periastron = argument_of_periastron
 
     @classmethod
     def true_phase(cls, phase=None, phase_shift=None):
