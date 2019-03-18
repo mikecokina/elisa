@@ -2159,7 +2159,15 @@ class BinarySystem(System):
         """
         orbital_motion = self.orbit.orbital_motion(phase=phase)
         idx = np.arange(np.shape(phase)[0])
-        return np.hstack((idx[:, np.newaxis], orbital_motion))
+
+        line_of_sight_spherical = np.empty((np.shape(phase)[0], 3), dtype=np.float)
+        line_of_sight_spherical[:, 0] = 1
+        line_of_sight_spherical[:, 1] = const.FULL_ARC * orbital_motion[:, 2]
+        line_of_sight_spherical[:, 2] = self.inclination
+        line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
+
+        return np.hstack((idx[:, np.newaxis], line_of_sight))
+        # return np.hstack((idx[:, np.newaxis], orbital_motion))
 
     def compute_lightcurve(self, **kwargs):
         """
@@ -2170,17 +2178,16 @@ class BinarySystem(System):
         :return:
         """
         if self.eccentricity == 0 and self.primary.synchronicity == 1 and self.secondary.synchronicity == 1:
-            self._logger.debug('Implementing light cure generator function for synchronous binary system with circular '
-                               'orbit.')
+            self._logger.debug('Implementing light curve generator function for synchronous binary system with '
+                               'circular orbit.')
             return self._compute_circular_synchronous_lightcurve(**kwargs)
         elif self.eccentricity == 0 and (self.primary.synchronicity != 1 or self.secondary.synchronicity != 1) \
                 and (self.primary.has_spots() or self.secondary.has_spots()):
-            self._logger.debug('Implementing light cure generator function for asynchronous binary system with '
+            self._logger.debug('Implementing light curve generator function for asynchronous binary system with '
                                'circular orbit.')
             return self._compute_circular_spotify_asynchronous_lightcurve(**kwargs)
         elif 1 > self.eccentricity > 0:
-            self._logger.debug('Implementing light cure generator function for asynchronous binary system with '
-                               'circular orbit.')
+            self._logger.debug('Implementing light curve generator function for eccentric orbit.')
             return self._compute_eccentric_lightcurve(**kwargs)
         raise NotImplementedError("Orbit type not implemented or invalid")
 
