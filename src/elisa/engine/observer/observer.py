@@ -69,6 +69,8 @@ class Observer(object):
                 df = pd.DataFrame(
                     {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
                      config.PASSBAND_DATAFRAME_WAVE: [0.0, 1e6]})
+                # fixme: make sure akima will be correct on bandwidth evalutyion in container itself
+                # fixme: and remove akima here
                 akima = self.bolometric
                 right_bandwidth = 1e6
                 left_bandwidth = 0.0

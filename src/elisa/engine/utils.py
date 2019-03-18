@@ -136,9 +136,10 @@ def cylindrical_to_cartesian(cylindrical_points):
 
 def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
     """
+    Rodrigues` Rotaion Formula
     function rotates `vector` around axis defined by `omega` vector by amount `theta`
 
-    :param theta: float; radial vector of point of interest to ratate
+    :param theta: float; radial vector of point of interest to rotate
     :param omega: 3d list of floats; arbitrary vector to rotate around
     :param vector: 3d list of floats;
     :param degrees: bool; units of incoming vector

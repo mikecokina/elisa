@@ -18,3 +18,4 @@ conf/elisa_conf.ini
 
 *.log
 __main__.py
+.cache

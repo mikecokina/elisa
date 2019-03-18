@@ -38,7 +38,7 @@ from elisa.engine import ld
 from elisa.engine import units
 from elisa.engine import utils
 # from elisa.engine.binary_system import static, build, mp, lc
-from elisa.engine.binary_system import static, build, mp
+from elisa.engine.binary_system import static, build, mp, lc
 from elisa.engine.binary_system.plot import Plot
 from elisa.engine.orbit import Orbit
 from elisa.engine.base.star import Star
@@ -2162,8 +2162,8 @@ class BinarySystem(System):
 
         line_of_sight_spherical = np.empty((np.shape(phase)[0], 3), dtype=np.float)
         line_of_sight_spherical[:, 0] = 1
-        line_of_sight_spherical[:, 1] = const.FULL_ARC * orbital_motion[:, 2]
-        line_of_sight_spherical[:, 2] = self.inclination
+        line_of_sight_spherical[:, 1] = orbital_motion[:, 2]
+        line_of_sight_spherical[:, 2] = const.PI - self.inclination
         line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
 
         return np.hstack((idx[:, np.newaxis], line_of_sight))
@@ -2199,7 +2199,8 @@ class BinarySystem(System):
         pass
 
     def _compute_eccentric_lightcurve(self, *args, **kwargs):
-        pass
+        # todo: just for testing, remove
+        return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
     # ### build methods
     # todo/idea: remove these definitions and call methods from `build` modul
