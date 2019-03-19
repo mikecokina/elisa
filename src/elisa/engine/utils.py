@@ -164,13 +164,13 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
     matrix[2, 1] = (omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
     matrix[2, 2] = (np.cos(theta)) + (omega[2] ** 2 * (1. - np.cos(theta)))
 
-    return np.matmul(matrix, vector)
+    return np.matmul(matrix, vector.T).T
 
 
-def axis_rotation(theta, omega, axis, inverse=False, degrees=False):
+def axis_rotation(theta, vector, axis, inverse=False, degrees=False):
     matrix = np.arange(9, dtype=np.float).reshape((3, 3))
     theta = theta if not degrees else np.radians(theta)
-    omega = np.array(omega)
+    vector = np.array(vector)
 
     if axis == "x":
         matrix[0][0], matrix[0][1], matrix[0][2] = 1, 0, 0
@@ -190,7 +190,7 @@ def axis_rotation(theta, omega, axis, inverse=False, degrees=False):
         matrix[2][0], matrix[2][1], matrix[2][2] = 0, 0, 1
         if inverse:
             matrix[0][1], matrix[1][0] = + np.sin(theta), - np.sin(theta)
-    return np.matmul(matrix, omega)
+    return np.matmul(matrix, vector.T).T
 
 
 def average_spacing_cgal(data=None, neighbours=6):
