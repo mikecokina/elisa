@@ -749,6 +749,9 @@ class SingleSystem(System):
         """
         build.build_mesh(self)
 
+    def get_positions_method(self):
+        return self.calculate_lines_of_sight
+
     def calculate_lines_of_sight(self, phase=None):
         """
         returns vector oriented in direction star - observer

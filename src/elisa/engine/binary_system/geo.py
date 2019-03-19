@@ -33,8 +33,18 @@ def get_eclipse_boundaries(binary, components_distance: float):
         return azimuths
 
 
-def darkside_filter(sight_of_view, *args, **kwargs):
-    pass
+def darkside_filter(sight_of_view: np.array, normals: np.array):
+    """
+    return indices for visible faces defined by given normals
+
+    :param sight_of_view: np.array
+    :param normals: np.array
+    :return: np.array
+    """
+    # todo: resolve self shadowing in case of W UMa
+    valid = np.array([idx for idx, normal in enumerate(normals)
+                      if utils.cosine_similarity(sight_of_view, normal) > 0])
+    return valid
 
 
 # def sight_of_view_by_orbital_position(inclination: float, orbital_motion: list):

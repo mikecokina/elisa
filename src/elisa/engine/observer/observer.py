@@ -116,8 +116,8 @@ class Observer(object):
                                     (rN, azN, niN, phsN))
         """
         # calculates lines of sight for corresponding phases
-        args = self._system.calculate_lines_of_sight(phase=phases)
-        print(args)
+        position_method = self._system.get_positions_method()
+        args = position_method(phase=phases)
         self._system.compute_lightcurve(
             **dict(
                 positions=args,

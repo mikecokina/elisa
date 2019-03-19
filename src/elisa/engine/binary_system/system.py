@@ -2151,6 +2151,14 @@ class BinarySystem(System):
         return ((2.0 * np.pi) / (self.period * 86400.0 * (components_distance ** 2))) * np.sqrt(
             (1.0 - self.eccentricity) * (1.0 + self.eccentricity))  # $\rad.sec^{-1}$
 
+    def get_positions_method(self):
+        return self.calculate_orbital_motion
+
+    def calculate_orbital_motion(self, phase=None):
+        orbital_motion = self.orbit.orbital_motion(phase=phase)
+        idx = np.arange(np.shape(phase)[0])
+        return np.hstack((idx[:, np.newaxis], orbital_motion))
+
     def calculate_lines_of_sight(self, phase=None):
         """
         returns indices and positions of secondary component relative to primary component
@@ -2162,12 +2170,10 @@ class BinarySystem(System):
 
         line_of_sight_spherical = np.empty((np.shape(phase)[0], 3), dtype=np.float)
         line_of_sight_spherical[:, 0] = 1
-        line_of_sight_spherical[:, 1] = orbital_motion[:, 2]
+        line_of_sight_spherical[:, 1] = -1.0 * orbital_motion[:, 2]
         line_of_sight_spherical[:, 2] = const.PI - self.inclination
         line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
-
         return np.hstack((idx[:, np.newaxis], line_of_sight))
-        # return np.hstack((idx[:, np.newaxis], orbital_motion))
 
     def compute_lightcurve(self, **kwargs):
         """
@@ -2192,7 +2198,7 @@ class BinarySystem(System):
         raise NotImplementedError("Orbit type not implemented or invalid")
 
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
-        # return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
+        return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
         pass
 
     def _compute_circular_spotify_asynchronous_lightcurve(self, *args, **kwargs):
