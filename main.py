@@ -9,7 +9,6 @@ from elisa.engine.observer.observer import Observer
 logging.basicConfig(level=logging.DEBUG)
 
 from elisa.conf import config
-
 from scipy.spatial import distance_matrix
 
 spots_metadata = {

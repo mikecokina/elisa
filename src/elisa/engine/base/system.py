@@ -3,7 +3,7 @@ import gc
 
 from abc import ABCMeta, abstractmethod
 from astropy import units as u
-from elisa.engine import units as U, logger
+from elisa.engine import logger, units
 from scipy.optimize import fsolve
 from copy import copy
 from elisa.engine import const as c
@@ -76,7 +76,7 @@ class System(metaclass=ABCMeta):
         :return: None
         """
         if isinstance(gamma, u.quantity.Quantity):
-            self._gamma = np.float64(gamma.to(U.VELOCITY_UNIT))
+            self._gamma = np.float64(gamma.to(units.VELOCITY_UNIT))
         elif isinstance(gamma, (int, np.int, float, np.float)):
             self._gamma = np.float64(gamma)
         else:
@@ -101,14 +101,14 @@ class System(metaclass=ABCMeta):
         :return:
         """
         if isinstance(period, u.quantity.Quantity):
-            self._period = np.float64(period.to(units.PERIOD_UNIT))
+            self._period = np.float64(period.to(units.ERIOD_UNIT))
         elif isinstance(period, (int, np.int, float, np.float)):
             self._period = np.float64(period)
         else:
             raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
         self._logger.debug("Setting property period "
-                           "of class instance {} to {}".format(BinarySystem.__name__, self._period))
+                           "of class instance {} to {}".format(System.__name__, self._period))
 
     @property
     def inclination(self):
@@ -129,7 +129,7 @@ class System(metaclass=ABCMeta):
         """
 
         if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(U.ARC_UNIT))
+            self._inclination = np.float64(inclination.to(units.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
             self._inclination = np.float64(inclination)
         else:

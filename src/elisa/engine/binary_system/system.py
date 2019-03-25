@@ -38,7 +38,7 @@ from elisa.engine import ld
 from elisa.engine import units
 from elisa.engine import utils
 # from elisa.engine.binary_system import static, build, mp, lc
-from elisa.engine.binary_system import static, build, mp, lc
+from elisa.engine.binary_system import static, build, mp, lc, geo
 from elisa.engine.binary_system.plot import Plot
 from elisa.engine.orbit import Orbit
 from elisa.engine.base.star import Star
@@ -2249,3 +2249,6 @@ class BinarySystem(System):
         self.build_faces_orientation(component, components_distance)
         self.build_surface_gravity(component, components_distance)
         self.build_temperature_distribution(component, components_distance)
+
+    def prepare_system_positions_container(self, orbital_motion):
+        return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion)

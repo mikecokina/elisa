@@ -1,7 +1,5 @@
 import numpy as np
 
-from elisa.conf import config
-from elisa.engine import atm
 from elisa.engine.binary_system import geo
 from elisa.engine.const import BINARY_SIGHT_OF_VIEW
 
@@ -15,21 +13,31 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     # NOTE: extention of system primary and secondary points due to horizont faces fractalisation
     # apply eclipse filter !!!!!!! just indices information !!!!!!!
 
-    exit()
-
-
-
-
-
-
-
-
-
-
-
-
-
+    orbital_motion = kwargs.pop("positions")
     eclipses = geo.get_eclipse_boundaries(self, 1.0)
+
+    # orbital_motion = [
+    #     [0, 1.0, np.radians(90), np.radians(90), 0.0],
+    #     [1, 1.0, np.radians(135), np.radians(135), 0.0],
+    #     [2, 1.0, np.radians(180), np.radians(180), 0.0]
+    # ]
+    system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
+
+    import os
+    for idx, pos in enumerate(system_positions_container):
+        p = pos.primary.points
+        s = pos.secondary.points
+
+        p = geo.plane_projection(p, plane="yz")
+        s = geo.plane_projection(s, plane="yz")
+        c1, c2 = ["b"] * len(p), ["r"] * len(s)
+        c = c1 + c2
+        ps = np.concatenate((p, s), axis=0)
+
+        path = os.path.join("C:\\Users\\d59637\\Documents\\tmp", "{}.png".format(idx))
+        geo.to_png(x=ps.T[0], y=ps.T[1], x_label="y", y_label="z", c=c, fpath=path)
+
+    exit()
 
     print(eclipses)
     exit()
@@ -125,4 +133,3 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
 if __name__ == "__main__":
     pass
-
