@@ -58,9 +58,9 @@ def plane_projection(points, plane):
     :param plane: str; (xy, yz, zx)
     :return:
     """
-    # rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
-    # in_plane = np.array([l for i, l in enumerate(points.T) if i != rm_index])
-    in_plane = np.array([points.T[1], points.T[2]])
+    rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
+    in_plane = np.array([l for i, l in enumerate(points.T) if i != rm_index])
+    # in_plane = np.array([points.T[1], points.T[2]])
     return in_plane.T
 
 
@@ -124,8 +124,8 @@ class SystemOrbitalPosition(object):
         self._idx = 0
 
     def __iter__(self):
-        for d in self.data:
-            yield d
+        for single_position_container in self.data:
+            yield single_position_container
 
     def do(self, pos):
         easy_sys = self.init_data.copy()
@@ -143,6 +143,10 @@ class SystemOrbitalPosition(object):
     @init_data.setter
     def init_data(self, args):
         self._init_data = SingleOrbitalPositionContainer(*args)
+
+    def darkside_filter(self):
+        for single_position_container in self:
+            single_position_container.darkside_filter()
 
 
 class SingleOrbitalPositionContainer(object):
@@ -164,6 +168,8 @@ class SingleOrbitalPositionContainer(object):
 
     def copy(self):
         return deepcopy(self)
+
+    # todo: imlement spots
 
     @property
     def primary(self):
@@ -202,8 +208,16 @@ class SingleOrbitalPositionContainer(object):
                 args = (self.position.azimut - const.HALF_PI, prop_value, "z", False, False)
                 prop_value = utils.axis_rotation(*args)
 
-                # args = (const.PI - self.inclination, prop_value, "y", False, False)
-                # prop_value = utils.axis_rotation(*args)
+                args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
+                prop_value = utils.axis_rotation(*args)
                 setattr(easyobject_instance, prop, prop_value)
 
+    def darkside_filter(self):
+        for component in self.__COMPONENTS__:
+            easyobject_instance = getattr(self, component)
+            normals = getattr(easyobject_instance, "normals")
+            valid_indices = darkside_filter(sight_of_view=const.BINARY_SIGHT_OF_VIEW, normals=normals)
+            self.set_indices(component=component, indices=valid_indices)
 
+    def eclipse_filter(self):
+        pass
