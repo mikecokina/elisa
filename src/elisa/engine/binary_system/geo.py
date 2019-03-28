@@ -51,16 +51,19 @@ def darkside_filter(sight_of_view: np.array, normals: np.array):
     return valid
 
 
-def plane_projection(points, plane):
+def plane_projection(points, plane, keep_3d=False):
     """
 
+    :param keep_3d:
     :param points:
     :param plane: str; (xy, yz, zx)
     :return:
     """
     rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
-    in_plane = np.array([l for i, l in enumerate(points.T) if i != rm_index])
-    # in_plane = np.array([points.T[1], points.T[2]])
+    if not keep_3d:
+        return np.array([l for i, l in enumerate(points.T) if i != rm_index]).T
+    in_plane = deepcopy(points).T
+    in_plane[rm_index] = 0.0
     return in_plane.T
 
 
@@ -90,16 +93,35 @@ def to_png(x=None, y=None, x_label="y", y_label="z", c=None, fpath=None):
 
 
 class EasyObject(object):
-    def __init__(self, points, normals, indices):
-        self.points = deepcopy(points)
-        self.normals = deepcopy(normals)
+    def __init__(self, points, normals, indices, faces=None):
+        self._points = deepcopy(points)
+        self._normals = deepcopy(normals)
         self.indices = deepcopy(indices)
+        self._faces = deepcopy(faces)
 
     def serialize(self):
         return self.points, self.normals, self.indices
 
     def copy(self):
         return deepcopy(self)
+
+    @property
+    def points(self):
+        return self._points
+
+    @property
+    def normals(self):
+        # if self.indices is not None:
+        #     return self._normals[self.indices]
+        return self._normals
+
+    @property
+    def faces(self):
+        # if self.indices is not None:
+        #     return self._faces[self.indices]
+        return self._faces
+
+
 
 
 class PositionContainer(object):
@@ -145,8 +167,8 @@ class SystemOrbitalPosition(object):
         self._init_data = SingleOrbitalPositionContainer(*args)
 
     def darkside_filter(self):
-        for single_position_container in self:
-            single_position_container.darkside_filter()
+        self.data = (single_position_container.darkside_filter() for single_position_container in self.data)
+        return self
 
 
 class SingleOrbitalPositionContainer(object):
@@ -218,6 +240,7 @@ class SingleOrbitalPositionContainer(object):
             normals = getattr(easyobject_instance, "normals")
             valid_indices = darkside_filter(sight_of_view=const.BINARY_SIGHT_OF_VIEW, normals=normals)
             self.set_indices(component=component, indices=valid_indices)
+        return self
 
     def eclipse_filter(self):
         pass

@@ -1,7 +1,6 @@
 import numpy as np
 
 from elisa.engine.binary_system import geo
-from elisa.engine.const import BINARY_SIGHT_OF_VIEW
 
 
 def compute_circular_synchronous_lightcurve(self, **kwargs):
@@ -16,26 +15,32 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     orbital_motion = kwargs.pop("positions")
     eclipses = geo.get_eclipse_boundaries(self, 1.0)
     system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
+    system_positions_container = system_positions_container.darkside_filter()
 
-    system_positions_container.darkside_filter()
 
 
+    exit()
     # import os
     # for idx, pos in enumerate(system_positions_container):
     #     p = pos.primary.points
     #     s = pos.secondary.points
     #
+    #     pi = pos.primary.indices
+    #     si = pos.secondary.indices
+    #
     #     p = geo.plane_projection(p, plane="yz")
     #     s = geo.plane_projection(s, plane="yz")
-    #     c1, c2 = ["b"] * len(p), ["r"] * len(s)
+    #     c1, c2 = ["b"] * len(list(set(self.primary.faces[pi].flatten()))), \
+    #              ["r"] * len(list(set(self.secondary.faces[si].flatten())))
     #     c = c1 + c2
-    #     ps = np.concatenate((p, s), axis=0)
+    #     ps = np.concatenate((p[list(set(self.primary.faces[pi].flatten()))],
+    #                          s[list(set(self.secondary.faces[si].flatten()))]), axis=0)
     #
     #     path = os.path.join("C:\\Users\\d59637\\Documents\\tmp", "{}.png".format(idx))
     #     geo.to_png(x=ps.T[0], y=ps.T[1], x_label="y", y_label="z", c=c, fpath=path)
     #
     # exit()
-    #
+
     # print(eclipses)
     # exit()
     #
