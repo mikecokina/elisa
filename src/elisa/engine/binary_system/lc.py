@@ -1,5 +1,8 @@
 import numpy as np
+import matplotlib.path as mpltpath
 
+from scipy.spatial.qhull import ConvexHull
+from elisa.engine import const
 from elisa.engine.binary_system import geo
 
 
@@ -14,8 +17,89 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
     orbital_motion = kwargs.pop("positions")
     eclipses = geo.get_eclipse_boundaries(self, 1.0)
-    system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
-    system_positions_container = system_positions_container.darkside_filter()
+    # system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
+    # system_positions_container = system_positions_container.darkside_filter()
+
+    # todo: it makes more sense to do eclipse filter in same way as darkside filter
+    # todo: rewrite it in the future
+
+    # for container in system_positions_container:
+    #     pass
+
+    import pickle
+    container = pickle.load(open("container.pickle", "rb"))
+
+    counter_part = {"primary": "secondary", "secondary": "primary"}
+    cover_component = 'secondary' if 0.0 < container.position.azimut < const.PI else 'primary'
+    cover_object = getattr(container, cover_component)
+    undercover_object = getattr(container, counter_part[cover_component])
+    undercover_visible_indices = list(set(undercover_object.faces[undercover_object.indices].flatten()))
+
+    cover_object_visible_projection = geo.plane_projection(
+        cover_object.points[
+            list(set(cover_object.faces[cover_object.indices].flatten()))
+        ], "yz"
+    )
+
+    undercover_object_visible_projection = geo.plane_projection(
+        undercover_object.points[
+            list(set(undercover_object.faces[undercover_object.indices].flatten()))
+        ], "yz"
+    )
+
+    cover_bound = ConvexHull(cover_object_visible_projection)
+    hull_points = cover_object_visible_projection[cover_bound.vertices]
+    bb_path = mpltpath.Path(hull_points)
+
+    out_of_bound = np.invert(bb_path.contains_points(undercover_object_visible_projection))
+    undercover_visible_indices = np.array(undercover_visible_indices)[out_of_bound]
+
+
+    # from matplotlib import pyplot as plt
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    #
+    # p = undercover_object.points[
+    #     undercover_visible_indices
+    # ]
+    # xs, ys, zs = p.T[0], p.T[1], p.T[2]
+    # ax.scatter(xs, ys, zs, c="b", marker="o", s=0.1)
+    # plt.show()
+
+
+    # from matplotlib import pyplot as plt
+    # x, y = undercover_object_visible_projection.T[0][out_of_bound], undercover_object_visible_projection.T[1][out_of_bound]
+    # plt.scatter(x, y, marker="o", c="b", s=0.1)
+    # plt.xlabel("y")
+    # plt.xlabel("z")
+    # plt.axis("equal")
+    #
+    # plt.show()
+
+    # from matplotlib import pyplot as plt
+    # points = np.concatenate((container._primary.points, container._secondary.points), axis=0)
+    # faces = np.concatenate((container._primary.faces, container._secondary.faces + len(container._primary.points)), axis=0)
+    # indices = np.concatenate((container._primary.indices, container._secondary.indices + len(container._primary.normals)), axis=0)
+    # faces = faces[indices]
+    #
+    # fig = plt.figure(figsize=(7, 7))
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.set_aspect('equal')
+    # clr = 'b'
+    #
+    # ax.set_xlim3d(-2, 2)
+    # ax.set_ylim3d(-2, 2)
+    # ax.set_zlim3d(-2, 2)
+    #
+    # ax.view_init(0, 0)
+    #
+    # plot = ax.plot_trisurf(
+    #     points.T[0], points.T[1],
+    #     points.T[2], triangles=faces,
+    #     antialiased=True, shade=False, color=clr)
+    # plot.set_edgecolor('black')
+    # plt.show()
+
 
 
 

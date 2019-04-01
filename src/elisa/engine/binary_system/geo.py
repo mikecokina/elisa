@@ -109,16 +109,22 @@ class EasyObject(object):
     def points(self):
         return self._points
 
+    @points.setter
+    def points(self, points):
+        self._points = points
+
     @property
     def normals(self):
         # if self.indices is not None:
         #     return self._normals[self.indices]
         return self._normals
 
+    @normals.setter
+    def normals(self, normals):
+        self._normals = normals
+
     @property
     def faces(self):
-        # if self.indices is not None:
-        #     return self._faces[self.indices]
         return self._faces
 
 
@@ -170,6 +176,10 @@ class SystemOrbitalPosition(object):
         self.data = (single_position_container.darkside_filter() for single_position_container in self.data)
         return self
 
+    def eclipse_filter(self):
+        self.data = ()
+        return self
+
 
 class SingleOrbitalPositionContainer(object):
     __COMPONENTS__ = ["_primary", "_secondary"]
@@ -178,6 +188,8 @@ class SingleOrbitalPositionContainer(object):
     def __init__(self, primary, secondary):
         self._primary = None
         self._secondary = None
+        self.primary_map = dict()
+        self.secondary_map = dict()
         self.position = None
         self.inclination = None
 
@@ -197,13 +209,38 @@ class SingleOrbitalPositionContainer(object):
     def primary(self):
         return self._primary
 
+    @staticmethod
+    def setup_component(component):
+        points = component.points
+        normals = component.normals
+        faces = component.faces
+
+        points_index_map = np.array([(-1, i) for i in range(len(points))])
+        normals_index_map = np.array([(-1, i) for i in range(len(normals))])
+
+        if isinstance(component.spots, (dict,)):
+            for idx, spot in component.spots.items():
+                faces = np.concatenate((faces, spot.faces + len(points)), axis=0)
+                points = np.concatenate((points, spot.points), axis=0)
+                normals = np.concatenate((normals, spot.normals), axis=0)
+
+                p, n, = len(points_index_map), len(normals_index_map)
+
+                points_index_map = np.concatenate(
+                    (points_index_map,
+                     np.array([(idx, i) for i in range(p, p + len(spot.points))])),
+                    axis=0)
+                normals_index_map = np.concatenate(
+                    (normals_index_map,
+                     np.array([(idx, i) for i in range(n, n + len(spot.normals))])),
+                    axis=0)
+        return points, normals, faces, points_index_map, normals_index_map
+
     @primary.setter
     def primary(self, value):
-        self._primary = EasyObject(
-            value.points,
-            value.normals,
-            indices=None
-        )
+        points, normals, faces, points_index_map, normals_index_map = self.setup_component(value)
+        self._primary = EasyObject(points, normals, indices=None, faces=faces)
+        self.primary_map = dict(points=points_index_map, normals=normals_index_map)
 
     @property
     def secondary(self):
@@ -211,11 +248,9 @@ class SingleOrbitalPositionContainer(object):
 
     @secondary.setter
     def secondary(self, value):
-        self._secondary = EasyObject(
-            value.points,
-            value.normals,
-            indices=None
-        )
+        points, normals, faces, points_index_map, normals_index_map = self.setup_component(value)
+        self._secondary = EasyObject(points, normals, indices=None, faces=faces)
+        self.secondary_map = dict(points=points_index_map, normals=normals_index_map)
 
     def set_indices(self, component, indices):
         attr = getattr(self, component)
