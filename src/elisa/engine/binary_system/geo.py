@@ -93,14 +93,15 @@ def to_png(x=None, y=None, x_label="y", y_label="z", c=None, fpath=None):
 
 
 class EasyObject(object):
-    def __init__(self, points, normals, indices, faces=None):
+    def __init__(self, points, normals, indices, faces=None, coverage=None):
         self._points = deepcopy(points)
         self._normals = deepcopy(normals)
         self.indices = deepcopy(indices)
+        self.coverage = deepcopy(coverage)
         self._faces = deepcopy(faces)
 
     def serialize(self):
-        return self.points, self.normals, self.indices
+        return self.points, self.normals, self.indices, self.faces, self.coverage
 
     def copy(self):
         return deepcopy(self)
@@ -255,6 +256,10 @@ class SingleOrbitalPositionContainer(object):
     def set_indices(self, component, indices):
         attr = getattr(self, component)
         setattr(attr, 'indices', indices)
+
+    def set_coverage(self, component, coverage):
+        attr = getattr(self, component)
+        setattr(attr, 'coverage', coverage)
 
     def rotate(self):
         for component in self.__COMPONENTS__:

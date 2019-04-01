@@ -35,24 +35,38 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     undercover_object = getattr(container, counter_part[cover_component])
     undercover_visible_indices = list(set(undercover_object.faces[undercover_object.indices].flatten()))
 
-    cover_object_visible_projection = geo.plane_projection(
+    cover_object_darkside_visible_projection = geo.plane_projection(
         cover_object.points[
             list(set(cover_object.faces[cover_object.indices].flatten()))
         ], "yz"
     )
 
-    undercover_object_visible_projection = geo.plane_projection(
+    undercover_object_darkside_visible_projection = geo.plane_projection(
         undercover_object.points[
             list(set(undercover_object.faces[undercover_object.indices].flatten()))
         ], "yz"
     )
 
-    cover_bound = ConvexHull(cover_object_visible_projection)
-    hull_points = cover_object_visible_projection[cover_bound.vertices]
+    cover_bound = ConvexHull(cover_object_darkside_visible_projection)
+    hull_points = cover_object_darkside_visible_projection[cover_bound.vertices]
     bb_path = mpltpath.Path(hull_points)
 
-    out_of_bound = np.invert(bb_path.contains_points(undercover_object_visible_projection))
+    out_of_bound = np.invert(bb_path.contains_points(undercover_object_darkside_visible_projection))
     undercover_visible_indices = np.array(undercover_visible_indices)[out_of_bound]
+
+    eclipse_faces_visibility = np.isin(undercover_object.faces, undercover_visible_indices)
+    full_visible = np.array([np.all(face) for face in eclipse_faces_visibility])
+    invisible = np.array([np.all(face) for face in np.invert(eclipse_faces_visibility)])
+    partial_visible = np.invert(full_visible | invisible)
+
+    coverage = np.zeros(len(undercover_object.faces))
+    coverage[full_visible] = 1.0
+    coverage[invisible] = 0.0
+    # todo: overage for partial visible
+    coverage[partial_visible] = -1
+
+
+
 
 
     # from matplotlib import pyplot as plt
