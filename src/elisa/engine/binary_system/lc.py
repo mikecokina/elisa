@@ -33,48 +33,48 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     cover_component = 'secondary' if 0.0 < container.position.azimut < const.PI else 'primary'
     cover_object = getattr(container, cover_component)
     undercover_object = getattr(container, counter_part[cover_component])
-    undercover_visible_indices = list(set(undercover_object.faces[undercover_object.indices].flatten()))
+    undercover_visible_point_indices = list(set(undercover_object.faces[undercover_object.indices].flatten()))
 
-    cover_object_darkside_visible_projection = geo.plane_projection(
+    cover_object_obs_visible_projection = geo.plane_projection(
         cover_object.points[
             list(set(cover_object.faces[cover_object.indices].flatten()))
         ], "yz"
     )
 
-    undercover_object_darkside_visible_projection = geo.plane_projection(
+    undercover_object_obs_visible_projection = geo.plane_projection(
         undercover_object.points[
             list(set(undercover_object.faces[undercover_object.indices].flatten()))
         ], "yz"
     )
 
-    cover_bound = ConvexHull(cover_object_darkside_visible_projection)
-    hull_points = cover_object_darkside_visible_projection[cover_bound.vertices]
+    cover_bound = ConvexHull(cover_object_obs_visible_projection)
+    hull_points = cover_object_obs_visible_projection[cover_bound.vertices]
     bb_path = mpltpath.Path(hull_points)
 
-    out_of_bound = np.invert(bb_path.contains_points(undercover_object_darkside_visible_projection))
-    undercover_visible_indices = np.array(undercover_visible_indices)[out_of_bound]
+    out_of_bound = np.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
+    undercover_visible_point_indices = np.array(undercover_visible_point_indices)[out_of_bound]
 
-    eclipse_faces_visibility = np.isin(undercover_object.faces, undercover_visible_indices)
+    undercover_faces = np.array([const.FALSE_FACE_PLACEHOLDER] * int(len(undercover_object.normals)))
+    undercover_faces[undercover_object.indices] = undercover_object.faces[undercover_object.indices]
+
+    eclipse_faces_visibility = np.isin(undercover_faces, undercover_visible_point_indices)
+
     full_visible = np.array([np.all(face) for face in eclipse_faces_visibility])
     invisible = np.array([np.all(face) for face in np.invert(eclipse_faces_visibility)])
     partial_visible = np.invert(full_visible | invisible)
 
-    coverage = np.zeros(len(undercover_object.faces))
-    coverage[full_visible] = 1.0
-    coverage[invisible] = 0.0
-    # todo: overage for partial visible
-    coverage[partial_visible] = -1
-
-
-
-
+    # coverage = np.zeros(len(undercover_object.faces))
+    # coverage[full_visible] = 1.0
+    # coverage[invisible] = 0.0
+    # # todo: overage for partial visible
+    # coverage[partial_visible] = -1
 
     # from matplotlib import pyplot as plt
     # fig = plt.figure()
     # ax = fig.add_subplot(111, projection='3d')
     #
     # p = undercover_object.points[
-    #     undercover_visible_indices
+    #     undercover_visible_point_indices
     # ]
     # xs, ys, zs = p.T[0], p.T[1], p.T[2]
     # ax.scatter(xs, ys, zs, c="b", marker="o", s=0.1)
@@ -90,29 +90,33 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     #
     # plt.show()
 
-    # from matplotlib import pyplot as plt
+    from matplotlib import pyplot as plt
     # points = np.concatenate((container._primary.points, container._secondary.points), axis=0)
     # faces = np.concatenate((container._primary.faces, container._secondary.faces + len(container._primary.points)), axis=0)
     # indices = np.concatenate((container._primary.indices, container._secondary.indices + len(container._primary.normals)), axis=0)
     # faces = faces[indices]
     #
-    # fig = plt.figure(figsize=(7, 7))
-    # ax = fig.add_subplot(111, projection='3d')
-    # ax.set_aspect('equal')
-    # clr = 'b'
-    #
-    # ax.set_xlim3d(-2, 2)
-    # ax.set_ylim3d(-2, 2)
-    # ax.set_zlim3d(-2, 2)
-    #
-    # ax.view_init(0, 0)
-    #
-    # plot = ax.plot_trisurf(
-    #     points.T[0], points.T[1],
-    #     points.T[2], triangles=faces,
-    #     antialiased=True, shade=False, color=clr)
-    # plot.set_edgecolor('black')
-    # plt.show()
+    idx = partial_visible
+    points = container.primary.points
+    faces = container.primary.faces[idx]
+
+    fig = plt.figure(figsize=(7, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_aspect('equal')
+    clr = 'b'
+
+    ax.set_xlim3d(-2, 2)
+    ax.set_ylim3d(-2, 2)
+    ax.set_zlim3d(-2, 2)
+
+    ax.view_init(0, 0)
+
+    plot = ax.plot_trisurf(
+        points.T[0], points.T[1],
+        points.T[2], triangles=faces,
+        antialiased=True, shade=False, color=clr)
+    plot.set_edgecolor('black')
+    plt.show()
 
 
 
