@@ -63,11 +63,13 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     invisible = np.array([np.all(face) for face in np.invert(eclipse_faces_visibility)])
     partial_visible = np.invert(full_visible | invisible)
 
-    # coverage = np.zeros(len(undercover_object.faces))
-    # coverage[full_visible] = 1.0
-    # coverage[invisible] = 0.0
-    # # todo: overage for partial visible
-    # coverage[partial_visible] = -1
+    coverage = np.zeros(len(undercover_object.faces))
+    coverage[full_visible] = 1.0
+    coverage[invisible] = 0.0
+    # todo: coverage for partial visible
+    coverage[partial_visible] = -1
+
+
 
     # from matplotlib import pyplot as plt
     # fig = plt.figure()
@@ -90,34 +92,34 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     #
     # plt.show()
 
-    from matplotlib import pyplot as plt
-    # points = np.concatenate((container._primary.points, container._secondary.points), axis=0)
-    # faces = np.concatenate((container._primary.faces, container._secondary.faces + len(container._primary.points)), axis=0)
-    # indices = np.concatenate((container._primary.indices, container._secondary.indices + len(container._primary.normals)), axis=0)
-    # faces = faces[indices]
+    # from matplotlib import pyplot as plt
+    # # points = np.concatenate((container._primary.points, container._secondary.points), axis=0)
+    # # faces = np.concatenate((container._primary.faces, container._secondary.faces + len(container._primary.points)), axis=0)
+    # # indices = np.concatenate((container._primary.indices, container._secondary.indices + len(container._primary.normals)), axis=0)
+    # # faces = faces[indices]
+    # #
+    # idx = partial_visible
+    # points = container.primary.points
+    # faces = container.primary.faces[idx]
     #
-    idx = partial_visible
-    points = container.primary.points
-    faces = container.primary.faces[idx]
-
-    fig = plt.figure(figsize=(7, 7))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.set_aspect('equal')
-    clr = 'b'
-
-    ax.set_xlim3d(-2, 2)
-    ax.set_ylim3d(-2, 2)
-    ax.set_zlim3d(-2, 2)
-
-    ax.view_init(0, 0)
-
-    plot = ax.plot_trisurf(
-        points.T[0], points.T[1],
-        points.T[2], triangles=faces,
-        antialiased=True, shade=False, color=clr)
-    plot.set_edgecolor('black')
-    plt.show()
-
+    # fig = plt.figure(figsize=(7, 7))
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.set_aspect('equal')
+    # clr = 'b'
+    #
+    # ax.set_xlim3d(-2, 2)
+    # ax.set_ylim3d(-2, 2)
+    # ax.set_zlim3d(-2, 2)
+    #
+    # ax.view_init(0, 0)
+    #
+    # plot = ax.plot_trisurf(
+    #     points.T[0], points.T[1],
+    #     points.T[2], triangles=faces,
+    #     antialiased=True, shade=False, color=clr)
+    # plot.set_edgecolor('black')
+    # plt.show()
+    #
 
 
 
