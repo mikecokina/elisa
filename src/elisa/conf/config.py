@@ -198,5 +198,7 @@ ATM_MODEL_DATAFRAME_WAVE = "wave"
 PASSBAND_DATAFRAME_THROUGHPUT = "throughput"
 PASSBAND_DATAFRAME_WAVE = "wavelength"
 
+BINARY_COUNTERPARTS = {"primary": "secondary", "secondary": "primary"}
+
 
 read_and_update_config()

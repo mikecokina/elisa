@@ -1,8 +1,9 @@
 import numpy as np
-
 import matplotlib.pyplot as plt
+
 from copy import deepcopy
 from elisa.engine import const, utils
+from pypex.poly2d.polygon import Polygon
 
 
 def get_critical_inclination(binary, components_distance: float):
@@ -284,3 +285,27 @@ class SingleOrbitalPositionContainer(object):
 
     def eclipse_filter(self):
         pass
+
+
+def surface_area_coverage(size, visible, visible_coverage, partial=None, partial_coverage=None):
+    coverage = np.zeros(size)
+    coverage[visible] = visible_coverage
+    if partial is not None:
+        coverage[partial] = partial_coverage
+    return coverage
+
+
+def faces_to_pypex_poly(t_hulls):
+    return (Polygon(t_hull) for t_hull in t_hulls)
+
+
+def pypex_poly_hull_intersection(pypex_faces_gen, pypex_hull: Polygon):
+    return (pypex_hull.intersection(poly) for poly in pypex_faces_gen)
+
+
+def pypex_poly_surface_area(pypex_polys_gen):
+    return (poly.surface_area() for poly in pypex_polys_gen)
+
+
+def hull_to_pypex_poly(hull):
+    return Polygon(hull)

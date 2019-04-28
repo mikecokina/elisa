@@ -48,7 +48,7 @@ ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
 
 
 class AtmDataContainer(object):
-    def __init__(self, model: pd.DataFrame, temperature: float, logg: float, metallicity: float):
+    def __init__(self, model: pd.DataFrame, temperature: float, logg: float, metallicity: float) -> None:
         self._model = None
         self.temperature = temperature
         self.logg = logg
@@ -113,9 +113,9 @@ class NearestAtm(object):
 
         directory = get_atm_directory(m, atlas)
         fnames = str(atlas) + \
-                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
-                 domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
-                 domain_df["logg"].apply(lambda x: utils.numeric_logg_to_string(x))
+            domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
+            domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
+            domain_df["logg"].apply(lambda x: utils.numeric_logg_to_string(x))
 
         return list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + "/" + fnames + ".csv")
 
@@ -321,9 +321,9 @@ class NaiveInterpolatedAtm(object):
         # in case when temperature is same as one of temperatures on grid, sourrounded value is only one number
         # and what we have to do is just read a atm table and do not any interpolation
         fnames = str(atlas) + \
-                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
-                 domain_df["temp"].apply(lambda x: str(int(x) if not np.isnan(x) else '__NaN__')) + "_" + \
-                 domain_df["logg"].apply(lambda x: utils.numeric_logg_to_string(x))
+            domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
+            domain_df["temp"].apply(lambda x: str(int(x) if not np.isnan(x) else '__NaN__')) + "_" + \
+            domain_df["logg"].apply(lambda x: utils.numeric_logg_to_string(x))
         return [
             path if '__NaN__' not in path
             else None
