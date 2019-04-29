@@ -87,54 +87,59 @@ def get_relevant_ld_tables(passband, metallicity):
     return files
 
 
-def interpolate_on_ld_grid(passband, temperature, log_g, metallicity, author=None):
+def interpolate_on_ld_grid(temperature: list, log_g: list, metallicity: float, passband: dict or list,
+                           author: str=None):
     """
     get limb darkening coefficients based on van hamme tables for given temperatures, log_gs and metallicity
 
-    :param passband: str
+    :param passband: dict
     :param temperature: iterable float
     :param log_g: iterable float
     :param metallicity: float
     :param author: str
     :return: pandas.DataFrame
     """
+    if isinstance(passband, dict):
+        passband = passband.keys()
 
+    results = dict()
     logger.debug('interpolating ld coefficients')
-    relevant_tables = get_relevant_ld_tables(passband=passband, metallicity=metallicity)
-    csv_columns = config.LD_LAW_COLS_ORDER[config.LIMB_DARKENING_LAW]
-    all_columns = csv_columns + ["metallicity"]
-    df = pd.DataFrame(columns=all_columns)
+    for band in passband:
+        relevant_tables = get_relevant_ld_tables(passband=band, metallicity=metallicity)
+        csv_columns = config.LD_LAW_COLS_ORDER[config.LIMB_DARKENING_LAW]
+        all_columns = csv_columns + ["metallicity"]
+        df = pd.DataFrame(columns=all_columns)
 
-    for table in relevant_tables:
-        _df = get_van_hamme_ld_table_by_name(table)[csv_columns]
-        _df["metallicity"] = get_metallicity_from_ld_table_filename(table)
-        df = df.append(_df)
+        for table in relevant_tables:
+            _df = get_van_hamme_ld_table_by_name(table)[csv_columns]
+            _df["metallicity"] = get_metallicity_from_ld_table_filename(table)
+            df = df.append(_df)
 
-    xyz_domain = np.array([np.array(val) for val in df[config.LD_DOMAIN_COLS].to_records(index=False)]).tolist()
-    xyz_values = df[config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].to_records(index=False).tolist()
+        xyz_domain = np.array([np.array(val) for val in df[config.LD_DOMAIN_COLS].to_records(index=False)]).tolist()
+        xyz_values = df[config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].to_records(index=False).tolist()
 
-    uvw_domain = pd.DataFrame({
-        "temperature": temperature,
-        "gravity": log_g,
-        "metallicity": [metallicity] * len(temperature)
-    })[config.LD_DOMAIN_COLS].to_records(index=False).tolist()
+        uvw_domain = pd.DataFrame({
+            "temperature": temperature,
+            "gravity": log_g,
+            "metallicity": [metallicity] * len(temperature)
+        })[config.LD_DOMAIN_COLS].to_records(index=False).tolist()
 
-    xyz_domain = np.asarray([np.asarray(val) for val in xyz_domain])
-    uvw_domain = np.asarray([np.asarray(val) for val in uvw_domain])
-    xyz_values = np.asarray([np.asarray(val) for val in xyz_values])
+        xyz_domain = np.asarray([np.asarray(val) for val in xyz_domain])
+        uvw_domain = np.asarray([np.asarray(val) for val in uvw_domain])
+        xyz_values = np.asarray([np.asarray(val) for val in xyz_values])
 
-    uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
+        uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
 
-    result_df = pd.DataFrame({
-        "temperature": temperature,
-        "log_g": log_g,
-        "metallicity": [metallicity] * len(temperature),
-    })
+        result_df = pd.DataFrame({
+            "temperature": temperature,
+            "log_g": log_g,
+            "metallicity": [metallicity] * len(temperature),
+        })
 
-    for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
-        result_df[col] = vals
-
-    return result_df
+        for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
+            result_df[col] = vals
+        results[band] = result_df
+    return results
 
 
 def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None,
@@ -159,20 +164,18 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
     # if line_of_sight.ndim != 1 and normal_vector.ndim != line_of_sight.ndim:
     #     raise ValueError('`line_of_sight` should be either one vector or ther same amount of vectors as provided in'
     #                      ' radius vectors')
-
     if coefficients is None:
         raise ValueError('Limb darkening coefficients were not supplied.')
-    elif limb_darkening_law is None:
+    if limb_darkening_law is None:
         raise ValueError('Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, '
                          '`square_root`.')
-    elif limb_darkening_law in ['linear', 'cosine']:
+    if limb_darkening_law in ['linear', 'cosine']:
         if not np.isscalar(coefficients):
             raise ValueError('Only one scalar limb darkening coefficient is required for linear cosine law. You '
                              'used: {}'.format(coefficients))
-    elif limb_darkening_law in ['logarithmic', 'square_root']:
+    if limb_darkening_law in ['logarithmic', 'square_root']:
         if not np.shape(coefficients) == (2,):
-            raise ValueError('Invalid number of limb darkening coefficients. Expected 2, given: '
-                             '{}'.format(coefficients))
+            raise ValueError(f'Invalid number of limb darkening coefficients. Expected 2, given: {coefficients}')
 
     if cos_theta is None:
         cos_theta = np.sum(normal_vector * line_of_sight, axis=-1)
@@ -236,5 +239,5 @@ if __name__ == '__main__':
         3.11
     ]
 
-    interpolate_on_ld_grid(passband='Generic.Bessell.B', temperature=_temperature,
+    interpolate_on_ld_grid(passband={'Generic.Bessell.B': None}, temperature=_temperature,
                            log_g=_logg, metallicity=_metallicity)

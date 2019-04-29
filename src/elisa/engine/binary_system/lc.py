@@ -3,8 +3,8 @@ import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
 
-from elisa.conf.config import BINARY_COUNTERPARTS
-from elisa.engine import const, utils
+from elisa.conf import config
+from elisa.engine import const, utils, atm, ld
 from elisa.engine.binary_system import geo
 
 
@@ -22,7 +22,7 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
 
 
 def get_visible_projection(obj):
-    return  geo.plane_projection(
+    return geo.plane_projection(
         obj.points[
             list(set(obj.faces[obj.indices].flatten()))
         ], "yz"
@@ -39,7 +39,7 @@ def get_eclipse_boundary_path(hull):
 def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer):
     cover_component = 'secondary' if 0.0 < container.position.azimut < const.PI else 'primary'
     cover_object = getattr(container, cover_component)
-    undercover_object = getattr(container, BINARY_COUNTERPARTS[cover_component])
+    undercover_object = getattr(container, config.BINARY_COUNTERPARTS[cover_component])
     undercover_visible_point_indices = list(set(undercover_object.faces[undercover_object.indices].flatten()))
 
     cover_object_obs_visible_projection = get_visible_projection(cover_object)
@@ -81,7 +81,6 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer):
     visible_coverage = utils.poly_areas(cover_object.points[cover_object.faces[cover_object.indices]])
     cover_obj_coverage = geo.surface_area_coverage(len(cover_object.faces), cover_object.indices, visible_coverage)
     return {
-        "container": container,
         "cover": {
             "coverage": cover_obj_coverage,
             "visible": full_visible,
@@ -96,6 +95,50 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer):
     }
 
 
+def get_radiance(self, **kwargs):
+    # primary = atm.NearestAtm.radiance(
+    #     **dict(
+    #         temperature=self.primary.temperatures,
+    #         log_g=self.primary.log_g,
+    #         metallicity=self.primary.metallicity,
+    #         **kwargs
+    #     )
+    # )
+    #
+    # secondary = atm.NearestAtm.radiance(
+    #     **dict(
+    #         temperature=self.secondary.temperatures,
+    #         log_g=self.secondary.log_g,
+    #         metallicity=self.secondary.metallicity,
+    #         **kwargs
+    #     )
+    # )
+
+    import pickle
+    # pickle.dump(primary, open("primary.atm.pickle", "wb"))
+    # pickle.dump(secondary, open("secondary.atm.pickle", "wb"))
+
+    primary = pickle.load(open("primary.atm.pickle", "rb"))
+    secondary = pickle.load(open("secondary.atm.pickle", "rb"))
+    return primary, secondary
+
+
+def get_limbdarkening(self, **kwargs):
+    # x = [
+    #     ld.interpolate_on_ld_grid(
+    #         temperature=getattr(self, component).temperatures,
+    #         log_g=getattr(self, component).log_g,
+    #         metallicity=getattr(self, component).metallicity,
+    #         passband=kwargs["passband"]
+    #     ) for component in BINARY_COUNTERPARTS.keys()
+    # ]
+
+    import pickle
+    # pickle.dump(x[0], open("primary.ld.pickle", "wb"))
+    # pickle.dump(x[1], open("secondary.ld.pickle", "wb"))
+    return pickle.load(open("primary.ld.pickle", "rb")), pickle.load(open("secondary.ld.pickle", "rb"))
+
+
 def compute_circular_synchronous_lightcurve(self, **kwargs):
     # get orbital motion from kwargs
     # get eclipses
@@ -107,6 +150,24 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
     orbital_motion = kwargs.pop("positions")
     eclipses = geo.get_eclipse_boundaries(self, 1.0)
+
+    # initial_properties = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
+    # initial_properties.setup_position(geo.PositionContainer(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
+
+    # injected attributes
+    # setattr(initial_properties.primary, 'metallicity', self.primary.metallicity)
+    # setattr(initial_properties.secondary, 'metallicity', self.secondary.metallicity)
+
+    # get_radiance(initial_properties, **kwargs)
+    # get_limbdarkening(self, **kwargs)
+
+    # primary_normal_radiance, secondary_normal_radiance = get_radiance(initial_properties, **kwargs)
+    # primary_ld, secondary_ld = get_limbdarkening(initial_properties, **kwargs)
+
+    primary_normal_radiance, secondary_normal_radiance = get_radiance(None, **kwargs)
+    primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(None, **kwargs)
+    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+
     # system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
     # system_positions_container = system_positions_container.darkside_filter()
 
@@ -114,11 +175,36 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     # todo: rewrite it in the future
 
     # for container in system_positions_container:
-    #     pass
+    #     import pickle
+    #     pickle.dump(container, open("container.pickle", 'wb'))
+    #     exit()
 
     import pickle
     container = pickle.load(open("container.pickle", "rb"))
     coverage = compute_surface_coverage(container)
+
+    for band in kwargs["passband"].keys():
+        # optimize
+        p_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
+                              for n in container.primary.normals])
+
+        s_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
+                              for n in container.secondary.normals])
+
+        p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns],
+                                             limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                             cos_theta=p_cosines)
+
+        s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns],
+                                             limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                             cos_theta=s_cosines)
+
+        print(coverage)
+        # p_flux =
+        # ld.limb_darkening_factor()
+        # print(primary_ld_cfs[band])
+        pass
+
 
     exit()
 

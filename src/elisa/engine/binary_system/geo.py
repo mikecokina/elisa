@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from elisa.engine import const, utils
 from pypex.poly2d.polygon import Polygon
+from elisa.engine.binary_system import utils as bsutils
 
 
 def get_critical_inclination(binary, components_distance: float):
@@ -94,12 +95,15 @@ def to_png(x=None, y=None, x_label="y", y_label="z", c=None, fpath=None):
 
 
 class EasyObject(object):
-    def __init__(self, points, normals, indices, faces=None, coverage=None):
+    # fixme: why the hell is faces, temperatures and log_g == None???
+    def __init__(self, points, normals, indices, faces=None, temperatures=None, log_g=None, coverage=None):
         self._points = deepcopy(points)
         self._normals = deepcopy(normals)
         self.indices = deepcopy(indices)
         self.coverage = deepcopy(coverage)
         self._faces = deepcopy(faces)
+        self._log_g = deepcopy(log_g)
+        self._temperatures = deepcopy(temperatures)
 
     def serialize(self):
         return self.points, self.normals, self.indices, self.faces, self.coverage
@@ -129,7 +133,13 @@ class EasyObject(object):
     def faces(self):
         return self._faces
 
+    @property
+    def temperatures(self):
+        return self._temperatures
 
+    @property
+    def log_g(self):
+        return self._log_g
 
 
 class PositionContainer(object):
@@ -158,10 +168,10 @@ class SystemOrbitalPosition(object):
             yield single_position_container
 
     def do(self, pos):
-        easy_sys = self.init_data.copy()
-        easy_sys.setup_position(pos, self.inclination)
-        easy_sys.rotate()
-        return easy_sys
+        single_pos_sys = self.init_data.copy()
+        single_pos_sys.setup_position(pos, self.inclination)
+        single_pos_sys.rotate()
+        return single_pos_sys
 
     def init_positions(self):
         self.data = (self.do(pos) for pos in self.motion)
@@ -213,35 +223,12 @@ class SingleOrbitalPositionContainer(object):
 
     @staticmethod
     def setup_component(component):
-        points = component.points
-        normals = component.normals
-        faces = component.faces
-
-        points_index_map = np.array([(-1, i) for i in range(len(points))])
-        normals_index_map = np.array([(-1, i) for i in range(len(normals))])
-
-        if isinstance(component.spots, (dict,)):
-            for idx, spot in component.spots.items():
-                faces = np.concatenate((faces, spot.faces + len(points)), axis=0)
-                points = np.concatenate((points, spot.points), axis=0)
-                normals = np.concatenate((normals, spot.normals), axis=0)
-
-                p, n, = len(points_index_map), len(normals_index_map)
-
-                points_index_map = np.concatenate(
-                    (points_index_map,
-                     np.array([(idx, i) for i in range(p, p + len(spot.points))])),
-                    axis=0)
-                normals_index_map = np.concatenate(
-                    (normals_index_map,
-                     np.array([(idx, i) for i in range(n, n + len(spot.normals))])),
-                    axis=0)
-        return points, normals, faces, points_index_map, normals_index_map
+        return bsutils.get_flaten_properties(component)
 
     @primary.setter
     def primary(self, value):
-        points, normals, faces, points_index_map, normals_index_map = self.setup_component(value)
-        self._primary = EasyObject(points, normals, indices=None, faces=faces)
+        points, normals, faces, temp, log_g, points_index_map, normals_index_map = self.setup_component(value)
+        self._primary = EasyObject(points, normals, None, faces, temp, log_g)
         self.primary_map = dict(points=points_index_map, normals=normals_index_map)
 
     @property
@@ -250,8 +237,8 @@ class SingleOrbitalPositionContainer(object):
 
     @secondary.setter
     def secondary(self, value):
-        points, normals, faces, points_index_map, normals_index_map = self.setup_component(value)
-        self._secondary = EasyObject(points, normals, indices=None, faces=faces)
+        points, normals, faces, temp, log_g, points_index_map, normals_index_map = self.setup_component(value)
+        self._secondary = EasyObject(points, normals, None, faces, temp, log_g)
         self.secondary_map = dict(points=points_index_map, normals=normals_index_map)
 
     def set_indices(self, component, indices):
@@ -284,6 +271,10 @@ class SingleOrbitalPositionContainer(object):
         return self
 
     def eclipse_filter(self):
+        """
+        currently defined directly in lightcurve computaion function
+        :return:
+        """
         pass
 
 

@@ -123,7 +123,8 @@ class Observer(object):
                 positions=args,
                 passband=self.passband,
                 left_bandwidth=self.left_bandwidth,
-                right_bandwidth=self.right_bandwidth
+                right_bandwidth=self.right_bandwidth,
+                atlas="ck04"
             )
         )
 
