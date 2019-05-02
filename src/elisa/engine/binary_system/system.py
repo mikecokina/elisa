@@ -2160,6 +2160,7 @@ class BinarySystem(System):
         idx = np.arange(np.shape(phase)[0])
         return np.hstack((idx[:, np.newaxis], orbital_motion))
 
+    # todo: are you planning to use that?? no usages for now...
     def calculate_lines_of_sight(self, phase=None):
         """
         returns indices and positions of secondary component relative to primary component

@@ -268,7 +268,7 @@ class SingleOrbitalPositionContainer(object):
         for component in self.__COMPONENTS__:
             easyobject_instance = getattr(self, component)
             normals = getattr(easyobject_instance, "normals")
-            valid_indices = darkside_filter(sight_of_view=const.BINARY_SIGHT_OF_VIEW, normals=normals)
+            valid_indices = darkside_filter(sight_of_view=const.LINE_OF_SIGHT, normals=normals)
             self.set_indices(component=component, indices=valid_indices)
         return self
 

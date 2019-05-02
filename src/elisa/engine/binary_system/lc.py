@@ -17,7 +17,7 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
 
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to precission lose
     pypex_polys_surface_area = geo.pypex_poly_surface_area(pypex_intersection)
-    correction_cosine = (np.dot(const.BINARY_SIGHT_OF_VIEW, normal) / np.linalg.norm(normal) for normal in normals)
+    correction_cosine = (np.dot(const.LINE_OF_SIGHT, normal) / np.linalg.norm(normal) for normal in normals)
     return [a / b for a, b, in zip(pypex_polys_surface_area, correction_cosine)]
 
 
@@ -185,10 +185,10 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
     for band in kwargs["passband"].keys():
         # optimize
-        p_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
+        p_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
                               for n in container.primary.normals])
 
-        s_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
+        s_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
                               for n in container.secondary.normals])
 
         p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns],
