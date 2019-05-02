@@ -39,18 +39,20 @@ def get_eclipse_boundaries(binary, components_distance: float):
         return np.array([const.FULL_ARC, 0.0, 0.0, const.FULL_ARC])
 
 
-def darkside_filter(sight_of_view: np.array, normals: np.array):
+def darkside_filter(line_of_sight: np.array, normals: np.array):
     """
-    return indices for visible faces defined by given normals
+    return indices for visible faces defined by given normals, function assumes that `line_of_sight` and `normals` are
+    already normalized to one
 
-    :param sight_of_view: np.array
+    :param line_of_sight: np.array
     :param normals: np.array
     :return: np.array
     """
     # todo: resolve self shadowing in case of W UMa
-    valid = np.array([idx for idx, normal in enumerate(normals)
-                      if utils.cosine_similarity(sight_of_view, normal) > 0])
-    return valid
+    # calculating normals utilizing the fact that normals and line of sight vector are already normalized
+    cosines = utils.calculate_cos_theta(normals=normals, line_of_sight_vector=line_of_sight)
+    # recovering indeces of points on near-side (from the point of view of observer)
+    return np.arange(np.shape(normals)[0])[cosines > 0]
 
 
 def plane_projection(points, plane, keep_3d=False):

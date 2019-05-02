@@ -367,14 +367,14 @@ def find_surrounded(array, value):
 
 def calculate_cos_theta(normals, line_of_sight_vector):
     """
-    calculates cosine between two set of vectors
+    calculates cosine between two set of normalized vectors
     - matrix(N * 3), matrix(3) - cosine between each matrix(N * 3) and matrix(3)
     - matrix(N * 3), matrix(M * 3) - cosine between each combination of matrix(N * 3) and matrix(M * 3)
     :param normals:
     :param line_of_sight_vector:
     :return:
     """
-    return np.sum(np.multiply(normals, line_of_sight_vector[None, :])) if np.ndim(line_of_sight_vector) == 1 else \
+    return np.sum(np.multiply(normals, line_of_sight_vector[None, :]),axis=1) if np.ndim(line_of_sight_vector) == 1 else \
         np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]))
 
 
@@ -413,7 +413,16 @@ def convert_gravity_acceleration_array(colormap, units):
     return colormap
 
 
+# todo: name does not give sense, you just calculated cosine of the angle between vectors
 def cosine_similarity(a, b):
+    """
+    function calculates cosine of angle between vectors, use only in case that a, and b are not normalized, otherwise
+    function calculate_cos_theta
+
+    :param a: numpy array
+    :param b: numpy array
+    :return:
+    """
     return np.inner(a, b) / (norm(a) * norm(b))
 
 

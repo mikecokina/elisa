@@ -13,7 +13,7 @@ class TestPulsations(unittest.TestCase):
         """
         pulsations_metadata = [{'l': 0, 'm': 0, 'amplitude': 0 * u.K, 'frequency': 15 / u.d}]
         s = Star(mass=1.0 * u.solMass,
-                 t_eff= 0 * u.K,
+                 t_eff=0 * u.K,
                  gravity_darkening=0.32,
                  discretization_factor=1,
                  pulsations=pulsations_metadata
