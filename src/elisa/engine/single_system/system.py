@@ -197,7 +197,8 @@ class SingleSystem(System):
                         delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
                                                                 vector=utils.spherical_to_cartesian(
                                                                     default_spherical_vector),
-                                                                degrees=False)
+                                                                degrees=False,
+                                                                omega_normalized=True)
 
                         spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
@@ -655,7 +656,8 @@ class SingleSystem(System):
                         delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
                                                                 vector=utils.spherical_to_cartesian(
                                                                     default_spherical_vector),
-                                                                degrees=False)
+                                                                degrees=False,
+                                                                omega_normalized=True)
 
                         spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 

@@ -136,7 +136,7 @@ def cylindrical_to_cartesian(cylindrical_points):
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
-def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
+def arbitrary_rotation(theta, omega=None, vector=None, degrees=False, omega_normalized=False):
     """
     Rodrigues` Rotaion Formula
     function rotates `vector` around axis defined by `omega` vector by amount `theta`
@@ -145,9 +145,13 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
     :param omega: 3d list of floats; arbitrary vector to rotate around
     :param vector: 3d list of floats;
     :param degrees: bool; units of incoming vector
+    :param omega_normalized: if True, then in-function normalization of omega is not performed
     :return: np.array;
     """
-    omega = np.array(omega) / np.linalg.norm(np.array(omega))
+    # this action normalizes the same vector over and over again during spot calculation, which is unnecessary
+    if not omega_normalized:
+        omega = np.array(omega) / np.linalg.norm(np.array(omega))
+
     theta = theta if not degrees else np.radians(theta)
 
     matrix = np.arange(9, dtype=np.float).reshape((3, 3))
