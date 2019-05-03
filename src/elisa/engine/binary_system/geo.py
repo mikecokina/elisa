@@ -252,6 +252,10 @@ class SingleOrbitalPositionContainer(object):
         setattr(attr, 'coverage', coverage)
 
     def rotate(self):
+        """
+        what is this?
+        :return:
+        """
         for component in self.__COMPONENTS__:
             easyobject_instance = getattr(self, component)
             for prop in self.__PROPERTIES__:
@@ -265,6 +269,10 @@ class SingleOrbitalPositionContainer(object):
                 setattr(easyobject_instance, prop, prop_value)
 
     def darkside_filter(self):
+        """
+        function iterates over components and assigns indices of visible points to easyobject instance
+        :return:
+        """
         for component in self.__COMPONENTS__:
             easyobject_instance = getattr(self, component)
             normals = getattr(easyobject_instance, "normals")

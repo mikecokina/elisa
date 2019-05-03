@@ -157,53 +157,56 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False, omega_norm
     matrix = np.arange(9, dtype=np.float).reshape((3, 3))
 
     matrix[0, 0] = (np.cos(theta)) + (omega[0] ** 2 * (1. - np.cos(theta)))
-    matrix[0, 1] = (omega[0] * omega[1] * (1. - np.cos(theta))) - (omega[2] * np.sin(theta))
-    matrix[0, 2] = (omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
+    matrix[1, 0] = (omega[0] * omega[1] * (1. - np.cos(theta))) - (omega[2] * np.sin(theta))
+    matrix[2, 0] = (omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
 
-    matrix[1, 0] = (omega[2] * np.sin(theta)) + (omega[0] * omega[1] * (1. - np.cos(theta)))
+    matrix[0, 1] = (omega[2] * np.sin(theta)) + (omega[0] * omega[1] * (1. - np.cos(theta)))
     matrix[1, 1] = (np.cos(theta)) + (omega[1] ** 2 * (1. - np.cos(theta)))
-    matrix[1, 2] = (- omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
+    matrix[2, 1] = (- omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
 
-    matrix[2, 0] = (- omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
-    matrix[2, 1] = (omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
+    matrix[0, 2] = (- omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
+    matrix[1, 2] = (omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
     matrix[2, 2] = (np.cos(theta)) + (omega[2] ** 2 * (1. - np.cos(theta)))
 
     return np.matmul(vector, matrix)
 
 
 def axis_rotation(theta, vector, axis, inverse=False, degrees=False):
+    # TODO: check if true. If yes I propose refactor, name suggests that axis are rotated, not points
     """
+    rotation of `vector` around 'axis' by an amount `theta
 
-    :param theta:
-    :param vector:
-    :param axis:
-    :param inverse:
-    :param degrees:
-    :return:
+    :param theta: degree of rotation
+    :param vector: vector to rotate around
+    :param axis: axis of rotation `x`, `y`, or `z`
+    :param inverse: I HAVE NO CLUE...
+    :param degrees: if True value theta is assumed to be in degrees
+    :return: np.array - rotatet vector(s)
     """
     matrix = np.arange(9, dtype=np.float).reshape((3, 3))
     theta = theta if not degrees else np.radians(theta)
     vector = np.array(vector)
 
     if axis == "x":
-        matrix[0][0], matrix[0][1], matrix[0][2] = 1, 0, 0
-        matrix[1][0], matrix[1][1], matrix[1][2] = 0, np.cos(theta), - np.sin(theta)
-        matrix[2][0], matrix[2][1], matrix[2][2] = 0, np.sin(theta), np.cos(theta)
+        matrix[0][0], matrix[1][0], matrix[2][0] = 1, 0, 0
+        matrix[0][1], matrix[1][1], matrix[2][1] = 0, np.cos(theta), - np.sin(theta)
+        matrix[0][2], matrix[1][2], matrix[2][2] = 0, np.sin(theta), np.cos(theta)
         if inverse:
-            matrix[1][2], matrix[2][1] = np.sin(theta), - np.sin(theta)
+            matrix[2][1], matrix[1][2] = np.sin(theta), - np.sin(theta)
     if axis == "y":
-        matrix[0][0], matrix[0][1], matrix[0][2] = np.cos(theta), 0, np.sin(theta)
-        matrix[1][0], matrix[1][1], matrix[1][2] = 0, 1, 0
-        matrix[2][0], matrix[2][1], matrix[2][2] = - np.sin(theta), 0, np.cos(theta)
+        matrix[0][0], matrix[1][0], matrix[2][0] = np.cos(theta), 0, np.sin(theta)
+        matrix[0][1], matrix[1][1], matrix[2][1] = 0, 1, 0
+        matrix[0][2], matrix[1][2], matrix[2][2] = - np.sin(theta), 0, np.cos(theta)
         if inverse:
-            matrix[2][0], matrix[0][2] = + np.sin(theta), - np.sin(theta)
+            matrix[0][2], matrix[2][0] = + np.sin(theta), - np.sin(theta)
     if axis == "z":
-        matrix[0][0], matrix[0][1], matrix[0][2] = np.cos(theta), - np.sin(theta), 0
-        matrix[1][0], matrix[1][1], matrix[1][2] = np.sin(theta), np.cos(theta), 0
-        matrix[2][0], matrix[2][1], matrix[2][2] = 0, 0, 1
+        matrix[0][0], matrix[1][0], matrix[2][0] = np.cos(theta), - np.sin(theta), 0
+        matrix[0][1], matrix[1][1], matrix[2][1] = np.sin(theta), np.cos(theta), 0
+        matrix[0][2], matrix[1][2], matrix[2][2] = 0, 0, 1
         if inverse:
-            matrix[0][1], matrix[1][0] = + np.sin(theta), - np.sin(theta)
-    return np.matmul(matrix, vector.T).T
+            matrix[1][0], matrix[0][1] = + np.sin(theta), - np.sin(theta)
+    # return np.matmul(matrix, vector.T).T
+    return np.matmul(vector, matrix)
 
 
 def average_spacing_cgal(data=None, neighbours=6):
