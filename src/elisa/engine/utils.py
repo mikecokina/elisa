@@ -168,10 +168,19 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False, omega_norm
     matrix[2, 1] = (omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
     matrix[2, 2] = (np.cos(theta)) + (omega[2] ** 2 * (1. - np.cos(theta)))
 
-    return np.matmul(matrix, vector.T).T
+    return np.matmul(vector, matrix)
 
 
 def axis_rotation(theta, vector, axis, inverse=False, degrees=False):
+    """
+
+    :param theta:
+    :param vector:
+    :param axis:
+    :param inverse:
+    :param degrees:
+    :return:
+    """
     matrix = np.arange(9, dtype=np.float).reshape((3, 3))
     theta = theta if not degrees else np.radians(theta)
     vector = np.array(vector)
