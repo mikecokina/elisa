@@ -88,20 +88,24 @@ bs.build_surface_map(colormap='temperature', components_distance=components_min_
 # bs.build_surface_map(colormap='temperature', component='secondary', components_distance=components_min_distance)
 
 line_of_sight = np.array([1, 0, 0])
-bs.secondary.points = utils.axis_rotation(45, bs.secondary.points, 'z', False, True)
+projection = geo.plane_projection(bs.secondary.points, 'yz', keep_3d=True)
+indices_to_keep = [0, 1, 2]
+del indices_to_keep[0]
+print(indices_to_keep)
+print(projection)
 
-bs.plot.surface(
-        phase=0.4,
-        # components_to_plot='primary',
-        components_to_plot='secondary',
-        edges=True,
-        # normals=True,
-        # colormap='gravity_acceleration',
-        colormap='temperature',
-        # plot_axis=False,
-        # face_mask_primary=a,
-        # face_mask_secondary=b,
-        # inclination=crit_incl,
-        # azimuth=azim[0],
-        units='SI'
-        )
+# bs.plot.surface(
+#         phase=0.4,
+#         # components_to_plot='primary',
+#         components_to_plot='secondary',
+#         edges=True,
+#         # normals=True,
+#         # colormap='gravity_acceleration',
+#         colormap='temperature',
+#         # plot_axis=False,
+#         # face_mask_primary=a,
+#         # face_mask_secondary=b,
+#         # inclination=crit_incl,
+#         # azimuth=azim[0],
+#         units='SI'
+#         )

@@ -57,18 +57,21 @@ def darkside_filter(line_of_sight: np.array, normals: np.array):
 
 def plane_projection(points, plane, keep_3d=False):
     """
+    function projects 3D points into given plane
 
-    :param keep_3d:
+    :param keep_3d: if True, the dimensions of the array is kept the same, with given column equal to zero
     :param points:
-    :param plane: str; (xy, yz, zx)
+    :param plane: str; ('xy', 'yz', 'zx')
     :return:
     """
     rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
     if not keep_3d:
-        return np.array([l for i, l in enumerate(points.T) if i != rm_index]).T
-    in_plane = deepcopy(points).T
-    in_plane[rm_index] = 0.0
-    return in_plane.T
+        indices_to_keep = [0, 1, 2]
+        del indices_to_keep[0]
+        return points[:, indices_to_keep]
+    in_plane = deepcopy(points)
+    in_plane[:, rm_index] = 0.0
+    return in_plane
 
 
 def to_png(x=None, y=None, x_label="y", y_label="z", c=None, fpath=None):
