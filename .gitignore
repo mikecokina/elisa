@@ -5,6 +5,7 @@ virtualenv
 virtenv
 __pycache__
 my_main.py
+main.py
 postup
 sandbox.py
 limbdarkening.tar

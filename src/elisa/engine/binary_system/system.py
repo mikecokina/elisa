@@ -517,7 +517,8 @@ class BinarySystem(System):
                             delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
                                                                     vector=utils.spherical_to_cartesian(
                                                                         default_spherical_vector),
-                                                                    degrees=False)
+                                                                    degrees=False,
+                                                                    omega_normalized=True)
 
                             spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
@@ -2159,6 +2160,7 @@ class BinarySystem(System):
         idx = np.arange(np.shape(phase)[0])
         return np.hstack((idx[:, np.newaxis], orbital_motion))
 
+    # todo: are you planning to use that?? no usages for now...
     def calculate_lines_of_sight(self, phase=None):
         """
         returns indices and positions of secondary component relative to primary component

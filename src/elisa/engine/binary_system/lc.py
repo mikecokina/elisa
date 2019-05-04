@@ -19,7 +19,7 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     pypex_polys_surface_area = geo.pypex_poly_surface_area(pypex_intersection)
     inplane_points_3d = np.concatenate((points.T, [[0.0] * len(points)])).T
     inplane_surface_area = utils.triangle_areas(triangles=faces, points=inplane_points_3d)
-    correction_cosine = (np.dot(const.BINARY_SIGHT_OF_VIEW, normal) / np.linalg.norm(normal) for normal in normals)
+    correction_cosine = (np.dot(const.LINE_OF_SIGHT, normal) / np.linalg.norm(normal) for normal in normals)
     # todo: profile case when generator will be evaluted first, then substracted from inplane_surface area instead of
     # todo: this
     return [(c - a) / b for a, b, c in zip(pypex_polys_surface_area, correction_cosine, inplane_surface_area)]
@@ -195,10 +195,10 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
         coverage = compute_surface_coverage(container)
         for band in kwargs["passband"].keys():
             # optimize
-            p_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
+            p_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
                                   for n in container.primary.normals])
 
-            s_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
+            s_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
                                   for n in container.secondary.normals])
 
             # fixme: do something with this fucking zero indexing

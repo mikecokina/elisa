@@ -39,34 +39,39 @@ def get_eclipse_boundaries(binary, components_distance: float):
         return np.array([const.FULL_ARC, 0.0, 0.0, const.FULL_ARC])
 
 
-def darkside_filter(sight_of_view: np.array, normals: np.array):
+def darkside_filter(line_of_sight: np.array, normals: np.array):
     """
-    return indices for visible faces defined by given normals
+    return indices for visible faces defined by given normals, function assumes that `line_of_sight` and `normals` are
+    already normalized to one
 
-    :param sight_of_view: np.array
+    :param line_of_sight: np.array
     :param normals: np.array
     :return: np.array
     """
     # todo: resolve self shadowing in case of W UMa
-    valid = np.array([idx for idx, normal in enumerate(normals)
-                      if utils.cosine_similarity(sight_of_view, normal) > 0])
-    return valid
+    # calculating normals utilizing the fact that normals and line of sight vector are already normalized
+    cosines = utils.calculate_cos_theta(normals=normals, line_of_sight_vector=line_of_sight)
+    # recovering indeces of points on near-side (from the point of view of observer)
+    return np.arange(np.shape(normals)[0])[cosines > 0]
 
 
 def plane_projection(points, plane, keep_3d=False):
     """
+    function projects 3D points into given plane
 
-    :param keep_3d:
+    :param keep_3d: if True, the dimensions of the array is kept the same, with given column equal to zero
     :param points:
-    :param plane: str; (xy, yz, zx)
+    :param plane: str; ('xy', 'yz', 'zx')
     :return:
     """
     rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
     if not keep_3d:
-        return np.array([l for i, l in enumerate(points.T) if i != rm_index]).T
-    in_plane = deepcopy(points).T
-    in_plane[rm_index] = 0.0
-    return in_plane.T
+        indices_to_keep = [0, 1, 2]
+        del indices_to_keep[0]
+        return points[:, indices_to_keep]
+    in_plane = deepcopy(points)
+    in_plane[:, rm_index] = 0.0
+    return in_plane
 
 
 def to_png(x=None, y=None, x_label="y", y_label="z", c=None, fpath=None):
@@ -251,6 +256,10 @@ class SingleOrbitalPositionContainer(object):
         setattr(attr, 'coverage', coverage)
 
     def rotate(self):
+        """
+        what is this?
+        :return:
+        """
         for component in self.__COMPONENTS__:
             easyobject_instance = getattr(self, component)
             for prop in self.__PROPERTIES__:
@@ -264,10 +273,14 @@ class SingleOrbitalPositionContainer(object):
                 setattr(easyobject_instance, prop, prop_value)
 
     def darkside_filter(self):
+        """
+        function iterates over components and assigns indices of visible points to easyobject instance
+        :return:
+        """
         for component in self.__COMPONENTS__:
             easyobject_instance = getattr(self, component)
             normals = getattr(easyobject_instance, "normals")
-            valid_indices = darkside_filter(sight_of_view=const.BINARY_SIGHT_OF_VIEW, normals=normals)
+            valid_indices = darkside_filter(line_of_sight=const.LINE_OF_SIGHT, normals=normals)
             self.set_indices(component=component, indices=valid_indices)
         return self
 

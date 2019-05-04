@@ -136,7 +136,7 @@ def cylindrical_to_cartesian(cylindrical_points):
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
-def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
+def arbitrary_rotation(theta, omega=None, vector=None, degrees=False, omega_normalized=False):
     """
     Rodrigues` Rotaion Formula
     function rotates `vector` around axis defined by `omega` vector by amount `theta`
@@ -145,52 +145,68 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False):
     :param omega: 3d list of floats; arbitrary vector to rotate around
     :param vector: 3d list of floats;
     :param degrees: bool; units of incoming vector
+    :param omega_normalized: if True, then in-function normalization of omega is not performed
     :return: np.array;
     """
-    omega = np.array(omega) / np.linalg.norm(np.array(omega))
+    # this action normalizes the same vector over and over again during spot calculation, which is unnecessary
+    if not omega_normalized:
+        omega = np.array(omega) / np.linalg.norm(np.array(omega))
+
     theta = theta if not degrees else np.radians(theta)
 
     matrix = np.arange(9, dtype=np.float).reshape((3, 3))
 
     matrix[0, 0] = (np.cos(theta)) + (omega[0] ** 2 * (1. - np.cos(theta)))
-    matrix[0, 1] = (omega[0] * omega[1] * (1. - np.cos(theta))) - (omega[2] * np.sin(theta))
-    matrix[0, 2] = (omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
+    matrix[1, 0] = (omega[0] * omega[1] * (1. - np.cos(theta))) - (omega[2] * np.sin(theta))
+    matrix[2, 0] = (omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
 
-    matrix[1, 0] = (omega[2] * np.sin(theta)) + (omega[0] * omega[1] * (1. - np.cos(theta)))
+    matrix[0, 1] = (omega[2] * np.sin(theta)) + (omega[0] * omega[1] * (1. - np.cos(theta)))
     matrix[1, 1] = (np.cos(theta)) + (omega[1] ** 2 * (1. - np.cos(theta)))
-    matrix[1, 2] = (- omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
+    matrix[2, 1] = (- omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
 
-    matrix[2, 0] = (- omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
-    matrix[2, 1] = (omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
+    matrix[0, 2] = (- omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
+    matrix[1, 2] = (omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
     matrix[2, 2] = (np.cos(theta)) + (omega[2] ** 2 * (1. - np.cos(theta)))
 
-    return np.matmul(matrix, vector.T).T
+    return np.matmul(vector, matrix)
 
 
 def axis_rotation(theta, vector, axis, inverse=False, degrees=False):
+    # TODO: check if true. If yes I propose refactor, name suggests that axis are rotated, not points
+    """
+    rotation of `vector` around 'axis' by an amount `theta
+
+    :param theta: degree of rotation
+    :param vector: vector to rotate around
+    :param axis: axis of rotation `x`, `y`, or `z`
+    :param inverse: I HAVE NO CLUE...
+    :param degrees: if True value theta is assumed to be in degrees
+    :return: np.array - rotatet vector(s)
+    """
     matrix = np.arange(9, dtype=np.float).reshape((3, 3))
     theta = theta if not degrees else np.radians(theta)
     vector = np.array(vector)
 
     if axis == "x":
-        matrix[0][0], matrix[0][1], matrix[0][2] = 1, 0, 0
-        matrix[1][0], matrix[1][1], matrix[1][2] = 0, np.cos(theta), - np.sin(theta)
-        matrix[2][0], matrix[2][1], matrix[2][2] = 0, np.sin(theta), np.cos(theta)
+        matrix[0][0], matrix[1][0], matrix[2][0] = 1, 0, 0
+        matrix[0][1], matrix[1][1], matrix[2][1] = 0, np.cos(theta), - np.sin(theta)
+        matrix[0][2], matrix[1][2], matrix[2][2] = 0, np.sin(theta), np.cos(theta)
         if inverse:
-            matrix[1][2], matrix[2][1] = np.sin(theta), - np.sin(theta)
+            matrix[2][1], matrix[1][2] = np.sin(theta), - np.sin(theta)
     if axis == "y":
-        matrix[0][0], matrix[0][1], matrix[0][2] = np.cos(theta), 0, np.sin(theta)
-        matrix[1][0], matrix[1][1], matrix[1][2] = 0, 1, 0
-        matrix[2][0], matrix[2][1], matrix[2][2] = - np.sin(theta), 0, np.cos(theta)
+        matrix[0][0], matrix[1][0], matrix[2][0] = np.cos(theta), 0, np.sin(theta)
+        matrix[0][1], matrix[1][1], matrix[2][1] = 0, 1, 0
+        matrix[0][2], matrix[1][2], matrix[2][2] = - np.sin(theta), 0, np.cos(theta)
         if inverse:
-            matrix[2][0], matrix[0][2] = + np.sin(theta), - np.sin(theta)
+            matrix[0][2], matrix[2][0] = + np.sin(theta), - np.sin(theta)
     if axis == "z":
-        matrix[0][0], matrix[0][1], matrix[0][2] = np.cos(theta), - np.sin(theta), 0
-        matrix[1][0], matrix[1][1], matrix[1][2] = np.sin(theta), np.cos(theta), 0
-        matrix[2][0], matrix[2][1], matrix[2][2] = 0, 0, 1
+        matrix[0][0], matrix[1][0], matrix[2][0] = np.cos(theta), - np.sin(theta), 0
+        matrix[0][1], matrix[1][1], matrix[2][1] = np.sin(theta), np.cos(theta), 0
+        matrix[0][2], matrix[1][2], matrix[2][2] = 0, 0, 1
         if inverse:
-            matrix[0][1], matrix[1][0] = + np.sin(theta), - np.sin(theta)
-    return np.matmul(matrix, vector.T).T
+            matrix[1][0], matrix[0][1] = + np.sin(theta), - np.sin(theta)
+    # return np.matmul(matrix, vector.T).T
+    return np.matmul(vector, matrix)
 
 
 def average_spacing_cgal(data=None, neighbours=6):
@@ -367,14 +383,14 @@ def find_surrounded(array, value):
 
 def calculate_cos_theta(normals, line_of_sight_vector):
     """
-    calculates cosine between two set of vectors
+    calculates cosine between two set of normalized vectors
     - matrix(N * 3), matrix(3) - cosine between each matrix(N * 3) and matrix(3)
     - matrix(N * 3), matrix(M * 3) - cosine between each combination of matrix(N * 3) and matrix(M * 3)
     :param normals:
     :param line_of_sight_vector:
     :return:
     """
-    return np.sum(np.multiply(normals, line_of_sight_vector[None, :])) if np.ndim(line_of_sight_vector) == 1 else \
+    return np.sum(np.multiply(normals, line_of_sight_vector[None, :]),axis=1) if np.ndim(line_of_sight_vector) == 1 else \
         np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]))
 
 
@@ -413,7 +429,16 @@ def convert_gravity_acceleration_array(colormap, units):
     return colormap
 
 
+# todo: name does not give sense, you just calculated cosine of the angle between vectors
 def cosine_similarity(a, b):
+    """
+    function calculates cosine of angle between vectors, use only in case that a, and b are not normalized, otherwise
+    function calculate_cos_theta
+
+    :param a: numpy array
+    :param b: numpy array
+    :return:
+    """
     return np.inner(a, b) / (norm(a) * norm(b))
 
 
