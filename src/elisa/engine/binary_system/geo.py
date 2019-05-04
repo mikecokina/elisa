@@ -198,6 +198,7 @@ class SingleOrbitalPositionContainer(object):
     __PROPERTIES__ = ["points", "normals"]
 
     def __init__(self, primary, secondary):
+        _primary, _secondary = primary, secondary
         self._primary = None
         self._secondary = None
         self.primary_map = dict()
@@ -205,8 +206,8 @@ class SingleOrbitalPositionContainer(object):
         self.position = None
         self.inclination = None
 
-        setattr(self, 'primary', primary)
-        setattr(self, 'secondary', secondary)
+        for component in self.__COMPONENTS__:
+            setattr(self, component[1:], locals()[component])
 
     def setup_position(self, position: PositionContainer, inclination: float):
         self.position = position

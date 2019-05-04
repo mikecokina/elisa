@@ -137,6 +137,9 @@ def interpolate_on_ld_grid(temperature: list, log_g: list, metallicity: float, p
         })
 
         for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
+            if np.isin(np.nan, vals):
+                raise ValueError("Limb darkening interpolation lead to np.nan/None value. "
+                                 "It might be caused by definiton of inphysical object on input.")
             result_df[col] = vals
         results[band] = result_df
     return results
@@ -169,17 +172,20 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
     if limb_darkening_law is None:
         raise ValueError('Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, '
                          '`square_root`.')
-    if limb_darkening_law in ['linear', 'cosine']:
-        if not np.isscalar(coefficients):
-            raise ValueError('Only one scalar limb darkening coefficient is required for linear cosine law. You '
-                             'used: {}'.format(coefficients))
-    if limb_darkening_law in ['logarithmic', 'square_root']:
-        if not np.shape(coefficients) == (2,):
-            raise ValueError(f'Invalid number of limb darkening coefficients. Expected 2, given: {coefficients}')
+
+    # fixme: fix following commented code, test o raise makes no sense; coefficientSSSSS should be scallar? wtf?
+    # if limb_darkening_law in ['linear', 'cosine']:
+    #     if not np.isscalar(coefficients):
+    #         raise ValueError('Only one scalar limb darkening coefficient is required for linear cosine law. You '
+    #                          'used: {}'.format(coefficients))
+    # if limb_darkening_law in ['logarithmic', 'square_root']:
+    #     if not np.shape(coefficients) == (2,):
+    #         raise ValueError(f'Invalid number of limb darkening coefficients. Expected 2, given: {coefficients}')
 
     if cos_theta is None:
         cos_theta = np.sum(normal_vector * line_of_sight, axis=-1)
 
+    # fixme: force order of coefficients; what is order now? x then y or y then x??? what index 0 or 1 means???
     if limb_darkening_law in ['linear', 'cosine']:
         return 1 - coefficients + coefficients * cos_theta
     elif limb_darkening_law == 'logarithmic':

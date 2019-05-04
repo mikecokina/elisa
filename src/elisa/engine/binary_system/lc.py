@@ -17,8 +17,12 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
 
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to precission lose
     pypex_polys_surface_area = geo.pypex_poly_surface_area(pypex_intersection)
+    inplane_points_3d = np.concatenate((points.T, [[0.0] * len(points)])).T
+    inplane_surface_area = utils.triangle_areas(triangles=faces, points=inplane_points_3d)
     correction_cosine = (np.dot(const.BINARY_SIGHT_OF_VIEW, normal) / np.linalg.norm(normal) for normal in normals)
-    return [a / b for a, b, in zip(pypex_polys_surface_area, correction_cosine)]
+    # todo: profile case when generator will be evaluted first, then substracted from inplane_surface area instead of
+    # todo: this
+    return [(c - a) / b for a, b, c in zip(pypex_polys_surface_area, correction_cosine, inplane_surface_area)]
 
 
 def get_visible_projection(obj):
@@ -80,63 +84,69 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer):
     # process full visible faces of cover object
     visible_coverage = utils.poly_areas(cover_object.points[cover_object.faces[cover_object.indices]])
     cover_obj_coverage = geo.surface_area_coverage(len(cover_object.faces), cover_object.indices, visible_coverage)
-    return {
-        "cover": {
-            "coverage": cover_obj_coverage,
-            "visible": full_visible,
-            "partial_visible": partial_visible,
-            "invisible": invisible
-        },
-        "undercover": {
 
-            "coverage": undercover_obj_coverage,
-            # add
-        }
+    return {
+        cover_component: cover_obj_coverage,
+        config.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
     }
+
+    # return {
+    #     "cover": {
+    #         "coverage": cover_obj_coverage,
+    #         "visible": full_visible,
+    #         "partial_visible": partial_visible,
+    #         "invisible": invisible
+    #     },
+    #     "undercover": {
+    #
+    #         "coverage": undercover_obj_coverage,
+    #         # add
+    #     }
+    # }
 
 
 def get_radiance(self, **kwargs):
-    # primary = atm.NearestAtm.radiance(
-    #     **dict(
-    #         temperature=self.primary.temperatures,
-    #         log_g=self.primary.log_g,
-    #         metallicity=self.primary.metallicity,
-    #         **kwargs
-    #     )
-    # )
-    #
-    # secondary = atm.NearestAtm.radiance(
-    #     **dict(
-    #         temperature=self.secondary.temperatures,
-    #         log_g=self.secondary.log_g,
-    #         metallicity=self.secondary.metallicity,
-    #         **kwargs
-    #     )
-    # )
+    primary = atm.NearestAtm.radiance(
+        **dict(
+            temperature=self.primary.temperatures,
+            log_g=self.primary.log_g,
+            metallicity=self.primary.metallicity,
+            **kwargs
+        )
+    )
 
-    import pickle
+    secondary = atm.NearestAtm.radiance(
+        **dict(
+            temperature=self.secondary.temperatures,
+            log_g=self.secondary.log_g,
+            metallicity=self.secondary.metallicity,
+            **kwargs
+        )
+    )
+
+    # import pickle
     # pickle.dump(primary, open("primary.atm.pickle", "wb"))
     # pickle.dump(secondary, open("secondary.atm.pickle", "wb"))
 
-    primary = pickle.load(open("primary.atm.pickle", "rb"))
-    secondary = pickle.load(open("secondary.atm.pickle", "rb"))
+    # primary = pickle.load(open("primary.atm.pickle", "rb"))
+    # secondary = pickle.load(open("secondary.atm.pickle", "rb"))
     return primary, secondary
 
 
 def get_limbdarkening(self, **kwargs):
-    # x = [
-    #     ld.interpolate_on_ld_grid(
-    #         temperature=getattr(self, component).temperatures,
-    #         log_g=getattr(self, component).log_g,
-    #         metallicity=getattr(self, component).metallicity,
-    #         passband=kwargs["passband"]
-    #     ) for component in BINARY_COUNTERPARTS.keys()
-    # ]
+    return [
+        ld.interpolate_on_ld_grid(
+            temperature=getattr(self, component).temperatures,
+            log_g=getattr(self, component).log_g,
+            metallicity=getattr(self, component).metallicity,
+            passband=kwargs["passband"]
+        ) for component in config.BINARY_COUNTERPARTS.keys()
+    ]
 
-    import pickle
+    # import pickle
     # pickle.dump(x[0], open("primary.ld.pickle", "wb"))
     # pickle.dump(x[1], open("secondary.ld.pickle", "wb"))
-    return pickle.load(open("primary.ld.pickle", "rb")), pickle.load(open("secondary.ld.pickle", "rb"))
+    # return pickle.load(open("primary.ld.pickle", "rb")), pickle.load(open("secondary.ld.pickle", "rb"))
 
 
 def compute_circular_synchronous_lightcurve(self, **kwargs):
@@ -151,12 +161,12 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     orbital_motion = kwargs.pop("positions")
     eclipses = geo.get_eclipse_boundaries(self, 1.0)
 
-    # initial_properties = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
-    # initial_properties.setup_position(geo.PositionContainer(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
+    initial_properties = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
+    initial_properties.setup_position(geo.PositionContainer(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
 
     # injected attributes
-    # setattr(initial_properties.primary, 'metallicity', self.primary.metallicity)
-    # setattr(initial_properties.secondary, 'metallicity', self.secondary.metallicity)
+    setattr(initial_properties.primary, 'metallicity', self.primary.metallicity)
+    setattr(initial_properties.secondary, 'metallicity', self.secondary.metallicity)
 
     # get_radiance(initial_properties, **kwargs)
     # get_limbdarkening(self, **kwargs)
@@ -164,13 +174,12 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     # primary_normal_radiance, secondary_normal_radiance = get_radiance(initial_properties, **kwargs)
     # primary_ld, secondary_ld = get_limbdarkening(initial_properties, **kwargs)
 
-    primary_normal_radiance, secondary_normal_radiance = get_radiance(None, **kwargs)
-    primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(None, **kwargs)
+    primary_normal_radiance, secondary_normal_radiance = get_radiance(initial_properties, **kwargs)
+    primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(initial_properties, **kwargs)
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
-    # system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
-    # system_positions_container = system_positions_container.darkside_filter()
-
+    system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
+    system_positions_container = system_positions_container.darkside_filter()
     # todo: it makes more sense to do eclipse filter in same way as darkside filter
     # todo: rewrite it in the future
 
@@ -179,32 +188,34 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     #     pickle.dump(container, open("container.pickle", 'wb'))
     #     exit()
 
-    import pickle
-    container = pickle.load(open("container.pickle", "rb"))
-    coverage = compute_surface_coverage(container)
+    # import pickle
+    curves = {key: list() for key in kwargs["passband"].keys()}
+    for container in system_positions_container:
+        # container = pickle.load(open("container.pickle", "rb"))
+        coverage = compute_surface_coverage(container)
+        for band in kwargs["passband"].keys():
+            # optimize
+            p_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
+                                  for n in container.primary.normals])
 
-    for band in kwargs["passband"].keys():
-        # optimize
-        p_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
-                              for n in container.primary.normals])
+            s_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
+                                  for n in container.secondary.normals])
 
-        s_cosines = np.array([np.dot(n, const.BINARY_SIGHT_OF_VIEW) / np.linalg.norm(n)
-                              for n in container.secondary.normals])
+            # fixme: do something with this fucking zero indexing
+            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                 cos_theta=p_cosines)[0]
 
-        p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns],
-                                             limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                             cos_theta=p_cosines)
+            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                 cos_theta=s_cosines)[0]
+            p_band_normal_radiance = np.array([rad.intensity for rad in primary_normal_radiance[band]])
+            s_band_normal_radiance = np.array([rad.intensity for rad in secondary_normal_radiance[band]])
 
-        s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns],
-                                             limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                             cos_theta=s_cosines)
-
-        print(coverage)
-        # p_flux =
-        # ld.limb_darkening_factor()
-        # print(primary_ld_cfs[band])
-        pass
-
+            p_flux = sum(p_band_normal_radiance * p_cosines * coverage["primary"] * p_ld_cors)
+            s_flux = sum(s_band_normal_radiance * s_cosines * coverage["secondary"] * s_ld_cors)
+            flux = p_flux + s_flux
+            curves[band].append(flux)
 
     exit()
 

@@ -28,8 +28,7 @@ def build_surface_gravity(self, component: str or list=None, components_distance
             self.calculate_polar_potential_gradient_magnitude(_component, components_distance)
         gravity_scalling_factor = polar_gravity / component_instance.polar_potential_gradient_magnitude
 
-        self._logger.debug('computing potential gradient magnitudes distribution '
-                           'of {} component'.format(_component))
+        self._logger.debug(f'computing potential gradient magnitudes distribution of {_component} component')
         component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
             component=_component, components_distance=components_distance)
 
@@ -38,10 +37,9 @@ def build_surface_gravity(self, component: str or list=None, components_distance
 
         if component_instance.spots:
             for spot_index, spot in component_instance.spots.items():
-                self._logger.debug('calculating surface SI unit gravity of {} '
-                                   'component / {} spot'.format(_component, spot_index))
-                self._logger.debug('calculating distribution of potential gradient '
-                                   'magnitudes of spot index: {} / {} component'.format(spot_index, _component))
+                self._logger.debug(f'calculating surface SI unit gravity of {_component} component / {spot_index} spot')
+                self._logger.debug(f'calculating distribution of potential gradient '
+                                   f'magnitudes of spot index: {spot_index} / {_component} component')
                 spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
                     component=_component,
                     components_distance=components_distance,

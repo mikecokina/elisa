@@ -26,10 +26,9 @@ class SingleSystem(System):
 
         # get logger
         self._logger = logger.getLogger(name=SingleSystem.__name__, suppress=suppress_logger)
-        self._logger.info("Initialising object {}".format(SingleSystem.__name__))
+        self._logger.info(f"initialising object {SingleSystem.__name__}")
 
-        self._logger.debug("Setting property components "
-                           "of class instance {}".format(SingleSystem.__name__))
+        self._logger.debug(f"setting property components of class instance {SingleSystem.__name__}")
 
         self.plot = Plot(self)
 
@@ -46,8 +45,7 @@ class SingleSystem(System):
         utils.check_missing_kwargs(SingleSystem.KWARGS, kwargs, instance_of=SingleSystem)
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
         for kwarg in kwargs:
-            self._logger.debug("Setting property {} "
-                               "of class instance {} to {}".format(kwarg, SingleSystem.__name__, kwargs[kwarg]))
+            self._logger.debug(f"setting property {kwarg} of class instance {SingleSystem.__name__} to {kwargs[kwarg]}")
             setattr(self, kwarg, kwargs[kwarg])
 
         # check if star object doesn't contain any meaningless parameters
@@ -58,8 +56,8 @@ class SingleSystem(System):
         for parameter in meaningless_params:
             if meaningless_params[parameter] is not None:
                 meaningless_params[parameter] = None
-                self._logger.info('Parameter `{0}` is meaningless in case of single star system.\n '
-                                  'Setting parameter `{0}` value to None'.format(parameter))
+                self._logger.info(f'parameter `{parameter}` is meaningless in case of single star system\n '
+                                  f'setting parameter `{parameter}` value to None')
 
         # calculation of dependent parameters
         self._angular_velocity = static.angular_velocity(self.rotation_period)
@@ -71,12 +69,12 @@ class SingleSystem(System):
         auxiliary function for calculation of important radii
         :return:
         """
-        self._logger.debug('Calculating polar radius.')
+        self._logger.debug('calculating polar radius')
         self.star._polar_radius = self.calculate_polar_radius()
-        self._logger.debug('Calculating surface potential.')
+        self._logger.debug('calculating surface potential')
         args = 0,
         self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
-        self._logger.debug('Calculating equatorial radius.')
+        self._logger.debug('calculating equatorial radius')
         self.star._equatorial_radius = self.calculate_equatorial_radius()
 
     def init(self):
@@ -85,7 +83,7 @@ class SingleSystem(System):
 
         :return:
         """
-        self._logger.info('Reinitialising class instance {}'.format(SingleSystem.__name__))
+        self._logger.info(f'reinitialising class instance {SingleSystem.__name__}')
         self.__init__(**self.kwargs_serializer())
 
     @property
@@ -109,11 +107,10 @@ class SingleSystem(System):
         elif isinstance(rotation_period, (int, np.int, float, np.float)):
             self._rotation_period = np.float64(rotation_period)
         else:
-            raise TypeError('Input of variable `rotation_period` is not (np.)int or (np.)float '
+            raise TypeError('input of variable `rotation_period` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
         if self._rotation_period <= 0:
-            raise ValueError('Period of rotation must be non-zero positive value. Your value: {0}.'
-                             .format(rotation_period))
+            raise ValueError(f'period of rotation must be non-zero positive value. Your value: {rotation_period}')
 
     def _evaluate_spots(self):
         """
