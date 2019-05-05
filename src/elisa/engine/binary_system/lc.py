@@ -106,7 +106,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer):
 
 
 def get_radiance(self, **kwargs):
-    primary = atm.NearestAtm.radiance(
+    primary = atm.NaiveInterpolatedAtm.radiance(
         **dict(
             temperature=self.primary.temperatures,
             log_g=self.primary.log_g,
@@ -115,7 +115,7 @@ def get_radiance(self, **kwargs):
         )
     )
 
-    secondary = atm.NearestAtm.radiance(
+    secondary = atm.NaiveInterpolatedAtm.radiance(
         **dict(
             temperature=self.secondary.temperatures,
             log_g=self.secondary.log_g,

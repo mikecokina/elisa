@@ -23,7 +23,7 @@ class TestNaiveInterpolation(unittest.TestCase):
 
     def test_atm_files_ck04(self):
         files = NaiveInterpolatedAtm.atm_files(temperature=self.temperatures,
-                                               logg=self.logg,
+                                               log_g=self.logg,
                                                metallicity=self.metallicity,
                                                atlas="ck04")
 
@@ -36,7 +36,7 @@ class TestNaiveInterpolation(unittest.TestCase):
 
     def test_atm_files_k93(self):
         # files = NaiveInterpolatedAtm.atm_files(temperature=self.temperatures,
-        #                                        logg=self.logg,
+        #                                        log_g=self.logg,
         #                                        metallicity=self.metallicity,
         #                                        atlas="k93")
 
@@ -45,7 +45,7 @@ class TestNaiveInterpolation(unittest.TestCase):
 
     def test_atm_tables_ck04(self):
         fpaths = NaiveInterpolatedAtm.atm_files(temperature=self.temperatures,
-                                                logg=self.logg,
+                                                log_g=self.logg,
                                                 metallicity=self.metallicity,
                                                 atlas="ck04")
 
@@ -60,6 +60,28 @@ class TestNaiveInterpolation(unittest.TestCase):
         for t, container in zip(self.temperatures, containers[int(len(containers) / 2):]):
             self.assertTrue(t <= container.temperature)
 
+    def test_atm_tables_ck04_multiple(self):
+        temperatures = [5325.0, 10001, 25320.25, 4500, 4500, 5325.0]
+        logg = [3.1, 4.2, 4.5, 5.0, 5.0, 3.1]
+        metallicity = 0.1
+
+        fpaths = NaiveInterpolatedAtm.atm_files(temperature=temperatures,
+                                                log_g=logg,
+                                                metallicity=metallicity,
+                                                atlas="ck04")
+        containers = atm.read_atm_tables(fpaths=fpaths)
+
+        self.assertTrue(len(temperatures * 2) == len(containers))
+        self.assertTrue(containers[3] is None)
+        self.assertTrue(containers[4] is None)
+
+        for t, container in zip(temperatures, containers[:int(len(containers) / 2)]):
+            if container is not None:
+                self.assertTrue(t > container.temperature)
+
+        for t, container in zip(temperatures, containers[int(len(containers) / 2):]):
+            self.assertTrue(t <= container.temperature)
+
     def test_strip_atm_container_by_bandwidth(self):
         model = pd.DataFrame({
             config.ATM_MODEL_DATAFRAME_FLUX: np.arange(0, 10, 1),
@@ -68,7 +90,7 @@ class TestNaiveInterpolation(unittest.TestCase):
         container = AtmDataContainer(
             model=model,
             temperature=3600.0,
-            logg=4.3,
+            log_g=4.3,
             metallicity=0.0
         )
 
@@ -95,13 +117,13 @@ class TestNaiveInterpolation(unittest.TestCase):
         top_atm = [AtmDataContainer(
             model=model,
             temperature=t,
-            logg=4.3,
-            metallicity=0.0
+            log_g=4.3,
+            metallicity=0.0,
         ) for t in top_temp]
         bottom_atm = [AtmDataContainer(
             model=model,
             temperature=t,
-            logg=4.3,
+            log_g=4.3,
             metallicity=0.0
         ) if t is not None else None for t in bottom_temp]
 
@@ -125,14 +147,14 @@ class TestNaiveInterpolation(unittest.TestCase):
             AtmDataContainer(
                 model=model_3500,
                 temperature=3500.0,
-                logg=0.0,
+                log_g=0.0,
                 metallicity=0.0
             )]
 
         atm_container = NaiveInterpolatedAtm.interpolate(
             atm_3500,
             temperature=temperature,
-            logg=[0.0],
+            log_g=[0.0],
             metallicity=0.0,
             left_bandwidth=2,
             right_bandwidth=5
@@ -157,20 +179,20 @@ class TestNaiveInterpolation(unittest.TestCase):
             AtmDataContainer(
                 model=model_5250,
                 temperature=5250,
-                logg=0.0,
+                log_g=0.0,
                 metallicity=0.0
             ),
             AtmDataContainer(
                 model=model_5500,
                 temperature=5500,
-                logg=0.0,
+                log_g=0.0,
                 metallicity=0.0
             )]
 
         atm_container = NaiveInterpolatedAtm.interpolate(
             atm_5xxx,
             temperature=temperature,
-            logg=[0.0],
+            log_g=[0.0],
             metallicity=0.0,
             left_bandwidth=2,
             right_bandwidth=6
@@ -198,20 +220,20 @@ class TestNaiveInterpolation(unittest.TestCase):
             AtmDataContainer(
                 model=model_5250,
                 temperature=5250,
-                logg=0.0,
+                log_g=0.0,
                 metallicity=0.0
             ),
             AtmDataContainer(
                 model=model_5500,
                 temperature=5500,
-                logg=0.0,
+                log_g=0.0,
                 metallicity=0.0
             )]
 
         atm_container = NaiveInterpolatedAtm.interpolate(
             atm_5xxx,
             temperature=temperature,
-            logg=[0.0],
+            log_g=[0.0],
             metallicity=0.0,
             left_bandwidth=1.9,
             right_bandwidth=6.1
@@ -235,8 +257,9 @@ class TestNaiveInterpolation(unittest.TestCase):
             AtmDataContainer(
                 model=model_3500,
                 temperature=3500.0,
-                logg=0.0,
-                metallicity=0.0
+                log_g=0.0,
+                metallicity=0.0,
+                fpath=''
             )]
         band_df = pd.DataFrame({
             config.PASSBAND_DATAFRAME_THROUGHPUT: [0.1] * 8,
@@ -259,7 +282,7 @@ class TestNaiveInterpolation(unittest.TestCase):
         container = AtmDataContainer(
             model=model,
             temperature=3600.0,
-            logg=4.3,
+            log_g=4.3,
             metallicity=0.0
         )
 

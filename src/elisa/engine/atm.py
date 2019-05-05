@@ -48,7 +48,8 @@ ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
 
 
 class AtmDataContainer(object):
-    def __init__(self, model: pd.DataFrame, temperature: float, log_g: float, metallicity: float) -> None:
+    def __init__(
+            self, model: pd.DataFrame, temperature: float, log_g: float, metallicity: float, fpath: str = '') -> None:
         self._model = None
         self.temperature = temperature
         self.log_g = log_g
@@ -60,6 +61,7 @@ class AtmDataContainer(object):
         self.wave_to_si_mult = 1e-10
         self.left_bandwidth = None
         self.right_bandwidth = None
+        self.fpath = fpath
 
         setattr(self, 'model', model)
 
@@ -612,7 +614,7 @@ def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_
             continue
         try:
             t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(file_path))
-            atm_container = AtmDataContainer(pd.read_csv(file_path), t, l, m)
+            atm_container = AtmDataContainer(pd.read_csv(file_path), t, l, m, file_path)
             result_queue.put((index, atm_container))
         except Exception as we:
             error_queue.put(we)
@@ -683,6 +685,29 @@ def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers: 
     ]
 
 
+def unique_atm_fpaths(fpaths):
+    """
+    group atm table names and return such set and map to origin list
+
+    :param fpaths: list of str
+    :return: tuple; (path set, map)
+    """
+    fpaths_set = set(fpaths)
+    fpaths_map = {key: list() for key in fpaths}
+    for idx, key in enumerate(fpaths):
+        fpaths_map[key].append(idx)
+    return fpaths_set, fpaths_map
+
+
+def remap_unique_atm_models_to_origin(models: list, fpaths_map: dict):
+    total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
+    models_arr = np.array([None] * total)
+    for model in models:
+        if model[1] is not None:
+            models_arr[fpaths_map[model[1].fpath]] = model[1]
+    return models_arr.tolist()
+
+
 def read_atm_tables(fpaths):
     """
     returns spectrum profile for the atmospheric model that is the closest to the given parameters `temperature`, `log_g`
@@ -690,9 +715,10 @@ def read_atm_tables(fpaths):
 
     :return:
     """
+    fpaths, fpaths_map = unique_atm_fpaths(fpaths)
     result_queue = multithread_atm_tables_reader_runner(fpaths)
     models = [qval for qval in utils.IterableQueue(result_queue)]
-    models = [val[1] for val in sorted(models, key=lambda x: x[0])]
+    models = remap_unique_atm_models_to_origin(models, fpaths_map)
     return models
 
 
