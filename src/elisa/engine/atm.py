@@ -7,7 +7,7 @@ from threading import Thread
 
 import numpy as np
 import pandas as pd
-from copy import copy
+from copy import deepcopy
 from scipy import integrate, interpolate
 
 from elisa.conf import config
@@ -215,7 +215,7 @@ class NaiveInterpolatedAtm(object):
         return intensity, top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
 
     @staticmethod
-    def interpolate(atm_tables, **kwargs):
+    def interpolate(atm_tables: list or 'AtmDataContainer', **kwargs):
         """
         for given `on grid` tables of stellar atmospheres stored in `atm_tables` list will compute atmospheres
         for given parametres (temperature, log_g, metallicity)
@@ -345,20 +345,23 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
     :return: AtmDataContainer
     """
     if atm_container is not None:
+        # indices in bandwidth
         valid_indices = list(
             atm_container.model.index[
                 atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth, right_bandwidth, inclusive=True)
             ])
+        # extend left  and right index (left - 1 and righ + 1)
         left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
         right_extention_index = valid_indices[-1] + 1 \
             if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
 
-        atm_container = atm_container if inplace else copy(atm_container)
+        atm_container = atm_container if inplace else deepcopy(atm_container)
         atm_container.model = atm_container.model.iloc[
             sorted(valid_indices + [left_extention_index] + [right_extention_index])
         ]
         atm_container.model = atm_container.model.drop_duplicates(ATM_MODEL_DATAFRAME_WAVE)
         return atm_container
+    return None
 
 
 def apply_passband(atm_containers: list, passband: dict):
@@ -704,7 +707,8 @@ def remap_unique_atm_models_to_origin(models: list, fpaths_map: dict):
     models_arr = np.array([None] * total)
     for model in models:
         if model[1] is not None:
-            models_arr[fpaths_map[model[1].fpath]] = model[1]
+            for idx in fpaths_map[model[1].fpath]:
+                models_arr[idx] = deepcopy(model[1])
     return models_arr.tolist()
 
 
