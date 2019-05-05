@@ -105,7 +105,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer):
     # }
 
 
-def get_radiance(self, **kwargs):
+def get_normal_radiance(self, **kwargs):
     primary = atm.NaiveInterpolatedAtm.radiance(
         **dict(
             temperature=self.primary.temperatures,
@@ -150,46 +150,24 @@ def get_limbdarkening(self, **kwargs):
 
 
 def compute_circular_synchronous_lightcurve(self, **kwargs):
-    # get orbital motion from kwargs
-    # get eclipses
-    # prepare rotated (orb motion, inclination) points and normals
-    # apply darkside filter !!!!!!! just indices information !!!!!!!
-
-    # NOTE: extention of system primary and secondary points due to horizont faces fractalisation
-    # apply eclipse filter !!!!!!! just indices information !!!!!!!
-
     orbital_motion = kwargs.pop("positions")
     eclipses = geo.get_eclipse_boundaries(self, 1.0)
 
-    initial_properties = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
-    initial_properties.setup_position(geo.PositionContainer(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
+    initial_props_container = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
+    initial_props_container.setup_position(geo.PositionContainer(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
 
     # injected attributes
-    setattr(initial_properties.primary, 'metallicity', self.primary.metallicity)
-    setattr(initial_properties.secondary, 'metallicity', self.secondary.metallicity)
+    setattr(initial_props_container.primary, 'metallicity', self.primary.metallicity)
+    setattr(initial_props_container.secondary, 'metallicity', self.secondary.metallicity)
 
-    # get_radiance(initial_properties, **kwargs)
-    # get_limbdarkening(self, **kwargs)
-
-    # primary_normal_radiance, secondary_normal_radiance = get_radiance(initial_properties, **kwargs)
-    # primary_ld, secondary_ld = get_limbdarkening(initial_properties, **kwargs)
-
-    primary_normal_radiance, secondary_normal_radiance = get_radiance(initial_properties, **kwargs)
-    primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(initial_properties, **kwargs)
+    primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
+    primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(initial_props_container, **kwargs)
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
     system_positions_container = system_positions_container.darkside_filter()
-    # todo: it makes more sense to do eclipse filter in same way as darkside filter
-    # todo: rewrite it in the future
 
-    # for container in system_positions_container:
-    #     import pickle
-    #     pickle.dump(container, open("container.pickle", 'wb'))
-    #     exit()
-
-    # import pickle
-    curves = {key: list() for key in kwargs["passband"].keys()}
+    band_curves = {key: list() for key in kwargs["passband"].keys()}
     for container in system_positions_container:
         # container = pickle.load(open("container.pickle", "rb"))
         coverage = compute_surface_coverage(container)
@@ -215,7 +193,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             p_flux = sum(p_band_normal_radiance * p_cosines * coverage["primary"] * p_ld_cors)
             s_flux = sum(s_band_normal_radiance * s_cosines * coverage["secondary"] * s_ld_cors)
             flux = p_flux + s_flux
-            curves[band].append(flux)
+            band_curves[band].append(flux)
 
     exit()
 

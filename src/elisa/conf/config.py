@@ -195,6 +195,11 @@ LD_DOMAIN_COLS = ["temperature", "gravity", "metallicity"]
 ATM_MODEL_DATAFRAME_FLUX = "flux"
 ATM_MODEL_DATAFRAME_WAVE = "wave"
 
+ATM_MODEL_DATAFARME_DTYPES = {
+    ATM_MODEL_DATAFRAME_FLUX: float,
+    ATM_MODEL_DATAFRAME_WAVE: float
+}
+
 PASSBAND_DATAFRAME_THROUGHPUT = "throughput"
 PASSBAND_DATAFRAME_WAVE = "wavelength"
 

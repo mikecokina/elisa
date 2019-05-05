@@ -126,7 +126,8 @@ class NearestAtm(object):
         atlas = validated_atlas(atlas)
         validate_atm(temperature, log_g, metallicity, atlas)
         atm_files = NearestAtm.atm_files(temperature, log_g, metallicity, atlas)
-        atm_containers = read_atm_tables(atm_files)
+        unique_atm_containers, containers_map = read_unique_atm_tables(atm_files)
+        atm_containers: list = remap_unique_atm_models_to_origin(unique_atm_containers, containers_map)
         passbanded_atm_containers = apply_passband(atm_containers, kwargs["passband"])
         return compute_integral_si_intensity_from_passbanded_dict(passbanded_atm_containers)
 
@@ -151,7 +152,11 @@ class NaiveInterpolatedAtm(object):
         # fixme: uncomment following line
         # validate_atm(temperature, log_g, metallicity, atlas)
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, log_g, metallicity, atlas)
-        atm_containers = read_atm_tables(atm_files)
+        unique_atm_containers, containers_map = read_unique_atm_tables(atm_files)
+        preinterpolation_bandwitdh_strip(
+            unique_atm_containers, left_bandwidth=kwargs["left_bandwidth"], right_bandwidth=kwargs["right_bandwidth"]
+        )
+        atm_containers: list = remap_unique_atm_models_to_origin(unique_atm_containers, containers_map)
         localized_atm_containers = NaiveInterpolatedAtm.interpolate(
             atm_containers,
             **dict(left_bandwidth=kwargs['left_bandwidth'],
@@ -187,8 +192,8 @@ class NaiveInterpolatedAtm(object):
         if bottom_atm_container is not None:
             do_akima = False \
                 if np.all(
-                np.array(top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE], dtype="float") ==
-                np.array(bottom_atm_container.model[ATM_MODEL_DATAFRAME_WAVE], dtype="float")) \
+                    np.array(top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE], dtype="float") ==
+                    np.array(bottom_atm_container.model[ATM_MODEL_DATAFRAME_WAVE], dtype="float")) \
                 else True
         else:
             return top_atm_container.model[ATM_MODEL_DATAFRAME_FLUX], top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
@@ -250,13 +255,8 @@ class NaiveInterpolatedAtm(object):
         metallicity = kwargs.pop("metallicity")
 
         bottom_atm, top_atm = atm_tables[:len(atm_tables) // 2], atm_tables[len(atm_tables) // 2:]
-        left_bandwidth, right_bandwidth = kwargs.pop("left_bandwidth"), kwargs.pop("right_bandwidth")
 
-        [strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth, inplace=True) for a in top_atm]
-        # strip bottom container by top container bandtwidth to avoid to get NaN in akima interpolation
-        # in ``compute_unknown_intensity`` based on top atm container wavelength
-        [strip_atm_container_by_bandwidth(a, b.left_bandwidth, b.right_bandwidth, inplace=True)
-         for a, b in zip(bottom_atm, top_atm)]
+        logger.debug("computing interpolation weights")
         interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
         interpolated_atm_containers = list()
 
@@ -275,6 +275,7 @@ class NaiveInterpolatedAtm(object):
                     metallicity=metallicity
                 )
             )
+        logger.debug("interpolation finished")
         return interpolated_atm_containers
 
     @staticmethod
@@ -334,6 +335,15 @@ class NaiveInterpolatedAtm(object):
         ]
 
 
+def preinterpolation_bandwitdh_strip(atm_containers: list, left_bandwidth: float, right_bandwidth: float):
+    bottom_atm, top_atm = atm_containers[:len(atm_containers) // 2], atm_containers[len(atm_containers) // 2:]
+    [strip_atm_container_by_bandwidth(a, left_bandwidth, right_bandwidth, inplace=True) for a in top_atm]
+    # strip bottom container by top container bandtwidth to avoid to get NaN in akima interpolation
+    # in ``compute_unknown_intensity`` based on top atm container wavelength
+    [strip_atm_container_by_bandwidth(a, b.left_bandwidth, b.right_bandwidth, inplace=True)
+     for a, b in zip(bottom_atm, top_atm)]
+
+
 def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=False):
     """
     strip atmosphere container model by given bandwidth (add +/- 1 value behind boundary)
@@ -366,6 +376,7 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
 
 def apply_passband(atm_containers: list, passband: dict):
     passbanded_atm_containers = dict()
+    logger.debug("applying passband function on given atmospheres")
     for band, band_container in passband.items():
         passbanded_atm_containers[band] = list()
         for atm_container in atm_containers:
@@ -387,6 +398,7 @@ def apply_passband(atm_containers: list, passband: dict):
             passband_df.fillna(0.0, inplace=True)
             atm_container.model[ATM_MODEL_DATAFRAME_FLUX] *= passband_df[PASSBAND_DATAFRAME_THROUGHPUT]
             passbanded_atm_containers[band].append(atm_container)
+    logger.debug("passband application finished")
     return passbanded_atm_containers
 
 
@@ -583,7 +595,7 @@ def get_atm_table(temperature, log_g, metallicity, atlas):
 
     if not os.path.isfile(path):
         raise FileNotFoundError("there is no file like {}".format(path))
-    return pd.read_csv(path)
+    return pd.read_csv(path, dtype={config.ATM_MODEL_DATAFARME_DTYPES})
 
 
 def get_list_of_all_atm_tables(atlas):
@@ -704,15 +716,15 @@ def unique_atm_fpaths(fpaths):
 
 def remap_unique_atm_models_to_origin(models: list, fpaths_map: dict):
     total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
-    models_arr = np.array([None] * total)
+    models_arr = [None] * total
     for model in models:
-        if model[1] is not None:
-            for idx in fpaths_map[model[1].fpath]:
-                models_arr[idx] = deepcopy(model[1])
-    return models_arr.tolist()
+        if model is not None:
+            for idx in fpaths_map[model.fpath]:
+                models_arr[idx] = deepcopy(model)
+    return models_arr
 
 
-def read_atm_tables(fpaths):
+def read_unique_atm_tables(fpaths):
     """
     returns spectrum profile for the atmospheric model that is the closest to the given parameters `temperature`, `log_g`
     and `metallicity`
@@ -721,9 +733,8 @@ def read_atm_tables(fpaths):
     """
     fpaths, fpaths_map = unique_atm_fpaths(fpaths)
     result_queue = multithread_atm_tables_reader_runner(fpaths)
-    models = [qval for qval in utils.IterableQueue(result_queue)]
-    models = remap_unique_atm_models_to_origin(models, fpaths_map)
-    return models
+    models = [qval[1] for qval in utils.IterableQueue(result_queue)]
+    return models, fpaths_map
 
 
 if __name__ == "__main__":

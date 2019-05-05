@@ -206,8 +206,6 @@ class SingleOrbitalPositionContainer(object):
         _primary, _secondary = primary, secondary
         self._primary = None
         self._secondary = None
-        self.primary_map = dict()
-        self.secondary_map = dict()
         self.position = None
         self.inclination = None
 
@@ -221,8 +219,6 @@ class SingleOrbitalPositionContainer(object):
     def copy(self):
         return deepcopy(self)
 
-    # todo: imlement spots
-
     @property
     def primary(self):
         return self._primary
@@ -233,9 +229,8 @@ class SingleOrbitalPositionContainer(object):
 
     @primary.setter
     def primary(self, value):
-        points, normals, faces, temp, log_g, points_index_map, normals_index_map = self.setup_component(value)
+        points, normals, faces, temp, log_g = self.setup_component(value)
         self._primary = EasyObject(points, normals, None, faces, temp, log_g)
-        self.primary_map = dict(points=points_index_map, normals=normals_index_map)
 
     @property
     def secondary(self):
@@ -243,9 +238,8 @@ class SingleOrbitalPositionContainer(object):
 
     @secondary.setter
     def secondary(self, value):
-        points, normals, faces, temp, log_g, points_index_map, normals_index_map = self.setup_component(value)
+        points, normals, faces, temp, log_g = self.setup_component(value)
         self._secondary = EasyObject(points, normals, None, faces, temp, log_g)
-        self.secondary_map = dict(points=points_index_map, normals=normals_index_map)
 
     def set_indices(self, component, indices):
         attr = getattr(self, component)
