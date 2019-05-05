@@ -19,7 +19,6 @@ config.set_up_logging()
 logger = logging.getLogger("atm")
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/np.pi)
-# migration test
 
 ATLAS_TO_ATM_FILE_PREFIX = {
     "castelli": "ck",
