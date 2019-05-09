@@ -390,8 +390,17 @@ def calculate_cos_theta(normals, line_of_sight_vector):
     :param line_of_sight_vector:
     :return:
     """
-    return np.sum(np.multiply(normals, line_of_sight_vector[None, :]),axis=1) if np.ndim(line_of_sight_vector) == 1 else \
+    return np.sum(np.multiply(normals, line_of_sight_vector[None, :]), axis=1) if np.ndim(line_of_sight_vector) == 1 else \
         np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]))
+
+
+def calculate_cos_theta_los_x(normals):
+    """
+    calculates cosine of an angle between normalized vectors and line of sight vector [1 ,0 ,0]
+    :param normals: np.array
+    :return:
+    """
+    return normals[:, 0]
 
 
 def get_line_of_sight_single_system(phase=None, inclination=None):

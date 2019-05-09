@@ -41,17 +41,22 @@ def get_eclipse_boundaries(binary, components_distance: float):
 
 def darkside_filter(line_of_sight: np.array, normals: np.array):
     """
-    return indices for visible faces defined by given normals, function assumes that `line_of_sight` and `normals` are
-    already normalized to one
+    return indices for visible faces defined by given normals, function assumes that `line_of_sight` ([1, 0, 0]) and
+    `normals` are already normalized to one
 
     :param line_of_sight: np.array
     :param normals: np.array
     :return: np.array
     """
     # todo: resolve self shadowing in case of W UMa
-    # calculating normals utilizing the fact that normals and line of sight vector are already normalized
-    cosines = utils.calculate_cos_theta(normals=normals, line_of_sight_vector=line_of_sight)
-    # recovering indeces of points on near-side (from the point of view of observer)
+    # calculating normals utilizing the fact that normals and line of sight vector [1, 0, 0] are already normalized
+    # hovnokod...
+    if (line_of_sight == np.array([1.0, 0.0, 0.0])).all():
+        cosines = utils.calculate_cos_theta_los_x(normals=normals)
+    else:
+        cosines = utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
+
+    # recovering indices of points on near-side (from the point of view of observer)
     return np.arange(np.shape(normals)[0])[cosines > 0]
 
 
@@ -74,6 +79,7 @@ def plane_projection(points, plane, keep_3d=False):
     return in_plane
 
 
+# fixme: this shouldn't be here, move it to the graphics
 def to_png(x=None, y=None, x_label="y", y_label="z", c=None, fpath=None):
     plt.clf()
     ax = plt.scatter(x, y, marker="o", c=c, s=1)
