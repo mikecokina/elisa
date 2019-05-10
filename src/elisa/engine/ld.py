@@ -107,12 +107,11 @@ def interpolate_on_ld_grid(temperature: list, log_g: list, metallicity: float, p
     for band in passband:
         relevant_tables = get_relevant_ld_tables(passband=band, metallicity=metallicity)
         csv_columns = config.LD_LAW_COLS_ORDER[config.LIMB_DARKENING_LAW]
-        all_columns = csv_columns + ["metallicity"]
+        all_columns = csv_columns
         df = pd.DataFrame(columns=all_columns)
 
         for table in relevant_tables:
             _df = get_van_hamme_ld_table_by_name(table)[csv_columns]
-            _df["metallicity"] = get_metallicity_from_ld_table_filename(table)
             df = df.append(_df)
 
         xyz_domain = np.array([np.array(val) for val in df[config.LD_DOMAIN_COLS].to_records(index=False)]).tolist()
@@ -121,7 +120,6 @@ def interpolate_on_ld_grid(temperature: list, log_g: list, metallicity: float, p
         uvw_domain = pd.DataFrame({
             "temperature": temperature,
             "gravity": log_g,
-            "metallicity": [metallicity] * len(temperature)
         })[config.LD_DOMAIN_COLS].to_records(index=False).tolist()
 
         xyz_domain = np.asarray([np.asarray(val) for val in xyz_domain])
@@ -130,11 +128,7 @@ def interpolate_on_ld_grid(temperature: list, log_g: list, metallicity: float, p
 
         uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
 
-        result_df = pd.DataFrame({
-            "temperature": temperature,
-            "log_g": log_g,
-            "metallicity": [metallicity] * len(temperature),
-        })
+        result_df = pd.DataFrame({"temperature": temperature, "log_g": log_g})
 
         for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
             if np.isin(np.nan, vals):

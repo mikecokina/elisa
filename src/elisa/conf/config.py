@@ -189,7 +189,7 @@ LD_LAW_COLS_ORDER = {
     "square_root": BASIC_COLS + LD_LAW_CFS_COLUMNS["square_root"]
 }
 
-LD_DOMAIN_COLS = ["temperature", "gravity", "metallicity"]
+LD_DOMAIN_COLS = ["temperature", "gravity"]
 
 
 ATM_MODEL_DATAFRAME_FLUX = "flux"

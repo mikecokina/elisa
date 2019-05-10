@@ -8,9 +8,10 @@ from elisa.engine import const as c
 from time import time
 import logging
 from elisa.engine.binary_system import geo
+from elisa.engine.observer.observer import Observer
 
 
-contact_pot = 2.2
+contact_pot = 10
 start_time = time()
 
 spots_metadata = {
@@ -53,7 +54,7 @@ primary = Star(mass=1.514*u.solMass,
                synchronicity=1.0,
                t_eff=6900*u.K,
                gravity_darkening=1.0,
-               discretization_factor=3,
+               discretization_factor=10,
                albedo=0.6,
                metallicity=0,
                )
@@ -64,7 +65,7 @@ secondary = Star(mass=0.327*u.solMass,
                  gravity_darkening=1.0,
                  albedo=0.6,
                  metallicity=0,
-                 spots=spots_metadata['secondary']
+                 # spots=spots_metadata['secondary']
                 )
 
 bs = BinarySystem(primary=primary,
@@ -79,33 +80,12 @@ bs = BinarySystem(primary=primary,
                   )
 
 components_min_distance = 1
-kwargs = {'suppress_parallelism': False}
-bs.build_surface(components_distance=components_min_distance, **kwargs)
-# # bs.build_surface(components_distance=components_min_distance, component='primary')
-# # bs.build_surface(components_distance=components_min_distance, component='secondary')
-bs.build_surface_map(colormap='temperature', components_distance=components_min_distance)
-# bs.build_surface_map(colormap='temperature', component='primary', components_distance=components_min_distance)
-# bs.build_surface_map(colormap='temperature', component='secondary', components_distance=components_min_distance)
+bs.build(components_distance=1.0)
 
-line_of_sight = np.array([1, 0, 0])
-projection = geo.plane_projection(bs.secondary.points, 'yz', keep_3d=True)
-indices_to_keep = [0, 1, 2]
-del indices_to_keep[0]
-print(indices_to_keep)
-print(projection)
+o = Observer(passband='bolometric',
+             system=bs)
 
-# bs.plot.surface(
-#         phase=0.4,
-#         # components_to_plot='primary',
-#         components_to_plot='secondary',
-#         edges=True,
-#         # normals=True,
-#         # colormap='gravity_acceleration',
-#         colormap='temperature',
-#         # plot_axis=False,
-#         # face_mask_primary=a,
-#         # face_mask_secondary=b,
-#         # inclination=crit_incl,
-#         # azimuth=azim[0],
-#         units='SI'
-#         )
+o.observe(from_phase=0,
+          to_phase=1.0,
+          phase_step=0.1,
+          )
