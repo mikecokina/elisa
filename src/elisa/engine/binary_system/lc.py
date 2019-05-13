@@ -161,7 +161,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     setattr(initial_props_container.primary, 'metallicity', self.primary.metallicity)
     setattr(initial_props_container.secondary, 'metallicity', self.secondary.metallicity)
 
-    # primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
+    primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
     primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(initial_props_container, **kwargs)
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 

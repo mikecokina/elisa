@@ -11,7 +11,7 @@ from elisa.engine.binary_system import geo
 from elisa.engine.observer.observer import Observer
 
 
-contact_pot = 10
+contact_pot = 2.5
 start_time = time()
 
 spots_metadata = {

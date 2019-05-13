@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -14,14 +15,15 @@ config.set_up_logging()
 
 
 class PassbandContainer(object):
-    def __init__(self, table):
+    def __init__(self, table, passband):
         self.left_bandwidth = None
         self.right_bandwidth = None
         self.akima = None
         self._table = None
-        self.wave_unit = "angstrom"
+        self.wave_unit: str = "angstrom"
+        self.passband: str = passband
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
-        self.wave_to_si_mult = 1e-10
+        self.wave_to_si_mult: float = 1e-10
 
         setattr(self, 'table', table)
 
@@ -32,8 +34,9 @@ class PassbandContainer(object):
     @table.setter
     def table(self, df: pd.DataFrame):
         self._table = df
-        self.akima = interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
-                                                     df[config.PASSBAND_DATAFRAME_THROUGHPUT])
+        self.akima = Observer.bolometric if (self.passband.lower() in ['bolometric']) else \
+            interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
+                                            df[config.PASSBAND_DATAFRAME_THROUGHPUT])
         self.left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
         self.right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
 
@@ -54,7 +57,7 @@ class Observer(object):
         # self._system._suppress_logger = True
 
         self.left_bandwidth = 0.0
-        self.right_bandwidth = 1e6
+        self.right_bandwidth = sys.float_info.max
         self.passband = dict()
         self.init_passband(passband)
 
@@ -68,19 +71,16 @@ class Observer(object):
             if band in ['bolometric']:
                 df = pd.DataFrame(
                     {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
-                     config.PASSBAND_DATAFRAME_WAVE: [0.0, 1e6]})
-                # fixme: make sure akima will be correct on bandwidth evalutyion in container itself
-                # fixme: and remove akima here
-                akima = self.bolometric
-                right_bandwidth = 1e6
+                     config.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
+                right_bandwidth = sys.float_info.max
                 left_bandwidth = 0.0
             else:
                 df = self.get_passband_df(band)
-                left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
-                right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
+                left_bandwidth = df[config.PASSBAND_DATAFRAME_WAVE].min()
+                right_bandwidth = df[config.PASSBAND_DATAFRAME_WAVE].max()
 
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
-            self.passband[band] = PassbandContainer(table=df)
+            self.passband[band] = PassbandContainer(table=df, passband=band)
 
     def setup_bandwidth(self, left_bandwidth, right_bandwidth):
         if left_bandwidth > self.left_bandwidth:
