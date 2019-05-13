@@ -125,7 +125,7 @@ class NaiveInterpolatedAtm(object):
                    log_g=log_g,
                    metallicity=metallicity)
         )
-        # return compute_integral_si_intensity_from_passbanded_dict(passbanded_atm_containers)
+        return compute_integral_si_intensity_from_passbanded_dict(localized_atm_containers)
 
     @staticmethod
     def compute_interpolation_weights(temperatures: list, top_atm_containers: list, bottom_atm_containers: list):
