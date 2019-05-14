@@ -91,7 +91,7 @@ class NaiveInterpolatedAtm(object):
     @staticmethod
     def radiance(temperature: list, log_g: list, metallicity: float, atlas: str, **kwargs):
         """
-        compute radiance for given atmospheric parametres with regards to given passbands
+        compute radiance for given atmospheric parametres with regards to given  passbands
 
         :param temperature: list
         :param log_g: list
@@ -361,6 +361,11 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
 
 
 def find_global_atm_bandwidth(atm_containers):
+    """
+
+    :param atm_containers:
+    :return:
+    """
     bounds = np.array([
         [atm.model[ATM_MODEL_DATAFRAME_WAVE].min(),
          atm.model[ATM_MODEL_DATAFRAME_WAVE].max()] for atm in atm_containers])
