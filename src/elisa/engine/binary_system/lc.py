@@ -162,6 +162,8 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     setattr(initial_props_container.secondary, 'metallicity', self.secondary.metallicity)
 
     primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
+    exit()
+
     primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(initial_props_container, **kwargs)
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
@@ -188,13 +190,13 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
                                                  limb_darkening_law=config.LIMB_DARKENING_LAW,
                                                  cos_theta=s_cosines)[0]
-            # p_band_normal_radiance = np.array([rad.intensity for rad in primary_normal_radiance[band]])
-            # s_band_normal_radiance = np.array([rad.intensity for rad in secondary_normal_radiance[band]])
+            p_band_normal_radiance = np.array([rad.intensity for rad in primary_normal_radiance[band]])
+            s_band_normal_radiance = np.array([rad.intensity for rad in secondary_normal_radiance[band]])
 
-            # p_flux = sum(p_band_normal_radiance * p_cosines * coverage["primary"] * p_ld_cors)
-            # s_flux = sum(s_band_normal_radiance * s_cosines * coverage["secondary"] * s_ld_cors)
-            # flux = p_flux + s_flux
-            # band_curves[band].append(flux)
+            p_flux = sum(p_band_normal_radiance * p_cosines * coverage["primary"] * p_ld_cors)
+            s_flux = sum(s_band_normal_radiance * s_cosines * coverage["secondary"] * s_ld_cors)
+            flux = p_flux + s_flux
+            band_curves[band].append(flux)
 
     exit()
 
