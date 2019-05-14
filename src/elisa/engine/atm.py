@@ -107,14 +107,14 @@ class NaiveInterpolatedAtm(object):
         # fixme: uncomment following line
         # validate_atm(temperature, log_g, metallicity, atlas)
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
-        passband_list = kwargs["passband"]
+        passband_containers = kwargs["passband"]
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, log_g, metallicity, atlas)
         unique_atms, containers_map = read_unique_atm_tables(atm_files)
         global_left, global_right = find_global_atm_bandwidth(unique_atms)
         unique_atms = strip_atm_containers_by_bandwidth(unique_atms, l_bandw, r_bandw,
                                                         global_left=global_left, global_right=global_right)
         unique_atms = arange_atm_to_same_wavelength(unique_atms)
-        passbanded_atm_containers = apply_passband(unique_atms, passband_list,
+        passbanded_atm_containers = apply_passband(unique_atms, passband_containers,
                                                    global_left=global_left, global_right=global_right)
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
         localized_atm_containers = NaiveInterpolatedAtm.interpolate(
@@ -160,7 +160,7 @@ class NaiveInterpolatedAtm(object):
         return intensity, top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
 
     @staticmethod
-    def interpolate(passbanded_atm_tables: Dict, **kwargs):
+    def interpolate(passbanded_atm_containers: Dict, **kwargs):
         """
         for given `on grid` tables of stellar atmospheres stored in `atm_tables` list will compute atmospheres
         for given parametres (temperature, log_g, metallicity)
@@ -179,7 +179,7 @@ class NaiveInterpolatedAtm(object):
         bottom: <t1 - 7750>, None, <t3 - 19000>
         top: <t4 - 8000>, <t5 - 4500>, <t6 - 20000>
 
-        :param passbanded_atm_tables: list of AtmDataContainer`s
+        :param passbanded_atm_containers: list of AtmDataContainer`s
         :param kwargs:
         :**kwargs options**:
                 * **temperature** * -- Iterable
@@ -195,9 +195,9 @@ class NaiveInterpolatedAtm(object):
         metallicity = kwargs.pop("metallicity")
 
         interp_band_containers = dict()
-        for band, atm_tables in passbanded_atm_tables.items():
+        for band, atm_tables in passbanded_atm_containers.items():
             bottom_atm, top_atm = atm_tables[:len(atm_tables) // 2], atm_tables[len(atm_tables) // 2:]
-            logger.debug(f"computing interpolation weights for band: {band}")
+            logger.debug(f"computing atmosphere interpolation weights for band: {band}")
             interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
 
             interpolated_atm_containers = list()
@@ -388,7 +388,7 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
 
 def apply_passband(atm_containers: list, passband: dict, **kwargs):
     passbanded_atm_containers = dict()
-    logger.debug("applying passband function on given atmospheres")
+    logger.debug("applying passband functions on given atmospheres")
     for band, band_container in passband.items():
         passbanded_atm_containers[band] = list()
         for atm_container in atm_containers:
@@ -732,12 +732,19 @@ def remap_passbanded_unique_atms_to_origin(passbanded_models: Dict, fpaths_map: 
 
 
 def remap_unique_atm_models_to_origin(models: list, fpaths_map: dict):
+    """
+    !!! warnign - assigned containers are mutable, if you will change content of any container, changes will affect
+    !!!           any other container with same reference
+
+    :param models:
+    :param fpaths_map:
+    :return:
+    """
     total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
-    models_arr = [None] * total
+    models_arr = np.array([None] * total)
     for model in models:
         if model is not None:
-            for idx in fpaths_map[model.fpath]:
-                models_arr[idx] = deepcopy(model)
+            models_arr[fpaths_map[model.fpath]] = model
     return models_arr
 
 

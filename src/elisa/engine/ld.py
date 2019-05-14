@@ -136,6 +136,7 @@ def interpolate_on_ld_grid(temperature: list, log_g: list, metallicity: float, p
                                  "It might be caused by definiton of inphysical object on input.")
             result_df[col] = vals
         results[band] = result_df
+    logger.debug('ld coefficients interpolation finished')
     return results
 
 
