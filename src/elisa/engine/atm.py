@@ -108,8 +108,11 @@ class NaiveInterpolatedAtm(object):
         # validate_atm(temperature, log_g, metallicity, atlas)
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_list = kwargs["passband"]
+        # related atmospheric files for each face (upper and lower)
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, log_g, metallicity, atlas)
+        # find unique atmosphere data files
         unique_atms, containers_map = read_unique_atm_tables(atm_files)
+
         global_left, global_right = find_global_atm_bandwidth(unique_atms)
         unique_atms = strip_atm_containers_by_bandwidth(unique_atms, l_bandw, r_bandw,
                                                         global_left=global_left, global_right=global_right)
@@ -369,7 +372,7 @@ def find_global_atm_bandwidth(atm_containers):
     bounds = np.array([
         [atm.model[ATM_MODEL_DATAFRAME_WAVE].min(),
          atm.model[ATM_MODEL_DATAFRAME_WAVE].max()] for atm in atm_containers])
-    return bounds.T[0].max(), bounds.T[1].min()
+    return bounds[:, 0].max(), bounds[:, 1].min()
 
 
 def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, right_bandwidth):
@@ -723,10 +726,11 @@ def unique_atm_fpaths(fpaths):
     group atm table names and return such set and map to origin list
 
     :param fpaths: list of str
-    :return: tuple; (path set, map)
+    :return: tuple; (path set - set of unique atmosphere file names, map- dict where every unique atm file has listed
+    indices where it occures)
     """
     fpaths_set = set(fpaths)
-    fpaths_map = {key: list() for key in fpaths}
+    fpaths_map = {key: list() for key in fpaths_set}
     for idx, key in enumerate(fpaths):
         fpaths_map[key].append(idx)
     return fpaths_set, fpaths_map
@@ -748,10 +752,11 @@ def remap_unique_atm_models_to_origin(models: list, fpaths_map: dict):
 
 def read_unique_atm_tables(fpaths):
     """
-    returns spectrum profile for the atmospheric model that is the closest to the given parameters `temperature`, `log_g`
-    and `metallicity`
+    returns atmospheric spectra from table files which encompass the range of surface parameters on the component's
+    surface
 
-    :return:
+    :return: list of unique AtmDataContainers, map - dict where every unique atm file has listed indices where it
+    occures
     """
     fpaths, fpaths_map = unique_atm_fpaths(fpaths)
     result_queue = multithread_atm_tables_reader_runner(fpaths)
