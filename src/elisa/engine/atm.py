@@ -113,8 +113,9 @@ class NaiveInterpolatedAtm(object):
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, log_g, metallicity, atlas)
         # find unique atmosphere data files
         unique_atms, containers_map = read_unique_atm_tables(atm_files)
-
+        # common wavelength coverage of atmosphere models
         global_left, global_right = find_global_atm_bandwidth(unique_atms)
+        
         unique_atms = strip_atm_containers_by_bandwidth(unique_atms, l_bandw, r_bandw,
                                                         global_left=global_left, global_right=global_right)
         unique_atms = arange_atm_to_same_wavelength(unique_atms)
@@ -319,7 +320,7 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
     todo: fix kwargs
     # :param global_right: float
     # :param global_left: float
-    # :param inplace: bool
+    # :param inplace: bool - what it does?
 
     :return: AtmDataContainer
     """
@@ -336,9 +337,10 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
             mi, ma = find_global_atm_bandwidth([atm_container])
             left_bandwidth, right_bandwidth = kwargs.get("global_left", mi), kwargs.get("global_right", ma)
 
+            # fixme: how can this happen?
             if not kwargs.get('global_left') or not kwargs.get('global_right'):
                 warnings.warn(f"argument bandwidth is out of bound for supplied atmospheric model\n"
-                              f"to avoid interpolation error in boundary wavelength, badwidth was defined as "
+                              f"to avoid interpolation error in boundary wavelength, bandwidth was defined as "
                               f"max {ma} and min {mi} of wavelengt in given model table\n"
                               f"it might leads to error in atmosphere interpolation\n"
                               f"to avoid this problem, please specify global_left and global_right bandwidth as "
@@ -348,16 +350,16 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
         # indices in bandwidth
         valid_indices = list(
             atm_container.model.index[
-                atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth, right_bandwidth, inclusive=True)
+                atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth, right_bandwidth, inclusive=False)
             ])
-        # extend left  and right index (left - 1 and righ + 1)
-        left_extention_index = valid_indices[0] - 1 if valid_indices[0] > 1 else 0
+        # extend left  and right index (left - 1 and right + 1)
+        left_extention_index = valid_indices[0] - 1 if valid_indices[0] >= 1 else 0
         right_extention_index = valid_indices[-1] + 1 \
             if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
 
         atm_container = atm_container if inplace else deepcopy(atm_container)
         atm_container.model = atm_container.model.iloc[
-            sorted(valid_indices + [left_extention_index] + [right_extention_index])
+            [left_extention_index] + valid_indices + [right_extention_index]
         ]
         atm_container.model = atm_container.model.drop_duplicates(ATM_MODEL_DATAFRAME_WAVE)
         atm_container = extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, right_bandwidth)
@@ -366,9 +368,9 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
 
 def find_global_atm_bandwidth(atm_containers):
     """
-
+    function finds common wavelength coverage of the atmosphere models
     :param atm_containers:
-    :return:
+    :return: minimum, maximum wavelength of common coverage (in Angstrom)
     """
     bounds = np.array([
         [atm.model[ATM_MODEL_DATAFRAME_WAVE].min(),
@@ -377,19 +379,27 @@ def find_global_atm_bandwidth(atm_containers):
 
 
 def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, right_bandwidth):
+    """
+    function crops the wavelength boundaries of the atmosphere model to the precise boundaries defined by
+    `left_bandwidth` and `right_bandwidth`
+
+    :param atm_container:
+    :param left_bandwidth:
+    :param right_bandwidth:
+    :return:
+    """
     interpolator = interpolate.Akima1DInterpolator(atm_container.model[ATM_MODEL_DATAFRAME_WAVE],
                                                    atm_container.model[ATM_MODEL_DATAFRAME_FLUX])
-    on_bound_flux = interpolator([left_bandwidth, right_bandwidth])
-    if np.isin(np.nan, on_bound_flux):
+    # interpolating values precisely on the border of the filter(s) coverage
+    on_border_flux = interpolator([left_bandwidth, right_bandwidth])
+    if np.isin(np.nan, on_border_flux):
         raise ValueError('interpolation on bandwidth boundaries leads to NaN value')
-    _df = pd.DataFrame({ATM_MODEL_DATAFRAME_WAVE: [left_bandwidth, right_bandwidth],
-                        ATM_MODEL_DATAFRAME_FLUX: on_bound_flux})
     df: pd.DataFrame = atm_container.model
-    df = df[~df.index.isin([df.first_valid_index(), df.last_valid_index()])]
-    df = pd.concat((df, _df), sort=True)
+    df[ATM_MODEL_DATAFRAME_WAVE][df.first_valid_index()] = left_bandwidth
+    df[ATM_MODEL_DATAFRAME_WAVE][df.last_valid_index()] = right_bandwidth
+    df[ATM_MODEL_DATAFRAME_FLUX][df.first_valid_index()] = on_border_flux[0]
+    df[ATM_MODEL_DATAFRAME_FLUX][df.last_valid_index()] = on_border_flux[1]
     df[ATM_MODEL_DATAFRAME_WAVE] = df[ATM_MODEL_DATAFRAME_WAVE].apply(lambda x: round(x, 10))
-    df.sort_values([ATM_MODEL_DATAFRAME_WAVE], inplace=True)
-    df.drop_duplicates(inplace=True)
     df.reset_index(drop=True, inplace=True)
     atm_container.model = df
     return atm_container
