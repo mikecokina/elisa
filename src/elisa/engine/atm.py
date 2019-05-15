@@ -115,9 +115,10 @@ class NaiveInterpolatedAtm(object):
         unique_atms, containers_map = read_unique_atm_tables(atm_files)
         # common wavelength coverage of atmosphere models
         global_left, global_right = find_global_atm_bandwidth(unique_atms)
-        
+        # strip unique atmospheres to passbands coverage
         unique_atms = strip_atm_containers_by_bandwidth(unique_atms, l_bandw, r_bandw,
                                                         global_left=global_left, global_right=global_right)
+
         unique_atms = arange_atm_to_same_wavelength(unique_atms)
         passbanded_atm_containers = apply_passband(unique_atms, passband_containers,
                                                    global_left=global_left, global_right=global_right)
@@ -393,7 +394,7 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
     # interpolating values precisely on the border of the filter(s) coverage
     on_border_flux = interpolator([left_bandwidth, right_bandwidth])
     if np.isin(np.nan, on_border_flux):
-        raise ValueError('interpolation on bandwidth boundaries leads to NaN value')
+        raise ValueError('Interpolation on bandwidth boundaries led to NaN value.')
     df: pd.DataFrame = atm_container.model
     df[ATM_MODEL_DATAFRAME_WAVE][df.first_valid_index()] = left_bandwidth
     df[ATM_MODEL_DATAFRAME_WAVE][df.last_valid_index()] = right_bandwidth

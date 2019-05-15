@@ -56,8 +56,8 @@ class Observer(object):
 
         # self._system._suppress_logger = True
 
-        self.left_bandwidth = 0.0
-        self.right_bandwidth = sys.float_info.max
+        self.left_bandwidth = sys.float_info.max
+        self.right_bandwidth = 0.0
         self.passband = dict()
         self.init_passband(passband)
 
@@ -83,9 +83,9 @@ class Observer(object):
             self.passband[band] = PassbandContainer(table=df, passband=band)
 
     def setup_bandwidth(self, left_bandwidth, right_bandwidth):
-        if left_bandwidth > self.left_bandwidth:
+        if left_bandwidth < self.left_bandwidth:
             self.left_bandwidth = left_bandwidth
-        if right_bandwidth < self.right_bandwidth:
+        if right_bandwidth > self.right_bandwidth:
             self.right_bandwidth = right_bandwidth
 
     @staticmethod
