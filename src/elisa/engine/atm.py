@@ -1,6 +1,7 @@
 import itertools
 import logging
 import os
+import sys
 import warnings
 
 from typing import List, Dict
@@ -286,6 +287,13 @@ def arange_atm_to_same_wavelength(atm_containers: list):
     wavelengths = np.unique(np.array([atm.model[ATM_MODEL_DATAFRAME_WAVE] for atm in atm_containers]).flatten())
     wavelengths.sort()
     result = list()
+
+    s_size = sys.maxsize
+    for atm in atm_containers:
+        s_size = len(atm.model) if len(atm.model) < s_size else s_size
+
+    if s_size == len(wavelengths):
+        return atm_containers
 
     for atm in atm_containers:
         i = interpolate.Akima1DInterpolator(atm.model[ATM_MODEL_DATAFRAME_WAVE], atm.model[ATM_MODEL_DATAFRAME_FLUX])
