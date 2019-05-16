@@ -108,7 +108,6 @@ class NaiveInterpolatedAtm(object):
         # validate_atm(temperature, log_g, metallicity, atlas)
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
-        passband_list = kwargs["passband"]
         # related atmospheric files for each face (upper and lower)
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, log_g, metallicity, atlas)
         # find unique atmosphere data files
@@ -347,7 +346,6 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
             mi, ma = find_global_atm_bandwidth([atm_container])
             left_bandwidth, right_bandwidth = kwargs.get("global_left", mi), kwargs.get("global_right", ma)
 
-            # fixme: how can this happen?
             if not kwargs.get('global_left') or not kwargs.get('global_right'):
                 warnings.warn(f"argument bandwidth is out of bound for supplied atmospheric model\n"
                               f"to avoid interpolation error in boundary wavelength, bandwidth was defined as "
@@ -369,9 +367,8 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
 
         atm_container = atm_container if inplace else deepcopy(atm_container)
         atm_container.model = atm_container.model.iloc[
-            [left_extention_index] + valid_indices + [right_extention_index]
+            np.unique([left_extention_index] + valid_indices + [right_extention_index])
         ]
-        atm_container.model = atm_container.model.drop_duplicates(ATM_MODEL_DATAFRAME_WAVE)
         atm_container = extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, right_bandwidth)
         return atm_container
 
