@@ -340,7 +340,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_pol
 
     phi_n, z_n = [], []
     for ii, zz in enumerate(z_ns):
-        num = int(const.HALF_PI * r_neck[ii] // delta_z)
+        num = int(0.93 * (const.HALF_PI * r_neck[ii] // delta_z))
         num = 1 if num == 0 else num
         start_val = const.HALF_PI / num
         phis = np.linspace(start_val, const.HALF_PI, num=num - 1, endpoint=False)
@@ -393,7 +393,7 @@ def get_surface_points_cylindrical(*args):
         solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
         r.append(solution[0])
 
-    r = np.array(r)
+    r = np.abs(r)
     return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))
 
 

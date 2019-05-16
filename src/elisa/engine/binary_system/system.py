@@ -130,10 +130,11 @@ class BinarySystem(System):
 
         # if secondary discretization factor was not set, it will be now with respect to primary component
         if not self.secondary.kwargs.get('discretization_factor'):
-            self._logger.info("setting discretization factor of secondary component "
-                              "according discretization factor of primary component.")
             self.secondary.discretization_factor = \
                 self.primary.discretization_factor * self.primary.polar_radius / self.secondary.polar_radius * u.rad
+            self._logger.info("Setting discretization factor of secondary component "
+                              "according discretization factor of primary component "
+                              "to: {:.2f} degrees.".format(np.degrees(self.secondary.discretization_factor)))
 
     def init(self):
         """
