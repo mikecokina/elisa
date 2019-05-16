@@ -300,6 +300,15 @@ def arange_atm_to_same_wavelength(atm_containers: list):
 
 
 def strip_atm_containers_by_bandwidth(atm_containers, left_bandwidth, right_bandwidth, **kwargs):
+    """
+    strip all loaded atm models to common wavelength coverage
+
+    :param atm_containers:
+    :param left_bandwidth:
+    :param right_bandwidth:
+    :param kwargs:
+    :return:
+    """
     return [strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth, **kwargs)
             for atm_container in atm_containers]
 
