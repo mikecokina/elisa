@@ -149,6 +149,7 @@ class NaiveInterpolatedAtm(object):
 
         :param weight: Iterable of float`s
         :param top_atm_container: AtmDataContainer
+
         :param bottom_atm_container: AtmDataContainer
         :return: tuple of list (flux, wave)
         """
@@ -827,8 +828,26 @@ def read_unique_atm_tables(fpaths):
     """
     fpaths, fpaths_map = unique_atm_fpaths(fpaths)
     result_queue = multithread_atm_tables_reader_runner(fpaths)
-    models = [qval[1] for qval in utils.IterableQueue(result_queue)]
+    models = [qval[1] for qval in utils.IterableQueue(result_queue) if qval[1] is not None]
     return models, fpaths_map
+
+
+def find_atm_defined_wavelength(atm_containers):
+    for atm_container in atm_containers:
+        if atm_container is not None:
+            return atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
+
+
+def remap_passbanded_unique_atms_to_matrix(atm_containers, fpaths_map):
+    total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
+    wavelengths_defined = find_atm_defined_wavelength(atm_containers)
+    wavelengths_length = len(wavelengths_defined)
+    models_matrix = np.zeros(total * wavelengths_length).reshape(total, wavelengths_length)
+
+    for atm_container in atm_containers:
+        if atm_container is not None:
+            models_matrix[fpaths_map[atm_container.fpath]] = atm_container.model[ATM_MODEL_DATAFRAME_FLUX]
+    return models_matrix
 
 
 if __name__ == "__main__":
