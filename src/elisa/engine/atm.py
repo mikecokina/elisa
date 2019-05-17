@@ -122,6 +122,7 @@ class NaiveInterpolatedAtm(object):
         unique_atms = arange_atm_to_same_wavelength(unique_atms)
         passbanded_atm_containers = apply_passband(unique_atms, passband_containers,
                                                    global_left=global_left, global_right=global_right)
+
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
         localized_atm_containers = NaiveInterpolatedAtm.interpolate(
             atm_containers,
@@ -448,9 +449,10 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
 
 def apply_passband(atm_containers: list, passband: dict, **kwargs):
     """
-
+    function strips 'atm_containers' according to `passband` coverages and applies passband curves to the stripped
+    atmosphere models
     :param atm_containers:
-    :param passband:
+    :param passband: list
     :param kwargs:
     :return:
     """
