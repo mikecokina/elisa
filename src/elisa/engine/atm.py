@@ -118,7 +118,7 @@ class NaiveInterpolatedAtm(object):
         # strip unique atmospheres to passbands coverage
         unique_atms = strip_atm_containers_by_bandwidth(unique_atms, l_bandw, r_bandw,
                                                         global_left=global_left, global_right=global_right)
-
+        # alignement of atmosphere containers wavelengths for convenience
         unique_atms = arange_atm_to_same_wavelength(unique_atms)
         passbanded_atm_containers = apply_passband(unique_atms, passband_containers,
                                                    global_left=global_left, global_right=global_right)
@@ -284,17 +284,26 @@ class NaiveInterpolatedAtm(object):
 
 
 def arange_atm_to_same_wavelength(atm_containers: list):
+    """
+    function aligns all atmosphere profiles to the same wavelengths
+
+    :param atm_containers: atmosphere containers which wavelengths should be aligned
+    :return: wavelength aligned atmospheric containers
+    """
     wavelengths = np.unique(np.array([atm.model[ATM_MODEL_DATAFRAME_WAVE] for atm in atm_containers]).flatten())
     wavelengths.sort()
     result = list()
 
+    # this code checks if the containers are already alligned
     s_size = sys.maxsize
     for atm in atm_containers:
         s_size = len(atm.model) if len(atm.model) < s_size else s_size
 
+    # if yes, interpolation is unnecessary
     if s_size == len(wavelengths):
         return atm_containers
 
+    # otherwise interpolation is utilized
     for atm in atm_containers:
         i = interpolate.Akima1DInterpolator(atm.model[ATM_MODEL_DATAFRAME_WAVE], atm.model[ATM_MODEL_DATAFRAME_FLUX])
         df = pd.DataFrame({
