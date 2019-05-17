@@ -332,7 +332,7 @@ def strip_atm_containers_by_bandwidth(atm_containers, left_bandwidth, right_band
 def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth, **kwargs):
     """
     Strip atmosphere container model by given bandwidth.
-    Usually is model in container defined somewhere in between of left and right bandwidt, never exactly in such
+    Usually is model in container defined somewhere in between of left and right bandwidth, never exactly in such
     wavelength. To strip container exactly on bandwidth wavelength, interpolation has to be done. In case, when
     model of any atmosphere has smaller real bandwidth, than bandwidth defined by arguments `right_bandwidth` and
     `left_bandwidth` (it happens in case of bolometric passband), global bandwidth of given atmospheres is used.
@@ -346,48 +346,65 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
     todo: fix kwargs
     # :param global_right: float
     # :param global_left: float
-    # :param inplace: bool - what it does?
+    # :param inplace: bool
 
     :return: AtmDataContainer
     """
 
     inplace = kwargs.get('inplace', False)
-    if atm_container is not None:
-        # evaluate whether use argument bandwidth or global bandwidth
-        # use case when use global bandwidth is in case of bolometric `filter`, where bandwidth in observer
-        # is set as generic left = 0 and right sys.float.max
-        atm_df = atm_container.model
-        wave_col = ATM_MODEL_DATAFRAME_WAVE
+    if atm_container is None:
+        return ValueError('Atmosphere container is empty.')
 
-        if atm_df[wave_col].min() > left_bandwidth or atm_df[wave_col].max() < right_bandwidth:
-            mi, ma = find_global_atm_bandwidth([atm_container])
-            left_bandwidth, right_bandwidth = kwargs.get("global_left", mi), kwargs.get("global_right", ma)
+    # evaluate whether use argument bandwidth or global bandwidth
+    # use case when use global bandwidth is in case of bolometric `filter`, where bandwidth in observer
+    # is set as generic left = 0 and right sys.float.max
+    atm_df = atm_container.model
+    wave_col = ATM_MODEL_DATAFRAME_WAVE
 
-            if not kwargs.get('global_left') or not kwargs.get('global_right'):
-                warnings.warn(f"argument bandwidth is out of bound for supplied atmospheric model\n"
-                              f"to avoid interpolation error in boundary wavelength, bandwidth was defined as "
-                              f"max {ma} and min {mi} of wavelengt in given model table\n"
-                              f"it might leads to error in atmosphere interpolation\n"
-                              f"to avoid this problem, please specify global_left and global_right bandwidth as "
-                              f"kwargs for given method and make sure all models wavelengths "
-                              f"are greater or equal to such limits")
+    if atm_df[wave_col].min() > left_bandwidth or atm_df[wave_col].max() < right_bandwidth:
+        mi, ma = find_global_atm_bandwidth([atm_container])
+        left_bandwidth, right_bandwidth = kwargs.get("global_left", mi), kwargs.get("global_right", ma)
+        warnings.warn('You attempt to strip an atmosphere model to bandwidth which at least partially outside '
+                      'original atmosphere model wavelength coverage. This may cause problems.')
 
-        # indices in bandwidth
-        valid_indices = list(
-            atm_container.model.index[
-                atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth, right_bandwidth, inclusive=False)
-            ])
-        # extend left  and right index (left - 1 and right + 1)
-        left_extention_index = valid_indices[0] - 1 if valid_indices[0] >= 1 else 0
-        right_extention_index = valid_indices[-1] + 1 \
-            if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
+        if not kwargs.get('global_left') or not kwargs.get('global_right'):
+            warnings.warn(f"argument bandwidth is out of bound for supplied atmospheric model\n"
+                          f"to avoid interpolation error in boundary wavelength, bandwidth was defined as "
+                          f"max {ma} and min {mi} of wavelengt in given model table\n"
+                          f"it might leads to error in atmosphere interpolation\n"
+                          f"to avoid this problem, please specify global_left and global_right bandwidth as "
+                          f"kwargs for given method and make sure all models wavelengths "
+                          f"are greater or equal to such limits")
 
-        atm_container = atm_container if inplace else deepcopy(atm_container)
-        atm_container.model = atm_container.model.iloc[
-            np.unique([left_extention_index] + valid_indices + [right_extention_index])
-        ]
-        atm_container = extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, right_bandwidth)
-        return atm_container
+    return strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=inplace)
+
+
+def strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=False):
+    """
+    function directly strips atm container to given bandwidth
+
+    :param atm_container: atm container to strip
+    :param left_bandwidth:
+    :param right_bandwidth:
+    :param inplace: if True `atm_container' is overwritten by striped atmosphere container
+    :return:
+    """
+    # indices in bandwidth
+    valid_indices = list(
+        atm_container.model.index[
+            atm_container.model[ATM_MODEL_DATAFRAME_WAVE].between(left_bandwidth, right_bandwidth, inclusive=False)
+        ])
+    # extend left  and right index (left - 1 and right + 1)
+    left_extention_index = valid_indices[0] - 1 if valid_indices[0] >= 1 else 0
+    right_extention_index = valid_indices[-1] + 1 \
+        if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
+
+    atm_cont = atm_container if inplace else deepcopy(atm_container)
+    atm_cont.model = atm_cont.model.iloc[
+        np.unique([left_extention_index] + valid_indices + [right_extention_index])
+    ]
+    atm_cont = extend_atm_container_on_bandwidth_boundary(atm_cont, left_bandwidth, right_bandwidth)
+    return atm_cont
 
 
 def find_global_atm_bandwidth(atm_containers):
@@ -430,6 +447,13 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
 
 
 def apply_passband(atm_containers: list, passband: dict, **kwargs):
+    """
+
+    :param atm_containers:
+    :param passband:
+    :param kwargs:
+    :return:
+    """
     passbanded_atm_containers = dict()
     logger.debug("applying passband functions on given atmospheres")
     for band, band_container in passband.items():
@@ -437,12 +461,11 @@ def apply_passband(atm_containers: list, passband: dict, **kwargs):
         for atm_container in atm_containers:
             # strip atm container on passband bandwidth (reason to do it is, that container
             # is stripped on maximal bandwidth defined by all bands, not just by given single band)
-            atm_container = strip_atm_container_by_bandwidth(
+            atm_container = strip_to_bandwidth(
                 atm_container=deepcopy(atm_container),
                 left_bandwidth=band_container.left_bandwidth,
                 right_bandwidth=band_container.right_bandwidth,
-                inplace=False,
-                **kwargs
+                inplace=False
             )
             # found passband throughput on atm defined wavelength
             passband_df = pd.DataFrame(
