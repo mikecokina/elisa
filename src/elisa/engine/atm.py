@@ -113,26 +113,22 @@ class NaiveInterpolatedAtm(object):
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, log_g, metallicity, atlas)
         # find unique atmosphere data files
         unique_atms, containers_map = read_unique_atm_tables(atm_files)
+        # get multiplicators to transform containers from any units to si
+        flux_mult, wave_mult = find_atm_si_multiplicators(unique_atms)
         # common wavelength coverage of atmosphere models
         global_left, global_right = find_global_atm_bandwidth(unique_atms)
         # strip unique atmospheres to passbands coverage
         unique_atms = strip_atm_containers_by_bandwidth(unique_atms, l_bandw, r_bandw,
                                                         global_left=global_left, global_right=global_right)
+
         # alignement of atmosphere containers wavelengths for convenience
         unique_atms = arange_atm_to_same_wavelength(unique_atms)
         passbanded_atm_containers = apply_passband(unique_atms, passband_containers,
                                                    global_left=global_left, global_right=global_right)
-
+        flux_matrices = remap_passbanded_unique_atms_to_matrix(passbanded_atm_containers, containers_map)
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
-        localized_atm_containers = NaiveInterpolatedAtm.interpolate(
-            atm_containers,
-            **dict(left_bandwidth=kwargs['left_bandwidth'],
-                   right_bandwidth=kwargs['right_bandwidth'],
-                   temperature=temperature,
-                   log_g=log_g,
-                   metallicity=metallicity)
-        )
-        return compute_integral_si_intensity_from_passbanded_dict(localized_atm_containers)
+        localized_atms = NaiveInterpolatedAtm.interpolate(atm_containers, flux_matrices, temperature=temperature)
+        return compute_integral_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
     @staticmethod
     def compute_interpolation_weights(temperatures: list, top_atm_containers: list, bottom_atm_containers: list):
@@ -141,7 +137,7 @@ class NaiveInterpolatedAtm(object):
         return (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
 
     @staticmethod
-    def compute_unknown_intensity(weight, top_atm_container, bottom_atm_container):
+    def compute_unknown_intensity_from_surounded_containers(weight, top_atm_container, bottom_atm_container):
         """
         Depends on weight will compute (interpolate) intensities from surounded intensities
         related to given temperature.
@@ -168,8 +164,13 @@ class NaiveInterpolatedAtm(object):
         return intensity, top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
 
     @staticmethod
-    def interpolate(passbanded_atm_containers: Dict, **kwargs):
+    def compute_unknown_intensity_from_surounded_flux_matrices(weights, top_flux_matrix, bottom_flux_matrix):
+        return (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
+
+    @staticmethod
+    def interpolate(passbanded_atm_containers: Dict, flux_matrices: Dict, **kwargs):
         """
+        # fixme: update docstring desc
         for given `on grid` tables of stellar atmospheres stored in `atm_tables` list will compute atmospheres
         for given parametres (temperature, log_g, metallicity)
 
@@ -187,6 +188,7 @@ class NaiveInterpolatedAtm(object):
         bottom: <t1 - 7750>, None, <t3 - 19000>
         top: <t4 - 8000>, <t5 - 4500>, <t6 - 20000>
 
+        :param flux_matrices: numpy.array;
         :param passbanded_atm_containers: list of AtmDataContainer`s
         :param kwargs:
         :**kwargs options**:
@@ -195,38 +197,30 @@ class NaiveInterpolatedAtm(object):
                 * **metallicity** * -- float
                 * **left_bandwidth** * -- float; maximal allowed wavelength from left
                 * **right_bandwidth** * -- float; maximal allowed wavelength from right
+                * **return_containers** * -- bool; if True, interpolation returns containers with all information
+                                                   instead of internal matrix representation
         :return: list of AtmDataContainer`s
         """
 
         temperature = kwargs.pop("temperature")
-        log_g = kwargs.pop("log_g")
-        metallicity = kwargs.pop("metallicity")
+        # log_g = kwargs.pop("log_g")
+        # metallicity = kwargs.pop("metallicity")
 
-        interp_band_containers = dict()
-        for band, atm_tables in passbanded_atm_containers.items():
-            bottom_atm, top_atm = atm_tables[:len(atm_tables) // 2], atm_tables[len(atm_tables) // 2:]
+        interp_band = dict()
+        for band, flux_matrix in flux_matrices.items():
+            band_atm = passbanded_atm_containers[band]
+            bottom_flux, top_flux = flux_matrix[:len(flux_matrix) // 2], flux_matrix[len(flux_matrix) // 2:]
+            bottom_atm, top_atm = band_atm[:len(band_atm) // 2], band_atm[len(band_atm) // 2:]
+
             logger.debug(f"computing atmosphere interpolation weights for band: {band}")
             interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
-
-            interpolated_atm_containers = list()
-            for weight, t, g, bottom, top in zip(interpolation_weights, temperature, log_g, bottom_atm, top_atm):
-                intensity, wavelength = NaiveInterpolatedAtm.compute_unknown_intensity(weight, top, bottom)
-                interpolated_atm_containers.append(
-                    AtmDataContainer(
-                        model=pd.DataFrame(
-                            {
-                                ATM_MODEL_DATAFRAME_FLUX: np.array(intensity),
-                                ATM_MODEL_DATAFRAME_WAVE: np.array(wavelength)
-                            }
-                        ),
-                        temperature=t,
-                        log_g=g,
-                        metallicity=metallicity
-                    )
-                )
-            interp_band_containers[band] = interpolated_atm_containers
-        logger.debug("interpolation finished")
-        return interp_band_containers
+            flux = NaiveInterpolatedAtm.compute_unknown_intensity_from_surounded_flux_matrices(
+                interpolation_weights, top_flux, bottom_flux
+            )
+            interp_band[band] = {
+                ATM_MODEL_DATAFRAME_FLUX: flux, ATM_MODEL_DATAFRAME_WAVE: find_atm_defined_wavelength(top_atm)
+            }
+        return interp_band
 
     @staticmethod
     def atm_tables(fpaths):
@@ -755,6 +749,25 @@ def multithread_atm_tables_reader_runner(fpaths):
     return result_queue
 
 
+def compute_integral_intensities(matrices_dict: dict, flux_mult:float =1.0, wave_mult:float =1.0):
+    return {
+        band: compute_integral_intensity(
+            flux_matrix=dflux[ATM_MODEL_DATAFRAME_FLUX],
+            wavelength=dflux[ATM_MODEL_DATAFRAME_WAVE],
+            flux_mult=flux_mult,
+            wave_mult=wave_mult
+        )
+        for band, dflux in matrices_dict.items()
+    }
+
+
+def compute_integral_intensity(flux_matrix: np.array, wavelength: np.array,
+                               flux_mult: float = 1.0, wave_mult: float = 1.0):
+    # todo: give me different name
+    flux_matrix, wavelength = wavelength * wave_mult, flux_matrix * flux_mult
+    return [np.pi * integrate.simps(face_flux, wavelength) for face_flux in flux_matrix]
+
+
 def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict: dict):
     return {
         band: compute_integral_si_intensity_from_atm_data_containers(passbanded_atm)
@@ -797,11 +810,11 @@ def unique_atm_fpaths(fpaths):
     return fpaths_set, fpaths_map
 
 
-def remap_passbanded_unique_atms_to_origin(passbanded_models: Dict, fpaths_map: dict):
-    return {band: remap_unique_atm_models_to_origin(model, fpaths_map) for band, model in passbanded_models.items()}
+def remap_passbanded_unique_atms_to_origin(passbanded_containers: Dict, fpaths_map: dict):
+    return {band: remap_unique_atm_container_to_origin(atm, fpaths_map) for band, atm in passbanded_containers.items()}
 
 
-def remap_unique_atm_models_to_origin(models: list, fpaths_map: dict):
+def remap_unique_atm_container_to_origin(models: list, fpaths_map: dict):
     """
     !!! warnign - assigned containers are mutable, if you will change content of any container, changes will affect
     !!!           any other container with same reference
@@ -832,13 +845,25 @@ def read_unique_atm_tables(fpaths):
     return models, fpaths_map
 
 
+def find_atm_si_multiplicators(atm_containers):
+    for atm_container in atm_containers:
+        if atm_container is not None:
+            return atm_container.flux_to_si_mult, atm_container.wave_to_si_mult
+    raise ValueError('no valid atmospheric container has be supplied to method')
+
+
 def find_atm_defined_wavelength(atm_containers):
     for atm_container in atm_containers:
         if atm_container is not None:
             return atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
+    raise ValueError('no valid atmospheric container has be supplied to method')
 
 
-def remap_passbanded_unique_atms_to_matrix(atm_containers, fpaths_map):
+def remap_passbanded_unique_atms_to_matrix(passbanded_containers: Dict, fpaths_map: dict):
+    return {band: remap_passbanded_unique_atm_to_matrix(atm, fpaths_map) for band, atm in passbanded_containers.items()}
+
+
+def remap_passbanded_unique_atm_to_matrix(atm_containers, fpaths_map):
     total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
     wavelengths_defined = find_atm_defined_wavelength(atm_containers)
     wavelengths_length = len(wavelengths_defined)

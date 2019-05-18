@@ -123,13 +123,6 @@ def get_normal_radiance(self, **kwargs):
             **kwargs
         )
     )
-
-    # import pickle
-    # pickle.dump(primary, open("primary.atm.pickle", "wb"))
-    # pickle.dump(secondary, open("secondary.atm.pickle", "wb"))
-
-    # primary = pickle.load(open("primary.atm.pickle", "rb"))
-    # secondary = pickle.load(open("secondary.atm.pickle", "rb"))
     return primary, secondary
 
 
@@ -142,11 +135,6 @@ def get_limbdarkening(self, **kwargs):
             passband=kwargs["passband"]
         ) for component in config.BINARY_COUNTERPARTS.keys()
     ]
-
-    # import pickle
-    # pickle.dump(x[0], open("primary.ld.pickle", "wb"))
-    # pickle.dump(x[1], open("secondary.ld.pickle", "wb"))
-    # return pickle.load(open("primary.ld.pickle", "rb")), pickle.load(open("secondary.ld.pickle", "rb"))
 
 
 def compute_circular_synchronous_lightcurve(self, **kwargs):
@@ -164,39 +152,39 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
     exit()
 
-    primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(initial_props_container, **kwargs)
-    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-
-    system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
-    system_positions_container = system_positions_container.darkside_filter()
-
-    band_curves = {key: list() for key in kwargs["passband"].keys()}
-    for container in system_positions_container:
-        # container = pickle.load(open("container.pickle", "rb"))
-        coverage = compute_surface_coverage(container)
-        for band in kwargs["passband"].keys():
-            # optimize
-            p_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
-                                  for n in container.primary.normals])
-
-            s_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
-                                  for n in container.secondary.normals])
-
-            # fixme: do something with this fucking zero indexing
-            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
-                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                 cos_theta=p_cosines)[0]
-
-            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
-                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                 cos_theta=s_cosines)[0]
-            p_band_normal_radiance = np.array([rad.intensity for rad in primary_normal_radiance[band]])
-            s_band_normal_radiance = np.array([rad.intensity for rad in secondary_normal_radiance[band]])
-
-            p_flux = sum(p_band_normal_radiance * p_cosines * coverage["primary"] * p_ld_cors)
-            s_flux = sum(s_band_normal_radiance * s_cosines * coverage["secondary"] * s_ld_cors)
-            flux = p_flux + s_flux
-            band_curves[band].append(flux)
+    # primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(initial_props_container, **kwargs)
+    # ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+    #
+    # system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
+    # system_positions_container = system_positions_container.darkside_filter()
+    #
+    # band_curves = {key: list() for key in kwargs["passband"].keys()}
+    # for container in system_positions_container:
+    #     # container = pickle.load(open("container.pickle", "rb"))
+    #     coverage = compute_surface_coverage(container)
+    #     for band in kwargs["passband"].keys():
+    #         # optimize
+    #         p_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
+    #                               for n in container.primary.normals])
+    #
+    #         s_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
+    #                               for n in container.secondary.normals])
+    #
+    #         # fixme: do something with this fucking zero indexing
+    #         p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
+    #                                              limb_darkening_law=config.LIMB_DARKENING_LAW,
+    #                                              cos_theta=p_cosines)[0]
+    #
+    #         s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
+    #                                              limb_darkening_law=config.LIMB_DARKENING_LAW,
+    #                                              cos_theta=s_cosines)[0]
+    #         p_band_normal_radiance = np.array([rad.intensity for rad in primary_normal_radiance[band]])
+    #         s_band_normal_radiance = np.array([rad.intensity for rad in secondary_normal_radiance[band]])
+    #
+    #         p_flux = sum(p_band_normal_radiance * p_cosines * coverage["primary"] * p_ld_cors)
+    #         s_flux = sum(s_band_normal_radiance * s_cosines * coverage["secondary"] * s_ld_cors)
+    #         flux = p_flux + s_flux
+    #         band_curves[band].append(flux)
 
     exit()
 
