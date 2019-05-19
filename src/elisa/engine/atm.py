@@ -764,8 +764,7 @@ def compute_integral_intensities(matrices_dict: dict, flux_mult:float =1.0, wave
 def compute_integral_intensity(flux_matrix: np.array, wavelength: np.array,
                                flux_mult: float = 1.0, wave_mult: float = 1.0):
     # todo: give me different name
-    flux_matrix, wavelength = flux_matrix * flux_mult, wavelength * wave_mult
-    return [np.pi * integrate.simps(face_flux, wavelength) for face_flux in flux_matrix]
+    return [np.pi * flux_mult * wave_mult * integrate.simps(face_flux, wavelength) for face_flux in flux_matrix]
 
 
 def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict: dict):
