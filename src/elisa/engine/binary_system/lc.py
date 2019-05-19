@@ -90,20 +90,6 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer):
         config.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
     }
 
-    # return {
-    #     "cover": {
-    #         "coverage": cover_obj_coverage,
-    #         "visible": full_visible,
-    #         "partial_visible": partial_visible,
-    #         "invisible": invisible
-    #     },
-    #     "undercover": {
-    #
-    #         "coverage": undercover_obj_coverage,
-    #         # add
-    #     }
-    # }
-
 
 def get_normal_radiance(self, **kwargs):
     primary = atm.NaiveInterpolatedAtm.radiance(
