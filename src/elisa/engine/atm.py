@@ -855,7 +855,7 @@ def find_atm_defined_wavelength(atm_containers):
     for atm_container in atm_containers:
         if atm_container is not None:
             return atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
-    raise ValueError('no valid atmospheric container has be supplied to method')
+    raise ValueError('no valid atmospheric container has beeen supplied to method')
 
 
 def remap_passbanded_unique_atms_to_matrix(passbanded_containers: Dict, fpaths_map: dict):
@@ -863,10 +863,16 @@ def remap_passbanded_unique_atms_to_matrix(passbanded_containers: Dict, fpaths_m
 
 
 def remap_passbanded_unique_atm_to_matrix(atm_containers, fpaths_map):
+    """
+    creating matrix of atmosphere models for each face
+    :param atm_containers: list of unique atmosphere containers from tables
+    :param fpaths_map: map - atmosphere container to faces
+    :return: matrix of atmosphere models
+    """
     total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
     wavelengths_defined = find_atm_defined_wavelength(atm_containers)
     wavelengths_length = len(wavelengths_defined)
-    models_matrix = np.zeros(total * wavelengths_length).reshape(total, wavelengths_length)
+    models_matrix = np.empty((total, wavelengths_length))
 
     for atm_container in atm_containers:
         if atm_container is not None:
