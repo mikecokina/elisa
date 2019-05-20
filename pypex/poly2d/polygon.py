@@ -12,8 +12,8 @@ class Polygon(shape.Shape2D):
     """
     Convex Polygon
     """
-    def __init__(self, hull):
-        super(Polygon, self).__init__(hull=hull)
+    def __init__(self, hull, **kwargs):
+        super(Polygon, self).__init__(hull=hull, **kwargs)
         self.sort_clockwise(inplace=True)
         self.mplpath = mpltpath.Path(self.hull)
 
@@ -54,15 +54,15 @@ class Polygon(shape.Shape2D):
 
         # find point of intersected edges
         for edge1 in self.edges():
-            line1 = Line(edge1)
+            line1 = Line(edge1, _validity=False)
             for edge2 in poly.edges():
-                line2 = Line(edge2)
+                line2 = Line(edge2, _validity=False)
                 intersection = line1.intersects(line2, _full=True, in_touch=True, tol=tol)
                 if intersection[1] and (intersection[-1] in ["INTERSECT"]):
                     intersection_poly.append(intersection[2])
         intersection_poly = Point.set(intersection_poly, tol=tol)
 
-        return Polygon(intersection_poly) if len(intersection_poly) > 2 else None
+        return Polygon(intersection_poly, _validity=False) if len(intersection_poly) > 2 else None
 
     def surface_area(self):
         lines = np.hstack([self.hull, np.roll(self.hull, -1, axis=0)])

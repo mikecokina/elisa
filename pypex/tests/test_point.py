@@ -28,7 +28,7 @@ class BaseTestCase(unittest.TestCase):
         poly = Polygon([[0, 0], [1, 0], [1, 1]])
         p = point.Point(x=0.5, y=0)
         obtained = point.is_point_in_polygon(p, poly)
-        self.assertTrue(obtained)
+        self.assertFalse(obtained)
 
 
 class PointTestCase(unittest.TestCase):

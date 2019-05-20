@@ -309,7 +309,7 @@ def surface_area_coverage(size, visible, visible_coverage, partial=None, partial
 
 
 def faces_to_pypex_poly(t_hulls):
-    return (Polygon(t_hull) for t_hull in t_hulls)
+    return (Polygon(t_hull, _validity=False) for t_hull in t_hulls)
 
 
 def pypex_poly_hull_intersection(pypex_faces_gen, pypex_hull: Polygon):
@@ -321,4 +321,4 @@ def pypex_poly_surface_area(pypex_polys_gen):
 
 
 def hull_to_pypex_poly(hull):
-    return Polygon(hull)
+    return Polygon(hull, _validity=False)
