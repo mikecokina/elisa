@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
@@ -6,6 +7,8 @@ from scipy.spatial.qhull import ConvexHull
 from elisa.conf import config
 from elisa.engine import const, utils, atm, ld
 from elisa.engine.binary_system import geo
+
+__logger__ = logging.getLogger('lc')
 
 
 def partial_visible_faces_surface_coverage(points, faces, normals, hull):
@@ -41,6 +44,7 @@ def get_eclipse_boundary_path(hull):
 
 
 def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer):
+    __logger__.debug(f"computing surface coverage for {container.position}")
     cover_component = 'secondary' if 0.0 < container.position.azimut < const.PI else 'primary'
     cover_object = getattr(container, cover_component)
     undercover_object = getattr(container, config.BINARY_COUNTERPARTS[cover_component])
@@ -136,43 +140,34 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     setattr(initial_props_container.secondary, 'metallicity', self.secondary.metallicity)
 
     primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
+    primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(initial_props_container, **kwargs)
+    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
-    # primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(initial_props_container, **kwargs)
-    # ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-    #
-    # system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
-    # system_positions_container = system_positions_container.darkside_filter()
-    #
-    # band_curves = {key: list() for key in kwargs["passband"].keys()}
-    # for container in system_positions_container:
-    #     # container = pickle.load(open("container.pickle", "rb"))
-    #     coverage = compute_surface_coverage(container)
-    #     for band in kwargs["passband"].keys():
-    #         # optimize
-    #         p_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
-    #                               for n in container.primary.normals])
-    #
-    #         s_cosines = np.array([np.dot(n, const.LINE_OF_SIGHT) / np.linalg.norm(n)
-    #                               for n in container.secondary.normals])
-    #
-    #         # fixme: do something with this fucking zero indexing
-    #         p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
-    #                                              limb_darkening_law=config.LIMB_DARKENING_LAW,
-    #                                              cos_theta=p_cosines)[0]
-    #
-    #         s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
-    #                                              limb_darkening_law=config.LIMB_DARKENING_LAW,
-    #                                              cos_theta=s_cosines)[0]
-    #         p_band_normal_radiance = np.array([rad.intensity for rad in primary_normal_radiance[band]])
-    #         s_band_normal_radiance = np.array([rad.intensity for rad in secondary_normal_radiance[band]])
-    #
-    #         p_flux = sum(p_band_normal_radiance * p_cosines * coverage["primary"] * p_ld_cors)
-    #         s_flux = sum(s_band_normal_radiance * s_cosines * coverage["secondary"] * s_ld_cors)
-    #         flux = p_flux + s_flux
-    #         band_curves[band].append(flux)
+    system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion)
+    system_positions_container = system_positions_container.darkside_filter()
 
+    band_curves = {key: list() for key in kwargs["passband"].keys()}
+    for container in system_positions_container:
+        coverage = compute_surface_coverage(container)
+        p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
+        s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
 
+        for band in kwargs["passband"].keys():
+            # fixme: do something with this fucking zero indexing
+            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                 cos_theta=p_cosines)[0]
 
+            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                 cos_theta=s_cosines)[0]
+            # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
+            p_flux = sum(primary_normal_radiance[band] * p_cosines * coverage["primary"] * p_ld_cors)
+            s_flux = sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
+            flux = p_flux + s_flux
+            band_curves[band].append(flux)
+
+    return band_curves
 
 
 

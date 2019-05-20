@@ -858,7 +858,7 @@ def find_atm_si_multiplicators(atm_containers):
     for atm_container in atm_containers:
         if atm_container is not None:
             return atm_container.flux_to_si_mult, atm_container.wave_to_si_mult
-    raise ValueError('no valid atmospheric container has be supplied to method')
+    raise ValueError('no valid atmospheric container has been supplied to method')
 
 
 def find_atm_defined_wavelength(atm_containers):

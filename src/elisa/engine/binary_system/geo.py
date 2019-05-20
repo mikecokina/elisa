@@ -161,6 +161,14 @@ class PositionContainer(object):
         self.phase = phase
         self.distance = distance
 
+    def __str__(self):
+        return f"Position: \n" \
+            f"      index: {self.position_index}\n" \
+            f"      azimut: {self.azimut}\n" \
+            f"      true anomaly: {self.true_anomaly}\n" \
+            f"      photomeric phase: {self.phase}\n" \
+            f"      component distance: {self.distance}"
+
 
 class SystemOrbitalPosition(object):
     def __init__(self, primary, secondary, inclination, motion):
