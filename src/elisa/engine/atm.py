@@ -125,10 +125,13 @@ class NaiveInterpolatedAtm(object):
         unique_atms = arange_atm_to_same_wavelength(unique_atms)
         passbanded_atm_containers = apply_passband(unique_atms, passband_containers,
                                                    global_left=global_left, global_right=global_right)
+
         flux_matrices = remap_passbanded_unique_atms_to_matrix(passbanded_atm_containers, containers_map)
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
-        localized_atms = NaiveInterpolatedAtm.interpolate(atm_containers, flux_matrices, temperature=temperature)
-        return compute_integral_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+        localized_atms = NaiveInterpolatedAtm.interpolate_spectra(atm_containers, flux_matrices, temperature=temperature)
+        result = compute_integral_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+
+        return result
 
     @staticmethod
     def compute_interpolation_weights(temperatures: list, top_atm_containers: list, bottom_atm_containers: list):
@@ -168,7 +171,7 @@ class NaiveInterpolatedAtm(object):
         return (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
 
     @staticmethod
-    def interpolate(passbanded_atm_containers: Dict, flux_matrices: Dict, **kwargs):
+    def interpolate_spectra(passbanded_atm_containers: Dict, flux_matrices: Dict, **kwargs):
         """
         # fixme: update docstring desc
         for given `on grid` tables of stellar atmospheres stored in `atm_tables` list will compute atmospheres
@@ -751,8 +754,8 @@ def multithread_atm_tables_reader_runner(fpaths):
 
 def compute_integral_intensities(matrices_dict: dict, flux_mult:float =1.0, wave_mult:float =1.0):
     return {
-        band: compute_integral_intensity(
-            flux_matrix=dflux[ATM_MODEL_DATAFRAME_FLUX],
+        band: compute_normal_intensity(
+            spectral_flux=dflux[ATM_MODEL_DATAFRAME_FLUX],
             wavelength=dflux[ATM_MODEL_DATAFRAME_WAVE],
             flux_mult=flux_mult,
             wave_mult=wave_mult
@@ -761,10 +764,17 @@ def compute_integral_intensities(matrices_dict: dict, flux_mult:float =1.0, wave
     }
 
 
-def compute_integral_intensity(flux_matrix: np.array, wavelength: np.array,
-                               flux_mult: float = 1.0, wave_mult: float = 1.0):
-    # todo: give me different name
-    return [np.pi * flux_mult * wave_mult * integrate.simps(face_flux, wavelength) for face_flux in flux_matrix]
+def compute_normal_intensity(spectral_flux: np.array, wavelength: np.array,
+                             flux_mult: float = 1.0, wave_mult: float = 1.0):
+    """
+    calculates normal flux for all surface faces
+    :param spectral_flux: interpolated atmosphere models for each face (N_face x wavelength)
+    :param wavelength: wavelengths of atmosphere models
+    :param flux_mult:
+    :param wave_mult:
+    :return:
+    """
+    return np.pi * flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
 
 
 def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict: dict):
