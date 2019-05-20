@@ -47,16 +47,7 @@ def is_point_in_polygon(point, polygon):
     """
     if len(polygon) < 3:
         raise ValueError("invalid polygon shape, expected at least 3 corners polygon")
-    return polygon.mplpath.contains_point(point.to_array(), radius=PRECISION)
-
-    # polygon_hull = polygon.hull
-    # point = np.array([point.x, point.y])
-    # result = True
-    #
-    # for i in range(-2, len(polygon_hull)-2):
-    #     latest = same_side(point, polygon_hull[i], polygon_hull[i+1], polygon_hull[i+2])
-    #     result &= latest
-    # return result
+    return polygon.mplpath.contains_point(point.to_array())
 
 
 class _Point(object):
