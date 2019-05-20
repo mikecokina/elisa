@@ -166,7 +166,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             s_flux = sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
             flux = p_flux + s_flux
             band_curves[band].append(flux)
-
+    # FIXME: need improve polygon.intersection method from pypex, its time consumtion is insane
     return band_curves
 
 
