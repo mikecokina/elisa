@@ -1,6 +1,6 @@
 import numpy as np
 
-from pypex.base.conf import ROUND_PRECISION as PRECISION
+from pypex.base.conf import ROUND_PRECISION, PRECISION
 
 
 def _line_side(p1, p2, a, b):
@@ -47,15 +47,16 @@ def is_point_in_polygon(point, polygon):
     """
     if len(polygon) < 3:
         raise ValueError("invalid polygon shape, expected at least 3 corners polygon")
+    return polygon.mplpath.contains_point(point.to_array(), radius=PRECISION)
 
-    polygon = polygon.sort_clockwise(inplace=False)
-    point = np.array([point.x, point.y])
-    result = True
-
-    for i in range(-2, len(polygon)-2):
-        latest = same_side(point, polygon[i], polygon[i+1], polygon[i+2])
-        result &= latest
-    return result
+    # polygon_hull = polygon.hull
+    # point = np.array([point.x, point.y])
+    # result = True
+    #
+    # for i in range(-2, len(polygon_hull)-2):
+    #     latest = same_side(point, polygon_hull[i], polygon_hull[i+1], polygon_hull[i+2])
+    #     result &= latest
+    # return result
 
 
 class _Point(object):
@@ -95,7 +96,7 @@ class Point(object):
         return Point(self.x - other.x, self.y - other.y)
 
     @staticmethod
-    def set(points, tol=PRECISION):
+    def set(points, tol=ROUND_PRECISION):
         """
         Naive implementaion `set` like function in python.
         This method relly on tolerance. Points are same up to supplied tolerance.

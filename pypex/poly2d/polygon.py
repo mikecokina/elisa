@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.path as mpltpath
 
 from pypex.base import shape
 from pypex.poly2d.intersection import sat
@@ -14,6 +15,7 @@ class Polygon(shape.Shape2D):
     def __init__(self, hull):
         super(Polygon, self).__init__(hull=hull)
         self.sort_clockwise(inplace=True)
+        self.mplpath = mpltpath.Path(self.hull)
 
     def edges(self):
         """
