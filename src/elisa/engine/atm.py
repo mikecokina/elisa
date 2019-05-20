@@ -129,7 +129,7 @@ class NaiveInterpolatedAtm(object):
         flux_matrices = remap_passbanded_unique_atms_to_matrix(passbanded_atm_containers, containers_map)
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
         localized_atms = NaiveInterpolatedAtm.interpolate_spectra(atm_containers, flux_matrices, temperature=temperature)
-        result = compute_integral_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+        result = compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
         return result
 
@@ -752,7 +752,7 @@ def multithread_atm_tables_reader_runner(fpaths):
     return result_queue
 
 
-def compute_integral_intensities(matrices_dict: dict, flux_mult:float =1.0, wave_mult:float =1.0):
+def compute_normal_intensities(matrices_dict: dict, flux_mult:float =1.0, wave_mult:float =1.0):
     return {
         band: compute_normal_intensity(
             spectral_flux=dflux[ATM_MODEL_DATAFRAME_FLUX],
