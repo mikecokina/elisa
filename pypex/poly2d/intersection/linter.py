@@ -3,6 +3,7 @@ import numpy as np
 from pypex.base.conf import PRECISION
 from pypex.poly2d.intersection import sat
 from pypex.poly2d.point import Point
+from pypex.utils import det_2d
 
 
 def intersection(p1, p2, p3, p4, in_touch=False):
@@ -63,7 +64,8 @@ def intersection(p1, p2, p3, p4, in_touch=False):
     dp2 = p4 - p3
     # determinant
     matrix = np.array([dp1, dp2])
-    d = np.linalg.det(matrix)
+    # d = np.linalg.det(matrix)
+    d = det_2d(matrix)
 
     # test if d < 1e-10
     # testing on zero, but precission should cause p3 problem
@@ -85,7 +87,7 @@ def intersection(p1, p2, p3, p4, in_touch=False):
         # a1, b1, c1 = -dp1_y, dp1_x, (dp1_y * pt1_x) - (dp1_x * pt1_y)
         # a2, b2, c2 = -dp2_y, dp2_x, (dp2_y * pt3_x) - (dp2_x * pt3_y)
 
-        a1, b1, c1 = -dp1[1], dp1[0], np.linalg.det(np.array([p1, dp1]))
+        a1, b1, c1 = -dp1[1], dp1[0], det_2d(np.array([p1, dp1]))
 
         # second line has to be definable with same tangential and normal vector as first line
         # since ax + by + c = 0 and in our case [x, y] = p3 or p4 for second equation, then for c2
@@ -98,8 +100,8 @@ def intersection(p1, p2, p3, p4, in_touch=False):
         return int_segment, intersects, np.nan, d, msg
 
     # +0 because of negative zero (-0.0 is incorrect) formatting on output
-    u = (np.linalg.det([dp2, p1 - p3]) / d) + 0.
-    v = (np.linalg.det([dp1, p1 - p3]) / d) + 0.
+    u = (det_2d([dp2, p1 - p3]) / d) + 0.
+    v = (det_2d([dp1, p1 - p3]) / d) + 0.
 
     eval_method = np.less_equal if in_touch else np.less
     int_x, int_y = p1[0] + (u * dp1[0]), p1[1] + (u * dp1[1])

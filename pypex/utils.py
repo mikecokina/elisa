@@ -13,3 +13,7 @@ def sha256_content(content):
     content = content.encode('utf-8') if isinstance(content, str) else content
     sha256.update(content)
     return sha256.hexdigest()
+
+
+def det_2d(matrix):
+    return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]
