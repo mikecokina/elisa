@@ -118,15 +118,15 @@ class Observer(object):
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
         args = position_method(phase=phases)
-        self._system.compute_lightcurve(
-            **dict(
-                positions=args,
-                passband=self.passband,
-                left_bandwidth=self.left_bandwidth,
-                right_bandwidth=self.right_bandwidth,
-                atlas="ck04"
-            )
-        )
+        curves = self._system.compute_lightcurve(
+                     **dict(
+                         positions=args,
+                         passband=self.passband,
+                         left_bandwidth=self.left_bandwidth,
+                         right_bandwidth=self.right_bandwidth,
+                         atlas="ck04"
+                     )
+                 )
 
         # pool = Pool(processes=config.NUMBER_OF_THREADS)
         # res = [pool.apply_async(mp.observe_worker,
@@ -140,7 +140,7 @@ class Observer(object):
         # # return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
         self._logger.info("observation finished")
-
+        return curves
 
 if __name__ == "__main__":
     o = Observer(passband=['Generic.Bessell.B', 'Generic.Bessell.V'], system=None)

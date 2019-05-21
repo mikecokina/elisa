@@ -110,6 +110,7 @@ class NaiveInterpolatedAtm(object):
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
         # related atmospheric files for each face (upper and lower)
+        # fixme: too slow
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, log_g, metallicity, atlas)
         # find unique atmosphere data files
         unique_atms, containers_map = read_unique_atm_tables(atm_files)
@@ -128,10 +129,10 @@ class NaiveInterpolatedAtm(object):
 
         flux_matrices = remap_passbanded_unique_atms_to_matrix(passbanded_atm_containers, containers_map)
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
-        localized_atms = NaiveInterpolatedAtm.interpolate_spectra(atm_containers, flux_matrices, temperature=temperature)
-        result = compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+        localized_atms = NaiveInterpolatedAtm.interpolate_spectra(atm_containers, flux_matrices,
+                                                                  temperature=temperature)
 
-        return result
+        return compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
     @staticmethod
     def compute_interpolation_weights(temperatures: list, top_atm_containers: list, bottom_atm_containers: list):
@@ -204,7 +205,6 @@ class NaiveInterpolatedAtm(object):
                                                    instead of internal matrix representation
         :return: list of AtmDataContainer`s
         """
-
         temperature = kwargs.pop("temperature")
         # log_g = kwargs.pop("log_g")
         # metallicity = kwargs.pop("metallicity")
@@ -349,7 +349,6 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
 
     :return: AtmDataContainer
     """
-
     inplace = kwargs.get('inplace', False)
     if atm_container is None:
         return ValueError('Atmosphere container is empty.')
@@ -374,7 +373,6 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
                           f"to avoid this problem, please specify global_left and global_right bandwidth as "
                           f"kwargs for given method and make sure all models wavelengths "
                           f"are greater or equal to such limits")
-
     return strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=inplace)
 
 
@@ -397,13 +395,11 @@ def strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=F
     left_extention_index = valid_indices[0] - 1 if valid_indices[0] >= 1 else 0
     right_extention_index = valid_indices[-1] + 1 \
         if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
-
     atm_cont = atm_container if inplace else deepcopy(atm_container)
     atm_cont.model = atm_cont.model.iloc[
         np.unique([left_extention_index] + valid_indices + [right_extention_index])
     ]
-    atm_cont = extend_atm_container_on_bandwidth_boundary(atm_cont, left_bandwidth, right_bandwidth)
-    return atm_cont
+    return extend_atm_container_on_bandwidth_boundary(atm_cont, left_bandwidth, right_bandwidth)
 
 
 def find_global_atm_bandwidth(atm_containers):
@@ -430,15 +426,16 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
     """
     interpolator = interpolate.Akima1DInterpolator(atm_container.model[ATM_MODEL_DATAFRAME_WAVE],
                                                    atm_container.model[ATM_MODEL_DATAFRAME_FLUX])
+
     # interpolating values precisely on the border of the filter(s) coverage
     on_border_flux = interpolator([left_bandwidth, right_bandwidth])
     if np.isin(np.nan, on_border_flux):
         raise ValueError('Interpolation on bandwidth boundaries led to NaN value.')
     df: pd.DataFrame = atm_container.model
-    df[ATM_MODEL_DATAFRAME_WAVE][df.first_valid_index()] = left_bandwidth
-    df[ATM_MODEL_DATAFRAME_WAVE][df.last_valid_index()] = right_bandwidth
-    df[ATM_MODEL_DATAFRAME_FLUX][df.first_valid_index()] = on_border_flux[0]
-    df[ATM_MODEL_DATAFRAME_FLUX][df.last_valid_index()] = on_border_flux[1]
+    first, last = df.first_valid_index(), df.last_valid_index()
+    # fixme: this STILL takes a lot of time (0.02s, 80% of runtime of this function!!!)
+    df.loc[[first, last], ATM_MODEL_DATAFRAME_FLUX:ATM_MODEL_DATAFRAME_WAVE] = \
+        np.array([[on_border_flux[0], left_bandwidth], [on_border_flux[1], right_bandwidth]])
     df[ATM_MODEL_DATAFRAME_WAVE] = df[ATM_MODEL_DATAFRAME_WAVE].apply(lambda x: round(x, 10))
     df.reset_index(drop=True, inplace=True)
     atm_container.model = df
