@@ -347,6 +347,21 @@ def numeric_metallicity_to_string(metallicity):
     return "{sign}{leadzeronum}".format(sign=sign, leadzeronum=leadzeronum)
 
 
+def find_nearest_value_as_matrix(array, value):
+    """
+    finds values and indices of elements in `array` that are the closest to the each value in `values`
+
+    :param array:
+    :param value: np.array - array of elements according to which the closest element in `array` is searched for
+    :return:
+    """
+    val = np.array([value]) if np.isscalar(value) else value
+    dif = np.abs(val[:, np.newaxis] - array)
+    argmins = dif.argmin(axis=1)
+    val = array[argmins]
+    return val, argmins
+
+
 def find_nearest_value(array, value):
     array = np.array(array)
     value = array[(np.abs(array - value)).argmin()]
@@ -355,8 +370,19 @@ def find_nearest_value(array, value):
     return [value, index]
 
 
+def find_surrounded_as_matrix(array, value):
+    dif = value[:, np.newaxis] - array
+    positive_mask = dif > 0
+    sign_swith_mask = np.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
+    idx_array = np.ones(np.shape(dif),dtype=np.int) * np.arange(np.shape(array)[0])
+    idx_array = idx_array[:, :-1][sign_swith_mask]
+    ret_matrix = np.column_stack((array[idx_array], array[idx_array+1]))
+    return ret_matrix
+
+
 def find_surrounded(array, value):
     # find surounded value in passed array
+
     arr, ret = np.array(array[:]), []
     f_nst = find_nearest_value(arr, value)
     ret.append(f_nst[0])

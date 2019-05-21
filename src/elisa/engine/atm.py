@@ -251,20 +251,19 @@ class NaiveInterpolatedAtm(object):
         """
         atlas = validated_atlas(atlas)
 
-        g_array = atm_file_prefix_to_quantity_list("gravity", atlas)
-        m_array = atm_file_prefix_to_quantity_list("metallicity", atlas)
-        t_array = atm_file_prefix_to_quantity_list("temperature", atlas)
+        g_array = np.array(atm_file_prefix_to_quantity_list("gravity", atlas))
+        m_array = np.array(atm_file_prefix_to_quantity_list("metallicity", atlas))
+        t_array = np.array(atm_file_prefix_to_quantity_list("temperature", atlas))
 
-        g = [utils.find_nearest_value(g_array, _logg)[0] for _logg in log_g]
-        m = utils.find_nearest_value(m_array, metallicity)[0]
-        t = [_t if len(_t) == 2 else [np.nan] + _t
-             for _t in [utils.find_surrounded(t_array, _temp) for _temp in temperature]]
-        t = np.array(t).T
+        g = utils.find_nearest_value_as_matrix(g_array, log_g)[0]
+        m = utils.find_nearest_value_as_matrix(m_array, metallicity)[0][0]
+        t = utils.find_surrounded_as_matrix(t_array, temperature)
 
         domain_df = pd.DataFrame({
-            "temp": list(t[0]) + list(t[1]),
-            "log_g": list(g) + list(g),
-            "mh": [m] * len(g) * 2
+            # "temp": list(t[0]) + list(t[1]),
+            "temp": t.flatten('F'),
+            "log_g": np.tile(g, 2),
+            "mh": np.repeat(m, len(g) * 2)
         })
 
         directory = get_atm_directory(m, atlas)
@@ -274,6 +273,7 @@ class NaiveInterpolatedAtm(object):
             domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
             domain_df["temp"].apply(lambda x: str(int(x) if not np.isnan(x) else '__NaN__')) + "_" + \
             domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
+
         return [
             path if '__NaN__' not in path
             else None
