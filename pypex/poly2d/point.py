@@ -1,6 +1,6 @@
 import numpy as np
 
-from pypex.base.conf import ROUND_PRECISION, PRECISION
+from pypex.base.conf import ROUND_PRECISION
 
 
 def _line_side(p1, p2, a, b):

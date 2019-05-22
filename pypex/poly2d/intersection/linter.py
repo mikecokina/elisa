@@ -1,12 +1,12 @@
 import numpy as np
 
-from pypex.base.conf import PRECISION
+from pypex.base.conf import PRECISION, ROUND_PRECISION
 from pypex.poly2d.intersection import sat
 from pypex.poly2d.point import Point
 from pypex.utils import det_2d
 
 
-def intersection(p1, p2, p3, p4, in_touch=False):
+def intersection(p1, p2, p3, p4, in_touch=False, tol=ROUND_PRECISION):
     """
     defs::
 
@@ -32,11 +32,12 @@ def intersection(p1, p2, p3, p4, in_touch=False):
             u = (((p1_y - pt3_y) * dp2_x) - (dp2_y * (p1_x - pt3_x))) / d
             v = (((p1_y - pt3_y) * dp1_x) - (dp1_y * (p1_x - pt3_x))) / d
 
-    :param in_touch: bool
     :param p1: numpy.array; first point of first segment
     :param p2: numpy.array; second point of first segment
     :param p3: numpy.array; first point of second segment
     :param p4: numpy.array; second point of second segment
+    :param tol: int; consider two numbers as same if match up to `tol` decimal numbers
+    :param in_touch: bool
     :return: tuple
 
         0: intersection_status::
@@ -64,7 +65,6 @@ def intersection(p1, p2, p3, p4, in_touch=False):
     dp2 = p4 - p3
     # determinant
     matrix = np.array([dp1, dp2])
-    # d = np.linalg.det(matrix)
     d = det_2d(matrix)
 
     # test if d < 1e-10
@@ -96,7 +96,8 @@ def intersection(p1, p2, p3, p4, in_touch=False):
         d = abs(c2 - c1) / (np.sqrt(a1 ** 2 + b1 ** 2))
 
         int_segment, msg = (True, "OVERLAP") if d == 0 else (False, "PARALLEL")
-        intersects = False if msg in ["PARALLEL"] else sat.intersects(np.array([p1, p2]), np.array([p3, p4]), in_touch)
+        intersects = False if msg in ["PARALLEL"] \
+            else sat.intersects(np.array([p1, p2]), np.array([p3, p4]), in_touch, tol)
         return int_segment, intersects, np.nan, d, msg
 
     # +0 because of negative zero (-0.0 is incorrect) formatting on output

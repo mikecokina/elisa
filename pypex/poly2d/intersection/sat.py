@@ -8,10 +8,10 @@ overlap is handled as no intersection at all
 import numpy as np
 
 from pypex.poly2d import projection
-from pypex.base.conf import ROUND_PRECISION as PRECISION
+from pypex.base.conf import ROUND_PRECISION
 
 
-def separating_axis_theorem(poly1, poly2, in_touch=False, tol=PRECISION):
+def separating_axis_theorem(poly1, poly2, in_touch=False, tol=ROUND_PRECISION):
     """
 
     :param tol: int
@@ -65,7 +65,7 @@ def separating_axis_theorem(poly1, poly2, in_touch=False, tol=PRECISION):
     return False
 
 
-def separating_axis_theorem_line_adapt(line1, line2, in_touch=False, tol=PRECISION):
+def separating_axis_theorem_line_adapt(line1, line2, in_touch=False, tol=ROUND_PRECISION):
     """
     test overlap of segments that are situated on the same line
 
@@ -91,14 +91,14 @@ def separating_axis_theorem_line_adapt(line1, line2, in_touch=False, tol=PRECISI
     return False
 
 
-def intersects(poly1, poly2, in_touch=False, tol=PRECISION):
+def intersects(poly1, poly2, in_touch=False, tol=ROUND_PRECISION):
     """
     Resolve whether two objects intersetcs.
 
     In case of two segments it will resolve correctly only segments situated on tme same line.
     It is suppose to resolve whether these two lines are separated or overlapped/touched in point.
 
-    :param tol: int; consider as same up to `tol` decimal numbers
+    :param tol: int; consider two numbers as same if match up to `tol` decimal numbers
     :param in_touch: bool
     :param poly1: numpy.array; convex polygon
     :param poly2: numpy.array; convex polygon

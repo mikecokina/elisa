@@ -10,6 +10,7 @@ class Shape2D(metaclass=ABCMeta):
     """
     Convex 2D Shape
     """
+
     def __init__(self, hull, _validity=True):
         hull = self.normalize_hull(hull)
         if _validity:
@@ -48,7 +49,7 @@ class Shape2D(metaclass=ABCMeta):
     @hull.setter
     def hull(self, hull):
         self._hull = hull
-        
+
     @abstractmethod
     def intersects(self, shape, **kwargs):
         pass

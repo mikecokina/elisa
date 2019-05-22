@@ -5,7 +5,7 @@ from pypex.base import shape
 from pypex.poly2d.intersection import sat
 from pypex.poly2d.point import Point
 from pypex.poly2d.line import Line
-from pypex.base.conf import ROUND_PRECISION as PRECISION
+from pypex.base.conf import ROUND_PRECISION
 
 
 class Polygon(shape.Shape2D):
@@ -25,7 +25,7 @@ class Polygon(shape.Shape2D):
         for i in range(-1, len(self.hull)-1, 1):
             yield np.array([self.hull[i], self.hull[i+1]])
 
-    def intersects(self, poly, in_touch=False, tol=PRECISION):
+    def intersects(self, poly, in_touch=False, tol=ROUND_PRECISION):
         """
         Whether two polygons intersects.
 
@@ -36,7 +36,7 @@ class Polygon(shape.Shape2D):
         """
         return sat.intersects(self.hull, poly.hull, in_touch, tol)
 
-    def intersection(self, poly, tol=PRECISION):
+    def intersection(self, poly, tol=ROUND_PRECISION):
         """
         Find intersection polygon created by clipping of one polygon by another.
 
@@ -57,7 +57,7 @@ class Polygon(shape.Shape2D):
             line1 = Line(edge1, _validity=False)
             for edge2 in poly.edges():
                 line2 = Line(edge2, _validity=False)
-                intersection = line1.intersects(line2, _full=True, in_touch=True, tol=tol)
+                intersection = line1.full_intersects(line2, in_touch=True, tol=tol)
                 if intersection[1] and (intersection[-1] in ["INTERSECT"]):
                     intersection_poly = np.concatenate((intersection_poly, [intersection[2]]), axis=0)
         intersection_poly = Point.set(intersection_poly, tol=tol)
