@@ -373,6 +373,13 @@ def find_nearest_value(look_in, look_for):
 def find_surrounded_as_matrix(look_in, look_for):
     dif = look_for[:, np.newaxis] - look_in
     positive_mask = dif >= 0
+    # for values on the left side of look_in array
+    all_positive = np.all(positive_mask, axis=1)
+    # add artificial sign change for right boundary value
+    # switch 'fancy' indexing to integer index since in numpy, assigment can't be done by fancy indexing)
+    all_positive_indices = np.arange(0, len(look_for))[all_positive]
+    positive_mask[all_positive_indices, -1] = False
+    # find signs switching columns
     sign_swith_mask = np.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
     idx_array = np.ones(np.shape(dif), dtype=np.int) * np.arange(np.shape(look_in)[0])
     idx_array = idx_array[:, :-1][sign_swith_mask]
