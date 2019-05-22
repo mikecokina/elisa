@@ -372,7 +372,7 @@ def find_nearest_value(look_in, look_for):
 
 def find_surrounded_as_matrix(look_in, look_for):
     dif = look_for[:, np.newaxis] - look_in
-    positive_mask = dif > 0
+    positive_mask = dif >= 0
     sign_swith_mask = np.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
     idx_array = np.ones(np.shape(dif), dtype=np.int) * np.arange(np.shape(look_in)[0])
     idx_array = idx_array[:, :-1][sign_swith_mask]
