@@ -12,7 +12,8 @@ from elisa.engine.observer import mp
 from elisa.engine.single_system.system import SingleSystem
 
 config.set_up_logging()
-
+# temporary
+from time import time
 
 class PassbandContainer(object):
     def __init__(self, table, passband):
@@ -118,6 +119,7 @@ class Observer(object):
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
         args = position_method(phase=phases)
+
         curves = self._system.compute_lightcurve(
                      **dict(
                          positions=args,

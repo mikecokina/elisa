@@ -28,7 +28,7 @@ def get_eclipse_boundaries(binary, components_distance: float):
         sin_i = np.sin(binary.inclination)
         if sin_i < sin_i_critical:
             binary._logger.debug('Inclination is not sufficient to produce eclipses.')
-            return None
+            return np.array([0.0, 0.0, const.PI, const.PI])
         radius1 = binary.primary.forward_radius
         radius2 = binary.secondary.forward_radius
         sin_i_critical = (radius1 + radius2) / components_distance
@@ -156,7 +156,7 @@ class EasyObject(object):
 class PositionContainer(object):
     def __init__(self, idx, distance, azimut, true_anomaly, phase):
         self.position_index = idx
-        self.azimut = azimut
+        self.azimuth = azimut
         self.true_anomaly = true_anomaly
         self.phase = phase
         self.distance = distance
@@ -164,14 +164,14 @@ class PositionContainer(object):
     def __str__(self):
         return f"Position: \n" \
             f"      index: {self.position_index}\n" \
-            f"      azimut: {self.azimut}\n" \
+            f"      azimut: {self.azimuth}\n" \
             f"      true anomaly: {self.true_anomaly}\n" \
             f"      photomeric phase: {self.phase}\n" \
             f"      component distance: {self.distance}"
 
 
 class SystemOrbitalPosition(object):
-    def __init__(self, primary, secondary, inclination, motion):
+    def __init__(self, primary, secondary, inclination, motion, ecl_boundaries):
         self.inclination = inclination
         self.motion = [PositionContainer(*pos) for pos in motion]
         self.data = ()
@@ -181,6 +181,7 @@ class SystemOrbitalPosition(object):
         setattr(self, 'init_data', args)
         self.init_positions()
         self._idx = 0
+        self.in_eclipse = self.in_eclipse_test(ecl_boundaries)
 
     def __iter__(self):
         for single_position_container in self.data:
@@ -210,6 +211,14 @@ class SystemOrbitalPosition(object):
     def eclipse_filter(self):
         self.data = ()
         return self
+
+    def in_eclipse_test(self, ecl_boundaries):
+        azimuths = [position.azimuth for position in self.motion]
+        primary_ecl_test = np.logical_or((azimuths > ecl_boundaries[0]),
+                                         (azimuths < ecl_boundaries[1]))
+        secondary_ecl_test = np.logical_and((azimuths > ecl_boundaries[2]),
+                                            (azimuths < ecl_boundaries[3]))
+        return np.logical_or(primary_ecl_test,secondary_ecl_test)
 
 
 class SingleOrbitalPositionContainer(object):
@@ -273,7 +282,7 @@ class SingleOrbitalPositionContainer(object):
             for prop in self.__PROPERTIES__:
                 prop_value = getattr(easyobject_instance, prop)
 
-                args = (self.position.azimut - const.HALF_PI, prop_value, "z", False, False)
+                args = (self.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
                 prop_value = utils.axis_rotation(*args)
 
                 args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
@@ -309,15 +318,15 @@ def surface_area_coverage(size, visible, visible_coverage, partial=None, partial
 
 
 def faces_to_pypex_poly(t_hulls):
-    return (Polygon(t_hull, _validity=False) for t_hull in t_hulls)
+    return [Polygon(t_hull, _validity=False) for t_hull in t_hulls]
 
 
 def pypex_poly_hull_intersection(pypex_faces_gen, pypex_hull: Polygon):
-    return (pypex_hull.intersection(poly) for poly in pypex_faces_gen)
+    return [pypex_hull.intersection(poly) for poly in pypex_faces_gen]
 
 
 def pypex_poly_surface_area(pypex_polys_gen):
-    return (poly.surface_area() for poly in pypex_polys_gen)
+    return [poly.surface_area() for poly in pypex_polys_gen]
 
 
 def hull_to_pypex_poly(hull):

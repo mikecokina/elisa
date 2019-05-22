@@ -2253,5 +2253,5 @@ class BinarySystem(System):
         self.build_surface_gravity(component, components_distance)
         self.build_temperature_distribution(component, components_distance)
 
-    def prepare_system_positions_container(self, orbital_motion):
-        return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion)
+    def prepare_system_positions_container(self, orbital_motion, ecl_boundaries):
+        return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion, ecl_boundaries)

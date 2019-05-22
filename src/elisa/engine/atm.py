@@ -22,6 +22,9 @@ from elisa.engine import utils, const
 config.set_up_logging()
 logger = logging.getLogger("atm")
 
+# temporary
+from time import time
+
 # * 1e-7 * 1e4 * 1e10 * (1.0/np.pi)
 
 ATLAS_TO_ATM_FILE_PREFIX = {
