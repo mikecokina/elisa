@@ -376,14 +376,17 @@ def find_surrounded_as_matrix(look_in, look_for):
     # for values on the left side of look_in array
     all_positive = np.all(positive_mask, axis=1)
     # add artificial sign change for right boundary value
-    # switch 'fancy' indexing to integer index since in numpy, assigment can't be done by fancy indexing)
-    all_positive_indices = np.arange(0, len(look_for))[all_positive]
-    positive_mask[all_positive_indices, -1] = False
+    # switch 'fancy' indexing to integer index since in numpy, combined assigment can't be done by fancy indexing)
+    all_positive_inline = np.arange(0, len(look_for))[all_positive]
+    positive_mask[all_positive_inline, -1] = False
     # find signs switching columns
     sign_swith_mask = np.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
     idx_array = np.ones(np.shape(dif), dtype=np.int) * np.arange(np.shape(look_in)[0])
     idx_array = idx_array[:, :-1][sign_swith_mask]
     ret_matrix = np.column_stack((look_in[idx_array], look_in[idx_array + 1]))
+    # consider on place value as not surounded (surounded by itself)
+    isin_look_in = np.isin(look_for, look_in)
+    ret_matrix[isin_look_in] = np.array([look_for, look_for]).T[isin_look_in]
     return ret_matrix
 
 
