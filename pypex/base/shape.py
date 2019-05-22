@@ -73,6 +73,9 @@ class Shape2D(metaclass=ABCMeta):
             self.hull = hull
         return hull
 
+    def to_Points(self):
+        return np.array([Point(*point) for point in self.hull])
+
     @staticmethod
     def validity_check(hull, length, _raise=True):
         length_test = (len(hull) == length) if length in [3, 2] else (len(hull) > length)

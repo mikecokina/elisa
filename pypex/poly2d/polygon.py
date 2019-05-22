@@ -45,8 +45,8 @@ class Polygon(shape.Shape2D):
         :return: pypex.poly2d.polygon.Polygon
         """
         # add  the corners of `self` which are inside poly
-        poly1 = np.array([Point(x=corner[0], y=corner[1]) for corner in self.hull])
-        poly2 = np.array([Point(x=corner[0], y=corner[1]) for corner in poly.hull])
+        poly1 = self.to_Points()
+        poly2 = poly.to_Points()
 
         in_poly1 = poly2[[corner.is_inside_polygon(self) for corner in poly2]]
         in_poly2 = poly1[[corner.is_inside_polygon(poly) for corner in poly1]]
