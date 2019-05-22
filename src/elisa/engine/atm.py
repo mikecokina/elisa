@@ -140,7 +140,9 @@ class NaiveInterpolatedAtm(object):
     def compute_interpolation_weights(temperatures: list, top_atm_containers: list, bottom_atm_containers: list):
         top_temperatures = np.array([a.temperature for a in top_atm_containers])
         bottom_temperatures = np.array([a.temperature for a in bottom_atm_containers])
-        return (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
+        result = (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
+        result[np.isnan(result)] = 1.0
+        return result
 
     @staticmethod
     def compute_unknown_intensity_from_surounded_containers(weight, top_atm_container, bottom_atm_container):
@@ -742,8 +744,8 @@ def compute_normal_intensity(spectral_flux: np.array, wavelength: np.array,
     calculates normal flux for all surface faces
     :param spectral_flux: interpolated atmosphere models for each face (N_face x wavelength)
     :param wavelength: wavelengths of atmosphere models
-    :param flux_mult:
-    :param wave_mult:
+    :param flux_mult: float;
+    :param wave_mult: float;
     :return:
     """
     return np.pi * flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
