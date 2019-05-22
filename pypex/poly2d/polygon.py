@@ -45,12 +45,12 @@ class Polygon(shape.Shape2D):
         :return: pypex.poly2d.polygon.Polygon
         """
         # add  the corners of `self` which are inside poly
-        poly1 = np.array([Point(x=corner[0], y=corner[1]) for corner in self.hull])
-        poly2 = np.array([Point(x=corner[0], y=corner[1]) for corner in poly.hull])
+        poly1 = self.to_Points()
+        poly2 = poly.to_Points()
 
         in_poly1 = poly2[[corner.is_inside_polygon(self) for corner in poly2]]
         in_poly2 = poly1[[corner.is_inside_polygon(poly) for corner in poly1]]
-        intersection_poly = np.concatenate((in_poly1, in_poly2), axis=0).tolist()
+        intersection_poly = np.concatenate((in_poly1, in_poly2), axis=0)
 
         # find point of intersected edges
         for edge1 in self.edges():
@@ -59,12 +59,10 @@ class Polygon(shape.Shape2D):
                 line2 = Line(edge2, _validity=False)
                 intersection = line1.intersects(line2, _full=True, in_touch=True, tol=tol)
                 if intersection[1] and (intersection[-1] in ["INTERSECT"]):
-                    intersection_poly.append(intersection[2])
+                    intersection_poly = np.concatenate((intersection_poly, [intersection[2]]), axis=0)
         intersection_poly = Point.set(intersection_poly, tol=tol)
-
         return Polygon(intersection_poly, _validity=False) if len(intersection_poly) > 2 else None
 
     def surface_area(self):
         lines = np.hstack([self.hull, np.roll(self.hull, -1, axis=0)])
-        area = 0.5 * abs(sum(x1 * y2 - x2 * y1 for x1, y1, x2, y2 in lines))
-        return area
+        return 0.5 * abs(sum(x1 * y2 - x2 * y1 for x1, y1, x2, y2 in lines))

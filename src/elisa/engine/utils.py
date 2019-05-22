@@ -8,6 +8,7 @@ from copy import copy
 from numpy.linalg import norm
 from scipy.spatial import distance_matrix as dstm
 from elisa.engine import const as c
+from typing import Tuple
 
 # temporary
 from time import time
@@ -347,48 +348,57 @@ def numeric_metallicity_to_string(metallicity):
     return "{sign}{leadzeronum}".format(sign=sign, leadzeronum=leadzeronum)
 
 
-def find_nearest_value_as_matrix(array, value):
+def find_nearest_value_as_matrix(look_in: np.array, look_for: np.array) -> Tuple[np.array, np.array]:
     """
-    finds values and indices of elements in `array` that are the closest to the each value in `values`
+    finds values and indices of elements in `look_in` that are the closest to the each value in `values`
 
-    :param array:
-    :param value: np.array - array of elements according to which the closest element in `array` is searched for
+    :param look_in:
+    :param look_for: np.look_in - look_in of elements according to which the closest element in `look_in` is searched for
     :return:
     """
-    val = np.array([value]) if np.isscalar(value) else value
-    dif = np.abs(val[:, np.newaxis] - array)
+    val = np.array([look_for]) if np.isscalar(look_for) else look_for
+    dif = np.abs(val[:, np.newaxis] - look_in)
     argmins = dif.argmin(axis=1)
-    val = array[argmins]
+    val = look_in[argmins]
     return val, argmins
 
 
-def find_nearest_value(array, value):
-    array = np.array(array)
-    value = array[(np.abs(array - value)).argmin()]
-    index = np.where(array == value)[0][0]
-    # index = array.tolist().index(value)
-    return [value, index]
+def find_nearest_value(look_in, look_for):
+    look_in = np.array(look_in)
+    look_for = look_in[(np.abs(look_in - look_for)).argmin()]
+    index = np.where(look_in == look_for)[0][0]
+    return [look_for, index]
 
 
-def find_surrounded_as_matrix(array, value):
-    dif = value[:, np.newaxis] - array
-    positive_mask = dif > 0
+def find_surrounded_as_matrix(look_in, look_for):
+    dif = look_for[:, np.newaxis] - look_in
+    positive_mask = dif >= 0
+    # for values on the left side of look_in array
+    all_positive = np.all(positive_mask, axis=1)
+    # add artificial sign change for right boundary value
+    # switch 'fancy' indexing to integer index since in numpy, combined assigment can't be done by fancy indexing)
+    all_positive_inline = np.arange(0, len(look_for))[all_positive]
+    positive_mask[all_positive_inline, -1] = False
+    # find signs switching columns
     sign_swith_mask = np.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
-    idx_array = np.ones(np.shape(dif),dtype=np.int) * np.arange(np.shape(array)[0])
+    idx_array = np.ones(np.shape(dif), dtype=np.int) * np.arange(np.shape(look_in)[0])
     idx_array = idx_array[:, :-1][sign_swith_mask]
-    ret_matrix = np.column_stack((array[idx_array], array[idx_array+1]))
+    ret_matrix = np.column_stack((look_in[idx_array], look_in[idx_array + 1]))
+    # consider on place value as not surounded (surounded by itself)
+    isin_look_in = np.isin(look_for, look_in)
+    ret_matrix[isin_look_in] = np.array([look_for, look_for]).T[isin_look_in]
     return ret_matrix
 
 
-def find_surrounded(array, value):
-    # find surounded value in passed array
+def find_surrounded(look_in, look_for):
+    # find surounded look_for in passed look_in
 
-    arr, ret = np.array(array[:]), []
-    f_nst = find_nearest_value(arr, value)
+    arr, ret = np.array(look_in[:]), []
+    f_nst = find_nearest_value(arr, look_for)
     ret.append(f_nst[0])
 
     new_arr = []
-    if f_nst[0] > value:
+    if f_nst[0] > look_for:
         for i in range(0, len(arr)):
             if arr[i] < f_nst[0]:
                 new_arr.append(arr[i])
@@ -401,10 +411,10 @@ def find_surrounded(array, value):
     del new_arr
 
     # arr = np.delete(arr, f_nst[1], 0)
-    ret.append(find_nearest_value(arr, value)[0])
+    ret.append(find_nearest_value(arr, look_for)[0])
     ret = sorted(ret)
     # test
-    return ret if ret[0] < value < ret[1] else [value]
+    return ret if ret[0] < look_for < ret[1] else [look_for]
 
 
 def calculate_cos_theta(normals, line_of_sight_vector):

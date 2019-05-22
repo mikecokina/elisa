@@ -113,7 +113,6 @@ class NaiveInterpolatedAtm(object):
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
         # related atmospheric files for each face (upper and lower)
-        # fixme: too slow
         atm_files = NaiveInterpolatedAtm.atm_files(temperature, log_g, metallicity, atlas)
         # find unique atmosphere data files
         unique_atms, containers_map = read_unique_atm_tables(atm_files)
@@ -140,7 +139,7 @@ class NaiveInterpolatedAtm(object):
     @staticmethod
     def compute_interpolation_weights(temperatures: list, top_atm_containers: list, bottom_atm_containers: list):
         top_temperatures = np.array([a.temperature for a in top_atm_containers])
-        bottom_temperatures = np.array([a.temperature if a is not None else 0.0 for a in bottom_atm_containers])
+        bottom_temperatures = np.array([a.temperature for a in bottom_atm_containers])
         return (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
 
     @staticmethod
@@ -181,20 +180,6 @@ class NaiveInterpolatedAtm(object):
         for given `on grid` tables of stellar atmospheres stored in `atm_tables` list will compute atmospheres
         for given parametres (temperature, log_g, metallicity)
 
-        atm_tables contain extended list of AtmDataContainer`s;
-        first part (half) of atm_tables contain bottom atmospheres related to given temperature and second half of list
-        contain atmospheres from top of temperature.
-        In case that temperature match exactly atmospheric model, that model is stored in `top` atm_tables and in
-        bottom is stored None value
-
-        e.g.
-
-        temperature = [7825.66, 4500, 19874.85]
-        atm_tables = [<t1 - 7750>, None, <t3 - 19000>, <t4 - 8000>, <t5 - 4500>, <t6 - 20000>]
-
-        bottom: <t1 - 7750>, None, <t3 - 19000>
-        top: <t4 - 8000>, <t5 - 4500>, <t6 - 20000>
-
         :param flux_matrices: numpy.array;
         :param passbanded_atm_containers: list of AtmDataContainer`s
         :param kwargs:
@@ -202,10 +187,6 @@ class NaiveInterpolatedAtm(object):
                 * **temperature** * -- Iterable
                 * **log_g** * -- Iterable
                 * **metallicity** * -- float
-                * **left_bandwidth** * -- float; maximal allowed wavelength from left
-                * **right_bandwidth** * -- float; maximal allowed wavelength from right
-                * **return_containers** * -- bool; if True, interpolation returns containers with all information
-                                                   instead of internal matrix representation
         :return: list of AtmDataContainer`s
         """
         temperature = kwargs.pop("temperature")
@@ -268,21 +249,13 @@ class NaiveInterpolatedAtm(object):
             "log_g": np.tile(g, 2),
             "mh": np.repeat(m, len(g) * 2)
         })
-
         directory = get_atm_directory(m, atlas)
-        # in case when temperature is same as one of temperatures on grid, sourrounded value is only one number
-        # and what we have to do is just read a atm table and do not any interpolation
         fnames = str(atlas) + \
             domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
-            domain_df["temp"].apply(lambda x: str(int(x) if not np.isnan(x) else '__NaN__')) + "_" + \
+            domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
             domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
 
-        return [
-            path if '__NaN__' not in path
-            else None
-            for path in
-            list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
-        ]
+        return list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
 
 
 def arange_atm_to_same_wavelength(atm_containers: list):
@@ -725,10 +698,9 @@ def multithread_atm_tables_reader_runner(fpaths):
     threads = list()
     try:
         for index, fpath in enumerate(fpaths):
-            if isinstance(fpath, str):
-                if not os.path.isfile(fpath):
-                    raise FileNotFoundError("file {} doesn't exist. it seems your model "
-                                            "could be not physical".format(fpath))
+            if not os.path.isfile(fpath):
+                raise FileNotFoundError("file {} doesn't exist. it seems your model "
+                                        "could be not physical".format(fpath))
             path_queue.put((index, fpath))
 
         for _ in range(n_threads):
@@ -832,11 +804,9 @@ def remap_unique_atm_container_to_origin(models: list, fpaths_map: dict):
     :param fpaths_map:
     :return:
     """
-    total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
-    models_arr = np.array([None] * total)
+    models_arr = np.empty(max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1, dtype='O')
     for model in models:
-        if model is not None:
-            models_arr[fpaths_map[model.fpath]] = model
+        models_arr[fpaths_map[model.fpath]] = model
     return models_arr
 
 
@@ -856,15 +826,13 @@ def read_unique_atm_tables(fpaths):
 
 def find_atm_si_multiplicators(atm_containers):
     for atm_container in atm_containers:
-        if atm_container is not None:
-            return atm_container.flux_to_si_mult, atm_container.wave_to_si_mult
+        return atm_container.flux_to_si_mult, atm_container.wave_to_si_mult
     raise ValueError('no valid atmospheric container has been supplied to method')
 
 
 def find_atm_defined_wavelength(atm_containers):
     for atm_container in atm_containers:
-        if atm_container is not None:
-            return atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
+        return atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
     raise ValueError('no valid atmospheric container has been supplied to method')
 
 
@@ -885,8 +853,7 @@ def remap_passbanded_unique_atm_to_matrix(atm_containers, fpaths_map):
     models_matrix = np.zeros((total, wavelengths_length))
 
     for atm_container in atm_containers:
-        if atm_container is not None:
-            models_matrix[fpaths_map[atm_container.fpath]] = atm_container.model[ATM_MODEL_DATAFRAME_FLUX]
+        models_matrix[fpaths_map[atm_container.fpath]] = atm_container.model[ATM_MODEL_DATAFRAME_FLUX]
     return models_matrix
 
 
