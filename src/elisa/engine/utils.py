@@ -502,3 +502,5 @@ class IterableQueue(object):
                 yield self.source_queue.get_nowait()
             except Empty:
                 return
+
+
