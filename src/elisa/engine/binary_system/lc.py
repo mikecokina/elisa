@@ -66,7 +66,6 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
 
     cover_object_obs_visible_projection = get_visible_projection(cover_object)
     undercover_object_obs_visible_projection = get_visible_projection(undercover_object)
-    # if in_eclipse:
     # get matplotlib boudary path defined by hull of projection
     # if in_eclipse:
     #     bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)

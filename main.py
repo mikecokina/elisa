@@ -75,7 +75,7 @@ bs = BinarySystem(primary=primary,
                   gamma=-41.7*u.km/u.s,
                   period=0.7949859*u.d,
                   eccentricity=0.0,
-                  inclination=65*u.deg,
+                  inclination=90*u.deg,
                   primary_minimum_time=2440862.60793*u.d,
                   phase_shift=0.0,
                   )
@@ -84,12 +84,13 @@ components_min_distance = 1
 bs.build(components_distance=1.0)
 
 o = Observer(passband=['Generic.Bessell.U',
-                       'Generic.Bessell.B',
-                       'Generic.Bessell.V',
-                       'Generic.Bessell.R',
-                       'Generic.Bessell.I',
+                       # 'Generic.Bessell.B',
+                       # 'Generic.Bessell.V',
+                       # 'Generic.Bessell.R',
+                       # 'Generic.Bessell.I',
                        ],
              system=bs)
+
 star_time = time()
 
 start_phs = 0.0
@@ -101,6 +102,7 @@ curves = o.observe(from_phase=start_phs,
                   )
 
 print('Elapsed time: {:.6f}'.format(time()-star_time))
+
 x = np.linspace(start_phs, stop_phs, int(1/step))
 for item in curves:
     plt.scatter(x, curves[item], label=item)
