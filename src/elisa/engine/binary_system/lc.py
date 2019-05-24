@@ -72,10 +72,6 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
         # undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
     else:
         out_of_bound = np.ones(undercover_object_obs_visible_projection.shape[0], dtype=np.bool)
-    # bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)
-    # # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
-    # out_of_bound = np.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
-    # undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
 
     undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
     undercover_faces = np.array([const.FALSE_FACE_PLACEHOLDER] * np.shape(undercover_object.normals)[0])
