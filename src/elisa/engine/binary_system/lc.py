@@ -67,16 +67,19 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     cover_object_obs_visible_projection = get_visible_projection(cover_object)
     undercover_object_obs_visible_projection = get_visible_projection(undercover_object)
     # get matplotlib boudary path defined by hull of projection
-    # if in_eclipse:
-    #     bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)
-    #     # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
-    #     out_of_bound = np.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
-    #     undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
-    bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)
-    # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
-    out_of_bound = np.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
-    undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
+    if in_eclipse:
+        bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)
+        # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
+        out_of_bound = np.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
+        # undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
+    else:
+        out_of_bound = np.ones(undercover_object_obs_visible_projection.shape[0], dtype=np.bool)
+    # bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)
+    # # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
+    # out_of_bound = np.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
+    # undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
 
+    undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
     undercover_faces = np.array([const.FALSE_FACE_PLACEHOLDER] * np.shape(undercover_object.normals)[0])
     undercover_faces[undercover_object.indices] = undercover_object.faces[undercover_object.indices]
     eclipse_faces_visibility = np.isin(undercover_faces, undercover_visible_point_indices)
@@ -90,21 +93,16 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     partial_visible_faces = undercover_object.faces[partial_visible]
     partial_visible_normals = undercover_object.normals[partial_visible]
     undercover_object_pts_projection = geo.plane_projection(undercover_object.points, "yz", keep_3d=False)
-    # if in_eclipse:
-    #     partial_coverage, time_count = partial_visible_faces_surface_coverage(
-    #         points=undercover_object_pts_projection,
-    #         faces=partial_visible_faces,
-    #         normals=partial_visible_normals,
-    #         hull=bb_path.vertices
-    #     )
-    # else:
-    #     partial_coverage, time_count = None, 0
-    partial_coverage, time_count = partial_visible_faces_surface_coverage(
-                points=undercover_object_pts_projection,
-                faces=partial_visible_faces,
-                normals=partial_visible_normals,
-                hull=bb_path.vertices
-            )
+    if in_eclipse:
+        partial_coverage, time_count = partial_visible_faces_surface_coverage(
+            points=undercover_object_pts_projection,
+            faces=partial_visible_faces,
+            normals=partial_visible_normals,
+            hull=bb_path.vertices
+        )
+    else:
+        partial_coverage = None
+        time_count = 0
 
     visible_coverage = utils.poly_areas(undercover_object.points[undercover_object.faces[full_visible]])
 
@@ -187,6 +185,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
                                                       # in_eclipse=True)
                                                       in_eclipse=system_positions_container.in_eclipse[idx])
         time_count += time_inc
+        print(time_inc)
         p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
         s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
 

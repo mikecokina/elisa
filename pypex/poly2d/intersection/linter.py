@@ -113,7 +113,7 @@ def intersection(p1, p2, p3, p4, in_touch=False, tol=ROUND_PRECISION):
     return True, int_segment, Point(int_x, int_y), np.nan, "INTERSECT"
 
 
-def polygons_intersection(face, polygon, in_touch=False, tol=ROUND_PRECISION):
+def polygons_intersection(face, polygon, in_touch=False, tol=PRECISION):
     """
     calculates whether intersection occurs between every combination of face and polygon edges
     :param in_touch:
@@ -208,7 +208,7 @@ def polygons_intersection(face, polygon, in_touch=False, tol=ROUND_PRECISION):
     true_intersections = np.logical_and(u_in_range, v_in_range)
 
     intersection_status[intersections] = True
-    intersection_segment[intersections] = np.logical_and(u_in_range, v_in_range)
+    intersection_segment[intersections] = true_intersections
     intr_ptx[intersections] = np.NaN
 
     intr_candidates = intr_ptx[intersections]

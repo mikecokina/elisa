@@ -18,6 +18,12 @@ def get_critical_inclination(binary, components_distance: float):
 
 
 def get_eclipse_boundaries(binary, components_distance: float):
+    """
+    calculates the ranges in orbital azimuths (for phase=0 -> azimuth=pi/2)!!!  where eclipses occur
+    :param binary:
+    :param components_distance:
+    :return: np.array([primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop])
+    """
     # check whether the inclination is high enough to enable eclipses
     if binary.morphology != 'over-contact':
         radius1 = np.mean([binary.primary.side_radius, binary.primary.forward_radius, binary.primary.backward_radius,
@@ -28,15 +34,16 @@ def get_eclipse_boundaries(binary, components_distance: float):
         sin_i = np.sin(binary.inclination)
         if sin_i < sin_i_critical:
             binary._logger.debug('Inclination is not sufficient to produce eclipses.')
-            return np.array([0.0, 0.0, const.PI, const.PI])
+            return np.array([const.HALF_PI, const.HALF_PI, const.PI, const.PI])
         radius1 = binary.primary.forward_radius
         radius2 = binary.secondary.forward_radius
-        sin_i_critical = (radius1 + radius2) / components_distance
+        sin_i_critical = 1.01 * (radius1 + radius2) / components_distance
         azimuth = np.arcsin(np.sqrt(np.power(sin_i_critical, 2) - np.power(np.cos(binary.inclination), 2)))
-        azimuths = np.array([const.FULL_ARC - azimuth, azimuth, const.PI - azimuth, const.PI + azimuth])
+        azimuths = np.array([const.HALF_PI - azimuth, const.HALF_PI + azimuth, 1.5 * const.PI - azimuth,
+                             1.5 * const.PI + azimuth]) % const.FULL_ARC
         return azimuths
     else:
-        return np.array([const.FULL_ARC, 0.0, 0.0, const.FULL_ARC])
+        return np.array([0, const.PI, const.PI, const.FULL_ARC])
 
 
 def darkside_filter(line_of_sight: np.array, normals: np.array):
@@ -213,12 +220,31 @@ class SystemOrbitalPosition(object):
         return self
 
     def in_eclipse_test(self, ecl_boundaries):
+        """
+        test whether in given phases eclipse occurs or not
+        :param ecl_boundaries:
+        :return: bool array
+        """
         azimuths = [position.azimuth for position in self.motion]
-        primary_ecl_test = np.logical_or((azimuths > ecl_boundaries[0]),
-                                         (azimuths < ecl_boundaries[1]))
-        secondary_ecl_test = np.logical_and((azimuths > ecl_boundaries[2]),
-                                            (azimuths < ecl_boundaries[3]))
-        return np.logical_or(primary_ecl_test,secondary_ecl_test)
+
+        if ecl_boundaries[0] < 1.5*const.PI:
+            primary_ecl_test = np.logical_and((azimuths >= ecl_boundaries[0]),
+                                              (azimuths <= ecl_boundaries[1]))
+        else:
+            primary_ecl_test = np.logical_or((azimuths >= ecl_boundaries[0]),
+                                             (azimuths < ecl_boundaries[1]))
+
+        if ecl_boundaries[2] > const.HALF_PI:
+            if ecl_boundaries[3] > const.HALF_PI:
+                secondary_ecl_test = np.logical_and((azimuths >= ecl_boundaries[2]),
+                                                    (azimuths <= ecl_boundaries[3]))
+            else:
+                secondary_ecl_test = np.logical_or((azimuths >= ecl_boundaries[2]),
+                                                   (azimuths <= ecl_boundaries[3]))
+        else:
+            secondary_ecl_test = np.logical_and((azimuths >= ecl_boundaries[2]),
+                                                (azimuths <= ecl_boundaries[3]))
+        return np.logical_or(primary_ecl_test, secondary_ecl_test)
 
 
 class SingleOrbitalPositionContainer(object):
