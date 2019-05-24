@@ -87,16 +87,16 @@ class Point(object):
         return Point(self.x - other.x, self.y - other.y)
 
     @staticmethod
-    def set(points, tol=ROUND_PRECISION):
+    def set(points, round_tol=ROUND_PRECISION):
         """
         Naive implementaion `set` like function in python.
         This method relly on tolerance. Points are same up to supplied tolerance.
 
         :param points: pypex.poly2d.point.Point
-        :param tol: int
+        :param round_tol: int
         :return: numpy.arra; list of Point instances
         """
-        _points = [_Point(i, round(point.x, tol), round(point.y, tol)) for i, point in enumerate(points)]
+        _points = [_Point(i, round(point.x, round_tol), round(point.y, round_tol)) for i, point in enumerate(points)]
         indices = [_point.i for _point in set(_points)]
         return np.array(points)[indices]
 

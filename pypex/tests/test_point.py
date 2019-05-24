@@ -48,10 +48,10 @@ class PointTestCase(unittest.TestCase):
 
         # return Point(0.001, 0.0021) since 0.0022 will be rounded down to 0.002 and 0.0021 also to the 0.002
         points = [point.Point(0.001, 0.0021), point.Point(0.001, 0.0022)]
-        points_set = point.Point.set(points, tol=3)
+        points_set = point.Point.set(points, round_tol=3)
         asser_points_equal([point.Point(0.001, 0.0021)], points_set)
 
         # return all since 0.0025 will round up to 0.003
         points = [point.Point(0.001, 0.0021), point.Point(0.001, 0.0025)]
-        points_set = point.Point.set(points, tol=3)
+        points_set = point.Point.set(points, round_tol=3)
         asser_points_equal(points, points_set)

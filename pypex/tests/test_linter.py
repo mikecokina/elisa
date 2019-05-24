@@ -98,3 +98,26 @@ class LinterTestCase(unittest.TestCase):
         obtained = linter.intersection(line1[0], line1[1], line2[0], line2[1])
         expected = (True, False, np.nan, 0.0, 'OVERLAP')
         self.intersection_equal(obtained, expected)
+
+
+class LinterMultipleTestCase(unittest.TestCase):
+    @staticmethod
+    def test_linter_intersections():
+        lines1 = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]])
+        lines2 = np.array([[0.2, -0.2], [0.6, 0.6], [1.2, 0.4]])
+
+        intersection_status, intersection_segment, intr_ptx, distance, msg, _ = \
+            linter.intersections(lines1, lines2, in_touch=True)
+
+        assert_array_equal([True, False,  True, False,  True,  True,  True,  True, False], intersection_segment)
+
+    @staticmethod
+    def test_linter_intersections_negative():
+        lines1 = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]])
+        lines2 = np.array([[-0.2, -0.2], [-0.75, -0.25], [-0.8, -0.8]])
+
+        intersection_status, intersection_segment, intr_ptx, distance, msg, _ = \
+            linter.intersections(lines1, lines2, in_touch=True)
+
+        assert_array_equal([False, False, False, False, False, False, False, False, False], intersection_segment)
+        assert_array_equal([True, True, True, True, True, True, True, True, True], intersection_status)
