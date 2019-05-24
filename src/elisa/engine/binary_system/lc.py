@@ -19,9 +19,7 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     pypex_hull = geo.hull_to_pypex_poly(hull)
     pypex_faces = geo.faces_to_pypex_poly(points[faces])
     # it is possible to None happens in intersection, tkae care about it latter
-    star_time = time()
     pypex_intersection = geo.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
-    timecount = time() - star_time
 
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to precission lose
 
@@ -33,7 +31,7 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     # todo: profile case when generator will be evaluted first, then substracted from inplane_surface area instead of
     # todo: this
     retval = (inplane_surface_area - pypex_polys_surface_area) / correction_cosine
-    return retval, timecount
+    return retval
     # return [(c - a) / b for a, b, c in zip(pypex_polys_surface_area, correction_cosine, inplane_surface_area)]
 
 
@@ -94,7 +92,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     partial_visible_normals = undercover_object.normals[partial_visible]
     undercover_object_pts_projection = geo.plane_projection(undercover_object.points, "yz", keep_3d=False)
     if in_eclipse:
-        partial_coverage, time_count = partial_visible_faces_surface_coverage(
+        partial_coverage = partial_visible_faces_surface_coverage(
             points=undercover_object_pts_projection,
             faces=partial_visible_faces,
             normals=partial_visible_normals,
@@ -102,7 +100,6 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
         )
     else:
         partial_coverage = None
-        time_count = 0
 
     visible_coverage = utils.poly_areas(undercover_object.points[undercover_object.faces[full_visible]])
 
@@ -118,7 +115,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     return {
         cover_component: cover_obj_coverage,
         config.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
-    }, time_count
+    }
 
 
 def get_normal_radiance(self, **kwargs):
@@ -179,13 +176,11 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     system_positions_container = system_positions_container.darkside_filter()
 
     band_curves = {key: list() for key in kwargs["passband"].keys()}
-    time_count = 0
     for idx, container in enumerate(system_positions_container):
-        coverage, time_inc = compute_surface_coverage(container,
+        coverage = compute_surface_coverage(container,
                                                       # in_eclipse=True)
                                                       in_eclipse=system_positions_container.in_eclipse[idx])
-        time_count += time_inc
-        print(time_inc)
+
         p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
         s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
 
@@ -204,7 +199,6 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             flux = p_flux + s_flux
             band_curves[band].append(flux)
 
-    print('Cumulative time: {:.6f}'.format(time_count))
     # FIXME: need improve polygon.intersection method from pypex, its time consumtion is insane
 
     return band_curves
