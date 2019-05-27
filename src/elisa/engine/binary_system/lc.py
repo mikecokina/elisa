@@ -7,6 +7,7 @@ from scipy.spatial.qhull import ConvexHull
 from elisa.conf import config
 from elisa.engine import const, utils, atm, ld, logger
 from elisa.engine.binary_system import geo
+from elisa.engine.const import BINARY_POSITION_PLACEHOLDER
 
 __logger__ = logging.getLogger(__name__)
 
@@ -157,7 +158,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
     initial_props_container = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
-    initial_props_container.setup_position(geo.PositionContainer(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
+    initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
 
     # injected attributes
     setattr(initial_props_container.primary, 'metallicity', self.primary.metallicity)
@@ -191,21 +192,58 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             s_flux = np.sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
             flux = p_flux + s_flux
             band_curves[band].append(flux)
-
     return band_curves
 
 
 def compute_eccentric_lightcurve(self, **kwargs):
+    self._logger = logger.getLogger(self.__class__.__name__, suppress=True)
     orbital_motion = kwargs.pop("positions")
+    # todo: move it to for loop
     ecl_boundaries = np.array([0, const.PI, const.PI, const.FULL_ARC])
+
+    band_curves = {key: list() for key in kwargs["passband"].keys()}
+    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+
     for orbital_position in orbital_motion:
         self.build(components_distance=orbital_position.distance)
-        # system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
-        #                                                                      ecl_boundaries=ecl_boundaries)
-        # system_positions_container = system_positions_container.darkside_filter()
+        system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
+                                                                             ecl_boundaries=ecl_boundaries)
+        system_positions_container = system_positions_container.darkside_filter()
+        container = next(iter(system_positions_container))
 
+        # injected attributes
+        setattr(container.primary, 'metallicity', self.primary.metallicity)
+        setattr(container.secondary, 'metallicity', self.secondary.metallicity)
 
-    # system_positions_container = system_positions_container.darkside_filter()
+        primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(container, **kwargs)
+        primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(container, **kwargs)
+
+        coverage = compute_surface_coverage(container, in_eclipse=True)
+        p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
+        s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
+
+        for band in kwargs["passband"].keys():
+            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                 cos_theta=p_cosines)[0]
+
+            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                 cos_theta=s_cosines)[0]
+            # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
+            p_flux = np.sum(primary_normal_radiance[band] * p_cosines * coverage["primary"] * p_ld_cors)
+            s_flux = np.sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
+            flux = p_flux + s_flux
+            band_curves[band].append(flux)
+
+    # temporary
+    from matplotlib import pyplot as plt
+    for band, curve in band_curves.items():
+        x = np.arange(len(curve))
+        plt.scatter(x, curve)
+    plt.show()
+
+    return band_curves
 
 
 

@@ -165,27 +165,27 @@ class EasyObject(object):
         return self._log_g
 
 
-class PositionContainer(object):
-    def __init__(self, idx, distance, azimut, true_anomaly, phase):
-        self.position_index = idx
-        self.azimuth = azimut
-        self.true_anomaly = true_anomaly
-        self.phase = phase
-        self.distance = distance
-
-    def __str__(self):
-        return f"Position: \n" \
-            f"      index: {self.position_index}\n" \
-            f"      azimut: {self.azimuth}\n" \
-            f"      true anomaly: {self.true_anomaly}\n" \
-            f"      photomeric phase: {self.phase}\n" \
-            f"      component distance: {self.distance}"
+# class PositionContainer(object):
+#     def __init__(self, idx, distance, azimut, true_anomaly, phase):
+#         self.position_index = idx
+#         self.azimuth = azimut
+#         self.true_anomaly = true_anomaly
+#         self.phase = phase
+#         self.distance = distance
+#
+#     def __str__(self):
+#         return f"Position: \n" \
+#             f"      index: {self.position_index}\n" \
+#             f"      azimut: {self.azimuth}\n" \
+#             f"      true anomaly: {self.true_anomaly}\n" \
+#             f"      photomeric phase: {self.phase}\n" \
+#             f"      component distance: {self.distance}"
 
 
 class SystemOrbitalPosition(object):
     def __init__(self, primary, secondary, inclination, motion, ecl_boundaries):
         self.inclination = inclination
-        self.motion = [PositionContainer(*pos) for pos in motion]
+        self.motion = motion  # [PositionContainer(*pos) for pos in motion]
         self.data = ()
         self._init_data = None
 
@@ -266,7 +266,7 @@ class SingleOrbitalPositionContainer(object):
         for component in self.__COMPONENTS__:
             setattr(self, component[1:], locals()[component])
 
-    def setup_position(self, position: PositionContainer, inclination: float):
+    def setup_position(self, position: const.BINARY_POSITION_PLACEHOLDER, inclination: float):
         self.position = position
         self.inclination = inclination
 
