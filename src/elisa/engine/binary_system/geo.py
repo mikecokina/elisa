@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -5,6 +7,9 @@ from copy import deepcopy
 from elisa.engine import const, utils
 from pypex.poly2d.polygon import Polygon
 from elisa.engine.binary_system import utils as bsutils
+
+
+__logger__ = logging.getLogger(__name__)
 
 
 def get_critical_inclination(binary, components_distance: float):
@@ -33,7 +38,7 @@ def get_eclipse_boundaries(binary, components_distance: float):
         sin_i_critical = (radius1 + radius2) / components_distance
         sin_i = np.sin(binary.inclination)
         if sin_i < sin_i_critical:
-            binary._logger.debug('Inclination is not sufficient to produce eclipses.')
+            __logger__.debug('inclination is not sufficient to produce eclipses')
             return np.array([const.HALF_PI, const.HALF_PI, const.PI, const.PI])
         radius1 = binary.primary.forward_radius
         radius2 = binary.secondary.forward_radius

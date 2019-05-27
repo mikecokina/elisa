@@ -41,8 +41,7 @@ class Spot(object):
 
         for key in kwargs:
             set_val = kwargs.get(key)
-            self._logger.debug("Setting property {} "
-                               "of class instance {} to {}".format(key, Spot.__name__, kwargs[key]))
+            self._logger.debug(f"setting property {key} of class instance {self.__class__.__name__} to {kwargs[key]}")
             setattr(self, key, set_val)
 
     def kwargs_serializer(self):

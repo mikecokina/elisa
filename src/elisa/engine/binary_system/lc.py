@@ -5,13 +5,10 @@ import matplotlib.path as mpltpath
 from scipy.spatial.qhull import ConvexHull
 
 from elisa.conf import config
-from elisa.engine import const, utils, atm, ld
+from elisa.engine import const, utils, atm, ld, logger
 from elisa.engine.binary_system import geo
 
-__logger__ = logging.getLogger('lc')
-
-# temporary
-from time import time
+__logger__ = logging.getLogger(__name__)
 
 
 def partial_visible_faces_surface_coverage(points, faces, normals, hull):
@@ -19,9 +16,7 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     pypex_hull = geo.hull_to_pypex_poly(hull)
     pypex_faces = geo.faces_to_pypex_poly(points[faces])
     # it is possible to None happens in intersection, tkae care about it latter
-    star_time = time()
     pypex_intersection = geo.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
-    timecount = time() - star_time
 
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to precission lose
 
@@ -30,11 +25,8 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     inplane_points_3d = np.concatenate((points.T, [[0.0] * len(points)])).T
     inplane_surface_area = utils.triangle_areas(triangles=faces, points=inplane_points_3d)
     correction_cosine = utils.calculate_cos_theta_los_x(normals)
-    # todo: profile case when generator will be evaluted first, then substracted from inplane_surface area instead of
-    # todo: this
     retval = (inplane_surface_area - pypex_polys_surface_area) / correction_cosine
-    return retval, timecount
-    # return [(c - a) / b for a, b, c in zip(pypex_polys_surface_area, correction_cosine, inplane_surface_area)]
+    return retval
 
 
 def get_visible_projection(obj):
@@ -94,7 +86,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     partial_visible_normals = undercover_object.normals[partial_visible]
     undercover_object_pts_projection = geo.plane_projection(undercover_object.points, "yz", keep_3d=False)
     if in_eclipse:
-        partial_coverage, time_count = partial_visible_faces_surface_coverage(
+        partial_coverage = partial_visible_faces_surface_coverage(
             points=undercover_object_pts_projection,
             faces=partial_visible_faces,
             normals=partial_visible_normals,
@@ -102,7 +94,6 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
         )
     else:
         partial_coverage = None
-        time_count = 0
 
     visible_coverage = utils.poly_areas(undercover_object.points[undercover_object.faces[full_visible]])
 
@@ -118,7 +109,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     return {
         cover_component: cover_obj_coverage,
         config.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
-    }, time_count
+    }
 
 
 def get_normal_radiance(self, **kwargs):
@@ -160,6 +151,8 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     :param kwargs:
     :return:
     """
+    self.build(components_distance=1.0)
+
     orbital_motion = kwargs.pop("positions")
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
@@ -179,13 +172,8 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     system_positions_container = system_positions_container.darkside_filter()
 
     band_curves = {key: list() for key in kwargs["passband"].keys()}
-    time_count = 0
     for idx, container in enumerate(system_positions_container):
-        coverage, time_inc = compute_surface_coverage(container,
-                                                      # in_eclipse=True)
-                                                      in_eclipse=system_positions_container.in_eclipse[idx])
-        time_count += time_inc
-        print(time_inc)
+        coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
         p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
         s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
 
@@ -204,69 +192,23 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             flux = p_flux + s_flux
             band_curves[band].append(flux)
 
-    print('Cumulative time: {:.6f}'.format(time_count))
-    # FIXME: need improve polygon.intersection method from pypex, its time consumtion is insane
-
     return band_curves
 
 
+def compute_eccentric_lightcurve(self, **kwargs):
+    orbital_motion = kwargs.pop("positions")
+    ecl_boundaries = np.array([0, const.PI, const.PI, const.FULL_ARC])
+    for orbital_position in orbital_motion:
+        self.build(components_distance=orbital_position.distance)
+        # system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
+        #                                                                      ecl_boundaries=ecl_boundaries)
+        # system_positions_container = system_positions_container.darkside_filter()
+
+
+    # system_positions_container = system_positions_container.darkside_filter()
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # faces = faces[visible]
-    # points = points
-    #
-    # import matplotlib.pyplot as plt
-    #
-    # fig = plt.figure(figsize=(7, 7))
-    # ax = fig.add_subplot(111, projection='3d')
-    # ax.set_aspect('equal')
-    #
-    # clr = 'b'
-    # pts = points
-    # fcs = faces
-    #
-    # plot = ax.plot_trisurf(
-    #     pts[:, 0], pts[:, 1],
-    #     pts[:, 2], triangles=fcs,
-    #     antialiased=True, shade=False, color=clr)
-    #
-    # ax.set_xlim(-1, 1)
-    # ax.set_ylim(-1, 1)
-    # ax.set_zlim(-1, 1)
-    # ax.view_init(0, -np.degrees(0.09424778))
-    #
-    # plot.set_edgecolor('black')
-    #
-    # plt.show()
-    #
-    #
-    # pass
-    # geo.darkside_filter()
-
-    # compute on filtered atmospheres (doesn't meeter how will be filtered)
-    # primary_radiance = \
-    #     atm.NaiveInterpolatedAtm.radiance(_temperature, _logg, self.primary.metallicity, config.ATM_ATLAS, **kwargs)
-
-    # primary_radiance = \
-    #     atm.NearestAtm.radiance(_temperature, _logg, self.primary.metallicity, config.ATM_ATLAS, **kwargs)
 
 
 if __name__ == "__main__":

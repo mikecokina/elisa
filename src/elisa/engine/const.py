@@ -1,4 +1,6 @@
 import numpy as np
+from collections import namedtuple
+
 
 FULL_ARC = np.pi * 2
 PI = np.pi
@@ -54,3 +56,6 @@ RIGHT_BANDWIDTH_SHIFT = 100  # nm
 LINE_OF_SIGHT = np.array([1.0, 0.0, 0.0])
 
 FALSE_FACE_PLACEHOLDER = np.array([-1, -1, -1])
+
+
+BINARY_POSITION_PLACEHOLDER = namedtuple('Position', ['idx', 'distance', 'azimut', 'true_anomaly', 'phase'])

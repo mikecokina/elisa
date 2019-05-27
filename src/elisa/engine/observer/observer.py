@@ -8,12 +8,11 @@ from scipy import interpolate
 
 from elisa.conf import config
 from elisa.engine.binary_system.system import BinarySystem
-from elisa.engine.observer import mp
 from elisa.engine.single_system.system import SingleSystem
 
+
 config.set_up_logging()
-# temporary
-from time import time
+
 
 class PassbandContainer(object):
     def __init__(self, table, passband):

@@ -22,7 +22,8 @@ class System(metaclass=ABCMeta):
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, suppress_logger=False, **kwargs):
-        self._logger = logger.getLogger(System.__name__, suppress=suppress_logger)
+
+        self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
         self.initial_kwargs = kwargs.copy()
 
         # default params
@@ -30,7 +31,7 @@ class System(metaclass=ABCMeta):
 
         if name is None:
             self._name = str(System.ID)
-            self._logger.debug("Name of class instance {} set to {}".format(System.__name__, self._name))
+            self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self._name}")
             System.ID += 1
         else:
             self._name = str(name)

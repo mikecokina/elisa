@@ -26,7 +26,7 @@ class Star(Body):
         super(Star, self).__init__(name=name, **kwargs)
 
         # get logger
-        self._logger = logger.getLogger(Star.__name__, suppress=suppress_logger)
+        self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
 
         # default values of properties
         self._surface_potential = None
@@ -52,8 +52,8 @@ class Star(Body):
         # values of properties
         for kwarg in Star.ALL_KWARGS:
             if kwarg in kwargs:
-                self._logger.debug("Setting property {} "
-                                   "of class instance {} to {}".format(kwarg, Star.__name__, kwargs[kwarg]))
+                self._logger.debug(f"setting property {kwarg} of class instance "
+                                   f"{self.__class__.__name__} to {kwargs[kwarg]}")
                 setattr(self, kwarg, kwargs[kwarg])
 
     @property
