@@ -371,7 +371,7 @@ def find_nearest_value(look_in, look_for):
 
 
 def find_surrounded_as_matrix(look_in: np.array, look_for: np.array) -> np.array:
-    if not np.all(look_in.min() < look_for < look_in.max()):
+    if not np.all(look_in.min() <= look_for <= look_in.max()):
         raise ValueError("Any value in `look_for` is out of bound of `look_in`")
 
     dif = look_for[:, np.newaxis] - look_in
@@ -505,9 +505,5 @@ class IterableQueue(object):
                 yield self.source_queue.get_nowait()
             except Empty:
                 return
-
-
-
-
 
 
