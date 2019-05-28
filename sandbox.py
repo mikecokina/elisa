@@ -1,9 +1,10 @@
-class A:
-    def __init__(self, x):
-        self.x = x
+from elisa.engine import utils
+import numpy as np
 
+min = 0.8
+max = 2.8
+num = 21
 
+phase = np.linspace(min, max, num)
 
-o = A(10)
-
-print(o.x)
+print(utils.base_phase_interval(phase))

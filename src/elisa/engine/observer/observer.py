@@ -106,6 +106,9 @@ class Observer(object):
         if phases is None:
             phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
 
+        # reduce phases to only unique ones
+        base_phases, reverse_idx = self.base_phase_interval(phases)
+
         self._logger.info("observation start w/ following configuration {<add>}")
         # self._logger.warning("logger will be suppressed due multiprocessing incompatibility")
         """
@@ -117,7 +120,7 @@ class Observer(object):
         """
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
-        args = position_method(phase=phases)
+        args = position_method(phase=base_phases)
 
         curves = self._system.compute_lightcurve(
                      **dict(
@@ -140,8 +143,18 @@ class Observer(object):
         # # r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
         # # return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
+        for items in curves:
+            curves[items] = np.array(curves[items])[reverse_idx]
         self._logger.info("observation finished")
         return curves
+
+    def base_phase_interval(self, phases):
+        if self._system.primary.pulsations is None and self._system.primary.pulsations is None:
+            base_interval = np.round(phases % 1, 9)
+            return np.unique(base_interval, return_inverse=True)
+        else:
+            return phases, np.arange(phases.shape[0])
+
 
 if __name__ == "__main__":
     o = Observer(passband=['Generic.Bessell.B', 'Generic.Bessell.V'], system=None)

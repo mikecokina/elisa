@@ -13,7 +13,6 @@ __logger__ = logging.getLogger(__name__)
 
 
 def partial_visible_faces_surface_coverage(points, faces, normals, hull):
-    # todo: pypex is too slow, need some improvement; I don't care right now
     pypex_hull = geo.hull_to_pypex_poly(hull)
     pypex_faces = geo.faces_to_pypex_poly(points[faces])
     # it is possible to None happens in intersection, tkae care about it latter
