@@ -156,6 +156,10 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     orbital_motion = kwargs.pop("positions")
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
+    # in case of LC for spotless surface without pulsations unique phase interval is only (0, 0.5)
+    phases = kwargs.pop("phases")
+    base_phases2, idx, reverse_idx2 = phase_crv_symmetry(self, phases)
+
     initial_props_container = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
     initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
 
@@ -171,6 +175,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
                                                                          ecl_boundaries=ecl_boundaries)
     system_positions_container = system_positions_container.darkside_filter()
 
+    # band_curves = {key: list() for key in kwargs["passband"].keys()}
     band_curves = {key: list() for key in kwargs["passband"].keys()}
     for idx, container in enumerate(system_positions_container):
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
@@ -192,6 +197,16 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             flux = p_flux + s_flux
             band_curves[band].append(flux)
     return band_curves
+
+
+def phase_crv_symmetry(self, phase):
+    if self.primary.pulsations is None and self.primary.pulsations is None and \
+            self.primary.spots is None and self.secondary.spots is None:
+        symmetrical_counterpart = phase > 0.5
+        # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
+        phase[symmetrical_counterpart] = np.round(1.0 - phase[symmetrical_counterpart], 9)
+        res_phases, idx, reverse_idx = np.unique(phase, return_index=True, return_inverse=True)
+        return res_phases, idx, reverse_idx
 
 
 def compute_eccentric_lightcurve(self, **kwargs):

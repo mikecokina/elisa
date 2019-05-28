@@ -106,7 +106,7 @@ class Observer(object):
         if phases is None:
             phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
 
-        # reduce phases to only unique ones
+        # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, reverse_idx = self.base_phase_interval(phases)
 
         self._logger.info("observation start w/ following configuration {<add>}")
@@ -128,7 +128,8 @@ class Observer(object):
                          passband=self.passband,
                          left_bandwidth=self.left_bandwidth,
                          right_bandwidth=self.right_bandwidth,
-                         atlas="ck04"
+                         atlas="ck04",
+                         phases=base_phases
                      )
                  )
 
@@ -143,12 +144,19 @@ class Observer(object):
         # # r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
         # # return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
+        # remap unique phases back to original phase interval
         for items in curves:
             curves[items] = np.array(curves[items])[reverse_idx]
         self._logger.info("observation finished")
         return curves
 
     def base_phase_interval(self, phases):
+        """
+        function reduces original phase interval to base interval (0, 1) in case of LC without pulsations
+        :param phases: np.array - phases to reduce
+        :return: base_phases - np.array of unique phases between (0, 1)
+                 reverse_indices - np.array - mask applicable to `base_phases` which will reconstruct original `phases`
+        """
         if self._system.primary.pulsations is None and self._system.primary.pulsations is None:
             base_interval = np.round(phases % 1, 9)
             return np.unique(base_interval, return_inverse=True)
