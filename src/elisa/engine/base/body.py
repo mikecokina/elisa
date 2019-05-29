@@ -10,6 +10,7 @@ from astropy.units.quantity import Quantity
 
 from elisa.engine import units, logger
 from elisa.engine import utils
+from elisa.engine.utils import is_empty
 from elisa.engine.base.spot import Spot
 
 
@@ -30,7 +31,7 @@ class Body(metaclass=ABCMeta):
         self.initial_kwargs = kwargs.copy()
         self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
 
-        if name is None:
+        if is_empty(name):
             self._name = str(Body.ID)
             self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self._name}")
             Body.ID += 1
@@ -505,7 +506,7 @@ class Body(metaclass=ABCMeta):
     def remove_spot(self, spot_index) -> None:
         del (self._spots[spot_index])
 
-    def calculate_normals(self, points: ndarray = None, faces: ndarray = None,
+    def calculate_normals(self, points: ndarray, faces: ndarray,
                           centres: ndarray = None, com: ndarray = None) -> np.array:
         """
         returns outward facing normal unit vector for each face of stellar surface
@@ -517,7 +518,7 @@ class Body(metaclass=ABCMeta):
         """
         normals = np.array([np.cross(points[xx[1]] - points[xx[0]], points[xx[2]] - points[xx[0]]) for xx in faces])
         normals /= np.linalg.norm(normals, axis=1)[:, None]
-        cntr = self.calculate_surface_centres(points, faces) if centres is None else copy(centres)
+        cntr = self.calculate_surface_centres(points, faces) if is_empty(centres) else copy(centres)
 
         corr_centres = cntr - np.array([com, 0, 0])[None, :]
 
@@ -560,7 +561,7 @@ class Body(metaclass=ABCMeta):
                                ...
                               [center_xn, center_yn, center_zn]])
         """
-        if points is None:
+        if is_empty(points):
             points = self.points
             faces = self.faces
         return np.average(points[faces], axis=1)
@@ -570,8 +571,9 @@ class Body(metaclass=ABCMeta):
         returns areas of each face of the star surface
         :return: numpy.array([area_1, ..., area_n])
         """
-        if self.faces is None or self.points is None:
-            raise ValueError('Faces or/and points of object {} have not been set yet'.format(self.name))
+        if len(self.faces) == 0 or len(self.points) == 0:
+            raise ValueError('Faces or/and points of object {self.name} have not been set yet\n'
+                             'Run build method')
         # FIXME: why the hell is this temporary?????
         if not self.has_spots():  # temporary
             base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
@@ -678,7 +680,7 @@ class Body(metaclass=ABCMeta):
 
     def setup_spot_instance_discretization_factor(self, spot_instance: Spot, spot_index: int):
         # component_instance = getattr(self, component)
-        if spot_instance.discretization_factor is None:
+        if is_empty(spot_instance.discretization_factor):
             self._logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
                                f'and discretization factor of star {self.discretization_factor} was used.')
             spot_instance.discretization_factor = 0.9 * self.discretization_factor * units.ARC_UNIT
@@ -694,7 +696,7 @@ class Body(metaclass=ABCMeta):
             return
         self._logger.info(f"incorporating spot points to component {self.name} mesh")
 
-        if component_com is None:
+        if is_empty(component_com):
             raise ValueError('Object centre of mass was not supplied')
 
         vertices_map = [{"enum": -1} for _ in self.points]

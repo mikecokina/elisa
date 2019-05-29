@@ -11,7 +11,8 @@ from copy import copy
 from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
 from astropy import units as u
-from elisa.engine import units as U
+from elisa.engine import units as e_units
+from elisa.engine.utils import is_empty
 
 
 class Star(Body):
@@ -59,7 +60,7 @@ class Star(Body):
                                    f"{self.__class__.__name__} to {kwargs[kwarg]}")
                 setattr(self, kwarg, kwargs[kwarg])
 
-    def has_pulastion(self):
+    def has_pulsations(self):
         return len(self._pulsations) > 0
 
     @property
@@ -80,9 +81,9 @@ class Star(Body):
         :return:
         """
         if isinstance(polar_log_g, u.quantity.Quantity):
-            self._polar_log_g = np.float64(polar_log_g.to(U.LOG_ACCELERATION_UNIT))
+            self._polar_log_g = np.float64(polar_log_g.to(e_units.LOG_ACCELERATION_UNIT))
         elif isinstance(polar_log_g, (int, np.int, float, np.float)):
-            # self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(U.LOG_ACCELERATION_UNIT))
+            # self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(e_units.LOG_ACCELERATION_UNIT))
             self._polar_log_g = np.float64(polar_log_g)
         else:
             raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
@@ -297,10 +298,10 @@ class Star(Body):
         :return:
         """
         if self.has_spots():  # temporary
-            if gradient_magnitudes is None:
+            if is_empty(gradient_magnitudes):
                 gradient_magnitudes = self.potential_gradient_magnitudes
         else:
-            if gradient_magnitudes is None:
+            if is_empty(gradient_magnitudes):
                 gradient_magnitudes = self.potential_gradient_magnitudes[:self.base_symmetry_faces_number]
 
         t_eff_polar = self.calculate_polar_effective_temperature()
@@ -343,8 +344,8 @@ class Star(Body):
             result = abs(np.real(sph_harm(m, l, 0, np.arccos(x))))
             return 1.0 / result
 
-        if points is not None:
-            if faces is None or temperatures is None:
+        if not is_empty(points):
+            if is_empty(faces) or is_empty(temperatures):
                 raise ValueError('A `points` argument is not None but `faces` or `temperature` is.\n'
                                  'Please supply the missing keyword arguments')
         else:

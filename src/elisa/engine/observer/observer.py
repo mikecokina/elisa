@@ -157,7 +157,7 @@ class Observer(object):
         :return: base_phases - np.array of unique phases between (0, 1)
                  reverse_indices - np.array - mask applicable to `base_phases` which will reconstruct original `phases`
         """
-        if self._system.primary.pulsations is None and self._system.primary.pulsations is None:
+        if not self._system.primary.has_pulsations() and not self._system.primary.has_pulsations():
             base_interval = np.round(phases % 1, 9)
             return np.unique(base_interval, return_inverse=True)
         else:

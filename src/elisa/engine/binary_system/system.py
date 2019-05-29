@@ -580,8 +580,8 @@ class BinarySystem(System):
         missing_kwargs = []
         for component in [self.primary, self.secondary]:
             for kwarg in star_mandatory_kwargs:
-                if getattr(component, kwarg) is None:
-                    missing_kwargs.append("`{}`".format(kwarg))
+                if np.isnan(getattr(component, kwarg)):
+                    missing_kwargs.append(f"`{kwarg}`")
 
             component_name = 'primary' if component == self.primary else 'secondary'
             if len(missing_kwargs) != 0:
