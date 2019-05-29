@@ -8,7 +8,7 @@ from copy import copy
 from numpy.linalg import norm
 from scipy.spatial import distance_matrix as dstm
 from elisa.engine import const as c
-from typing import Tuple
+from typing import Tuple, Iterable
 
 # temporary
 from time import time
@@ -488,6 +488,17 @@ def cosine_similarity(a, b):
     :return:
     """
     return np.inner(a, b) / (norm(a) * norm(b))
+
+
+def is_empty(value):
+    if isinstance(value, type(None)):
+        return True
+    if isinstance(value, Iterable):
+        # this cover also strings
+        return len(value) == 0
+    if np.isnan(value):
+        return True
+    return False
 
 
 class IterableQueue(object):
