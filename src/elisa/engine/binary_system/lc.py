@@ -158,7 +158,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
     # in case of LC for spotless surface without pulsations unique phase interval is only (0, 0.5)
     phases = kwargs.pop("phases")
-    base_phases2, idx, reverse_idx2 = phase_crv_symmetry(self, phases)
+    # base_phases2, idx, reverse_idx2 = phase_crv_symmetry(self, phases)
 
     initial_props_container = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
     initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
@@ -196,12 +196,20 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             s_flux = np.sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
             flux = p_flux + s_flux
             band_curves[band].append(flux)
+
+    # temporary
+    from matplotlib import pyplot as plt
+    for band, curve in band_curves.items():
+        x = np.arange(len(curve))
+        plt.scatter(x, curve)
+    plt.show()
+
     return band_curves
 
 
 def phase_crv_symmetry(self, phase):
     if self.primary.pulsations is None and self.primary.pulsations is None and \
-            self.primary.spots is None and self.secondary.spots is None:
+            not self.primary.has_spots() and not self.secondary.has_spots():
         symmetrical_counterpart = phase > 0.5
         # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
         phase[symmetrical_counterpart] = np.round(1.0 - phase[symmetrical_counterpart], 9)
