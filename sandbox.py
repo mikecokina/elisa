@@ -1,10 +1,10 @@
 from elisa.engine import utils
 import numpy as np
 
-min = 0.8
-max = 2.8
-num = 21
+from elisa.engine.utils import find_surrounded_as_matrix
 
-phase = np.linspace(min, max, num)
 
-print(utils.base_phase_interval(phase))
+fin = np.array([1, 2, 3, 4, 5])
+ffor = np.array([3.4, 10])
+
+find_surrounded_as_matrix(fin, ffor)

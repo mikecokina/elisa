@@ -444,9 +444,3 @@ class Star(Body):
         # in case of object from BinarySystem there is a factor major_semiaxis^2 missing this can be later renormalized
         #  using less computational power
         return intensities * areas
-
-    def has_spots(self):
-        return not len(self._spots) == 0
-
-
-

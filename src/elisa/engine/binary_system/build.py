@@ -35,7 +35,7 @@ def build_surface_gravity(self, component: str or list=None, components_distance
         component_instance._log_g = np.log10(
             gravity_scalling_factor * component_instance.potential_gradient_magnitudes)
 
-        if component_instance.spots:
+        if component_instance.has_spots():
             for spot_index, spot in component_instance.spots.items():
                 self._logger.debug(f'calculating surface SI unit gravity of {_component} component / {spot_index} spot')
                 self._logger.debug(f'calculating distribution of potential gradient '
@@ -81,7 +81,7 @@ def build_temperature_distribution(self, component=None, components_distance=Non
                                ''.format(_component, component_instance.name))
             component_instance.temperatures = component_instance.add_pulsations()
 
-        if component_instance.spots:
+        if component_instance.has_spots():
             for spot_index, spot in component_instance.spots.items():
                 self._logger.debug('computing temperature distribution of spot {} / {} component'
                                    ''.format(spot_index, _component))
@@ -93,7 +93,8 @@ def build_temperature_distribution(self, component=None, components_distance=Non
                     spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
                                                                           temperatures=spot.temperatures)
 
-        self._logger.debug('renormalizing temperature map of components due to presence of spots'.format(component))
+        self._logger.debug(f'renormalizing temperature map of components due to '
+                           f'presence of spots in case of component {component}')
         component_instance.renormalize_temperatures()
 
     if 'primary' in component and 'secondary' in component:
@@ -164,7 +165,7 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
             elif colormap == 'temperature':
                 return_map[_component] = copy(component_instance.temperatures)
 
-            if component_instance.spots:
+            if component_instance.has_spots():
                 for spot_index, spot in component_instance.spots.items():
                     if colormap == 'gravity_acceleration':
                         return_map[_component] = np.append(return_map[_component], spot._log_g)
@@ -227,7 +228,7 @@ def build_faces(self, component=None, components_distance=None):
     for _component in component:
         component_instance = getattr(self, _component)
         self.build_surface_with_spots(_component, components_distance=components_distance) \
-            if component_instance.spots \
+            if component_instance.has_spots() \
             else self.build_surface_with_no_spots(_component, components_distance=components_distance)
 
 
@@ -254,7 +255,7 @@ def build_surface(self, component=None, components_distance=None, return_surface
         # build mesh and incorporate spots points to given obtained object mesh
         self.build_mesh(component=_component, components_distance=components_distance)
 
-        if not component_instance.spots:
+        if not component_instance.has_spots():
             self.build_surface_with_no_spots(_component, components_distance=components_distance)
             if return_surface:
                 ret_points[_component] = copy(component_instance.points)

@@ -1857,7 +1857,7 @@ class BinarySystem(System):
         xlim = self.faces_visibility_x_limits(components_distance=components_distance)
 
         # this tests if you can use surface symmetries
-        use_quarter_star_test = self.primary.spots is None and self.secondary.spots is None
+        use_quarter_star_test = not self.primary.has_spots() and not self.secondary.has_spots()
         vis_test_symmetry = {}
 
         # declaring variables

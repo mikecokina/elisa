@@ -207,7 +207,7 @@ def phase_crv_symmetry(self, phase):
     :return:
     """
     if self.primary.pulsations is None and self.primary.pulsations is None and \
-            self.primary.spots is None and self.secondary.spots is None:
+            not self.primary.has_spots() and not self.secondary.has_spots():
         symmetrical_counterpart = phase > 0.5
         # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
         phase[symmetrical_counterpart] = np.round(1.0 - phase[symmetrical_counterpart], 9)
