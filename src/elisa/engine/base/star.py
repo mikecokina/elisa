@@ -25,7 +25,7 @@ class Star(Body):
     # this will be removed after full implementation of config system
     ATMOSPHERE_MODEL = 'black_body'
 
-    def __init__(self, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, name: str = None, suppress_logger: bool = False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
         super(Star, self).__init__(name=name, **kwargs)
 
