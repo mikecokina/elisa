@@ -20,7 +20,10 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
 
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to precission lose
 
-    pypex_polys_surface_area = np.array(geo.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
+    try:
+        pypex_polys_surface_area = np.array(geo.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
+    except:
+        print("ok")
 
     inplane_points_3d = np.concatenate((points.T, [[0.0] * len(points)])).T
     inplane_surface_area = utils.triangle_areas(triangles=faces, points=inplane_points_3d)
@@ -195,6 +198,13 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             # band_curves[band].append(flux)
             band_curves[band][idx] = flux
     band_curves = {band: band_curves[band][reverse_idx2] for band in band_curves}
+
+    from matplotlib import pyplot as plt
+    for band, curve in band_curves.items():
+        x = np.arange(len(curve))
+        plt.scatter(x, curve)
+    plt.show()
+
     return band_curves
 
 
@@ -265,11 +275,11 @@ def compute_eccentric_lightcurve(self, **kwargs):
             band_curves[band].append(flux)
 
     # temporary
-    # from matplotlib import pyplot as plt
-    # for band, curve in band_curves.items():
-    #     x = np.arange(len(curve))
-    #     plt.scatter(x, curve)
-    # plt.show()
+    from matplotlib import pyplot as plt
+    for band, curve in band_curves.items():
+        x = np.arange(len(curve))
+        plt.scatter(x, curve)
+    plt.show()
 
     return band_curves
 

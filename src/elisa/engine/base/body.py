@@ -797,7 +797,7 @@ class Body(metaclass=ABCMeta):
 
     @classmethod
     def _resolve_obvious_spots(cls, points: np.ndarray, faces: np.ndarray, model: Dict,
-                               spot_candidates: Dict, vmap: ndarray) -> Tuple[Dict, Dict]:
+                               spot_candidates: Dict, vmap: Dict) -> Tuple[Dict, Dict]:
 
         for simplex, face_points, ix in list(zip(faces, points[faces], range(faces.shape[0]))):
             # if each point belongs to the same spot, then it is for sure face of that spot
@@ -846,7 +846,8 @@ class Body(metaclass=ABCMeta):
             trd_enum = vertices_map[simplex[0]]["enum"]
         return reference_to_spot, trd_enum
 
-    def _resolve_spot_candidates(self, model: Dict, spot_candidates: Dict, faces: ndarray, component_com: float) -> Dict:
+    def _resolve_spot_candidates(
+            self, model: Dict, spot_candidates: Dict, faces: ndarray, component_com: float) -> Dict:
         """
         resolves spot face candidates by comparing angular distances of face cantres and spot centres, in case of
         multiple layered spots, face is assigned to the top layer

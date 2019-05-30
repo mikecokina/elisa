@@ -57,7 +57,7 @@ def find_nearest_dist_3d(data: ndarray) -> float:
     return min(distances)
 
 
-def cartesian_to_spherical(points: ndarray, degrees: bool = False) -> ndarray:
+def cartesian_to_spherical(points: ndarray or List, degrees: bool = False) -> ndarray:
     """
     convert cartesian to spherical coordinates if only 1 point is given input an output is only 1D vector
 
@@ -92,7 +92,7 @@ def cartesian_to_spherical(points: ndarray, degrees: bool = False) -> ndarray:
 
 
 # def spherical_to_cartesian(radius, phi, theta):
-def spherical_to_cartesian(spherical_points: ndarray) -> ndarray:
+def spherical_to_cartesian(spherical_points: ndarray or List) -> ndarray:
     """
     converts spherical coordinates into cartesian, if input is one point, output is 1D vector
 
@@ -115,7 +115,7 @@ def spherical_to_cartesian(spherical_points: ndarray) -> ndarray:
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
-def cylindrical_to_cartesian(cylindrical_points: ndarray) -> ndarray:
+def cylindrical_to_cartesian(cylindrical_points: ndarray or List) -> ndarray:
     """
     converts cylindrical coordinates into cartesian, if input is one point, output is 1D vector
 
@@ -137,10 +137,10 @@ def cylindrical_to_cartesian(cylindrical_points: ndarray) -> ndarray:
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
-def arbitrary_rotation(theta: float, omega: float, vector: ndarray,
+def arbitrary_rotation(theta: float, omega: ndarray, vector: ndarray,
                        degrees: bool = False, omega_normalized: bool = False) -> ndarray:
     """
-    Rodrigues` Rotaion Formula
+    Rodrigues` Rotation Formula
     function rotates `vector` around axis defined by `omega` vector by amount `theta`
 
     :param theta: float; radial vector of point of interest to rotate
@@ -313,7 +313,7 @@ def find_face_centres(faces: ndarray) -> ndarray:
     return np.mean(faces, axis=1)
 
 
-def check_missing_kwargs(kwargs: Dict, instance_kwargs: Iterable, instance_of: object) -> None:
+def check_missing_kwargs(kwargs: Iterable, instance_kwargs: Iterable, instance_of: object) -> None:
     """
     checks if all `kwargs` are all in `instance kwargs`
     :param kwargs: list

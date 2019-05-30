@@ -1,13 +1,13 @@
 import numpy as np
-import gc
 
+from typing import Tuple
 from abc import ABCMeta, abstractmethod
 from astropy import units as u
-from elisa.engine import logger, units
 from scipy.optimize import fsolve
-from copy import copy
+
+from elisa.engine import logger, units
 from elisa.engine import const as c
-from elisa.engine.base.body import Body
+from elisa.engine.utils import is_empty
 
 
 class System(metaclass=ABCMeta):
@@ -21,15 +21,17 @@ class System(metaclass=ABCMeta):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, name: str = None, suppress_logger: bool = False, **kwargs) -> None:
 
         self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
         self.initial_kwargs = kwargs.copy()
 
         # default params
-        self._gamma = None
+        self._gamma: float = np.nan
+        self._period: float = np.nan
+        self._inclination: float = np.nan
 
-        if name is None:
+        if is_empty(name):
             self._name = str(System.ID)
             self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self._name}")
             System.ID += 1
@@ -39,7 +41,7 @@ class System(metaclass=ABCMeta):
         self._inlination = None
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         name of object initialized on base of this abstract class
 
@@ -48,7 +50,7 @@ class System(metaclass=ABCMeta):
         return self._name
 
     @name.setter
-    def name(self, name):
+    def name(self, name: any):
         """
         setter for name of system
 
@@ -58,7 +60,7 @@ class System(metaclass=ABCMeta):
         self._name = str(name)
 
     @property
-    def gamma(self):
+    def gamma(self) -> float:
         """
         system center of mass radial velocity in default velocity unit
 
@@ -67,7 +69,7 @@ class System(metaclass=ABCMeta):
         return self._gamma
 
     @gamma.setter
-    def gamma(self, gamma):
+    def gamma(self, gamma: any):
         """
         system center of mass velocity
         expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised
@@ -85,7 +87,7 @@ class System(metaclass=ABCMeta):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def period(self):
+    def period(self) -> float:
         """
         returns orbital period of binary system
 
@@ -94,7 +96,7 @@ class System(metaclass=ABCMeta):
         return self._period
 
     @period.setter
-    def period(self, period):
+    def period(self, period: any):
         """
         set orbital period of binary star system, if unit is not specified, default period unit is assumed
 
@@ -102,17 +104,17 @@ class System(metaclass=ABCMeta):
         :return:
         """
         if isinstance(period, u.quantity.Quantity):
-            self._period = np.float64(period.to(units.ERIOD_UNIT))
+            self._period = np.float64(period.to(units.PERIOD_UNIT))
         elif isinstance(period, (int, np.int, float, np.float)):
             self._period = np.float64(period)
         else:
             raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug("Setting property period "
-                           "of class instance {} to {}".format(System.__name__, self._period))
+        self._logger.debug(f"Setting property period "
+                           f"of class instance {self.__class__.__name__} to {self._period}")
 
     @property
-    def inclination(self):
+    def inclination(self) -> float:
         """
         inclination of system, angle between z axis and line of sight
 
@@ -121,7 +123,7 @@ class System(metaclass=ABCMeta):
         return self._inclination
 
     @inclination.setter
-    def inclination(self, inclination):
+    def inclination(self, inclination: any):
         """
         set orbit inclination of system, if unit is not specified, default unit is assumed
 
@@ -138,10 +140,10 @@ class System(metaclass=ABCMeta):
                             'nor astropy.unit.quantity.Quantity instance.')
 
         if not 0 <= self.inclination <= c.PI:
-            raise ValueError('Inclination value of {} is out of bounds (0, pi).'.format(self.inclination))
+            raise ValueError(f'Inclination value of {self.inclination} is out of bounds (0, pi).')
 
-        self._logger.debug("Setting property inclination "
-                           "of class instance {} to {}".format(System.__name__, self._inclination))
+        self._logger.debug(f"setting property inclination "
+                           f"of class instance {self.__class__.__name__} to {self._inclination}")
 
     @abstractmethod
     def compute_lightcurve(self, *args, **kwargs):
@@ -155,7 +157,7 @@ class System(metaclass=ABCMeta):
     def init(self):
         pass
 
-    def _solver(self, fn, condition, *args, **kwargs):
+    def _solver(self, fn, condition, *args, **kwargs) -> Tuple:
         """
         will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
         solution if satisfy conditional function
