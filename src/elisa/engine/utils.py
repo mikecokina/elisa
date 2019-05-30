@@ -7,6 +7,7 @@ from copy import copy
 from numpy import ndarray
 
 from numpy.linalg import norm
+from pandas import DataFrame
 from scipy.spatial import distance_matrix as dstm
 from elisa.engine import const as c
 from typing import Tuple, Iterable, Dict, List
@@ -339,7 +340,7 @@ def numeric_metallicity_to_string(metallicity: float) -> str:
     return "{sign}{leadzeronum}".format(sign=sign, leadzeronum=leadzeronum)
 
 
-def find_nearest_value_as_matrix(look_in: ndarray, look_for: ndarray) -> Tuple[ndarray, ndarray]:
+def find_nearest_value_as_matrix(look_in: ndarray, look_for: ndarray or float) -> Tuple[ndarray, ndarray]:
     """
     finds values and indices of elements in `look_in` that are the closest to the each value in `values`
 
@@ -489,6 +490,8 @@ def is_empty(value) -> bool:
     if isinstance(value, Iterable):
         # this cover also strings
         return len(value) == 0
+    if isinstance(value, DataFrame):
+        return value.empty
     if np.isnan(value):
         return True
     return False
