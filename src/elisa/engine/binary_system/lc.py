@@ -219,9 +219,13 @@ def phase_crv_symmetry(self, phase):
 
 def compute_eccentric_lightcurve(self, **kwargs):
     self._logger = logger.getLogger(self.__class__.__name__, suppress=True)
-    orbital_motion = kwargs.pop("positions")
     # todo: move it to for loop
-    ecl_boundaries = np.array([0, const.PI, const.PI, const.FULL_ARC])
+    ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
+
+    phases = kwargs.pop("phases")
+
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(phase=phases)
 
     band_curves = {key: list() for key in kwargs["passband"].keys()}
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
@@ -259,11 +263,11 @@ def compute_eccentric_lightcurve(self, **kwargs):
             band_curves[band].append(flux)
 
     # temporary
-    from matplotlib import pyplot as plt
-    for band, curve in band_curves.items():
-        x = np.arange(len(curve))
-        plt.scatter(x, curve)
-    plt.show()
+    # from matplotlib import pyplot as plt
+    # for band, curve in band_curves.items():
+    #     x = np.arange(len(curve))
+    #     plt.scatter(x, curve)
+    # plt.show()
 
     return band_curves
 
