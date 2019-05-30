@@ -2159,7 +2159,8 @@ class BinarySystem(System):
     def calculate_orbital_motion(self, phase=None):
         orbital_motion = self.orbit.orbital_motion(phase=phase)
         idx = np.arange(np.shape(phase)[0])
-        return np.hstack((idx[:, np.newaxis], orbital_motion))
+        positions = np.hstack((idx[:, np.newaxis], orbital_motion))
+        return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
 
     # todo: are you planning to use that?? no usages for now...
     def calculate_lines_of_sight(self, phase=None):
@@ -2202,22 +2203,21 @@ class BinarySystem(System):
 
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
-        pass
 
     def _compute_circular_spotify_asynchronous_lightcurve(self, *args, **kwargs):
         pass
 
     def _compute_eccentric_lightcurve(self, *args, **kwargs):
         # todo: just for testing, remove
-        return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
+        return lc.compute_eccentric_lightcurve(self, **kwargs)
 
     # ### build methods
     # todo/idea: remove these definitions and call methods from `build` modul
 
-    def build_surface_gravity(self, component: str or list=None, components_distance: float or np.dtype=None):
+    def build_surface_gravity(self, component: str or list = None, components_distance: float or np.dtype = None):
         return build.build_surface_gravity(self, component, components_distance)
 
-    def build_faces_orientation(self, component: str or list=None, components_distance: float=None):
+    def build_faces_orientation(self, component: str or list = None, components_distance: float = None):
         return build.build_faces_orientation(self, component, components_distance)
 
     def build_temperature_distribution(self, component=None, components_distance=None):

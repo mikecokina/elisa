@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -5,6 +7,9 @@ from copy import deepcopy
 from elisa.engine import const, utils
 from pypex.poly2d.polygon import Polygon
 from elisa.engine.binary_system import utils as bsutils
+
+
+__logger__ = logging.getLogger(__name__)
 
 
 def get_critical_inclination(binary, components_distance: float):
@@ -33,7 +38,7 @@ def get_eclipse_boundaries(binary, components_distance: float):
         sin_i_critical = (radius1 + radius2) / components_distance
         sin_i = np.sin(binary.inclination)
         if sin_i < sin_i_critical:
-            binary._logger.debug('Inclination is not sufficient to produce eclipses.')
+            __logger__.debug('inclination is not sufficient to produce eclipses')
             return np.array([const.HALF_PI, const.HALF_PI, const.PI, const.PI])
         radius1 = binary.primary.forward_radius
         radius2 = binary.secondary.forward_radius
@@ -160,27 +165,27 @@ class EasyObject(object):
         return self._log_g
 
 
-class PositionContainer(object):
-    def __init__(self, idx, distance, azimut, true_anomaly, phase):
-        self.position_index = idx
-        self.azimuth = azimut
-        self.true_anomaly = true_anomaly
-        self.phase = phase
-        self.distance = distance
-
-    def __str__(self):
-        return f"Position: \n" \
-            f"      index: {self.position_index}\n" \
-            f"      azimut: {self.azimuth}\n" \
-            f"      true anomaly: {self.true_anomaly}\n" \
-            f"      photomeric phase: {self.phase}\n" \
-            f"      component distance: {self.distance}"
+# class PositionContainer(object):
+#     def __init__(self, idx, distance, azimut, true_anomaly, phase):
+#         self.position_index = idx
+#         self.azimuth = azimut
+#         self.true_anomaly = true_anomaly
+#         self.phase = phase
+#         self.distance = distance
+#
+#     def __str__(self):
+#         return f"Position: \n" \
+#             f"      index: {self.position_index}\n" \
+#             f"      azimut: {self.azimuth}\n" \
+#             f"      true anomaly: {self.true_anomaly}\n" \
+#             f"      photomeric phase: {self.phase}\n" \
+#             f"      component distance: {self.distance}"
 
 
 class SystemOrbitalPosition(object):
     def __init__(self, primary, secondary, inclination, motion, ecl_boundaries):
         self.inclination = inclination
-        self.motion = [PositionContainer(*pos) for pos in motion]
+        self.motion = motion  # [PositionContainer(*pos) for pos in motion]
         self.data = ()
         self._init_data = None
 
@@ -261,7 +266,7 @@ class SingleOrbitalPositionContainer(object):
         for component in self.__COMPONENTS__:
             setattr(self, component[1:], locals()[component])
 
-    def setup_position(self, position: PositionContainer, inclination: float):
+    def setup_position(self, position: const.BINARY_POSITION_PLACEHOLDER, inclination: float):
         self.position = position
         self.inclination = inclination
 
