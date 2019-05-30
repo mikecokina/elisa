@@ -125,7 +125,7 @@ class SingleSystem(System):
 
         self._logger.info("Evaluating spots.")
 
-        if not self.star.spots:
+        if not self.star.has_spots():
             self._logger.info("No spots to evaluate.")
             return
 
@@ -305,7 +305,7 @@ class SingleSystem(System):
         """
         if points is not None and faces is None:
             raise TypeError('Specify faces corresponding to given points')
-        if self.star.spots:
+        if self.star.has_spots():
             face = self.star.faces if faces is None else faces
             point = self.star.points if points is None else points
         else:
@@ -320,7 +320,7 @@ class SingleSystem(System):
         domega_dz = c.G * self.star.mass * point[:, 2] / r3
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
 
-        return np.mean(points_gradients[face], axis=1) if self.star.spots \
+        return np.mean(points_gradients[face], axis=1) if self.star.has_spots() \
             else np.mean(points_gradients[face], axis=1)[self.star.face_symmetry_vector]
 
     def calculate_polar_potential_gradient_magnitude(self):
@@ -584,7 +584,7 @@ class SingleSystem(System):
 
         self._logger.info("Evaluating spots.")
 
-        if not self.star.spots:
+        if not self.star.has_spots():
             self._logger.info("No spots to evaluate.")
             return
 
@@ -694,7 +694,7 @@ class SingleSystem(System):
             self._logger.debug('Adding pulsations to surface temperature distribution ')
             self.star.temperatures = self.star.add_pulsations()
 
-        if self.star.spots:
+        if self.star.has_spots():
             for spot_index, spot in self.star.spots.items():
                 self._logger.debug('Computing temperature distribution of {} spot'.format(spot_index))
                 spot.temperatures = spot.temperature_factor * self.star.calculate_effective_temperatures(

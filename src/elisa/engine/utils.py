@@ -8,7 +8,7 @@ from copy import copy
 from numpy.linalg import norm
 from scipy.spatial import distance_matrix as dstm
 from elisa.engine import const as c
-from typing import Tuple
+from typing import Tuple, Iterable
 
 # temporary
 from time import time
@@ -370,7 +370,10 @@ def find_nearest_value(look_in, look_for):
     return [look_for, index]
 
 
-def find_surrounded_as_matrix(look_in, look_for):
+def find_surrounded_as_matrix(look_in: np.array, look_for: np.array) -> np.array:
+    if not ((look_in.min() <= look_for).all() and (look_for <= look_in.max()).all()):
+        raise ValueError("Any value in `look_for` is out of bound of `look_in`")
+
     dif = look_for[:, np.newaxis] - look_in
     positive_mask = dif >= 0
     # for values on the left side of look_in array
@@ -487,6 +490,17 @@ def cosine_similarity(a, b):
     return np.inner(a, b) / (norm(a) * norm(b))
 
 
+def is_empty(value):
+    if isinstance(value, type(None)):
+        return True
+    if isinstance(value, Iterable):
+        # this cover also strings
+        return len(value) == 0
+    if np.isnan(value):
+        return True
+    return False
+
+
 class IterableQueue(object):
     """ Transform standard python Queue instance to iterable one"""
 
@@ -502,9 +516,5 @@ class IterableQueue(object):
                 yield self.source_queue.get_nowait()
             except Empty:
                 return
-
-
-
-
 
 

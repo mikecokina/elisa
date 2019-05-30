@@ -580,8 +580,8 @@ class BinarySystem(System):
         missing_kwargs = []
         for component in [self.primary, self.secondary]:
             for kwarg in star_mandatory_kwargs:
-                if getattr(component, kwarg) is None:
-                    missing_kwargs.append("`{}`".format(kwarg))
+                if np.isnan(getattr(component, kwarg)):
+                    missing_kwargs.append(f"`{kwarg}`")
 
             component_name = 'primary' if component == self.primary else 'secondary'
             if len(missing_kwargs) != 0:
@@ -1857,7 +1857,7 @@ class BinarySystem(System):
         xlim = self.faces_visibility_x_limits(components_distance=components_distance)
 
         # this tests if you can use surface symmetries
-        use_quarter_star_test = self.primary.spots is None and self.secondary.spots is None
+        use_quarter_star_test = not self.primary.has_spots() and not self.secondary.has_spots()
         vis_test_symmetry = {}
 
         # declaring variables
