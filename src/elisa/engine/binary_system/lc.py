@@ -231,6 +231,8 @@ def compute_eccentric_lightcurve(self, **kwargs):
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     for orbital_position in orbital_motion:
+        forward_rad_p = self.calculate_forward_radius('primary', components_distance=orbital_position.distance)
+        forward_rad_s = self.calculate_forward_radius('secondary', components_distance=orbital_position.distance)
         self.build(components_distance=orbital_position.distance)
         system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
                                                                              ecl_boundaries=ecl_boundaries)
