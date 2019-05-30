@@ -1,25 +1,28 @@
 import logging
 import os
 import sys
-
 import numpy as np
 import pandas as pd
+
+from numpy import ndarray
+from typing import List, Dict
 from scipy import interpolate
+from pandas import DataFrame
 
 from elisa.conf import config
 from elisa.engine.binary_system.system import BinarySystem
 from elisa.engine.single_system.system import SingleSystem
-
+from elisa.engine.utils import is_empty
 
 config.set_up_logging()
 
 
 class PassbandContainer(object):
-    def __init__(self, table, passband):
-        self.left_bandwidth = None
-        self.right_bandwidth = None
-        self.akima = None
-        self._table = None
+    def __init__(self, table: DataFrame, passband: str) -> None:
+        self.left_bandwidth: float = np.nan
+        self.right_bandwidth: float = np.nan
+        self.akima: object = None
+        self._table: DataFrame = DataFrame({})
         self.wave_unit: str = "angstrom"
         self.passband: str = passband
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
@@ -28,11 +31,11 @@ class PassbandContainer(object):
         setattr(self, 'table', table)
 
     @property
-    def table(self):
+    def table(self) -> DataFrame:
         return self._table
 
     @table.setter
-    def table(self, df: pd.DataFrame):
+    def table(self, df: DataFrame):
         self._table = df
         self.akima = Observer.bolometric if (self.passband.lower() in ['bolometric']) else \
             interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
@@ -42,30 +45,30 @@ class PassbandContainer(object):
 
 
 class Observer(object):
-    def __init__(self, passband: list or str, system: BinarySystem or SingleSystem):
+    def __init__(self, passband: List or str, system: BinarySystem or SingleSystem):
         """
         initializer for observer class
         :param passband: string - for valid filter name see config.py file
         :param system:
         """
-        self._logger = logging.getLogger(Observer.__name__)
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._logger.info("initialising Observer instance")
         # specifying what kind of system is observed
-        self._system = system
-        self._system_cls = type(self._system)
+        self._system: BinarySystem or SingleSystem = system
+        self._system_cls: type = type(self._system)
 
         # self._system._suppress_logger = True
 
-        self.left_bandwidth = sys.float_info.max
-        self.right_bandwidth = 0.0
-        self.passband = dict()
+        self.left_bandwidth: float = sys.float_info.max
+        self.right_bandwidth: float = 0.0
+        self.passband: Dict[str] = dict()
         self.init_passband(passband)
 
     @staticmethod
-    def bolometric(*args, **kwargs):
+    def bolometric(*args, **kwargs) -> float:
         return 1.0
 
-    def init_passband(self, passband):
+    def init_passband(self, passband: List[str] or str) -> None:
         passband = [passband] if isinstance(passband, str) else passband
         for band in passband:
             if band in ['bolometric']:
@@ -82,15 +85,15 @@ class Observer(object):
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
             self.passband[band] = PassbandContainer(table=df, passband=band)
 
-    def setup_bandwidth(self, left_bandwidth, right_bandwidth):
+    def setup_bandwidth(self, left_bandwidth: float, right_bandwidth: float):
         if left_bandwidth < self.left_bandwidth:
             self.left_bandwidth = left_bandwidth
         if right_bandwidth > self.right_bandwidth:
             self.right_bandwidth = right_bandwidth
 
     @staticmethod
-    def get_passband_df(passband):
-        logging.debug("obtaining passband response function: {}".format(passband))
+    def get_passband_df(passband: str) -> DataFrame:
+        logging.debug(f"obtaining passband response function: {passband}")
         if passband not in config.PASSBANDS:
             raise ValueError('Invalid or unsupported passband function')
         file_path = os.path.join(config.PASSBAND_TABLES, str(passband) + '.csv')
@@ -103,7 +106,7 @@ class Observer(object):
         if not phases and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("missing arguments")
 
-        if phases is None:
+        if is_empty(phases):
             phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
 
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
@@ -149,7 +152,7 @@ class Observer(object):
         self._logger.info("observation finished")
         return curves
 
-    def base_phase_interval(self, phases):
+    def base_phase_interval(self, phases: ndarray):
         """
         function reduces original phase interval to base interval (0, 1) in case of LC without pulsations
         :param phases: np.array - phases to reduce
@@ -164,6 +167,4 @@ class Observer(object):
 
 
 if __name__ == "__main__":
-    o = Observer(passband=['Generic.Bessell.B', 'Generic.Bessell.V'], system=None)
-    print(o.right_bandwidth, o.left_bandwidth)
     pass

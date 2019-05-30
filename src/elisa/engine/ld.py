@@ -1,19 +1,22 @@
 import logging
 import os
+from typing import List, Dict
 
 import numpy as np
 import pandas as pd
 
+from pandas import DataFrame
 from elisa.conf import config
 from elisa.engine import utils, const
 from scipy import interpolate
 
+from elisa.engine.utils import is_empty
 
 config.set_up_logging()
 logger = logging.getLogger("ld")
 
 
-def get_metallicity_from_ld_table_filename(filename):
+def get_metallicity_from_ld_table_filename(filename: str) -> float:
     """
     get metallicity as number from filename
 
@@ -26,7 +29,7 @@ def get_metallicity_from_ld_table_filename(filename):
     return value * sign
 
 
-def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
+def get_van_hamme_ld_table_filename(passband: str, metallicity: float, law: str = None) -> str:
     """
     get filename with stored coefficients for given passband, metallicity and limb darkening law
 
@@ -35,15 +38,11 @@ def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
     :param law: str
     :return: str
     """
-    law = law or config.LIMB_DARKENING_LAW
-    return "{model}.{passband}.{metallicity}.csv".format(
-        model=config.LD_LAW_TO_FILE_PREFIX[law],
-        passband=passband,
-        metallicity=utils.numeric_metallicity_to_string(metallicity)
-    )
+    law = law if not is_empty(law) else config.LIMB_DARKENING_LAW
+    return f"{config.LD_LAW_TO_FILE_PREFIX[law]}.{passband}.{utils.numeric_metallicity_to_string(metallicity)}.csv"
 
 
-def get_van_hamme_ld_table(passband, metallicity, law=None):
+def get_van_hamme_ld_table(passband: str, metallicity: float, law: str = None) -> DataFrame:
     """
     get content of van hamme table
 
@@ -52,15 +51,15 @@ def get_van_hamme_ld_table(passband, metallicity, law=None):
     :param law: str
     :return: pandas.DataFrame
     """
-    law = law or config.LIMB_DARKENING_LAW
+    law = law if not is_empty(law) else config.LIMB_DARKENING_LAW
     filename = get_van_hamme_ld_table_filename(passband, metallicity, law=law)
     path = os.path.join(config.VAN_HAMME_LD_TABLES, filename)
     if not os.path.isfile(path):
-        raise FileNotFoundError("there is no file like {}".format(path))
+        raise FileNotFoundError(f"there is no file like {path}")
     return pd.read_csv(path)
 
 
-def get_van_hamme_ld_table_by_name(fname):
+def get_van_hamme_ld_table_by_name(fname: str) -> DataFrame:
     """
     get content of van hamme table
 
@@ -69,11 +68,11 @@ def get_van_hamme_ld_table_by_name(fname):
     """
     path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
     if not os.path.isfile(path):
-        raise FileNotFoundError("there is no file like {}".format(path))
+        raise FileNotFoundError(f"there is no file like {path}")
     return pd.read_csv(path)
 
 
-def get_relevant_ld_tables(passband, metallicity):
+def get_relevant_ld_tables(passband: str, metallicity: float) -> List[str]:
     """
     get filename of van hamme tables for surrounded metallicities and given passband
 
@@ -87,8 +86,8 @@ def get_relevant_ld_tables(passband, metallicity):
     return files
 
 
-def interpolate_on_ld_grid(temperature: list, log_g: list, metallicity: float, passband: dict or list,
-                           author: str=None):
+def interpolate_on_ld_grid(temperature: List, log_g: List, metallicity: float, passband: Dict or List,
+                           author: str = None) -> Dict:
     """
     get limb darkening coefficients based on van hamme tables for given temperatures, log_gs and metallicity
 
@@ -140,6 +139,7 @@ def interpolate_on_ld_grid(temperature: list, log_g: list, metallicity: float, p
     return results
 
 
+# todo: discusse following shits
 def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None,
                           cos_theta=None):
     """
@@ -189,7 +189,7 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
         return 1 - coefficients[0] * (1 - cos_theta) - coefficients[1] * (1 - np.sqrt(cos_theta))
 
 
-def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coefficients=None):
+def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, coefficients=None):
     """
     Calculates limb darkening factor D(int) used when calculating flux from given intensity on surface.
     D(int) = integral over hemisphere (D(theta)cos(theta)
@@ -222,23 +222,4 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
 
 
 if __name__ == '__main__':
-    _temperature = [
-        5551.36,
-        5552.25,
-        6531.81,
-        7825.66,
-        9874.85
-    ]
-
-    _metallicity = 0.11
-
-    _logg = [
-        4.12,
-        3.92,
-        2.85,
-        2.99,
-        3.11
-    ]
-
-    interpolate_on_ld_grid(passband={'Generic.Bessell.B': None}, temperature=_temperature,
-                           log_g=_logg, metallicity=_metallicity)
+    pass

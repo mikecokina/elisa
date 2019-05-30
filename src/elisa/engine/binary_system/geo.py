@@ -357,7 +357,7 @@ def pypex_poly_hull_intersection(pypex_faces_gen, pypex_hull: Polygon):
 
 
 def pypex_poly_surface_area(pypex_polys_gen):
-    return [poly.surface_area() for poly in pypex_polys_gen]
+    return [poly.surface_area() if poly is not None else 0.0 for poly in pypex_polys_gen]
 
 
 def hull_to_pypex_poly(hull):

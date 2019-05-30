@@ -1,7 +1,11 @@
 import numpy as np
 
+from numpy import ndarray
+from typing import Tuple
 
-def get_flaten_properties(component):
+
+def get_flaten_properties(component) \
+        -> Tuple[ndarray, ndarray, ndarray, ndarray, ndarray]:
     points = component.points
     normals = component.normals
     faces = component.faces
