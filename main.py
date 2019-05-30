@@ -12,7 +12,9 @@ from elisa.engine.observer.observer import Observer
 
 logger = logging.getLogger()
 logger.setLevel(level='WARNING')
-contact_pot = 2.5
+# logger.setLevel(level='DEBUG')
+# contact_pot = 2.5
+contact_pot = 4
 start_time = time()
 
 spots_metadata = {
@@ -76,8 +78,8 @@ bs = BinarySystem(primary=primary,
                   argument_of_periastron=0*u.deg,
                   gamma=-41.7*u.km/u.s,
                   period=0.7949859*u.d,
-                  eccentricity=0.0,
-                  inclination=70*u.deg,
+                  eccentricity=0.1,
+                  inclination=80*u.deg,
                   primary_minimum_time=2440862.60793*u.d,
                   phase_shift=0.0,
                   )
@@ -89,14 +91,14 @@ print('Elapsed time during system build: {:.6f}'.format(time()-star_time))
 star_time = time()
 o = Observer(passband=['Generic.Bessell.V',
                        # 'Generic.Bessell.B',
-                       # 'Generic.Bessell.V',
+                       # 'Generic.Bessell.U',
                        # 'Generic.Bessell.R',
                        # 'Generic.Bessell.I',
                        ],
              system=bs)
 
-start_phs = 0.0
-stop_phs = 2.0
+start_phs = -0.5
+stop_phs = 0.5
 step = 0.01
 curves = o.observe(from_phase=start_phs,
                    to_phase=stop_phs,
@@ -108,9 +110,9 @@ print('Elapsed time for LC gen: {:.6f}'.format(time()-star_time))
 x = np.linspace(start_phs, stop_phs, int((stop_phs-start_phs)/step))
 for item in curves:
     # plt.scatter(x, curves[item], label=item)
-    # plt.scatter(x, curves[item]/max(curves[item]))
-    plt.plot(x, curves[item]/max(curves[item]))
-    # plt.plot(x, curves[item])
+    # plt.scatter(x, curves[item]/max(curves[item]), label=item)
+    plt.plot(x, curves[item]/max(curves[item]), label=item)
+    # plt.plot(x, curves[item], label=item)
 plt.legend()
 plt.show()
 
