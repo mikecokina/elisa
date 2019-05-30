@@ -120,16 +120,19 @@ class Observer(object):
         """
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
+        # fixme: remove this after fixing it within eccentric orbit
         args = position_method(phase=base_phases)
 
         curves = self._system.compute_lightcurve(
                      **dict(
+                         # fixme: remove kwarg positions
                          positions=args,
                          passband=self.passband,
                          left_bandwidth=self.left_bandwidth,
                          right_bandwidth=self.right_bandwidth,
                          atlas="ck04",
-                         phases=base_phases
+                         phases=base_phases,
+                         position_method=position_method
                      )
                  )
 
