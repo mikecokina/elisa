@@ -153,12 +153,14 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     """
     self.build(components_distance=1.0)
 
-    orbital_motion = kwargs.pop("positions")
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
     # in case of LC for spotless surface without pulsations unique phase interval is only (0, 0.5)
     phases = kwargs.pop("phases")
-    # base_phases2, idx, reverse_idx2 = phase_crv_symmetry(self, phases)
+    base_phases2, reverse_idx2 = phase_crv_symmetry(self, phases)
+
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(phase=base_phases2)
 
     initial_props_container = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
     initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
@@ -175,8 +177,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
                                                                          ecl_boundaries=ecl_boundaries)
     system_positions_container = system_positions_container.darkside_filter()
 
-    # band_curves = {key: list() for key in kwargs["passband"].keys()}
-    band_curves = {key: list() for key in kwargs["passband"].keys()}
+    band_curves = {key: np.empty(base_phases2.shape) for key in kwargs["passband"].keys()}
     for idx, container in enumerate(system_positions_container):
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
         p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
@@ -195,38 +196,47 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             p_flux = np.sum(primary_normal_radiance[band] * p_cosines * coverage["primary"] * p_ld_cors)
             s_flux = np.sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
             flux = p_flux + s_flux
-            band_curves[band].append(flux)
-
-    # temporary
-    from matplotlib import pyplot as plt
-    for band, curve in band_curves.items():
-        x = np.arange(len(curve))
-        plt.scatter(x, curve)
-    plt.show()
-
+            # band_curves[band].append(flux)
+            band_curves[band][idx] = flux
+    band_curves = {band: band_curves[band][reverse_idx2] for band in band_curves}
     return band_curves
 
 
 def phase_crv_symmetry(self, phase):
+    """
+    utilizing symmetry of circular systems without spots and pulastions wher e you need to evalueate only half of the
+    phases. Function finds such redundant phases and returns only unique phases.
+    :param self:
+    :param phase:
+    :return:
+    """
     if not self.primary.has_pulsations() and not self.primary.has_pulsations() and \
             not self.primary.has_spots() and not self.secondary.has_spots():
         symmetrical_counterpart = phase > 0.5
         # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
         phase[symmetrical_counterpart] = np.round(1.0 - phase[symmetrical_counterpart], 9)
-        res_phases, idx, reverse_idx = np.unique(phase, return_index=True, return_inverse=True)
-        return res_phases, idx, reverse_idx
+        res_phases, reverse_idx = np.unique(phase, return_inverse=True)
+        return res_phases, reverse_idx
+    else:
+        return phase, np.arange(phase.shape[0])
 
 
 def compute_eccentric_lightcurve(self, **kwargs):
     self._logger = logger.getLogger(self.__class__.__name__, suppress=True)
-    orbital_motion = kwargs.pop("positions")
     # todo: move it to for loop
-    ecl_boundaries = np.array([0, const.PI, const.PI, const.FULL_ARC])
+    ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
+
+    phases = kwargs.pop("phases")
+
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(phase=phases)
 
     band_curves = {key: list() for key in kwargs["passband"].keys()}
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     for orbital_position in orbital_motion:
+        forward_rad_p = self.calculate_forward_radius('primary', components_distance=orbital_position.distance)
+        forward_rad_s = self.calculate_forward_radius('secondary', components_distance=orbital_position.distance)
         self.build(components_distance=orbital_position.distance)
         system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
                                                                              ecl_boundaries=ecl_boundaries)
@@ -259,11 +269,11 @@ def compute_eccentric_lightcurve(self, **kwargs):
             band_curves[band].append(flux)
 
     # temporary
-    from matplotlib import pyplot as plt
-    for band, curve in band_curves.items():
-        x = np.arange(len(curve))
-        plt.scatter(x, curve)
-    plt.show()
+    # from matplotlib import pyplot as plt
+    # for band, curve in band_curves.items():
+    #     x = np.arange(len(curve))
+    #     plt.scatter(x, curve)
+    # plt.show()
 
     return band_curves
 
