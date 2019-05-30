@@ -1,8 +1,12 @@
+from typing import Dict
+
 import numpy as np
 
+from numpy import ndarray
 from astropy import units as u
 from elisa.engine import units, logger
 from elisa.engine import utils
+from elisa.engine.utils import is_empty
 
 
 class Spot(object):
@@ -13,42 +17,42 @@ class Spot(object):
     OPTIONAL_KWARGS = ["angular_density"]
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, suppress_logger=False, **kwargs):
+    def __init__(self, suppress_logger: bool = False, **kwargs):
         utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.ALL_KWARGS, instance=Spot)
         utils.check_missing_kwargs(Spot.MANDATORY_KWARGS, kwargs, instance_of=Spot)
         self._logger = logger.getLogger(Spot.__name__, suppress=suppress_logger)
 
-        self._discretization_factor = None
-        self._latitude = None
-        self._longitude = None
-        self._angular_diameter = None
-        self._temperature_factor = None
+        self._discretization_factor: float = np.nan
+        self._latitude: float = np.nan
+        self._longitude: float = np.nan
+        self._angular_diameter: float = np.nan
+        self._temperature_factor: float = np.nan
 
-        self.boundary = None
-        self.boundary_center = None
-        self.center = None
+        self.boundary: ndarray = np.array([])
+        self.boundary_center: ndarray = np.array([])
+        self.center: ndarray = np.array([])
 
-        self.points = None
-        self.normals = None
-        self.faces = None
-        self.face_centres = None
+        self.points: ndarray = np.array([])
+        self.normals: ndarray = np.array([])
+        self.faces: ndarray = np.array([])
+        self.face_centres: ndarray = np.array([])
 
-        self.areas = None
-        self.potential_gradient_magnitudes = None
-        self.temperatures = None
+        self.areas: ndarray = np.array([])
+        self.potential_gradient_magnitudes: ndarray = np.array([])
+        self.temperatures: ndarray = np.array([])
 
-        self._log_g = None
+        self._log_g: ndarray = np.array([])
 
         for key in kwargs:
             set_val = kwargs.get(key)
             self._logger.debug(f"setting property {key} of class instance {self.__class__.__name__} to {kwargs[key]}")
             setattr(self, key, set_val)
 
-    def kwargs_serializer(self):
-        return {kwarg: getattr(self, kwarg) for kwarg in self.MANDATORY_KWARGS if getattr(self, kwarg) is not None}
+    def kwargs_serializer(self) -> Dict:
+        return {kwarg: getattr(self, kwarg) for kwarg in self.MANDATORY_KWARGS if not is_empty(getattr(self, kwarg))}
 
     @property
-    def log_g(self):
+    def log_g(self) -> ndarray:
         return self._log_g
 
     @log_g.setter
@@ -56,7 +60,7 @@ class Spot(object):
         self._log_g = log_g
 
     @property
-    def longitude(self):
+    def longitude(self) -> float:
         return self._longitude
 
     @longitude.setter
@@ -77,7 +81,7 @@ class Spot(object):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def latitude(self):
+    def latitude(self) -> float:
         return self._latitude
 
     @latitude.setter
@@ -98,7 +102,7 @@ class Spot(object):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def angular_diameter(self):
+    def angular_diameter(self) -> float:
         return self._angular_diameter
 
     @angular_diameter.setter
@@ -119,7 +123,7 @@ class Spot(object):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def discretization_factor(self):
+    def discretization_factor(self) -> float:
         return self._discretization_factor
 
     @discretization_factor.setter
@@ -140,7 +144,7 @@ class Spot(object):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def temperature_factor(self):
+    def temperature_factor(self) -> float:
         return self._temperature_factor
 
     @temperature_factor.setter
@@ -156,7 +160,7 @@ class Spot(object):
         else:
             raise TypeError('Input of variable `temperature_factor` is not (np.)int or (np.)float.')
 
-    def calculate_areas(self):
+    def calculate_areas(self) -> ndarray:
         """
         returns areas of each face of the spot build_surface
         :return: numpy.array([area_1, ..., area_n])
