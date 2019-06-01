@@ -1,6 +1,5 @@
 import numpy as np
 
-from typing import Tuple
 from abc import ABCMeta, abstractmethod
 from astropy import units as u
 from scipy.optimize import fsolve
@@ -13,7 +12,6 @@ from elisa.engine.utils import is_empty
 class System(metaclass=ABCMeta):
     """
     Abstract class defining System
-    see https://docs.python.org/3.5/library/abc.html for more informations
     """
 
     ID = 1
@@ -21,15 +19,15 @@ class System(metaclass=ABCMeta):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name: str = None, suppress_logger: bool = False, **kwargs) -> None:
+    def __init__(self, name=None, suppress_logger=False, **kwargs):
 
         self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
         self.initial_kwargs = kwargs.copy()
 
         # default params
-        self._gamma: float = np.nan
-        self._period: float = np.nan
-        self._inclination: float = np.nan
+        self._gamma = np.nan
+        self._period = np.nan
+        self._inclination = np.nan
 
         if is_empty(name):
             self._name = str(System.ID)
@@ -41,18 +39,18 @@ class System(metaclass=ABCMeta):
         self._inlination = None
 
     @property
-    def name(self) -> str:
+    def name(self):
         """
-        name of object initialized on base of this abstract class
+        Name of object initialized on base of this abstract class.
 
         :return: str
         """
         return self._name
 
     @name.setter
-    def name(self, name: any):
+    def name(self, name):
         """
-        setter for name of system
+        Setter for name of system.
 
         :param name: str
         :return:
@@ -60,47 +58,48 @@ class System(metaclass=ABCMeta):
         self._name = str(name)
 
     @property
-    def gamma(self) -> float:
+    def gamma(self):
         """
-        system center of mass radial velocity in default velocity unit
+        System center of mass radial velocity in default velocity unit.
 
-        :return: numpy.float
+        :return: float
         """
         return self._gamma
 
     @gamma.setter
-    def gamma(self, gamma: any):
+    def gamma(self, gamma):
         """
-        system center of mass velocity
-        expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised
-        if unit is not specified, default velocity unit is assumed
+        Set system center of mass velocity.
+        Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
+        If unit is not specified, default velocity unit is assumed.
 
-        :param gamma: numpy.float/numpy.int/astropy.units.quantity.Quantity
-        :return: None
+        :param gamma: (numpy.)float, (numpy.)int, astropy.units.quantity.Quantity
+        :return: 
         """
         if isinstance(gamma, u.quantity.Quantity):
             self._gamma = np.float64(gamma.to(units.VELOCITY_UNIT))
         elif isinstance(gamma, (int, np.int, float, np.float)):
             self._gamma = np.float64(gamma)
         else:
-            raise TypeError('Value of variable `gamma` is not (np.)int or (np.)float '
+            raise TypeError('Value of variable `gamma` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def period(self) -> float:
+    def period(self):
         """
-        returns orbital period of binary system
+        Returns orbital period of binary system.
 
-        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return: float
         """
         return self._period
 
     @period.setter
     def period(self, period: any):
         """
-        set orbital period of binary star system, if unit is not specified, default period unit is assumed
+        Set orbital period of binary star system.
+        If unit is not specified, default period unit is assumed.
 
-        :param period: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :param period: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return:
         """
         if isinstance(period, u.quantity.Quantity):
@@ -108,26 +107,27 @@ class System(metaclass=ABCMeta):
         elif isinstance(period, (int, np.int, float, np.float)):
             self._period = np.float64(period)
         else:
-            raise TypeError('Input of variable `period` is not (np.)int or (np.)float '
+            raise TypeError('Input of variable `period` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
         self._logger.debug(f"Setting property period "
                            f"of class instance {self.__class__.__name__} to {self._period}")
 
     @property
-    def inclination(self) -> float:
+    def inclination(self):
         """
-        inclination of system, angle between z axis and line of sight
+        Inclination of system, angle between `z` axis and `line of sight`
 
-        :return: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :return: float
         """
         return self._inclination
 
     @inclination.setter
     def inclination(self, inclination: any):
         """
-        set orbit inclination of system, if unit is not specified, default unit is assumed
+        Set orbit inclination of system.
+        If unit is not specified, default unit is assumed
 
-        :param inclination: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :param inclination: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return:
         """
 
@@ -136,7 +136,7 @@ class System(metaclass=ABCMeta):
         elif isinstance(inclination, (int, np.int, float, np.float)):
             self._inclination = np.float64(inclination)
         else:
-            raise TypeError('Input of variable `inclination` is not (np.)int or (np.)float '
+            raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
         if not 0 <= self.inclination <= c.PI:
@@ -157,19 +157,15 @@ class System(metaclass=ABCMeta):
     def init(self):
         pass
 
-    def _solver(self, fn, condition, *args, **kwargs) -> Tuple:
+    def _solver(self, fn, condition, *args, **kwargs):
         """
-        will solve fn implicit function taking args by using scipy.optimize.fsolve method and return
-        solution if satisfy conditional function
-
-        # final spot containers contain their own points and simplex remaped from zero
-        # final object contain only points w/o spots points and simplex (triangulation)
-        # je tato poznamka vhodna tu? trosku metie
+        Will solve `fn` implicit function taking args by using scipy.optimize.fsolve method and return
+        solution if satisfy conditional function.
 
         :param fn: function
         :param condition: function
         :param args: tuple
-        :return: float (np.nan), bool
+        :return: float, bool
         """
         # precalculation of auxiliary values
         solution, use = np.nan, False
@@ -180,9 +176,9 @@ class System(metaclass=ABCMeta):
                 solution = solution[0]
                 use = True if 1e15 > solution > 0 else False
             else:
-                self._logger.warning('Solution in implicit solver was not found, cause: {}'.format(mesg))
+                self._logger.warning(f'solution in implicit solver was not found, cause: {mesg}')
         except Exception as e:
-            self._logger.debug("Attempt to solve function {} finished w/ exception: {}".format(fn.__name__, str(e)))
+            self._logger.debug(f"attempt to solve function {fn.__name__} finished w/ exception: {str(e)}")
             use = False
 
         args_to_use = kwargs.get('original_kwargs', args)
@@ -191,7 +187,7 @@ class System(metaclass=ABCMeta):
     @abstractmethod
     def build_mesh(self, *args, **kwargs):
         """
-        abstract method for creating surface points
+        Abstract method for creating surface points.
 
         :param args:
         :param kwargs:
@@ -202,8 +198,8 @@ class System(metaclass=ABCMeta):
     @abstractmethod
     def build_faces(self, *args, **kwargs):
         """
-        abstract method for building body surface from given set of points in already calculated and stored in
-        object.points
+        Abstract method for building body surface (faces) from given set of points in already calculated and stored in
+        Object.points.
 
         :param args:
         :param kwargs:
@@ -214,7 +210,7 @@ class System(metaclass=ABCMeta):
     @abstractmethod
     def build_surface(self, *args, **kwargs):
         """
-        abstract method which builds surface from ground up including points and faces of surface and spots
+        Abstract method which builds surface from ground up including points and faces of surface and spots.
 
         :param args:
         :param kwargs:
@@ -225,8 +221,8 @@ class System(metaclass=ABCMeta):
     @abstractmethod
     def build_surface_map(self, *args, **kwargs):
         """
-        abstract method which calculates surface maps for surface faces of given body (eg. temperature or gravity
-        acceleration map)
+        Abstract method which calculates surface maps for surface faces of given body (eg. temperature or gravity
+        acceleration map).
 
         :param args:
         :param kwargs:
