@@ -19,11 +19,7 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     pypex_intersection = geo.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
 
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to precission lose
-
-    try:
-        pypex_polys_surface_area = np.array(geo.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
-    except:
-        print("ok")
+    pypex_polys_surface_area = np.array(geo.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
 
     inplane_points_3d = np.concatenate((points.T, [[0.0] * len(points)])).T
     inplane_surface_area = utils.triangle_areas(triangles=faces, points=inplane_points_3d)
