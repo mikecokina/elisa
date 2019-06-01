@@ -1,12 +1,9 @@
 import gc
 import numpy as np
 
-from numpy import ndarray
-from typing import Dict, Tuple, Iterable, Any, List
 from abc import ABCMeta
 from copy import copy
 from astropy import units as u
-from astropy.units.quantity import Quantity
 
 from elisa.engine import units, logger
 from elisa.engine import utils
@@ -17,7 +14,7 @@ from elisa.engine.base.spot import Spot
 class Body(metaclass=ABCMeta):
     """
     Abstract class that defines bodies that can be modelled by this software.
-    Units are imported from astropy.units module:
+    Units are imported from astropy.units module::
         
         see documentation http://docs.astropy.org/en/stable/units/
     """
@@ -39,33 +36,38 @@ class Body(metaclass=ABCMeta):
             self._name = str(name)
 
         # initializing parmas to default values
-        self._mass: float = np.nan
-        self._t_eff: float = np.nan
-        self._points: ndarray = np.array([])
-        self._faces: ndarray = np.array([])
-        self._normals: ndarray = np.array([])
-        self._temperatures: ndarray = np.array([])
-        self._synchronicity: float = np.nan
-        self._albedo: float = np.nan
-        self._polar_radius: float = np.nan
-        self._areas: ndarray = np.array([])
-        self._discretization_factor: float = np.radians(3)
-        self._face_centers: ndarray = np.array([])
-        self._spots: Dict = dict()
-        self._point_symmetry_vector: ndarray = np.array([])
-        self.inverse_point_symmetry_matrix: ndarray = np.array([])
-        self.base_symmetry_points_number: np.int64 = 0
-        self._face_symmetry_vector: ndarray = np.array([])
-        self.base_symmetry_faces_number: np.int64 = 0
+        self._mass = np.nan
+        self._t_eff = np.nan
+        self._points = np.array([])
+        self._faces = np.array([])
+        self._normals = np.array([])
+        self._temperatures = np.array([])
+        self._synchronicity = np.nan
+        self._albedo = np.nan
+        self._polar_radius = np.nan
+        self._areas = np.array([])
+        self._discretization_factor = np.radians(3)
+        self._face_centers = np.array([])
+        self._spots = dict()
+        self._point_symmetry_vector = np.array([])
+        self.inverse_point_symmetry_matrix = np.array([])
+        self.base_symmetry_points_number = 0
+        self._face_symmetry_vector = np.array([])
+        self.base_symmetry_faces_number = 0
         # those are used only if case of spots are used
-        self.base_symmetry_points: ndarray = np.array([])
-        self.base_symmetry_faces: ndarray = np.array([])
+        self.base_symmetry_points = np.array([])
+        self.base_symmetry_faces = np.array([])
 
-    def has_spots(self) -> bool:
+    def has_spots(self):
+        """
+        Find whether object has defined spots.
+
+        :return: bool
+        """
         return len(self._spots) > 0
 
     @property
-    def name(self) -> str:
+    def name(self):
         """
         *<instance>* name getter
         usage: *<instance>*.name
@@ -75,7 +77,7 @@ class Body(metaclass=ABCMeta):
         return str(self._name)
 
     @name.setter
-    def name(self, name: str) -> None:
+    def name(self, name):
         """
         :param name: str
         :return:
@@ -83,14 +85,14 @@ class Body(metaclass=ABCMeta):
         self._name = str(name)
 
     @property
-    def mass(self) -> float:
+    def mass(self):
         """
         :return: float
         """
         return self._mass
 
     @mass.setter
-    def mass(self, mass: Any) -> None:
+    def mass(self, mass):
         """
         If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
         If mass astropy.unit.quantity.Quantity instance, program converts it to default units and stores it's value in
@@ -108,16 +110,16 @@ class Body(metaclass=ABCMeta):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def t_eff(self) -> float:
+    def t_eff(self):
         """
         :return: float
         """
         return self._t_eff
 
     @t_eff.setter
-    def t_eff(self, t_eff: Any) -> None:
+    def t_eff(self, t_eff):
         """
-        This function accepts value in any temperature unit.
+        This function accepts value in Any temperature unit.
         If your input is without unit, function assumes that supplied value is in Kelvins.
 
         :param t_eff: int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity
@@ -132,7 +134,7 @@ class Body(metaclass=ABCMeta):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def points(self) -> ndarray:
+    def points(self):
         """
         Returns dictionary of points that forms surface of Body.
 
@@ -141,7 +143,7 @@ class Body(metaclass=ABCMeta):
         return self._points
 
     @points.setter
-    def points(self, points: ndarray) -> None:
+    def points(self, points):
         """
         Setting numpy array of points that form surface of Body.
         Input dictionary has to be in shape::
@@ -159,7 +161,7 @@ class Body(metaclass=ABCMeta):
         self._points = np.array(points)
 
     @property
-    def faces(self) -> ndarray:
+    def faces(self):
         """
         Returns dictionary of triangles that will create surface of body.
         Triangles are stored as list of indices of points.
@@ -176,7 +178,7 @@ class Body(metaclass=ABCMeta):
         return self._faces
 
     @faces.setter
-    def faces(self, faces: ndarray) -> None:
+    def faces(self, faces):
         """
         Faces dictionary has to be in shape::
         
@@ -191,7 +193,7 @@ class Body(metaclass=ABCMeta):
         self._faces = faces
 
     @property
-    def normals(self) -> ndarray:
+    def normals(self):
         """
         Returns array containing normalised outward facing normals of corresponding faces with same index.
 
@@ -207,7 +209,7 @@ class Body(metaclass=ABCMeta):
         return self._normals
 
     @normals.setter
-    def normals(self, normals: ndarray) -> None:
+    def normals(self, normals):
         """
         Setter for normalised outward facing normals of corresponding faces with same index.
         Expected shape of normals matrix::
@@ -223,7 +225,7 @@ class Body(metaclass=ABCMeta):
         self._normals = normals
 
     @property
-    def areas(self) -> ndarray:
+    def areas(self):
         """
         Returns array of areas of corresponding faces.
 
@@ -236,7 +238,7 @@ class Body(metaclass=ABCMeta):
         return self._areas
 
     @areas.setter
-    def areas(self, areas: ndarray) -> None:
+    def areas(self, areas):
         """
         Returns array of areas of corresponding faces.
 
@@ -251,7 +253,7 @@ class Body(metaclass=ABCMeta):
         self._areas = areas
 
     @property
-    def temperatures(self) -> ndarray:
+    def temperatures(self):
         """
         Returns array of temeratures of corresponding faces.
 
@@ -264,7 +266,7 @@ class Body(metaclass=ABCMeta):
         return self._temperatures
 
     @temperatures.setter
-    def temperatures(self, temperatures: ndarray) -> None:
+    def temperatures(self, temperatures):
         """
         Aetter for array of temeratures of corresponding faces in shape::
 
@@ -276,7 +278,7 @@ class Body(metaclass=ABCMeta):
         self._temperatures = temperatures
 
     @property
-    def synchronicity(self) -> float:
+    def synchronicity(self):
         """
         Returns synchronicity parameter F = omega_rot/omega_orb.
 
@@ -285,7 +287,7 @@ class Body(metaclass=ABCMeta):
         return self._synchronicity
 
     @synchronicity.setter
-    def synchronicity(self, synchronicity: float) -> None:
+    def synchronicity(self, synchronicity):
         """
         Object synchronicity (F = omega_rot/omega_orb) setter.
         Expects number input convertible to numpy float64 / float.
@@ -295,7 +297,7 @@ class Body(metaclass=ABCMeta):
         self._synchronicity = np.float64(synchronicity)
 
     @property
-    def albedo(self) -> float:
+    def albedo(self):
         """
         Returns bolometric albedo of an object (reradiated energy/ irradiance energy).
 
@@ -304,20 +306,20 @@ class Body(metaclass=ABCMeta):
         return self._albedo
 
     @albedo.setter
-    def albedo(self, albedo: float) -> None:
+    def albedo(self, albedo):
         """
         Setter for bolometric albedo (reradiated energy/ irradiance energy).
         Accepts value of albedo in range (0, 1).
 
         :param albedo: float
         """
-        if 0 <= albedo <= 1:
+        if 0. <= albedo <= 1.:
             self._albedo = np.float64(albedo)
         else:
             raise ValueError(f'Parameter albedo = {albedo} is out of range (0, 1)')
 
     @property
-    def polar_radius(self) -> float:
+    def polar_radius(self):
         """
         Returns value polar radius of an object in default unit.
 
@@ -326,7 +328,7 @@ class Body(metaclass=ABCMeta):
         return self._polar_radius
 
     @polar_radius.setter
-    def polar_radius(self, polar_radius: float) -> None:
+    def polar_radius(self, polar_radius):
         """
         Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
         If quantity is not specified, default distance unit is assumed.
@@ -343,7 +345,7 @@ class Body(metaclass=ABCMeta):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def discretization_factor(self) -> float:
+    def discretization_factor(self):
         """
         returns mean angular distance between surface points
 
@@ -352,7 +354,7 @@ class Body(metaclass=ABCMeta):
         return self._discretization_factor
 
     @discretization_factor.setter
-    def discretization_factor(self, discretization_factor: float) -> None:
+    def discretization_factor(self, discretization_factor):
         """
         :param discretization_factor: float
         :return:
@@ -366,7 +368,7 @@ class Body(metaclass=ABCMeta):
                             ' or (numpy.)float nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def face_centres(self) -> ndarray:
+    def face_centres(self):
         """
         Returns coordinates of centres of corresponding faces.
 
@@ -382,7 +384,7 @@ class Body(metaclass=ABCMeta):
         return self._face_centers
 
     @face_centres.setter
-    def face_centres(self, centres: ndarray) -> None:
+    def face_centres(self, centres):
         """
         :param centres: ndarray
 
@@ -399,14 +401,14 @@ class Body(metaclass=ABCMeta):
         self._face_centers = centres
 
     @property
-    def spots(self) -> Dict[int, Spot]:
+    def spots(self):
         """
         :return: Dict[int, Spot]
         """
         return self._spots
 
     @spots.setter
-    def spots(self, spots: Iterable[Dict]) -> None:
+    def spots(self, spots):
         """
         example of defined spots
 
@@ -433,7 +435,7 @@ class Body(metaclass=ABCMeta):
         self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)} if not is_empty(spots) else dict()
 
     @property
-    def point_symmetry_vector(self) -> ndarray:
+    def point_symmetry_vector(self):
         """
         Vector of indices with the same length as body`s points.
         N-th value of point_symmetry_matrix indicates position of base symmetry point for given n-th point.
@@ -443,7 +445,7 @@ class Body(metaclass=ABCMeta):
         return self._point_symmetry_vector
 
     @point_symmetry_vector.setter
-    def point_symmetry_vector(self, symmetry_vector: ndarray) -> None:
+    def point_symmetry_vector(self, symmetry_vector):
         """
         Setter for vector of indices with the same length as body`s points, n-th value of point_symmetry_matrix
         indicates position of base symmetry point for given n-th point.
@@ -462,7 +464,7 @@ class Body(metaclass=ABCMeta):
         self._point_symmetry_vector = symmetry_vector
 
     @property
-    def face_symmetry_vector(self) -> ndarray:
+    def face_symmetry_vector(self):
         """
         Vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix indicates position
         of base symmetry face for given n-th point.
@@ -472,7 +474,7 @@ class Body(metaclass=ABCMeta):
         return self._face_symmetry_vector
 
     @face_symmetry_vector.setter
-    def face_symmetry_vector(self, symmetry_vector: ndarray) -> None:
+    def face_symmetry_vector(self, symmetry_vector):
         """
         Setter for vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix
         indicates position of base symmetry face for given n-th point.
@@ -492,7 +494,7 @@ class Body(metaclass=ABCMeta):
 
     # <units> **********************************************************************************************************
     @property
-    def mass_unit(self) -> Quantity:
+    def mass_unit(self):
         """
         Returns default mass unit.
 
@@ -501,7 +503,7 @@ class Body(metaclass=ABCMeta):
         return units.MASS_UNIT
 
     @property
-    def temperature_unit(self) -> Quantity:
+    def temperature_unit(self):
         """
         Returns default unit of temperature.
 
@@ -510,7 +512,7 @@ class Body(metaclass=ABCMeta):
         return units.TEMPERATURE_UNIT
 
     @property
-    def distance_unit(self) -> Quantity:
+    def distance_unit(self):
         """
         Rreturns default unit of length.
 
@@ -519,7 +521,7 @@ class Body(metaclass=ABCMeta):
         return units.DISTANCE_UNIT
 
     @property
-    def time_unit(self) -> Quantity:
+    def time_unit(self):
         """
         Returns default unit of time.
 
@@ -528,7 +530,7 @@ class Body(metaclass=ABCMeta):
         return units.TIME_UNIT
 
     @property
-    def arc_unit(self) -> Quantity:
+    def arc_unit(self):
         """
         Returns default unit of time.
 
@@ -537,7 +539,7 @@ class Body(metaclass=ABCMeta):
         return units.ARC_UNIT
     # </units> *********************************************************************************************************
 
-    def remove_spot(self, spot_index: int) -> None:
+    def remove_spot(self, spot_index: int):
         """
         Remove n-th spot index of object.
 
@@ -546,8 +548,7 @@ class Body(metaclass=ABCMeta):
         """
         del (self._spots[spot_index])
 
-    def calculate_normals(self, points: ndarray, faces: ndarray,
-                          centres: ndarray = None, com: ndarray = None) -> np.array:
+    def calculate_normals(self, points, faces, centres=None, com=None):
         """
         Returns outward facing normal unit vector for each face of stellar surface.
 
@@ -571,7 +572,7 @@ class Body(metaclass=ABCMeta):
 
         return normals * sgn[:, None]
 
-    def set_all_normals(self, com: ndarray = None) -> None:
+    def set_all_normals(self, com=None):
         """
         Function calculates normals for each face of given body (including spots) and assign it to object.
 
@@ -586,7 +587,7 @@ class Body(metaclass=ABCMeta):
                                                                         centres=self.spots[spot_index].face_centres,
                                                                         com=com)
 
-    def set_all_surface_centres(self) -> None:
+    def set_all_surface_centres(self):
         """
         Calculates all surface centres for given body(including spots) and assign to object as `face_centers` property
 
@@ -599,7 +600,7 @@ class Body(metaclass=ABCMeta):
                     self.calculate_surface_centres(points=self.spots[spot_index].points,
                                                    faces=self.spots[spot_index].faces)
 
-    def calculate_surface_centres(self, points: ndarray = None, faces: ndarray = None) -> ndarray:
+    def calculate_surface_centres(self, points=None, faces=None):
         """
         Returns centers of every surface face.
         If `points` is not supplied, parameter of self instance is used for both, `points` and `faces`.
@@ -618,7 +619,7 @@ class Body(metaclass=ABCMeta):
             faces = self.faces
         return np.average(points[faces], axis=1)
 
-    def calculate_areas(self) -> ndarray:
+    def calculate_areas(self):
         """
         Returns areas of each face of the star surface.
 
@@ -640,7 +641,7 @@ class Body(metaclass=ABCMeta):
         else:
             return utils.triangle_areas(self.faces, self.points)
 
-    def calculate_all_areas(self) -> None:
+    def calculate_all_areas(self):
         """
         Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
 
@@ -651,7 +652,7 @@ class Body(metaclass=ABCMeta):
             for spot_index, spot in self.spots.items():
                 spot.areas = spot.calculate_areas()
 
-    def return_whole_surface(self) -> Tuple[ndarray, ndarray]:
+    def return_whole_surface(self):
         """
         Returns all points and faces of the whole star.
 
@@ -667,13 +668,13 @@ class Body(metaclass=ABCMeta):
 
         return ret_points, ret_faces
 
-    def return_all_points(self, return_vertices_map: bool = False) -> Tuple[ndarray, any]:
+    def return_all_points(self, return_vertices_map=False):
         """
         Function returns all surface point and faces optionally with corresponding map of vertices.
 
         :param return_vertices_map: bool
         :param self: Star instance
-        :return: Tuple[ndarray, any]: [all surface points including star and surface points, vertices map or None]
+        :return: Tuple[ndarray, Any]: [all surface points including star and surface points, vertices map or None]
         """
         points = copy(self.points)
         for spot_index, spot_instance in self.spots.items():
@@ -688,7 +689,7 @@ class Body(metaclass=ABCMeta):
             return points, vertices_map
         return points, None
 
-    def setup_body_points(self, points: Dict[str, ndarray]) -> None:
+    def setup_body_points(self, points):
         """
         Setup points for Star instance and spots based on input `points` Dict object.
         Such `points` map looks like following
@@ -710,7 +711,7 @@ class Body(metaclass=ABCMeta):
         for spot_index, spot_points in points.items():
             self.spots[int(spot_index)].points = points[spot_index]
 
-    def remove_overlaped_spots_by_vertex_map(self, vertices_map: List or ndarray) -> None:
+    def remove_overlaped_spots_by_vertex_map(self, vertices_map):
         """
         Remove spots of Start object that are totally overlapped by another spot.
 
@@ -722,14 +723,14 @@ class Body(metaclass=ABCMeta):
                                            if vertices_map[ix]["enum"] >= 0]))
         for spot_index, _ in list(self.spots.items()):
             if spot_index not in spots_instance_indices:
-                self._logger.warning(f"spot with index {spot_index} doesn't contain any face "
+                self._logger.warning(f"spot with index {spot_index} doesn't contain Any face "
                                      f"and will be removed from component {self.name} spot list")
                 self.remove_spot(spot_index=spot_index)
         gc.collect()
 
-    def remap_surface_elements(self, model: Dict, points_to_remap: ndarray) -> None:
+    def remap_surface_elements(self, model, points_to_remap):
         """
-        function remaps all surface points (`points_to_remap`) and faces (star and spots) according to the `model`
+        Function remaps all surface points (`points_to_remap`) and faces (star and spots) according to the `model`.
 
         :param model: dict - list of indices of points in `points_to_remap` divided into star and spots sublists
         :param points_to_remap: array of all surface points (star + points used in `_split_spots_and_component_faces`)
@@ -761,7 +762,18 @@ class Body(metaclass=ABCMeta):
             self.spots[spot_index].faces = remap_list[model["spots"][spot_index]]
         gc.collect()
 
-    def setup_spot_instance_discretization_factor(self, spot_instance: Spot, spot_index: int):
+    def setup_spot_instance_discretization_factor(self, spot_instance, spot_index):
+        """
+        Setup discretization factor for given spot instance based on defined rules::
+
+            - used Star discretization factor if not specified in spot
+            - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
+              0.5 * spot_instance.angular_diameter
+
+        :param spot_instance: Spot
+        :param spot_index: int; spot index (has no affect on process, used for logging)
+        :return:
+        """
         # component_instance = getattr(self, component)
         if is_empty(spot_instance.discretization_factor):
             self._logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
@@ -773,7 +785,27 @@ class Body(metaclass=ABCMeta):
                                f'set to be equal to 0.5 * angular diameter')
             spot_instance.discretization_factor = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
 
-    def incorporate_spots_mesh(self, component_com: ndarray = None) -> None:
+    def incorporate_spots_mesh(self, component_com=None):
+        """
+        Based on spots definitions, evaluate spot points on Star surface and remove those points of Star itself
+        which are inside of any spots. Do the same operation with spot to each other.
+        Evaluation is running from index 0, what means that spot with lower index
+        is overwriten by spot with higher index.
+
+        All points are assigned to given object (Star points to Star object and Spot points to related Spot object).
+
+        # todo: change structure flat array like [-1, -1, -1, ..., 0, ..., 1, ...]
+        Defines variable `vertices_map` used in others method. Strutcure of this variable is following::
+
+            [{"enum": -1}, {"enum": 0}, {"enum": 1}, ..., {"enum": N}].
+
+        Enum index -1 means that points in joined array of points on current
+        index position of vertices_map belongs to Star point.
+        Enum indices >= 0 means the same, but for Spot.
+
+        :param component_com: center of mass of component
+        :return:
+        """
         if not self.spots:
             self._logger.debug(f"not spots found, skipping incorporating spots to mesh on component {self.name}")
             return
@@ -783,7 +815,7 @@ class Body(metaclass=ABCMeta):
             raise ValueError('Object centre of mass was not supplied')
 
         vertices_map = [{"enum": -1} for _ in self.points]
-        # `all_component_points` do not contain points of any spot
+        # `all_component_points` do not contain points of Any spot
         all_component_points = copy(self.points)
         neck = np.min(all_component_points[:self.base_symmetry_points_number, 0])
 
@@ -835,7 +867,24 @@ class Body(metaclass=ABCMeta):
         separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map)
         self.setup_body_points(separated_points)
 
-    def split_points_of_spots_and_component(self, points: ndarray, vertices_map: Dict[str, int]) -> Dict:
+    def split_points_of_spots_and_component(self, points, vertices_map):
+        """
+        Based on vertices map, separates points to points which belong to Star object
+        and points which belong to each defined Spot object.
+        During the process remove overlapped spots.
+
+        :param points: ndarray; all points of object (spot points and component points together)
+        :param vertices_map: List or ndarray; map which define refrences of index in
+                             given Iterable to object (Spot or Star).
+        :return: Dict;
+
+        ::
+
+            {
+                "object": ndarray([[pointN_x, pointN_y, pointN_z], ...]),
+                "spot_index": ndarray([[pointM_x, pointM_y, pointM_z], ...]), ...
+            }
+        """
         points = np.array(points)
         component_points = {
             "object": points[np.where(np.array(vertices_map) == {'enum': -1})[0]]
@@ -844,31 +893,36 @@ class Body(metaclass=ABCMeta):
             spot_indices=set([int(val["enum"]) for val in vertices_map if val["enum"] > -1])
         )
         spots_points = {
-            "{}".format(i): points[np.where(np.array(vertices_map) == {'enum': i})[0]]
-            for i in range(len(self.spots))
+            f"{i}": points[np.where(np.array(vertices_map) == {'enum': i})[0]] for i in range(len(self.spots))
             if len(np.where(np.array(vertices_map) == {'enum': i})[0]) > 0
         }
         return {**component_points, **spots_points}
 
-    def remove_overlaped_spots_by_spot_index(self, spot_indices: Iterable) -> None:
+    def remove_overlaped_spots_by_spot_index(self, spot_indices):
+        """
+        Remove definition and instance of those spots that are overlaped
+        by another one and basically has no face to work with.
+
+        :param spot_indices: List[int]; list of spot indices to remove
+        :return:
+        """
         all_spot_indices = set([int(val) for val in self.spots.keys()])
         spot_indices_to_remove = all_spot_indices.difference(spot_indices)
 
         for spot_index in spot_indices_to_remove:
             self.remove_spot(spot_index)
 
-    def split_spots_and_component_faces(self, points: ndarray, faces: ndarray, model: Dict, spot_candidates,
-                                        vmap: Dict, component_com: float) -> Dict:
+    def split_spots_and_component_faces(self, points, faces, model, spot_candidates, vmap, component_com):
         """
-        function that sorts faces to model data structure by distinguishing if it belongs to star or spots
+        Function that sorts faces to model data structure by distinguishing if it belongs to star or spots.
 
-        :param component_com:
-        :param points: array (N_points * 3) - all points of surface
-        :param faces: array (N_faces * 3) - all faces of the surface
-        :param model: dict - data structure for faces sorting
-        :param spot_candidates: initialised data structure for spot candidates
-        :param vmap: vertice map
-        :return:
+        :param component_com: float; center of mass of component
+        :param points: ndarray; (N_points * 3) - all points of surface
+        :param faces: ndarray; (N_faces * 3) - all faces of the surface
+        :param model: Dict; data structure for faces sorting (more in docstring of method `initialize_model_container`)
+        :param spot_candidates: Dict; initialised data structure for spot candidates
+        :param vmap: vertice map, for more info, see docstring for `incorporate_spots_mesh` method
+        :return: Dict; same as param `model`
         """
         model, spot_candidates = \
             self._resolve_obvious_spots(points, faces, model, spot_candidates, vmap)
@@ -880,8 +934,18 @@ class Body(metaclass=ABCMeta):
         return model
 
     @classmethod
-    def _resolve_obvious_spots(cls, points: np.ndarray, faces: np.ndarray, model: Dict,
-                               spot_candidates: Dict, vmap: Dict) -> Tuple[Dict, Dict]:
+    def _resolve_obvious_spots(cls, points, faces, model, spot_candidates, vmap):
+        """
+        Resolve those Spots/Star faces, where all tree vertices belongs to given object.
+        If there are mixed vertices of any face, append it to spot candidate List.
+
+        :param points: ndarray; array of all points
+        :param faces: ndarray; array of all faces
+        :param model: Dict; dictionary which describe object with spots as one entity
+        :param spot_candidates:
+        :param vmap: vertices map; for more info, see docstring for `incorporate_spots_mesh` method
+        :return: Tuple[Dict, Dict]
+        """
 
         for simplex, face_points, ix in list(zip(faces, points[faces], range(faces.shape[0]))):
             # if each point belongs to the same spot, then it is for sure face of that spot
@@ -899,10 +963,10 @@ class Body(metaclass=ABCMeta):
         return model, spot_candidates
 
     @staticmethod
-    def initialize_model_container(vertices_map: List or ndarray) -> Tuple[Dict, Dict]:
+    def initialize_model_container(vertices_map):
         """
         Initializes basic data structure `model` objects that will contain faces divided by its origin (star or spots)
-        and data structure containing spot candidates with its index, centre and simplex.
+        and data structure containing spot candidates with its index and center point.
 
         Structure is based on input `verties_map`.
 
@@ -910,14 +974,15 @@ class Body(metaclass=ABCMeta):
 
         ::
 
-            (<class 'dict'>: {'object': [], 'spots': {0: []}}, <class 'dict'>: {'simplex': {}, 'com': [], 'ix': []})
+            (<class 'dict'>: {'object': [], 'spots': {0: []}}, <class 'dict'>: {'com': [], 'ix': []})
 
         :param vertices_map: List or ndarray; map which define refrences of index in
                              given Iterable to object (spot or Star).
+                             For more info, see docstring for `incorporate_spots_mesh` method.
         :return: Tuple[Dict, Dict]
         """
         model = {"object": list(), "spots": dict()}
-        spot_candidates = {"simplex": dict(), "com": list(), "ix": list()}
+        spot_candidates = {"com": list(), "ix": list()}
 
         spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
                                            if vertices_map[ix]["enum"] >= 0]))
@@ -925,33 +990,28 @@ class Body(metaclass=ABCMeta):
             model["spots"][spot_index] = list()
         return model, spot_candidates
 
-    @staticmethod
-    def _get_spots_references(vertices_map: ndarray, simplex: ndarray) -> Tuple:
-        reference_to_spot, trd_enum = None, None
-        # variable trd_enum is enum index of 3rd corner of face;
-
-        if vertices_map[simplex[-1]]["enum"] == vertices_map[simplex[0]]["enum"]:
-            reference_to_spot = vertices_map[simplex[-1]]["enum"]
-            trd_enum = vertices_map[simplex[1]]["enum"]
-        elif vertices_map[simplex[0]]["enum"] == vertices_map[simplex[1]]["enum"]:
-            reference_to_spot = vertices_map[simplex[0]]["enum"]
-            trd_enum = vertices_map[simplex[-1]]["enum"]
-        elif vertices_map[simplex[1]]["enum"] == vertices_map[simplex[-1]]["enum"]:
-            reference_to_spot = vertices_map[simplex[1]]["enum"]
-            trd_enum = vertices_map[simplex[0]]["enum"]
-        return reference_to_spot, trd_enum
-
     def _resolve_spot_candidates(
-            self, model: Dict, spot_candidates: Dict, faces: ndarray, component_com: float) -> Dict:
+            self, model, spot_candidates, faces, component_com):
         """
         Resolves spot face candidates by comparing angular distances of face cantres and spot centres.
         In case of multiple layered spots, face is assigned to the top layer.
 
-        :param model: Dict
-        :param spot_candidates: Dict
-        :param faces: ndarray
-        :param component_com: float
-        :return: Dict
+        :param model: Dict; initialised dictionary with placeholders which will describe object with spots as one entity
+        :param spot_candidates: Dict; contain indices and center of mass of each
+                                      face that is candodate to be a face of spot
+        :param faces: ndarray; array of indices which defines faces from points;
+        :param component_com: float; center of mass of given component
+        :return: Dict; filled model from input of following structure
+
+
+        ::
+
+            {
+                "object": ndarray[[point_idx_i, point_idx_j, point_idx_k], ...],
+                "spots": {
+                    spot_index: ndarray[[point_idx_u, point_idx_v, point_idx_w], ...]
+                }
+            }
         """
         # checking each candidate one at a time trough all spots
         com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
