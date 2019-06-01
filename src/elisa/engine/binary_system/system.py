@@ -54,8 +54,8 @@ class BinarySystem(System):
     # this will be removed after full implementation of LD
     LD_COEFF = 0.5
 
-    def __init__(self, primary, secondary, name=None, suppress_logger=False, **kwargs):
-        utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, BinarySystem)
+    def __init__(self, primary: Star, secondary: Star, name: str = None, suppress_logger: bool = False, **kwargs):
+        utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
         super(BinarySystem, self).__init__(name=name, suppress_logger=suppress_logger, **kwargs)
 
         self.initial_kwargs.update(
@@ -68,10 +68,10 @@ class BinarySystem(System):
 
         # get logger
         self._logger = logger.getLogger(name=BinarySystem.__name__, suppress=suppress_logger)
-        self._logger.info("initialising object {}".format(BinarySystem.__name__))
+        self._logger.info(f"initialising object {self.__class__.__name__}")
         self._suppress_logger = suppress_logger
 
-        self._logger.debug("setting property components of class instance {}".format(BinarySystem.__name__))
+        self._logger.debug(f"setting property components of class instance {self.__class__.__name__}")
 
         self.plot = Plot(self)
 
@@ -83,16 +83,16 @@ class BinarySystem(System):
         self._mass_ratio = self.secondary.mass / self.primary.mass
 
         # default values of properties
-        self._period = None
-        self._eccentricity = None
-        self._argument_of_periastron = None
-        self._orbit = None
-        self._primary_minimum_time = None
-        self._phase_shift = None
-        self._semi_major_axis = None
-        self._periastron_phase = None
-        self._morphology = None
-        self._inclination = None
+        self._period: float = np.nan
+        self._eccentricity: float = np.nan
+        self._argument_of_periastron: float = np.nan
+        self._orbit: Orbit or None = None
+        self._primary_minimum_time: float = np.nan
+        self._phase_shift: float = np.nan
+        self._semi_major_axis: float = np.nan
+        self._periastron_phase: float = np.nan
+        self._morphology: str = ""
+        self._inclination: float = np.nan
 
         params = {
             "primary": self.primary,
@@ -105,8 +105,8 @@ class BinarySystem(System):
         utils.check_missing_kwargs(BinarySystem.KWARGS, kwargs, instance_of=BinarySystem)
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
         for kwarg in kwargs:
-            self._logger.debug("setting property {} "
-                               "of class instance {} to {}".format(kwarg, BinarySystem.__name__, kwargs[kwarg]))
+            self._logger.debug(f"setting property {kwarg} of class instance "
+                               f"{self.__class__.__name__} to {kwargs[kwarg]}")
             setattr(self, kwarg, kwargs[kwarg])
 
         # calculation of dependent parameters
@@ -114,7 +114,7 @@ class BinarySystem(System):
         self._semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
-        self._logger.debug("Initializing orbit instance in BinarySystem")
+        self._logger.debug("initializing orbit instance in BinarySystem")
         self.init_orbit()
 
         # setup critical surface potentials in periastron
@@ -132,9 +132,9 @@ class BinarySystem(System):
         if not self.secondary.kwargs.get('discretization_factor'):
             self.secondary.discretization_factor = \
                 self.primary.discretization_factor * self.primary.polar_radius / self.secondary.polar_radius * u.rad
-            self._logger.info("Setting discretization factor of secondary component "
-                              "according discretization factor of primary component "
-                              "to: {:.2f} degrees.".format(np.degrees(self.secondary.discretization_factor)))
+            self._logger.info(f"setting discretization factor of secondary component "
+                              f"according discretization factor of primary component "
+                              f"to: {np.degrees(self.secondary.discretization_factor):.2f} degrees.")
 
     def init(self):
         """
@@ -156,7 +156,7 @@ class BinarySystem(System):
         self._orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
 
     @property
-    def morphology(self):
+    def morphology(self) -> str:
         """
         morphology of binary star system
 
@@ -580,8 +580,8 @@ class BinarySystem(System):
         missing_kwargs = []
         for component in [self.primary, self.secondary]:
             for kwarg in star_mandatory_kwargs:
-                if getattr(component, kwarg) is None:
-                    missing_kwargs.append("`{}`".format(kwarg))
+                if np.isnan(getattr(component, kwarg)):
+                    missing_kwargs.append(f"`{kwarg}`")
 
             component_name = 'primary' if component == self.primary else 'secondary'
             if len(missing_kwargs) != 0:
@@ -1857,7 +1857,7 @@ class BinarySystem(System):
         xlim = self.faces_visibility_x_limits(components_distance=components_distance)
 
         # this tests if you can use surface symmetries
-        use_quarter_star_test = self.primary.spots is None and self.secondary.spots is None
+        use_quarter_star_test = not self.primary.has_spots() and not self.secondary.has_spots()
         vis_test_symmetry = {}
 
         # declaring variables

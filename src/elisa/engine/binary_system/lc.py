@@ -19,7 +19,6 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     pypex_intersection = geo.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
 
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to precission lose
-
     pypex_polys_surface_area = np.array(geo.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
 
     inplane_points_3d = np.concatenate((points.T, [[0.0] * len(points)])).T
@@ -195,6 +194,13 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             # band_curves[band].append(flux)
             band_curves[band][idx] = flux
     band_curves = {band: band_curves[band][reverse_idx2] for band in band_curves}
+
+    from matplotlib import pyplot as plt
+    for band, curve in band_curves.items():
+        x = np.arange(len(curve))
+        plt.scatter(x, curve)
+    plt.show()
+
     return band_curves
 
 
@@ -206,8 +212,8 @@ def phase_crv_symmetry(self, phase):
     :param phase:
     :return:
     """
-    if self.primary.pulsations is None and self.primary.pulsations is None and \
-            self.primary.spots is None and self.secondary.spots is None:
+    if not self.primary.has_pulsations() and not self.primary.has_pulsations() and \
+            not self.primary.has_spots() and not self.secondary.has_spots():
         symmetrical_counterpart = phase > 0.5
         # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
         phase[symmetrical_counterpart] = np.round(1.0 - phase[symmetrical_counterpart], 9)
@@ -219,14 +225,20 @@ def phase_crv_symmetry(self, phase):
 
 def compute_eccentric_lightcurve(self, **kwargs):
     self._logger = logger.getLogger(self.__class__.__name__, suppress=True)
-    orbital_motion = kwargs.pop("positions")
     # todo: move it to for loop
-    ecl_boundaries = np.array([0, const.PI, const.PI, const.FULL_ARC])
+    ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
+
+    phases = kwargs.pop("phases")
+
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(phase=phases)
 
     band_curves = {key: list() for key in kwargs["passband"].keys()}
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     for orbital_position in orbital_motion:
+        forward_rad_p = self.calculate_forward_radius('primary', components_distance=orbital_position.distance)
+        forward_rad_s = self.calculate_forward_radius('secondary', components_distance=orbital_position.distance)
         self.build(components_distance=orbital_position.distance)
         system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
                                                                              ecl_boundaries=ecl_boundaries)

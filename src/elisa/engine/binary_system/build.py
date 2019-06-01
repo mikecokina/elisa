@@ -1,11 +1,14 @@
 import numpy as np
-from copy import copy
 
+from copy import copy
+from numpy import ndarray
+from typing import List, Tuple, Dict
 from elisa.conf import config
 from elisa.engine.binary_system import static
+from elisa.engine.utils import is_empty
 
 
-def build_surface_gravity(self, component: str or list=None, components_distance: float=None):
+def build_surface_gravity(self, component: str or List = None, components_distance: float = None) -> None:
     """
     function calculates gravity potential gradient magnitude (surface gravity) for each face
 
@@ -15,8 +18,8 @@ def build_surface_gravity(self, component: str or list=None, components_distance
     :return:
     """
 
-    if components_distance is None:
-        raise ValueError('Component distance value was not supplied.')
+    if is_empty(components_distance):
+        raise ValueError('Component distance value was not supplied or is invalid.')
 
     component = static.component_to_list(component)
     for _component in component:
@@ -35,7 +38,7 @@ def build_surface_gravity(self, component: str or list=None, components_distance
         component_instance._log_g = np.log10(
             gravity_scalling_factor * component_instance.potential_gradient_magnitudes)
 
-        if component_instance.spots:
+        if component_instance.has_spots():
             for spot_index, spot in component_instance.spots.items():
                 self._logger.debug(f'calculating surface SI unit gravity of {_component} component / {spot_index} spot')
                 self._logger.debug(f'calculating distribution of potential gradient '
@@ -48,7 +51,7 @@ def build_surface_gravity(self, component: str or list=None, components_distance
                 spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
 
 
-def build_faces_orientation(self, component: str or list=None, components_distance: float=None):
+def build_faces_orientation(self, component: str or List = None, components_distance: float = None) -> None:
     component = static.component_to_list(component)
     com_x = {'primary': 0, 'secondary': components_distance}
 
@@ -58,12 +61,12 @@ def build_faces_orientation(self, component: str or list=None, components_distan
         component_instance.set_all_normals(com=com_x[_component])
 
 
-def build_temperature_distribution(self, component=None, components_distance=None):
+def build_temperature_distribution(self, component: str = None, components_distance: float = None) -> None:
     """
     function calculates temperature distribution on across all faces
 
-    :param self:
-    :param components_distance:
+    :param self: BinarySystem; instance
+    :param components_distance: str
     :param component: `primary` or `secondary`
     :return:
     """
@@ -72,28 +75,27 @@ def build_temperature_distribution(self, component=None, components_distance=Non
     for _component in component:
         component_instance = getattr(self, _component)
 
-        self._logger.debug('computing effective temperature distibution on {} component '
-                           '/ name: {}'.format(_component, component_instance.name))
+        self._logger.debug(f'computing effective temperature distibution '
+                           f'on {_component} component name: {component_instance.name}')
         component_instance.temperatures = component_instance.calculate_effective_temperatures()
-        if component_instance.pulsations:
-            self._logger.debug('adding pulsations to surface temperature distribution '
-                               'of the component instance: {}  / name: {}'
-                               ''.format(_component, component_instance.name))
+        if component_instance.has_pulsations():
+            self._logger.debug(f'adding pulsations to surface temperature distribution '
+                               f'of the component instance: {_component}  / name: {component_instance.name}')
             component_instance.temperatures = component_instance.add_pulsations()
 
-        if component_instance.spots:
+        if component_instance.has_spots():
             for spot_index, spot in component_instance.spots.items():
-                self._logger.debug('computing temperature distribution of spot {} / {} component'
-                                   ''.format(spot_index, _component))
+                self._logger.debug(f'computing temperature distribution of spot {spot_index} / {_component} component')
                 spot.temperatures = spot.temperature_factor * component_instance.calculate_effective_temperatures(
                     gradient_magnitudes=spot.potential_gradient_magnitudes)
-                if component_instance.pulsations:
-                    self._logger.debug('Adding pulsations to temperature distribution of {} component / {} spot'
-                                       ''.format(_component, spot_index))
+                if component_instance.has_pulsations():
+                    self._logger.debug(f'adding pulsations to temperature distribution '
+                                       f'of {_component} component / {spot_index} spot')
                     spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
                                                                           temperatures=spot.temperatures)
 
-        self._logger.debug('renormalizing temperature map of components due to presence of spots'.format(component))
+        self._logger.debug(f'renormalizing temperature map of components due to '
+                           f'presence of spots in case of component {component}')
         component_instance.renormalize_temperatures()
 
     if 'primary' in component and 'secondary' in component:
@@ -101,21 +103,22 @@ def build_temperature_distribution(self, component=None, components_distance=Non
                                components_distance=components_distance)
 
 
-def build_surface_map(self, colormap=None, component=None, components_distance=None, return_map=False):
+def build_surface_map(self, colormap: ndarray = None, component: str = None,
+                      components_distance: float = None, return_map: bool = False) -> Dict[str, ndarray] or None:
     """
     function calculates surface maps (temperature or gravity acceleration) for star and spot faces and it can return
     them as one array if return_map=True
 
-    :param self:
+    :param self: BinarySystem; instance
     :param return_map: if True function returns arrays with surface map including star and spot segments
     :param colormap: switch for `temperature` or `gravity` colormap to create
     :param component: `primary` or `secondary` component surface map to calculate, if not supplied
     :param components_distance: distance between components
     :return:
     """
-    if colormap is None:
+    if is_empty(colormap):
         raise ValueError('Specify colormap to calculate (`temperature` or `gravity_acceleration`).')
-    if components_distance is None:
+    if is_empty(components_distance):
         raise ValueError('Component distance value was not supplied.')
 
     component = static.component_to_list(component)
@@ -131,12 +134,12 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
 
         # compute and assign temperature of elements
         if colormap == 'temperature':
-            self._logger.debug('Computing effective temprature distibution of {} component.'.format(_component))
+            self._logger.debug(f'computing effective temprature distibution of {_component} component.')
             # component_instance.temperatures = component_instance.calculate_effective_temperatures()
             self.build_temperature_distribution(component=_component, components_distance=components_distance)
-            if component_instance.pulsations:
-                self._logger.debug('Adding pulsations to surface temperature distribution '
-                                   'of the {} component.'.format(_component))
+            if component_instance.has_pulsations():
+                self._logger.debug(f'adding pulsations to surface temperature distribution '
+                                   f'of the {_component} component')
                 component_instance.temperatures = component_instance.add_pulsations()
 
     # implementation of reflection effect
@@ -151,20 +154,20 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
             self.reflection_effect(iterations=config.REFLECTION_EFFECT_ITERATIONS,
                                    components_distance=components_distance)
         else:
-            self._logger.debug('Reflection effect can be calculated only when surface map of both components is '
-                               'calculated. Skipping calculation of reflection effect.')
+            self._logger.debug('reflection effect can be calculated only when surface map of both components is '
+                               'calculated. Skipping calculation of reflection effect')
 
     if return_map:
         return_map = {}
         for _component in component:
             component_instance = getattr(self, _component)
             if colormap == 'gravity_acceleration':
-                return_map[_component] = copy(component_instance._log_g)
+                return_map[_component] = copy(component_instance.log_g)
                 # return_map[_component] = copy(component_instance.potential_gradient_magnitudes)
             elif colormap == 'temperature':
                 return_map[_component] = copy(component_instance.temperatures)
 
-            if component_instance.spots:
+            if component_instance.has_spots():
                 for spot_index, spot in component_instance.spots.items():
                     if colormap == 'gravity_acceleration':
                         return_map[_component] = np.append(return_map[_component], spot._log_g)
@@ -174,11 +177,11 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
     return
 
 
-def build_mesh(self, component=None, components_distance=None, **kwargs):
+def build_mesh(self, component: str = None, components_distance: float = None, **kwargs) -> None:
     """
     build points of surface for primary or/and secondary component !!! w/o spots yet !!!
 
-    :param self:
+    :param self: BinarySystem; instance
     :param component: str or empty
     :param components_distance: float
     :return:
@@ -207,15 +210,16 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
         #     component_instance.incorporate_spots_overcontact_mesh(component_com=component_x_center[_component])
         # else:
         # fixme: solve unification for single star, detached system and over contact system
+        # TODO: it seems this was already solved, just discusse solution again!!!! and then cleanup this mess
         component_instance.incorporate_spots_mesh(component_com=component_x_center[_component])
 
 
-def build_faces(self, component=None, components_distance=None):
+def build_faces(self, component: str = None, components_distance: float = None) -> None:
     """
     function creates faces of the star surface for given components provided you already calculated surface points
     of the component
 
-    :param self:
+    :param self: BinarySystem; instance
     :type components_distance: float
     :param component: `primary` or `secondary` if not supplied both components are calculated
     :return:
@@ -227,15 +231,16 @@ def build_faces(self, component=None, components_distance=None):
     for _component in component:
         component_instance = getattr(self, _component)
         self.build_surface_with_spots(_component, components_distance=components_distance) \
-            if component_instance.spots \
+            if component_instance.has_spots() \
             else self.build_surface_with_no_spots(_component, components_distance=components_distance)
 
 
-def build_surface(self, component=None, components_distance=None, return_surface=False, **kwargs):
+def build_surface(self, component: str = None, components_distance: float = None,
+                  return_surface: bool = False, **kwargs) -> Tuple[Dict[str, ndarray], Dict[str, ndarray]] or None:
     """
     function for building of general binary star component surfaces including spots
 
-    :param self:
+    :param self: BinarySystem; instance
     :param return_surface: bool - if true, function returns dictionary of arrays with all points and faces
                                   (surface + spots) for each component
     :param components_distance: distance between components
@@ -254,7 +259,7 @@ def build_surface(self, component=None, components_distance=None, return_surface
         # build mesh and incorporate spots points to given obtained object mesh
         self.build_mesh(component=_component, components_distance=components_distance)
 
-        if not component_instance.spots:
+        if not component_instance.has_spots():
             self.build_surface_with_no_spots(_component, components_distance=components_distance)
             if return_surface:
                 ret_points[_component] = copy(component_instance.points)
@@ -269,11 +274,11 @@ def build_surface(self, component=None, components_distance=None, return_surface
     return (ret_points, ret_faces) if return_surface else None
 
 
-def build_surface_with_no_spots(self, component=None, components_distance=None):
+def build_surface_with_no_spots(self, component: str = None, components_distance: float = None) -> None:
     """
     function for building binary star component surfaces without spots
 
-    :param self:
+    :param self: BinarySystem; instance
     :param components_distance: float
     :param component:
     :return:
@@ -314,7 +319,7 @@ def build_surface_with_no_spots(self, component=None, components_distance=None):
         component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
 
 
-def build_surface_with_spots(self, component=None, components_distance=None):
+def build_surface_with_spots(self, component: str = None, components_distance: float = None) -> None:
     """
     function capable of triangulation of spotty stellar surfaces, it merges all surface points, triangulates them
     and then sorts the resulting surface faces under star or spot
@@ -340,10 +345,10 @@ def build_surface_with_spots(self, component=None, components_distance=None):
         component_instance.remap_surface_elements(model, points)
 
 
-def compute_all_surface_areas(self, component):
+def compute_all_surface_areas(self, component: str) -> None:
     component = static.component_to_list(component)
     for _component in component:
         component_instance = getattr(self, _component)
-        self._logger.debug('computing surface areas of component: {} / name: {}'
-                           ''.format(component_instance, component_instance.name))
+        self._logger.debug(f'computing surface areas of component: '
+                           f'{component_instance} / name: {component_instance.name}')
         component_instance.calculate_all_areas()

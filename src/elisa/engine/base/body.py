@@ -1,337 +1,337 @@
 import gc
+import numpy as np
+
+from numpy import ndarray
+from typing import Dict, Tuple, Iterable, Any, List
 from abc import ABCMeta
 from copy import copy
-
-import numpy as np
 from astropy import units as u
+from astropy.units.quantity import Quantity
 
 from elisa.engine import units, logger
 from elisa.engine import utils
+from elisa.engine.utils import is_empty
 from elisa.engine.base.spot import Spot
 
 
 class Body(metaclass=ABCMeta):
     """
-    Abstract class that defines bodies that can be modelled by this software
-    see https://docs.python.org/3.5/library/abc.html for more informations
-    units are imported from astropy.units module
-    see documentation http://docs.astropy.org/en/stable/units/
+    Abstract class that defines bodies that can be modelled by this software.
+    Units are imported from astropy.units module:
+        
+        see documentation http://docs.astropy.org/en/stable/units/
     """
 
     ID = 1
 
-    def __init__(self, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, name: str = None, suppress_logger: bool = False, **kwargs):
         """
-        Parameters of abstract class Body
+        Parameters of abstract class Body.
         """
         self.initial_kwargs = kwargs.copy()
         self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
 
-        if name is None:
+        if is_empty(name):
             self._name = str(Body.ID)
-            self._logger.debug("Name of class instance {} set to {}".format(Body.__name__, self._name))
+            self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self._name}")
             Body.ID += 1
         else:
             self._name = str(name)
 
-        # initializing other parameters to None
-        self._mass = None  # float64
-        self._t_eff = None  # float64
-        self._points = None  # numpy.array
-        self._faces = None  # numpy.array
-        self._normals = None  # numpy.array
-        self._temperatures = None  # numpy.array
-        # self._intensity = None # dict
-        self._synchronicity = None  # float64
-        self._albedo = None  # float64
-        self._polar_radius = None  # float64
-        self._areas = None  # numpy.array
-        self._discretization_factor = np.radians(3)
-        self._face_centers = None  # numpy.array
-        self._spots = None
-        self._point_symmetry_vector = None
-        self.inverse_point_symmetry_matrix = None
-        self.base_symmetry_points_number = None
-        self._face_symmetry_vector = None
-        self.base_symmetry_faces_number = None
+        # initializing parmas to default values
+        self._mass: float = np.nan
+        self._t_eff: float = np.nan
+        self._points: ndarray = np.array([])
+        self._faces: ndarray = np.array([])
+        self._normals: ndarray = np.array([])
+        self._temperatures: ndarray = np.array([])
+        self._synchronicity: float = np.nan
+        self._albedo: float = np.nan
+        self._polar_radius: float = np.nan
+        self._areas: ndarray = np.array([])
+        self._discretization_factor: float = np.radians(3)
+        self._face_centers: ndarray = np.array([])
+        self._spots: Dict = dict()
+        self._point_symmetry_vector: ndarray = np.array([])
+        self.inverse_point_symmetry_matrix: ndarray = np.array([])
+        self.base_symmetry_points_number: np.int64 = 0
+        self._face_symmetry_vector: ndarray = np.array([])
+        self.base_symmetry_faces_number: np.int64 = 0
         # those are used only if case of spots are used
-        self.base_symmetry_points = None
-        self.base_symmetry_faces = None
+        self.base_symmetry_points: ndarray = np.array([])
+        self.base_symmetry_faces: ndarray = np.array([])
+
+    def has_spots(self) -> bool:
+        return len(self._spots) > 0
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
-        name getter
-        usage: xy.name
+        *<instance>* name getter
+        usage: *<instance>*.name
 
         :return: str
         """
-        return self._name
+        return str(self._name)
 
     @name.setter
-    def name(self, name):
+    def name(self, name: str) -> None:
         """
-        name setter
-        usage: xy.name = new_name
-
         :param name: str
+        :return:
         """
         self._name = str(name)
 
     @property
-    def mass(self):
+    def mass(self) -> float:
         """
-        mass getter, returns mass of object in default mass unit
-        usage: by xy.mass
-
-        :return: np.float64
+        :return: float
         """
-        # return self._mass * self.__MASS_UNIT.to(u.solMass) * u.solMass
         return self._mass
 
     @mass.setter
-    def mass(self, mass):
+    def mass(self, mass: Any) -> None:
         """
-        mass setter
-        usage: xy.mass = new_mass
-        if mass is int, np.int, float, np.float, program assumes solar mass as it's unit
-        if mass astropy.unit.quantity.Quantity instance, program converts it to default units and stores it's value in
-        attribute _mass
+        If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
+        If mass astropy.unit.quantity.Quantity instance, program converts it to default units and stores it's value in
+        attribute _mass.
 
-        :param mass: int, np.int, float, np.float, astropy.unit.quantity.Quantity
+        :param mass: int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity
+        :return:
         """
         if isinstance(mass, u.quantity.Quantity):
             self._mass = np.float64(mass.to(units.MASS_UNIT))
         elif isinstance(mass, (int, np.int, float, np.float)):
             self._mass = np.float64(mass * u.solMass.to(units.MASS_UNIT))
         else:
-            raise TypeError('Your input is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity instance.')
+            raise TypeError('User input is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def t_eff(self):
+    def t_eff(self) -> float:
         """
-        effective temperature getter
-        usage: xy.t_eff
-
-        :return: numpy.float64
+        :return: float
         """
         return self._t_eff
 
     @t_eff.setter
-    def t_eff(self, t_eff):
+    def t_eff(self, t_eff: Any) -> None:
         """
-        effective temperature setter
-        usage: xy.t_eff = new_t_eff
-        this function accepts value in any temperature unit, if your input is without unit, function assumes that value
-        is in Kelvins
+        This function accepts value in any temperature unit.
+        If your input is without unit, function assumes that supplied value is in Kelvins.
 
-        :param t_eff: int, np.int, float, np.float, astropy.unit.quantity.Quantity
+        :param t_eff: int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity
+        :return:
         """
         if isinstance(t_eff, u.quantity.Quantity):
             self._t_eff = np.float64(t_eff.to(units.TEMPERATURE_UNIT))
         elif isinstance(t_eff, (int, np.int, float, np.float)):
             self._t_eff = np.float64(t_eff)
         else:
-            raise TypeError('Value of `t_eff` is not (np.)int or (np.)float nor astropy.unit.quantity.Quantity '
-                            'instance.')
+            raise TypeError('Value of `t_eff` is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def points(self):
+    def points(self) -> ndarray:
         """
-        points getter
-        usage: xy.points
-        returns dictionary of points that forms surface of Body
+        Returns dictionary of points that forms surface of Body.
 
-        :return: dict
+        :return: ndarray
         """
         return self._points
 
     @points.setter
-    def points(self, points):
+    def points(self, points: ndarray) -> None:
         """
-        points setter
-        usage: xy.points = new_points
-        setting numpy array of points that form surface of Body
-        input dictionary has to be in shape:
-        points = numpy.array([[x1 y1 z1],
-                                [x2 y2 z2],
-                                ...
-                                [xN yN zN]])
-        where xi, yi, zi are cartesian coordinates of vertice i
+        Setting numpy array of points that form surface of Body.
+        Input dictionary has to be in shape::
+        
+            points = numpy.array([[x1 y1 z1],
+                                  [x2 y2 z2],
+                                   ...
+                                  [xN yN zN]])
+                                    
+        where xi, yi, zi are cartesian coordinates of vertice i.
 
-        :param points: numpy.array
-        xi, yi, zi: float64
+        :param points: ndarray; [xi, yi, zi]: float
+        :return:
         """
         self._points = np.array(points)
 
     @property
-    def faces(self):
+    def faces(self) -> ndarray:
         """
-        returns dictionary of triangles that will create surface of body
-        triangles are stored as list of indices of points
-        usage: xy.faces
+        Returns dictionary of triangles that will create surface of body.
+        Triangles are stored as list of indices of points.
+        
+        :return: ndarray
 
-        :return: numpy.array
-        shape: points = numpy.array([[vertice_index_k, vertice_index_l, vertice_index_m]),
-                                  [...]),
-                                   ...
-                                  [...]])
+        ::
+
+            numpy.array([[vertice_index_k, vertice_index_l, vertice_index_m]),
+            [...]),
+             ...
+            [...]])
         """
         return self._faces
 
     @faces.setter
-    def faces(self, faces):
+    def faces(self, faces: ndarray) -> None:
         """
-        faces setter
-        usage: xy.faces = new_faces
-        faces dictionary has to be in shape:
-        points = np.array([vertice_index_k, vertice_index_l, vertice_index_m],
-                          [...],
-                           ...
-                          [...]]
+        Faces dictionary has to be in shape::
+        
+            points = np.array([vertice_index_k, vertice_index_l, vertice_index_m],
+                              [...],
+                               ...
+                              [...]]
 
         :param faces: numpy.array
+        :return:
         """
         self._faces = faces
 
     @property
-    def normals(self):
+    def normals(self) -> ndarray:
         """
-        returns array containing normalised outward facing normals of corresponding faces with same index
-        usage: xy.normals
+        Returns array containing normalised outward facing normals of corresponding faces with same index.
 
-        :return: numpy.array
-        shape: normals = numpy_array([[normal_x1, normal_y1, normal_z1],
-                                      [normal_x2, normal_y2, normal_z2],
-                                       ...
-                                      [normal_xn, normal_yn, normal_zn]]
+        :return: ndarray
+
+        ::
+        
+            normals = numpy_array([[normal_x1, normal_y1, normal_z1],
+                                   [normal_x2, normal_y2, normal_z2],
+                                    ...
+                                   [normal_xn, normal_yn, normal_zn]]
         """
         return self._normals
 
     @normals.setter
-    def normals(self, normals):
+    def normals(self, normals: ndarray) -> None:
         """
-        setter for normalised outward facing normals of corresponding faces with same index
-        usage: xy.normals = new_normals
-        expected shape of normals matrix:
-        normals = numpy_array([[normal_x1, normal_y1, normal_z1],
-                               [normal_x2, normal_y2, normal_z2],
-                                       ...
-                               [normal_xn, normal_yn, normal_zn]]
+        Setter for normalised outward facing normals of corresponding faces with same index.
+        Expected shape of normals matrix::
+        
+            normals = numpy_array([[normal_x1, normal_y1, normal_z1],
+                                   [normal_x2, normal_y2, normal_z2],
+                                           ...
+                                   [normal_xn, normal_yn, normal_zn]]
 
-        :param normals: numpy.array
+        :param normals: dnarray
+        :return:
         """
         self._normals = normals
 
     @property
-    def areas(self):
+    def areas(self) -> ndarray:
         """
-        returns array of areas of corresponding faces
-        usage: xy.areas
+        Returns array of areas of corresponding faces.
 
-        :return: np.array([area_1, ..., area_n])
+        :return: ndarray
+
+        ::
+
+            numpy.array([area_1, ..., area_n])
         """
         return self._areas
 
     @areas.setter
-    def areas(self, areas):
+    def areas(self, areas: ndarray) -> None:
         """
-        returns array of areas of corresponding faces
-        usage: xy.areas = new_areas
+        Returns array of areas of corresponding faces.
 
-        :param areas: numpy.array([area_1, ..., area_n])
+        :param areas
+
+        ::
+
+            numpy.array([area_1, ..., area_n])
+
         :return:
         """
         self._areas = areas
 
     @property
-    def temperatures(self):
+    def temperatures(self) -> ndarray:
         """
-        returns array of temeratures of corresponding faces
-        usage: xy.temperatures
+        Returns array of temeratures of corresponding faces.
 
-        :return:numpy.arrays
-        shape: numpy.array([t_eff1, ..., t_effn])
+        :return: ndarray
+
+        ::
+
+            numpy.array([t_eff1, ..., t_effn])
         """
         return self._temperatures
 
     @temperatures.setter
-    def temperatures(self, temperatures):
+    def temperatures(self, temperatures: ndarray) -> None:
         """
-        temperatures setter
-        usage: xy.temperatures = new_temperatures
-        setter for array of temeratures of corresponding faces in shape
-        :shape: numpy.array([t_eff1, ..., t_effn])
+        Aetter for array of temeratures of corresponding faces in shape::
 
-        :param temperatures: numpy.array
+            numpy.array([t_eff1, ..., t_effn])
+
+        :param temperatures: ndarray
+        :return:
         """
         self._temperatures = temperatures
 
     @property
-    def synchronicity(self):
+    def synchronicity(self) -> float:
         """
-        returns synchronicity parameter F = omega_rot/omega_orb
-        usage: xy.synchronicity
+        Returns synchronicity parameter F = omega_rot/omega_orb.
 
-        :return: numpy.float64
+        :return: float
         """
         return self._synchronicity
 
     @synchronicity.setter
-    def synchronicity(self, synchronicity):
+    def synchronicity(self, synchronicity: float) -> None:
         """
-        object synchronicity (F = omega_rot/omega_orb) setter, expects number input convertible to numpy float64
-        usage: xy.synchronicity = new_synchronicity
+        Object synchronicity (F = omega_rot/omega_orb) setter.
+        Expects number input convertible to numpy float64 / float.
 
-        :param synchronicity: numpy.float64
+        :param synchronicity: float
         """
-        if synchronicity is not None:
-            self._synchronicity = np.float64(synchronicity)
-        else:
-            self._synchronicity = None
+        self._synchronicity = np.float64(synchronicity)
 
     @property
-    def albedo(self):
+    def albedo(self) -> float:
         """
-        returns bolometric albedo of an object (reradiated energy/ irradiance energy)
-        usage: xy.albedo
+        Returns bolometric albedo of an object (reradiated energy/ irradiance energy).
 
-        :return: float64
+        :return: float
         """
         return self._albedo
 
     @albedo.setter
-    def albedo(self, albedo):
+    def albedo(self, albedo: float) -> None:
         """
-        setter for bolometric albedo (reradiated energy/ irradiance energy)
-        accepts value of albedo in range (0,1)
-        usage xy.albedo = new_albedo
+        Setter for bolometric albedo (reradiated energy/ irradiance energy).
+        Accepts value of albedo in range (0, 1).
 
-        :param albedo: float64
+        :param albedo: float
         """
         if 0 <= albedo <= 1:
             self._albedo = np.float64(albedo)
         else:
-            raise ValueError('Parameter albedo = {} is out of range (0, 1)'.format(albedo))
+            raise ValueError(f'Parameter albedo = {albedo} is out of range (0, 1)')
 
     @property
-    def polar_radius(self):
+    def polar_radius(self) -> float:
         """
-        returns value polar radius of an object in default unit
-        usage: xy.polar_radius
+        Returns value polar radius of an object in default unit.
 
-        :return: float64
+        :return: float
         """
         return self._polar_radius
 
     @polar_radius.setter
-    def polar_radius(self, polar_radius):
+    def polar_radius(self, polar_radius: float) -> None:
         """
-        setter for polar radius of body
-        expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised
-        if quantity is not specified, default distance unit is assumed
+        Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
+        If quantity is not specified, default distance unit is assumed.
 
-        :param polar_radius:
+        :param polar_radius: float
         :return:
         """
         if isinstance(polar_radius, u.quantity.Quantity):
@@ -339,11 +339,11 @@ class Body(metaclass=ABCMeta):
         elif isinstance(polar_radius, (int, np.int, float, np.float)):
             self._polar_radius = np.float64(polar_radius)
         else:
-            raise TypeError('Value of variable `polar radius` is not (np.)int or (np.)float '
+            raise TypeError('Value of variable `polar radius` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def discretization_factor(self):
+    def discretization_factor(self) -> float:
         """
         returns mean angular distance between surface points
 
@@ -352,11 +352,9 @@ class Body(metaclass=ABCMeta):
         return self._discretization_factor
 
     @discretization_factor.setter
-    def discretization_factor(self, discretization_factor):
+    def discretization_factor(self, discretization_factor: float) -> None:
         """
-        setter for discretization factor
-
-        :param :float or int
+        :param discretization_factor: float
         :return:
         """
         if isinstance(discretization_factor, u.quantity.Quantity):
@@ -364,30 +362,36 @@ class Body(metaclass=ABCMeta):
         elif isinstance(discretization_factor, (int, np.int, float, np.float)):
             self._discretization_factor = np.radians(np.float64(discretization_factor))
         else:
-            raise TypeError('Input of variable `discretization_factor` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+            raise TypeError('Input of variable `discretization_factor` is not (numpy.)int'
+                            ' or (numpy.)float nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def face_centres(self):
+    def face_centres(self) -> ndarray:
         """
-        returns coordinates of centres of corresponding faces
+        Returns coordinates of centres of corresponding faces.
 
-        :return: np.array([[face_centrex1, face_centrey1, face_centrez1],
+        :return: ndarray
+
+        ::
+
+            numpy.array([[face_centrex1, face_centrey1, face_centrez1],
                            [face_centrex2, face_centrey2, face_centrez2],
-                           ...,
+                            ...,
                            [face_centrexN, face_centrey2, face_centrez2]])
         """
         return self._face_centers
 
     @face_centres.setter
-    def face_centres(self, centres):
+    def face_centres(self, centres: ndarray) -> None:
         """
-        setter for coordinates of face centres
+        :param centres: ndarray
 
-        :param centres: np.array([[face_centrex1, face_centrey1, face_centrez1],
-                                  [face_centrex2, face_centrey2, face_centrez2],
-                                   ...,
-                                  [face_centrexN, face_centrey2, face_centrez2]])
+        ::
+
+                numpy.array([[face_centrex1, face_centrey1, face_centrez1],
+                             [face_centrex2, face_centrey2, face_centrez2],
+                              ...,
+                             [face_centrexN, face_centrey2, face_centrez2]])
         :return:
         """
         if np.shape(centres)[0] != np.shape(self.faces)[0]:
@@ -395,130 +399,170 @@ class Body(metaclass=ABCMeta):
         self._face_centers = centres
 
     @property
-    def spots(self):
+    def spots(self) -> Dict[int, Spot]:
+        """
+        :return: Dict[int, Spot]
+        """
         return self._spots
 
     @spots.setter
-    def spots(self, spots):
-        # initialize spots dataframes
-        if spots:
-            self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)}
+    def spots(self, spots: Iterable[Dict]) -> None:
+        """
+        example of defined spots
+
+        ::
+
+            [
+                 {"longitude": 90,
+                  "latitude": 58,
+                  "angular_diameter": 15,
+                  "temperature_factor": 0.9},
+                 {"longitude": 85,
+                  "latitude": 80,
+                  "angular_diameter": 30,
+                  "temperature_factor": 1.05},
+                 {"longitude": 45,
+                  "latitude": 90,
+                  "angular_diameter": 30,
+                  "temperature_factor": 0.95},
+             ]
+
+        :param spots: Iterable[Dict]; definition of spots for given object
+        :return:
+        """
+        self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)} if not is_empty(spots) else dict()
 
     @property
-    def point_symmetry_vector(self):
+    def point_symmetry_vector(self) -> ndarray:
         """
-        vector of indices with the same length as body`s points, n-th value of point_symmetry_matrix indicates position
-        of base symmetry point for given n-th point
-        :return:
+        Vector of indices with the same length as body`s points.
+        N-th value of point_symmetry_matrix indicates position of base symmetry point for given n-th point.
+
+        :return: ndarray
         """
         return self._point_symmetry_vector
 
     @point_symmetry_vector.setter
-    def point_symmetry_vector(self, symmetry_vector):
+    def point_symmetry_vector(self, symmetry_vector: ndarray) -> None:
         """
-        setter for vector of indices with the same length as body`s points, n-th value of point_symmetry_matrix
-        indicates position of base symmetry point for given n-th point
+        Setter for vector of indices with the same length as body`s points, n-th value of point_symmetry_matrix
+        indicates position of base symmetry point for given n-th point.
 
-        :param symmetry_vector: np.array([index_of_symmetry_point_for_point1, ..., index_of_symmetry_point_for_pointN])
+        :param symmetry_vector: ndarray
+
+        ::
+
+            numpy.array([index_of_symmetry_point_for_point1, ..., index_of_symmetry_point_for_pointN])
+
         :return:
         """
-        if np.shape(self.points)[0] != np.shape(symmetry_vector)[0] and self.spots is None:
-            raise ValueError('Length of symmetry vector {} is not the same as number of surface points '
-                             '{}'.format(np.shape(symmetry_vector)[0], np.shape(self.points)[0]))
+        if np.shape(self.points)[0] != np.shape(symmetry_vector)[0] and not self.has_spots():
+            raise ValueError(f'Length of symmetry vector {np.shape(symmetry_vector)[0]} is not '
+                             f'the same as number of surface points {np.shape(self.points)[0]}')
         self._point_symmetry_vector = symmetry_vector
 
     @property
-    def face_symmetry_vector(self):
+    def face_symmetry_vector(self) -> ndarray:
         """
-        vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix indicates position
-        of base symmetry face for given n-th point
-        :return:
+        Vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix indicates position
+        of base symmetry face for given n-th point.
+
+        :return: ndarray
         """
         return self._face_symmetry_vector
 
     @face_symmetry_vector.setter
-    def face_symmetry_vector(self, symmetry_vector):
+    def face_symmetry_vector(self, symmetry_vector: ndarray) -> None:
         """
-        setter for vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix
-        indicates position of base symmetry face for given n-th point
+        Setter for vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix
+        indicates position of base symmetry face for given n-th point.
 
-        :param symmetry_vector: np.array([index_of_symmetry_face1, ..., index_of_symmetry_faceN])
+        :param symmetry_vector: ndarray;
+
+        ::
+
+            numpy.array([index_of_symmetry_face1, ..., index_of_symmetry_faceN])
+
         :return:
         """
         if np.shape(self.faces)[0] != np.shape(symmetry_vector)[0]:
-            raise ValueError('Length of symmetry vector {} is not the same as number of surface faces '
-                             '{}'.format(np.shape(symmetry_vector)[0], np.shape(self.faces)[0]))
+            raise ValueError(f'Length of symmetry vector {np.shape(symmetry_vector)[0]} is not '
+                             f'the same as number of surface faces {np.shape(self.faces)[0]}')
         self._face_symmetry_vector = symmetry_vector
 
-    # <units>
+    # <units> **********************************************************************************************************
     @property
-    def mass_unit(self):
+    def mass_unit(self) -> Quantity:
         """
-        returns default mass unit
-        usage: xy.mass_unit
+        Returns default mass unit.
 
         :return: astropy.unit.quantity.Quantity
         """
         return units.MASS_UNIT
 
     @property
-    def temperature_unit(self):
+    def temperature_unit(self) -> Quantity:
         """
-        returns default unit of temperature
-        usage: xy.temperature_unit
+        Returns default unit of temperature.
 
         :return: astropy.unit.quantity.Quantity
         """
         return units.TEMPERATURE_UNIT
 
     @property
-    def distance_unit(self):
+    def distance_unit(self) -> Quantity:
         """
-        returns default unit of length
-        usage: xy.length_unit
+        Rreturns default unit of length.
 
         :return: astropy.unit.quantity.Quantity
         """
         return units.DISTANCE_UNIT
 
     @property
-    def time_unit(self):
+    def time_unit(self) -> Quantity:
         """
-        returns default unit of time
-        usage: xy.time_unit
+        Returns default unit of time.
 
         :return: astropy.unit.quantity.Quantity
         """
         return units.TIME_UNIT
 
     @property
-    def arc_unit(self):
+    def arc_unit(self) -> Quantity:
         """
-        returns default unit of time
-        usage: xy.arc_unit
+        Returns default unit of time.
 
         :return: astropy.unit.quantity.Quantity
         """
         return units.ARC_UNIT
+    # </units> *********************************************************************************************************
 
-    # </units>
+    def remove_spot(self, spot_index: int) -> None:
+        """
+        Remove n-th spot index of object.
 
-    def remove_spot(self, spot_index):
+        :param spot_index: int
+        :return:
+        """
         del (self._spots[spot_index])
 
-    def calculate_normals(self, points=None, faces=None, centres=None, com=None):
+    def calculate_normals(self, points: ndarray, faces: ndarray,
+                          centres: ndarray = None, com: ndarray = None) -> np.array:
         """
-        returns outward facing normal unit vector for each face of stellar surface
+        Returns outward facing normal unit vector for each face of stellar surface.
 
-        :return: numpy_array([[normal_x1, normal_y1, normal_z1],
-                              [normal_x2, normal_y2, normal_z2],
-                               ...
-                              [normal_xn, normal_yn, normal_zn]])
+        :return: ndarray:
+
+        ::
+
+            numpy.array([[normal_x1, normal_y1, normal_z1],
+                         [normal_x2, normal_y2, normal_z2],
+                          ...
+                         [normal_xn, normal_yn, normal_zn]])
         """
-        normals = np.array([np.cross(points[xx[1]] - points[xx[0]], points[xx[2]]
-                                     - points[xx[0]]) for xx in faces])
+        normals = np.array([np.cross(points[xx[1]] - points[xx[0]], points[xx[2]] - points[xx[0]]) for xx in faces])
         normals /= np.linalg.norm(normals, axis=1)[:, None]
-        cntr = self.calculate_surface_centres(points, faces) if centres is None else copy(centres)
+        cntr = self.calculate_surface_centres(points, faces) if is_empty(centres) else copy(centres)
 
         corr_centres = cntr - np.array([com, 0, 0])[None, :]
 
@@ -527,54 +571,68 @@ class Body(metaclass=ABCMeta):
 
         return normals * sgn[:, None]
 
-    def set_all_normals(self, com=None):
+    def set_all_normals(self, com: ndarray = None) -> None:
         """
-        function calculates normals for each face of given body (including spots
+        Function calculates normals for each face of given body (including spots) and assign it to object.
+
+        :param com: ndarray
         :return:
         """
         self.normals = self.calculate_normals(points=self.points, faces=self.faces, centres=self.face_centres, com=com)
-        if self.spots:
+        if self.has_spots():
             for spot_index in self.spots:
                 self.spots[spot_index].normals = self.calculate_normals(points=self.spots[spot_index].points,
                                                                         faces=self.spots[spot_index].faces,
                                                                         centres=self.spots[spot_index].face_centres,
                                                                         com=com)
 
-    def calculate_surface_centres(self, points=None, faces=None):
+    def set_all_surface_centres(self) -> None:
         """
-        returns centers of every surface face
+        Calculates all surface centres for given body(including spots) and assign to object as `face_centers` property
 
-        :return: numpy_array([[center_x1, center_y1, center_z1],
-                              [center_x2, center_y2, center_z2],
-                               ...
-                              [center_xn, center_yn, center_zn]])
-        """
-        if points is None:
-            points = self.points
-            faces = self.faces
-        return np.average(points[faces], axis=1)
-
-    def set_all_surface_centres(self):
-        """
-        calculates all surface centres for given body(including spots)
         :return:
         """
         self.face_centres = self.calculate_surface_centres()
-        if self.spots:
+        if self.has_spots():
             for spot_index in self.spots:
                 self.spots[spot_index].face_centres = \
                     self.calculate_surface_centres(points=self.spots[spot_index].points,
                                                    faces=self.spots[spot_index].faces)
 
-    def calculate_areas(self):
+    def calculate_surface_centres(self, points: ndarray = None, faces: ndarray = None) -> ndarray:
         """
-        returns areas of each face of the star surface
-        :return: numpy.array([area_1, ..., area_n])
-        """
-        if self.faces is None or self.points is None:
-            raise ValueError('Faces or/and points of object {} have not been set yet'.format(self.name))
+        Returns centers of every surface face.
+        If `points` is not supplied, parameter of self instance is used for both, `points` and `faces`.
 
-        if not self.spots:  # temporary
+        :return: ndarray:
+
+        ::
+
+            numpy.array([[center_x1, center_y1, center_z1],
+                         [center_x2, center_y2, center_z2],
+                          ...
+                         [center_xn, center_yn, center_zn]])
+        """
+        if is_empty(points):
+            points = self.points
+            faces = self.faces
+        return np.average(points[faces], axis=1)
+
+    def calculate_areas(self) -> ndarray:
+        """
+        Returns areas of each face of the star surface.
+
+        :return: ndarray:
+
+        ::
+
+            numpy.array([area_1, ..., area_n])
+        """
+        if len(self.faces) == 0 or len(self.points) == 0:
+            raise ValueError('Faces or/and points of object {self.name} have not been set yet.\n'
+                             'Run build method first.')
+        # FIXME: why the hell is this temporary?????
+        if not self.has_spots():  # temporary
             base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
                                               self.points[:self.base_symmetry_points_number])
             return base_areas[self.face_symmetry_vector]
@@ -582,24 +640,26 @@ class Body(metaclass=ABCMeta):
         else:
             return utils.triangle_areas(self.faces, self.points)
 
-    def calculate_all_areas(self):
+    def calculate_all_areas(self) -> None:
         """
-        calculates areas for all faces on the surface including spots and assigns values to its corresponding variables
+        Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
+
         :return:
         """
         self.areas = self.calculate_areas()
-        if self.spots:
+        if self.has_spots():
             for spot_index, spot in self.spots.items():
                 spot.areas = spot.calculate_areas()
 
-    def return_whole_surface(self):
+    def return_whole_surface(self) -> Tuple[ndarray, ndarray]:
         """
-        returns all points and faces of the whole star
-        :return:
+        Returns all points and faces of the whole star.
+
+        :return: Tuple[ndarray, ndarray]
         """
         ret_points = copy(self.points)
         ret_faces = copy(self.faces)
-        if self.spots:
+        if self.has_spots():
             for spot_index, spot in self.spots.items():
                 n_points = np.shape(ret_points)[0]
                 ret_points = np.append(ret_points, spot.points, axis=0)
@@ -607,12 +667,13 @@ class Body(metaclass=ABCMeta):
 
         return ret_points, ret_faces
 
-    def return_all_points(self, return_vertices_map=False):
+    def return_all_points(self, return_vertices_map: bool = False) -> Tuple[ndarray, any]:
         """
-        function returns all surface point and faces optionally with corresponding map of vertices
-        :param return_vertices_map:
-        :param self: Star object
-        :return: array - all surface points including star and surface points
+        Function returns all surface point and faces optionally with corresponding map of vertices.
+
+        :param return_vertices_map: bool
+        :param self: Star instance
+        :return: Tuple[ndarray, any]: [all surface points including star and surface points, vertices map or None]
         """
         points = copy(self.points)
         for spot_index, spot_instance in self.spots.items():
@@ -625,26 +686,48 @@ class Body(metaclass=ABCMeta):
                     [vertices_map, [{"type": "spot", "enum": spot_index}] * len(spot_instance.points)]
                 )
             return points, vertices_map
-        return points
+        return points, None
 
-    def setup_body_points(self, points):
+    def setup_body_points(self, points: Dict[str, ndarray]) -> None:
+        """
+        Setup points for Star instance and spots based on input `points` Dict object.
+        Such `points` map looks like following
+
+        ::
+
+            {
+                "object": [[point0_x, point0_y, point0_z], ..., [pointN_x, pointN_y, pointN_z]],
+                "0": [<points>],
+                "1": [<points>]...
+            },
+
+            where `object` contain ndarray of object points and indices points for given spot.
+
+        :param points: Dict[str, ndarray]
+        :return:
+        """
         self.points = points.pop("object")
         for spot_index, spot_points in points.items():
             self.spots[int(spot_index)].points = points[spot_index]
 
-    def remove_overlaped_spots_by_vertex_map(self, vertices_map):
+    def remove_overlaped_spots_by_vertex_map(self, vertices_map: List or ndarray) -> None:
+        """
+        Remove spots of Start object that are totally overlapped by another spot.
+
+        :param vertices_map: List or ndarray
+        :return:
+        """
         # remove spots that are totaly overlaped
         spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
                                            if vertices_map[ix]["enum"] >= 0]))
         for spot_index, _ in list(self.spots.items()):
             if spot_index not in spots_instance_indices:
-                self._logger.warning("spot with index {} doesn't contain any face "
-                                     "and will be removed from component {} spot list"
-                                     "".format(spot_index, self.name))
+                self._logger.warning(f"spot with index {spot_index} doesn't contain any face "
+                                     f"and will be removed from component {self.name} spot list")
                 self.remove_spot(spot_index=spot_index)
         gc.collect()
 
-    def remap_surface_elements(self, model, points_to_remap):
+    def remap_surface_elements(self, model: Dict, points_to_remap: ndarray) -> None:
         """
         function remaps all surface points (`points_to_remap`) and faces (star and spots) according to the `model`
 
@@ -653,11 +736,11 @@ class Body(metaclass=ABCMeta):
         :return:
         """
         # remapping points and faces of star
-        self._logger.debug("changing value of parameter points of component {}".format(self.name))
+        self._logger.debug(f"changing value of parameter points of component {self.name}")
         indices = np.unique(model["object"])
         self.points = points_to_remap[indices]
 
-        self._logger.debug("changing value of parameter faces component {}".format(self.name))
+        self._logger.debug(f"changing value of parameter faces of component {self.name}")
 
         points_length = np.shape(points_to_remap)[0]
         remap_list = np.empty(points_length, dtype=int)
@@ -666,42 +749,38 @@ class Body(metaclass=ABCMeta):
 
         # remapping points and faces of spots
         for spot_index, _ in list(self.spots.items()):
-            self._logger.debug("changing value of parameter points of spot {} / component {}"
-                               "".format(spot_index, self.name))
+            self._logger.debug(f"changing value of parameter points of spot {spot_index} / component {self.name}")
             # get points currently belong to the given spot
             indices = np.unique(model["spots"][spot_index])
             self.spots[spot_index].points = points_to_remap[indices]
 
-            self._logger.debug("changing value of parameter faces of spot {} / component {}"
-                               "".format(spot_index, self.name))
+            self._logger.debug(f"changing value of parameter faces of spot {spot_index} / component {self.name}")
 
             remap_list = np.empty(points_length, dtype=int)
             remap_list[indices] = np.arange(np.shape(indices)[0])
             self.spots[spot_index].faces = remap_list[model["spots"][spot_index]]
         gc.collect()
 
-    def setup_spot_instance_discretization_factor(self, spot_instance, spot_index):
+    def setup_spot_instance_discretization_factor(self, spot_instance: Spot, spot_index: int):
         # component_instance = getattr(self, component)
-        if spot_instance.discretization_factor is None:
-            self._logger.debug('angular density of the spot {0} on {2} component was not supplied '
-                               'and discretization factor of star {1} was used.'
-                               ''.format(spot_index, self.discretization_factor, self.name))
+        if is_empty(spot_instance.discretization_factor):
+            self._logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
+                               f'and discretization factor of star {self.discretization_factor} was used.')
             spot_instance.discretization_factor = 0.9 * self.discretization_factor * units.ARC_UNIT
         if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter:
-            self._logger.debug('angular density {1} of the spot {0} on {2} component was larger than its '
-                               'angular radius. Therefore value of angular density was set to be equal to '
-                               '0.5 * angular diameter'
-                               ''.format(spot_index, self.discretization_factor, self.name))
+            self._logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
+                               f'component was larger than its angular radius. Therefore value of angular density was '
+                               f'set to be equal to 0.5 * angular diameter')
             spot_instance.discretization_factor = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
 
-    def incorporate_spots_mesh(self, component_com=None):
+    def incorporate_spots_mesh(self, component_com: ndarray = None) -> None:
         if not self.spots:
-            self._logger.debug("not spots found, skipping incorporating spots to mesh".format(self.name))
+            self._logger.debug(f"not spots found, skipping incorporating spots to mesh on component {self.name}")
             return
-        self._logger.info("incorporating spot points to component {} mesh".format(self.name))
+        self._logger.info(f"incorporating spot points to component {self.name} mesh")
 
-        if component_com is None:
-            raise ValueError('object centre of mass was not given')
+        if is_empty(component_com):
+            raise ValueError('Object centre of mass was not supplied')
 
         vertices_map = [{"enum": -1} for _ in self.points]
         # `all_component_points` do not contain points of any spot
@@ -715,15 +794,16 @@ class Body(metaclass=ABCMeta):
             spot_center = spot.center - np.array([component_com, 0., 0.])
 
             # removing star points in spot
-            # for dist, ix in zip(distances, indices):
+            # all component points means just points of component NOT merged points + spots
             for ix, pt in enumerate(all_component_points):
                 surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
                 cos_angle = \
                     np.inner(spot_center, surface_point) / (
                         np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
-
+                # skip all points of object outside of spot
                 if cos_angle < cos_max_angle_point or np.linalg.norm(pt[0] - neck) < 1e-9:
                     continue
+                # mark component point (NOT point of spot) for removal if is within the spot
                 vertices_to_remove.append(ix)
 
             # simplices of target object for testing whether point lying inside or not of spot boundary, removing
@@ -755,70 +835,7 @@ class Body(metaclass=ABCMeta):
         separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map)
         self.setup_body_points(separated_points)
 
-    # def incorporate_spots_overcontact_mesh(self, component_com=None):
-    #     if not self.spots:
-    #         return
-    #     self._logger.info("incorporating spot points to component {} mesh".format(self.name))
-    #
-    #     if self is None:
-    #         raise ValueError('object instance was not given')
-    #
-    #     if component_com is None:
-    #         raise ValueError('object centre of mass was not given')
-    #
-    #     vertices_map = [{"enum": -1} for _ in self.points]
-    #     # `all_component_points` do not contain points of any spot
-    #     all_component_points = copy(self.points)
-    #     neck = np.min(all_component_points[:self.base_symmetry_points_number, 0])
-    #
-    #     for spot_index, spot in self.spots.items():
-    #         # average spacing in spot points
-    #         vertices_to_remove, vertices_test = [], []
-    #         cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.discretization_factor)
-    #         spot_center = spot.center - np.array([component_com, 0., 0.])
-    #
-    #         # removing star points in spot
-    #         # for dist, ix in zip(distances, indices):
-    #         for ix, pt in enumerate(all_component_points):
-    #             surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
-    #             cos_angle = np.inner(spot_center, surface_point) / (
-    #                 np.linalg.norm(spot_center) * np.linalg.norm(surface_point)
-    #             )
-    #
-    #             if cos_angle < cos_max_angle_point or pt[0] == neck:
-    #                 continue
-    #             vertices_to_remove.append(ix)
-    #
-    #         # simplices of target object for testing whether point lying inside or not of spot boundary, removing
-    #         # duplicate points on the spot border
-    #         # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
-    #         vertices_to_remove = list(set(vertices_to_remove))
-    #
-    #         # points and vertices_map update
-    #         if vertices_to_remove:
-    #             _points, _vertices_map = list(), list()
-    #
-    #             for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
-    #                 if ix in vertices_to_remove:
-    #                     # skip point if is marked for removal
-    #                     continue
-    #
-    #                 # append only points of currrent object that do not intervent to spot
-    #                 # [current, since there should be already spot from previous iteration step]
-    #                 _points.append(vertex)
-    #                 _vertices_map.append({"enum": vertices_map[ix]["enum"]})
-    #
-    #             for vertex in spot.points:
-    #                 _points.append(vertex)
-    #                 _vertices_map.append({"enum": spot_index})
-    #
-    #             all_component_points = copy(_points)
-    #             vertices_map = copy(_vertices_map)
-    #
-    #     separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map)
-    #     self.setup_body_points(separated_points)
-
-    def split_points_of_spots_and_component(self, points, vertices_map):
+    def split_points_of_spots_and_component(self, points: ndarray, vertices_map: Dict[str, int]) -> Dict:
         points = np.array(points)
         component_points = {
             "object": points[np.where(np.array(vertices_map) == {'enum': -1})[0]]
@@ -833,14 +850,15 @@ class Body(metaclass=ABCMeta):
         }
         return {**component_points, **spots_points}
 
-    def remove_overlaped_spots_by_spot_index(self, spot_indices):
+    def remove_overlaped_spots_by_spot_index(self, spot_indices: Iterable) -> None:
         all_spot_indices = set([int(val) for val in self.spots.keys()])
         spot_indices_to_remove = all_spot_indices.difference(spot_indices)
 
         for spot_index in spot_indices_to_remove:
             self.remove_spot(spot_index)
 
-    def split_spots_and_component_faces(self, points, faces, model, spot_candidates, vmap, component_com=None):
+    def split_spots_and_component_faces(self, points: ndarray, faces: ndarray, model: Dict, spot_candidates,
+                                        vmap: Dict, component_com: float) -> Dict:
         """
         function that sorts faces to model data structure by distinguishing if it belongs to star or spots
 
@@ -859,11 +877,12 @@ class Body(metaclass=ABCMeta):
         model['object'] = np.array(model['object'])
         for spot_ix in self.spots:
             model['spots'][spot_ix] = np.array(model['spots'][spot_ix])
-
         return model
 
     @classmethod
-    def _resolve_obvious_spots(cls, points, faces, model, spot_candidates, vmap):
+    def _resolve_obvious_spots(cls, points: np.ndarray, faces: np.ndarray, model: Dict,
+                               spot_candidates: Dict, vmap: Dict) -> Tuple[Dict, Dict]:
+
         for simplex, face_points, ix in list(zip(faces, points[faces], range(faces.shape[0]))):
             # if each point belongs to the same spot, then it is for sure face of that spot
             condition1 = vmap[simplex[0]]["enum"] == vmap[simplex[1]]["enum"] == vmap[simplex[2]]["enum"]
@@ -880,23 +899,34 @@ class Body(metaclass=ABCMeta):
         return model, spot_candidates
 
     @staticmethod
-    def initialize_model_container(vertices_map):
+    def initialize_model_container(vertices_map: List or ndarray) -> Tuple[Dict, Dict]:
         """
-        initializes basic data structure `model` objects that will contain faces divided by its origin (star or spots)
-        and data structure containing spot candidates with its index, centre,
-        :param vertices_map:
-        :return:
+        Initializes basic data structure `model` objects that will contain faces divided by its origin (star or spots)
+        and data structure containing spot candidates with its index, centre and simplex.
+
+        Structure is based on input `verties_map`.
+
+        Example of return Tuple
+
+        ::
+
+            (<class 'dict'>: {'object': [], 'spots': {0: []}}, <class 'dict'>: {'simplex': {}, 'com': [], 'ix': []})
+
+        :param vertices_map: List or ndarray; map which define refrences of index in
+                             given Iterable to object (spot or Star).
+        :return: Tuple[Dict, Dict]
         """
-        model = {"object": [], "spots": {}}
-        spot_candidates = {"simplex": {}, "com": [], "ix": []}
+        model = {"object": list(), "spots": dict()}
+        spot_candidates = {"simplex": dict(), "com": list(), "ix": list()}
+
         spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
                                            if vertices_map[ix]["enum"] >= 0]))
         for spot_index in spots_instance_indices:
-            model["spots"][spot_index] = []
+            model["spots"][spot_index] = list()
         return model, spot_candidates
 
     @staticmethod
-    def _get_spots_references(vertices_map, simplex):
+    def _get_spots_references(vertices_map: ndarray, simplex: ndarray) -> Tuple:
         reference_to_spot, trd_enum = None, None
         # variable trd_enum is enum index of 3rd corner of face;
 
@@ -911,16 +941,17 @@ class Body(metaclass=ABCMeta):
             trd_enum = vertices_map[simplex[0]]["enum"]
         return reference_to_spot, trd_enum
 
-    def _resolve_spot_candidates(self, model, spot_candidates, faces, component_com=None):
+    def _resolve_spot_candidates(
+            self, model: Dict, spot_candidates: Dict, faces: ndarray, component_com: float) -> Dict:
         """
-        resolves spot face candidates by comparing angular distances of face cantres and spot centres, in case of
-        multiple layered spots, face is assigned to the top layer
+        Resolves spot face candidates by comparing angular distances of face cantres and spot centres.
+        In case of multiple layered spots, face is assigned to the top layer.
 
-        :param model:
-        :param spot_candidates:
-        :param faces:
-        :param component_com:
-        :return:
+        :param model: Dict
+        :param spot_candidates: Dict
+        :param faces: ndarray
+        :param component_com: float
+        :return: Dict
         """
         # checking each candidate one at a time trough all spots
         com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])

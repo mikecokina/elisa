@@ -4,17 +4,16 @@ import re
 
 from queue import Empty
 from copy import copy
+from numpy import ndarray
 
 from numpy.linalg import norm
+from pandas import DataFrame
 from scipy.spatial import distance_matrix as dstm
 from elisa.engine import const as c
-from typing import Tuple
-
-# temporary
-from time import time
+from typing import Tuple, Iterable, Dict, List
 
 
-def polar_to_cartesian(radius, phi):
+def polar_to_cartesian(radius: float, phi: float) -> Tuple[float, float]:
     """
 
     :param radius: (np.)float, (np.)int
@@ -26,19 +25,20 @@ def polar_to_cartesian(radius, phi):
     return x, y
 
 
-def invalid_kwarg_checker(kwargs, kwarglist, instance):
+def invalid_kwarg_checker(kwargs: Dict, kwarglist: List, instance: object) -> None:
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
-        raise ValueError('Invalid keyword argument(s): {} in class instance {}.\n List of available parameters: {}'
-                         ''.format(', '.join(invalid_kwargs), instance.__name__, format(', '.join(kwarglist))))
+        raise ValueError(f'Invalid keyword argument(s): {", ".join(invalid_kwargs)} '
+                         f'in class instance {instance.__name__}.\n '
+                         f'List of available parameters: {", ".join(kwarglist)}')
 
 
-def is_plane(given, expected):
+def is_plane(given: str, expected: str) -> bool:
     pattern = r'^({0})|({1})$'.format(expected, expected[::-1])
     return re.search(pattern, given)
 
 
-def find_nearest_dist_3d(data=None):
+def find_nearest_dist_3d(data: ndarray) -> float:
     """
     function finds the smallest distance between given set of points
 
@@ -57,7 +57,7 @@ def find_nearest_dist_3d(data=None):
     return min(distances)
 
 
-def cartesian_to_spherical(points, degrees=False):
+def cartesian_to_spherical(points: ndarray or List, degrees: bool = False) -> ndarray:
     """
     convert cartesian to spherical coordinates if only 1 point is given input an output is only 1D vector
 
@@ -92,7 +92,7 @@ def cartesian_to_spherical(points, degrees=False):
 
 
 # def spherical_to_cartesian(radius, phi, theta):
-def spherical_to_cartesian(spherical_points):
+def spherical_to_cartesian(spherical_points: ndarray or List) -> ndarray:
     """
     converts spherical coordinates into cartesian, if input is one point, output is 1D vector
 
@@ -115,7 +115,7 @@ def spherical_to_cartesian(spherical_points):
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
-def cylindrical_to_cartesian(cylindrical_points):
+def cylindrical_to_cartesian(cylindrical_points: ndarray or List) -> ndarray:
     """
     converts cylindrical coordinates into cartesian, if input is one point, output is 1D vector
 
@@ -137,9 +137,10 @@ def cylindrical_to_cartesian(cylindrical_points):
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
 
-def arbitrary_rotation(theta, omega=None, vector=None, degrees=False, omega_normalized=False):
+def arbitrary_rotation(theta: float, omega: ndarray, vector: ndarray,
+                       degrees: bool = False, omega_normalized: bool = False) -> ndarray:
     """
-    Rodrigues` Rotaion Formula
+    Rodrigues` Rotation Formula
     function rotates `vector` around axis defined by `omega` vector by amount `theta`
 
     :param theta: float; radial vector of point of interest to rotate
@@ -172,17 +173,17 @@ def arbitrary_rotation(theta, omega=None, vector=None, degrees=False, omega_norm
     return np.matmul(vector, matrix)
 
 
-def axis_rotation(theta, vector, axis, inverse=False, degrees=False):
+def axis_rotation(theta: float, vector: ndarray, axis: str, inverse: bool = False, degrees: bool = False) -> ndarray:
     # TODO: check if true. If yes I propose refactor, name suggests that axis are rotated, not points
     """
     rotation of `vector` around 'axis' by an amount `theta
 
-    :param theta: degree of rotation
-    :param vector: vector to rotate around
-    :param axis: axis of rotation `x`, `y`, or `z`
-    :param inverse: I HAVE NO CLUE...
-    :param degrees: if True value theta is assumed to be in degrees
-    :return: np.array - rotatet vector(s)
+    :param theta: float, degree of rotation
+    :param vector: dnarray; vector to rotate around
+    :param axis: str; axis of rotation `x`, `y`, or `z`
+    :param inverse: boold; rotate to inverse direction than is math positive
+    :param degrees: bool; if True value theta is assumed to be in degrees
+    :return: np.array; rotated vector(s)
     """
     matrix = np.arange(9, dtype=np.float).reshape((3, 3))
     theta = theta if not degrees else np.radians(theta)
@@ -210,7 +211,7 @@ def axis_rotation(theta, vector, axis, inverse=False, degrees=False):
     return np.matmul(vector, matrix)
 
 
-def average_spacing_cgal(data=None, neighbours=6):
+def average_spacing_cgal(data: ndarray, neighbours: int = 6) -> float:
     """
     Average Spacing - calculates average distance between points using average distances to `neighbours` number of
     points
@@ -218,7 +219,7 @@ def average_spacing_cgal(data=None, neighbours=6):
 
     :param data: list (np.array); 3-dimensinal dataset
     :param neighbours: int; nearest neighbours to average
-    :return:
+    :return: float
     """
     if not isinstance(data, type(np.array)):
         data = np.array(data)
@@ -230,7 +231,7 @@ def average_spacing_cgal(data=None, neighbours=6):
     return total / dist.shape[0]
 
 
-def average_spacing(data=None, mean_angular_distance=None):
+def average_spacing(data: ndarray, mean_angular_distance: float) -> float:
     """
     calculates mean distance between points using mean radius of data points and mean angular distance between them
     :param data: numpy.array([[x1 y1 z1],
@@ -238,71 +239,65 @@ def average_spacing(data=None, mean_angular_distance=None):
                                 ...
                               [xN yN zN]])
     :param mean_angular_distance: np.float - in radians
-    :return:
+    :return: float
     """
     average_radius = np.mean(np.linalg.norm(data, axis=1)) if not np.isscalar(data) else data
     return average_radius * mean_angular_distance
 
 
-def remap(x, mapper):
+def remap(x: ndarray, mapper: ndarray) -> List:
     """
     function rearranges list of points indices according to indices in mapper, maper contains on the nth place new
     address of the nth point
 
-    :param x: faces-like matrix
-    :param mapper: transformation map - numpy.array(): new_index_of_point = mapper[old_index_of_point]
-    :return: faces-like matrix
+    :param x: ndarray; faces-like matrix
+    :param mapper: ndarray; transformation map - numpy.array(): new_index_of_point = mapper[old_index_of_point]
+    :return: List; faces-like matrix
     """
     return list(map(lambda val: [mapper[val[0]], mapper[val[1]], mapper[val[2]]], x))
 
 
-def poly_areas(polygons):
+def poly_areas(polygons: ndarray) -> ndarray:
     """
     calculates areas of triangles, where `triangles` indexes of vertices which coordinates are stored in `points`
+
     :param polygons: np.array; 3d points
     :return: np.array
     """
-    if polygons is None:
-        raise ValueError('Faces from which to calculate areas were not supplied.')
     polygons = np.array(polygons)
     return 0.5 * np.linalg.norm(np.cross(polygons[:, 1] - polygons[:, 0],
                                          polygons[:, 2] - polygons[:, 0]), axis=1)
 
 
-def triangle_areas(triangles=None, points=None):
+def triangle_areas(triangles: ndarray, points: ndarray) -> ndarray:
     """
     calculates areas of triangles, where `triangles` indexes of vertices which coordinates are stored in `points`
     :param triangles: np.array; indices of triangulation
     :param points: np.array; 3d points
     :return: np.array
     """
-    if triangles is None:
-        raise ValueError('Faces from which to calculate areas were not supplied.')
-    if points is None:
-        raise ValueError('Vertices of faces from which to calculate areas were not supplied.')
-
     return 0.5 * np.linalg.norm(np.cross(points[triangles[:, 1]] - points[triangles[:, 0]],
                                          points[triangles[:, 2]] - points[triangles[:, 0]]), axis=1)
 
 
-def calculate_distance_matrix(points1=None, points2=None, return_join_vector_matrix=False):
+def calculate_distance_matrix(points1: ndarray, points2: ndarray, return_join_vector_matrix: bool = False) -> Tuple:
     """
     function returns distance matrix between two sets of points
     :param points1:
     :param points2:
     :param return_join_vector_matrix: if True, function also returns normalized distance vectors useful for dot product
     during calculation of cos
-    :return:
+    :return: Tuple
     """
     # pairwise distance vector matrix
     distance_vector_matrix = points2[None, :, :] - points1[:, None, :]
     distance_matrix = np.linalg.norm(distance_vector_matrix, axis=2)
 
-    return distance_matrix, distance_vector_matrix / distance_matrix[:, :, None] if return_join_vector_matrix \
-        else distance_matrix
+    return (distance_matrix, distance_vector_matrix / distance_matrix[:, :, None]) if return_join_vector_matrix \
+        else (distance_matrix, None)
 
 
-def find_face_centres(faces=None):
+def find_face_centres(faces: ndarray) -> ndarray:
     """
     function calculates centres of each supplied face
     :param faces: np.array([[[x11,y11,z11],
@@ -315,12 +310,10 @@ def find_face_centres(faces=None):
                            ])
     :return:
     """
-    if faces is None:
-        raise ValueError('Faces were not supplied')
     return np.mean(faces, axis=1)
 
 
-def check_missing_kwargs(kwargs=None, instance_kwargs=None, instance_of=None):
+def check_missing_kwargs(kwargs: Iterable, instance_kwargs: Iterable, instance_of: object) -> None:
     """
     checks if all `kwargs` are all in `instance kwargs`
     :param kwargs: list
@@ -331,30 +324,29 @@ def check_missing_kwargs(kwargs=None, instance_kwargs=None, instance_of=None):
     missing_kwargs = []
     for kwarg in kwargs:
         if kwarg not in instance_kwargs:
-            missing_kwargs.append("`{}`".format(kwarg))
+            missing_kwargs.append(f"`{kwarg}`")
 
     if len(missing_kwargs) > 0:
-        raise ValueError('Missing argument(s): {} in class instance {}'.format(', '.join(missing_kwargs),
-                                                                               instance_of.__name__))
+        raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in class instance {instance_of.__name__}')
 
 
-def numeric_logg_to_string(logg):
+def numeric_logg_to_string(logg: float) -> str:
     return "g%02d" % (logg * 10)
 
 
-def numeric_metallicity_to_string(metallicity):
+def numeric_metallicity_to_string(metallicity: float) -> str:
     sign = "p" if metallicity >= 0 else "m"
     leadzeronum = "%02d" % (metallicity * 10) if metallicity >= 0 else "%02d" % (metallicity * -10)
     return "{sign}{leadzeronum}".format(sign=sign, leadzeronum=leadzeronum)
 
 
-def find_nearest_value_as_matrix(look_in: np.array, look_for: np.array) -> Tuple[np.array, np.array]:
+def find_nearest_value_as_matrix(look_in: ndarray, look_for: ndarray or float) -> Tuple[ndarray, ndarray]:
     """
     finds values and indices of elements in `look_in` that are the closest to the each value in `values`
 
-    :param look_in:
-    :param look_for: np.look_in - look_in of elements according to which the closest element in `look_in` is searched for
-    :return:
+    :param look_in: ndarray;
+    :param look_for: ndarray; look_in of elements according to which the closest element in `look_in` is searched for
+    :return: Tuple[ndarray, ndarray]
     """
     val = np.array([look_for]) if np.isscalar(look_for) else look_for
     dif = np.abs(val[:, np.newaxis] - look_in)
@@ -363,14 +355,14 @@ def find_nearest_value_as_matrix(look_in: np.array, look_for: np.array) -> Tuple
     return val, argmins
 
 
-def find_nearest_value(look_in, look_for):
+def find_nearest_value(look_in: ndarray, look_for: float) -> List:
     look_in = np.array(look_in)
     look_for = look_in[(np.abs(look_in - look_for)).argmin()]
     index = np.where(look_in == look_for)[0][0]
     return [look_for, index]
 
 
-def find_surrounded_as_matrix(look_in: np.array, look_for: np.array) -> np.array:
+def find_surrounded_as_matrix(look_in: ndarray, look_for: ndarray) -> ndarray:
     if not ((look_in.min() <= look_for).all() and (look_for <= look_in.max()).all()):
         raise ValueError("Any value in `look_for` is out of bound of `look_in`")
 
@@ -393,7 +385,7 @@ def find_surrounded_as_matrix(look_in: np.array, look_for: np.array) -> np.array
     return ret_matrix
 
 
-def find_surrounded(look_in, look_for):
+def find_surrounded(look_in: ndarray, look_for: float) -> List:
     # find surounded look_for in passed look_in
 
     arr, ret = np.array(look_in[:]), []
@@ -420,36 +412,38 @@ def find_surrounded(look_in, look_for):
     return ret if ret[0] < look_for < ret[1] else [look_for]
 
 
-def calculate_cos_theta(normals, line_of_sight_vector):
+def calculate_cos_theta(normals: ndarray, line_of_sight_vector: ndarray) -> ndarray:
     """
     calculates cosine between two set of normalized vectors
     - matrix(N * 3), matrix(3) - cosine between each matrix(N * 3) and matrix(3)
     - matrix(N * 3), matrix(M * 3) - cosine between each combination of matrix(N * 3) and matrix(M * 3)
     :param normals:
     :param line_of_sight_vector:
-    :return:
+    :return: ndarray
     """
-    return np.sum(np.multiply(normals, line_of_sight_vector[None, :]), axis=1) if np.ndim(line_of_sight_vector) == 1 else \
-        np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]))
+    return np.sum(np.multiply(normals, line_of_sight_vector[None, :]), axis=1) \
+        if np.ndim(line_of_sight_vector) == 1 \
+        else np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]))
 
 
-def calculate_cos_theta_los_x(normals):
+def calculate_cos_theta_los_x(normals: ndarray) -> ndarray:
     """
     calculates cosine of an angle between normalized vectors and line of sight vector [1 ,0 ,0]
-    :param normals: np.array
-    :return:
+
+    :param normals: ndarray
+    :return: ndarray
     """
     return normals[:, 0]
 
 
-def get_line_of_sight_single_system(phase=None, inclination=None):
+def get_line_of_sight_single_system(phase: ndarray, inclination: float) -> ndarray:
     """
     returns line of sight vector for given phase, inclination of the system
     and period of the rotation of given system
 
-    :param phase: list
-    :param inclination:
-    :return:
+    :param phase: ndarray
+    :param inclination: float
+    :return: ndarray
     """
     line_of_sight_spherical = np.empty((len(phase), 3), dtype=np.float)
     line_of_sight_spherical[:, 0] = 1
@@ -458,13 +452,13 @@ def get_line_of_sight_single_system(phase=None, inclination=None):
     return spherical_to_cartesian(line_of_sight_spherical)
 
 
-def convert_gravity_acceleration_array(colormap, units):
+def convert_gravity_acceleration_array(colormap: ndarray, units: str) -> ndarray:
     """
     function converts gravity acceleration array from log_g(SI) units to other units such as `log_cgs`, `SI`, `cgs`
 
-    :param colormap: array
+    :param colormap: ndarray
     :param units: str - `log_cgs`, `SI`, `cgs`, `log_SI`
-    :return:
+    :return: ndarray
     """
     if units == 'log_cgs':
         colormap += 2
@@ -478,16 +472,29 @@ def convert_gravity_acceleration_array(colormap, units):
 
 
 # todo: name does not give sense, you just calculated cosine of the angle between vectors
-def cosine_similarity(a, b):
+def cosine_similarity(a: ndarray, b: ndarray) -> float:
     """
     function calculates cosine of angle between vectors, use only in case that a, and b are not normalized, otherwise
-    function calculate_cos_theta
+    use function calculate_cos_theta; it is way faster since it doesn't normalize vectors on fly
 
-    :param a: numpy array
-    :param b: numpy array
-    :return:
+    :param a: ndarray
+    :param b: ndarray
+    :return: float
     """
     return np.inner(a, b) / (norm(a) * norm(b))
+
+
+def is_empty(value) -> bool:
+    if isinstance(value, type(None)):
+        return True
+    if isinstance(value, Iterable):
+        # this cover also strings
+        return len(value) == 0
+    if isinstance(value, DataFrame):
+        return value.empty
+    if np.isnan(value):
+        return True
+    return False
 
 
 class IterableQueue(object):
@@ -505,9 +512,5 @@ class IterableQueue(object):
                 yield self.source_queue.get_nowait()
             except Empty:
                 return
-
-
-
-
 
 

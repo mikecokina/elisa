@@ -1,26 +1,27 @@
-from queue import Empty
-
 import numpy as np
-from copy import copy
-
 import scipy
 
+from typing import Tuple, Dict, List
+from numpy import ndarray
+from copy import copy
 from elisa.engine import utils, const
+from elisa.engine.utils import is_empty
 
 
-def visibility_test(centres, xlim, component):
+def visibility_test(centres: ndarray, xlim: float, component: str) -> ndarray:
     """
     tests if given faces are visible from the other star
 
-    :param component:
-    :param centres:
+    :param component: str
+    :param centres: ndarray
     :param xlim: visibility threshold in x axis for given component
     :return:
     """
     return centres[:, 0] >= xlim if component == 'primary' else centres[:, 0] <= xlim
 
 
-def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis_test_symmetry):
+def get_symmetrical_distance_matrix(shape: Tuple[int], shape_reduced: Tuple[int], centres: Dict,
+                                    vis_test: Dict[str, ndarray], vis_test_symmetry: Dict[str, ndarray]) -> Tuple:
     """
     function uses symmetries of the stellar component in order to reduce time in calculation distance matrix
     :param shape: desired shape of join vector matrix
@@ -51,7 +52,7 @@ def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis
     return distance, join_vector
 
 
-def init_surface_variables(component_instance):
+def init_surface_variables(component_instance) -> Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, ndarray]:
     """
     function copies basic parameters of the stellar surface (points, faces, normals, temperatures and areas) of
     given star instance into new arrays during calculation of reflection effect
@@ -67,34 +68,37 @@ def init_surface_variables(component_instance):
     return points, faces, centres, normals, temperatures, areas
 
 
-def include_spot_to_surface_variables(centres, spot_centres, normals, spot_normals,
-                                      temperatures, spot_temperatures, areas, spot_areas, vis_test, vis_test_spot):
-        """
-        function includes surface parameters of spot faces into global arrays containing parameters from whole surface
-        used in reflection effect
+def include_spot_to_surface_variables(
+        centres: ndarray, spot_centres: ndarray, normals: ndarray, spot_normals: ndarray,
+        temperatures: ndarray, spot_temperatures: ndarray, areas: ndarray, spot_areas: ndarray,
+        vis_test: ndarray, vis_test_spot: ndarray) -> Tuple[ndarray, ndarray, ndarray, ndarray, ndarray]:
+    """
+    function includes surface parameters of spot faces into global arrays containing parameters from whole surface
+    used in reflection effect
 
-        :param centres:
-        :param spot_centres: spot centres to append to `centres`
-        :param normals:
-        :param spot_normals: spot normals to append to `normals`
-        :param temperatures:
-        :param spot_temperatures: spot temperatures to append to `temperatures`
-        :param areas:
-        :param spot_areas: spot areas to append to `areas`
-        :param vis_test:
-        :param vis_test_spot: spot visibility test to append to `vis_test`
-        :return:
-        """
-        centres = np.append(centres, spot_centres, axis=0)
-        normals = np.append(normals, spot_normals, axis=0)
-        temperatures = np.append(temperatures, spot_temperatures, axis=0)
-        areas = np.append(areas, spot_areas, axis=0)
-        vis_test = np.append(vis_test, vis_test_spot, axis=0)
+    :param centres:
+    :param spot_centres: spot centres to append to `centres`
+    :param normals:
+    :param spot_normals: spot normals to append to `normals`
+    :param temperatures:
+    :param spot_temperatures: spot temperatures to append to `temperatures`
+    :param areas:
+    :param spot_areas: spot areas to append to `areas`
+    :param vis_test:
+    :param vis_test_spot: spot visibility test to append to `vis_test`
+    :return:
+    """
+    centres = np.append(centres, spot_centres, axis=0)
+    normals = np.append(normals, spot_normals, axis=0)
+    temperatures = np.append(temperatures, spot_temperatures, axis=0)
+    areas = np.append(areas, spot_areas, axis=0)
+    vis_test = np.append(vis_test, vis_test_spot, axis=0)
 
-        return centres, normals, temperatures, areas, vis_test
+    return centres, normals, temperatures, areas, vis_test
 
 
-def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test, vis_test_symmetry):
+def get_symmetrical_gammma(shape: Dict, shape_reduced: Tuple[int], normals: Dict[str, ndarray], join_vector: ndarray,
+                           vis_test: Dict[str, ndarray], vis_test_symmetry: Dict[str, ndarray]) -> Dict[str, ndarray]:
     """
     function uses surface symmetries to calculate cosine of angles between join vector and surface normals
 
@@ -127,22 +131,23 @@ def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test,
     return gamma
 
 
-def check_symmetric_gamma_for_negative_num(gamma, shape_reduced):
-        """
-        if cos < 0 it will be redefined as 0
-        :param gamma:
-        :param shape_reduced:
-        :return:
-        """
-        gamma['primary'][:, :shape_reduced[1]][gamma['primary'][:, :shape_reduced[1]] < 0] = 0.
-        gamma['primary'][:shape_reduced[0], shape_reduced[1]:][gamma['primary'][:shape_reduced[0],
-                                                               shape_reduced[1]:] < 0] = 0.
-        gamma['secondary'][:shape_reduced[0], :][gamma['secondary'][:shape_reduced[0], :] < 0] = 0.
-        gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]][gamma['secondary'][shape_reduced[0]:,
-                                                                 :shape_reduced[1]] < 0] = 0.
+def check_symmetric_gamma_for_negative_num(gamma: Dict[str, ndarray], shape_reduced: Tuple[int]) -> None:
+    """
+    if cos < 0 it will be redefined as 0
+    :param gamma:
+    :param shape_reduced:
+    :return:
+    """
+    gamma['primary'][:, :shape_reduced[1]][gamma['primary'][:, :shape_reduced[1]] < 0] = 0.
+    gamma['primary'][:shape_reduced[0], shape_reduced[1]:][gamma['primary'][:shape_reduced[0],
+                                                           shape_reduced[1]:] < 0] = 0.
+    gamma['secondary'][:shape_reduced[0], :][gamma['secondary'][:shape_reduced[0], :] < 0] = 0.
+    gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]][gamma['secondary'][shape_reduced[0]:,
+                                                             :shape_reduced[1]] < 0] = 0.
 
 
-def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
+def get_symmetrical_q_ab(shape: Tuple[int], shape_reduced: Tuple[int],
+                         gamma: Dict[str, ndarray], distance: ndarray) -> ndarray:
     """
     function uses surface symmetries to calculate parameter QAB = (cos gamma_a)*cos(gamma_b)/d**2 in reflection
     effect
@@ -176,7 +181,7 @@ def compute_filling_factor(surface_potential, lagrangian_points):
     return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
 
 
-def pre_calc_azimuths_for_detached_points(alpha):
+def pre_calc_azimuths_for_detached_points(alpha: float) -> Tuple[ndarray, ndarray, List[int]]:
     """
     returns azimuths for the whole quarter surface in specific order (near point, equator, far point and the rest)
     separator gives you information about position of these sections
@@ -220,7 +225,7 @@ def pre_calc_azimuths_for_detached_points(alpha):
     return phi, theta, separator
 
 
-def pre_calc_azimuths_for_overcontact_farside_points(alpha):
+def pre_calc_azimuths_for_overcontact_farside_points(alpha: float) -> Tuple[ndarray, ndarray, List[int]]:
     """
     calculates azimuths (directions) to the surface points of over-contact component on its far-side
 
@@ -267,7 +272,9 @@ def pre_calc_azimuths_for_overcontact_farside_points(alpha):
     return phi, theta, separator
 
 
-def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial, polar_radius, component):
+def pre_calc_azimuths_for_overcontact_neck_points(
+        alpha: float, neck_position: float, neck_polynomial: ndarray,
+        polar_radius: float, component: str) -> Tuple[ndarray, ndarray, List[int]]:
     # generating the neck
 
     # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
@@ -353,7 +360,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_pol
     return phi, z, separator
 
 
-def get_surface_points(*args):
+def get_surface_points(*args) -> ndarray:
     """
     function solves radius for given azimuths that are passed in *argss
 
@@ -375,7 +382,7 @@ def get_surface_points(*args):
     return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
 
-def get_surface_points_cylindrical(*args):
+def get_surface_points_cylindrical(*args) -> ndarray:
     """
     function solves radius for given azimuths that are passed in *argss
 
@@ -397,7 +404,7 @@ def get_surface_points_cylindrical(*args):
     return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))
 
 
-def component_to_list(component):
+def component_to_list(component: str) -> List[str]:
     """
     converts component name string into list
 
@@ -405,7 +412,7 @@ def component_to_list(component):
                       otherwise `primary` and `secondary` will be converted into lists [`primary`] and [`secondary`]
     :return:
     """
-    if not component:
+    if is_empty(component):
         component = ['primary', 'secondary']
     elif component in ['primary', 'secondary']:
         component = [component]

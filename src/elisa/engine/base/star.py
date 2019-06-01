@@ -4,11 +4,15 @@ from elisa.engine.base.body import Body
 from elisa.engine.pulsations import PulsationMode
 from elisa.engine import utils, logger
 from elisa.engine import const as c
+
+from numpy import ndarray
+from typing import Dict
 from copy import copy
 from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
 from astropy import units as u
-from elisa.engine import units as U
+from elisa.engine import units as e_units
+from elisa.engine.utils import is_empty
 
 
 class Star(Body):
@@ -21,7 +25,7 @@ class Star(Body):
     # this will be removed after full implementation of config system
     ATMOSPHERE_MODEL = 'black_body'
 
-    def __init__(self, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, name: str = None, suppress_logger: bool = False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
         super(Star, self).__init__(name=name, **kwargs)
 
@@ -29,23 +33,23 @@ class Star(Body):
         self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
 
         # default values of properties
-        self._surface_potential = None
-        self._backward_radius = None
-        self._polar_radius = None
-        self._gravity_darkening = None
-        self._synchronicity = None
-        self._forward_radius = None
-        self._side_radius = None
-        self._polar_log_g = None
-        self._log_g = None
-        self._equatorial_radius = None
-        self._critical_surface_potential = None
-        self._potential_gradient_magnitudes = None
-        self._polar_potential_gradient_magnitude = None
-        self._pulsations = None
-        self._filling_factor = None
-        self._metallicity = None
-        self.kwargs = kwargs
+        self._surface_potential: np.float64 or float = np.nan
+        self._backward_radius: np.float64 or float = np.nan
+        self._polar_radius: np.float64 or float = np.nan
+        self._gravity_darkening: np.float64 or float = np.nan
+        self._synchronicity: np.float64 or float = np.nan
+        self._forward_radius: np.float64 or float = np.nan
+        self._side_radius: np.float64 or float = np.nan
+        self._polar_log_g: np.float64 or float = np.nan
+        self._equatorial_radius: np.float64 or float = np.nan
+        self._critical_surface_potential: np.float64 or float = np.nan
+        self._potential_gradient_magnitudes: np.float64 or float = np.nan
+        self._polar_potential_gradient_magnitude: np.float64 or float = np.nan
+        self._pulsations: Dict = dict()
+        self._filling_factor: np.float64 or float = np.nan
+        self._metallicity: np.float64 or float = np.nan
+        self.kwargs: Dict = kwargs
+        self._log_g: ndarray = np.array([])
 
         utils.check_missing_kwargs(Star.KWARGS, kwargs, instance_of=Star)
 
@@ -56,8 +60,11 @@ class Star(Body):
                                    f"{self.__class__.__name__} to {kwargs[kwarg]}")
                 setattr(self, kwarg, kwargs[kwarg])
 
+    def has_pulsations(self):
+        return len(self._pulsations) > 0
+
     @property
-    def polar_log_g(self):
+    def polar_log_g(self) -> np.float64:
         """
         returns logarithm of polar surface gravity in SI
 
@@ -74,9 +81,9 @@ class Star(Body):
         :return:
         """
         if isinstance(polar_log_g, u.quantity.Quantity):
-            self._polar_log_g = np.float64(polar_log_g.to(U.LOG_ACCELERATION_UNIT))
+            self._polar_log_g = np.float64(polar_log_g.to(e_units.LOG_ACCELERATION_UNIT))
         elif isinstance(polar_log_g, (int, np.int, float, np.float)):
-            # self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(U.LOG_ACCELERATION_UNIT))
+            # self._polar_log_g = np.float64((log_g * u.dex(u.cm / u.s ** 2)).to(e_units.LOG_ACCELERATION_UNIT))
             self._polar_log_g = np.float64(polar_log_g)
         else:
             raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
@@ -85,7 +92,7 @@ class Star(Body):
                            "of class instance {} to {}".format(Star.__name__, self._polar_log_g))
 
     @property
-    def metallicity(self):
+    def metallicity(self) -> np.float64:
         """
         returns metallicity of the star, measured as log10(N_Fe/N_H)
         :return:
@@ -99,14 +106,14 @@ class Star(Body):
         else:
             raise TypeError('Input of variable `metallicity` is not (np.)int or (np.)float '
                             'instance.')
-        self._logger.debug("Setting property metalllicity "
-                           "of class instance {} to {}".format(Star.__name__, self._metallicity))
+        self._logger.debug(f"setting property metalllicity of class instance "
+                           f"{self.__class__.__name__} to {self._metallicity}")
 
     @property
-    def log_g(self):
+    def log_g(self) -> ndarray:
         """
         returns surface gravity array
-        :return:
+        :return: float
         """
         return self._log_g
 
@@ -120,7 +127,7 @@ class Star(Body):
         self._log_g = log_g
 
     @property
-    def pulsations(self):
+    def pulsations(self) -> Dict[int, PulsationMode]:
         return self._pulsations
 
     @pulsations.setter
@@ -129,7 +136,7 @@ class Star(Body):
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
 
     @property
-    def critical_surface_potential(self):
+    def critical_surface_potential(self) -> np.float64:
         return self._critical_surface_potential
 
     @critical_surface_potential.setter
@@ -137,7 +144,7 @@ class Star(Body):
         self._critical_surface_potential = potential
 
     @property
-    def surface_potential(self):
+    def surface_potential(self) -> np.float64:
         """
         returns surface potential of Star
         usage: xy.Star
@@ -157,7 +164,7 @@ class Star(Body):
         self._surface_potential = np.float64(potential)
 
     @property
-    def backward_radius(self):
+    def backward_radius(self) -> np.float64:
         """
         returns value of backward radius of an object in default unit
         usage: xy.backward_radius
@@ -167,7 +174,7 @@ class Star(Body):
         return self._backward_radius
 
     @property
-    def forward_radius(self):
+    def forward_radius(self) -> np.float64:
         """
         returns value of forward radius of an object in default unit returns None if it doesn't exist
         usage: xy.forward_radius
@@ -177,7 +184,7 @@ class Star(Body):
         return self._forward_radius
 
     @property
-    def polar_radius(self):
+    def polar_radius(self) -> np.float64:
         """
         returns value of polar radius of an object in default unit returns None if it doesn't exist
         usage: xy.polar_radius
@@ -187,7 +194,7 @@ class Star(Body):
         return self._polar_radius
 
     @property
-    def side_radius(self):
+    def side_radius(self) -> np.float64:
         """
         returns value of side radius of an object in default unit
         usage: xy.side_radius
@@ -197,7 +204,7 @@ class Star(Body):
         return self._side_radius
 
     @property
-    def gravity_darkening(self):
+    def gravity_darkening(self) -> np.float64:
         """
         returns gravity darkening
         usage: xy.gravity_darkening
@@ -217,10 +224,10 @@ class Star(Body):
         if 0 <= gravity_darkening <= 1:
             self._gravity_darkening = np.float64(gravity_darkening)
         else:
-            raise ValueError('Parameter gravity darkening = {} is out of range (0, 1)'.format(gravity_darkening))
+            raise ValueError(f'Parameter gravity darkening = {gravity_darkening} is out of range (0, 1)')
 
     @property
-    def equatorial_radius(self):
+    def equatorial_radius(self) -> np.float64:
         """
         returns equatorial radius in default units
 
@@ -229,7 +236,7 @@ class Star(Body):
         return self._equatorial_radius
 
     @property
-    def potential_gradient_magnitudes(self):
+    def potential_gradient_magnitudes(self) -> ndarray:
         """
         returns array of absolute values of potential gradients for each face of surface
 
@@ -246,7 +253,7 @@ class Star(Body):
         self._potential_gradient_magnitudes = potential_gradient_magnitudes
 
     @property
-    def polar_potential_gradient_magnitude(self):
+    def polar_potential_gradient_magnitude(self) -> np.float64:
         """
         returns array of absolute value of polar potential gradient
 
@@ -263,14 +270,14 @@ class Star(Body):
         self._polar_potential_gradient_magnitude = potential_gradient_magnitude
 
     @property
-    def filling_factor(self):
+    def filling_factor(self) -> np.float64:
         return self._filling_factor
 
     @filling_factor.setter
     def filling_factor(self, filling_factor):
         self._filling_factor = filling_factor
 
-    def calculate_polar_effective_temperature(self):
+    def calculate_polar_effective_temperature(self) -> np.float64:
         """
         returns polar effective temperature
 
@@ -282,7 +289,7 @@ class Star(Body):
                                                                   self.gravity_darkening)),
                                      0.25)
 
-    def calculate_effective_temperatures(self, gradient_magnitudes=None):
+    def calculate_effective_temperatures(self, gradient_magnitudes: ndarray = None) -> ndarray:
         """
         calculates effective temperatures for given gradient magnitudes, if None given star surface t_effs are
         calculated
@@ -290,11 +297,11 @@ class Star(Body):
         :param gradient_magnitudes:
         :return:
         """
-        if self.spots:  # temporary
-            if gradient_magnitudes is None:
+        if self.has_spots():  # temporary
+            if is_empty(gradient_magnitudes):
                 gradient_magnitudes = self.potential_gradient_magnitudes
         else:
-            if gradient_magnitudes is None:
+            if is_empty(gradient_magnitudes):
                 gradient_magnitudes = self.potential_gradient_magnitudes[:self.base_symmetry_faces_number]
 
         t_eff_polar = self.calculate_polar_effective_temperature()
@@ -303,7 +310,7 @@ class Star(Body):
 
         return t_eff if self.spots else t_eff[self.face_symmetry_vector]
 
-    def add_pulsations(self, points=None, faces=None, temperatures=None):
+    def add_pulsations(self, points: ndarray = None, faces: ndarray = None, temperatures: ndarray = None) -> np.float64:
         """
         function returns temperature map with added temperature perturbations caused by pulsations
 
@@ -313,7 +320,7 @@ class Star(Body):
         :return:
         """
 
-        def alp(x, *args):
+        def alp(x: np.float64, *args) -> np.float64:
             """
             returns negative value from imaginary value of associated Legendre polynomial (ALP), used in minimizer to
             find global maximum of real part of spherical harmonics
@@ -327,7 +334,7 @@ class Star(Body):
             return -abs(lpmv(m, l, x))
             # return -abs(np.real(sph_harm(m, l, x[0], x[1])))
 
-        def spherical_harmonics_renormalization_constant(l, m):
+        def spherical_harmonics_renormalization_constant(l: int, m: int) -> np.float64:
             old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
             Ns = int(np.power(5, np.ceil((l-m)/23))*((l-m)+1))
             output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=Ns, finish=fmin, full_output=True)
@@ -335,12 +342,12 @@ class Star(Body):
 
             x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
             result = abs(np.real(sph_harm(m, l, 0, np.arccos(x))))
-            return 1. / result
+            return 1.0 / result
 
-        if points is not None:
-            if faces is None or temperatures is None:
-                raise ValueError('`points` argument is not None but `faces` or `temperature` is. Please supply the '
-                                 'missing keyword arguments')
+        if not is_empty(points):
+            if is_empty(faces) or is_empty(temperatures):
+                raise ValueError('A `points` argument is not None but `faces` or `temperature` is.\n'
+                                 'Please supply the missing keyword arguments')
         else:
             points = copy(self.points)
             faces = copy(self.faces)
@@ -376,7 +383,7 @@ class Star(Body):
 
         return temperatures
 
-    def renormalize_temperatures(self):
+    def renormalize_temperatures(self) -> None:
         # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
         total_surface = np.sum(self.areas)
         if self.spots:
@@ -390,63 +397,8 @@ class Star(Body):
                 current_flux += np.sum(spot.areas * spot.temperatures)
 
         coefficient = np.power(desired_flux_value / current_flux, 0.25)
-        self._logger.debug('Surface temperature map renormalized by a factor {0}'.format(coefficient))
+        self._logger.debug(f'surface temperature map renormalized by a factor {coefficient}')
         self.temperatures *= coefficient
         if self.spots:
             for spot_index, spot in self.spots.items():
                 spot.temperatures *= coefficient
-
-    def calculate_intensity(self, temperatures=None):
-        """
-        calculates overall radiant flux radiated from unit area with certain effective temperature using atmosphere
-        model set in config file
-        :param temperatures: array
-        :return:
-        """
-        if temperatures is None:
-            temperatures = self.temperatures
-
-        if self.ATMOSPHERE_MODEL == 'black_body':
-            const = c.S_BOLTZMAN / np.pi
-            return const * np.power(temperatures, 4)
-        # here will go other atmosphere models
-
-    def calculate_spectral_radiance(self, temperatures=None, lambda_range=None, steps=None):
-        """
-        calculates spectral radiant flux radiated from unit area per solid angle with certain effective temperature
-        using atmosphere model set in config file
-        :param temperatures: array
-        :return:
-        """
-        if temperatures is None:
-            temperatures = self.temperatures
-
-        if self.ATMOSPHERE_MODEL == 'black_body':
-            k1 = 2 * c.PLANCK_CONST / c.C
-            k2 = c.PLANCK_CONST / (c.BOLTZMAN_CONST * self.temperatures)
-        # here insert other atmosphere models
-
-    def calculate_normal_radiance(self, intensities=None, areas=None):
-        """
-        returns radiance from each face along its normal
-
-        :param intensities: array
-        :param areas: array
-        :return:
-        """
-        if intensities is None:
-            raise ValueError('Intensities for given faces were not supplied.')
-        if areas is None:
-            areas = self.areas
-        if np.shape(intensities) != np.shape(areas):
-            raise ValueError('Intensities and areas does not have the same shapes.')
-
-        # in case of object from BinarySystem there is a factor major_semiaxis^2 missing this can be later renormalized
-        #  using less computational power
-        return intensities * areas
-
-    def has_spots(self):
-        return not len(self._spots) == 0
-
-
-
