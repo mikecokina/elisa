@@ -241,12 +241,18 @@ def compute_eccentric_lightcurve(self, **kwargs):
     position_method = kwargs.pop("position_method")
     orbital_motion = position_method(phase=phases)
 
+    # in case of clean surface, symmetry around semi-major axis can be utilized
+
     band_curves = {key: list() for key in kwargs["passband"].keys()}
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
+    #initial values of radii to be compared with
+    orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
+    # test and therefore the surface will be built
     for orbital_position in orbital_motion:
         forward_rad_p = self.calculate_forward_radius('primary', components_distance=orbital_position.distance)
         forward_rad_s = self.calculate_forward_radius('secondary', components_distance=orbital_position.distance)
+
         self.build(components_distance=orbital_position.distance)
         system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
                                                                              ecl_boundaries=ecl_boundaries)
@@ -279,16 +285,18 @@ def compute_eccentric_lightcurve(self, **kwargs):
             band_curves[band].append(flux)
 
     # temporary
-    from matplotlib import pyplot as plt
-    for band, curve in band_curves.items():
-        x = np.arange(len(curve))
-        plt.scatter(x, curve)
-    plt.show()
+    # from matplotlib import pyplot as plt
+    # for band, curve in band_curves.items():
+    #     x = np.arange(len(curve))
+    #     plt.scatter(x, curve)
+    # plt.show()
 
     return band_curves
 
 
-
+def return_symmetrical_phases(self, phases):
+    # azimuths = np.array([orb_pos.azimuth for orb_pos in orbital_motion])
+    pass
 
 
 if __name__ == "__main__":
