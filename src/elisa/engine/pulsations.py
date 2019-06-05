@@ -23,14 +23,14 @@ class PulsationMode(object):
         self._logger.info(f"initialising object {self.__class__.__name__}")
         self._logger.debug(f"setting property components of class instance {self.__class__.__name__}")
 
-        # self._n = None
-        self._l = None
-        self._m = None
-        self._amplitude = None
-        self._frequency = None
-        self._start_phase: int = 0
-        self._mode_axis_theta: int = 0
-        self._mode_axis_phi: int = 0
+        # self._n = np.nan
+        self._l = np.nan
+        self._m = np.nan
+        self._amplitude = np.nan
+        self._frequency = np.nan
+        self._start_phase = 0
+        self._mode_axis_theta = 0
+        self._mode_axis_phi = 0
 
         self._logger = logging.getLogger(PulsationMode.__name__)
 
@@ -69,17 +69,19 @@ class PulsationMode(object):
     #                          .format(radial_degree, PulsationMode.__name__))
 
     @property
-    def l(self) -> int:
+    def l(self):
         """
-        returns number of surface nodal planes
+        R eturns number of surface nodal planes.
+
         :return: int
         """
         return self._l
 
     @l.setter
-    def l(self, surface_nodal_planes: int):
+    def l(self, surface_nodal_planes):
         """
-        setter for number of surface nodal planes
+        Setter for number of surface nodal planes.
+
         :param surface_nodal_planes: int
         :return:
         """
@@ -90,17 +92,19 @@ class PulsationMode(object):
                              f'in pulsation mode class instance {self.__class__.__name__} is not valid.')
 
     @property
-    def m(self) -> int:
+    def m(self):
         """
-        returns number of azimutal surface nodal planes for given pulsation mode
-        :return:
+        Returns number of azimutal surface nodal planes for given pulsation mode.
+
+        :return: int
         """
         return self._m
 
     @m.setter
     def m(self, azimutal_nodal_planes: int):
         """
-        setter for number of azimutal nodal planes
+        Setter for number of azimutal nodal planes.
+
         :param azimutal_nodal_planes: int
         :return:
         """
@@ -111,9 +115,10 @@ class PulsationMode(object):
                              f'in pulsation mode class instance {self.__class__.__name__} is not valid.')
 
     @property
-    def amplitude(self) -> float:
+    def amplitude(self):
         """
-        returns amplitude of pulsation mode in kelvins
+        Returns amplitude of pulsation mode in kelvins.
+
         :return: float
         """
         return self._amplitude
@@ -121,7 +126,8 @@ class PulsationMode(object):
     @amplitude.setter
     def amplitude(self, amplitude):
         """
-        setter for temperature amplitude of pulsation mode
+        Setter for temperature amplitude of pulsation mode.
+        
         :param amplitude: float or astropy.unit.quantity.Quantity
         :return:
         """
@@ -130,23 +136,25 @@ class PulsationMode(object):
         elif isinstance(amplitude, (int, np.int, float, np.float)):
             self._amplitude = np.float64(amplitude)
         else:
-            raise TypeError('Value of `amplitude` is not (np.)int or (np.)float '
+            raise TypeError('Value of `amplitude` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
         if self._amplitude < 0:
             raise ValueError('Temperature amplitude of mode has to be non-negative number.')
 
     @property
-    def frequency(self) -> float:
+    def frequency(self):
         """
-        returns frequency of pulsation mode in default frequency unit
+        Returns frequency of pulsation mode in default frequency unit.
+        
         :return: float
         """
         return self._frequency
 
     @frequency.setter
-    def frequency(self, frequency: any):
+    def frequency(self, frequency):
         """
-        frequency setter, if unit in astropy format is not given, default frequency unit is assumed
+        Frequency setter.
+        If unit in astropy format is not given, default frequency unit is assumed.
 
         :param frequency: float or astropy.unit.quantity.Quantity
         :return:
@@ -156,22 +164,23 @@ class PulsationMode(object):
         elif isinstance(frequency, (int, np.int, float, np.float)):
             self._frequency = np.float64(frequency)
         else:
-            raise TypeError('Value of `frequency` is not (np.)int or (np.)float '
+            raise TypeError('Value of `frequency` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def start_phase(self) -> float:
+    def start_phase(self):
         """
-        phase shift of the pulsation mode, basically constant that will be added to time dependent part of the equation.
+        Phase shift of the pulsation mode. 
+        It is basically constant that will be added to time dependent part of the equation.
 
         :return: float
         """
         return self._start_phase
 
     @start_phase.setter
-    def start_phase(self, phase: float):
+    def start_phase(self, phase):
         """
-        setter for phase shift of the given pulsation mode,
+        Setter for phase shift of the given pulsation mode.
 
         :param phase: float
         :return:
@@ -183,20 +192,21 @@ class PulsationMode(object):
                             f'{self.__class__.__name__} pulsation mode instance.')
 
     @property
-    def mode_axis_theta(self) -> float:
+    def mode_axis_theta(self):
         """
-        returns polar latitude angle of pulsation mode axis
+        Returns polar latitude angle of pulsation mode axis.
 
-        :return: np.float - in radians
+        :return: (numpy.)float; in radians
         """
         return self._mode_axis_theta
 
     @mode_axis_theta.setter
-    def mode_axis_theta(self, mode_axis_theta: any):
+    def mode_axis_theta(self, mode_axis_theta):
         """
-        setter for latitude of pulsation mode axis, if unit is not supplied, degrees are assumed
+        Setter for latitude of pulsation mode axis. 
+        If unit is not supplied, degrees are assumed.
 
-        :param mode_axis_theta: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :param mode_axis_theta: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return:
         """
         if isinstance(mode_axis_theta, u.quantity.Quantity):
@@ -204,26 +214,27 @@ class PulsationMode(object):
         elif isinstance(mode_axis_theta, (int, np.int, float, np.float)):
             self._mode_axis_theta = np.float64((mode_axis_theta*u.deg).to(e_units.ARC_UNIT))
         else:
-            raise TypeError('Input of variable `mode_axis_theta` is not (np.)int or (np.)float '
+            raise TypeError('Input of variable `mode_axis_theta` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
         if not 0 <= self._mode_axis_theta < c.PI:
             raise ValueError(f'Value of `mode_axis_theta`: {self._mode_axis_theta} is outside bounds (0, pi).')
 
     @property
-    def mode_axis_phi(self) -> float:
+    def mode_axis_phi(self):
         """
-        returns longitude angle of pulsation mode axis at t_0
+        Returns longitude angle of pulsation mode axis at t_0.
 
-        :return: np.float - in radians
+        :return: (npumpy.)float; in radians
         """
         return self._mode_axis_phi
 
     @mode_axis_phi.setter
-    def mode_axis_phi(self, mode_axis_phi: any):
+    def mode_axis_phi(self, mode_axis_phi):
         """
-        setter for longitude of pulsation mode axis, if unit is not supplied, degrees are assumed
+        Setter for longitude of pulsation mode axis. 
+        If unit is not supplied, degrees are assumed.
 
-        :param mode_axis_phi: (np.)int, (np.)float, astropy.unit.quantity.Quantity
+        :param mode_axis_phi: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return:
         """
         if isinstance(mode_axis_phi, u.quantity.Quantity):
@@ -231,7 +242,7 @@ class PulsationMode(object):
         elif isinstance(mode_axis_phi, (int, np.int, float, np.float)):
             self._mode_axis_phi = np.float64((mode_axis_phi * u.deg).to(e_units.ARC_UNIT))
         else:
-            raise TypeError('Input of variable `mode_axis_phi` is not (np.)int or (np.)float '
+            raise TypeError('Input of variable `mode_axis_phi` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
         if not 0 <= self._mode_axis_phi <= c.FULL_ARC:
             raise ValueError(f'Value of `mode_axis_phi`: {self._mode_axis_phi} is outside bounds (0, 2pi).')
