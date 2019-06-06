@@ -1,11 +1,8 @@
-import logging
 import os
-from typing import List, Dict
-
+import logging
 import numpy as np
 import pandas as pd
 
-from pandas import DataFrame
 from elisa.conf import config
 from elisa.engine import utils, const
 from scipy import interpolate
@@ -16,9 +13,9 @@ config.set_up_logging()
 logger = logging.getLogger("ld")
 
 
-def get_metallicity_from_ld_table_filename(filename: str) -> float:
+def get_metallicity_from_ld_table_filename(filename):
     """
-    get metallicity as number from filename
+    Get metallicity as number from filename typicaly used in van hame ld tables.
 
     :param filename: str
     :return: float
@@ -29,9 +26,9 @@ def get_metallicity_from_ld_table_filename(filename: str) -> float:
     return value * sign
 
 
-def get_van_hamme_ld_table_filename(passband: str, metallicity: float, law: str = None) -> str:
+def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
     """
-    get filename with stored coefficients for given passband, metallicity and limb darkening law
+    Get filename with stored coefficients for given passband, metallicity and limb darkening law.
 
     :param passband: str
     :param metallicity: str
@@ -42,9 +39,9 @@ def get_van_hamme_ld_table_filename(passband: str, metallicity: float, law: str 
     return f"{config.LD_LAW_TO_FILE_PREFIX[law]}.{passband}.{utils.numeric_metallicity_to_string(metallicity)}.csv"
 
 
-def get_van_hamme_ld_table(passband: str, metallicity: float, law: str = None) -> DataFrame:
+def get_van_hamme_ld_table(passband, metallicity, law=None):
     """
-    get content of van hamme table
+    Get content of van hamme table (read csv file).
 
     :param passband: str
     :param metallicity: str
@@ -59,9 +56,9 @@ def get_van_hamme_ld_table(passband: str, metallicity: float, law: str = None) -
     return pd.read_csv(path)
 
 
-def get_van_hamme_ld_table_by_name(fname: str) -> DataFrame:
+def get_van_hamme_ld_table_by_name(fname):
     """
-    get content of van hamme table
+    Get content of van hamme table defined by filename (assume it is stored in configured directory).
 
     :param fname: str
     :return: pandas.DataFrame
@@ -72,9 +69,9 @@ def get_van_hamme_ld_table_by_name(fname: str) -> DataFrame:
     return pd.read_csv(path)
 
 
-def get_relevant_ld_tables(passband: str, metallicity: float) -> List[str]:
+def get_relevant_ld_tables(passband, metallicity):
     """
-    get filename of van hamme tables for surrounded metallicities and given passband
+    Get filename of van hamme tables for surrounded metallicities and given passband.
 
     :param passband: str
     :param metallicity: str
@@ -86,14 +83,13 @@ def get_relevant_ld_tables(passband: str, metallicity: float) -> List[str]:
     return files
 
 
-def interpolate_on_ld_grid(temperature: List, log_g: List, metallicity: float, passband: Dict or List,
-                           author: str = None) -> Dict:
+def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=None):
     """
-    get limb darkening coefficients based on van hamme tables for given temperatures, log_gs and metallicity
+    Get limb darkening coefficients based on van hamme tables for given temperatures, log_gs and metallicity.
 
-    :param passband: dict
-    :param temperature: iterable float
-    :param log_g: iterable float
+    :param passband: Dict
+    :param temperature: Iterable float
+    :param log_g: Iterable float
     :param metallicity: float
     :param author: str
     :return: pandas.DataFrame
