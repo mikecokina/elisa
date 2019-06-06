@@ -4,10 +4,7 @@ import sys
 import numpy as np
 import pandas as pd
 
-from numpy import ndarray
-from typing import List, Dict
 from scipy import interpolate
-from pandas import DataFrame
 
 from elisa.conf import config
 from elisa.engine.binary_system.system import BinarySystem
@@ -18,24 +15,40 @@ config.set_up_logging()
 
 
 class PassbandContainer(object):
-    def __init__(self, table: DataFrame, passband: str) -> None:
-        self.left_bandwidth: float = np.nan
-        self.right_bandwidth: float = np.nan
-        self.akima: object = None
-        self._table: DataFrame = DataFrame({})
-        self.wave_unit: str = "angstrom"
-        self.passband: str = passband
+    def __init__(self, table, passband):
+        self.left_bandwidth = np.nan
+        self.right_bandwidth = np.nan
+        self.akima = None
+        self._table = pd.DataFrame({})
+        self.wave_unit = "angstrom"
+        self.passband = passband
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
         self.wave_to_si_mult: float = 1e-10
 
         setattr(self, 'table', table)
 
     @property
-    def table(self) -> DataFrame:
+    def table(self):
+        """
+        Return pandas dataframe which represent pasband table as dependecy of throughput on wavelength.
+
+        :return: pandas.DataFrame
+        """
         return self._table
 
     @table.setter
-    def table(self, df: DataFrame):
+    def table(self, df):
+        """
+        Setter for passband table.
+        It precompute left and right bandwidth for given table and also interpolation function placeholder.
+        Akima1DInterpolator is used. If `bolometric` passband is used then interpolation function is like::
+
+            lambda x: 1.0
+
+
+        :param df: pandas.DataFrame
+        :return:
+        """
         self._table = df
         self.akima = Observer.bolometric if (self.passband.lower() in ['bolometric']) else \
             interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
@@ -45,30 +58,52 @@ class PassbandContainer(object):
 
 
 class Observer(object):
-    def __init__(self, passband: List or str, system: BinarySystem or SingleSystem):
+    def __init__(self, passband, system):
         """
-        initializer for observer class
-        :param passband: string - for valid filter name see config.py file
-        :param system:
+        Initializer for observer class.
+
+        :param passband: string; for valid filter name see config.py file
+        :param system: system instance (BinarySystem or SingleSystem)
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._logger.info("initialising Observer instance")
         # specifying what kind of system is observed
         self._system: BinarySystem or SingleSystem = system
-        self._system_cls: type = type(self._system)
+        self._system_cls = type(self._system)
 
         # self._system._suppress_logger = True
 
-        self.left_bandwidth: float = sys.float_info.max
-        self.right_bandwidth: float = 0.0
-        self.passband: Dict[str] = dict()
+        self.left_bandwidth = sys.float_info.max
+        self.right_bandwidth = 0.0
+        self.passband = dict()
         self.init_passband(passband)
 
     @staticmethod
-    def bolometric(*args, **kwargs) -> float:
+    def bolometric(*args, **kwargs):
+        """
+        Bolometric passband interpolation function in way of lambda x: 1.0
+
+        :param args:  Tuple
+        :param kwargs: Dict
+        :return: float; 1.0
+        """
         return 1.0
 
-    def init_passband(self, passband: List[str] or str) -> None:
+    def init_passband(self, passband):
+        """
+        Passband initializing method for Observer instance.
+        During initialialization `self.passband` Dict is fill in way::
+
+            {`passband`: PassbandContainer()}
+
+        and global left and right passband bandwidth is set.
+        If there is several passband defined on different intervals, e.g. ([350, 650], [450, 750]) then global limits
+        are total boarder values, in example case as [350, 750].
+
+
+        :param passband: str or Iterable str
+        :return:
+        """
         passband = [passband] if isinstance(passband, str) else passband
         for band in passband:
             if band in ['bolometric']:
@@ -85,14 +120,30 @@ class Observer(object):
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
             self.passband[band] = PassbandContainer(table=df, passband=band)
 
-    def setup_bandwidth(self, left_bandwidth: float, right_bandwidth: float):
+    def setup_bandwidth(self, left_bandwidth, right_bandwidth):
+        """
+        Find whether supplied left and right bandwidth are in currently set boundaries and nothing has to be done
+        or any is out of current bound and related has to be changed to higher (`right_bandwidth`)
+        or lower (`left_bandwidth`).
+
+
+        :param left_bandwidth: float
+        :param right_bandwidth: float
+        :return:
+        """
         if left_bandwidth < self.left_bandwidth:
             self.left_bandwidth = left_bandwidth
         if right_bandwidth > self.right_bandwidth:
             self.right_bandwidth = right_bandwidth
 
     @staticmethod
-    def get_passband_df(passband: str) -> DataFrame:
+    def get_passband_df(passband):
+        """
+        Read content o passband table (csv file) based on passband name.
+
+        :param passband: str
+        :return: pandas.DataFrame
+        """
         logging.debug(f"obtaining passband response function: {passband}")
         if passband not in config.PASSBANDS:
             raise ValueError('Invalid or unsupported passband function')
@@ -101,8 +152,18 @@ class Observer(object):
         df[config.PASSBAND_DATAFRAME_WAVE] = df[config.PASSBAND_DATAFRAME_WAVE] * 10.0
         return df
 
-    def observe(self, from_phase: float = None, to_phase: float = None, phase_step: float = None,
-                phases: list or set = None):
+    def observe(self, from_phase=None, to_phase=None, phase_step=None, phases=None):
+        """
+        Method for observation simulation. Based on input parmeters and supplied Ob server system on initialization
+        will compute lightcurve.
+
+        :param from_phase: float
+        :param to_phase: float
+        :param phase_step: float
+        :param phases: Iterable float
+        :return: Dict
+        """
+
         if not phases and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("missing arguments")
 
@@ -152,12 +213,17 @@ class Observer(object):
         self._logger.info("observation finished")
         return curves
 
-    def base_phase_interval(self, phases: ndarray):
+    def base_phase_interval(self, phases):
         """
-        function reduces original phase interval to base interval (0, 1) in case of LC without pulsations
-        :param phases: np.array - phases to reduce
-        :return: base_phases - np.array of unique phases between (0, 1)
-                 reverse_indices - np.array - mask applicable to `base_phases` which will reconstruct original `phases`
+        Function reduces original phase interval to base interval (0, 1) in case of LC without pulsations.
+
+        :param phases: ndarray; phases to reduce
+        :return: Tuple; (base_phase: ndarray, reverse_indices: ndarray)
+
+        ::
+
+            base_phases:  ndarray of unique phases between (0, 1)
+            reverse_indices: ndarray mask applicable to `base_phases` which will reconstruct original `phases`
         """
         if not self._system.primary.has_pulsations() and not self._system.primary.has_pulsations():
             base_interval = np.round(phases % 1, 9)
