@@ -16,6 +16,12 @@ config.set_up_logging()
 
 class PassbandContainer(object):
     def __init__(self, table, passband):
+        """
+        Setup PassbandContainier object. It carres dependedncies of throughputs on wavelengths for given passband.
+
+        :param table: pandads.DataFrame
+        :param passband: str
+        """
         self.left_bandwidth = np.nan
         self.right_bandwidth = np.nan
         self.akima = None
