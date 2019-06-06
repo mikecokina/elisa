@@ -1,11 +1,17 @@
 import numpy as np
 
-from numpy import ndarray
-from typing import Tuple
 
+def get_flaten_properties(component):
+    """
+    Return flatten ndarrays of points, faces, etc. from object instance and spot instances for given object.
 
-def get_flaten_properties(component) \
-        -> Tuple[ndarray, ndarray, ndarray, ndarray, ndarray]:
+    :param component: Star instance
+    :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray]
+
+    ::
+
+        Tuple(points, normals, faces, temperatures, log_g)
+    """
     points = component.points
     normals = component.normals
     faces = component.faces

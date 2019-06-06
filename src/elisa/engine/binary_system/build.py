@@ -1,19 +1,18 @@
 import numpy as np
 
 from copy import copy
-from numpy import ndarray
-from typing import List, Tuple, Dict
 from elisa.conf import config
 from elisa.engine.binary_system import static
 from elisa.engine.utils import is_empty
 
 
-def build_surface_gravity(self, component: str or List = None, components_distance: float = None) -> None:
+def build_surface_gravity(self, component=None, components_distance=None):
     """
-    function calculates gravity potential gradient magnitude (surface gravity) for each face
+    Function calculates gravity potential gradient magnitude (surface gravity) for each face.
+    Value assigned to face is mean of values calculated in corners of given face.
 
-    :param self:
-    :param component: `primary` or `secondary`
+    :param self: BinarySystem instance
+    :param component: str; `primary` or `secondary`
     :param components_distance: float
     :return:
     """
@@ -51,7 +50,15 @@ def build_surface_gravity(self, component: str or List = None, components_distan
                 spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
 
 
-def build_faces_orientation(self, component: str or List = None, components_distance: float = None) -> None:
+def build_faces_orientation(self, component=None, components_distance=None):
+    """
+    Compute face orientation (normals) for each face.
+
+    :param self: BinarySystem instance
+    :param component: str; `primary` or `secondary`
+    :param components_distance: float
+    :return:
+    """
     component = static.component_to_list(component)
     com_x = {'primary': 0, 'secondary': components_distance}
 
@@ -61,9 +68,10 @@ def build_faces_orientation(self, component: str or List = None, components_dist
         component_instance.set_all_normals(com=com_x[_component])
 
 
-def build_temperature_distribution(self, component: str = None, components_distance: float = None) -> None:
+def build_temperature_distribution(self, component=None, components_distance=None):
     """
-    function calculates temperature distribution on across all faces
+    Function calculates temperature distribution on across all faces.
+    Value assigned to face is mean of values calculated in corners of given face.
 
     :param self: BinarySystem; instance
     :param components_distance: str
@@ -103,18 +111,17 @@ def build_temperature_distribution(self, component: str = None, components_dista
                                components_distance=components_distance)
 
 
-def build_surface_map(self, colormap: ndarray = None, component: str = None,
-                      components_distance: float = None, return_map: bool = False) -> Dict[str, ndarray] or None:
+def build_surface_map(self, colormap=None, component=None, components_distance=None, return_map=False):
     """
-    function calculates surface maps (temperature or gravity acceleration) for star and spot faces and it can return
-    them as one array if return_map=True
+    Function calculates surface maps (temperature or gravity acceleration) for star and spot faces and it can return
+    them as one array if return_map=True.
 
     :param self: BinarySystem; instance
-    :param return_map: if True function returns arrays with surface map including star and spot segments
+    :param return_map: bool; if True function returns arrays with surface map including star and spot segments
     :param colormap: switch for `temperature` or `gravity` colormap to create
     :param component: `primary` or `secondary` component surface map to calculate, if not supplied
     :param components_distance: distance between components
-    :return:
+    :return: ndarray or None
     """
     if is_empty(colormap):
         raise ValueError('Specify colormap to calculate (`temperature` or `gravity_acceleration`).')
@@ -177,9 +184,9 @@ def build_surface_map(self, colormap: ndarray = None, component: str = None,
     return
 
 
-def build_mesh(self, component: str = None, components_distance: float = None, **kwargs) -> None:
+def build_mesh(self, component=None, components_distance=None, **kwargs):
     """
-    build points of surface for primary or/and secondary component !!! w/o spots yet !!!
+    Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
 
     :param self: BinarySystem; instance
     :param component: str or empty
@@ -206,25 +213,20 @@ def build_mesh(self, component: str = None, components_distance: float = None, *
 
         component_instance = getattr(self, _component)
         self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
-        # if self.morphology == 'over-contact':
-        #     component_instance.incorporate_spots_overcontact_mesh(component_com=component_x_center[_component])
-        # else:
-        # fixme: solve unification for single star, detached system and over contact system
-        # TODO: it seems this was already solved, just discusse solution again!!!! and then cleanup this mess
         component_instance.incorporate_spots_mesh(component_com=component_x_center[_component])
 
 
-def build_faces(self, component: str = None, components_distance: float = None) -> None:
+def build_faces(self, component=None, components_distance=None):
     """
-    function creates faces of the star surface for given components provided you already calculated surface points
-    of the component
+    Function creates faces of the star surface for given components. Faces are evaluated upon points that
+    have to be in this time already calculated.
 
     :param self: BinarySystem; instance
     :type components_distance: float
-    :param component: `primary` or `secondary` if not supplied both components are calculated
+    :param component: `primary` or `secondary` if not supplied both component are calculated
     :return:
     """
-    if not components_distance:
+    if is_empty(components_distance):
         raise ValueError('components_distance value was not provided.')
 
     component = static.component_to_list(component)
@@ -235,17 +237,19 @@ def build_faces(self, component: str = None, components_distance: float = None) 
             else self.build_surface_with_no_spots(_component, components_distance=components_distance)
 
 
-def build_surface(self, component: str = None, components_distance: float = None,
-                  return_surface: bool = False, **kwargs) -> Tuple[Dict[str, ndarray], Dict[str, ndarray]] or None:
+def build_surface(self, component=None, components_distance=None, return_surface=False, **kwargs):
     """
-    function for building of general binary star component surfaces including spots
+    Function for building of general binary star component surfaces including spots. It will compute point mesh for
+    Star instance and also spots, incorporate spots and makes a triangulation.
+
+    It is possible to return computet surface (points and faces indices) if `return_surface` parametre is set to True.
 
     :param self: BinarySystem; instance
-    :param return_surface: bool - if true, function returns dictionary of arrays with all points and faces
-                                  (surface + spots) for each component
+    :param return_surface: bool; if True, function returns dictionary of arrays with all points and faces
+                                 (surface + spots) for each component
     :param components_distance: distance between components
-    :param component: specify component, use `primary` or `secondary`
-    :return:
+    :param component: str; specify component, use `primary` or `secondary`
+    :return: Tuple or None
     """
     if not components_distance:
         raise ValueError('components_distance value was not provided.')
@@ -274,13 +278,13 @@ def build_surface(self, component: str = None, components_distance: float = None
     return (ret_points, ret_faces) if return_surface else None
 
 
-def build_surface_with_no_spots(self, component: str = None, components_distance: float = None) -> None:
+def build_surface_with_no_spots(self, component=None, components_distance=None):
     """
-    function for building binary star component surfaces without spots
+    Function for building binary star component surfaces without spots.
 
     :param self: BinarySystem; instance
     :param components_distance: float
-    :param component:
+    :param component: `primary` or `secondary` if not supplied both component are calculated
     :return:
     """
     component = static.component_to_list(component)
@@ -319,12 +323,12 @@ def build_surface_with_no_spots(self, component: str = None, components_distance
         component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
 
 
-def build_surface_with_spots(self, component: str = None, components_distance: float = None) -> None:
+def build_surface_with_spots(self, component=None, components_distance=None):
     """
-    function capable of triangulation of spotty stellar surfaces, it merges all surface points, triangulates them
-    and then sorts the resulting surface faces under star or spot
+    Function capable of triangulation of spotty stellar surfaces.
+    It merges all surface points, triangulates them and then sorts the resulting surface faces under star or spot.
 
-    :param self:
+    :param self: BinarySystem instance
     :param components_distance: float
     :param component: str `primary` or `secondary`
     :return:
@@ -345,7 +349,14 @@ def build_surface_with_spots(self, component: str = None, components_distance: f
         component_instance.remap_surface_elements(model, points)
 
 
-def compute_all_surface_areas(self, component: str) -> None:
+def compute_all_surface_areas(self, component):
+    """
+    Compute surface are of all faces (spots included).
+
+    :param self: BinaryStar instance
+    :param component: str `primary` or `secondary`
+    :return:
+    """
     component = static.component_to_list(component)
     for _component in component:
         component_instance = getattr(self, _component)
