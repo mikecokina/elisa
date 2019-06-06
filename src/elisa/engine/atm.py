@@ -4,8 +4,6 @@ import os
 import sys
 import warnings
 
-from typing import List, Dict, Tuple, Iterable
-from numpy import ndarray
 from queue import Queue
 from threading import Thread
 
@@ -13,12 +11,13 @@ import numpy as np
 import pandas as pd
 from copy import deepcopy
 from scipy import integrate, interpolate
-from pandas import DataFrame, Series
+from pandas import DataFrame
 
 from elisa.conf import config
 from elisa.conf.config import ATM_MODEL_DATAFRAME_FLUX, ATM_MODEL_DATAFRAME_WAVE
 from elisa.conf.config import PASSBAND_DATAFRAME_WAVE, PASSBAND_DATAFRAME_THROUGHPUT
 from elisa.engine import utils, const
+from typing import Iterable
 
 
 config.set_up_logging()
@@ -55,9 +54,8 @@ ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
 
 
 class AtmDataContainer(object):
-    def __init__(
-            self, model: DataFrame, temperature: float, log_g: float, metallicity: float, fpath: str = '') -> None:
-        self._model = None
+    def __init__(self, model, temperature, log_g, metallicity, fpath=''):
+        self._model = pd.DataFrame([])
         self.temperature = temperature
         self.log_g = log_g
         self.metallicity = metallicity
@@ -66,28 +64,74 @@ class AtmDataContainer(object):
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
         self.flux_to_si_mult = 1e-7 * 1e4 * 1e10  # * (1.0/np.pi)
         self.wave_to_si_mult = 1e-10
-        self.left_bandwidth = None
-        self.right_bandwidth = None
+        self.left_bandwidth = np.nan
+        self.right_bandwidth = np.nan
         self.fpath = fpath
 
         setattr(self, 'model', model)
 
     def is_empty(self):
+        """
+        Find out wheter model container which carries DataFrame of atmospheric model::
+
+            pd.DataFrame({
+                <intensity>: ndarray([float])
+                <wavelength>: ndarray([float])
+            })
+
+        AmtDatContainer instance is empty when model pandas DataFrame container is empty.
+
+        :return: bool
+        """
         return self._model.empty
 
     @property
-    def model(self) -> DataFrame:
+    def model(self):
+        """
+        return atmospheric model DataFrame::
+
+            pd.DataFrame({
+                <intensity>: ndarray([float])
+                <wavelength>: ndarray([float])
+            })
+
+        :return: pandas.DataFrame
+        """
         return self._model
 
     @model.setter
-    def model(self, df: DataFrame):
+    def model(self, df):
+        """
+        Setup model container which carries DataFrame of atmospheric model::
+
+            pd.DataFrame({
+                <intensity>: ndarray([float])
+                <wavelength>: ndarray([float])
+            })
+
+        and left and right bandwidth of such container.
+
+        :param df: pandasDataFrame
+        :return:
+        """
         self._model = df
         self.left_bandwidth = df[ATM_MODEL_DATAFRAME_WAVE].min()
         self.right_bandwidth = df[ATM_MODEL_DATAFRAME_WAVE].max()
 
 
 class IntensityContainer(object):
-    def __init__(self, intensity: ndarray, temperature: float, log_g: float, metallicity: float) -> None:
+    """
+    Intended to keep information about integrated radiance for given params.
+    """
+    def __init__(self, intensity, temperature, log_g, metallicity):
+        """
+        Initialise container with given parametres.
+
+        :param intensity: float
+        :param temperature: float
+        :param log_g: float
+        :param metallicity: float
+        """
         self.intensity = intensity
         self.temperature = temperature
         self.log_g = log_g
@@ -96,20 +140,19 @@ class IntensityContainer(object):
 
 class NaiveInterpolatedAtm(object):
     @staticmethod
-    def radiance(temperature: List or ndarray, log_g: List or ndarray,
-                 metallicity: float, atlas: str, **kwargs) -> Dict[str, ndarray]:
+    def radiance(temperature, log_g, metallicity, atlas, **kwargs):
         """
-        compute radiance for given atmospheric parametres with regards to given passbands
+        Compute radiance for given atmospheric parametres with regards to given passbands.
 
-        :param temperature: list
-        :param log_g: list
+        :param temperature: ndarray
+        :param log_g: ndarray
         :param metallicity: float
         :param atlas: str
         :param kwargs:
         :**kwargs options**:
                 * **left_bandwidth** * -- float; maximal allowed wavelength from left
                 * **right_bandwidth** * -- float; maximal allowed wavelength from right
-                * **passband** * -- dict; { str: elisa.observer.observer.PassbandContainer }
+                * **passband** * -- Dict[str, elisa.observer.observer.PassbandContainer]
         :return: list
         """
         # fixme: uncomment following line
@@ -141,8 +184,22 @@ class NaiveInterpolatedAtm(object):
         return compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
     @staticmethod
-    def compute_interpolation_weights(temperatures: List[float], top_atm_containers: List[AtmDataContainer],
-                                      bottom_atm_containers: List[AtmDataContainer]) -> ndarray:
+    def compute_interpolation_weights(temperatures, top_atm_containers, bottom_atm_containers):
+        """
+        Compute interpolation weights between two models of atmoshperes.
+        Weights are computet as::
+
+            (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
+
+        what means we use linear approach.
+        If there is np.nan (it cames from same surounded values), such value is replaced with 1.0.
+        1.0 is choosen to fit interpolation method and return correct atmosphere.
+
+        :param temperatures: ndarray[float]
+        :param top_atm_containers: ndarray[AtmDataContainer]
+        :param bottom_atm_containers: ndarray[AtmDataContainer]
+        :return: ndarray[float]
+        """
         top_temperatures = np.array([a.temperature for a in top_atm_containers])
         bottom_temperatures = np.array([a.temperature for a in bottom_atm_containers])
         result = (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
@@ -150,19 +207,17 @@ class NaiveInterpolatedAtm(object):
         return result
 
     @staticmethod
-    def compute_unknown_intensity_from_surounded_containers(
-            weight: float, top_atm_container: AtmDataContainer,
-            bottom_atm_container: AtmDataContainer) -> Tuple[ndarray, ndarray]:
+    def compute_unknown_intensity_from_surounded_containers(weight, top_atm_container: AtmDataContainer,
+                                                            bottom_atm_container: AtmDataContainer):
         """
         Depends on weight will compute (interpolate) intensities from surounded intensities
         related to given temperature.
         ! Top and bottom atmosphere model are have to be defined in same wavelengths !
 
-        :param weight: Iterable of float`s
+        :param weight: Iterable[float]
         :param top_atm_container: AtmDataContainer
-
         :param bottom_atm_container: AtmDataContainer
-        :return: tuple of list (flux, wave)
+        :return: Tuple[ndarray, ndarray]; (flux, wave)
         """
         if bottom_atm_container is None:
             return top_atm_container.model[ATM_MODEL_DATAFRAME_FLUX], top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
@@ -179,26 +234,30 @@ class NaiveInterpolatedAtm(object):
         return intensity, top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
 
     @staticmethod
-    def compute_unknown_intensity_from_surounded_flux_matrices(
-            weights: ndarray, top_flux_matrix: ndarray, bottom_flux_matrix: ndarray) -> ndarray:
+    def compute_unknown_intensity_from_surounded_flux_matrices(weights, top_flux_matrix, bottom_flux_matrix):
         return (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
 
     @staticmethod
-    def interpolate_spectra(passbanded_atm_containers: Dict[str, ndarray],
-                            flux_matrices: Dict[str, ndarray], **kwargs) -> Dict:
+    def interpolate_spectra(passbanded_atm_containers, flux_matrices, temperature):
         """
-        # fixme: update docstring desc
-        for given `on grid` tables of stellar atmospheres stored in `atm_tables` list will compute atmospheres
-        for given parametres (temperature, log_g, metallicity)
+        From supplied AtmDataContainer's, `flux_matrices` and `temeprature`.
+        Interpolation is computed in vector form::
 
-        :param flux_matrices: Dict[str, numpy.array];
-        :param passbanded_atm_containers: Dict of ndarrays of AtmContainers
-        :param kwargs:
-        :**kwargs options**:
-                * **temperature** * -- ndarray
-        :return: Dict;
+            (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
+
+        where `top_flux_matrix` and `bottom_flux_matrix`, are entire matrix where rows are represented by fluxes.
+        It also means, to be able do such interpolation, fluxes have to be on same wavelengths for each row.
+
+        :param flux_matrices: Dict[str, ndarray];
+
+        ::
+
+            {"passband": ndarray (matrix)}
+
+        :param passbanded_atm_containers: Dict[str, AtmDataContainers]
+        :param temperature: ndarray[float]
+        :return: Dict[str, ndarray];
         """
-        temperature = kwargs.pop("temperature")
 
         interp_band = dict()
         for band, flux_matrix in flux_matrices.items():
@@ -217,12 +276,12 @@ class NaiveInterpolatedAtm(object):
         return interp_band
 
     @staticmethod
-    def atm_tables(fpaths: List[str]) -> List[AtmDataContainer]:
+    def atm_tables(fpaths):
         """
-        read atmosphere tables as pandas.DataFrame`s
+        Read atmosphere tables as pandas.DataFrame's.
 
-        :param fpaths: Iterable, list of paths to desired atm csv files
-        :return: list of pandas.DataFrame`s
+        :param fpaths: Iterable, Iterable of paths which points desired atm csv files
+        :return: List[AtmDataContainer] of pandas.DataFrame`s
         """
         result_queue = multithread_atm_tables_reader_runner(fpaths)
         models = [qval for qval in utils.IterableQueue(result_queue)]
@@ -230,15 +289,15 @@ class NaiveInterpolatedAtm(object):
         return models
 
     @staticmethod
-    def atm_files(temperature: ndarray, log_g: ndarray, metallicity: float, atlas: str) -> List[str]:
+    def atm_files(temperature, log_g, metallicity, atlas):
         """
-        For given parameters will find out related atm csv tables and return list of paths to this csv files
+        For given parameters will find out related atm csv tables and return list of paths to this csv files.
 
-        :param temperature: Iterable
-        :param log_g: Iterable
+        :param temperature: Iterable[float]
+        :param log_g: Iterable[float]
         :param metallicity: float
         :param atlas: str
-        :return: list; list of str
+        :return: List[str]
         """
         atlas = validated_atlas(atlas)
 
@@ -265,12 +324,12 @@ class NaiveInterpolatedAtm(object):
         return list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
 
 
-def arange_atm_to_same_wavelength(atm_containers: list):
+def arange_atm_to_same_wavelength(atm_containers):
     """
-    function aligns all atmosphere profiles to the same wavelengths
+    Function aligns all atmosphere profiles to the same wavelengths.
 
-    :param atm_containers: atmosphere containers which wavelengths should be aligned
-    :return: wavelength aligned atmospheric containers
+    :param atm_containers: Iterable[AtmDataContainer]; atmosphere containers which wavelengths should be aligned
+    :return: Iterable[AtmDataContainer]; wavelength aligned atmospheric containers
     """
     wavelengths = np.unique(np.array([atm.model[ATM_MODEL_DATAFRAME_WAVE] for atm in atm_containers]).flatten())
     wavelengths.sort()
@@ -299,20 +358,22 @@ def arange_atm_to_same_wavelength(atm_containers: list):
 
 def strip_atm_containers_by_bandwidth(atm_containers, left_bandwidth, right_bandwidth, **kwargs):
     """
-    strip all loaded atm models to common wavelength coverage
+    Strip all loaded atm models to common wavelength coverage.
 
-    :param atm_containers:
-    :param left_bandwidth:
-    :param right_bandwidth:
+    :param atm_containers: List[AtmDataContainer]
+    :param left_bandwidth: float
+    :param right_bandwidth: float
     :param kwargs:
-    :return:
+    :**kwargs options**:
+            * **global_left** * -- float; global wavelength from left where flux for all supllied atmposhperes exist
+            * **global_right** * -- float; global wavelength from right where flux for all supllied atmposhperes exist
+    :return: List[AtmDataContainer]
     """
     return [strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth, **kwargs)
             for atm_container in atm_containers]
 
 
-def strip_atm_container_by_bandwidth(atm_container: AtmDataContainer, left_bandwidth: float,
-                                     right_bandwidth: float, **kwargs) -> AtmDataContainer:
+def strip_atm_container_by_bandwidth(atm_container: AtmDataContainer, left_bandwidth, right_bandwidth, **kwargs):
     """
     Strip atmosphere container model by given bandwidth.
     Usually is model in container defined somewhere in between of left and right bandwidth, never exactly in such
@@ -325,11 +386,12 @@ def strip_atm_container_by_bandwidth(atm_container: AtmDataContainer, left_bandw
     :param atm_container: AtmDataContainer
     :param left_bandwidth: float
     :param right_bandwidth: float
-
-    todo: fix kwargs
-    # :param global_right: float
-    # :param global_left: float
-    # :param inplace: bool
+    :param kwargs:
+    :**kwargs options**:
+            * **global_left** * -- float; global wavelength from left where flux for all supllied atmposhperes exist
+            * **global_right** * -- float; global wavelength from right where flux for all supllied atmposhperes exist
+            * **inplace** * -- bool; if set to True; instead of creation of new DataFrames in AtmDataContainers,
+                                     just existing is inplaced (changed)
 
     :return: AtmDataContainer
     """
@@ -360,16 +422,15 @@ def strip_atm_container_by_bandwidth(atm_container: AtmDataContainer, left_bandw
     return strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=inplace)
 
 
-def strip_to_bandwidth(atm_container: AtmDataContainer, left_bandwidth: float,
-                       right_bandwidth: float, inplace: bool = False) -> AtmDataContainer:
+def strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=False):
     """
-    function directly strips atm container to given bandwidth
+    Function directly strips atm container to given bandwidth.
 
-    :param atm_container: atm container to strip
-    :param left_bandwidth:
-    :param right_bandwidth:
+    :param atm_container: AtmDataContainer; atm container to strip
+    :param left_bandwidth: float
+    :param right_bandwidth: float
     :param inplace: if True `atm_container' is overwritten by striped atmosphere container
-    :return:
+    :return: AtmDataContainer
     """
     # indices in bandwidth
     valid_indices = list(
@@ -387,11 +448,12 @@ def strip_to_bandwidth(atm_container: AtmDataContainer, left_bandwidth: float,
     return extend_atm_container_on_bandwidth_boundary(atm_cont, left_bandwidth, right_bandwidth)
 
 
-def find_global_atm_bandwidth(atm_containers: List[AtmDataContainer]) -> Tuple[float, float]:
+def find_global_atm_bandwidth(atm_containers):
     """
-    function finds common wavelength coverage of the atmosphere models
-    :param atm_containers:
-    :return: minimum, maximum wavelength of common coverage (in Angstrom)
+    Function finds common wavelength coverage of the atmosphere models.
+
+    :param atm_containers: AtmDataContainer
+    :return: Tuple[float, float]; minimum, maximum wavelength of common coverage (in Angstrom)
     """
     bounds = np.array([
         [atm.model[ATM_MODEL_DATAFRAME_WAVE].min(),
@@ -399,16 +461,15 @@ def find_global_atm_bandwidth(atm_containers: List[AtmDataContainer]) -> Tuple[f
     return bounds[:, 0].max(), bounds[:, 1].min()
 
 
-def extend_atm_container_on_bandwidth_boundary(atm_container: AtmDataContainer,
-                                               left_bandwidth: float, right_bandwidth: float) -> AtmDataContainer:
+def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, right_bandwidth):
     """
-    function crops the wavelength boundaries of the atmosphere model to the precise boundaries defined by
-    `left_bandwidth` and `right_bandwidth`
+    Function crops the wavelength boundaries of the atmosphere model to the precise boundaries defined by
+    `left_bandwidth` and `right_bandwidth`.
 
-    :param atm_container:
-    :param left_bandwidth:
-    :param right_bandwidth:
-    :return:
+    :param atm_container: AtmDataContainer
+    :param left_bandwidth: float
+    :param right_bandwidth: float
+    :return: AtmDataContainer
     """
     interpolator = interpolate.Akima1DInterpolator(atm_container.model[ATM_MODEL_DATAFRAME_WAVE],
                                                    atm_container.model[ATM_MODEL_DATAFRAME_FLUX])
@@ -419,7 +480,6 @@ def extend_atm_container_on_bandwidth_boundary(atm_container: AtmDataContainer,
         raise ValueError('Interpolation on bandwidth boundaries led to NaN value.')
     df: DataFrame = atm_container.model
     first, last = df.first_valid_index(), df.last_valid_index()
-    # fixme: this STILL takes a lot of time (0.02s, 80% of runtime of this function!!!)
     df.loc[[first, last], ATM_MODEL_DATAFRAME_FLUX:ATM_MODEL_DATAFRAME_WAVE] = \
         np.array([[on_border_flux[0], left_bandwidth], [on_border_flux[1], right_bandwidth]])
     df[ATM_MODEL_DATAFRAME_WAVE] = df[ATM_MODEL_DATAFRAME_WAVE].apply(lambda x: round(x, 10))
@@ -428,14 +488,12 @@ def extend_atm_container_on_bandwidth_boundary(atm_container: AtmDataContainer,
     return atm_container
 
 
-def apply_passband(atm_containers: List[AtmDataContainer],
-                   passband: Dict, **kwargs) -> Dict[str, List[AtmDataContainer]]:
+def apply_passband(atm_containers, passband, **kwargs):
     """
-    function strips 'atm_containers' according to `passband` coverages and applies passband curves to the stripped
-    atmosphere models
+    Function applies passband response functions to the stripped atmosphere models.
+
     :param atm_containers: AtmDataContainer
-    :param passband: List
-    :param kwargs: Dict
+    :param passband: Dict[str, PassbandContainer]
     :return: Dict[str, AtmDataContainer]
     """
     passbanded_atm_containers = dict()
@@ -465,7 +523,13 @@ def apply_passband(atm_containers: List[AtmDataContainer],
     return passbanded_atm_containers
 
 
-def build_atm_validation_hypertable(atlas: str) -> Dict:
+def build_atm_validation_hypertable(atlas):
+    """
+    Prepare validation hypertable to validate atmospheric model (whether is in interpolation bounds).
+
+    :param atlas: str
+    :return: Dict
+    """
     atlas = validated_atlas(atlas)
     all_files = get_list_of_all_atm_tables(atlas)
     filenames = (os.path.basename(f) for f in all_files)
@@ -483,7 +547,15 @@ def build_atm_validation_hypertable(atlas: str) -> Dict:
     return hypertable
 
 
-def is_out_of_bound(in_arr: Iterable, values: Iterable, tolerance: float) -> List[bool]:
+def is_out_of_bound(in_arr, values, tolerance):
+    """
+    Figure out whether `values` are in `in_arr`. Use `tolerance` if you there is allowed.
+
+    :param in_arr: ndarray
+    :param values: ndarray
+    :param tolerance: float
+    :return: List[bool]
+    """
     values = [values] if not isinstance(values, Iterable) else values
     top, bottom = max(in_arr) + tolerance, min(in_arr) - tolerance
     return [False if bottom <= val <= top else True for val in values]
@@ -491,25 +563,45 @@ def is_out_of_bound(in_arr: Iterable, values: Iterable, tolerance: float) -> Lis
 
 # pay attention to those methods bellow
 # in the future for different atm model might happen that function won't be valid anymore
-def validate_temperature(temperature: Iterable, atlas: str) -> bool:
+def validate_temperature(temperature, atlas, _raise=True):
+    """
+    Validate `temperature`s for existing `atlas`.
+
+    :param temperature: ndarray
+    :param atlas: str
+    :param _raise: bool; if True, raise ValueError
+    :return: bool
+    """
     atlas = validated_atlas(atlas)
     allowed = sorted(atm_file_prefix_to_quantity_list("temperature", atlas))
     invalid = any([True if (allowed[-1] < t or t < allowed[0]) else False for t in temperature])
     if invalid:
-        raise ValueError("any temperature in system atmosphere is out of bound; "
-                         "it is usually caused by invalid physical model")
+        if _raise:
+            raise ValueError("any temperature in system atmosphere is out of bound; "
+                             "it is usually caused by invalid physical model")
+        return False
     return True
 
 
-def validate_metallicity(metallicity: Iterable, atlas: str) -> bool:
+def validate_metallicity(metallicity, atlas, _raise=True):
+    """
+    Validate `metallicity`s for existing `atlas`.
+
+    :param metallicity: float
+    :param atlas: float
+    :param _raise: bool; if True, raise ValueError
+    :return: bool
+    """
     out_of_bound_tol = 0.1  # how far `out of bound` can any value of metallicity runs
     atlas = validated_atlas(atlas)
     allowed = sorted(atm_file_prefix_to_quantity_list("metallicity", atlas))
     out_of_bound = is_out_of_bound(allowed, metallicity, out_of_bound_tol)
     if any(out_of_bound):
-        raise ValueError(f"any metallicity in system atmosphere is out of bound, allowed values "
-                         f"are in range <{min(allowed) - out_of_bound_tol}, {max(allowed) + out_of_bound_tol}>; "
-                         f"it is usually caused by invalid physical model")
+        if _raise:
+            raise ValueError(f"any metallicity in system atmosphere is out of bound, allowed values "
+                             f"are in range <{min(allowed) - out_of_bound_tol}, {max(allowed) + out_of_bound_tol}>; "
+                             f"it is usually caused by invalid physical model")
+        return False
     return True
 
 
@@ -519,7 +611,16 @@ def validate_logg(log_g, atlas: str):
     pass
 
 
-def _validate_logg(temperature: List or ndarray, log_g: List or ndarray, atlas: str):
+def _validate_logg(temperature, log_g, atlas, _raise=True):
+    """
+    Validate `logg`s for existing `atlas` and `temperature`.
+
+    :param temperature: ndarray
+    :param log_g: ndarray
+    :param atlas: str
+    :param _raise: bool; if True, raise ValueError
+    :return: bool
+    """
     # it has a different name because there is a different interface
     validation_hypertable = build_atm_validation_hypertable(atlas)
     allowed = sorted(atm_file_prefix_to_quantity_list("temperature", atlas))
@@ -529,38 +630,61 @@ def _validate_logg(temperature: List or ndarray, log_g: List or ndarray, atlas: 
                             str(int(utils.find_nearest_value(allowed, t)[0]))
                         ]["gravity"], [g], 0.1)[0] for t, g in zip(temperature, log_g)]
     if any(invalid):
-        raise ValueError("any gravity (log_g) in system atmosphere is out of bound; "
-                         "it is usually caused by invalid physical model")
+        if _raise:
+            raise ValueError("any gravity (log_g) in system atmosphere is out of bound; "
+                             "it is usually caused by invalid physical model")
+        return False
     return True
 
 
-def validate_atm(
-        temperature: List or ndarray, log_g: List or ndarray, metallicity: Iterable or float, atlas: str) -> bool:
-    metallicity = [metallicity] * len(temperature) if not isinstance(metallicity, Iterable) else metallicity
-    validate_temperature(temperature, atlas)
-    validate_metallicity(metallicity, atlas)
-    _validate_logg(temperature, log_g, atlas)
-    return True
-
-
-def atm_file_prefix_to_quantity_list(qname: str, atlas: str) -> List[float]:
+def validate_atm(temperature, log_g, metallicity, atlas, _raise=True):
     """
-    get list of available values for given atm domain quantity, e.g. list of temperatures available in atlas CK04
+    Validate atmosphere.
+    Run methods::
 
-    :param qname: str - e.g. `temperature`, `metallicity`, `gravity`
-    :param atlas: str - e.g. `castelli` or `ck04`
-    :return: list
+        validate_temperature
+        validate_metallicity
+        _validate_logg
+
+    If anything is not right and `_raise` set to True, raise ValueError.
+
+    :param temperature: ndarray
+    :param log_g: ndarray
+    :param metallicity: float
+    :param atlas: str
+    :param _raise: bool; if True, raise ValueError
+    :return: bool
+    """
+    try:
+        metallicity = [metallicity] * len(temperature) if not isinstance(metallicity, Iterable) else metallicity
+        validate_temperature(temperature, atlas)
+        validate_metallicity(metallicity, atlas)
+        _validate_logg(temperature, log_g, atlas)
+    except ValueError:
+        if not _raise:
+            return False
+        raise
+    return True
+
+
+def atm_file_prefix_to_quantity_list(qname, atlas):
+    """
+    Get list of available values for given atm domain quantity, e.g. list of temperatures available in atlas CK04.
+
+    :param qname: str; e.g. `temperature`, `metallicity`, `gravity`
+    :param atlas: str; e.g. `castelli` or `ck04`
+    :return: List
     """
     atlas = validated_atlas(atlas)
     return getattr(const, f"{str(atlas).upper()}_{str(ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname])}")
 
 
-def validated_atlas(atlas: str) -> str:
+def validated_atlas(atlas):
     """
-    get validated atm atlas, e.g. `castelli` or `ck04` transform to `ck`, it matches folder
-    and file prefix for given atlas
+    Get validated atm atlas, e.g. `castelli` or `ck04` transform to `ck`, it matches folder
+    and file prefix for given atlas.
 
-    :param atlas: str - e.g. `castelli` or `ck04`
+    :param atlas: str; e.g. `castelli` or `ck04`
     :return: str
     """
     try:
@@ -569,20 +693,20 @@ def validated_atlas(atlas: str) -> str:
         raise KeyError(f'Incorrect atlas. Following are allowed: {", ".join(ATLAS_TO_ATM_FILE_PREFIX.keys())}')
 
 
-def parse_domain_quantities_from_atm_table_filename(filename: str) -> Tuple[float, float, float]:
+def parse_domain_quantities_from_atm_table_filename(filename):
     """
-    parse filename to given quantities, e.g. ckm05_3500_g15.csv parse to tuple (-0.5, 3500, 1.5)
+    Parse filename to given quantities, e.g. ckm05_3500_g15.csv parse to tuple (-0.5, 3500, 1.5)
 
     :param filename: str
-    :return: tuple
+    :return: Tuple[float, float, float]
     """
     return get_temperature_from_atm_table_filename(filename), get_logg_from_atm_table_filename(
         filename), get_metallicity_from_atm_table_filename(filename)
 
 
-def get_metallicity_from_atm_table_filename(filename: str) -> float:
+def get_metallicity_from_atm_table_filename(filename):
     """
-    get metallicity as number from filename / directory
+    Get metallicity as number from filename / directory.
 
     :param filename: str
     :return: float
@@ -593,24 +717,36 @@ def get_metallicity_from_atm_table_filename(filename: str) -> float:
     return value * sign
 
 
-def get_temperature_from_atm_table_filename(filename: str) -> float:
+def get_temperature_from_atm_table_filename(filename):
+    """
+    Get temperature from filename / directory name.
+
+    :param filename: str
+    :return: float
+    """
     return float(str(filename).split("_")[1])
 
 
-def get_logg_from_atm_table_filename(filename: str) -> float:
+def get_logg_from_atm_table_filename(filename):
+    """
+    Get logg from filename / directory name.
+
+    :param filename: str
+    :return: float
+    """
     filename = filename if not str(filename).endswith(".csv") else str(filename).replace('.csv', '')
     g = str(filename).split("_")[2][1:]
     return int(g) / 10.0
 
 
-def get_atm_table_filename(temperature: float, log_g: float, metallicity: float, atlas: str) -> str:
+def get_atm_table_filename(temperature, log_g, metallicity, atlas):
     """
-    get filename based on given descriptive values
+    Get filename based on given descriptive values.
 
     :param temperature: float
     :param log_g: float
     :param metallicity: float
-    :param atlas: str- e.g. `castelli` or `ck04`
+    :param atlas: str; e.g. `castelli` or `ck04`
     :return: str
     """
     prefix = validated_atlas(atlas)
@@ -619,21 +755,22 @@ def get_atm_table_filename(temperature: float, log_g: float, metallicity: float,
         f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
 
 
-def get_atm_directory(metallicity: float, atlas: str) -> str:
+def get_atm_directory(metallicity, atlas):
     """
-    get table directory name based on given descriptive  evalues
+    Get table directory name based on given descriptive values.
 
     :param metallicity: float
-    :param atlas: str - e.g. `castelli` or `ck04`
+    :param atlas: str; e.g. `castelli` or `ck04`
     :return: str
     """
     prefix = validated_atlas(atlas)
     return f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}"
 
 
-def get_atm_table(temperature: float, log_g: float, metallicity: float, atlas: str) -> DataFrame:
+def get_atm_table(temperature, log_g, metallicity, atlas):
     """
-    get dataframe for flux and wavelengths for given values
+    Get dataframe for flux and wavelengths for given values and atlas.
+    (Read csv file)
 
     :param temperature: float
     :param log_g: float
@@ -647,19 +784,19 @@ def get_atm_table(temperature: float, log_g: float, metallicity: float, atlas: s
         os.path.join(ATLAS_TO_BASE_DIR[atlas], filename)
 
     if not os.path.isfile(path):
-        raise FileNotFoundError("there is no file like {}".format(path))
+        raise FileNotFoundError(f"there is no file like {path}")
     return pd.read_csv(path, dtype={config.ATM_MODEL_DATAFARME_DTYPES})
 
 
-def get_list_of_all_atm_tables(atlas: str) -> List[str]:
+def get_list_of_all_atm_tables(atlas):
     """
-    get list of all available atm table files stored in configured location
+    Get list of all available atm table files stored in configured location.
 
-    :param atlas: str - e.g. `castelli` or `ck04`
-    :return: list
+    :param atlas: str; e.g. `castelli` or `ck04`
+    :return: List[str]
     """
     source = ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
-    matches = []
+    matches = list()
     for root, dirnames, filenames in os.walk(source):
         for filename in filenames:
             if filename.endswith(('.csv',)):
@@ -667,10 +804,17 @@ def get_list_of_all_atm_tables(atlas: str) -> List[str]:
     return matches
 
 
-def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_queue: Queue) -> None:
+def multithread_atm_tables_reader(path_queue, error_queue, result_queue):
+    """
+    Multithread reader of atmosphere csv files.
+
+    :param path_queue: Queue
+    :param error_queue: Queue
+    :param result_queue: Queue
+    :return:
+    """
     while True:
         args = path_queue.get(timeout=1)
-
         if args == "TERMINATOR":
             break
         if not error_queue.empty():
@@ -689,7 +833,13 @@ def multithread_atm_tables_reader(path_queue: Queue, error_queue: Queue, result_
             break
 
 
-def multithread_atm_tables_reader_runner(fpaths: Iterable[str]) -> Queue:
+def multithread_atm_tables_reader_runner(fpaths):
+    """
+    Run multithread reader of csv files containing atmospheric models.
+
+    :param fpaths: Iterable[str]
+    :return: Queue
+    """
     n_threads = config.NUMBER_OF_THREADS
 
     path_queue = Queue(maxsize=len(fpaths) + n_threads)
@@ -724,8 +874,15 @@ def multithread_atm_tables_reader_runner(fpaths: Iterable[str]) -> Queue:
     return result_queue
 
 
-def compute_normal_intensities(matrices_dict: Dict[str, DataFrame], flux_mult: float = 1.0,
-                               wave_mult: float = 1.0) -> Dict[str, ndarray]:
+def compute_normal_intensities(matrices_dict, flux_mult=1.0, wave_mult=1.0):
+    """
+    Run `compute_normal_intensity` method for each band in `matrices_dict`.
+
+    :param matrices_dict: Dict
+    :param flux_mult: float
+    :param wave_mult: float
+    :return: Dict[str, float]
+    """
     return {
         band: compute_normal_intensity(
             spectral_flux=dflux[ATM_MODEL_DATAFRAME_FLUX],
@@ -737,10 +894,10 @@ def compute_normal_intensities(matrices_dict: Dict[str, DataFrame], flux_mult: f
     }
 
 
-def compute_normal_intensity(spectral_flux: ndarray, wavelength: ndarray or Series,
-                             flux_mult: float = 1.0, wave_mult: float = 1.0) -> ndarray:
+def compute_normal_intensity(spectral_flux, wavelength, flux_mult=1.0, wave_mult=1.0):
     """
-    calculates normal flux for all surface faces
+    Calculates normal flux for all surface faces.
+
     :param spectral_flux: ndarray; interpolated atmosphere models for each face (N_face x wavelength)
     :param wavelength: ndarray or Series; wavelengths of atmosphere models
     :param flux_mult: float;
@@ -750,21 +907,20 @@ def compute_normal_intensity(spectral_flux: ndarray, wavelength: ndarray or Seri
     return np.pi * flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
 
 
-def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict: Dict) -> Dict[str, List[IntensityContainer]]:
+def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict):
     return {
         band: compute_integral_si_intensity_from_atm_data_containers(passbanded_atm)
         for band, passbanded_atm in passbaned_dict.items()
     }
 
 
-def compute_integral_si_intensity_from_atm_data_containers(
-        atm_data_containers: Iterable[AtmDataContainer]) -> List[IntensityContainer]:
+def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers):
     """
     Returns intensity from given atmosphere models.
     If models are already strip by passband, result is also striped
 
-    :param atm_data_containers: Iterable; list of AtmDataContainer`s
-    :return: list; integrated `flux` from each AtmDataContainer on `wave` in given container
+    :param atm_data_containers: Iterable[AtmDataContainer]
+    :return: List[AtmDataContainer]; integrated `flux` from each AtmDataContainer on `wave` in given container
     """
     return [
         IntensityContainer(
@@ -778,13 +934,17 @@ def compute_integral_si_intensity_from_atm_data_containers(
     ]
 
 
-def unique_atm_fpaths(fpaths: Iterable[str]) -> Tuple[set, Dict[str, List[int]]]:
+def unique_atm_fpaths(fpaths):
     """
-    group atm table names and return such set and map to origin list
+    Group atm table names and return such set and map to origin list.
 
-    :param fpaths: list of str
-    :return: tuple; (path set - set of unique atmosphere file names, map - dict where every unique atm file has listed
-    indices where it occures)
+    :param fpaths: List[str]
+    :return: Tuple[str, Dict];
+
+    ::
+
+        (path set - set of unique atmosphere file names,
+         map - dict where every unique atm file has listed indices where it occures)
     """
     fpaths_set = set(fpaths)
     fpaths_map = {key: list() for key in fpaths_set}
@@ -793,19 +953,27 @@ def unique_atm_fpaths(fpaths: Iterable[str]) -> Tuple[set, Dict[str, List[int]]]
     return fpaths_set, fpaths_map
 
 
-def remap_passbanded_unique_atms_to_origin(
-        passbanded_containers: Dict, fpaths_map:  Dict[str, List[int]]) -> Dict[str, ndarray]:
+def remap_passbanded_unique_atms_to_origin(passbanded_containers, fpaths_map):
+    """
+    Remap atm containers in supplied order by `fpaths_map`.
+
+    :param passbanded_containers: Dict[str, AtmDataContainer]
+    :param fpaths_map: Dict[str, List[int]]; map
+    :return: Dict[str, List]
+    """
     return {band: remap_unique_atm_container_to_origin(atm, fpaths_map) for band, atm in passbanded_containers.items()}
 
 
-def remap_unique_atm_container_to_origin(models: List, fpaths_map:  Dict[str, List[int]]) -> ndarray:
+def remap_unique_atm_container_to_origin(models, fpaths_map):
     """
-    !!! warnign - assigned containers are mutable, if you will change content of any container, changes will affect
-    !!!           any other container with same reference
+    Remap atm container in supplied order by `fpaths_map`.
 
-    :param models:
-    :param fpaths_map:
-    :return:
+    :warnign: assigned containers are mutable, if you will change content of any container, changes will affect
+    any other container with same reference
+
+    :param models: List[AtmDatContainer]
+    :param fpaths_map: :param fpaths_map: Dict[str, List[int]]; map
+    :return: List[AtmDataContainer]
     """
     models_arr = np.empty(max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1, dtype='O')
     for model in models:
@@ -813,13 +981,17 @@ def remap_unique_atm_container_to_origin(models: List, fpaths_map:  Dict[str, Li
     return models_arr
 
 
-def read_unique_atm_tables(fpaths: Iterable[str]) -> Tuple[List[AtmDataContainer], Dict[str, List[int]]]:
+def read_unique_atm_tables(fpaths):
     """
-    returns atmospheric spectra from table files which encompass the range of surface parameters on the component's
+    Returns atmospheric spectra from table files which encompass the range of surface parameters on the component's
     surface
 
-    :return: Tuple; list of unique AtmDataContainers, map - dict where every unique atm file has listed indices where it
-    occures
+    :parma fpaths; List[str]
+    :return: Tuple[AtmDataContainers, Dict[str, List]];
+
+    ::
+
+        (List of unique AtmDataContainers, map - dict where every unique atm file has listed indices where it occures)
     """
     fpaths, fpaths_map = unique_atm_fpaths(fpaths)
     result_queue = multithread_atm_tables_reader_runner(fpaths)
@@ -828,28 +1000,54 @@ def read_unique_atm_tables(fpaths: Iterable[str]) -> Tuple[List[AtmDataContainer
 
 
 def find_atm_si_multiplicators(atm_containers):
+    """
+    Get atm flux and wavelength multiplicator from `atm_containers`.
+    It assume, all containers have the same multiplicators, so it returns values from first one.
+
+    :param atm_containers: List[AtmDatacontainer]
+    :return: Tuple[float, float]
+
+    ::
+
+        (flux multiplicator, wavelength multiplicator)
+
+    """
     for atm_container in atm_containers:
         return atm_container.flux_to_si_mult, atm_container.wave_to_si_mult
     raise ValueError('No valid atmospheric container has been supplied to method.')
 
 
-def find_atm_defined_wavelength(atm_containers: Iterable[AtmDataContainer]) -> ndarray:
+def find_atm_defined_wavelength(atm_containers):
+    """
+    Get wavelength from first container from `atm_containers` list.
+    It assume all containers has already aligned wavelengths to same.
+
+    :param atm_containers: Iterable[AtmDataContainer]
+    :return: ndarray[float]
+    """
     for atm_container in atm_containers:
         return atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
     raise ValueError('No valid atmospheric container has been supplied to method.')
 
 
-def remap_passbanded_unique_atms_to_matrix(passbanded_containers: Dict, fpaths_map: dict):
+def remap_passbanded_unique_atms_to_matrix(passbanded_containers, fpaths_map):
+    """
+    Run `remap_passbanded_unique_atm_to_matrix` for reach container in `passbanded_containers`.
+
+    :param passbanded_containers: List[]
+    :param fpaths_map: Dict[str, List[int]]; map - atmosphere container to faces
+    :return: Dict[str, ndarray]
+    """
     return {band: remap_passbanded_unique_atm_to_matrix(atm, fpaths_map) for band, atm in passbanded_containers.items()}
 
 
-def remap_passbanded_unique_atm_to_matrix(atm_containers: Iterable[AtmDataContainer],
-                                          fpaths_map: Dict[str, List[int]]) -> ndarray:
+def remap_passbanded_unique_atm_to_matrix(atm_containers, fpaths_map):
     """
-    creating matrix of atmosphere models for each face
-    :param atm_containers: list of unique atmosphere containers from tables
-    :param fpaths_map: map - atmosphere container to faces
-    :return: matrix of atmosphere models
+    Creating matrix of atmosphere models for each face.
+
+    :param atm_containers: List[AtmDataContainer]; list of unique atmosphere containers from tables
+    :param fpaths_map: Dict[str, List[int]]; map - atmosphere container to faces
+    :return: ndarray; matrix of atmosphere models
     """
     total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
     wavelengths_defined = find_atm_defined_wavelength(atm_containers)
