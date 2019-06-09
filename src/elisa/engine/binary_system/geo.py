@@ -1,7 +1,5 @@
 import logging
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 from copy import deepcopy
 from elisa.engine import const, utils
@@ -12,7 +10,14 @@ from elisa.engine.binary_system import utils as bsutils
 __logger__ = logging.getLogger(__name__)
 
 
-def get_critical_inclination(binary, components_distance: float):
+def get_critical_inclination(binary, components_distance):
+    """
+    Get critical inclination for eclipses.
+
+    :param binary: elisa.engine.binary_system.system.BinarySystem
+    :param components_distance: float
+    :return: float
+    """
     if binary.morphology != 'over-contact':
         radius1 = np.mean([binary.primary.side_radius, binary.primary.forward_radius, binary.primary.backward_radius,
                            binary.primary.polar_radius])
@@ -22,12 +27,13 @@ def get_critical_inclination(binary, components_distance: float):
         return np.degrees(np.arccos(cos_i_critical))
 
 
-def get_eclipse_boundaries(binary, components_distance: float):
+def get_eclipse_boundaries(binary, components_distance):
     """
-    calculates the ranges in orbital azimuths (for phase=0 -> azimuth=pi/2)!!!  where eclipses occur
-    :param binary:
-    :param components_distance:
-    :return: np.array([primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop])
+    Calculates the ranges in orbital azimuths (for phase=0 -> azimuth=pi/2)!!!  where eclipses occur.
+
+    :param binary: elisa.engine.binary_system.system.BinarySystem
+    :param components_distance: float
+    :return: numpy.ndarray([primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop])
     """
     # check whether the inclination is high enough to enable eclipses
     if binary.morphology != 'over-contact':
@@ -51,35 +57,33 @@ def get_eclipse_boundaries(binary, components_distance: float):
         return np.array([0, const.PI, const.PI, const.FULL_ARC])
 
 
-def darkside_filter(line_of_sight: np.array, normals: np.array):
+def darkside_filter(line_of_sight, normals):
     """
-    return indices for visible faces defined by given normals, function assumes that `line_of_sight` ([1, 0, 0]) and
-    `normals` are already normalized to one
+    Return indices for visible faces defined by given normals.
+    Function assumes that `line_of_sight` ([1, 0, 0]) and `normals` are already normalized to one.
 
-    :param line_of_sight: np.array
-    :param normals: np.array
-    :return: np.array
+    :param line_of_sight: numpy.ndarray
+    :param normals: numpy.ndarray
+    :return: numpy.ndarray
     """
     # todo: resolve self shadowing in case of W UMa
     # calculating normals utilizing the fact that normals and line of sight vector [1, 0, 0] are already normalized
-    # hovnokod...
     if (line_of_sight == np.array([1.0, 0.0, 0.0])).all():
         cosines = utils.calculate_cos_theta_los_x(normals=normals)
     else:
         cosines = utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
-
     # recovering indices of points on near-side (from the point of view of observer)
     return np.arange(np.shape(normals)[0])[cosines > 0]
 
 
 def plane_projection(points, plane, keep_3d=False):
     """
-    function projects 3D points into given plane
+    Function projects 3D points into given plane.
 
     :param keep_3d: if True, the dimensions of the array is kept the same, with given column equal to zero
-    :param points:
+    :param points: numpy.ndarray
     :param plane: str; ('xy', 'yz', 'zx')
-    :return:
+    :return: numpy.ndarray
     """
     rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
     if not keep_3d:
@@ -91,35 +95,19 @@ def plane_projection(points, plane, keep_3d=False):
     return in_plane
 
 
-# fixme: this shouldn't be here, move it to the graphics
-def to_png(x=None, y=None, x_label="y", y_label="z", c=None, fpath=None):
-    plt.clf()
-    ax = plt.scatter(x, y, marker="o", c=c, s=1)
-    plt.xlabel(x_label)
-    plt.xlabel(y_label)
-    plt.axis("equal")
-    plt.xlim(-2, 2)
-    plt.ylim(-2, 2)
-    plt.savefig(fpath)
-
-    # fig = plt.figure(figsize=(7, 7))
-    # ax = fig.add_subplot(111, projection='3d')
-    # ax.set_aspect('equal')
-    #
-    # clr = 'b'
-    # pts = prop_value
-    # ax.scatter(
-    #     prop_value.T[0],
-    #     prop_value.T[1],
-    #     prop_value.T[2]
-    #
-    # )
-    # plt.show()
-
-
 class EasyObject(object):
-    # fixme: why the hell is faces, temperatures and log_g == None???
     def __init__(self, points, normals, indices, faces=None, temperatures=None, log_g=None, coverage=None):
+        """
+        None default gives a capability to be used without such parameters
+
+        :param points: numpy.ndarray
+        :param normals: numpy.ndarray
+        :param indices: List
+        :param faces: numpy.ndarray
+        :param temperatures: numpy.ndarray
+        :param log_g: numpy.ndarray
+        :param coverage: numpy.ndarray
+        """
         self._points = deepcopy(points)
         self._normals = deepcopy(normals)
         self.indices = deepcopy(indices)
@@ -129,63 +117,101 @@ class EasyObject(object):
         self._temperatures = deepcopy(temperatures)
 
     def serialize(self):
+        """
+        Return all class properties at once.
+
+        :return: Tuple
+        """
         return self.points, self.normals, self.indices, self.faces, self.coverage
 
     def copy(self):
+        """
+        Copy self instance
+
+        :return: self; copied self instance
+        """
         return deepcopy(self)
 
     @property
     def points(self):
+        """
+        Return points of instance.
+
+        :return: numpy.ndarray
+        """
         return self._points
 
     @points.setter
     def points(self, points):
+        """
+        Set points.
+
+        :param points: numpy.ndarray
+        :return:
+        """
         self._points = points
 
     @property
     def normals(self):
-        # if self.indices is not None:
-        #     return self._normals[self.indices]
+        """
+        Get normals.
+
+        :return: numpy.ndarray
+        """
         return self._normals
 
     @normals.setter
     def normals(self, normals):
+        """
+        Set normals.
+
+        :param normals: numpy.ndarray
+        :return:
+        """
         self._normals = normals
 
     @property
     def faces(self):
+        """
+        Get faces.
+
+        :return: numpy.ndarray
+        """
         return self._faces
 
     @property
     def temperatures(self):
+        """
+        Get temperatures.
+
+        :return: numpy.ndarray
+        """
         return self._temperatures
 
     @property
     def log_g(self):
+        """
+        Get log_g
+
+        :return: numpy.ndarray
+        """
         return self._log_g
 
 
-# class PositionContainer(object):
-#     def __init__(self, idx, distance, azimut, true_anomaly, phase):
-#         self.position_index = idx
-#         self.azimuth = azimut
-#         self.true_anomaly = true_anomaly
-#         self.phase = phase
-#         self.distance = distance
-#
-#     def __str__(self):
-#         return f"Position: \n" \
-#             f"      index: {self.position_index}\n" \
-#             f"      azimut: {self.azimuth}\n" \
-#             f"      true anomaly: {self.true_anomaly}\n" \
-#             f"      photomeric phase: {self.phase}\n" \
-#             f"      component distance: {self.distance}"
-
-
 class SystemOrbitalPosition(object):
+    """
+    Class instance will keep iterator rotated and darkside filtered orbital positions.
+    """
     def __init__(self, primary, secondary, inclination, motion, ecl_boundaries):
+        """
+        :param primary: elisa.engine.base.Star
+        :param secondary: elisa.engine.base.Star
+        :param inclination: float
+        :param motion: numpy.ndarray
+        :param ecl_boundaries: numpy.ndarray
+        """
         self.inclination = inclination
-        self.motion = motion  # [PositionContainer(*pos) for pos in motion]
+        self.motion = motion
         self.data = ()
         self._init_data = None
 
@@ -200,35 +226,72 @@ class SystemOrbitalPosition(object):
             yield single_position_container
 
     def do(self, pos):
+        """
+        On initial data (SingleOrbitalPositionContainer) created on the begining of init method,
+        will apply::
+
+            - `setup_position` method
+            - `rotate` method
+
+        :param pos: NamedTuple; elisa.engine.const.BINARY_POSITION_PLACEHOLDER
+        :return: SingleOrbitalPositionContainer
+        """
         single_pos_sys = self.init_data.copy()
         single_pos_sys.setup_position(pos, self.inclination)
         single_pos_sys.rotate()
         return single_pos_sys
 
     def init_positions(self):
+        """
+        Initialise positions data. Call `do` method for each position.
+
+        :return:
+        """
         self.data = (self.do(pos) for pos in self.motion)
 
     @property
     def init_data(self):
+        """
+        Get init_data
+
+        :return: SingleOrbitalPositionContainer
+        """
         return self._init_data
 
     @init_data.setter
     def init_data(self, args):
+        """
+        Set init_data (create initial SingleOrbitalPositionContainer).
+
+        :param args: Tuple[elisa.engine.base.Star, elisa.engine.base.Star]; (primary, secondary)
+        :return:
+        """
         self._init_data = SingleOrbitalPositionContainer(*args)
 
     def darkside_filter(self):
+        """
+        Rewrite `data` od self with applied darkside filter.
+
+        :return: self
+        """
         self.data = (single_position_container.darkside_filter() for single_position_container in self.data)
         return self
 
     def eclipse_filter(self):
+        """
+        Just placeholder. Maybe will be used in future.
+
+        :return: self
+        """
         self.data = ()
         return self
 
     def in_eclipse_test(self, ecl_boundaries):
         """
-        test whether in given phases eclipse occurs or not
-        :param ecl_boundaries:
-        :return: bool array
+        Test whether in given phases eclipse occurs or not.
+
+        :param ecl_boundaries: numpy.ndarray
+        :return: bool; numpy.ndarray
         """
         azimuths = [position.azimuth for position in self.motion]
 
@@ -253,59 +316,130 @@ class SystemOrbitalPosition(object):
 
 
 class SingleOrbitalPositionContainer(object):
+    """
+    Keep parmetres of position on orbit (rotated points, normals, etc.)
+    """
     __COMPONENTS__ = ["_primary", "_secondary"]
     __PROPERTIES__ = ["points", "normals"]
 
     def __init__(self, primary, secondary):
+        """
+        Initialize container
+
+        :param primary: elisa.engine.base.Star
+        :param secondary: elisa.engine.base.Star
+        """
         _primary, _secondary = primary, secondary
         self._primary = None
         self._secondary = None
         self.position = None
-        self.inclination = None
+        self.inclination = np.nan
 
         for component in self.__COMPONENTS__:
             setattr(self, component[1:], locals()[component])
 
-    def setup_position(self, position: const.BINARY_POSITION_PLACEHOLDER, inclination: float):
+    def setup_position(self, position: const.BINARY_POSITION_PLACEHOLDER, inclination):
+        """
+        Set geo attributes of current container.
+
+        :param position: NamedTuple; elisa.engine.const.BINARY_POSITION_PLACEHOLDER
+        :param inclination: float
+        :return:
+        """
         self.position = position
         self.inclination = inclination
 
     def copy(self):
+        """
+        Deepcopy of self
+
+        :return: self; copied self
+        """
         return deepcopy(self)
+
+    @staticmethod
+    def get_flatten(component):
+        """
+        Get flatten parmetres og given `component` instance. (Flat points, normals, etc. of Star and Spots).
+
+
+        :param component: elisa.engine.base.Star
+        :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray]
+
+        ::
+
+            Tuple(points, normals, faces, temperatures, log_g)
+        """
+        return bsutils.get_flaten_properties(component)
 
     @property
     def primary(self):
-        return self._primary
+        """
+        Get primary star.
 
-    @staticmethod
-    def setup_component(component):
-        return bsutils.get_flaten_properties(component)
+        :return: EasyObject
+        """
+        return self._primary
 
     @primary.setter
     def primary(self, value):
-        points, normals, faces, temp, log_g = self.setup_component(value)
+        """
+        Set primary paramter of self. Find flatten form of points, normalns, faces, etc. and create EasyObject.
+
+        :param value: elisa.engine.base.Star
+        :return:
+        """
+        points, normals, faces, temp, log_g = self.get_flatten(value)
         self._primary = EasyObject(points, normals, None, faces, temp, log_g)
 
     @property
     def secondary(self):
+        """
+        Get parameter `secondary` of self.
+
+        :return: EasyObject
+        """
         return self._secondary
 
     @secondary.setter
     def secondary(self, value):
-        points, normals, faces, temp, log_g = self.setup_component(value)
+        """
+        Set secondary paramter of self. Find flatten form of points, normalns, faces, etc. and create EasyObject.
+
+        :param value: elisa.engine.base.Star
+        :return:
+        """
+        points, normals, faces, temp, log_g = self.get_flatten(value)
         self._secondary = EasyObject(points, normals, None, faces, temp, log_g)
 
     def set_indices(self, component, indices):
+        """
+        For given `component` set `indices`.
+
+        :param component: `primary` or `secondary`; define EasyObject
+        :param indices: numpy.ndarray
+        :return:
+        """
         attr = getattr(self, component)
         setattr(attr, 'indices', indices)
 
     def set_coverage(self, component, coverage):
+        """
+        For given `component` set `indices`.
+
+        :param component: :param component: `primary` or `secondary`; define EasyObject
+        :param coverage: numpy.ndarray
+        :return:
+        """
         attr = getattr(self, component)
         setattr(attr, 'coverage', coverage)
 
     def rotate(self):
         """
-        what is this?
+        Rotate quantities defined in cls.__PROPERTIES__ in case of components defined in cls.__PROPERTIES__.
+        Rotation is made in orbital plane and inclination direction in respective order.
+        Angle are defined in self.position and self.inclination.
+
         :return:
         """
         for component in self.__COMPONENTS__:
@@ -314,16 +448,18 @@ class SingleOrbitalPositionContainer(object):
                 prop_value = getattr(easyobject_instance, prop)
 
                 args = (self.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
-                prop_value = utils.axis_rotation(*args)
+                prop_value = utils.around_axis_rotation(*args)
 
                 args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
-                prop_value = utils.axis_rotation(*args)
+                prop_value = utils.around_axis_rotation(*args)
                 setattr(easyobject_instance, prop, prop_value)
 
     def darkside_filter(self):
         """
-        function iterates over components and assigns indices of visible points to easyobject instance
-        :return:
+        Apply darkside filter on current position defined in container.
+        Function iterates over components and assigns indices of visible points to EasyObject instance.
+
+        :return: self
         """
         for component in self.__COMPONENTS__:
             easyobject_instance = getattr(self, component)
@@ -334,13 +470,25 @@ class SingleOrbitalPositionContainer(object):
 
     def eclipse_filter(self):
         """
-        currently defined directly in lightcurve computaion function
+        Just placeholder.
+
         :return:
         """
         pass
 
 
 def surface_area_coverage(size, visible, visible_coverage, partial=None, partial_coverage=None):
+    """
+    Prepare array with coverage os surface areas.
+
+    :param size: int; size of array
+    :param visible: numpy.ndarray; full visible areas (numpy fancy indexing), array like [False, True, True, False]
+    :param visible_coverage: numpy.ndarray; defines coverage of visible (coverage onTrue positions)
+    :param partial: numpy.ndarray; partial visible areas (numpy fancy indexing)
+    :param partial_coverage: numpy.ndarray; defines coverage of partial visible
+    :return: numpy.ndarray
+    """
+    # initialize zeros, since there is no input for invisible (it means everything what left after is invisible)
     coverage = np.zeros(size)
     coverage[visible] = visible_coverage
     if partial is not None:
@@ -349,16 +497,41 @@ def surface_area_coverage(size, visible, visible_coverage, partial=None, partial
 
 
 def faces_to_pypex_poly(t_hulls):
+    """
+    Convert all faces defined as numpy.ndarray to pypex Polygon class instance
+
+    :param t_hulls: List[numpy.ndarray]
+    :return: List
+    """
     return [Polygon(t_hull, _validity=False) for t_hull in t_hulls]
 
 
 def pypex_poly_hull_intersection(pypex_faces_gen, pypex_hull: Polygon):
+    """
+    Resolve intersection of polygons defined in `pypex_faces_gen` with polyogn `pypex_hull`.
+
+    :param pypex_faces_gen: List[pypex.poly2d.polygon.Plygon]
+    :param pypex_hull: pypex.poly2d.polygon.Plygon
+    :return: List[pypex.poly2d.polygon.Plygon]
+    """
     return [pypex_hull.intersection(poly) for poly in pypex_faces_gen]
 
 
 def pypex_poly_surface_area(pypex_polys_gen):
+    """
+    Compute surface areas of pypex.poly2d.polygon.Plygon's.
+
+    :param pypex_polys_gen: List[pypex.poly2d.polygon.Plygon]
+    :return: List[float]
+    """
     return [poly.surface_area() if poly is not None else 0.0 for poly in pypex_polys_gen]
 
 
 def hull_to_pypex_poly(hull):
+    """
+    Convert convex polygon defined by points in List or numpy.ndarray to pypex.poly2d.polygon.Plygon.
+
+    :param hull: List or numpy.ndarray
+    :return: pypex.poly2d.polygon.Plygon
+    """
     return Polygon(hull, _validity=False)

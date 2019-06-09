@@ -11,9 +11,9 @@ def visibility_test(centres, xlim, component):
     Tests if given faces are visible from the other star.
 
     :param component: str
-    :param centres: ndarray
+    :param centres: numpy.ndarray
     :param xlim: visibility threshold in x axis for given component
-    :return: ndarray[bool]
+    :return: numpy.ndarray[bool]
     """
     return centres[:, 0] >= xlim if component == 'primary' else centres[:, 0] <= xlim
 
@@ -26,8 +26,8 @@ def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis
     :param shape_reduced: Tuple[int]; shape of the surface symmetries,
                          (faces above those indices are symmetrical to the ones below)
     :param centres: Dict
-    :param vis_test: Dict[str, ndarray]
-    :param vis_test_symmetry: Dict[str, ndarray]
+    :param vis_test: Dict[str, numpy.ndarray]
+    :param vis_test_symmetry: Dict[str, numpy.ndarray]
     :return: Tuple; (distance, join vector)
 
     ::
@@ -76,16 +76,16 @@ def include_spot_to_surface_variables(centres, spot_centres, normals, spot_norma
     Function includes surface parameters of spot faces into global arrays containing parameters from whole surface
     used in reflection effect.
 
-    :param centres: ndarray
-    :param spot_centres: ndarray; spot centres to append to `centres`
-    :param normals: ndarray;
-    :param spot_normals: ndarray; spot normals to append to `normals`
-    :param temperatures: ndarray;
-    :param spot_temperatures: ndarray; spot temperatures to append to `temperatures`
-    :param areas: ndarray;
-    :param spot_areas: ndarray; spot areas to append to `areas`
-    :param vis_test: ndarray;
-    :param vis_test_spot: ndarray; spot visibility test to append to `vis_test`
+    :param centres: numpy.ndarray
+    :param spot_centres: numpy.ndarray; spot centres to append to `centres`
+    :param normals: numpy.ndarray;
+    :param spot_normals: numpy.ndarray; spot normals to append to `normals`
+    :param temperatures: numpy.ndarray;
+    :param spot_temperatures: numpy.ndarray; spot temperatures to append to `temperatures`
+    :param areas: numpy.ndarray;
+    :param spot_areas: numpy.ndarray; spot areas to append to `areas`
+    :param vis_test: numpy.ndarray;
+    :param vis_test_spot: numpy.ndarray; spot visibility test to append to `vis_test`
     :return: Tuple; (centres, normals, temperatures, areas, vis_test)
     """
     centres = np.append(centres, spot_centres, axis=0)
@@ -104,11 +104,11 @@ def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test,
     :param shape: Tuple[int]; desired shape of gamma
     :param shape_reduced: Tuple[int]; shape of the surface symmetries, (faces above those
                                       indices are symmetrical to the ones below)
-    :param normals: Dict[str, ndarray]
-    :param join_vector: Dict[str, ndarray]
-    :param vis_test: Dict[str, ndarray]
-    :param vis_test_symmetry: Dict[str, ndarray]
-    :return: gamma: Dict[str, ndarray]; cos(angle(normal, join_vector))
+    :param normals: Dict[str, numpy.ndarray]
+    :param join_vector: Dict[str, numpy.ndarray]
+    :param vis_test: Dict[str, numpy.ndarray]
+    :param vis_test_symmetry: Dict[str, numpy.ndarray]
+    :return: gamma: Dict[str, numpy.ndarray]; cos(angle(normal, join_vector))
     """
     gamma = {'primary': np.empty(shape=shape, dtype=np.float),
              'secondary': np.empty(shape=shape, dtype=np.float)}
@@ -134,7 +134,7 @@ def check_symmetric_gamma_for_negative_num(gamma, shape_reduced):
     """
     If cos < 0 it will be redefined as 0 are inplaced.
 
-    :param gamma: Dict[str, ndarray]
+    :param gamma: Dict[str, numpy.ndarray]
     :param shape_reduced: Tuple[int]
     :return:
     """
@@ -157,9 +157,9 @@ def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
     :param shape: Tuple[int]; desired shape of q_ab
     :param shape_reduced: Tuple[int]; shape of the surface symmetries,
                                      (faces above those indices are symmetrical to the ones below)
-    :param gamma: Dict[str, ndarray]
-    :param distance: ndarray
-    :return: ndarray
+    :param gamma: Dict[str, numpy.ndarray]
+    :param distance: numpy.ndarray
+    :return: numpy.ndarray
     """
     q_ab = np.empty(shape=shape, dtype=np.float)
     q_ab[:, :shape_reduced[1]] = \
@@ -199,7 +199,7 @@ def pre_calc_azimuths_for_detached_points(alpha):
     separator gives you information about position of these sections.
 
     :param alpha: float; discretization factor
-    :return: Tuple; (phi: ndarray, theta: ndarray, separtor: ndarray)
+    :return: Tuple; (phi: numpy.ndarray, theta: numpy.ndarray, separtor: numpy.ndarray)
     """
     separator = []
 
@@ -242,7 +242,7 @@ def pre_calc_azimuths_for_overcontact_farside_points(alpha):
     Calculates azimuths (directions) to the surface points of over-contact component on its far-side.
 
     :param alpha: float; discretization factor
-    :return: Tuple; (phi: ndarray, theta: ndarray, separtor: ndarray)
+    :return: Tuple; (phi: numpy.ndarray, theta: numpy.ndarray, separtor: numpy.ndarray)
     """
     separator = []
 
@@ -293,7 +293,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_pol
     :param neck_polynomial: scipy.Polynome; polynome that define neck profile in plane `xz`
     :param polar_radius: float
     :param component: str; `primary` or `secondary`
-    :return: Tuple; (phi: ndarray, z: ndarray, separator: ndarray)
+    :return: Tuple; (phi: numpy.ndarray, z: numpy.ndarray, separator: numpy.ndarray)
     """
     # generating the neck
 
@@ -389,9 +389,9 @@ def get_surface_points(*args):
 
     ::
 
-        Tuple[phi: ndarray, theta: ndarray, components_distance: float, precalc: method, fn: method]
+        Tuple[phi: numpy.ndarray, theta: numpy.ndarray, components_distance: float, precalc: method, fn: method]
 
-    :return: ndarray
+    :return: numpy.ndarray
     """
     phi, theta, components_distance, precalc, fn = args
 
@@ -416,9 +416,9 @@ def get_surface_points_cylindrical(*args):
 
     ::
 
-         Tuple[phi: ndarray, z: ndarray, precalc: method, fn: method]
+         Tuple[phi: numpy.ndarray, z: numpy.ndarray, precalc: method, fn: method]
 
-    :return: ndarray
+    :return: numpy.ndarray
     """
     phi, z, precalc, fn = args
 
