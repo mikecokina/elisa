@@ -1917,7 +1917,7 @@ class BinarySystem(System):
         :param components_distance: float; components distance in SMA units
         :return:
         """
-
+        # fixme
         LD_COEFF = 0.5
         if not config.REFLECTION_EFFECT:
             self._logger.debug('reflection effect is switched off')
@@ -2215,9 +2215,9 @@ class BinarySystem(System):
 
     def redistribute_temperatures(self, temperatures):
         """
-        in this function array of `temperatures` is parsed into chunks that belong to stellar surface and spots
+        In this function array of `temperatures` is parsed into chunks that belong to stellar surface and spots.
 
-        :param temperatures: np.array - temperatures from the whole surface, ordered: surface, spot1, spot2...
+        :param temperatures: numpy.ndarray; temperatures from the whole surface, ordered: surface, spot1, spot2...
         :return:
         """
         for _component in ['primary', 'secondary']:
@@ -2230,6 +2230,12 @@ class BinarySystem(System):
                     counter += len(spot.temperatures)
 
     def angular_velocity(self, components_distance=None):
+        """
+        Compute angular velocity for given components distance.
+
+        :param components_distance: float
+        :return: float
+        """
         if components_distance is None:
             raise ValueError('Component distance value was not supplied.')
 
@@ -2237,38 +2243,38 @@ class BinarySystem(System):
             (1.0 - self.eccentricity) * (1.0 + self.eccentricity))  # $\rad.sec^{-1}$
 
     def get_positions_method(self):
+        """
+        Return method to use for orbital motion computation.
+
+        :return: method
+        """
         return self.calculate_orbital_motion
 
     def calculate_orbital_motion(self, phase=None):
+        """
+        Calculate orbital motion for current system parmaters and supplied phases.
+
+        :param phase: numpy.ndarray
+        :return: List[NamedTuple: elisa.engine.const.BINARY_POSITION_PLACEHOLDER]
+        """
         orbital_motion = self.orbit.orbital_motion(phase=phase)
         idx = np.arange(np.shape(phase)[0])
         positions = np.hstack((idx[:, np.newaxis], orbital_motion))
         return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
 
-    # todo: are you planning to use that?? no usages for now...
-    def calculate_lines_of_sight(self, phase=None):
-        """
-        returns indices and positions of secondary component relative to primary component
-        :param phase: list - list of phases at which to calculate the positions
-        :return:
-        """
-        orbital_motion = self.orbit.orbital_motion(phase=phase)
-        idx = np.arange(np.shape(phase)[0])
-
-        line_of_sight_spherical = np.empty((np.shape(phase)[0], 3), dtype=np.float)
-        line_of_sight_spherical[:, 0] = 1
-        line_of_sight_spherical[:, 1] = -1.0 * orbital_motion[:, 2]
-        line_of_sight_spherical[:, 2] = const.PI - self.inclination
-        line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
-        return np.hstack((idx[:, np.newaxis], line_of_sight))
-
     def compute_lightcurve(self, **kwargs):
         """
-        this function decides which light curve generator function is used, depending on the basic properties of the
-        binary system
+        This function decides which light curve generator function is used.
+        Depending on the basic properties of the binary system.
 
-        :param kwargs: - arguments to be passed into light curve generator functions
-        :return:
+        :param kwargs: Dict; arguments to be passed into light curve generator functions
+            * ** passband ** * - Dict[str, elisa.engine.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+            * ** phases ** * - numpy.ndarray
+            * ** position_method ** * - method
+        :return: Dict
         """
         if self.eccentricity == 0 and self.primary.synchronicity == 1 and self.secondary.synchronicity == 1:
             self._logger.debug('Implementing light curve generator function for synchronous binary system with '
@@ -2297,10 +2303,10 @@ class BinarySystem(System):
     # ### build methods
     # todo/idea: remove these definitions and call methods from `build` modul
 
-    def build_surface_gravity(self, component: str or list = None, components_distance: float or np.dtype = None):
+    def build_surface_gravity(self, component=None, components_distance=None):
         return build.build_surface_gravity(self, component, components_distance)
 
-    def build_faces_orientation(self, component: str or list = None, components_distance: float = None):
+    def build_faces_orientation(self, component=None, components_distance=None):
         return build.build_faces_orientation(self, component, components_distance)
 
     def build_temperature_distribution(self, component=None, components_distance=None):
@@ -2329,6 +2335,22 @@ class BinarySystem(System):
         return build.compute_all_surface_areas(self, component=component)
 
     def build(self, component=None, components_distance=None):
+        """
+        Main method to build binary star system from parameters given on init of BinaryStar.
+
+        called following methods::
+
+            - build_mesh
+            - build_faces
+            - build_surface_areas
+            - build_faces_orientation
+            - build_surface_gravity
+            - build_temperature_distribution
+
+        :param component: str; `primary` or `secondary`
+        :param components_distance: float; distance of components is SMA units
+        :return:
+        """
         self.build_mesh(component, components_distance)
         self.build_faces(component, components_distance)
         self.build_surface_areas(component)
