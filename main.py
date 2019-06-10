@@ -75,7 +75,7 @@ secondary = Star(mass=0.327*u.solMass,
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=0*u.deg,
+                  argument_of_periastron=250*u.deg,
                   gamma=-41.7*u.km/u.s,
                   period=0.7949859*u.d,
                   eccentricity=0.1,
@@ -97,9 +97,9 @@ o = Observer(passband=['Generic.Bessell.V',
                        ],
              system=bs)
 
-start_phs = -0.5
-stop_phs = 0.5
-step = 0.01
+start_phs = -0.6
+stop_phs = 0.6
+step = 0.025
 curves = o.observe(from_phase=start_phs,
                    to_phase=stop_phs,
                    phase_step=step,
@@ -107,7 +107,7 @@ curves = o.observe(from_phase=start_phs,
 
 print('Elapsed time for LC gen: {:.6f}'.format(time()-star_time))
 
-x = np.linspace(start_phs, stop_phs, int((stop_phs-start_phs)/step))
+x = np.linspace(start_phs, stop_phs, int(round((stop_phs-start_phs)/step, 0)))
 for item in curves:
     # plt.scatter(x, curves[item], label=item)
     # plt.scatter(x, curves[item]/max(curves[item]), label=item)

@@ -2156,11 +2156,12 @@ class BinarySystem(System):
     def get_positions_method(self):
         return self.calculate_orbital_motion
 
-    def calculate_orbital_motion(self, phase=None):
+    def calculate_orbital_motion(self, phase=None, return_nparray=False):
         orbital_motion = self.orbit.orbital_motion(phase=phase)
         idx = np.arange(np.shape(phase)[0])
         positions = np.hstack((idx[:, np.newaxis], orbital_motion))
-        return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
+        retval = [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
+        return retval, positions if return_nparray else retval
 
     # todo: are you planning to use that?? no usages for now...
     def calculate_lines_of_sight(self, phase=None):

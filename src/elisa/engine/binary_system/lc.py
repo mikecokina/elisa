@@ -239,9 +239,16 @@ def compute_eccentric_lightcurve(self, **kwargs):
     phases = kwargs.pop("phases")
 
     position_method = kwargs.pop("position_method")
-    orbital_motion = position_method(phase=phases)
+    orbital_motion, orbital_motion_array = position_method(phase=phases, return_nparray=True)
+    azimuths = orbital_motion_array[:, 2]
 
     # in case of clean surface, symmetry around semi-major axis can be utilized
+    azimuth_boundaries = [self.argument_of_periastron, (self.argument_of_periastron + const.PI) % const.FULL_ARC]
+    # mask isolating the symmetrical part of the orbit
+    unique_geometry = np.logical_and(azimuths >= azimuth_boundaries[0],
+                                     azimuths <= azimuth_boundaries[1]) \
+        if azimuth_boundaries[0] < azimuth_boundaries[1] else np.logical_xor(azimuths <= azimuth_boundaries[0],
+                                                                             azimuths >= azimuth_boundaries[1])
 
     band_curves = {key: list() for key in kwargs["passband"].keys()}
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
