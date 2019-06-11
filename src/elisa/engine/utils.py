@@ -60,6 +60,8 @@ def find_nearest_dist_3d(data):
     :param data: Iterable
     :return: float; minimal distance of points in dataset
     """
+    if isinstance(data, np.ndarray):
+        data = data.tolist()
     from scipy.spatial import KDTree
     points = copy(data)
     test_points, distances = copy(points), []
@@ -180,7 +182,7 @@ def cylindrical_to_cartesian(cylindrical_points):
 
 def arbitrary_rotation(theta, omega, vector, degrees=False, omega_normalized=False):
     """
-    Rodrigues` Rotation Formula.
+    Rodrigues's Rotation Formula.
     Function rotates `vector` around axis defined by `omega` vector by amount `theta`.
 
     :param theta: float; radial vector of point of interest to rotate
@@ -294,6 +296,15 @@ def remap(x, mapper):
     Function rearranges list of points indices according to indices in mapper.
     Maper contains on the nth place new address of the nth point.
 
+    ::
+
+        mapper = <class 'list'>: [7, 8, 9, 1, 2, 3, 4, 5, 6]
+        x = <class 'list'>: [[3, 4, 5], [6, 7, 8], [0, 2, 1]]
+        result = <class 'list'>: [[1, 2, 3], [4, 5, 6], [7, 9, 8]]
+
+    Value 3 from `x` was replaced by 3rd (in index meaning) value from `mapper`,
+    value 6 from `x` is replaced by 6th value from mapper, etc.
+
     :param x: ndarray; faces-like matrix
     :param mapper: ndarray; transformation map - numpy.array(): new_index_of_point = mapper[old_index_of_point]
     :return: List; faces-like matrix
@@ -328,6 +339,16 @@ def triangle_areas(triangles, points):
 def calculate_distance_matrix(points1, points2, return_join_vector_matrix=False):
     """
     Function returns distance matrix between two sets of points.
+
+    Return matrix consist of distances in order like foloowing::
+
+        [[D(p1[0], p2[0]), D(p1[0], p2[1]), ..., D(p1[0], p2[n])],
+         [D(p1[1], p2[0]), D(p1[1], p2[1]), ..., D(p1[1], p2[n])],
+         ...
+         [D(p1[m], p2[0]), D(p1[m], p2[1]), ..., D(p1[m], p2[n])]]
+
+    If join vector set to True, normalized join vecetors are defined as vectors in between points
+    and positions in matrix are related to their distance in matrix above.
 
     :param points1: ndarray;
     :param points2: ndarray;
@@ -370,21 +391,17 @@ def find_face_centres(faces):
     return np.mean(faces, axis=1)
 
 
-def check_missing_kwargs(kwargs, instance_kwargs, instance_of):
+def check_missing_kwargs(mandatory_kwargs, supplied_kwargs, instance_of):
     """
     Checks if all `kwargs` are all in `instance kwargs`.
     If missing raise ValuerError with missing `kwargs`.
 
-    :param kwargs: List[str]
-    :param instance_kwargs: List[str]
+    :param mandatory_kwargs: List[str]
+    :param supplied_kwargs: List[str]
     :param instance_of: class
     :return:
     """
-    missing_kwargs = []
-    for kwarg in kwargs:
-        if kwarg not in instance_kwargs:
-            missing_kwargs.append(f"`{kwarg}`")
-
+    missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in class instance {instance_of.__name__}')
 
@@ -514,13 +531,16 @@ def calculate_cos_theta(normals, line_of_sight_vector):
         - matrix(N * 3), matrix(3) - cosine between each matrix(N * 3) and matrix(3)
         - matrix(N * 3), matrix(M * 3) - cosine between each combination of matrix(N * 3) and matrix(M * 3)
 
+    Combinations are made like normals[0] with all of line_of_sight_vector,
+    normals[1] with all from line_of_sight_vector, and so on, and so forth.
+
     :param normals: ndarray
     :param line_of_sight_vector: ndarray
     :return: ndarray
     """
     return np.sum(np.multiply(normals, line_of_sight_vector[None, :]), axis=1) \
         if np.ndim(line_of_sight_vector) == 1 \
-        else np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]))
+        else np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]), axis=2)
 
 
 def calculate_cos_theta_los_x(normals):
@@ -558,7 +578,9 @@ def convert_gravity_acceleration_array(colormap, units):
     :return: ndarray
     """
     if units == 'log_cgs':
-        colormap += 2
+        # keep it in this way to avoid mutable rewrite of origin colormap array
+        # for more information read python docs about __add__ and __iadd__ class methods
+        colormap = colormap + 2
     elif units == 'SI':
         colormap = np.power(10, colormap)
     elif units == 'cgs':
