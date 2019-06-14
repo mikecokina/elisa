@@ -329,6 +329,21 @@ class TestElisaEngineUtils(unittest.TestCase):
         obtained = [val for val in utils.IterableQueue(q)]
         assert_array_equal(expected, obtained)
 
+    def test_find_surrounded(self):
+        look_in = [-1.5, -0.1, 0.0, 0.1, 1.1, 10]
+        look_fors = [-10, -1.5, -0.15, 1.2, 10, 21]
+
+        expected = ["raise", [-1.5, -1.5], [-1.5, -0.1], [1.1, 10.0], [10.0, 10.0], "raise"]
+
+        for look_for, expect in zip(look_fors, expected):
+            if expect == "raise":
+                with self.assertRaises(Exception) as context:
+                    utils.find_surrounded(look_in, look_for)
+                self.assertTrue('Any value in `look_for` is out of bound of `look_in`' in str(context.exception))
+            else:
+                obtained = utils.find_surrounded(look_in, look_for)
+                self.assertEqual(obtained, expect)
+
 #
 # def check_face_duplicity(faces=None, points=None):
 #     """
