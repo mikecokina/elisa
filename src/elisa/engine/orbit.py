@@ -1,6 +1,7 @@
 import numpy as np
 
-from elisa.engine import utils, logger
+from astropy import units as u
+from elisa.engine import utils, logger, units
 from elisa.engine import const
 
 
@@ -79,7 +80,15 @@ class Orbit(object):
         :param period: float
         :return:
         """
-        self._period = period
+        if isinstance(period, u.quantity.Quantity):
+            self._period = np.float64(period.to(units.PERIOD_UNIT))
+        elif isinstance(period, (int, np.int, float, np.float)):
+            self._period = np.float64(period)
+        else:
+            raise TypeError('Input of variable `period` is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        self._logger.debug(f"setting property period "
+                           f"of class instance {self.__class__.__name__} to {self._period}")
 
     @property
     def inclination(self):
@@ -98,7 +107,13 @@ class Orbit(object):
         :param inclination: float
         :return:
         """
-        self._inclination = inclination
+        if isinstance(inclination, u.quantity.Quantity):
+            self._inclination = np.float64(inclination.to(units.ARC_UNIT))
+        elif isinstance(inclination, (int, np.int, float, np.float)):
+            self._inclination = np.float64(inclination)
+        else:
+            raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
 
     @property
     def eccentricity(self):
@@ -137,7 +152,13 @@ class Orbit(object):
         :param argument_of_periastron: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return:
         """
-        self._argument_of_periastron = argument_of_periastron
+        if isinstance(argument_of_periastron, u.quantity.Quantity):
+            self._argument_of_periastron = np.float64(argument_of_periastron.to(units.ARC_UNIT))
+        elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
+            self._argument_of_periastron = np.float64((argument_of_periastron * u.deg).to(units.ARC_UNIT))
+        else:
+            raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
 
     @classmethod
     def true_phase(cls, phase, phase_shift):
@@ -211,7 +232,7 @@ class Orbit(object):
         :param true_anomaly: ndarray
         :return: ndarray
         """
-        return (1.0 - self.eccentricity ** 2) / (1.0 + self.eccentricity * np.cos(true_anomaly))
+        return (1.0 - np.power(self.eccentricity, 2)) / (1.0 + self.eccentricity * np.cos(true_anomaly))
 
     def true_anomaly_to_azimuth(self, true_anomaly):
         """
@@ -269,11 +290,11 @@ class Orbit(object):
         return dictionary is in shape::
 
             {
-                type_of_eclipse: {
-                    'true_phase': ,
-                    'true_anomaly': ,
-                    'mean_anomaly': ,
-                    'eccentric_anomaly':
+                type_of_eclipse <`primary_eclipse` or `secondary_eclipse`>: {
+                    'true_phase': float,
+                    'true_anomaly': float,
+                    'mean_anomaly': float,
+                    'eccentric_anomaly'float:
                 },
                 ...
             }

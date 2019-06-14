@@ -291,7 +291,7 @@ class BinarySystem(System):
         elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
             self._argument_of_periastron = np.float64((argument_of_periastron * u.deg).to(units.ARC_UNIT))
         else:
-            raise TypeError('Input of variable `periastron` is not (numpy.)int or (numpy.)float '
+            raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
         if not 0 <= self._argument_of_periastron <= const.FULL_ARC:
