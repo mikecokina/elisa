@@ -240,6 +240,7 @@ class Orbit(object):
         eccentric_anomaly = \
             2.0 * np.arctan(np.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) * np.tan(true_anomaly / 2.0))
         eccentric_anomaly[eccentric_anomaly < 0] += const.FULL_ARC
+        return eccentric_anomaly
 
     def relative_radius(self, true_anomaly: ndarray) -> ndarray:
         """
@@ -290,7 +291,7 @@ class Orbit(object):
 
         return np.column_stack((distance, azimut_angle, true_anomaly, phase))
 
-    def orbital_motion_from_azimuths(self, azimuths):
+    def orbital_motion_from_azimuths(self, azimuth):
         """
         function takes azimuths of the binary system (angle between ascending node (-y) as input and calculates
         positions of the secondary component in the frame of reference of primary component
@@ -302,13 +303,13 @@ class Orbit(object):
                                     ...
                                     (rN, azN, niN, phsN))
         """
-        true_anomaly = self.azimuth_to_true_anomaly(azimuths)
+        true_anomaly = self.azimuth_to_true_anomaly(azimuth)
         distance = self.relative_radius(true_anomaly=true_anomaly)
         eccentric_anomaly = self.true_anomaly_to_eccentric_anomaly(true_anomaly)
         mean_anomaly = self.eccentric_anomaly_to_mean_anomaly(eccentric_anomaly)
         true_phase = self.mean_anomaly_to_phase(mean_anomaly)
         phase = self.phase(true_phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
-        return np.column_stack((distance, azimuths, true_anomaly, phase))
+        return np.column_stack((distance, azimuth, true_anomaly, phase))
 
     def get_conjuction(self) -> Dict:
         """

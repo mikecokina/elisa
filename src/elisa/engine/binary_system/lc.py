@@ -214,7 +214,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
 def phase_crv_symmetry(self, phase):
     """
-    utilizing symmetry of circular systems without spots and pulastions wher e you need to evalueate only half of the
+    utilizing symmetry of circular systems without spots and pulastions where you need to evaluate only half of the
     phases. Function finds such redundant phases and returns only unique phases.
     :param self:
     :param phase:
@@ -239,14 +239,16 @@ def compute_eccentric_lightcurve(self, **kwargs):
     phases = kwargs.pop("phases")
 
     position_method = kwargs.pop("position_method")
-    orbital_motion, orbital_motion_array = position_method(phase=phases, return_nparray=True)
+    orbital_motion, orbital_motion_array = position_method(input_argument=phases,
+                                                           return_nparray=True, calculate_from='phase')
     azimuths = orbital_motion_array[:, 2]
 
     # in case of clean surface, symmetry around semi-major axis can be utilized
     # mask isolating the symmetrical part of the orbit
     if len(phases) > config.POINTS_ON_ECC_ORBIT:
-        unique_geometry_phases, unique_geometry_azimuths, unique_geometry_counterazimuths = \
+        unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart = \
             cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
+        counterpart_phases = orbital_motion_array_counterpart[:, 4]
 
     band_curves = {key: list() for key in kwargs["passband"].keys()}
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
@@ -254,40 +256,96 @@ def compute_eccentric_lightcurve(self, **kwargs):
     #initial values of radii to be compared with
     orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
     # test and therefore the surface will be built
-    for orbital_position in orbital_motion:
-        forward_rad_p = self.calculate_forward_radius('primary', components_distance=orbital_position.distance)
-        forward_rad_s = self.calculate_forward_radius('secondary', components_distance=orbital_position.distance)
+    if len(phases) > config.POINTS_ON_ECC_ORBIT:
+        band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
+        # for orbital_position in orbital_motion:
+        for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
+            orbital_position = orbital_motion[unique_phase_idx]
 
-        self.build(components_distance=orbital_position.distance)
-        system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
-                                                                             ecl_boundaries=ecl_boundaries)
-        system_positions_container = system_positions_container.darkside_filter()
-        container = next(iter(system_positions_container))
+            forward_rad_p = self.calculate_forward_radius('primary', components_distance=orbital_position.distance)
+            forward_rad_s = self.calculate_forward_radius('secondary', components_distance=orbital_position.distance)
 
-        # injected attributes
-        setattr(container.primary, 'metallicity', self.primary.metallicity)
-        setattr(container.secondary, 'metallicity', self.secondary.metallicity)
+            self.build(components_distance=orbital_position.distance)
 
-        primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(container, **kwargs)
-        primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(container, **kwargs)
+            container = prepare_star_container(self, orbital_position, ecl_boundaries)
+            container_counterpart = prepare_star_container(self, orbital_motion_counterpart[counterpart_idx],
+                                                           ecl_boundaries)
 
-        coverage = compute_surface_coverage(container, in_eclipse=True)
-        p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
-        s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
+            primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(container, **kwargs)
+            primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(container, **kwargs)
 
-        for band in kwargs["passband"].keys():
-            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
-                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                 cos_theta=p_cosines)[0]
+            coverage = compute_surface_coverage(container, in_eclipse=True)
+            coverage_counterpart = compute_surface_coverage(container_counterpart, in_eclipse=True)
 
-            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
-                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                 cos_theta=s_cosines)[0]
-            # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
-            p_flux = np.sum(primary_normal_radiance[band] * p_cosines * coverage["primary"] * p_ld_cors)
-            s_flux = np.sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
-            flux = p_flux + s_flux
-            band_curves[band].append(flux)
+            p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
+            s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
+
+            p_cosines_counterpart = utils.calculate_cos_theta_los_x(container_counterpart.primary.normals)
+            s_cosines_counterpart = utils.calculate_cos_theta_los_x(container_counterpart.secondary.normals)
+
+            for band in kwargs["passband"].keys():
+                p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                     limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                     cos_theta=p_cosines)[0]
+
+                s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                     limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                     cos_theta=s_cosines)[0]
+
+                p_ld_cors_counterpart = \
+                    ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                     limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                     cos_theta=p_cosines_counterpart)[0]
+
+                s_ld_cors_counterpart = \
+                    ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                     limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                     cos_theta=s_cosines_counterpart)[0]
+
+                # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
+                p_flux = np.sum(primary_normal_radiance[band] * p_cosines * coverage["primary"] * p_ld_cors)
+                s_flux = np.sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
+
+                p_flux_counterpart = \
+                    np.sum(primary_normal_radiance[band] * p_cosines_counterpart * coverage_counterpart["primary"] *
+                           p_ld_cors_counterpart)
+                s_flux_counterpart = \
+                    np.sum(secondary_normal_radiance[band] * s_cosines_counterpart * coverage_counterpart["secondary"] *
+                           s_ld_cors_counterpart)
+
+                flux = p_flux + s_flux
+                flux_counterpart = p_flux_counterpart + s_flux_counterpart
+
+                band_curves[band].append(flux)
+                band_curves_counterpart[band].append(flux_counterpart)
+    else:
+        for orbital_position in orbital_motion:
+            forward_rad_p = self.calculate_forward_radius('primary', components_distance=orbital_position.distance)
+            forward_rad_s = self.calculate_forward_radius('secondary', components_distance=orbital_position.distance)
+
+            self.build(components_distance=orbital_position.distance)
+            container = prepare_star_container(self, orbital_position, ecl_boundaries)
+
+            primary_normal_radiance, secondary_normal_radiance = get_normal_radiance(container, **kwargs)
+            primary_ld_cfs, secondary_ld_cfs = get_limbdarkening(container, **kwargs)
+
+            coverage = compute_surface_coverage(container, in_eclipse=True)
+            p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
+            s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
+
+            for band in kwargs["passband"].keys():
+                p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                     limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                     cos_theta=p_cosines)[0]
+
+                s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
+                                                     limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                     cos_theta=s_cosines)[0]
+                # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
+                p_flux = np.sum(primary_normal_radiance[band] * p_cosines * coverage["primary"] * p_ld_cors)
+                s_flux = np.sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
+                flux = p_flux + s_flux
+                band_curves[band].append(flux)
 
     # temporary
     # from matplotlib import pyplot as plt
@@ -300,23 +358,57 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
 
 def cunstruct_geometry_symmetric_azimuths(self, azimuths, phases):
+    """
+    prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
+    mirrored via apsidal line in order to reduce time for generating the light curve
+    :param self: BinarySystem
+    :param azimuths: np.array - orbital azimuths of positions in which LC will be calculated
+    :param phases: np.array - orbital phase of positions in which LC will be calculated
+    :return: tuple - unique_phase_indices - np.array : indices that points to the orbital positions from one half of the
+                                                       orbital motion divided by apsidal line
+                   - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by
+                                                         indices `unique_phase_indices`
+                   - orbital_motion_array_counterpart - np.array - sa as `orbital_motion_counterpart` but in np.array
+                                                        form
+    """
     azimuth_boundaries = [self.argument_of_periastron, (self.argument_of_periastron + const.PI) % const.FULL_ARC]
-    unique_geometry = np.logical_and(azimuths >= azimuth_boundaries[0],
-                                     azimuths <= azimuth_boundaries[1]) \
-        if azimuth_boundaries[0] < azimuth_boundaries[1] else np.logical_xor(azimuths <= azimuth_boundaries[0],
-                                                                             azimuths >= azimuth_boundaries[1])
+    unique_geometry = np.logical_and(azimuths > azimuth_boundaries[0],
+                                     azimuths < azimuth_boundaries[1]) \
+        if azimuth_boundaries[0] < azimuth_boundaries[1] else np.logical_xor(azimuths < azimuth_boundaries[0],
+                                                                             azimuths > azimuth_boundaries[1])
     unique_phase_indices = np.arange(phases.shape[0])[unique_geometry]
-    unique_geometry_phases = phases[unique_geometry]
     unique_geometry_azimuths = azimuths[unique_geometry]
     unique_geometry_counterazimuths = (2 * self.argument_of_periastron - unique_geometry_azimuths) % const.FULL_ARC
-    unique_geometry_counter_mean_anomaly = self.orbit.azimuth_to_true_anomaly(self, unique_geometry_counterazimuths)
+    # unique_geometry_counterazimuths = np.concatenate(([azimuth_boundaries[0]],
+    #                                                   unique_geometry_counterazimuths,
+    #                                                   [azimuth_boundaries[1]]))
+    orbital_motion_counterpart, orbital_motion_array_counterpart = \
+        self.calculate_orbital_motion(input_argument=unique_geometry_counterazimuths,
+                                      return_nparray=True,
+                                      calculate_from='azimuth')
 
-    return unique_geometry_phases, unique_geometry_azimuths, unique_geometry_counterazimuths
+    return unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart
 
 
-def return_symmetrical_phases(self, phases):
-    # azimuths = np.array([orb_pos.azimuth for orb_pos in orbital_motion])
-    pass
+def prepare_star_container(self, orbital_position, ecl_boundaries):
+    """
+    prepares a postion container for given orbital position where visibe/non visible faces are calculated and
+    metallicities are assigned
+
+    :param self: BinarySystem
+    :param orbital_position: Position
+    :param ecl_boundaries: np.array - orbital azimuths of eclipses
+    :return: container - SingleOrbitalPositionContainer
+    """
+    system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
+                                                                         ecl_boundaries=ecl_boundaries)
+    system_positions_container = system_positions_container.darkside_filter()
+    container = next(iter(system_positions_container))
+
+    # injected attributes
+    setattr(container.primary, 'metallicity', self.primary.metallicity)
+    setattr(container.secondary, 'metallicity', self.secondary.metallicity)
+    return container
 
 
 if __name__ == "__main__":
