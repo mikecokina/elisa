@@ -195,6 +195,9 @@ class SystemOrbitalPosition(object):
         self._idx = 0
         self.in_eclipse = self.in_eclipse_test(ecl_boundaries)
 
+        self._coverage = None
+        self._cosines = {}
+
     def __iter__(self):
         for single_position_container in self.data:
             yield single_position_container
@@ -223,6 +226,42 @@ class SystemOrbitalPosition(object):
     def eclipse_filter(self):
         self.data = ()
         return self
+
+    @property
+    def coverage(self):
+        """
+        returns visible area of each surface face
+
+        :return: np.array
+        """
+        return self._coverage
+
+    @coverage.setter
+    def coverage(self, coverage):
+        """
+        setter for visible area of each surface face
+
+        :param coverage: np.array
+        :return:
+        """
+        self._coverage = coverage
+
+    @property
+    def cosines(self):
+        """
+        returns directional cosines for each surface face of both components with respect to line_of_sight
+        :return: dict - {'primary': np.array, 'secondary': np.array}
+        """
+        return self._cosines
+
+    @cosines.setter
+    def cosines(self, value):
+        """
+        setter for storing directional cosines for each surface face of both components with respect to line_of_sight
+        :param value: dict - {'primary': np.array, 'secondary': np.array}
+        :return:
+        """
+        self._cosines = value
 
     def in_eclipse_test(self, ecl_boundaries):
         """
