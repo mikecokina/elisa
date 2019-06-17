@@ -1974,6 +1974,9 @@ class BinarySystem(System):
                                                                  areas[_component], spot.areas, log_g[_component],
                                                                  spot.log_g, vis_test[_component], vis_test_spot)
 
+        ldc_primary = self.get_bolometric_ld_coefficients("primary", temperatures["primary"], log_g["primary"])
+        ldc_secondary = self.get_bolometric_ld_coefficients("secondary", temperatures["secondary"], log_g["secondary"])
+
         # calculating C_A = (albedo_A / D_intB) - scalar
         # D_intB - bolometric limb darkening factor
         d_int = {
@@ -2084,7 +2087,6 @@ class BinarySystem(System):
 
             # coefficients_primary = ld.interpolate_on_ld_grid()
 
-
             d_gamma = \
                 {'primary': ld.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'], None, :],
                                                      line_of_sight=join_vector,
@@ -2122,6 +2124,13 @@ class BinarySystem(System):
 
         # redistributing temperatures back to the parent objects
         self.redistribute_temperatures(temperatures)
+
+    def get_bolometric_ld_coefficients(self, component, temperature, log_g):
+        columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+        coeffs = ld.interpolate_on_ld_grid(temperature=temperature, log_g=log_g + 2,
+                                           metallicity=getattr(self, component).metallicity,
+                                           passband=["bolometric"])["bolometric"][columns]
+        return np.array(coeffs).reshape(-1, len(coeffs))
 
     def get_visibility_tests(self, centres, q_test, xlim, component):
         """
