@@ -160,10 +160,6 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
     if limb_darkening_law is None:
         raise ValueError('Limb darkening rule was not supplied choose from: '
                          '`linear` or `cosine`, `logarithmic`, `square_root`.')
-    # if normal_vector is not None and line_of_sight is not None:
-    #     if line_of_sight.ndim != 1 and normal_vector.ndim != line_of_sight.ndim:
-    #         raise ValueError('A `line_of_sight` should be either one vector or ther '
-    #                          'name amount of vectors as provided in radius vectors.')
 
     if cos_theta is None:
         cos_theta = np.sum(normal_vector * line_of_sight, axis=-1)
@@ -190,16 +186,8 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, c
     if coefficients is None:
         raise ValueError('Limb darkening coefficients were not supplied.')
     elif limb_darkening_law is None:
-        raise ValueError('Limb darkening rule was not supplied choose from: `linear` or `cosine`, `logarithmic`, '
-                         '`square_root`.')
-    elif limb_darkening_law in ['linear', 'cosine']:
-        if not np.isscalar(coefficients):
-            raise ValueError('Only one scalar limb darkening coefficient is required for linear cosine law. You '
-                             'used: {}'.format(coefficients))
-    elif limb_darkening_law in ['logarithmic', 'square_root']:
-        if not np.shape(coefficients) == (2,):
-            raise ValueError('Invalid number of limb darkening coefficients. Expected 2, given: '
-                             '{}'.format(coefficients))
+        raise ValueError('Limb darkening rule was not supplied choose from: '
+                         '`linear` or `cosine`, `logarithmic`, `square_root`.')
 
     if limb_darkening_law in ['linear', 'cosine']:
         return np.pi * (1 - coefficients / 3)
