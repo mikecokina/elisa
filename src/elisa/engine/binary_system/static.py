@@ -56,7 +56,7 @@ def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis
 
 def init_surface_variables(component_instance):
     """
-    Function copies basic parameters of the stellar surface (points, faces, normals, temperatures and areas) of
+    Function copies basic parameters of the stellar surface (points, faces, normals, temperatures, areas and log_g) of
     given star instance into new arrays during calculation of reflection effect.
 
     :param component_instance: Star instance
@@ -66,12 +66,13 @@ def init_surface_variables(component_instance):
     centres = copy(component_instance.face_centres)
     normals = copy(component_instance.normals)
     temperatures = copy(component_instance.temperatures)
+    log_g = copy(component_instance.log_g)
     areas = copy(component_instance.areas)
-    return points, faces, centres, normals, temperatures, areas
+    return points, faces, centres, normals, temperatures, areas, log_g
 
 
 def include_spot_to_surface_variables(centres, spot_centres, normals, spot_normals, temperatures,
-                                      spot_temperatures, areas, spot_areas, vis_test, vis_test_spot):
+                                      spot_temperatures, areas, spot_areas, log_g, spot_log_g, vis_test, vis_test_spot):
     """
     Function includes surface parameters of spot faces into global arrays containing parameters from whole surface
     used in reflection effect.
@@ -92,9 +93,10 @@ def include_spot_to_surface_variables(centres, spot_centres, normals, spot_norma
     normals = np.append(normals, spot_normals, axis=0)
     temperatures = np.append(temperatures, spot_temperatures, axis=0)
     areas = np.append(areas, spot_areas, axis=0)
+    log_g = np.append(log_g, spot_log_g, axis=0)
     vis_test = np.append(vis_test, vis_test_spot, axis=0)
 
-    return centres, normals, temperatures, areas, vis_test
+    return centres, normals, temperatures, areas, vis_test, log_g
 
 
 def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test, vis_test_symmetry):

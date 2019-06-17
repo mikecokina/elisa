@@ -1919,6 +1919,7 @@ class BinarySystem(System):
         """
         # fixme
         LD_COEFF = 0.5
+
         if not config.REFLECTION_EFFECT:
             self._logger.debug('reflection effect is switched off')
             return
@@ -1941,7 +1942,8 @@ class BinarySystem(System):
         vis_test_symmetry = {}
 
         # declaring variables
-        centres, vis_test, gamma, normals, faces, points, temperatures, areas = {}, {}, {}, {}, {}, {}, {}, {}
+        centres, vis_test, gamma, normals = {}, {}, {}, {}
+        faces, points, temperatures, areas, log_g = {}, {}, {}, {}, {}
         # centres - dict with all centres concatenated (star and spot) into one matrix for convenience
         # vis_test - dict with bool map for centres to select only faces visible from any face on companion
         # companion
@@ -1952,7 +1954,7 @@ class BinarySystem(System):
             component_instance = getattr(self, _component)
 
             points[_component], faces[_component], centres[_component], normals[_component], temperatures[_component], \
-                areas[_component] = static.init_surface_variables(component_instance)
+                areas[_component], log_g[_component] = static.init_surface_variables(component_instance)
 
             # test for visibility of star faces
             vis_test[_component], vis_test_symmetry[_component] = \
@@ -1965,12 +1967,12 @@ class BinarySystem(System):
 
                     # merge surface and spot face parameters into one variable
                     centres[_component], normals[_component], temperatures[_component], areas[_component], \
-                        vis_test[_component] = \
+                        vis_test[_component], log_g[_component] = \
                         static.include_spot_to_surface_variables(centres[_component], spot.face_centres,
                                                                  normals[_component], spot.normals,
                                                                  temperatures[_component], spot.temperatures,
-                                                                 areas[_component], spot.areas,
-                                                                 vis_test[_component], vis_test_spot)
+                                                                 areas[_component], spot.areas, log_g[_component],
+                                                                 spot.log_g, vis_test[_component], vis_test_spot)
 
         # calculating C_A = (albedo_A / D_intB) - scalar
         # D_intB - bolometric limb darkening factor
@@ -2079,6 +2081,10 @@ class BinarySystem(System):
 
             # calculating limb darkening factors for each combination of faces shape
             # (N_faces_primary * N_faces_secondary)
+
+            # coefficients_primary = ld.interpolate_on_ld_grid()
+
+
             d_gamma = \
                 {'primary': ld.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'], None, :],
                                                      line_of_sight=join_vector,
