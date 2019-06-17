@@ -159,14 +159,14 @@ class BinarySystem(System):
         :return: str; detached, semi-detached, over-contact, double-contact
         """
         return self._morphology
-    
+
     @morphology.setter
     def morphology(self, value):
         """
         Create read only `morpholoy` parameter. Raise error when called.
-        
-        :param value: Any 
-        :return: 
+
+        :param value: Any
+        :return:
         """
         raise Exception("Parametre `morphology` is read only.")
 
@@ -1980,10 +1980,11 @@ class BinarySystem(System):
         # calculating C_A = (albedo_A / D_intB) - scalar
         # D_intB - bolometric limb darkening factor
         d_int = {
-            'primary': ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, LD_COEFF),
-            'secondary': ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, LD_COEFF)
+            'primary': ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc_primary),
+            'secondary': ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc_secondary)
         }
 
+        # this suppose to be scalar, so we have some issue
         _c = {
             'primary': (self.primary.albedo / d_int['secondary']),
             'secondary': (self.secondary.albedo / d_int['primary'])
@@ -1994,7 +1995,7 @@ class BinarySystem(System):
             _component: np.ones((np.sum(vis_test[_component]),), dtype=np.float) for _component in component
         }
 
-        counterpart = {'primary': 'secondary', 'secondary': 'primary'}
+        counterpart = config.BINARY_COUNTERPARTS
 
         # for faster convergence, reflection effect is calculated first on cooler component
         components = ['primary', 'secondary'] if self.primary.t_eff <= self.secondary.t_eff else \
@@ -2090,12 +2091,12 @@ class BinarySystem(System):
             d_gamma = \
                 {'primary': ld.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'], None, :],
                                                      line_of_sight=join_vector,
-                                                     coefficients=LD_COEFF,
+                                                     coefficients=[LD_COEFF], #ldc_primary[:, vis_test['primary']].T,
                                                      limb_darkening_law=config.LIMB_DARKENING_LAW),
                  'secondary': ld.limb_darkening_factor(normal_vector=normals['secondary'][None, vis_test['secondary'], :
                                                                      ],
                                                        line_of_sight=-join_vector,
-                                                       coefficients=LD_COEFF,
+                                                       coefficients=[LD_COEFF], # ldc_secondary[:, vis_test['secondary']],
                                                        limb_darkening_law=config.LIMB_DARKENING_LAW)
                  }
 
@@ -2103,7 +2104,7 @@ class BinarySystem(System):
             matrix_to_sum2 = {_component: q_ab * d_gamma[counterpart[_component]] for _component in component}
             for _ in range(iterations):
                 for _component in components:
-                    counterpart = 'primary' if _component == 'secondary' else 'secondary'
+                    counterpart = config.BINARY_COUNTERPARTS[_component]
 
                     # calculation of reflection effect correction as
                     # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
@@ -2113,8 +2114,11 @@ class BinarySystem(System):
                     counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component] = 1 + (_c[_component] / np.power(
-                        temperatures[_component][vis_test[_component]], 4)) \
-                                                        * counterpart_to_sum
+                        temperatures[_component][vis_test[_component]], 4)) * counterpart_to_sum
+                    # vyssie tvrdis, ze sa ma pouzit _c[_component], ale ked je to prevedene maticovo, (teda _c
+                    # uz nie je len konstanta, ale vektor) tak nesedi rozmer
+                    # reflection_factor[_component] = 1 + (_c[_component][vis_test[_component]] / np.power(
+                    #     temperatures[_component][vis_test[_component]], 4)) * counterpart_to_sum
 
             for _component in components:
                 # assigning new temperatures according to last iteration as
@@ -2127,7 +2131,8 @@ class BinarySystem(System):
 
     def get_bolometric_ld_coefficients(self, component, temperature, log_g):
         columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-        coeffs = ld.interpolate_on_ld_grid(temperature=temperature, log_g=log_g + 2,
+        coeffs = ld.interpolate_on_ld_grid(temperature=temperature,
+                                           log_g=utils.convert_gravity_acceleration_array(log_g, units='log_cgs'),
                                            metallicity=getattr(self, component).metallicity,
                                            passband=["bolometric"])["bolometric"][columns]
         return np.array(coeffs).reshape(-1, len(coeffs))
