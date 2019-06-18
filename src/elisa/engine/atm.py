@@ -465,6 +465,7 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
     """
     Function crops the wavelength boundaries of the atmosphere model to the precise boundaries defined by
     `left_bandwidth` and `right_bandwidth`.
+    It will replace bound walues of given `atm_container.model` with interpolated values on given bandwidth.
 
     :param atm_container: AtmDataContainer
     :param left_bandwidth: float
@@ -704,6 +705,17 @@ def parse_domain_quantities_from_atm_table_filename(filename):
         filename), get_metallicity_from_atm_table_filename(filename)
 
 
+def _normalize_filename(filename):
+    """
+    Remove .csv from filename and return just a basename if there is a full path.
+
+    :param filename: str
+    :return: str
+    """
+    filename = filename if not str(filename).endswith(".csv") else str(filename).replace('.csv', '')
+    return os.path.basename(filename)
+
+
 def get_metallicity_from_atm_table_filename(filename):
     """
     Get metallicity as number from filename / directory.
@@ -711,7 +723,8 @@ def get_metallicity_from_atm_table_filename(filename):
     :param filename: str
     :return: float
     """
-    m = str(filename).split("_")[0][-3:]
+    filename = _normalize_filename(filename)
+    m = filename.split("_")[0][-3:]
     sign = 1 if str(m).startswith("p") else -1
     value = float(m[1:]) / 10.0
     return value * sign
@@ -724,6 +737,7 @@ def get_temperature_from_atm_table_filename(filename):
     :param filename: str
     :return: float
     """
+    filename = _normalize_filename(filename)
     return float(str(filename).split("_")[1])
 
 
@@ -734,7 +748,7 @@ def get_logg_from_atm_table_filename(filename):
     :param filename: str
     :return: float
     """
-    filename = filename if not str(filename).endswith(".csv") else str(filename).replace('.csv', '')
+    filename = _normalize_filename(filename)
     g = str(filename).split("_")[2][1:]
     return int(g) / 10.0
 
@@ -907,6 +921,7 @@ def compute_normal_intensity(spectral_flux, wavelength, flux_mult=1.0, wave_mult
     return np.pi * flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
 
 
+# not used in elisa
 def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict):
     return {
         band: compute_integral_si_intensity_from_atm_data_containers(passbanded_atm)
@@ -914,6 +929,7 @@ def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict):
     }
 
 
+# not used in elisa
 def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers):
     """
     Returns intensity from given atmosphere models.

@@ -92,6 +92,7 @@ class TestLimbDarkeningModule(unittest.TestCase):
 
     def test_interpolate_on_ld_grid(self):
         config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(__file__), "data", "ld_grid")
+        raise Exception("Unfinished unittest")
 
     def _raise_test_limb_darkening_factor(self, msg, **kwargs):
         with self.assertRaises(Exception) as context:
@@ -121,10 +122,4 @@ class TestLimbDarkeningModule(unittest.TestCase):
         self._raise_test_limb_darkening_factor(msg, line_of_sight=sov, normal_vector=normals, coefficients=3)
 
     def test_limb_darkening_factor(self):
-        pass
-
-        # # invalid vectors dimensions
-        # with self.assertRaises(Exception) as context:
-        #     ld.limb_darkening_factor(normal_vector=normals,
-        #                              line_of_sight=np.array([sov, sov]))
-        # self.assertTrue('Normal vector(s) was not supplied.' in str(context.exception))
+        raise Exception("Unfinished unittest")

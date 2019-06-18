@@ -14,6 +14,7 @@ limbdarkening/*/*.csv
 limbdarkening/*.csv
 atmosphere/*/*.csv
 atmosphere/ck04/*
+atmosphere/k93/*
 atmosphere/*.csv
 conf/elisa_conf.ini
 
