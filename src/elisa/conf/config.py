@@ -48,10 +48,10 @@ MAX_DISCRETIZATION_FACTOR = 20
 NUMBER_OF_THREADS = int(os.cpu_count())
 
 # support data
-PASSBAND_TABLES = os.path.join(level_up(__file__, 3), "passband")
-VAN_HAMME_LD_TABLES = os.path.join(level_up(__file__, 3), "limbdarkening", "vh")
-CK04_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "ck04")
-K93_ATM_TABLES = os.path.join(level_up(__file__, 3), "atmosphere", "k93")
+PASSBAND_TABLES = os.path.expanduser(os.path.join("~", "passband"))
+VAN_HAMME_LD_TABLES = os.path.expanduser(os.path.join("~", "limbdarkening", "vh"))
+CK04_ATM_TABLES = os.path.expanduser(os.path.join("~", "atmosphere", "ck04"))
+K93_ATM_TABLES = os.path.expanduser(os.path.join("~", "atmosphere", "k93"))
 ATM_ATLAS = "ck04"
 
 
@@ -130,9 +130,9 @@ def update_config():
         CK04_ATM_TABLES = c_parse.get('support', 'castelli_kurucz_04_atm_tables', fallback=CK04_ATM_TABLES)
 
         if not os.path.isdir(CK04_ATM_TABLES) and not SUPPRESS_WARNINGS:
-            warnings.warn("path {}\n"
-                          "to castelli-kurucz 2004 atmosphere atlas doesn't exists\n"
-                          "Specifiy it in elisa_conf.ini file".format(CK04_ATM_TABLES))
+            warnings.warn(f"path {CK04_ATM_TABLES}\n"
+                          f"to castelli-kurucz 2004 atmosphere atlas doesn't exists\n"
+                          f"Specifiy it in elisa_conf.ini file")
 
         global K93_ATM_TABLES
         K93_ATM_TABLES = c_parse.get('support', 'kurucz_93_atm_tables', fallback=K93_ATM_TABLES)
