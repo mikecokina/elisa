@@ -785,7 +785,7 @@ def get_atm_table(temperature, log_g, metallicity, atlas):
 
     if not os.path.isfile(path):
         raise FileNotFoundError(f"there is no file like {path}")
-    return pd.read_csv(path, dtype={config.ATM_MODEL_DATAFARME_DTYPES})
+    return pd.read_csv(path, dtype=config.ATM_MODEL_DATAFARME_DTYPES)
 
 
 def get_list_of_all_atm_tables(atlas):
