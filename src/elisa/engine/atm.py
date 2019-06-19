@@ -206,6 +206,7 @@ class NaiveInterpolatedAtm(object):
         result[np.isnan(result)] = 1.0
         return result
 
+    # not used
     @staticmethod
     def compute_unknown_intensity_from_surounded_containers(weight, top_atm_container: AtmDataContainer,
                                                             bottom_atm_container: AtmDataContainer):
@@ -275,6 +276,7 @@ class NaiveInterpolatedAtm(object):
             }
         return interp_band
 
+    # not used
     @staticmethod
     def atm_tables(fpaths):
         """
@@ -503,7 +505,8 @@ def apply_passband(atm_containers, passband, **kwargs):
         passbanded_atm_containers[band] = list()
         for atm_container in atm_containers:
             # strip atm container on passband bandwidth (reason to do it is, that container
-            # is stripped on maximal bandwidth defined by all bands, not just by given single band)
+            # is stripped on maximal bandwidth defined by all bands (response functions),
+            # not just by given single band)
             atm_container = strip_to_bandwidth(
                 atm_container=deepcopy(atm_container),
                 left_bandwidth=band_container.left_bandwidth,
