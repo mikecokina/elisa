@@ -72,6 +72,20 @@ def darkside_filter(line_of_sight: np.array, normals: np.array):
     return np.arange(np.shape(normals)[0])[cosines > 0]
 
 
+# def calculate_all_forward_radii(binary, distances):
+#     """
+#
+#     :param binary:
+#     :param distances:
+#     :return:
+#     """
+#     forward_rad_p, forward_rad_s = np.empty(distances.shape), np.empty(distances.shape)
+#     for ii, distance in enumerate(distances):
+#         forward_rad_p[ii] = binary.calculate_forward_radius('primary', components_distance=distance)
+#         forward_rad_s[ii] = binary.calculate_forward_radius('secondary', components_distance=distance)
+#     return forward_rad_p, forward_rad_s
+
+
 def plane_projection(points, plane, keep_3d=False):
     """
     function projects 3D points into given plane

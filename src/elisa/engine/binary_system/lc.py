@@ -246,6 +246,13 @@ def compute_eccentric_lightcurve(self, **kwargs):
                                                            return_nparray=True, calculate_from='phase')
     azimuths = orbital_motion_array[:, 2]
 
+    # calculating all forward radii
+    distances = orbital_motion_array[:, 1]
+    forward_rad = self.calculate_all_forward_radii(distances, components=None)
+    # calculating relative changes in radii
+    rel_d_forward_radii = {component: np.abs(radii - np.roll(radii, 1))/radii for component, radii in
+                           forward_rad.items()}
+
     # in case of clean surface, symmetry around semi-major axis can be utilized
     # mask isolating the symmetrical part of the orbit
     if len(phases) > config.POINTS_ON_ECC_ORBIT:
@@ -263,9 +270,6 @@ def compute_eccentric_lightcurve(self, **kwargs):
         # for orbital_position in orbital_motion:
         for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
             orbital_position = orbital_motion[unique_phase_idx]
-
-            forward_rad_p = self.calculate_forward_radius('primary', components_distance=orbital_position.distance)
-            forward_rad_s = self.calculate_forward_radius('secondary', components_distance=orbital_position.distance)
 
             self.build(components_distance=orbital_position.distance)
 
@@ -298,7 +302,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
             for band in kwargs["passband"].keys():
                 band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
 
-    # temporary
+    # # temporary
     # from matplotlib import pyplot as plt
     # for band, curve in band_curves.items():
     #     x = np.arange(len(curve))
@@ -323,6 +327,14 @@ def compute_eccentric_lightcurve(self, **kwargs):
             full_crv[uniq_geom_test] = band_curves[band]
             full_crv[~uniq_geom_test] = interpolated_fluxes
             band_curves[band] = full_crv
+
+    # # temporary
+    # from matplotlib import pyplot as plt
+    # for band, curve in band_curves.items():
+    #     x = phases[unique_phase_indices]
+    #     plt.scatter(x, curve[unique_phase_indices])
+    #     plt.scatter(orbital_motion_array_counterpart[:, 4] % 1, band_curves_counterpart[band])
+    # plt.show()
 
     return band_curves
 
