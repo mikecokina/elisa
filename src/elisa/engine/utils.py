@@ -497,6 +497,18 @@ def is_empty(value) -> bool:
     return False
 
 
+def find_idx_of_nearest(array, values):
+    """
+    find indices of elements in `array` that are closest to elements in `values`
+    :param array: 1D array (M)
+    :param values: 1D array (N)
+    :return: np.array with shape (N) that points to the closest values in `array`
+    """
+    array = np.asarray(array)
+    idx = (np.abs(array[np.newaxis, :] - values[:, np.newaxis])).argmin(axis=1)
+    return idx
+
+
 class IterableQueue(object):
     """ Transform standard python Queue instance to iterable one"""
 

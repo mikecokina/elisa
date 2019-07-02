@@ -47,7 +47,8 @@ DISCRETIZATION_FACTOR = 5
 MAX_DISCRETIZATION_FACTOR = 20
 NUMBER_OF_THREADS = int(os.cpu_count())
 D_RADIUS = 0.001
-POINTS_ON_ECC_ORBIT = -1
+POINTS_ON_ECC_ORBIT = 99999
+MAX_D_DISTANCE = 0.0
 
 # support data
 PASSBAND_TABLES = os.path.join(level_up(__file__, 3), "passband")
@@ -124,6 +125,9 @@ def update_config():
 
         global POINTS_ON_ECC_ORBIT
         POINTS_ON_ECC_ORBIT = c_parse.getint('computational', 'points_on_ecc_orbit', fallback=POINTS_ON_ECC_ORBIT)
+
+        global MAX_D_DISTANCE
+        MAX_D_DISTANCE = c_parse.getfloat('computational', 'max_d_distance', fallback=MAX_D_DISTANCE)
     # ******************************************************************************************************************
 
     if c_parse.has_section('support'):

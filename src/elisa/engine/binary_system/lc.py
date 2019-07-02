@@ -246,26 +246,43 @@ def compute_eccentric_lightcurve(self, **kwargs):
                                                            return_nparray=True, calculate_from='phase')
     azimuths = orbital_motion_array[:, 2]
 
-    # calculating all forward radii
-    distances = orbital_motion_array[:, 1]
-    forward_rad = self.calculate_all_forward_radii(distances, components=None)
-    # calculating relative changes in radii
-    rel_d_forward_radii = {component: np.abs(radii - np.roll(radii, 1))/radii for component, radii in
-                           forward_rad.items()}
+    approximation_test1 = len(phases) > config.POINTS_ON_ECC_ORBIT and self.primary.synchronicity == 1.0 and \
+                        self.secondary.synchronicity == 1.0
 
-    # in case of clean surface, symmetry around semi-major axis can be utilized
+    # in case of clean surface or synchronous rotation (moreless), symmetry around semi-major axis can be utilized
     # mask isolating the symmetrical part of the orbit
-    if len(phases) > config.POINTS_ON_ECC_ORBIT:
-        unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
-            cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
-        counterpart_phases = orbital_motion_array_counterpart[:, 4]
+    unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
+        cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
+
+    # if approximation_test1:
+    #     unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
+    #         cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
+    #     # counterpart_phases = orbital_motion_array_counterpart[:, 4]
+    # else:
+    #     # # calculating all forward radii
+    #     # distances = orbital_motion_array[:, 1]
+    #     # forward_rad = self.calculate_all_forward_radii(distances, components=None)
+    #     #
+    #     # # calculating relative changes in radii
+    #     # rel_d_forward_radii = {component: np.abs(radii - np.roll(radii, 1)) / radii for component, radii in
+    #     #                        forward_rad.items()}
+    #     # max_rel_d_forward_radii = np.max([rel_d_forward_radii['primary'].max(), rel_d_forward_radii['secondary'].max()])
+    #
+    #     # second approximation does not interpolates the resulting light curve but assumes that geometry is the same as
+    #     # the geometry of the found counterpart
+    index_of_closest = utils.find_idx_of_nearest(orbital_motion_array_counterpart[:, 1],
+                                                 orbital_motion_array[~uniq_geom_test, 1])
+    d_distance = np.abs(orbital_motion_array[~uniq_geom_test, 1] -
+                        orbital_motion_array_counterpart[index_of_closest, 1])
+    approximation_test2 = max(d_distance) < config.MAX_D_DISTANCE and \
+                          self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0
 
     band_curves = {key: list() for key in kwargs["passband"].keys()}
 
     #initial values of radii to be compared with
     orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
     # test and therefore the surface will be built
-    if len(phases) > config.POINTS_ON_ECC_ORBIT:
+    if approximation_test1:
         band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
         # for orbital_position in orbital_motion:
         for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
@@ -289,6 +306,11 @@ def compute_eccentric_lightcurve(self, **kwargs):
                 band_curves_counterpart[band].append(calculate_lc_point(container_counterpart, band, ld_cfs,
                                                                         normal_radiance))
 
+    elif approximation_test2:
+        band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
+        for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
+            pass
+
     else:
         for orbital_position in orbital_motion:
             self.build(components_distance=orbital_position.distance)
@@ -302,15 +324,8 @@ def compute_eccentric_lightcurve(self, **kwargs):
             for band in kwargs["passband"].keys():
                 band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
 
-    # # temporary
-    # from matplotlib import pyplot as plt
-    # for band, curve in band_curves.items():
-    #     x = np.arange(len(curve))
-    #     plt.scatter(x, curve)
-    # plt.show()
-
     # LC interpolation of symmetrical part
-    if len(phases) > config.POINTS_ON_ECC_ORBIT:
+    if approximation_test1:
         x = np.concatenate((phases[unique_phase_indices], orbital_motion_array_counterpart[:, 4] % 1))
         sort_idx = np.argsort(x)
         x = x[sort_idx]
