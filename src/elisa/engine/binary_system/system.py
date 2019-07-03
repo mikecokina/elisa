@@ -1974,20 +1974,18 @@ class BinarySystem(System):
                                                                  areas[_component], spot.areas, log_g[_component],
                                                                  spot.log_g, vis_test[_component], vis_test_spot)
 
-        ldc_primary = self.get_bolometric_ld_coefficients("primary", temperatures["primary"], log_g["primary"])
-        ldc_secondary = self.get_bolometric_ld_coefficients("secondary", temperatures["secondary"], log_g["secondary"])
+        # limb darkening coefficients for each face of each component
+        ldc = {cmp: self.get_bolometric_ld_coefficients(cmp, temperatures[cmp], log_g[cmp]) for cmp in component}
 
         # calculating C_A = (albedo_A / D_intB) - scalar
         # D_intB - bolometric limb darkening factor
-        d_int = {
-            'primary': ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc_primary),
-            'secondary': ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc_secondary)
-        }
+        d_int = {cmp: ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc[cmp]) for cmp in
+                 component}
 
         # this suppose to be scalar, so we have some issue
         _c = {
-            'primary': (self.primary.albedo / d_int['secondary']),
-            'secondary': (self.secondary.albedo / d_int['primary'])
+            'primary': (self.primary.albedo / d_int['primary']),
+            'secondary': (self.secondary.albedo / d_int['secondary'])
         }
 
         # setting reflection factor R = 1 + F_irradiated / F_original, initially equal to one everywhere - vector
@@ -2020,7 +2018,7 @@ class BinarySystem(System):
             q_ab = static.get_symmetrical_q_ab(_shape[:2], _shape_reduced, gamma, distance)
 
             # calculating limb darkening factor for each combination of surface faces
-            d_gamma = self.get_symmetrical_d_gamma(_shape[:2], _shape_reduced, normals, join_vector, vis_test)
+            d_gamma = self.get_symmetrical_d_gamma(_shape[:2], _shape_reduced, normals, join_vector, vis_test, ldc)
 
             # calculating limb darkening factors for each combination of faces shape
             # (N_faces_primary * N_faces_secondary)
@@ -2043,7 +2041,7 @@ class BinarySystem(System):
                     counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component][:symmetry_to_use[_component]] = \
-                        1 + (_c[_component] / np.power(
+                        1 + (_c[_component][vis_test_symmetry[_component]] / np.power(
                             temperatures[_component][vis_test_symmetry[_component]], 4)) * counterpart_to_sum
 
                     # using symmetry to redistribute reflection factor R
@@ -2091,12 +2089,12 @@ class BinarySystem(System):
             d_gamma = \
                 {'primary': ld.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'], None, :],
                                                      line_of_sight=join_vector,
-                                                     coefficients=[LD_COEFF], #ldc_primary[:, vis_test['primary']].T,
+                                                     coefficients=ldc['primary'][:, vis_test['primary']].T, # ldc_primary[:, vis_test['primary']].T,
                                                      limb_darkening_law=config.LIMB_DARKENING_LAW),
                  'secondary': ld.limb_darkening_factor(normal_vector=normals['secondary'][None, vis_test['secondary'], :
                                                                      ],
                                                        line_of_sight=-join_vector,
-                                                       coefficients=[LD_COEFF], # ldc_secondary[:, vis_test['secondary']],
+                                                       coefficients=ldc['secondary'][:, vis_test['secondary']].T, # ldc_secondary[:, vis_test['secondary']],
                                                        limb_darkening_law=config.LIMB_DARKENING_LAW)
                  }
 
@@ -2113,7 +2111,7 @@ class BinarySystem(System):
                         temperatures[counterpart][vis_test[counterpart]], 4) * areas[counterpart][vis_test[counterpart]]
                     counterpart_to_sum = np.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
-                    reflection_factor[_component] = 1 + (_c[_component] / np.power(
+                    reflection_factor[_component] = 1 + (_c[_component][vis_test[_component]] / np.power(
                         temperatures[_component][vis_test[_component]], 4)) * counterpart_to_sum
                     # vyssie tvrdis, ze sa ma pouzit _c[_component], ale ked je to prevedene maticovo, (teda _c
                     # uz nie je len konstanta, ale vektor) tak nesedi rozmer
@@ -2183,11 +2181,12 @@ class BinarySystem(System):
                          np.sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
         return shape, shape_reduced
 
-    def get_symmetrical_d_gamma(self, shape, shape_reduced, normals, join_vector, vis_test):
+    def get_symmetrical_d_gamma(self, shape, shape_reduced, normals, join_vector, vis_test, ldc):
         """
         Function uses surface symmetries to calculate limb darkening factor matrices
         for each components that are used in reflection effect.
 
+        :param ldc: dict - arrays of limb darkening coefficients for each face of each component
         :param shape: desired shape of limb darkening matrices d_gamma
         :param shape_reduced: shape of the surface symmetries, (faces above those indices are symmetrical to the ones
         below)
@@ -2197,14 +2196,13 @@ class BinarySystem(System):
         :return:
         """
         # todo: important -fix LD COEFF to real
-        LD_COEFF = 0.5
         d_gamma = {'primary': np.empty(shape=shape, dtype=np.float),
                    'secondary': np.empty(shape=shape, dtype=np.float)}
 
         cos_theta = np.sum(normals['primary'][vis_test['primary'], None, :] *
                            join_vector[:, :shape_reduced[1], :], axis=-1)
         d_gamma['primary'][:, :shape_reduced[1]] = ld.limb_darkening_factor(
-            coefficients=LD_COEFF,
+            coefficients=ldc['primary'][:, :shape[0]].T,
             limb_darkening_law=config.LIMB_DARKENING_LAW,
             cos_theta=cos_theta)
 
@@ -2212,14 +2210,14 @@ class BinarySystem(System):
         cos_theta = np.sum(aux_normals[:shape_reduced[0], None, :] *
                            join_vector[:shape_reduced[0], shape_reduced[1]:, :], axis=-1)
         d_gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = ld.limb_darkening_factor(
-            coefficients=LD_COEFF,
+            coefficients=ldc['primary'][:, :shape_reduced[0]].T,
             limb_darkening_law=config.LIMB_DARKENING_LAW,
             cos_theta=cos_theta)
 
         cos_theta = np.sum(normals['secondary'][None, vis_test['secondary'], :] *
                            join_vector[:shape_reduced[0], :, :], axis=-1)
         d_gamma['secondary'][:shape_reduced[0], :] = ld.limb_darkening_factor(
-            coefficients=LD_COEFF,
+            coefficients=ldc['secondary'][:, :shape[1]],
             limb_darkening_law=config.LIMB_DARKENING_LAW,
             cos_theta=cos_theta)
 
@@ -2227,7 +2225,7 @@ class BinarySystem(System):
         cos_theta = np.sum(aux_normals[None, :shape_reduced[1], :] *
                            join_vector[shape_reduced[0]:, :shape_reduced[1], :], axis=-1)
         d_gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
-            coefficients=LD_COEFF,
+            coefficients=ldc['secondary'][:, :shape_reduced[1]],
             limb_darkening_law=config.LIMB_DARKENING_LAW,
             cos_theta=cos_theta)
 

@@ -195,11 +195,11 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             band_curves[band][idx] = flux
     band_curves = {band: band_curves[band][reverse_idx2] for band in band_curves}
 
-    from matplotlib import pyplot as plt
-    for band, curve in band_curves.items():
-        x = np.arange(len(curve))
-        plt.scatter(x, curve)
-    plt.show()
+    # from matplotlib import pyplot as plt
+    # for band, curve in band_curves.items():
+    #     x = np.arange(len(curve))
+    #     plt.scatter(x, curve)
+    # plt.show()
 
     return band_curves
 

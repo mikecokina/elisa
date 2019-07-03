@@ -137,7 +137,7 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
     return results
 
 
-# todo: discusse following shits
+# todo: discuss following shits
 def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None,
                           cos_theta=None):
     """
@@ -173,11 +173,11 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
 
     # fixme: force order of coefficients; what is order now? x then y or y then x??? what index 0 or 1 means???
     if limb_darkening_law in ['linear', 'cosine']:
-        return 1 - coefficients[0] + coefficients[0] * cos_theta
+        return 1 - coefficients[0, :] + coefficients[0, :] * cos_theta
     elif limb_darkening_law == 'logarithmic':
-        return 1 - coefficients[0] * (1 - cos_theta) - coefficients[1] * cos_theta * np.log(cos_theta)
+        return 1 - coefficients[0, :] * (1 - cos_theta) - coefficients[1, :] * cos_theta * np.log(cos_theta)
     elif limb_darkening_law == 'square_root':
-        return 1 - coefficients[0] * (1 - cos_theta) - coefficients[1] * (1 - np.sqrt(cos_theta))
+        return 1 - coefficients[0, :] * (1 - cos_theta) - coefficients[1, :] * (1 - np.sqrt(cos_theta))
 
 
 def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, coefficients=None):
@@ -187,7 +187,7 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, c
 
     :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
     :param coefficients: numpy.ndarray
-    :return: float - bolometric_limb_darkening_factor (scalar for the whole star)
+    :return: np.array - bolometric_limb_darkening_factor (scalar for the whole star)
     """
     if coefficients is None:
         raise ValueError('Limb darkening coefficients were not supplied.')
@@ -196,8 +196,8 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, c
                          '`linear` or `cosine`, `logarithmic`, `square_root`.')
 
     if limb_darkening_law in ['linear', 'cosine']:
-        return np.pi * (1 - coefficients[0] / 3)
+        return np.pi * (1 - coefficients[0, :] / 3)
     elif limb_darkening_law == 'logarithmic':
-        return np.pi * (1 - coefficients[0] / 3 + 2 * coefficients[1] / 9)
+        return np.pi * (1 - coefficients[0, :] / 3 + 2 * coefficients[1, :] / 9)
     elif limb_darkening_law == 'square_root':
-        return np.pi * (1 - coefficients[0] / 3 - coefficients[1] / 5)
+        return np.pi * (1 - coefficients[0, :] / 3 - coefficients[1, :] / 5)
