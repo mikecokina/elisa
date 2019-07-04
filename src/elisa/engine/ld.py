@@ -173,7 +173,7 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
 
     # fixme: force order of coefficients; what is order now? x then y or y then x??? what index 0 or 1 means???
     if limb_darkening_law in ['linear', 'cosine']:
-        return 1 - coefficients[0, :] + coefficients[0, :] * cos_theta
+        return 1 - coefficients + coefficients * cos_theta
     elif limb_darkening_law == 'logarithmic':
         return 1 - coefficients[0, :] * (1 - cos_theta) - coefficients[1, :] * cos_theta * np.log(cos_theta)
     elif limb_darkening_law == 'square_root':

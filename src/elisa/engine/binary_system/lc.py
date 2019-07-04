@@ -180,7 +180,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
         for band in kwargs["passband"].keys():
             # fixme: do something with this fucking zero indexing
-            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
+            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values,
                                                  limb_darkening_law=config.LIMB_DARKENING_LAW,
                                                  cos_theta=p_cosines)[0]
 

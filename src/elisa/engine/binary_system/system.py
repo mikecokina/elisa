@@ -2089,12 +2089,12 @@ class BinarySystem(System):
             d_gamma = \
                 {'primary': ld.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'], None, :],
                                                      line_of_sight=join_vector,
-                                                     coefficients=ldc['primary'][:, vis_test['primary']].T, # ldc_primary[:, vis_test['primary']].T,
+                                                     coefficients=ldc['primary'][:, vis_test['primary']].T,
                                                      limb_darkening_law=config.LIMB_DARKENING_LAW),
                  'secondary': ld.limb_darkening_factor(normal_vector=normals['secondary'][None, vis_test['secondary'], :
                                                                      ],
                                                        line_of_sight=-join_vector,
-                                                       coefficients=ldc['secondary'][:, vis_test['secondary']].T, # ldc_secondary[:, vis_test['secondary']],
+                                                       coefficients=ldc['secondary'][:, vis_test['secondary']],
                                                        limb_darkening_law=config.LIMB_DARKENING_LAW)
                  }
 
