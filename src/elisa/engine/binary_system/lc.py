@@ -182,11 +182,11 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             # fixme: do something with this fucking zero indexing
             p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values,
                                                  limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                 cos_theta=p_cosines)[0]
+                                                 cos_theta=p_cosines)
 
-            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
+            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values,
                                                  limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                 cos_theta=s_cosines)[0]
+                                                 cos_theta=s_cosines)
             # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
             p_flux = np.sum(primary_normal_radiance[band] * p_cosines * coverage["primary"] * p_ld_cors)
             s_flux = np.sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
