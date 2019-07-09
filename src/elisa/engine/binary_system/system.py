@@ -1904,8 +1904,9 @@ class BinarySystem(System):
 
         # visibility of faces is given by their x position
         xlim = {}
-        (xlim['primary'], xlim['secondary']) = (x_corr_primary, 1 + x_corr_secondary) \
-            if self.primary.polar_radius > self.secondary.polar_radius else (-x_corr_primary, 1 - x_corr_secondary)
+        (xlim['primary'], xlim['secondary']) = (x_corr_primary, components_distance + x_corr_secondary) \
+            if self.primary.polar_radius > self.secondary.polar_radius else \
+            (-x_corr_primary, components_distance - x_corr_secondary)
         return xlim
 
     # noinspection PyTypeChecker
@@ -1917,8 +1918,6 @@ class BinarySystem(System):
         :param components_distance: float; components distance in SMA units
         :return:
         """
-        # fixme
-        LD_COEFF = 0.5
 
         if not config.REFLECTION_EFFECT:
             self._logger.debug('reflection effect is switched off')
@@ -2070,8 +2069,8 @@ class BinarySystem(System):
             gamma = {'primary':
                          np.sum(np.multiply(normals['primary'][vis_test['primary']][:, None, :], join_vector), axis=2),
                      'secondary':
-                         -np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :], join_vector),
-                                 axis=2)}
+                         np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :], -join_vector),
+                                axis=2)}
             # negative sign is there because of reversed distance vector used for secondary component
 
             # testing mutual visibility of faces by assigning 0 to non visible face combination
@@ -2091,11 +2090,11 @@ class BinarySystem(System):
                                                      line_of_sight=join_vector,
                                                      coefficients=ldc['primary'][:, vis_test['primary']].T,
                                                      limb_darkening_law=config.LIMB_DARKENING_LAW),
-                 'secondary': ld.limb_darkening_factor(normal_vector=normals['secondary'][None, vis_test['secondary'], :
-                                                                     ],
-                                                       line_of_sight=-join_vector,
-                                                       coefficients=ldc['secondary'][:, vis_test['secondary']],
-                                                       limb_darkening_law=config.LIMB_DARKENING_LAW)
+                 'secondary': ld.limb_darkening_factor(normal_vector=np.swapaxes(normals['secondary'][None, vis_test['secondary'], :
+                                                                     ], 0, 1),
+                                                       line_of_sight=-np.swapaxes(join_vector, 0, 1),
+                                                       coefficients=ldc['secondary'][:, vis_test['secondary']].T,
+                                                       limb_darkening_law=config.LIMB_DARKENING_LAW).T
                  }
 
             # precalculating matrix part of reflection effect correction
@@ -2214,20 +2213,20 @@ class BinarySystem(System):
             limb_darkening_law=config.LIMB_DARKENING_LAW,
             cos_theta=cos_theta)
 
-        cos_theta = np.sum(normals['secondary'][None, vis_test['secondary'], :] *
+        cos_theta = -np.sum(normals['secondary'][None, vis_test['secondary'], :] *
                            join_vector[:shape_reduced[0], :, :], axis=-1)
         d_gamma['secondary'][:shape_reduced[0], :] = ld.limb_darkening_factor(
-            coefficients=ldc['secondary'][:, :shape[1]],
+            coefficients=ldc['secondary'][:, :shape[1]].T,
             limb_darkening_law=config.LIMB_DARKENING_LAW,
-            cos_theta=cos_theta)
+            cos_theta=cos_theta.T).T
 
         aux_normals = normals['secondary'][vis_test['secondary']]
-        cos_theta = np.sum(aux_normals[None, :shape_reduced[1], :] *
+        cos_theta = -np.sum(aux_normals[None, :shape_reduced[1], :] *
                            join_vector[shape_reduced[0]:, :shape_reduced[1], :], axis=-1)
         d_gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
-            coefficients=ldc['secondary'][:, :shape_reduced[1]],
+            coefficients=ldc['secondary'][:, :shape_reduced[1]].T,
             limb_darkening_law=config.LIMB_DARKENING_LAW,
-            cos_theta=cos_theta)
+            cos_theta=cos_theta.T).T
 
         return d_gamma
 
@@ -2302,7 +2301,7 @@ class BinarySystem(System):
                 and (self.primary.has_spots() or self.secondary.has_spots()):
             self._logger.debug('Implementing light curve generator function for asynchronous binary system with '
                                'circular orbit.')
-            return self._compute_circular_spotify_asynchronous_lightcurve(**kwargs)
+            return self._compute_circular_spoty_asynchronous_lightcurve(**kwargs)
         elif 1 > self.eccentricity > 0:
             self._logger.debug('Implementing light curve generator function for eccentric orbit.')
             return self._compute_eccentric_lightcurve(**kwargs)
@@ -2311,7 +2310,7 @@ class BinarySystem(System):
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
-    def _compute_circular_spotify_asynchronous_lightcurve(self, *args, **kwargs):
+    def _compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
         pass
 
     def _compute_eccentric_lightcurve(self, *args, **kwargs):

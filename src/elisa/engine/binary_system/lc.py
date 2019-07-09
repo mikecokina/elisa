@@ -179,7 +179,6 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
         s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
 
         for band in kwargs["passband"].keys():
-            # fixme: do something with this fucking zero indexing
             p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values,
                                                  limb_darkening_law=config.LIMB_DARKENING_LAW,
                                                  cos_theta=p_cosines)
@@ -194,12 +193,6 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             # band_curves[band].append(flux)
             band_curves[band][idx] = flux
     band_curves = {band: band_curves[band][reverse_idx2] for band in band_curves}
-
-    # from matplotlib import pyplot as plt
-    # for band, curve in band_curves.items():
-    #     x = np.arange(len(curve))
-    #     plt.scatter(x, curve)
-    # plt.show()
 
     return band_curves
 
@@ -237,8 +230,6 @@ def compute_eccentric_lightcurve(self, **kwargs):
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     for orbital_position in orbital_motion:
-        forward_rad_p = self.calculate_forward_radius('primary', components_distance=orbital_position.distance)
-        forward_rad_s = self.calculate_forward_radius('secondary', components_distance=orbital_position.distance)
         self.build(components_distance=orbital_position.distance)
         system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
                                                                              ecl_boundaries=ecl_boundaries)
@@ -257,13 +248,13 @@ def compute_eccentric_lightcurve(self, **kwargs):
         s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
 
         for band in kwargs["passband"].keys():
-            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values.T,
+            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values,
                                                  limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                 cos_theta=p_cosines)[0]
+                                                 cos_theta=p_cosines)
 
-            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values.T,
+            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values,
                                                  limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                 cos_theta=s_cosines)[0]
+                                                 cos_theta=s_cosines)
             # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
             p_flux = np.sum(primary_normal_radiance[band] * p_cosines * coverage["primary"] * p_ld_cors)
             s_flux = np.sum(secondary_normal_radiance[band] * s_cosines * coverage["secondary"] * s_ld_cors)
@@ -271,16 +262,13 @@ def compute_eccentric_lightcurve(self, **kwargs):
             band_curves[band].append(flux)
 
     # temporary
-    from matplotlib import pyplot as plt
-    for band, curve in band_curves.items():
-        x = np.arange(len(curve))
-        plt.scatter(x, curve)
-    plt.show()
+    # from matplotlib import pyplot as plt
+    # for band, curve in band_curves.items():
+    #     x = np.arange(len(curve))
+    #     plt.scatter(x, curve)
+    # plt.show()
 
     return band_curves
-
-
-
 
 
 if __name__ == "__main__":

@@ -124,11 +124,11 @@ def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test,
                            join_vector[:shape_reduced[0], shape_reduced[1]:, :]), axis=2)
 
     gamma['secondary'][:shape_reduced[0], :] = \
-        - np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
-                             join_vector[:shape_reduced[0], :, :]), axis=2)
+        np.sum(np.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
+                           -join_vector[:shape_reduced[0], :, :]), axis=2)
     gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = \
-        - np.sum(np.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
-                             join_vector[shape_reduced[0]:, :shape_reduced[1], :]), axis=2)
+        np.sum(np.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
+                           -join_vector[shape_reduced[0]:, :shape_reduced[1], :]), axis=2)
     return gamma
 
 

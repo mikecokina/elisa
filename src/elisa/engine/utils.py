@@ -469,7 +469,7 @@ def find_surrounded_as_matrix(look_in, look_for):
     :return: ndarray;
     """
     if not ((look_in.min() <= look_for).all() and (look_for <= look_in.max()).all()):
-        raise ValueError("Any value in `look_for` is out of bound of `look_in`")
+        raise ValueError("At least one value in `look_for` is out of bound of `look_in`")
 
     dif = look_for[:, np.newaxis] - look_in
     positive_mask = dif >= 0

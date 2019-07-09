@@ -179,9 +179,12 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
         retval = 1 - coefficients + coefficients * cos_theta
         return retval[:, 0] if retval.shape[1] == 1 else retval
     elif limb_darkening_law == 'logarithmic':
-        return 1 - coefficients[0, :] * (1 - cos_theta) - coefficients[1, :] * cos_theta * np.log(cos_theta)
+        return 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta)
     elif limb_darkening_law == 'square_root':
-        return 1 - coefficients[0, :] * (1 - cos_theta) - coefficients[1, :] * (1 - np.sqrt(cos_theta))
+        sqrt_cos_theta = np.zeros(cos_theta.shape)
+        positive_test = cos_theta > 0
+        sqrt_cos_theta[positive_test] = np.sqrt(cos_theta[positive_test])
+        return 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - sqrt_cos_theta)
 
 
 def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, coefficients=None):
