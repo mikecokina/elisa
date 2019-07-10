@@ -2085,17 +2085,13 @@ class BinarySystem(System):
             # (N_faces_primary * N_faces_secondary)
 
             # coefficients_primary = ld.interpolate_on_ld_grid()
-
             d_gamma = \
-                {'primary': ld.limb_darkening_factor(normal_vector=normals['primary'][vis_test['primary'], None, :],
-                                                     line_of_sight=join_vector,
-                                                     coefficients=ldc['primary'][:, vis_test['primary']].T,
-                                                     limb_darkening_law=config.LIMB_DARKENING_LAW),
-                 'secondary': ld.limb_darkening_factor(normal_vector=np.swapaxes(normals['secondary'][None, vis_test['secondary'], :
-                                                                     ], 0, 1),
-                                                       line_of_sight=-np.swapaxes(join_vector, 0, 1),
-                                                       coefficients=ldc['secondary'][:, vis_test['secondary']].T,
-                                                       limb_darkening_law=config.LIMB_DARKENING_LAW).T
+                {'primary': ld.limb_darkening_factor(coefficients=ldc['primary'][:, vis_test['primary']].T,
+                                                     limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                     cos_theta=gamma['primary']),
+                 'secondary': ld.limb_darkening_factor(coefficients=ldc['secondary'][:, vis_test['secondary']].T,
+                                                       limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                       cos_theta=gamma['secondary'].T).T
                  }
 
             # precalculating matrix part of reflection effect correction
