@@ -214,6 +214,7 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
         component_instance = getattr(self, _component)
         self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
         component_instance.incorporate_spots_mesh(component_com=component_x_center[_component])
+        pass
 
 
 def build_faces(self, component=None, components_distance=None):

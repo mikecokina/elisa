@@ -844,25 +844,24 @@ class Body(metaclass=ABCMeta):
             vertices_to_remove = list(set(vertices_to_remove))
 
             # points and vertices_map update
-            if vertices_to_remove:
-                _points, _vertices_map = list(), list()
+            _points, _vertices_map = list(), list()
 
-                for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
-                    if ix in vertices_to_remove:
-                        # skip point if is marked for removal
-                        continue
+            for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
+                if ix in vertices_to_remove:
+                    # skip point if is marked for removal
+                    continue
 
-                    # append only points of currrent object that do not intervent to spot
-                    # [current, since there should be already spot from previous iteration step]
-                    _points.append(vertex)
-                    _vertices_map.append({"enum": vertices_map[ix]["enum"]})
+                # append only points of currrent object that do not intervent to spot
+                # [current, since there should be already spot from previous iteration step]
+                _points.append(vertex)
+                _vertices_map.append({"enum": vertices_map[ix]["enum"]})
 
-                for vertex in spot.points:
-                    _points.append(vertex)
-                    _vertices_map.append({"enum": spot_index})
+            for vertex in spot.points:
+                _points.append(vertex)
+                _vertices_map.append({"enum": spot_index})
 
-                all_component_points = copy(_points)
-                vertices_map = copy(_vertices_map)
+            all_component_points = copy(_points)
+            vertices_map = copy(_vertices_map)
 
         separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map)
         self.setup_body_points(separated_points)

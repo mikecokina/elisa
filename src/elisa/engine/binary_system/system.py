@@ -1937,6 +1937,7 @@ class BinarySystem(System):
         xlim = self.faces_visibility_x_limits(components_distance=components_distance)
 
         # this tests if you can use surface symmetries
+        # todo: what about high amplitude pulsations?
         use_quarter_star_test = not self.primary.has_spots() and not self.secondary.has_spots()
         vis_test_symmetry = {}
 
