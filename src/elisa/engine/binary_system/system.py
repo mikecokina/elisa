@@ -1159,6 +1159,22 @@ class BinarySystem(System):
         args = (component, components_distance, 0.0, const.HALF_PI)
         return self.calculate_radius(*args)
 
+    def calculate_all_forward_radii(self, distances, components=None):
+        """
+        calculates forward radii for given object for given array of distances
+
+        :param distances: np.array: array of component distances at which to calculate the forward radii of given
+        component(s)
+        :return: dict: {component: array of forward radii}
+        """
+        components = static.component_to_list(components)
+        forward_rad = {}
+        for component in components:
+            forward_rad[component] = np.empty(distances.shape)
+            for ii, distance in enumerate(distances):
+                forward_rad[component][ii] = self.calculate_forward_radius(component, components_distance=distance)
+        return forward_rad
+
     def compute_equipotential_boundary(self, components_distance, plane):
         """
         Compute a equipotential boundary of components (crossection of Hill plane).
@@ -2224,7 +2240,12 @@ class BinarySystem(System):
         orbital_motion = self.orbit.orbital_motion(phase=phase)
         idx = np.arange(np.shape(phase)[0])
         positions = np.hstack((idx[:, np.newaxis], orbital_motion))
-        return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
+        retval = [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
+        # return retval, positions if return_nparray else retval
+        if return_nparray:
+            return retval, positions
+        else:
+            return retval
 
     def compute_lightcurve(self, **kwargs):
         """

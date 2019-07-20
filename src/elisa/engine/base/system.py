@@ -74,7 +74,7 @@ class System(metaclass=ABCMeta):
         If unit is not specified, default velocity unit is assumed.
 
         :param gamma: (numpy.)float, (numpy.)int, astropy.units.quantity.Quantity
-        :return: 
+        :return:
         """
         if isinstance(gamma, u.quantity.Quantity):
             self._gamma = np.float64(gamma.to(units.VELOCITY_UNIT))

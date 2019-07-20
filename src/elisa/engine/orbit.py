@@ -39,7 +39,7 @@ class Orbit(object):
     def semimajor_axis(self):
         """
         Returns semimajor axis in SI units.
-        
+
         :return: float
         """
         return self._semimajor_axis
@@ -48,7 +48,7 @@ class Orbit(object):
     def semimajor_axis(self, semimajor_axis):
         """
         Semimajor axis setter.
-        
+
         :param semimajor_axis: float
         :return:
         """
@@ -58,7 +58,7 @@ class Orbit(object):
     def periastron_phase(self):
         """
         Photometric phase of periastron.
-        
+
         :return: float
         """
         return self._perastron_phase
@@ -146,7 +146,7 @@ class Orbit(object):
     @argument_of_periastron.setter
     def argument_of_periastron(self, argument_of_periastron):
         """
-        Setter for argument of periastron. 
+        Setter for argument of periastron.
         If unit is not supplied, value in degrees is assumed.
 
         :param argument_of_periastron: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
@@ -172,16 +172,37 @@ class Orbit(object):
         return phase + phase_shift
 
     @classmethod
-    def mean_anomaly(cls, phase):
+    def phase(cls, true_phase, phase_shift):
         """
-        Returns mean anomaly of points on orbit described by phase.
+        reverts the phase shift introduced in function true phase
+
+        :param true_phase: np.array
+        :param phase_shift: np.float
+        :return:
+        """
+        return true_phase - phase_shift
+
+    @classmethod
+    def phase_to_mean_anomaly(cls, phase: ndarray) -> ndarray:
+        """
+        returns mean anomaly of points on orbit as a function of phase
 
         :param phase: ndarray
         :return: ndarray
         """
         return const.FULL_ARC * phase
 
-    def mean_anomaly_fn(self, eccentric_anomaly, *args):
+    @classmethod
+    def mean_anomaly_to_phase(cls, mean_anomaly):
+        """
+        returns phase of points on orbit as a function of mean anomaly
+
+        :param mean_anomaly: numpy.array
+        :return:
+        """
+        return mean_anomaly / const.FULL_ARC
+
+    def mean_anomaly_fn(self, eccentric_anomaly: float, *args) -> float:
         """
         Definition of Kepler equation for scipy _solver in Orbit.eccentric_anomaly.
 
@@ -190,9 +211,9 @@ class Orbit(object):
         :return: float
         """
         mean_anomaly, = args
-        return (eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly)) - mean_anomaly
+        return eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly) - mean_anomaly
 
-    def eccentric_anomaly(self, mean_anomaly):
+    def mean_anomaly_to_eccentric_anomaly(self, mean_anomaly: float) -> float:
         """
         Solves Kepler equation for eccentric anomaly via mean anomaly.
 
@@ -213,7 +234,16 @@ class Orbit(object):
                                f"solution.\n Reason: {e}")
             return False
 
-    def true_anomaly(self, eccentric_anomaly):
+    def eccentric_anomaly_to_mean_anomaly(self, eccentric_anomaly):
+        """
+        returns mean anomaly as a function of eccentric anomaly calculated using Kepler equation
+
+        :param eccentric_anomaly: np.array
+        :return:
+        """
+        return (eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly)) % const.FULL_ARC
+
+    def eccentric_anomaly_to_true_anomaly(self, eccentric_anomaly: ndarray) -> ndarray:
         """
         Returns true anomaly as a function of eccentric anomaly and eccentricity.
 
@@ -225,14 +255,26 @@ class Orbit(object):
         true_anomaly[true_anomaly < 0] += const.FULL_ARC
         return true_anomaly
 
-    def relative_radius(self, true_anomaly):
+    def true_anomaly_to_eccentric_anomaly(self, true_anomaly):
         """
-        Calculates the length of radius vector of elipse where a = 1.
+        returns eccentric anomaly as a function of true anomaly and eccentricity
 
-        :param true_anomaly: ndarray
-        :return: ndarray
+        :param true_anomaly: numpy.array
+        :return:
         """
-        return (1.0 - np.power(self.eccentricity, 2)) / (1.0 + self.eccentricity * np.cos(true_anomaly))
+        eccentric_anomaly = \
+            2.0 * np.arctan(np.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) * np.tan(true_anomaly / 2.0))
+        eccentric_anomaly[eccentric_anomaly < 0] += const.FULL_ARC
+        return eccentric_anomaly
+
+    def relative_radius(self, true_anomaly: ndarray) -> ndarray:
+        """
+        calculates the length of radius vector of elipse where a=1
+
+        :param true_anomaly: numpy.array
+        :return: numpy.array
+        """
+        return (1.0 - self.eccentricity ** 2) / (1.0 + self.eccentricity * np.cos(true_anomaly))
 
     def true_anomaly_to_azimuth(self, true_anomaly):
         """
@@ -252,7 +294,15 @@ class Orbit(object):
         azimut %= const.FULL_ARC
         return azimut
 
-    def orbital_motion(self, phase):
+    def azimuth_to_true_anomaly(self, azimuth):
+        """
+        calculates the azimuth form given true anomaly
+        :param azimuth: np.array
+        :return:
+        """
+        return (azimuth - self.argument_of_periastron) % const.FULL_ARC
+
+    def orbital_motion(self, phase: ndarray):
         """
         Function takes photometric phase of the binary system as input and calculates positions of the secondary
         component in the frame of reference of primary component.
@@ -273,16 +323,36 @@ class Orbit(object):
         # photometric phase to phase measured from periastron
         true_phase = self.true_phase(phase=phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
 
-        mean_anomaly = self.mean_anomaly(phase=true_phase)
-        eccentric_anomaly = np.array([self.eccentric_anomaly(mean_anomaly=xx)
+        mean_anomaly = self.phase_to_mean_anomaly(phase=true_phase)
+        eccentric_anomaly = np.array([self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
                                       for xx in mean_anomaly])
-        true_anomaly = self.true_anomaly(eccentric_anomaly=eccentric_anomaly)
+        true_anomaly = self.eccentric_anomaly_to_true_anomaly(eccentric_anomaly=eccentric_anomaly)
         distance = self.relative_radius(true_anomaly=true_anomaly)
         azimut_angle = self.true_anomaly_to_azimuth(true_anomaly=true_anomaly)
 
         return np.column_stack((distance, azimut_angle, true_anomaly, phase))
 
-    def get_conjuction(self):
+    def orbital_motion_from_azimuths(self, azimuth):
+        """
+        function takes azimuths of the binary system (angle between ascending node (-y) as input and calculates
+        positions of the secondary component in the frame of reference of primary component
+
+        :param azimuths: np.array or np.float
+        :return: np.array: matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
+                           np.array((r1, az1, ni1, phs1),
+                                    (r2, az2, ni2, phs2),
+                                    ...
+                                    (rN, azN, niN, phsN))
+        """
+        true_anomaly = self.azimuth_to_true_anomaly(azimuth)
+        distance = self.relative_radius(true_anomaly=true_anomaly)
+        eccentric_anomaly = self.true_anomaly_to_eccentric_anomaly(true_anomaly)
+        mean_anomaly = self.eccentric_anomaly_to_mean_anomaly(eccentric_anomaly)
+        true_phase = self.mean_anomaly_to_phase(mean_anomaly)
+        phase = self.phase(true_phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
+        return np.column_stack((distance, azimuth, true_anomaly, phase))
+
+    def get_conjuction(self) -> Dict:
         """
         Compute and return photometric phase of conjunction (eclipses).
         We assume that primary component is situated in center of coo system and observation unit vector is [-1, 0, 0]

@@ -79,3 +79,4 @@ def static_potential_secondary_cylindrical_fn(radius, *args):
     mass_ratio, surface_potential, a, b, c, d, e, f = args
     radius2 = np.power(radius, 2)
     return mass_ratio / np.sqrt(a + radius2) + 1. / np.sqrt(b + radius2) + c * (d + e * radius2) + f - surface_potential
+

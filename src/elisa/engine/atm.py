@@ -667,7 +667,7 @@ def validate_atm(temperature, log_g, metallicity, atlas, _raise=True):
     return True
 
 
-def atm_file_prefix_to_quantity_list(qname, atlas):
+def atm_file_prefix_to_quantity_list(qname: str, atlas: str) -> List[float]:
     """
     Get list of available values for given atm domain quantity, e.g. list of temperatures available in atlas CK04.
 
@@ -693,7 +693,7 @@ def validated_atlas(atlas):
         raise KeyError(f'Incorrect atlas. Following are allowed: {", ".join(ATLAS_TO_ATM_FILE_PREFIX.keys())}')
 
 
-def parse_domain_quantities_from_atm_table_filename(filename):
+def parse_domain_quantities_from_atm_table_filename(filename: str) -> Tuple[float, float, float]:
     """
     Parse filename to given quantities, e.g. ckm05_3500_g15.csv parse to tuple (-0.5, 3500, 1.5)
 

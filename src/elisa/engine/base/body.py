@@ -4,6 +4,7 @@ import numpy as np
 from abc import ABCMeta
 from copy import copy
 from astropy import units as u
+from astropy.units.quantity import Quantity
 
 from elisa.engine import units, logger
 from elisa.engine import utils
@@ -15,7 +16,7 @@ class Body(metaclass=ABCMeta):
     """
     Abstract class that defines bodies that can be modelled by this software.
     Units are imported from astropy.units module::
-        
+
         see documentation http://docs.astropy.org/en/stable/units/
     """
 
@@ -147,12 +148,12 @@ class Body(metaclass=ABCMeta):
         """
         Setting numpy array of points that form surface of Body.
         Input dictionary has to be in shape::
-        
+
             points = numpy.array([[x1 y1 z1],
                                   [x2 y2 z2],
                                    ...
                                   [xN yN zN]])
-                                    
+
         where xi, yi, zi are cartesian coordinates of vertice i.
 
         :param points: numpy.ndarray; [xi, yi, zi]: float
@@ -165,7 +166,7 @@ class Body(metaclass=ABCMeta):
         """
         Returns dictionary of triangles that will create surface of body.
         Triangles are stored as list of indices of points.
-        
+
         :return: numpy.ndarray
 
         ::
@@ -181,7 +182,7 @@ class Body(metaclass=ABCMeta):
     def faces(self, faces):
         """
         Faces dictionary has to be in shape::
-        
+
             points = np.array([vertice_index_k, vertice_index_l, vertice_index_m],
                               [...],
                                ...
@@ -200,7 +201,7 @@ class Body(metaclass=ABCMeta):
         :return: numpy.ndarray
 
         ::
-        
+
             normals = numpy_array([[normal_x1, normal_y1, normal_z1],
                                    [normal_x2, normal_y2, normal_z2],
                                     ...
@@ -213,7 +214,7 @@ class Body(metaclass=ABCMeta):
         """
         Setter for normalised outward facing normals of corresponding faces with same index.
         Expected shape of normals matrix::
-        
+
             normals = numpy_array([[normal_x1, normal_y1, normal_z1],
                                    [normal_x2, normal_y2, normal_z2],
                                            ...
@@ -785,6 +786,7 @@ class Body(metaclass=ABCMeta):
                                f'set to be equal to 0.5 * angular diameter')
             spot_instance.discretization_factor = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
 
+    def incorporate_spots_mesh(self, component_com: ndarray = None) -> None:
     def incorporate_spots_mesh(self, component_com=None):
         """
         Based on spots definitions, evaluate spot points on Star surface and remove those points of Star itself

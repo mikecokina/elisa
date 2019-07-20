@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from scipy import interpolate
+from pandas import DataFrame
 
 from elisa.conf import config
 from elisa.engine.binary_system.system import BinarySystem
