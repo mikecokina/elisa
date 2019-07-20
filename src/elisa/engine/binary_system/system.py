@@ -2018,8 +2018,7 @@ class BinarySystem(System):
             q_ab = static.get_symmetrical_q_ab(_shape[:2], _shape_reduced, gamma, distance)
 
             # calculating limb darkening factor for each combination of surface faces
-            d_gamma = static.get_symmetrical_d_gamma(_shape[:2], _shape_reduced, normals, join_vector, vis_test, ldc,
-                                                     gamma)
+            d_gamma = static.get_symmetrical_d_gamma(_shape[:2], _shape_reduced, ldc, gamma)
 
             # calculating limb darkening factors for each combination of faces shape
             # (N_faces_primary * N_faces_secondary)
@@ -2130,7 +2129,7 @@ class BinarySystem(System):
                                            log_g=utils.convert_gravity_acceleration_array(log_g, units='log_cgs'),
                                            metallicity=getattr(self, component).metallicity,
                                            passband=["bolometric"])["bolometric"][columns]
-        return np.array(coeffs).reshape(-1, len(coeffs))
+        return np.array(coeffs).T
 
     def get_visibility_tests(self, centres, q_test, xlim, component):
         """
