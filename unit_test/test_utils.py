@@ -344,3 +344,80 @@ class TestElisaEngineUtils(unittest.TestCase):
 #                 return False
 #
 #     return True
+    def test_convert_gravity_acceleration_array(self):
+        log_g_si = np.array([2.2, 1.3, 2.22])
+        log_cgs = log_g_si + 2
+        si = np.power(10, log_g_si)
+        cgs = np.power(10, log_g_si + 2)
+
+        obtained = utils.convert_gravity_acceleration_array(log_g_si, "log_cgs")
+        assert_array_equal(log_cgs, obtained)
+        obtained = utils.convert_gravity_acceleration_array(log_g_si, "SI")
+        assert_array_equal(si, obtained)
+        obtained = utils.convert_gravity_acceleration_array(log_g_si, "cgs")
+        assert_array_equal(cgs, obtained)
+        obtained = utils.convert_gravity_acceleration_array(log_g_si, "log_SI")
+        assert_array_equal(log_g_si, obtained)
+
+    def test_cosine_similarity(self):
+        vs_2d_1 = np.array([[0.0, 1.0], [1.0, 0.0]])
+        vs_2d_2 = np.array([[0.0, 10.0], [15.0, 0.0]])
+        r_1 = utils.cosine_similarity(vs_2d_1[0], vs_2d_1[1])
+        r_2 = utils.cosine_similarity(vs_2d_2[0], vs_2d_2[1])
+
+        self.assertEqual(round(r_1, 4), 0)
+        self.assertEqual(round(r_2, 4), 0)
+
+        vs_3d = np.array([[1.0, 1.0, 1.33], [-1, 0.0, -3.1]])
+        r_3 = utils.cosine_similarity(vs_3d[0], vs_3d[1])
+
+        self.assertEqual(round(r_3, 4), -0.8101)
+
+    def test_is_empty(self):
+        empty = [None, dict(), list(), np.array([]), np.nan, pd.NaT]
+        result = np.array([utils.is_empty(val) for val in empty])
+        self.assertTrue(np.all(result))
+
+        not_empty = [0, 1, -1, dict(x=1), [1], [0, 0], np.array([0])]
+        result = np.array([utils.is_empty(val) for val in not_empty])
+
+        self.assertTrue(np.all(np.invert(result)))
+
+    def test_IterableQueue(self):
+        q = Queue()
+        for i in range(10):
+            q.put(i)
+        expected = [i for i in range(10)]
+        obtained = [val for val in utils.IterableQueue(q)]
+        assert_array_equal(expected, obtained)
+
+    def test_find_surrounded(self):
+        look_in = [-1.5, -0.1, 0.0, 0.1, 1.1, 10]
+        look_fors = [-10, -1.5, -0.15, 1.2, 10, 21]
+
+        expected = ["raise", [-1.5, -1.5], [-1.5, -0.1], [1.1, 10.0], [10.0, 10.0], "raise"]
+
+        for look_for, expect in zip(look_fors, expected):
+            if expect == "raise":
+                with self.assertRaises(Exception) as context:
+                    utils.find_surrounded(look_in, look_for)
+                self.assertTrue('Any value in `look_for` is out of bound of `look_in`' in str(context.exception))
+            else:
+                obtained = utils.find_surrounded(look_in, look_for)
+                self.assertEqual(obtained, expect)
+
+#
+# def check_face_duplicity(faces=None, points=None):
+#     """
+#     checks if `faces` contains the same faces
+#
+#     :param faces: np.array of simplices
+#     :return:
+#     """
+#     checklist = [set(xx) for xx in faces]
+#     for ii, face1 in enumerate(checklist):
+#         for face2 in checklist[ii + 1:]:
+#             if face1 == face2:
+#                 return False
+#
+#     return True
