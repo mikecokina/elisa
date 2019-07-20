@@ -183,7 +183,7 @@ class Orbit(object):
         return true_phase - phase_shift
 
     @classmethod
-    def phase_to_mean_anomaly(cls, phase: ndarray) -> ndarray:
+    def phase_to_mean_anomaly(cls, phase):
         """
         returns mean anomaly of points on orbit as a function of phase
 
@@ -243,7 +243,7 @@ class Orbit(object):
         """
         return (eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly)) % const.FULL_ARC
 
-    def eccentric_anomaly_to_true_anomaly(self, eccentric_anomaly: ndarray) -> ndarray:
+    def eccentric_anomaly_to_true_anomaly(self, eccentric_anomaly):
         """
         Returns true anomaly as a function of eccentric anomaly and eccentricity.
 
@@ -267,7 +267,7 @@ class Orbit(object):
         eccentric_anomaly[eccentric_anomaly < 0] += const.FULL_ARC
         return eccentric_anomaly
 
-    def relative_radius(self, true_anomaly: ndarray) -> ndarray:
+    def relative_radius(self, true_anomaly):
         """
         calculates the length of radius vector of elipse where a=1
 
@@ -302,7 +302,7 @@ class Orbit(object):
         """
         return (azimuth - self.argument_of_periastron) % const.FULL_ARC
 
-    def orbital_motion(self, phase: ndarray):
+    def orbital_motion(self, phase):
         """
         Function takes photometric phase of the binary system as input and calculates positions of the secondary
         component in the frame of reference of primary component.
@@ -352,7 +352,7 @@ class Orbit(object):
         phase = self.phase(true_phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
         return np.column_stack((distance, azimuth, true_anomaly, phase))
 
-    def get_conjuction(self) -> Dict:
+    def get_conjuction(self):
         """
         Compute and return photometric phase of conjunction (eclipses).
         We assume that primary component is situated in center of coo system and observation unit vector is [-1, 0, 0]

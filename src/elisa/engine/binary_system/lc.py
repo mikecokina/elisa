@@ -190,11 +190,11 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
         s_cosines[s_cosines < 0] = 0.0
 
         for band in kwargs["passband"].keys():
-            p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values,
+            p_ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs['primary'][band][ld_law_cfs_columns].values,
                                                  limb_darkening_law=config.LIMB_DARKENING_LAW,
                                                  cos_theta=p_cosines)
 
-            s_ld_cors = ld.limb_darkening_factor(coefficients=secondary_ld_cfs[band][ld_law_cfs_columns].values,
+            s_ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs['secondary'][band][ld_law_cfs_columns].values,
                                                  limb_darkening_law=config.LIMB_DARKENING_LAW,
                                                  cos_theta=s_cosines)
             # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)

@@ -786,7 +786,6 @@ class Body(metaclass=ABCMeta):
                                f'set to be equal to 0.5 * angular diameter')
             spot_instance.discretization_factor = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
 
-    def incorporate_spots_mesh(self, component_com: ndarray = None) -> None:
     def incorporate_spots_mesh(self, component_com=None):
         """
         Based on spots definitions, evaluate spot points on Star surface and remove those points of Star itself
