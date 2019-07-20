@@ -174,17 +174,14 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
         if cos_theta.ndim == 1:
             cos_theta = cos_theta[:, np.newaxis]
 
-    # fixme: force order of coefficients; what is order now? x then y or y then x??? what index 0 or 1 means???
     if limb_darkening_law in ['linear', 'cosine']:
         retval = 1 - coefficients + coefficients * cos_theta
         return retval[:, 0] if retval.shape[1] == 1 else retval
     elif limb_darkening_law == 'logarithmic':
         return 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta)
     elif limb_darkening_law == 'square_root':
-        # sqrt_cos_theta = np.zeros(cos_theta.shape)
-        # positive_test = cos_theta > 0
-        # sqrt_cos_theta[positive_test] = np.sqrt(cos_theta[positive_test])
-        return 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
+        retval = 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
+        return retval
 
 
 def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, coefficients=None):

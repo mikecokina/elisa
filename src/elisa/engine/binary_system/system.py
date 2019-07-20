@@ -2018,7 +2018,8 @@ class BinarySystem(System):
             q_ab = static.get_symmetrical_q_ab(_shape[:2], _shape_reduced, gamma, distance)
 
             # calculating limb darkening factor for each combination of surface faces
-            d_gamma = self.get_symmetrical_d_gamma(_shape[:2], _shape_reduced, normals, join_vector, vis_test, ldc)
+            d_gamma = static.get_symmetrical_d_gamma(_shape[:2], _shape_reduced, normals, join_vector, vis_test, ldc,
+                                                     gamma)
 
             # calculating limb darkening factors for each combination of faces shape
             # (N_faces_primary * N_faces_secondary)
@@ -2176,56 +2177,6 @@ class BinarySystem(System):
         shape_reduced = (np.sum(vis_test['primary'][:self.primary.base_symmetry_faces_number]),
                          np.sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
         return shape, shape_reduced
-
-    def get_symmetrical_d_gamma(self, shape, shape_reduced, normals, join_vector, vis_test, ldc):
-        """
-        Function uses surface symmetries to calculate limb darkening factor matrices
-        for each components that are used in reflection effect.
-
-        :param ldc: dict - arrays of limb darkening coefficients for each face of each component
-        :param shape: desired shape of limb darkening matrices d_gamma
-        :param shape_reduced: shape of the surface symmetries, (faces above those indices are symmetrical to the ones
-        below)
-        :param normals:
-        :param join_vector:
-        :param vis_test:
-        :return:
-        """
-        # todo: important -fix LD COEFF to real
-        d_gamma = {'primary': np.empty(shape=shape, dtype=np.float),
-                   'secondary': np.empty(shape=shape, dtype=np.float)}
-
-        cos_theta = np.sum(normals['primary'][vis_test['primary'], None, :] *
-                           join_vector[:, :shape_reduced[1], :], axis=-1)
-        d_gamma['primary'][:, :shape_reduced[1]] = ld.limb_darkening_factor(
-            coefficients=ldc['primary'][:, :shape[0]].T,
-            limb_darkening_law=config.LIMB_DARKENING_LAW,
-            cos_theta=cos_theta)
-
-        aux_normals = normals['primary'][vis_test['primary']]
-        cos_theta = np.sum(aux_normals[:shape_reduced[0], None, :] *
-                           join_vector[:shape_reduced[0], shape_reduced[1]:, :], axis=-1)
-        d_gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = ld.limb_darkening_factor(
-            coefficients=ldc['primary'][:, :shape_reduced[0]].T,
-            limb_darkening_law=config.LIMB_DARKENING_LAW,
-            cos_theta=cos_theta)
-
-        cos_theta = -np.sum(normals['secondary'][None, vis_test['secondary'], :] *
-                           join_vector[:shape_reduced[0], :, :], axis=-1)
-        d_gamma['secondary'][:shape_reduced[0], :] = ld.limb_darkening_factor(
-            coefficients=ldc['secondary'][:, :shape[1]].T,
-            limb_darkening_law=config.LIMB_DARKENING_LAW,
-            cos_theta=cos_theta.T).T
-
-        aux_normals = normals['secondary'][vis_test['secondary']]
-        cos_theta = -np.sum(aux_normals[None, :shape_reduced[1], :] *
-                           join_vector[shape_reduced[0]:, :shape_reduced[1], :], axis=-1)
-        d_gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
-            coefficients=ldc['secondary'][:, :shape_reduced[1]].T,
-            limb_darkening_law=config.LIMB_DARKENING_LAW,
-            cos_theta=cos_theta.T).T
-
-        return d_gamma
 
     def redistribute_temperatures(self, temperatures):
         """
