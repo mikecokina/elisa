@@ -177,6 +177,8 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
         p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
         s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
+        p_cosines[p_cosines < 0] = 0.0
+        s_cosines[s_cosines < 0] = 0.0
 
         for band in kwargs["passband"].keys():
             p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values,
@@ -246,6 +248,8 @@ def compute_eccentric_lightcurve(self, **kwargs):
         coverage = compute_surface_coverage(container, in_eclipse=True)
         p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
         s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
+        p_cosines[p_cosines < 0] = 0.0
+        s_cosines[s_cosines < 0] = 0.0
 
         for band in kwargs["passband"].keys():
             p_ld_cors = ld.limb_darkening_factor(coefficients=primary_ld_cfs[band][ld_law_cfs_columns].values,
