@@ -7,6 +7,7 @@ from scipy import interpolate
 from elisa.conf import config
 from elisa.engine import utils, const
 from elisa.engine.utils import is_empty
+from copy import copy
 
 config.set_up_logging()
 logger = logging.getLogger("limb-darkening-module")
@@ -174,14 +175,14 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
         if cos_theta.ndim == 1:
             cos_theta = cos_theta[:, np.newaxis]
 
+    cos_theta[cos_theta < 0] = 0.0
     if limb_darkening_law in ['linear', 'cosine']:
         retval = 1 - coefficients + coefficients * cos_theta
         return retval[:, 0] if retval.shape[1] == 1 else retval
     elif limb_darkening_law == 'logarithmic':
         return 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta)
     elif limb_darkening_law == 'square_root':
-        retval = 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
-        return retval
+        return 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
 
 
 def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, coefficients=None):

@@ -186,8 +186,6 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
         p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
         s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
-        p_cosines[p_cosines < 0] = 0.0
-        s_cosines[s_cosines < 0] = 0.0
 
         for band in kwargs["passband"].keys():
             p_ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs['primary'][band][ld_law_cfs_columns].values,
@@ -239,6 +237,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
                                                            return_nparray=True, calculate_from='phase')
     azimuths = orbital_motion_array[:, 2]
 
+    # test whether mirroring around semi-major axis will be performed
     approximation_test1 = len(phases) > config.POINTS_ON_ECC_ORBIT and self.primary.synchronicity == 1.0 and \
                         self.secondary.synchronicity == 1.0
 
@@ -433,7 +432,7 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
     :return:
     """
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-    ld_cors = {component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values.T,
+    ld_cors = {component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values,
                                                    limb_darkening_law=config.LIMB_DARKENING_LAW,
                                                    cos_theta=container.cosines[component])[0]
                for component in config.BINARY_COUNTERPARTS.keys()}
