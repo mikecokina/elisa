@@ -147,7 +147,7 @@ class Orbit(object):
     def argument_of_periastron(self, argument_of_periastron):
         """
         Setter for argument of periastron.
-        If unit is not supplied, value in degrees is assumed.
+        If unit is not supplied, value in radians is assumed.
 
         :param argument_of_periastron: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return:
@@ -155,7 +155,7 @@ class Orbit(object):
         if isinstance(argument_of_periastron, u.quantity.Quantity):
             self._argument_of_periastron = np.float64(argument_of_periastron.to(units.ARC_UNIT))
         elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
-            self._argument_of_periastron = np.float64((argument_of_periastron * u.deg).to(units.ARC_UNIT))
+            self._argument_of_periastron = np.float(argument_of_periastron)
         else:
             raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -280,7 +280,7 @@ class Orbit(object):
         """
         Convert true anomaly angle to azimuth angle measured from -y axis in 2D plane.
 
-        ::
+        :: azimuth 0 alligns with -y axis
                  |
                  |      pi/2
             -----------
@@ -290,9 +290,7 @@ class Orbit(object):
         :param true_anomaly: ndarray or float
         :return: ndarray or float
         """
-        azimut = true_anomaly + self.argument_of_periastron
-        azimut %= const.FULL_ARC
-        return azimut
+        return (true_anomaly + self.argument_of_periastron) % const.FULL_ARC
 
     def azimuth_to_true_anomaly(self, azimuth):
         """
