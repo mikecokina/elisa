@@ -235,7 +235,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
     position_method = kwargs.pop("position_method")
     orbital_motion, orbital_motion_array = position_method(input_argument=phases,
                                                            return_nparray=True, calculate_from='phase')
-    azimuths = orbital_motion_array[:, 2]
+    # azimuths = orbital_motion_array[:, 2]
 
     # test whether mirroring around semi-major axis will be performed
     # approximation_test1 = len(phases) > config.POINTS_ON_ECC_ORBIT and self.primary.synchronicity == 1.0 and \
@@ -269,7 +269,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
     #                     orbital_motion_array_counterpart[index_of_closest, 1])
     # approximation_test2 = max(d_distance) < config.MAX_D_DISTANCE and \
     #                       self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0
-    approximation_test2 = False
+    # approximation_test2 = False
     band_curves = {key: list() for key in kwargs["passband"].keys()}
 
     #initial values of radii to be compared with
@@ -436,7 +436,7 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
     ld_cors = {component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values,
                                                    limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                   cos_theta=container.cosines[component])[0]
+                                                   cos_theta=container.cosines[component])
                for component in config.BINARY_COUNTERPARTS.keys()}
     # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
     flux = {
