@@ -238,13 +238,14 @@ def compute_eccentric_lightcurve(self, **kwargs):
     azimuths = orbital_motion_array[:, 2]
 
     # test whether mirroring around semi-major axis will be performed
-    approximation_test1 = len(phases) > config.POINTS_ON_ECC_ORBIT and self.primary.synchronicity == 1.0 and \
-                        self.secondary.synchronicity == 1.0
+    # approximation_test1 = len(phases) > config.POINTS_ON_ECC_ORBIT and self.primary.synchronicity == 1.0 and \
+    #                     self.secondary.synchronicity == 1.0
+    # approximation_test1 = False
 
     # in case of clean surface or synchronous rotation (moreless), symmetry around semi-major axis can be utilized
     # mask isolating the symmetrical part of the orbit
-    unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
-        cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
+    # unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
+    #     cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
 
     # if approximation_test1:
     #     unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
@@ -262,48 +263,49 @@ def compute_eccentric_lightcurve(self, **kwargs):
     #
     #     # second approximation does not interpolates the resulting light curve but assumes that geometry is the same as
     #     # the geometry of the found counterpart
-    index_of_closest = utils.find_idx_of_nearest(orbital_motion_array_counterpart[:, 1],
-                                                 orbital_motion_array[~uniq_geom_test, 1])
-    d_distance = np.abs(orbital_motion_array[~uniq_geom_test, 1] -
-                        orbital_motion_array_counterpart[index_of_closest, 1])
-    approximation_test2 = max(d_distance) < config.MAX_D_DISTANCE and \
-                          self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0
-
+    # index_of_closest = utils.find_idx_of_nearest(orbital_motion_array_counterpart[:, 1],
+    #                                              orbital_motion_array[~uniq_geom_test, 1])
+    # d_distance = np.abs(orbital_motion_array[~uniq_geom_test, 1] -
+    #                     orbital_motion_array_counterpart[index_of_closest, 1])
+    # approximation_test2 = max(d_distance) < config.MAX_D_DISTANCE and \
+    #                       self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0
+    approximation_test2 = False
     band_curves = {key: list() for key in kwargs["passband"].keys()}
 
     #initial values of radii to be compared with
-    orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
+    # orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
     # test and therefore the surface will be built
-    if approximation_test1:
-        band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
-        # for orbital_position in orbital_motion:
-        for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
-            orbital_position = orbital_motion[unique_phase_idx]
+    # if approximation_test1:
+    #     band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
+    #     # for orbital_position in orbital_motion:
+    #     for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
+    #         orbital_position = orbital_motion[unique_phase_idx]
+    #
+    #         self.build(components_distance=orbital_position.distance)
+    #
+    #         container = prepare_star_container(self, orbital_position, ecl_boundaries)
+    #         container_counterpart = prepare_star_container(self, orbital_motion_counterpart[counterpart_idx],
+    #                                                        ecl_boundaries)
+    #
+    #         normal_radiance = get_normal_radiance(container, **kwargs)
+    #         ld_cfs = get_limbdarkening(container, **kwargs)
+    #
+    #         container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
+    #         container_counterpart.coverage, container_counterpart.cosines = \
+    #             calculate_surface_parameters(container_counterpart, in_eclipse=True)
+    #
+    #         for band in kwargs["passband"].keys():
+    #             band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
+    #             band_curves_counterpart[band].append(calculate_lc_point(container_counterpart, band, ld_cfs,
+    #                                                                     normal_radiance))
+    #
+    # elif approximation_test2:
+    #     band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
+    #     for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
+    #         pass
 
-            self.build(components_distance=orbital_position.distance)
-
-            container = prepare_star_container(self, orbital_position, ecl_boundaries)
-            container_counterpart = prepare_star_container(self, orbital_motion_counterpart[counterpart_idx],
-                                                           ecl_boundaries)
-
-            normal_radiance = get_normal_radiance(container, **kwargs)
-            ld_cfs = get_limbdarkening(container, **kwargs)
-
-            container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
-            container_counterpart.coverage, container_counterpart.cosines = \
-                calculate_surface_parameters(container_counterpart, in_eclipse=True)
-
-            for band in kwargs["passband"].keys():
-                band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
-                band_curves_counterpart[band].append(calculate_lc_point(container_counterpart, band, ld_cfs,
-                                                                        normal_radiance))
-
-    elif approximation_test2:
-        band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
-        for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
-            pass
-
-    else:
+    # else:
+    if True:
         for orbital_position in orbital_motion:
             self.build(components_distance=orbital_position.distance)
             container = prepare_star_container(self, orbital_position, ecl_boundaries)
@@ -317,23 +319,23 @@ def compute_eccentric_lightcurve(self, **kwargs):
                 band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
 
     # LC interpolation of symmetrical part
-    if approximation_test1:
-        x = np.concatenate((phases[unique_phase_indices], orbital_motion_array_counterpart[:, 4] % 1))
-        sort_idx = np.argsort(x)
-        x = x[sort_idx]
-        x = np.concatenate(([x[-1]-1], x, [x[0]+1]))
-        phases_to_interp = phases[~uniq_geom_test]
-        for band in kwargs["passband"].keys():
-            y = np.concatenate((band_curves[band], band_curves_counterpart[band]))
-            y = y[sort_idx]
-            y = np.concatenate(([y[-1]], y, [y[0]]))
-            f = interp1d(x, y, kind='cubic')
-            interpolated_fluxes = f(phases_to_interp)
-            # band_curves[band] = np.concatenate((band_curves[band], interpolated_fluxes))
-            full_crv = np.empty(phases.shape)
-            full_crv[uniq_geom_test] = band_curves[band]
-            full_crv[~uniq_geom_test] = interpolated_fluxes
-            band_curves[band] = full_crv
+    # if approximation_test1:
+    #     x = np.concatenate((phases[unique_phase_indices], orbital_motion_array_counterpart[:, 4] % 1))
+    #     sort_idx = np.argsort(x)
+    #     x = x[sort_idx]
+    #     x = np.concatenate(([x[-1]-1], x, [x[0]+1]))
+    #     phases_to_interp = phases[~uniq_geom_test]
+    #     for band in kwargs["passband"].keys():
+    #         y = np.concatenate((band_curves[band], band_curves_counterpart[band]))
+    #         y = y[sort_idx]
+    #         y = np.concatenate(([y[-1]], y, [y[0]]))
+    #         f = interp1d(x, y, kind='cubic')
+    #         interpolated_fluxes = f(phases_to_interp)
+    #         # band_curves[band] = np.concatenate((band_curves[band], interpolated_fluxes))
+    #         full_crv = np.empty(phases.shape)
+    #         full_crv[uniq_geom_test] = band_curves[band]
+    #         full_crv[~uniq_geom_test] = interpolated_fluxes
+    #         band_curves[band] = full_crv
 
     # # temporary
     # from matplotlib import pyplot as plt
