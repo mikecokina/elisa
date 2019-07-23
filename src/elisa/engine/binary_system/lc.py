@@ -235,49 +235,56 @@ def compute_eccentric_lightcurve(self, **kwargs):
     position_method = kwargs.pop("position_method")
     orbital_motion, orbital_motion_array = position_method(input_argument=phases,
                                                            return_nparray=True, calculate_from='phase')
-    azimuths = orbital_motion_array[:, 2]
 
-    # test whether mirroring around semi-major axis will be performed
-    approximation_test1 = len(phases) > config.POINTS_ON_ECC_ORBIT and self.primary.synchronicity == 1.0 and \
+    # this condition checks if even to attempt apsidal line symmetry
+    if config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None:
+        # in case of clean surface or synchronous rotation (more-less), symmetry around semi-major axis can be utilized
+        # mask isolating the symmetrical part of the orbit
+        azimuths = orbital_motion_array[:, 2]
+
+        # test whether mirroring around semi-major axis will be performed
+        approximation_test1 = len(phases) > config.POINTS_ON_ECC_ORBIT and self.primary.synchronicity == 1.0 and \
                         self.secondary.synchronicity == 1.0
-    # approximation_test1 = False
 
-    # in case of clean surface or synchronous rotation (moreless), symmetry around semi-major axis can be utilized
-    # mask isolating the symmetrical part of the orbit
-    unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
-        cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
-
-    if approximation_test1:
-        __logger__.debug('One half of the points in the LC will be calculated using symmetry in surface geometry '
-                         'around apsidal line.')
         unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
             cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
-        # counterpart_phases = orbital_motion_array_counterpart[:, 4]
-    # else:
-    #     # # calculating all forward radii
-    #     # distances = orbital_motion_array[:, 1]
-    #     # forward_rad = self.calculate_all_forward_radii(distances, components=None)
-    #     #
-    #     # # calculating relative changes in radii
-    #     # rel_d_forward_radii = {component: np.abs(radii - np.roll(radii, 1)) / radii for component, radii in
-    #     #                        forward_rad.items()}
-    #     # max_rel_d_forward_radii = np.max([rel_d_forward_radii['primary'].max(), rel_d_forward_radii['secondary'].max()])
-    #
-    #     # second approximation does not interpolates the resulting light curve but assumes that geometry is the same as
-    #     # the geometry of the found counterpart
+
+        # calculating all forward radii
+        distances = orbital_motion_array[:, 1]
+        forward_rad = self.calculate_all_forward_radii(distances, components=None)
+
+        # calculating relative changes in radii
+        rel_d_forward_radii = {component: np.abs(radii - np.roll(radii, 1)) / radii for component, radii in
+                               forward_rad.items()}
+        max_rel_d_forward_radii = np.max([rel_d_forward_radii['primary'].max(), rel_d_forward_radii['secondary'].max()])
+        # calculating indices of orbital_motion_array that are closest to the orbital_motion_array_counterpart positions
+        index_of_closest = utils.find_idx_of_nearest(orbital_motion_array_counterpart[:, 1],
+                                                     orbital_motion_array[~uniq_geom_test, 1])
+        d_distance = np.abs(orbital_motion_array[~uniq_geom_test, 1] -
+                            orbital_motion_array_counterpart[index_of_closest, 1])
+
+        # second approximation does not interpolates the resulting light curve but assumes that geometry is the same as
+        # the geometry of the found counterpart
+        approximation_test2 = max(d_distance) < config.MAX_D_DISTANCE and \
+                              self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0
+
+    else:
+        approximation_test1 = False
+        approximation_test2 = False
+
     # index_of_closest = utils.find_idx_of_nearest(orbital_motion_array_counterpart[:, 1],
     #                                              orbital_motion_array[~uniq_geom_test, 1])
     # d_distance = np.abs(orbital_motion_array[~uniq_geom_test, 1] -
     #                     orbital_motion_array_counterpart[index_of_closest, 1])
-    # approximation_test2 = max(d_distance) < config.MAX_D_DISTANCE and \
-    #                       self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0
-    # approximation_test2 = False
+
+
     band_curves = {key: list() for key in kwargs["passband"].keys()}
 
     #initial values of radii to be compared with
     # orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
     # test and therefore the surface will be built
     if approximation_test1:
+        __logger__.debug('One half of the points on LC on the one side of the apsidal line will be interpolated.')
         band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
         # for orbital_position in orbital_motion:
         for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
@@ -301,10 +308,14 @@ def compute_eccentric_lightcurve(self, **kwargs):
                 band_curves_counterpart[band].append(calculate_lc_point(container_counterpart, band, ld_cfs,
                                                                         normal_radiance))
 
-    # elif approximation_test2:
-    #     band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
-    #     for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
-    #         pass
+    elif approximation_test2:
+        __logger__.debug('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
+                         'symmetrical counterparts.')
+        band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
+        for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
+            orbital_position = orbital_motion[unique_phase_idx]
+
+            self.build(components_distance=orbital_position.distance)
 
     else:
         for orbital_position in orbital_motion:
