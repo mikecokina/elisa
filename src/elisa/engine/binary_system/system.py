@@ -2232,7 +2232,7 @@ class BinarySystem(System):
 
     def calculate_orbital_motion(self, input_argument=None, return_nparray=False, calculate_from='phase'):
         """
-        Calculate orbital motion for current system parmaters and supplied phases or azimuths.
+        Calculate orbital motion for current system parameters and supplied phases or azimuths.
 
         :param calculate_from: 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
         :param return_nparray: if True positions in form of numpy arrays will be also returned
@@ -2241,7 +2241,7 @@ class BinarySystem(System):
         """
         orbital_motion = self.orbit.orbital_motion(phase=input_argument) if calculate_from == 'phase' \
             else self.orbit.orbital_motion_from_azimuths(azimuth=input_argument)
-        idx = np.arange(np.shape(input_argument)[0])
+        idx = np.arange(np.shape(input_argument)[0], dtype=np.int)
         positions = np.hstack((idx[:, np.newaxis], orbital_motion))
         retval = [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
         # return retval, positions if return_nparray else retval

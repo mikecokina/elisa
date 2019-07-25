@@ -758,7 +758,7 @@ class SingleSystem(System):
         :param phase: list
         :return: np.array([index, spherical coordinates of line of sight vector])
         """
-        idx = np.arange(np.shape(phase)[0])
+        idx = np.arange(np.shape(phase)[0], dtype=np.int)
 
         line_of_sight_spherical = np.empty((np.shape(phase)[0], 3), dtype=np.float)
         line_of_sight_spherical[:, 0] = 1
