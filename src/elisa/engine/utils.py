@@ -634,8 +634,8 @@ def is_empty(value):
 def find_idx_of_nearest(array, values):
     """
     find indices of elements in `array` that are closest to elements in `values`
-    :param array: 1D array (M)
-    :param values: 1D array (N)
+    :param array: 1D array (M) - points to be searched for the closest
+    :param values: 1D array (N) - values to which closest point in the `array` should be found
     :return: np.array with shape (N) that points to the closest values in `array`
     """
     array = np.asarray(array)

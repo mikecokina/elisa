@@ -227,7 +227,6 @@ def phase_crv_symmetry(self, phase):
 
 def compute_eccentric_lightcurve(self, **kwargs):
     self._logger = logger.getLogger(self.__class__.__name__, suppress=True)
-    # todo: move it to for loop
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
     phases = kwargs.pop("phases")
@@ -249,42 +248,48 @@ def compute_eccentric_lightcurve(self, **kwargs):
         unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
             cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
 
-        # calculating all forward radii
-        # distances = orbital_motion_array[:, 1]
-        # forward_rad = self.calculate_all_forward_radii(distances, components=None)
+        # spliting orbital motion into two separate groups on different sides of apsidal line
+        orbit_template_arr = orbital_motion_array[uniq_geom_test]
+        orbit_counterpart_arr = orbital_motion_array[~uniq_geom_test]
 
-        # calculating relative changes in radii
-        # rel_d_forward_radii = {component: np.abs(radii - np.roll(radii, 1)) / radii for component, radii in
-        #                        forward_rad.items()}
-        # max_rel_d_forward_radii = \
-        #     np.max([rel_d_forward_radii['primary'].max(), rel_d_forward_radii['secondary'].max()])
-        # calculating indices of orbital_motion_array that are closest to the orbital_motion_array_counterpart positions
-        index_of_closest = utils.find_idx_of_nearest(orbital_motion_array[uniq_geom_test, 1],
-                                                     orbital_motion_array[~uniq_geom_test, 1])
-        d_distance = np.abs(orbital_motion_array[~uniq_geom_test, 1] -
-                            orbital_motion_array[index_of_closest, 1])
+        index_of_closest = utils.find_idx_of_nearest(orbit_counterpart_arr[:, 1],
+                                                     orbit_template_arr[:, 1])
+
+        # testing whether all counterpart phases were assigned to template part of orbital motion
+        isin_test = np.isin(np.arange(np.count_nonzero(~uniq_geom_test)), index_of_closest)
+        # finding indices of orbit_counterpart_arr which were not assigned to any symmetricall orbital position
+        missing_phases_indices = np.arange(np.count_nonzero(~uniq_geom_test))[~isin_test]
+
+        # finding index of closest symmetrical orbital position to the missing phase
+        if len(missing_phases_indices) > 0:
+            index_of_closest_reversed = utils.find_idx_of_nearest(orbit_template_arr[:, 1],
+                                                                  orbit_counterpart_arr[missing_phases_indices, 1])
+            index_of_closest = np.append(index_of_closest, missing_phases_indices)
+            orbit_template_arr = np.append(orbit_template_arr, orbit_template_arr[index_of_closest_reversed],
+                                           axis=0)
+            orbit_counterpart_arr = np.append(orbit_counterpart_arr, orbit_counterpart_arr[missing_phases_indices],
+                                              axis=0)
+
+        # changes in component distances between symmetrical couples
+        d_distance = np.abs(orbit_template_arr[:, 1] -
+                            orbit_counterpart_arr[index_of_closest, 1])
 
         # second approximation does not interpolates the resulting light curve but assumes that geometry is the same as
         # the geometry of the found counterpart
+        # testing if change in geometry will not be too severe, you should rather use changes in point radius instead
         approximation_test2 = max(d_distance) < config.MAX_D_DISTANCE and \
-                              self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0
+                              self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0  # spots???
 
     else:
         approximation_test1 = False
         approximation_test2 = False
 
-    # index_of_closest = utils.find_idx_of_nearest(orbital_motion_array_counterpart[:, 1],
-    #                                              orbital_motion_array[~uniq_geom_test, 1])
-    # d_distance = np.abs(orbital_motion_array[~uniq_geom_test, 1] -
-    #                     orbital_motion_array_counterpart[index_of_closest, 1])
-
-    band_curves = {key: list() for key in kwargs["passband"].keys()}
-
-    #initial values of radii to be compared with
+    # initial values of radii to be compared with
     # orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
     # test and therefore the surface will be built
     if approximation_test1:
         __logger__.debug('One half of the points on LC on the one side of the apsidal line will be interpolated.')
+        band_curves = {key: list() for key in kwargs["passband"].keys()}
         band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
         # for orbital_position in orbital_motion:
         for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
@@ -309,17 +314,29 @@ def compute_eccentric_lightcurve(self, **kwargs):
                                                                         normal_radiance))
 
     elif approximation_test2:
-        __logger__.warning('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
+        __logger__.debug('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
                            'symmetrical counterparts.')
         band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
-        for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
-            orbital_position = orbital_motion[unique_phase_idx]
+
+        template_phases_idx = np.arange(phases.shape[0])[uniq_geom_test]
+        orb_motion_template = [orbital_motion[ii] for ii in template_phases_idx]
+        counterpart_phases_idx = np.arange(phases.shape[0])[~uniq_geom_test]
+        orb_motion_counterpart = [orbital_motion[ii] for ii in counterpart_phases_idx]
+
+        # apending orbital motion arrays to include missing phases to complete LC
+        if len(missing_phases_indices) > 0:
+            for ii, idx_reversed in enumerate(index_of_closest_reversed):
+                orb_motion_template.append(orb_motion_template[idx_reversed])
+                orb_motion_counterpart.append(orb_motion_counterpart[missing_phases_indices[ii]])
+
+        for counterpart_idx, orbital_position in enumerate(orb_motion_template):
+            # orbital_position = orbital_motion[unique_phase_idx]
 
             self.build(components_distance=orbital_position.distance)
 
             container = prepare_star_container(self, orbital_position, ecl_boundaries)
             container_counterpart = prepare_star_container(self,
-                                                           orbital_motion[index_of_closest[counterpart_idx]],
+                                                           orb_motion_counterpart[index_of_closest[counterpart_idx]],
                                                            ecl_boundaries)
 
             normal_radiance = get_normal_radiance(container, **kwargs)
@@ -332,18 +349,11 @@ def compute_eccentric_lightcurve(self, **kwargs):
             for band in kwargs["passband"].keys():
                 band_curves[band][int(orbital_position.idx)] = \
                     calculate_lc_point(container, band, ld_cfs, normal_radiance)
-                # band_curves[band][int(orbital_motion[index_of_closest[counterpart_idx]].idx)] = \
-                #     calculate_lc_point(container_counterpart, band, ld_cfs, normal_radiance)
-                # band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
-                # band_curves[band].append(calculate_lc_point(container_counterpart, band, ld_cfs,
-                #                                                         normal_radiance))
-
-        # sortarray = np.argsort(idxs)
-        # for band in kwargs["passband"].keys():
-        #     band_curves[band] = band_curves[band][sortarray]
+                band_curves[band][int(orb_motion_counterpart[index_of_closest[counterpart_idx]].idx)] = \
+                    calculate_lc_point(container_counterpart, band, ld_cfs, normal_radiance)
 
     else:
-        __logger__.warning('LC will be calculated in a rigorous phase to phase manner without approximations.')
+        __logger__.debug('LC will be calculated in a rigorous phase to phase manner without approximations.')
         band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
         for orbital_position in orbital_motion:
             self.build(components_distance=orbital_position.distance)
