@@ -246,7 +246,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
                         self.secondary.synchronicity == 1.0
 
         unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
-            cunstruct_geometry_symmetric_azimuths(self, azimuths, phases)
+            construct_geometry_symmetric_azimuths(self, azimuths, phases)
 
         # spliting orbital motion into two separate groups on different sides of apsidal line
         orbit_template_arr = orbital_motion_array[uniq_geom_test]
@@ -289,117 +289,25 @@ def compute_eccentric_lightcurve(self, **kwargs):
     # test and therefore the surface will be built
     if approximation_test1:
         __logger__.debug('One half of the points on LC on the one side of the apsidal line will be interpolated.')
-        band_curves = {key: list() for key in kwargs["passband"].keys()}
-        band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
-        # for orbital_position in orbital_motion:
-        for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
-            orbital_position = orbital_motion[unique_phase_idx]
-
-            self.build(components_distance=orbital_position.distance)
-
-            container = prepare_star_container(self, orbital_position, ecl_boundaries)
-            container_counterpart = prepare_star_container(self, orbital_motion_counterpart[counterpart_idx],
-                                                           ecl_boundaries)
-
-            normal_radiance = get_normal_radiance(container, **kwargs)
-            ld_cfs = get_limbdarkening(container, **kwargs)
-
-            container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
-            container_counterpart.coverage, container_counterpart.cosines = \
-                calculate_surface_parameters(container_counterpart, in_eclipse=True)
-
-            for band in kwargs["passband"].keys():
-                band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
-                band_curves_counterpart[band].append(calculate_lc_point(container_counterpart, band, ld_cfs,
-                                                                        normal_radiance))
+        band_curves = integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart, unique_phase_indices,
+                                                 uniq_geom_test, ecl_boundaries, phases,
+                                                 orbital_motion_array_counterpart, **kwargs)
 
     elif approximation_test2:
-        __logger__.debug('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
+        __logger__.warning('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
                            'symmetrical counterparts.')
-        band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
-
-        template_phases_idx = np.arange(phases.shape[0])[uniq_geom_test]
-        orb_motion_template = [orbital_motion[ii] for ii in template_phases_idx]
-        counterpart_phases_idx = np.arange(phases.shape[0])[~uniq_geom_test]
-        orb_motion_counterpart = [orbital_motion[ii] for ii in counterpart_phases_idx]
-
-        # apending orbital motion arrays to include missing phases to complete LC
-        if len(missing_phases_indices) > 0:
-            for ii, idx_reversed in enumerate(index_of_closest_reversed):
-                orb_motion_template.append(orb_motion_template[idx_reversed])
-                orb_motion_counterpart.append(orb_motion_counterpart[missing_phases_indices[ii]])
-
-        for counterpart_idx, orbital_position in enumerate(orb_motion_template):
-            # orbital_position = orbital_motion[unique_phase_idx]
-
-            self.build(components_distance=orbital_position.distance)
-
-            container = prepare_star_container(self, orbital_position, ecl_boundaries)
-            container_counterpart = prepare_star_container(self,
-                                                           orb_motion_counterpart[index_of_closest[counterpart_idx]],
-                                                           ecl_boundaries)
-
-            normal_radiance = get_normal_radiance(container, **kwargs)
-            ld_cfs = get_limbdarkening(container, **kwargs)
-
-            container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
-            container_counterpart.coverage, container_counterpart.cosines = \
-                calculate_surface_parameters(container_counterpart, in_eclipse=True)
-
-            for band in kwargs["passband"].keys():
-                band_curves[band][int(orbital_position.idx)] = \
-                    calculate_lc_point(container, band, ld_cfs, normal_radiance)
-                band_curves[band][int(orb_motion_counterpart[index_of_closest[counterpart_idx]].idx)] = \
-                    calculate_lc_point(container_counterpart, band, ld_cfs, normal_radiance)
+        band_curves = integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, index_of_closest,
+                                                 index_of_closest_reversed, uniq_geom_test, ecl_boundaries, phases,
+                                                 **kwargs)
 
     else:
-        __logger__.debug('LC will be calculated in a rigorous phase to phase manner without approximations.')
-        band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
-        for orbital_position in orbital_motion:
-            self.build(components_distance=orbital_position.distance)
-            container = prepare_star_container(self, orbital_position, ecl_boundaries)
-
-            normal_radiance = get_normal_radiance(container, **kwargs)
-            ld_cfs = get_limbdarkening(container, **kwargs)
-
-            container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
-
-            for band in kwargs["passband"].keys():
-                band_curves[band][int(orbital_position.idx)] = \
-                    calculate_lc_point(container, band, ld_cfs, normal_radiance)
-                # band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
-
-    # LC interpolation of symmetrical part
-    if approximation_test1:
-        x = np.concatenate((phases[unique_phase_indices], orbital_motion_array_counterpart[:, 4] % 1))
-        sort_idx = np.argsort(x)
-        x = x[sort_idx]
-        x = np.concatenate(([x[-1]-1], x, [x[0]+1]))
-        phases_to_interp = phases[~uniq_geom_test]
-        for band in kwargs["passband"].keys():
-            y = np.concatenate((band_curves[band], band_curves_counterpart[band]))
-            y = y[sort_idx]
-            y = np.concatenate(([y[-1]], y, [y[0]]))
-            f = interp1d(x, y, kind='cubic')
-            interpolated_fluxes = f(phases_to_interp)
-            # band_curves[band] = np.concatenate((band_curves[band], interpolated_fluxes))
-            full_crv = np.empty(phases.shape)
-            full_crv[uniq_geom_test] = band_curves[band]
-            full_crv[~uniq_geom_test] = interpolated_fluxes
-            band_curves[band] = full_crv
-
-    # temporary
-    # from matplotlib import pyplot as plt
-    # for band, curve in band_curves.items():
-    #     x = phases[unique_phase_indices]
-    #     plt.scatter(x, curve[unique_phase_indices])
-    #     plt.scatter(orbital_motion_array_counterpart[:, 4] % 1, band_curves_counterpart[band])
-    # plt.show()
+        __logger__.warning('LC will be calculated in a rigorous phase to phase manner without approximations.')
+        band_curves = integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
 
     return band_curves
 
 
-def cunstruct_geometry_symmetric_azimuths(self, azimuths, phases):
+def construct_geometry_symmetric_azimuths(self, azimuths, phases):
     """
     prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
     mirrored via apsidal line in order to reduce time for generating the light curve
@@ -498,6 +406,165 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
     }
     flux = flux['primary'] + flux['secondary']
     return flux
+
+
+def integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart, unique_phase_indices, uniq_geom_test,
+                               ecl_boundaries, phases, orbital_motion_array_counterpart, **kwargs):
+    """
+    function calculates LC for eccentric orbits for selected filters using approximation where LC points on the one side
+    of the apsidal line are calculated exactly and the second half of the LC points are calculated by mirroring the
+    surface geometries of the first half of the points to the other side of the apsidal line. Since those mirrored
+    points are no alligned with desired phases, the fluxes for each phase is interpolated if missing.
+
+    :param self: BinarySystem instance
+    :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
+    :param orbital_motion_counterpart: list of OrbitalPositions on one side of the apsidal line on which approximation
+    is performed
+    :param unique_phase_indices: list of indices that points to OrbitalPositions which geometries will be used for their
+    counterparts on the other side of apsidal line
+    :param uniq_geom_test: boll array that is used as a mask to select orbital positions from one side of the apsidal
+    line which LC points will be calculated exactly
+    :param ecl_boundaries: list of phase boundaries of eclipses
+    :param phases: phases in which the phase curve will be calculated
+    :param orbital_motion_array_counterpart: array of orbital positions that will be interpolated
+    :param kwargs: kwargs taken from `compute_eccentric_lightcurve` function
+    :return: dictionary of fluxes for each filter
+    """
+    band_curves = {key: list() for key in kwargs["passband"].keys()}
+    band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
+    # for orbital_position in orbital_motion:
+    for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
+        orbital_position = orbital_motion[unique_phase_idx]
+
+        self.build(components_distance=orbital_position.distance)
+
+        container = prepare_star_container(self, orbital_position, ecl_boundaries)
+        container_counterpart = prepare_star_container(self, orbital_motion_counterpart[counterpart_idx],
+                                                       ecl_boundaries)
+
+        normal_radiance = get_normal_radiance(container, **kwargs)
+        ld_cfs = get_limbdarkening(container, **kwargs)
+
+        container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
+        container_counterpart.coverage, container_counterpart.cosines = \
+            calculate_surface_parameters(container_counterpart, in_eclipse=True)
+
+        for band in kwargs["passband"].keys():
+            band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
+            band_curves_counterpart[band].append(calculate_lc_point(container_counterpart, band, ld_cfs,
+                                                                    normal_radiance))
+
+    # interpolation of the points in the second half of the light curves using splines
+    x = np.concatenate((phases[unique_phase_indices], orbital_motion_array_counterpart[:, 4] % 1))
+    sort_idx = np.argsort(x)
+    x = x[sort_idx]
+    x = np.concatenate(([x[-1] - 1], x, [x[0] + 1]))
+    phases_to_interp = phases[~uniq_geom_test]
+    for band in kwargs["passband"].keys():
+        y = np.concatenate((band_curves[band], band_curves_counterpart[band]))
+        y = y[sort_idx]
+        y = np.concatenate(([y[-1]], y, [y[0]]))
+        f = interp1d(x, y, kind='cubic')
+        interpolated_fluxes = f(phases_to_interp)
+        # band_curves[band] = np.concatenate((band_curves[band], interpolated_fluxes))
+        full_crv = np.empty(phases.shape)
+        full_crv[uniq_geom_test] = band_curves[band]
+        full_crv[~uniq_geom_test] = interpolated_fluxes
+        band_curves[band] = full_crv
+
+    return band_curves
+
+
+def integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, index_of_closest,
+                               index_of_closest_reversed, uniq_geom_test, ecl_boundaries, phases, **kwargs):
+    """
+    function calculates LC for eccentric orbit for selected filters using approximation where to each OrbitalPosition on
+    one side of the apsidal line, the closest counterpart OrbitalPosition is assigned and the same surface geometry is
+    assumed for both of them.
+
+    :param self: BinarySystem instance
+    :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
+    :param missing_phases_indices: if the number of phase curve is odd, or due to specific alligning of the phases along
+    the orbit, the projection between two groups of the points is not necessarilly bijective. In such case
+    `missing_phases_indices` point to the OrbitalPositions from approximated side of the orbit that doesnt have the
+    counterpart on the other side of the apsidal line yet. This issue is remedied inside the function
+    :param index_of_closest: list of indices that points to the counterpart OrbitalPositions on the approximated side of
+    the orbit, The n-th index points to the conterpart of the n-th Orbital position on the exactly evaluated side of the
+    orbit
+    :param index_of_closest_reversed: for OrbitalPositions without counterpart, the index of the closest counterpart
+    from the exactly evaluated side of the orbit is supplied
+    :param uniq_geom_test: boll array that is used as a mask to select orbital positions from one side of the apsidal
+    line which LC points will be calculated exactly
+    :param ecl_boundaries: list of phase boundaries of eclipses
+    :param phases: phases in which the phase curve will be calculated
+    :param kwargs: kwargs taken from `compute_eccentric_lightcurve` function
+    :return: dictionary of fluxes for each filter
+    """
+    band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
+
+    template_phases_idx = np.arange(phases.shape[0])[uniq_geom_test]
+    orb_motion_template = [orbital_motion[ii] for ii in template_phases_idx]
+    counterpart_phases_idx = np.arange(phases.shape[0])[~uniq_geom_test]
+    orb_motion_counterpart = [orbital_motion[ii] for ii in counterpart_phases_idx]
+
+    # apending orbital motion arrays to include missing phases to complete LC
+    if len(missing_phases_indices) > 0:
+        for ii, idx_reversed in enumerate(index_of_closest_reversed):
+            orb_motion_template.append(orb_motion_template[idx_reversed])
+            orb_motion_counterpart.append(orb_motion_counterpart[missing_phases_indices[ii]])
+
+    for counterpart_idx, orbital_position in enumerate(orb_motion_template):
+
+        self.build(components_distance=orbital_position.distance)
+
+        container = prepare_star_container(self, orbital_position, ecl_boundaries)
+        container_counterpart = prepare_star_container(self,
+                                                       orb_motion_counterpart[index_of_closest[counterpart_idx]],
+                                                       ecl_boundaries)
+
+        normal_radiance = get_normal_radiance(container, **kwargs)
+        ld_cfs = get_limbdarkening(container, **kwargs)
+
+        container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
+        container_counterpart.coverage, container_counterpart.cosines = \
+            calculate_surface_parameters(container_counterpart, in_eclipse=True)
+
+        for band in kwargs["passband"].keys():
+            band_curves[band][int(orbital_position.idx)] = \
+                calculate_lc_point(container, band, ld_cfs, normal_radiance)
+            band_curves[band][int(orb_motion_counterpart[index_of_closest[counterpart_idx]].idx)] = \
+                calculate_lc_point(container_counterpart, band, ld_cfs, normal_radiance)
+
+    return band_curves
+
+
+def integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs):
+    """
+    function calculates LC for eccentric orbit for selected filters. LC is calculated exactly for each OrbitalPosition.
+    It is very slow and it should be used only as a benchmark.
+
+    :param self: BinarySystem instance
+    :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
+    :param ecl_boundaries: list of phase boundaries of eclipses
+    :param phases: phases in which the phase curve will be calculated
+    :param kwargs: kwargs taken from `compute_eccentric_lightcurve` function
+    :return: dictionary of fluxes for each filter
+    """
+    band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
+    for orbital_position in orbital_motion:
+        self.build(components_distance=orbital_position.distance)
+        container = prepare_star_container(self, orbital_position, ecl_boundaries)
+
+        normal_radiance = get_normal_radiance(container, **kwargs)
+        ld_cfs = get_limbdarkening(container, **kwargs)
+
+        container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
+
+        for band in kwargs["passband"].keys():
+            band_curves[band][int(orbital_position.idx)] = \
+                calculate_lc_point(container, band, ld_cfs, normal_radiance)
+
+    return band_curves
 
 
 if __name__ == "__main__":
