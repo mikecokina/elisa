@@ -235,7 +235,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
     orbital_motion, orbital_motion_array = position_method(input_argument=phases,
                                                            return_nparray=True, calculate_from='phase')
 
-    # this condition checks if even to attempt apsidal line symmetry
+    # this condition checks if even to attempt to utilize apsidal line symmetry approximations
     if config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None:
         # in case of clean surface or synchronous rotation (more-less), symmetry around semi-major axis can be utilized
         # mask isolating the symmetrical part of the orbit
@@ -261,6 +261,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
         missing_phases_indices = np.arange(np.count_nonzero(~uniq_geom_test))[~isin_test]
 
         # finding index of closest symmetrical orbital position to the missing phase
+        index_of_closest_reversed = []
         if len(missing_phases_indices) > 0:
             index_of_closest_reversed = utils.find_idx_of_nearest(orbit_template_arr[:, 1],
                                                                   orbit_counterpart_arr[missing_phases_indices, 1])
@@ -274,15 +275,29 @@ def compute_eccentric_lightcurve(self, **kwargs):
         d_distance = np.abs(orbit_template_arr[:, 1] -
                             orbit_counterpart_arr[index_of_closest, 1])
 
+        forward_radii = self.calculate_all_forward_radii(orbit_template_arr[:, 1], components=None)
+        # calculating change in forward radius as a indicator of change in overall geometry, not calculated for the
+        # first OrbitalPosition since it is True
+        forward_radii = np.array(list(forward_radii.values()))
+        rel_d_radii = np.abs(forward_radii[:, 1:] - np.roll(forward_radii, shift=1, axis=1)[:, 1:]) / \
+                      forward_radii[:, 1:]
         # second approximation does not interpolates the resulting light curve but assumes that geometry is the same as
         # the geometry of the found counterpart
         # testing if change in geometry will not be too severe, you should rather use changes in point radius instead
-        approximation_test2 = max(d_distance) < config.MAX_D_DISTANCE and \
+        forward_radii_sorted = np.sort(forward_radii, axis=1)
+        rel_d_radii_sorted = np.abs(forward_radii_sorted - np.roll(forward_radii_sorted, shift=1, axis=1)) / \
+                             forward_radii_sorted
+        approximation_test2 = np.max(rel_d_radii_sorted[:, 1:]) < config.MAX_RELATIVE_D_R_POINT and \
                               self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0  # spots???
+
+        # this part checks if differences between geometries of adjacent phases are small enough to assume that
+        # geometries are the same.
+        new_geometry_test = calculate_new_geometry(orbit_template_arr, rel_d_radii)
 
     else:
         approximation_test1 = False
         approximation_test2 = False
+
 
     # initial values of radii to be compared with
     # orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
@@ -291,14 +306,14 @@ def compute_eccentric_lightcurve(self, **kwargs):
         __logger__.debug('One half of the points on LC on the one side of the apsidal line will be interpolated.')
         band_curves = integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart, unique_phase_indices,
                                                  uniq_geom_test, ecl_boundaries, phases,
-                                                 orbital_motion_array_counterpart, **kwargs)
+                                                 orbital_motion_array_counterpart, new_geometry_test, **kwargs)
 
     elif approximation_test2:
         __logger__.warning('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
                            'symmetrical counterparts.')
         band_curves = integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, index_of_closest,
                                                  index_of_closest_reversed, uniq_geom_test, ecl_boundaries, phases,
-                                                 **kwargs)
+                                                 new_geometry_test, **kwargs)
 
     else:
         __logger__.warning('LC will be calculated in a rigorous phase to phase manner without approximations.')
@@ -329,9 +344,7 @@ def construct_geometry_symmetric_azimuths(self, azimuths, phases):
     unique_phase_indices = np.arange(phases.shape[0])[unique_geometry]
     unique_geometry_azimuths = azimuths[unique_geometry]
     unique_geometry_counterazimuths = (2 * self.argument_of_periastron - unique_geometry_azimuths) % const.FULL_ARC
-    # unique_geometry_counterazimuths = np.concatenate(([azimuth_boundaries[0]],
-    #                                                   unique_geometry_counterazimuths,
-    #                                                   [azimuth_boundaries[1]]))
+
     orbital_motion_counterpart, orbital_motion_array_counterpart = \
         self.calculate_orbital_motion(input_argument=unique_geometry_counterazimuths,
                                       return_nparray=True,
@@ -409,13 +422,15 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
 
 
 def integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart, unique_phase_indices, uniq_geom_test,
-                               ecl_boundaries, phases, orbital_motion_array_counterpart, **kwargs):
+                               ecl_boundaries, phases, orbital_motion_array_counterpart, new_geometry_test, **kwargs):
     """
     function calculates LC for eccentric orbits for selected filters using approximation where LC points on the one side
     of the apsidal line are calculated exactly and the second half of the LC points are calculated by mirroring the
     surface geometries of the first half of the points to the other side of the apsidal line. Since those mirrored
     points are no alligned with desired phases, the fluxes for each phase is interpolated if missing.
 
+    :param new_geometry_test: bool array - mask to indicate, during which orbital position, surface geometry should be
+                                           recalculated
     :param self: BinarySystem instance
     :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
     :param orbital_motion_counterpart: list of OrbitalPositions on one side of the apsidal line on which approximation
@@ -476,12 +491,15 @@ def integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart,
 
 
 def integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, index_of_closest,
-                               index_of_closest_reversed, uniq_geom_test, ecl_boundaries, phases, **kwargs):
+                               index_of_closest_reversed, uniq_geom_test, ecl_boundaries, phases, new_geometry_test,
+                               **kwargs):
     """
     function calculates LC for eccentric orbit for selected filters using approximation where to each OrbitalPosition on
     one side of the apsidal line, the closest counterpart OrbitalPosition is assigned and the same surface geometry is
     assumed for both of them.
 
+    :param new_geometry_test: bool array - mask to indicate, during which orbital position, surface geometry should be
+                                           recalculated
     :param self: BinarySystem instance
     :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
     :param missing_phases_indices: if the number of phase curve is odd, or due to specific alligning of the phases along
@@ -507,20 +525,24 @@ def integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, ind
     counterpart_phases_idx = np.arange(phases.shape[0])[~uniq_geom_test]
     orb_motion_counterpart = [orbital_motion[ii] for ii in counterpart_phases_idx]
 
-    # apending orbital motion arrays to include missing phases to complete LC
+    # appending orbital motion arrays to include missing phases to complete LC
     if len(missing_phases_indices) > 0:
         for ii, idx_reversed in enumerate(index_of_closest_reversed):
             orb_motion_template.append(orb_motion_template[idx_reversed])
             orb_motion_counterpart.append(orb_motion_counterpart[missing_phases_indices[ii]])
 
     for counterpart_idx, orbital_position in enumerate(orb_motion_template):
-
         self.build(components_distance=orbital_position.distance)
+        # if new_geometry_test[counterpart_idx]:
+        #     self.build(components_distance=orbital_position.distance)
+        # else:
+        #     self.build_mesh(component=None, components_distance=orbital_position.distance)
+        #     self.build_surface_areas(component=None)
+
+        orbital_position_counterpart = orb_motion_counterpart[index_of_closest[counterpart_idx]]
 
         container = prepare_star_container(self, orbital_position, ecl_boundaries)
-        container_counterpart = prepare_star_container(self,
-                                                       orb_motion_counterpart[index_of_closest[counterpart_idx]],
-                                                       ecl_boundaries)
+        container_counterpart = prepare_star_container(self, orbital_position_counterpart, ecl_boundaries)
 
         normal_radiance = get_normal_radiance(container, **kwargs)
         ld_cfs = get_limbdarkening(container, **kwargs)
@@ -565,6 +587,29 @@ def integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
                 calculate_lc_point(container, band, ld_cfs, normal_radiance)
 
     return band_curves
+
+
+def calculate_new_geometry(orbit_template_arr, rel_d_radii):
+    """
+    this function chcecks at which OrbitalPositions it is necessary to recalculate geometry
+    :param orbit_template_arr: array of orbital positions from one side of the apsidal line used as the symmetry
+    template
+    :param rel_d_radii: np.array - shape(2 x len(orbit_template arr) - relative changes in radii of each component with
+    respect to the previous OrbitalPosition, excluding the first postition.
+    :return: bool array - mask to select Orbital positions, where orbits should be calculated
+    """
+    calculate_new_geometry = np.empty(orbit_template_arr.shape[0], dtype=np.bool)
+    calculate_new_geometry[0] = True
+    cumulative_sum = np.array([0.0, 0.0])
+    for ii in range(1, orbit_template_arr.shape[0]):
+        cumulative_sum += rel_d_radii[:, ii - 1]
+        if (cumulative_sum <= config.MAX_RELATIVE_D_R_POINT).all():
+            calculate_new_geometry[ii] = False
+        else:
+            calculate_new_geometry[ii] = True
+            cumulative_sum = np.array([0.0, 0.0])
+
+    return calculate_new_geometry
 
 
 if __name__ == "__main__":

@@ -571,3 +571,8 @@ def hull_to_pypex_poly(hull):
     :return: pypex.poly2d.polygon.Plygon
     """
     return Polygon(hull, _validity=False)
+
+
+def adjust_distance(points, old_distance, new_distance):
+    points[:, 0] = points[:, 0] - old_distance + new_distance
+    return points

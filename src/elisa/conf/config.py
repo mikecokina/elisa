@@ -49,6 +49,7 @@ NUMBER_OF_THREADS = int(os.cpu_count())
 D_RADIUS = 0.001
 POINTS_ON_ECC_ORBIT = 99999
 MAX_D_DISTANCE = 0.0
+MAX_RELATIVE_D_R_POINT = 0.0
 
 # support data
 PASSBAND_TABLES = os.path.expanduser(os.path.join("~", "passband"))
@@ -128,6 +129,11 @@ def update_config():
 
         global MAX_D_DISTANCE
         MAX_D_DISTANCE = c_parse.getfloat('computational', 'max_d_distance', fallback=MAX_D_DISTANCE)
+
+        global MAX_RELATIVE_D_R_POINT
+        MAX_RELATIVE_D_R_POINT = c_parse.getfloat('computational', 'max_relative_d_r_point',
+                                                  fallback=MAX_RELATIVE_D_R_POINT)
+
     # ******************************************************************************************************************
 
     if c_parse.has_section('support'):
