@@ -13,6 +13,10 @@ from elisa.engine import const as c
 from typing import Sized
 
 
+# auxiliary variable
+CUMULATIVE_TIME = 0.0
+
+
 def polar_to_cartesian(radius, phi):
     """
     Transform polar coordinates to cartesian
