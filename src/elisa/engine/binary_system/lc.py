@@ -298,7 +298,6 @@ def compute_eccentric_lightcurve(self, **kwargs):
         approximation_test1 = False
         approximation_test2 = False
 
-
     # initial values of radii to be compared with
     # orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
     # test and therefore the surface will be built
@@ -309,14 +308,14 @@ def compute_eccentric_lightcurve(self, **kwargs):
                                                  orbital_motion_array_counterpart, new_geometry_test, **kwargs)
 
     elif approximation_test2:
-        __logger__.warning('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
+        __logger__.debug('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
                            'symmetrical counterparts.')
         band_curves = integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, index_of_closest,
                                                  index_of_closest_reversed, uniq_geom_test, ecl_boundaries, phases,
                                                  new_geometry_test, **kwargs)
 
     else:
-        __logger__.warning('LC will be calculated in a rigorous phase to phase manner without approximations.')
+        __logger__.debug('LC will be calculated in a rigorous phase to phase manner without approximations.')
         band_curves = integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
 
     return band_curves
@@ -451,14 +450,6 @@ def integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart,
     for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
         orbital_position = orbital_motion[unique_phase_idx]
         self = update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test[counterpart_idx])
-        # if new_geometry_test[counterpart_idx]:
-        #     self.build(components_distance=orbital_position.distance)
-        # else:
-        #     self.build_mesh(component=None, components_distance=orbital_position.distance)
-        #     self.build_surface_areas(component=None)
-        #     self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
-
-        # self.build(components_distance=orbital_position.distance)
 
         container = prepare_star_container(self, orbital_position, ecl_boundaries)
         container_counterpart = prepare_star_container(self, orbital_motion_counterpart[counterpart_idx],
@@ -540,12 +531,6 @@ def integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, ind
 
     for counterpart_idx, orbital_position in enumerate(orb_motion_template):
         self = update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test[counterpart_idx])
-        # if new_geometry_test[counterpart_idx]:
-        #     self.build(components_distance=orbital_position.distance)
-        # else:
-        #     self.build_mesh(component=None, components_distance=orbital_position.distance)
-        #     self.build_surface_areas(component=None)
-        #     self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
 
         orbital_position_counterpart = orb_motion_counterpart[index_of_closest[counterpart_idx]]
 
