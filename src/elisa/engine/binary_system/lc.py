@@ -450,8 +450,15 @@ def integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart,
     # for orbital_position in orbital_motion:
     for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
         orbital_position = orbital_motion[unique_phase_idx]
+        self = update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test[counterpart_idx])
+        # if new_geometry_test[counterpart_idx]:
+        #     self.build(components_distance=orbital_position.distance)
+        # else:
+        #     self.build_mesh(component=None, components_distance=orbital_position.distance)
+        #     self.build_surface_areas(component=None)
+        #     self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
 
-        self.build(components_distance=orbital_position.distance)
+        # self.build(components_distance=orbital_position.distance)
 
         container = prepare_star_container(self, orbital_position, ecl_boundaries)
         container_counterpart = prepare_star_container(self, orbital_motion_counterpart[counterpart_idx],
@@ -532,12 +539,13 @@ def integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, ind
             orb_motion_counterpart.append(orb_motion_counterpart[missing_phases_indices[ii]])
 
     for counterpart_idx, orbital_position in enumerate(orb_motion_template):
-        self.build(components_distance=orbital_position.distance)
+        self = update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test[counterpart_idx])
         # if new_geometry_test[counterpart_idx]:
         #     self.build(components_distance=orbital_position.distance)
         # else:
         #     self.build_mesh(component=None, components_distance=orbital_position.distance)
         #     self.build_surface_areas(component=None)
+        #     self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
 
         orbital_position_counterpart = orb_motion_counterpart[index_of_closest[counterpart_idx]]
 
@@ -598,18 +606,41 @@ def calculate_new_geometry(orbit_template_arr, rel_d_radii):
     respect to the previous OrbitalPosition, excluding the first postition.
     :return: bool array - mask to select Orbital positions, where orbits should be calculated
     """
-    calculate_new_geometry = np.empty(orbit_template_arr.shape[0], dtype=np.bool)
-    calculate_new_geometry[0] = True
+    calc_new_geometry = np.empty(orbit_template_arr.shape[0], dtype=np.bool)
+    calc_new_geometry[0] = True
     cumulative_sum = np.array([0.0, 0.0])
     for ii in range(1, orbit_template_arr.shape[0]):
         cumulative_sum += rel_d_radii[:, ii - 1]
         if (cumulative_sum <= config.MAX_RELATIVE_D_R_POINT).all():
-            calculate_new_geometry[ii] = False
+            calc_new_geometry[ii] = False
         else:
-            calculate_new_geometry[ii] = True
+            calc_new_geometry[ii] = True
             cumulative_sum = np.array([0.0, 0.0])
 
-    return calculate_new_geometry
+    return calc_new_geometry
+
+
+def update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
+    """
+    function decides how to update surface properties with respect to the degree of change in surface geometry given by
+    new_geometry test, if true, only points and normals are recalculated, otherwise surface is calculated from scratch
+    :param self: BinarySystem instance
+    :param orbital_position:  OrbitalPosition list
+    :param new_geometry_test: bool - test that will decide, how the following phase will be calculated
+    :return: BinarySystem instance with updated geometry
+    """
+    if new_geometry_test:
+        self.build(components_distance=orbital_position.distance)
+    else:
+        self.build_mesh(component=None, components_distance=orbital_position.distance)
+        self.build_surface_areas(component=None)
+        self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
+
+        # if you include this the precision will increase but with substantial time penalty
+        # self.build_surface_gravity(component=None, components_distance=orbital_position.distance)
+        # self.build_temperature_distribution(component=None, components_distance=orbital_position.distance)
+
+    return self
 
 
 if __name__ == "__main__":
