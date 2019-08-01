@@ -292,7 +292,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
         # this part checks if differences between geometries of adjacent phases are small enough to assume that
         # geometries are the same.
-        new_geometry_test = calculate_new_geometry(orbit_template_arr, rel_d_radii)
+        new_geometry_test = calculate_new_geometry(self, orbit_template_arr, rel_d_radii)
 
     else:
         approximation_test1 = False
@@ -302,20 +302,20 @@ def compute_eccentric_lightcurve(self, **kwargs):
     # orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
     # test and therefore the surface will be built
     if approximation_test1:
-        __logger__.debug('One half of the points on LC on the one side of the apsidal line will be interpolated.')
+        __logger__.info('One half of the points on LC on the one side of the apsidal line will be interpolated.')
         band_curves = integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart, unique_phase_indices,
                                                  uniq_geom_test, ecl_boundaries, phases,
                                                  orbital_motion_array_counterpart, new_geometry_test, **kwargs)
 
     elif approximation_test2:
-        __logger__.debug('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
+        __logger__.info('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
                            'symmetrical counterparts.')
         band_curves = integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, index_of_closest,
                                                  index_of_closest_reversed, uniq_geom_test, ecl_boundaries, phases,
                                                  new_geometry_test, **kwargs)
 
     else:
-        __logger__.debug('LC will be calculated in a rigorous phase to phase manner without approximations.')
+        __logger__.info('LC will be calculated in a rigorous phase to phase manner without approximations.')
         band_curves = integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
 
     return band_curves
@@ -582,15 +582,20 @@ def integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
     return band_curves
 
 
-def calculate_new_geometry(orbit_template_arr, rel_d_radii):
+def calculate_new_geometry(self, orbit_template_arr, rel_d_radii):
     """
     this function chcecks at which OrbitalPositions it is necessary to recalculate geometry
+    :param self: BinarySystem instance
     :param orbit_template_arr: array of orbital positions from one side of the apsidal line used as the symmetry
     template
     :param rel_d_radii: np.array - shape(2 x len(orbit_template arr) - relative changes in radii of each component with
     respect to the previous OrbitalPosition, excluding the first postition.
     :return: bool array - mask to select Orbital positions, where orbits should be calculated
     """
+    # in case of spots, the boundary points will cause problems if you want to use the same geometry
+    if self.primary.has_spots() or self.secondary.has_spots():
+        return np.ones(orbit_template_arr.shape[0], dtype=np.bool)
+
     calc_new_geometry = np.empty(orbit_template_arr.shape[0], dtype=np.bool)
     calc_new_geometry[0] = True
     cumulative_sum = np.array([0.0, 0.0])
@@ -621,11 +626,11 @@ def update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
         self.build_surface_areas(component=None)
         self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
 
-        # if you include this the precision will increase but with substantial time penalty
-        # self.build_surface_gravity(component=None, components_distance=orbital_position.distance)
-        # self.build_temperature_distribution(component=None, components_distance=orbital_position.distance)
-
     return self
+
+
+def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
+    pass
 
 
 if __name__ == "__main__":

@@ -436,7 +436,7 @@ class BinarySystem(System):
     def _evaluate_spots_mesh(self, components_distance, component=None):
         """
         Compute points of each spots and assigns values to spot container instance.
-        If any of any spot point cannot be obtained entire spot will be ommited.
+        If any of any spot point cannot be obtained, entire spot will be omitted.
 
         :param components_distance: float
         :return:
@@ -761,7 +761,6 @@ class BinarySystem(System):
         :param args: tuple: (B, C, D, E) such that: Psi1 = 1/r + A/sqrt(B+r^2+Cr) - D*r + E*x^2
         :return: (numpy.)float
         """
-
         b, c, d, e = args  # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
         radius2 = np.power(radius, 2)
 

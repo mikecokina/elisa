@@ -810,7 +810,7 @@ class Body(metaclass=ABCMeta):
         if not self.spots:
             self._logger.debug(f"not spots found, skipping incorporating spots to mesh on component {self.name}")
             return
-        self._logger.info(f"incorporating spot points to component {self.name} mesh")
+        self._logger.debug(f"incorporating spot points to component {self.name} mesh")
 
         if is_empty(component_com):
             raise ValueError('Object centre of mass was not supplied')
