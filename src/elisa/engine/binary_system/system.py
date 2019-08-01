@@ -2281,7 +2281,7 @@ class BinarySystem(System):
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
     def _compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
-        pass
+        return lc.compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs)
 
     def _compute_eccentric_lightcurve(self, *args, **kwargs):
         # todo: just for testing, remove

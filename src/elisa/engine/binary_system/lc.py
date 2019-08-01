@@ -630,7 +630,7 @@ def update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
 
 
 def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
-    pass
+    self.build(components_distance=1.0)
 
 
 if __name__ == "__main__":
