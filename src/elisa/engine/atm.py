@@ -479,10 +479,10 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
     if np.isin(np.nan, on_border_flux):
         raise ValueError('Interpolation on bandwidth boundaries led to NaN value.')
     df: DataFrame = atm_container.model
-
-    df.values[[0, -1], :] = np.array([[on_border_flux[0], left_bandwidth], [on_border_flux[1], right_bandwidth]])
-    df.values[:, 1] = np.round(df.values[:, 1], 10)
-
+    first, last = df.first_valid_index(), df.last_valid_index()
+    df.loc[[first, last], ATM_MODEL_DATAFRAME_FLUX:ATM_MODEL_DATAFRAME_WAVE] = \
+        np.array([[on_border_flux[0], left_bandwidth], [on_border_flux[1], right_bandwidth]])
+    df[ATM_MODEL_DATAFRAME_WAVE] = df[ATM_MODEL_DATAFRAME_WAVE].apply(lambda x: round(x, 10))
     df.reset_index(drop=True, inplace=True)
     atm_container.model = df
     return atm_container
