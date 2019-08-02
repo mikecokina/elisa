@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
-from elisa.engine.single_system.system import SingleSystem
-from elisa.engine.base.star import Star
+from elisa.engine import SingleSystem
+from elisa.base import Star
 from astropy import units as u
-from elisa.engine import utils
+from elisa import utils
 from numpy import testing
 
 

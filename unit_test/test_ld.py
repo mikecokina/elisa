@@ -7,7 +7,7 @@ from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from elisa.conf import config
-from elisa.engine import ld, const
+from elisa import const, ld
 
 
 class TestLimbDarkeningModule(unittest.TestCase):

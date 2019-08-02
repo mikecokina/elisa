@@ -1,14 +1,8 @@
-from elisa.engine.binary_system.system import BinarySystem
-from elisa.engine.base.star import Star
+from elisa.binary_system.system import BinarySystem
+from elisa.base import Star
 from astropy import units as u
-import numpy as np
-import matplotlib.pyplot as plt
-from elisa.engine import utils
-from elisa.engine import const as c
 from time import time
 import logging
-from elisa.engine.binary_system import geo
-from elisa.engine.observer.observer import Observer
 
 logger = logging.getLogger()
 logger.setLevel(level='WARNING')

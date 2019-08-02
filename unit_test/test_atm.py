@@ -9,8 +9,8 @@ from pandas.testing import assert_frame_equal
 
 from elisa.conf import config
 from elisa.conf.config import ATM_MODEL_DATAFRAME_WAVE, ATM_MODEL_DATAFRAME_FLUX
-from elisa.engine import atm
-from elisa.engine.observer.observer import PassbandContainer
+from elisa import atm
+from elisa.observer.observer import PassbandContainer
 
 
 class TestMapDict(unittest.TestCase):

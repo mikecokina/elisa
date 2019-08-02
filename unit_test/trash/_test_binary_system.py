@@ -1,11 +1,11 @@
 import unittest
 import numpy as np
-from elisa.engine.binary_system.system import BinarySystem
-from elisa.engine.base.star import Star
-import elisa.engine.const as c
+from elisa.binary_system.system import BinarySystem
+from elisa.base import Star
+import elisa.const as c
 from astropy import units as u
 from numpy.testing import assert_array_almost_equal
-from elisa.engine import utils
+from elisa import utils
 from unit_test import test_utils
 
 

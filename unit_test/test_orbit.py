@@ -4,8 +4,8 @@ import numpy as np
 from astropy import units as u
 from numpy.testing import assert_array_equal
 
-import elisa.engine.const as c
-from elisa.engine.orbit import Orbit
+import elisa.const as c
+from elisa.orbit import Orbit
 
 
 class TestOrbit(unittest.TestCase):

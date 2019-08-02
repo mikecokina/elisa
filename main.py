@@ -1,14 +1,11 @@
-from elisa.engine.binary_system.system import BinarySystem
-from elisa.engine.base.star import Star
+from elisa.binary_system.system import BinarySystem
+from elisa.base.star import Star
 from astropy import units as u
 import numpy as np
 import matplotlib.pyplot as plt
-from elisa.engine import utils
-from elisa.engine import const as c
 from time import time
 import logging
-from elisa.engine.binary_system import geo
-from elisa.engine.observer.observer import Observer
+from elisa.observer.observer import Observer
 
 logger = logging.getLogger()
 logger.setLevel(level='WARNING')
@@ -78,7 +75,7 @@ bs = BinarySystem(primary=primary,
                   argument_of_periastron=0*u.deg,
                   gamma=-41.7*u.km/u.s,
                   period=0.7949859*u.d,
-                  eccentricity=0.1,
+                  eccentricity=0.0,
                   inclination=80*u.deg,
                   primary_minimum_time=2440862.60793*u.d,
                   phase_shift=0.0,
@@ -98,7 +95,7 @@ o = Observer(passband=['Generic.Bessell.V',
              system=bs)
 
 start_phs = -0.5
-stop_phs = 0.5
+stop_phs = 1.5
 step = 0.01
 curves = o.observe(from_phase=start_phs,
                    to_phase=stop_phs,
