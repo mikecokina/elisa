@@ -133,7 +133,7 @@ def get_normal_radiance(single_orbital_position_container, **kwargs):
     }
 
 
-def get_limbdarkening(self, **kwargs):
+def get_limbdarkening_cfs(self, **kwargs):
     """
     returns limg darkening coefficients for each face of each component
     :param self:
@@ -164,10 +164,10 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
     # in case of LC for spotless surface without pulsations unique phase interval is only (0, 0.5)
     phases = kwargs.pop("phases")
-    base_phases2, reverse_idx2 = phase_crv_symmetry(self, phases)
+    unique_phase_interval, reverse_phase_map = phase_crv_symmetry(self, phases)
 
     position_method = kwargs.pop("position_method")
-    orbital_motion = position_method(input_argument=base_phases2, return_nparray=False, calculate_from='phase')
+    orbital_motion = position_method(input_argument=unique_phase_interval, return_nparray=False, calculate_from='phase')
 
     initial_props_container = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
     initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
@@ -176,8 +176,10 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     setattr(initial_props_container.primary, 'metallicity', self.primary.metallicity)
     setattr(initial_props_container.secondary, 'metallicity', self.secondary.metallicity)
 
+    # compute normal radiance for each face and each component
     normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
-    ld_cfs = get_limbdarkening(initial_props_container, **kwargs)
+    # obtain limb darkening factor for each face
+    ld_cfs = get_limbdarkening_cfs(initial_props_container, **kwargs)
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion,
@@ -202,17 +204,18 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             flux = p_flux + s_flux
             # band_curves[band].append(flux)
             band_curves[band][idx] = flux
-    band_curves = {band: band_curves[band][reverse_idx2] for band in band_curves}
+    band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
 
     return band_curves
 
 
 def phase_crv_symmetry(self, phase):
     """
-    utilizing symmetry of circular systems without spots and pulastions where you need to evaluate only half of the
+    Utilizing symmetry of circular systems without spots and pulastions where you need to evaluate only half of the
     phases. Function finds such redundant phases and returns only unique phases.
+
     :param self:
-    :param phase:
+    :param phase: numpy.array
     :return:
     """
     if not self.primary.has_pulsations() and not self.primary.has_pulsations() and \
@@ -457,7 +460,7 @@ def integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart,
                                                        ecl_boundaries)
 
         normal_radiance = get_normal_radiance(container, **kwargs)
-        ld_cfs = get_limbdarkening(container, **kwargs)
+        ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 
         container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
         container_counterpart.coverage, container_counterpart.cosines = \
@@ -539,7 +542,7 @@ def integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, ind
         container_counterpart = prepare_star_container(self, orbital_position_counterpart, ecl_boundaries)
 
         normal_radiance = get_normal_radiance(container, **kwargs)
-        ld_cfs = get_limbdarkening(container, **kwargs)
+        ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 
         container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
         container_counterpart.coverage, container_counterpart.cosines = \
@@ -572,7 +575,7 @@ def integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
         container = prepare_star_container(self, orbital_position, ecl_boundaries)
 
         normal_radiance = get_normal_radiance(container, **kwargs)
-        ld_cfs = get_limbdarkening(container, **kwargs)
+        ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 
         container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
 
