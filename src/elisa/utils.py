@@ -504,6 +504,15 @@ def find_surrounded(look_in, look_for):
     :param look_for: float
     :return: List [float, float]
     """
+    if look_for > max(look_in) or look_for < min(look_in):
+        raise ValueError("Any value in `look_for` is out of bound of `look_in`")
+
+    # fixme: just quick hack, make this function better
+    if look_for == min(look_in):
+        return [min(look_in), min(look_in)]
+    elif look_for == max(look_in):
+        return [max(look_in), max(look_in)]
+
     arr, ret = np.array(look_in[:]), []
     f_nst = find_nearest_value(arr, look_for)
     ret.append(f_nst[0])
