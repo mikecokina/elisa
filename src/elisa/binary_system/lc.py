@@ -186,7 +186,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
                                                                          ecl_boundaries=ecl_boundaries)
     system_positions_container = system_positions_container.darkside_filter()
 
-    band_curves = {key: np.empty(base_phases2.shape) for key in kwargs["passband"].keys()}
+    band_curves = {key: np.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
     for idx, container in enumerate(system_positions_container):
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
         p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
