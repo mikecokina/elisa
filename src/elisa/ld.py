@@ -174,6 +174,7 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
         if cos_theta.ndim == 1:
             cos_theta = cos_theta[:, np.newaxis]
 
+    cos_theta = cos_theta.copy()
     cos_theta[cos_theta < 0] = 0.0
     if limb_darkening_law in ['linear', 'cosine']:
         retval = 1 - coefficients + coefficients * cos_theta
