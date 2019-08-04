@@ -13,7 +13,7 @@ def get_critical_inclination(binary, components_distance):
     """
     Get critical inclination for eclipses.
 
-    :param binary: elisa.engine.binary_system.system.BinarySystem
+    :param binary: elisa.binary_system.system.BinarySystem
     :param components_distance: float
     :return: float
     """
@@ -30,7 +30,7 @@ def get_eclipse_boundaries(binary, components_distance):
     """
     Calculates the ranges in orbital azimuths (for phase=0 -> azimuth=pi/2)!!!  where eclipses occur.
 
-    :param binary: elisa.engine.binary_system.system.BinarySystem
+    :param binary: elisa.binary_system.system.BinarySystem
     :param components_distance: float
     :return: numpy.ndarray([primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop])
     """
@@ -203,8 +203,8 @@ class SystemOrbitalPosition(object):
     """
     def __init__(self, primary, secondary, inclination, motion, ecl_boundaries):
         """
-        :param primary: elisa.engine.base.Star
-        :param secondary: elisa.engine.base.Star
+        :param primary: elisa.base.Star
+        :param secondary: elisa.base.Star
         :param inclination: float
         :param motion: numpy.ndarray
         :param ecl_boundaries: numpy.ndarray
@@ -213,6 +213,8 @@ class SystemOrbitalPosition(object):
         self.motion = motion
         self.data = ()
         self._init_data = None
+        self._coverage = None
+        self._cosines = None
 
         args = (primary, secondary)
         setattr(self, 'init_data', args)
@@ -232,7 +234,7 @@ class SystemOrbitalPosition(object):
             - `setup_position` method
             - `rotate` method
 
-        :param pos: NamedTuple; elisa.engine.const.BINARY_POSITION_PLACEHOLDER
+        :param pos: NamedTuple; elisa.const.BINARY_POSITION_PLACEHOLDER
         :return: SingleOrbitalPositionContainer
         """
         single_pos_sys = self.init_data.copy()
@@ -262,7 +264,7 @@ class SystemOrbitalPosition(object):
         """
         Set init_data (create initial SingleOrbitalPositionContainer).
 
-        :param args: Tuple[elisa.engine.base.Star, elisa.engine.base.Star]; (primary, secondary)
+        :param args: Tuple[elisa.base.Star, elisa.base.Star]; (primary, secondary)
         :return:
         """
         self._init_data = SingleOrbitalPositionContainer(*args)
@@ -361,8 +363,8 @@ class SingleOrbitalPositionContainer(object):
         """
         Initialize container
 
-        :param primary: elisa.engine.base.Star
-        :param secondary: elisa.engine.base.Star
+        :param primary: elisa.base.Star
+        :param secondary: elisa.base.Star
         """
         _primary, _secondary = primary, secondary
         self._primary = None
@@ -377,7 +379,7 @@ class SingleOrbitalPositionContainer(object):
         """
         Set geo attributes of current container.
 
-        :param position: NamedTuple; elisa.engine.const.BINARY_POSITION_PLACEHOLDER
+        :param position: NamedTuple; elisa.const.BINARY_POSITION_PLACEHOLDER
         :param inclination: float
         :return:
         """
@@ -398,7 +400,7 @@ class SingleOrbitalPositionContainer(object):
         Get flatten parmetres og given `component` instance. (Flat points, normals, etc. of Star and Spots).
 
 
-        :param component: elisa.engine.base.Star
+        :param component: elisa.base.Star
         :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray]
 
         ::
@@ -421,7 +423,7 @@ class SingleOrbitalPositionContainer(object):
         """
         Set primary paramter of self. Find flatten form of points, normalns, faces, etc. and create EasyObject.
 
-        :param value: elisa.engine.base.Star
+        :param value: elisa.base.Star
         :return:
         """
         points, normals, faces, temp, log_g = self.get_flatten(value)
@@ -441,7 +443,7 @@ class SingleOrbitalPositionContainer(object):
         """
         Set secondary paramter of self. Find flatten form of points, normalns, faces, etc. and create EasyObject.
 
-        :param value: elisa.engine.base.Star
+        :param value: elisa.base.Star
         :return:
         """
         points, normals, faces, temp, log_g = self.get_flatten(value)

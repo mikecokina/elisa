@@ -33,7 +33,7 @@ from scipy.spatial.qhull import Delaunay
 
 from elisa.conf import config
 from elisa import logger, utils, const, ld, units
-# from elisa.engine.binary_system import static, build, mp, lc
+# from elisa.binary_system import static, build, mp, lc
 from elisa.binary_system import mp, geo
 from elisa.binary_system import static, build, lc
 from elisa.binary_system.plot import Plot
@@ -193,7 +193,7 @@ class BinarySystem(System):
         """
         Encapsulation of primary component into binary system.
 
-        :return: elisa.engine.base.Star
+        :return: elisa.base.Star
         """
         return self._primary
 
@@ -202,7 +202,7 @@ class BinarySystem(System):
         """
         Encapsulation of secondary component into binary system.
 
-        :return: elisa.engine.base.Star
+        :return: elisa.base.Star
         """
         return self._secondary
 
@@ -211,7 +211,7 @@ class BinarySystem(System):
         """
         Encapsulation of orbit class into binary system.
 
-        :return: elisa.engine.orbit.Orbit
+        :return: elisa.orbit.Orbit
         """
         return self._orbit
 
@@ -2231,10 +2231,11 @@ class BinarySystem(System):
         """
         Calculate orbital motion for current system parameters and supplied phases or azimuths.
 
-        :param calculate_from: 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
-        :param return_nparray: if True positions in form of numpy arrays will be also returned
-        :param input_argument:
-        :return: List[NamedTuple: elisa.engine.const.BINARY_POSITION_PLACEHOLDER]
+        :param calculate_from: str; 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
+        :param return_nparray: bool; if True positions in form of numpy arrays will be also returned
+        :param input_argument: numpy.array;
+        :return: Tuple[List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER], List[Integer]] or
+        List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER]
         """
         orbital_motion = self.orbit.orbital_motion(phase=input_argument) if calculate_from == 'phase' \
             else self.orbit.orbital_motion_from_azimuths(azimuth=input_argument)
@@ -2253,7 +2254,7 @@ class BinarySystem(System):
         Depending on the basic properties of the binary system.
 
         :param kwargs: Dict; arguments to be passed into light curve generator functions
-            * ** passband ** * - Dict[str, elisa.engine.observer.PassbandContainer]
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
             * ** right_bandwidth ** * - float
             * ** atlas ** * - str

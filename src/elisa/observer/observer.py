@@ -177,7 +177,7 @@ class Observer(object):
             phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
 
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
-        base_phases, reverse_idx = self.base_phase_interval(phases)
+        base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
 
         self._logger.info("observation start w/ following configuration {<add>}")
         # self._logger.warning("logger will be suppressed due multiprocessing incompatibility")
@@ -215,11 +215,11 @@ class Observer(object):
 
         # remap unique phases back to original phase interval
         for items in curves:
-            curves[items] = np.array(curves[items])[reverse_idx]
+            curves[items] = np.array(curves[items])[base_phases_to_origin]
         self._logger.info("observation finished")
         return curves
 
-    def base_phase_interval(self, phases):
+    def phase_interval_reduce(self, phases):
         """
         Function reduces original phase interval to base interval (0, 1) in case of LC without pulsations.
 
