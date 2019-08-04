@@ -108,25 +108,28 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     }
 
 
-def get_normal_radiance(self, **kwargs):
-    return {
-    'primary': atm.NaiveInterpolatedAtm.radiance(
-        **dict(
-            temperature=self.primary.temperatures,
-            log_g=self.primary.log_g,
-            metallicity=self.primary.metallicity,
-            **kwargs
-        )
-    ),
+def get_normal_radiance(single_orbital_position_container, **kwargs):
+    """
+    Compute normal radiance for all faces and all components in SingleOrbitalPositionContainer
 
-    'secondary': atm.NaiveInterpolatedAtm.radiance(
-        **dict(
-            temperature=self.secondary.temperatures,
-            log_g=self.secondary.log_g,
-            metallicity=self.secondary.metallicity,
-            **kwargs
-        )
-    ),
+    :param single_orbital_position_container: elisa.binary_system.geo.SingleOrbitalPositionContainer
+    :param kwargs: Dict; arguments to be passed into light curve generator functions
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+    :return: Dict[String, numpy.array]
+    """
+    return {
+        component:
+        atm.NaiveInterpolatedAtm.radiance(
+            **dict(
+                temperature=getattr(single_orbital_position_container, component).temperatures,
+                log_g=getattr(single_orbital_position_container, component).log_g,
+                metallicity=getattr(single_orbital_position_container, component).metallicity,
+                **kwargs
+            )
+        ) for component in config.BINARY_COUNTERPARTS.keys()
     }
 
 
