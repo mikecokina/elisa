@@ -75,6 +75,7 @@ class Orbit(object):
     def period(self, period):
         """
         Setter for orbital period of binary system orbit.
+        If unitless values is supplied, default units suppose to be days.
 
         :param period: float
         :return:
@@ -102,6 +103,7 @@ class Orbit(object):
     def inclination(self, inclination):
         """
         Setter for inclination of binary system orbit.
+        If unitless values is supplied, default units suppose to be radians.
 
         :param inclination: float
         :return:
@@ -175,8 +177,8 @@ class Orbit(object):
         """
         reverts the phase shift introduced in function true phase
 
-        :param true_phase: np.array
-        :param phase_shift: np.float
+        :param true_phase: numpy.array
+        :param phase_shift: numpy.float
         :return:
         """
         return true_phase - phase_shift
@@ -237,7 +239,7 @@ class Orbit(object):
         """
         returns mean anomaly as a function of eccentric anomaly calculated using Kepler equation
 
-        :param eccentric_anomaly: np.array
+        :param eccentric_anomaly: numpy.array
         :return:
         """
         return (eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly)) % const.FULL_ARC
@@ -295,8 +297,9 @@ class Orbit(object):
 
     def azimuth_to_true_anomaly(self, azimuth):
         """
-        calculates the azimuth form given true anomaly
-        :param azimuth: np.array
+        Calculates the azimuth form given true anomaly
+
+        :param azimuth: numpy.array
         :return:
         """
         return (azimuth - self.argument_of_periastron) % const.FULL_ARC
@@ -336,12 +339,12 @@ class Orbit(object):
         function takes azimuths of the binary system (angle between ascending node (-y) as input and calculates
         positions of the secondary component in the frame of reference of primary component
 
-        :param azimuths: np.array or np.float
-        :return: np.array: matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
-                           np.array((r1, az1, ni1, phs1),
-                                    (r2, az2, ni2, phs2),
-                                    ...
-                                    (rN, azN, niN, phsN))
+        :param azimuth: numpy.array or numpy.float
+        :return: numpy.array: matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
+                           numpy.array((r1, az1, ni1, phs1),
+                                       (r2, az2, ni2, phs2),
+                                        ...
+                                       (rN, azN, niN, phsN))
         """
         true_anomaly = self.azimuth_to_true_anomaly(azimuth)
         distance = self.relative_radius(true_anomaly=true_anomaly)

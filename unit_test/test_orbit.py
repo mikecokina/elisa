@@ -159,3 +159,45 @@ class TestOrbit(unittest.TestCase):
             o = Orbit(**combo)
             obtained.append(np.round(o.orbital_motion(phases), 4))
         assert_array_equal(expected, obtained)
+
+    def test_period_setter(self):
+        o = Orbit(**self.params_combination[0])
+        periods = [0.25 * u.d, 0.65, 86400 * u.s]
+        expected = [0.25, 0.65, 1.0]
+        obtained = list()
+
+        for period in periods:
+            o.period = period
+            obtained.append(round(o.period, 2))
+        assert_array_equal(obtained, expected)
+
+    def test_inclination_setter(self):
+        o = Orbit(**self.params_combination[0])
+        inclinations = [135 * u.deg, 0.65, 1.56 * u.rad]
+        expected = [2.356, 0.65, 1.56]
+        obtained = list()
+
+        for inclination in inclinations:
+            o.inclination = inclination
+            obtained.append(round(o.inclination, 3))
+        assert_array_equal(obtained, expected)
+
+    def test_argument_of_periastron_setter(self):
+        o = Orbit(**self.params_combination[0])
+        periastrons = [135 * u.deg, 0.65, 1.56 * u.rad]
+        expected = [2.356, 0.65, 1.56]
+        obtained = list()
+
+        for periastron in periastrons:
+            o.argument_of_periastron = periastron
+            obtained.append(round(o.argument_of_periastron, 3))
+        assert_array_equal(obtained, expected)
+
+    def test_azimuth_to_true_anomaly(self):
+        o = Orbit(**self.params_combination[0])
+        o.argument_of_periastron = 139 * u.deg
+
+        azimuths = [1.56, 0.25, 3.14, 6.0, 156]
+        expected = [5.4172, 4.1072, 0.714, 3.574, 2.7775]
+        obtained = np.round(o.azimuth_to_true_anomaly(azimuths), 4)
+        assert_array_equal(obtained, expected)
