@@ -58,19 +58,18 @@ class TestOrbit(unittest.TestCase):
 
     def test_true_anomaly_to_azimuth(self):
         true_anomalies = np.array([np.radians(0.0), np.radians(45.0)])
-        expected = [[0.027416, 0.812814],
-                    [0.027416, 0.812814],
-                    [0.027416, 0.812814],
-                    [0.027416, 0.812814],
-                    [5.497787, 0.000000],
-                    [5.497787, 0.000000],
+
+        expected = [[1.570796, 2.356194],
+                    [1.570796, 2.356194],
+                    [1.570796, 2.356194],
+                    [1.570796, 2.356194],
+                    [5.497787, 0.],
+                    [5.497787, 0.],
                     [0.261799, 1.047198]]
         obtained = []
         for i, combo in enumerate(self.params_combination):
             o = Orbit(**combo)
-
             obtained.append(np.round(o.true_anomaly_to_azimuth(true_anomalies), 6))
-
         assert_array_equal(obtained, expected)
 
     def test_relative_radius(self):
@@ -92,17 +91,34 @@ class TestOrbit(unittest.TestCase):
     def test_get_conjuction(self):
         expected = [
             {
-                'primary_eclipse': {'true_anomaly': 1.5434, 'true_phase': 0.2456},
-                'secondary_eclipse': {'true_anomaly': 4.6850, 'true_phase': 0.7456},
+                "primary_eclipse": {
+                    "true_anomaly": 0.0,
+                    "true_phase": 0.0
+                },
+                "secondary_eclipse": {
+                    "true_anomaly": 3.1416,
+                    "true_phase": 0.5
+                }
             },
             {
-                'primary_eclipse': {'true_anomaly': 1.5434, 'true_phase': 0.0251},
-                'secondary_eclipse': {'true_anomaly': 4.6850, 'true_phase': 0.9730},
+                "primary_eclipse": {
+                    "true_anomaly": 0.0,
+                    "true_phase": 0.0
+                },
+                "secondary_eclipse": {
+                    "true_anomaly": 3.1416,
+                    "true_phase": 0.5
+                }
             },
-
             {
-                'primary_eclipse': {'true_anomaly': 1.3090, 'true_phase': 0.1495},
-                'secondary_eclipse': {'true_anomaly': 4.4506, 'true_phase': 0.7719},
+                "primary_eclipse": {
+                    "true_anomaly": 1.309,
+                    "true_phase": 0.1495
+                },
+                "secondary_eclipse": {
+                    "true_anomaly": 4.4506,
+                    "true_phase": 0.7719
+                }
             }
         ]
         obtained = list()
@@ -121,25 +137,24 @@ class TestOrbit(unittest.TestCase):
     def test_orbital_motion(self):
         phases = [-0.1, 0.0, 0.1, 0.5, 1.0, 1.1]
         obtained = []
-        expected = np.array([
-            [[1., 0.9425, 0.9151, -0.1],
-             [1., 1.5708, 1.5434, 0.],
-             [1., 2.1991, 2.1717, 0.1],
-             [1., 4.7124, 4.685, 0.5],
-             [1., 1.5708, 1.5434, 1.],
-             [1., 2.1991, 2.1717, 1.1]],
-            [[0.727, 4.0569, 4.0295, -0.1],
-             [0.3523, 1.5708, 1.5434, 0.],
-             [1.0121, 2.5345, 2.5071, 0.1],
-             [1.7969, 3.1982, 3.1708, 0.5],
-             [0.3523, 1.5708, 1.5434, 1.],
-             [1.0121, 2.5345, 2.5071, 1.1]],
-            [[0.8148, 0.7323, 0.4705, -0.1],
-             [0.9128, 1.5708, 1.309, 0.],
-             [1.0384, 2.2197, 1.9579, 0.1],
-             [1.1399, 4.0651, 3.8033, 0.5],
-             [0.9128, 1.5708, 1.309, 1.],
-             [1.0384, 2.2197, 1.9579, 1.1]]])
+        expected = np.array([np.array([[1., 0.9425, 5.6549, -0.1],
+                                       [1., 1.5708, 0., 0.],
+                                       [1., 2.1991, 0.6283, 0.1],
+                                       [1., 4.7124, 3.1416, 0.5],
+                                       [1., 1.5708, 6.2832, 1.],
+                                       [1., 2.1991, 0.6283, 1.1]]),
+                             np.array([[0.8791, 5.4529, 3.8821, -0.1],
+                                       [0.2, 1.5708, 0., 0.],
+                                       [0.8791, 3.9719, 2.4011, 0.1],
+                                       [1.8, 4.7124, 3.1416, 0.5],
+                                       [0.2, 1.5708, 6.2832, 1.],
+                                       [0.8791, 3.9719, 2.4011, 1.1]]),
+                             np.array([[0.8148, 0.7323, 0.4705, -0.1],
+                                       [0.9128, 1.5708, 1.309, 0.],
+                                       [1.0384, 2.2197, 1.9579, 0.1],
+                                       [1.1399, 4.0651, 3.8033, 0.5],
+                                       [0.9128, 1.5708, 1.309, 1.],
+                                       [1.0384, 2.2197, 1.9579, 1.1]])])
         for i, combo in enumerate(self.params_combination[np.array([0, 1, -1])]):
             o = Orbit(**combo)
             obtained.append(np.round(o.orbital_motion(phases), 4))

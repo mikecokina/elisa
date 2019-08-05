@@ -279,7 +279,9 @@ class Orbit(object):
         """
         Convert true anomaly angle to azimuth angle measured from -y axis in 2D plane.
 
-        :: azimuth 0 alligns with -y axis
+        ::
+
+        azimuth 0 alligns with -y axis
                  |
                  |      pi/2
             -----------
