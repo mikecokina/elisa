@@ -175,13 +175,20 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
             cos_theta = cos_theta[:, np.newaxis]
 
     cos_theta = cos_theta.copy()
-    cos_theta[cos_theta < 0] = 0.0
+    negative_cos_theta_test = cos_theta <= 0
     if limb_darkening_law in ['linear', 'cosine']:
+        cos_theta[negative_cos_theta_test] = 0.0
         retval = 1 - coefficients + coefficients * cos_theta
         return retval[:, 0] if retval.shape[1] == 1 else retval
     elif limb_darkening_law == 'logarithmic':
-        return 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta)
+        cos_theta_for_log = cos_theta.copy()
+        cos_theta[negative_cos_theta_test] = 0.0
+        cos_theta_for_log[negative_cos_theta_test] = 1.0
+        retval = \
+            1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta_for_log)
+        return retval
     elif limb_darkening_law == 'square_root':
+        cos_theta[negative_cos_theta_test] = 0.0
         return 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
 
 

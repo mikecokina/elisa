@@ -189,21 +189,48 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     band_curves = {key: np.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
     for idx, container in enumerate(system_positions_container):
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
-        p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
-        s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
 
+        # calculating cosines between face normals and line of sight
+        cosines, visibility_test = {}, {}
+        for component in config.BINARY_COUNTERPARTS.keys():
+            component_instance = getattr(container, component)
+            cosines[component] = utils.calculate_cos_theta_los_x(component_instance.normals)
+            visibility_test[component] = cosines[component] >= 0
+            cosines[component] = cosines[component][visibility_test[component]]
+
+        # integrating resulting flux
         for band in kwargs["passband"].keys():
-            p_ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs['primary'][band][ld_law_cfs_columns].values,
-                                                 limb_darkening_law=config.LIMB_DARKENING_LAW, cos_theta=p_cosines)
+            ld_cors, flux = {}, np.empty(2)
+            for ii, component in enumerate(config.BINARY_COUNTERPARTS.keys()):
+                ld_cors[component] = \
+                    ld.limb_darkening_factor(
+                        coefficients=ld_cfs[component][band][ld_law_cfs_columns].values[visibility_test[component]],
+                        limb_darkening_law=config.LIMB_DARKENING_LAW,
+                        cos_theta=cosines[component])
 
-            s_ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs['secondary'][band][ld_law_cfs_columns].values,
-                                                 limb_darkening_law=config.LIMB_DARKENING_LAW, cos_theta=s_cosines)
-            # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
-            p_flux = np.sum(normal_radiance["primary"][band] * p_cosines * coverage["primary"] * p_ld_cors)
-            s_flux = np.sum(normal_radiance["secondary"][band] * s_cosines * coverage["secondary"] * s_ld_cors)
-            flux = p_flux + s_flux
-            # band_curves[band].append(flux)
-            band_curves[band][idx] = flux
+                flux[ii] = np.sum(normal_radiance[component][band][visibility_test[component]] *
+                                  cosines[component] *
+                                  coverage[component][visibility_test[component]] *
+                                  ld_cors[component])
+            band_curves[band][idx] = np.sum(flux)
+
+        # p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
+        # s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
+        #
+        # for band in kwargs["passband"].keys():
+        #     p_ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs['primary'][band][ld_law_cfs_columns].values,
+        #                                          limb_darkening_law=config.LIMB_DARKENING_LAW,
+        #                                          cos_theta=p_cosines)
+        #
+        #     s_ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs['secondary'][band][ld_law_cfs_columns].values,
+        #                                          limb_darkening_law=config.LIMB_DARKENING_LAW,
+        #                                          cos_theta=s_cosines)
+        #     # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
+        #     p_flux = np.sum(normal_radiance["primary"][band] * p_cosines * coverage["primary"] * p_ld_cors)
+        #     s_flux = np.sum(normal_radiance["secondary"][band] * s_cosines * coverage["secondary"] * s_ld_cors)
+        #     flux = p_flux + s_flux
+        #     # band_curves[band].append(flux)
+        #     band_curves[band][idx] = flux
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
 
     return band_curves

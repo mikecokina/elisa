@@ -2122,8 +2122,6 @@ class BinarySystem(System):
                         if _component == 'secondary' else np.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                     reflection_factor[_component] = 1 + (_c[_component][vis_test[_component]] / np.power(
                         temperatures[_component][vis_test[_component]], 4)) * counterpart_to_sum
-                    # vyssie tvrdis, ze sa ma pouzit _c[_component], ale ked je to prevedene maticovo, (teda _c
-                    # uz nie je len konstanta, ale vektor) tak nesedi rozmer
                     # reflection_factor[_component] = 1 + (_c[_component][vis_test[_component]] / np.power(
                     #     temperatures[_component][vis_test[_component]], 4)) * counterpart_to_sum
 
