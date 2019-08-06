@@ -75,8 +75,8 @@ class AtmDataContainer(object):
         Find out wheter model container which carries DataFrame of atmospheric model::
 
             pd.DataFrame({
-                <intensity>: numpy.ndarray([float])
-                <wavelength>: numpy.ndarray([float])
+                <intensity>: numpy.array([float])
+                <wavelength>: numpy.array([float])
             })
 
         AmtDatContainer instance is empty when model pandas DataFrame container is empty.
@@ -91,8 +91,8 @@ class AtmDataContainer(object):
         return atmospheric model DataFrame::
 
             pd.DataFrame({
-                <intensity>: numpy.ndarray([float])
-                <wavelength>: numpy.ndarray([float])
+                <intensity>: numpy.array([float])
+                <wavelength>: numpy.array([float])
             })
 
         :return: pandas.DataFrame
@@ -105,8 +105,8 @@ class AtmDataContainer(object):
         Setup model container which carries DataFrame of atmospheric model::
 
             pd.DataFrame({
-                <intensity>: numpy.ndarray([float])
-                <wavelength>: numpy.ndarray([float])
+                <intensity>: numpy.array([float])
+                <wavelength>: numpy.array([float])
             })
 
         and left and right bandwidth of such container.
@@ -144,8 +144,8 @@ class NaiveInterpolatedAtm(object):
         """
         Compute radiance for given atmospheric parametres with regards to given passbands.
 
-        :param temperature: numpy.ndarray
-        :param log_g: numpy.ndarray
+        :param temperature: numpy.array
+        :param log_g: numpy.array
         :param metallicity: float
         :param atlas: str
         :param kwargs:
@@ -195,10 +195,10 @@ class NaiveInterpolatedAtm(object):
         If there is np.nan (it cames from same surounded values), such value is replaced with 1.0.
         1.0 is choosen to fit interpolation method and return correct atmosphere.
 
-        :param temperatures: numpy.ndarray[float]
-        :param top_atm_containers: numpy.ndarray[AtmDataContainer]
-        :param bottom_atm_containers: numpy.ndarray[AtmDataContainer]
-        :return: numpy.ndarray[float]
+        :param temperatures: numpy.array[float]
+        :param top_atm_containers: numpy.array[AtmDataContainer]
+        :param bottom_atm_containers: numpy.array[AtmDataContainer]
+        :return: numpy.array[float]
         """
         top_temperatures = np.array([a.temperature for a in top_atm_containers])
         bottom_temperatures = np.array([a.temperature for a in bottom_atm_containers])
@@ -217,7 +217,7 @@ class NaiveInterpolatedAtm(object):
         :param weight: Iterable[float]
         :param top_atm_container: AtmDataContainer
         :param bottom_atm_container: AtmDataContainer
-        :return: Tuple[numpy.ndarray, numpy.ndarray]; (flux, wave)
+        :return: Tuple[numpy.array, numpy.array]; (flux, wave)
         """
         if bottom_atm_container is None:
             return top_atm_container.model[ATM_MODEL_DATAFRAME_FLUX], top_atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
@@ -248,15 +248,15 @@ class NaiveInterpolatedAtm(object):
         where `top_flux_matrix` and `bottom_flux_matrix`, are entire matrix where rows are represented by fluxes.
         It also means, to be able do such interpolation, fluxes have to be on same wavelengths for each row.
 
-        :param flux_matrices: Dict[str, numpy.ndarray];
+        :param flux_matrices: Dict[str, numpy.array];
 
         ::
 
-            {"passband": numpy.ndarray (matrix)}
+            {"passband": numpy.array (matrix)}
 
         :param passbanded_atm_containers: Dict[str, AtmDataContainers]
-        :param temperature: numpy.ndarray[float]
-        :return: Dict[str, numpy.ndarray];
+        :param temperature: numpy.array[float]
+        :return: Dict[str, numpy.array];
         """
 
         interp_band = dict()
@@ -300,6 +300,7 @@ class NaiveInterpolatedAtm(object):
         :return: List[str]
         """
         atlas = validated_atlas(atlas)
+        log_g = utils.convert_gravity_acceleration_array(log_g, "log_cgs")
 
         g_array = np.array(atm_file_prefix_to_quantity_list("gravity", atlas))
         m_array = np.array(atm_file_prefix_to_quantity_list("metallicity", atlas))
@@ -551,8 +552,8 @@ def is_out_of_bound(in_arr, values, tolerance):
     """
     Figure out whether `values` are in `in_arr`. Use `tolerance` if you there is allowed.
 
-    :param in_arr: numpy.ndarray
-    :param values: numpy.ndarray
+    :param in_arr: numpy.array
+    :param values: numpy.array
     :param tolerance: float
     :return: List[bool]
     """
@@ -567,7 +568,7 @@ def validate_temperature(temperature, atlas, _raise=True):
     """
     Validate `temperature`s for existing `atlas`.
 
-    :param temperature: numpy.ndarray
+    :param temperature: numpy.array
     :param atlas: str
     :param _raise: bool; if True, raise ValueError
     :return: bool
@@ -615,8 +616,8 @@ def _validate_logg(temperature, log_g, atlas, _raise=True):
     """
     Validate `logg`s for existing `atlas` and `temperature`.
 
-    :param temperature: numpy.ndarray
-    :param log_g: numpy.ndarray
+    :param temperature: numpy.array
+    :param log_g: numpy.array
     :param atlas: str
     :param _raise: bool; if True, raise ValueError
     :return: bool
@@ -648,8 +649,8 @@ def validate_atm(temperature, log_g, metallicity, atlas, _raise=True):
 
     If anything is not right and `_raise` set to True, raise ValueError.
 
-    :param temperature: numpy.ndarray
-    :param log_g: numpy.ndarray
+    :param temperature: numpy.array
+    :param log_g: numpy.array
     :param metallicity: float
     :param atlas: str
     :param _raise: bool; if True, raise ValueError
@@ -898,11 +899,11 @@ def compute_normal_intensity(spectral_flux, wavelength, flux_mult=1.0, wave_mult
     """
     Calculates normal flux for all surface faces.
 
-    :param spectral_flux: numpy.ndarray; interpolated atmosphere models for each face (N_face x wavelength)
-    :param wavelength: numpy.ndarray or Series; wavelengths of atmosphere models
+    :param spectral_flux: numpy.array; interpolated atmosphere models for each face (N_face x wavelength)
+    :param wavelength: numpy.array or Series; wavelengths of atmosphere models
     :param flux_mult: float;
     :param wave_mult: float;
-    :return: numpy.ndarray
+    :return: numpy.array
     """
     return np.pi * flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
 
@@ -1023,7 +1024,7 @@ def find_atm_defined_wavelength(atm_containers):
     It assume all containers has already aligned wavelengths to same.
 
     :param atm_containers: Iterable[AtmDataContainer]
-    :return: numpy.ndarray[float]
+    :return: numpy.array[float]
     """
     for atm_container in atm_containers:
         return atm_container.model[ATM_MODEL_DATAFRAME_WAVE]
@@ -1036,7 +1037,7 @@ def remap_passbanded_unique_atms_to_matrix(passbanded_containers, fpaths_map):
 
     :param passbanded_containers: List[]
     :param fpaths_map: Dict[str, List[int]]; map - atmosphere container to faces
-    :return: Dict[str, numpy.ndarray]
+    :return: Dict[str, numpy.array]
     """
     return {band: remap_passbanded_unique_atm_to_matrix(atm, fpaths_map) for band, atm in passbanded_containers.items()}
 
@@ -1047,7 +1048,7 @@ def remap_passbanded_unique_atm_to_matrix(atm_containers, fpaths_map):
 
     :param atm_containers: List[AtmDataContainer]; list of unique atmosphere containers from tables
     :param fpaths_map: Dict[str, List[int]]; map - atmosphere container to faces
-    :return: numpy.ndarray; matrix of atmosphere models
+    :return: numpy.array; matrix of atmosphere models
     """
     total = max(list(itertools.chain.from_iterable(fpaths_map.values()))) + 1
     wavelengths_defined = find_atm_defined_wavelength(atm_containers)

@@ -137,7 +137,7 @@ class Body(metaclass=ABCMeta):
         """
         Returns dictionary of points that forms surface of Body.
 
-        :return: numpy.ndarray
+        :return: numpy.array
         """
         return self._points
 
@@ -154,7 +154,7 @@ class Body(metaclass=ABCMeta):
 
         where xi, yi, zi are cartesian coordinates of vertice i.
 
-        :param points: numpy.ndarray; [xi, yi, zi]: float
+        :param points: numpy.array; [xi, yi, zi]: float
         :return:
         """
         self._points = np.array(points)
@@ -165,7 +165,7 @@ class Body(metaclass=ABCMeta):
         Returns dictionary of triangles that will create surface of body.
         Triangles are stored as list of indices of points.
 
-        :return: numpy.ndarray
+        :return: numpy.array
 
         ::
 
@@ -196,7 +196,7 @@ class Body(metaclass=ABCMeta):
         """
         Returns array containing normalised outward facing normals of corresponding faces with same index.
 
-        :return: numpy.ndarray
+        :return: numpy.array
 
         ::
 
@@ -228,7 +228,7 @@ class Body(metaclass=ABCMeta):
         """
         Returns array of areas of corresponding faces.
 
-        :return: numpy.ndarray
+        :return: numpy.array
 
         ::
 
@@ -256,7 +256,7 @@ class Body(metaclass=ABCMeta):
         """
         Returns array of temeratures of corresponding faces.
 
-        :return: numpy.ndarray
+        :return: numpy.array
 
         ::
 
@@ -271,7 +271,7 @@ class Body(metaclass=ABCMeta):
 
             numpy.array([t_eff1, ..., t_effn])
 
-        :param temperatures: numpy.ndarray
+        :param temperatures: numpy.array
         :return:
         """
         self._temperatures = temperatures
@@ -371,7 +371,7 @@ class Body(metaclass=ABCMeta):
         """
         Returns coordinates of centres of corresponding faces.
 
-        :return: numpy.ndarray
+        :return: numpy.array
 
         ::
 
@@ -385,7 +385,7 @@ class Body(metaclass=ABCMeta):
     @face_centres.setter
     def face_centres(self, centres):
         """
-        :param centres: numpy.ndarray
+        :param centres: numpy.array
 
         ::
 
@@ -439,7 +439,7 @@ class Body(metaclass=ABCMeta):
         Vector of indices with the same length as body`s points.
         N-th value of point_symmetry_matrix indicates position of base symmetry point for given n-th point.
 
-        :return: numpy.ndarray
+        :return: numpy.array
         """
         return self._point_symmetry_vector
 
@@ -449,7 +449,7 @@ class Body(metaclass=ABCMeta):
         Setter for vector of indices with the same length as body`s points, n-th value of point_symmetry_matrix
         indicates position of base symmetry point for given n-th point.
 
-        :param symmetry_vector: numpy.ndarray
+        :param symmetry_vector: numpy.array
 
         ::
 
@@ -468,7 +468,7 @@ class Body(metaclass=ABCMeta):
         Vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix indicates position
         of base symmetry face for given n-th point.
 
-        :return: numpy.ndarray
+        :return: numpy.array
         """
         return self._face_symmetry_vector
 
@@ -478,7 +478,7 @@ class Body(metaclass=ABCMeta):
         Setter for vector of indices with the same length as body`s faces, n-th value of face_symmetry_matrix
         indicates position of base symmetry face for given n-th point.
 
-        :param symmetry_vector: numpy.ndarray;
+        :param symmetry_vector: numpy.array;
 
         ::
 
@@ -551,7 +551,7 @@ class Body(metaclass=ABCMeta):
         """
         Returns outward facing normal unit vector for each face of stellar surface.
 
-        :return: numpy.ndarray:
+        :return: numpy.array:
 
         ::
 
@@ -575,7 +575,7 @@ class Body(metaclass=ABCMeta):
         """
         Function calculates normals for each face of given body (including spots) and assign it to object.
 
-        :param com: numpy.ndarray
+        :param com: numpy.array
         :return:
         """
         self.normals = self.calculate_normals(points=self.points, faces=self.faces, centres=self.face_centres, com=com)
@@ -604,7 +604,7 @@ class Body(metaclass=ABCMeta):
         Returns centers of every surface face.
         If `points` is not supplied, parameter of self instance is used for both, `points` and `faces`.
 
-        :return: numpy.ndarray:
+        :return: numpy.array:
 
         ::
 
@@ -622,7 +622,7 @@ class Body(metaclass=ABCMeta):
         """
         Returns areas of each face of the star surface.
 
-        :return: numpy.ndarray:
+        :return: numpy.array:
 
         ::
 
@@ -655,7 +655,7 @@ class Body(metaclass=ABCMeta):
         """
         Returns all points and faces of the whole star.
 
-        :return: Tuple[numpy.ndarray, numpy.ndarray]
+        :return: Tuple[numpy.array, numpy.array]
         """
         ret_points = copy(self.points)
         ret_faces = copy(self.faces)
@@ -673,7 +673,7 @@ class Body(metaclass=ABCMeta):
 
         :param return_vertices_map: bool
         :param self: Star instance
-        :return: Tuple[numpy.ndarray, Any]: [all surface points including star and surface points, vertices map or None]
+        :return: Tuple[numpy.array, Any]: [all surface points including star and surface points, vertices map or None]
         """
         points = copy(self.points)
         for spot_index, spot_instance in self.spots.items():
@@ -701,9 +701,9 @@ class Body(metaclass=ABCMeta):
                 "1": [<points>]...
             },
 
-            where `object` contain numpy.ndarray of object points and indices points for given spot.
+            where `object` contain numpy.array of object points and indices points for given spot.
 
-        :param points: Dict[str, numpy.ndarray]
+        :param points: Dict[str, numpy.array]
         :return:
         """
         self.points = points.pop("object")
@@ -714,7 +714,7 @@ class Body(metaclass=ABCMeta):
         """
         Remove spots of Start object that are totally overlapped by another spot.
 
-        :param vertices_map: List or numpy.ndarray
+        :param vertices_map: List or numpy.array
         :return:
         """
         # remove spots that are totaly overlaped
@@ -871,16 +871,16 @@ class Body(metaclass=ABCMeta):
         and points which belong to each defined Spot object.
         During the process remove overlapped spots.
 
-        :param points: numpy.ndarray; all points of object (spot points and component points together)
-        :param vertices_map: List or numpy.ndarray; map which define refrences of index in
+        :param points: numpy.array; all points of object (spot points and component points together)
+        :param vertices_map: List or numpy.array; map which define refrences of index in
                              given Iterable to object (Spot or Star).
         :return: Dict;
 
         ::
 
             {
-                "object": numpy.ndarray([[pointN_x, pointN_y, pointN_z], ...]),
-                "spot_index": numpy.ndarray([[pointM_x, pointM_y, pointM_z], ...]), ...
+                "object": numpy.array([[pointN_x, pointN_y, pointN_z], ...]),
+                "spot_index": numpy.array([[pointM_x, pointM_y, pointM_z], ...]), ...
             }
         """
         points = np.array(points)
@@ -915,8 +915,8 @@ class Body(metaclass=ABCMeta):
         Function that sorts faces to model data structure by distinguishing if it belongs to star or spots.
 
         :param component_com: float; center of mass of component
-        :param points: numpy.ndarray; (N_points * 3) - all points of surface
-        :param faces: numpy.ndarray; (N_faces * 3) - all faces of the surface
+        :param points: numpy.array; (N_points * 3) - all points of surface
+        :param faces: numpy.array; (N_faces * 3) - all faces of the surface
         :param model: Dict; data structure for faces sorting (more in docstring of method `initialize_model_container`)
         :param spot_candidates: Dict; initialised data structure for spot candidates
         :param vmap: vertice map, for more info, see docstring for `incorporate_spots_mesh` method
@@ -937,8 +937,8 @@ class Body(metaclass=ABCMeta):
         Resolve those Spots/Star faces, where all tree vertices belongs to given object.
         If there are mixed vertices of any face, append it to spot candidate List.
 
-        :param points: numpy.ndarray; array of all points
-        :param faces: numpy.ndarray; array of all faces
+        :param points: numpy.array; array of all points
+        :param faces: numpy.array; array of all faces
         :param model: Dict; dictionary which describe object with spots as one entity
         :param spot_candidates:
         :param vmap: vertices map; for more info, see docstring for `incorporate_spots_mesh` method

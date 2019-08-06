@@ -964,7 +964,7 @@ class BinarySystem(System):
 
         :param component: str; define target component to compute critical potential; `primary` or `secondary`
         :param components_distance: float, in SMA distance
-        :param points: List or numpy.ndarray
+        :param points: List or numpy.array
         :return: ndarray
         """
         component_instance = getattr(self, component)
@@ -1000,7 +1000,7 @@ class BinarySystem(System):
         :param components_distance: float; distance of componetns in SMA units
         :param points: points in which to calculate magnitude of gradient, if False/None take star points
         :param faces: faces corresponding to given points
-        :return: numpy.ndarray
+        :return: numpy.array
         """
         if points is not None and faces is None:
             raise TypeError('Specify faces corresponding to given points')
@@ -1057,7 +1057,7 @@ class BinarySystem(System):
         :param component: str; `primary` or `secondary`
         :param components_distance: float; (in SMA units)
         :param logg: bool; if True log g is returned, otherwise values are not in log10
-        :return: numpy.ndarray; surface gravity or log10 of surface gravity
+        :return: numpy.array; surface gravity or log10 of surface gravity
         """
         component_instance = getattr(self, component)
         component_instance.polar_potential_gradient_magnitude = \
@@ -1178,7 +1178,7 @@ class BinarySystem(System):
 
         :param components_distance: (numpy.)float
         :param plane: str; xy, yz, zx
-        :return: Tuple; (numpy.ndarray, numpy.ndarray)
+        :return: Tuple; (numpy.array, numpy.array)
         """
 
         components = ['primary', 'secondary']
@@ -1334,11 +1334,11 @@ class BinarySystem(System):
                                       `base_symmetry_points_number`, `inverse_symmetry_matrix`
         :param component: str; `primary` or `secondary`
         :param components_distance: numpy.float
-        :return: Tuple or numpy.ndarray (if `symmetry_output` is False)
+        :return: Tuple or numpy.array (if `symmetry_output` is False)
 
         Array of surface points if symmetry_output = False::
 
-             numpy.ndarray([[x1 y1 z1],
+             numpy.array([[x1 y1 z1],
                             [x2 y2 z2],
                              ...
                             [xN yN zN]])
@@ -1346,14 +1346,14 @@ class BinarySystem(System):
         othervise::
 
             (
-             numpy.ndarray([[x1 y1 z1],
+             numpy.array([[x1 y1 z1],
                           [x2 y2 z2],
                             ...
                           [xN yN zN]]) - array of surface points,
-             numpy.ndarray([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
+             numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
                                                               quarter of surface,
              numpy.float - number of points included in symmetrical one quarter of surface,
-             numpy.ndarray([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
+             numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
                                                                                 mapped basic symmetry quadrant to all
                                                                                 others quadrants
             )
@@ -1468,7 +1468,7 @@ class BinarySystem(System):
         Function solves radius for given azimuths that are passed in *argss via multithreading approach.
 
         :param args: Tuple; (phi, theta, components_distance, precalc_fn, potential_fn)
-        :return: numpy.ndarray
+        :return: numpy.array
         """
 
         phi, theta, components_distance, precalc_fn, potential_fn = args
@@ -1498,7 +1498,7 @@ class BinarySystem(System):
         Function solves radius for given azimuths that are passed in *argss via multithreading approach.
 
         :param args: Tuple; (phi, z, precalc_fn, potential_fn)
-        :return: numpy.ndarray
+        :return: numpy.array
         """
 
         phi, z, precalc_fn, potential_fn = args
@@ -1530,25 +1530,25 @@ class BinarySystem(System):
         :param symmetry_output: bool - if true, besides surface points are returned also `symmetry_vector`,
                                        `base_symmetry_points_number`, `inverse_symmetry_matrix`
         :param component: str - `primary` or `secondary`
-        :return: Tuple or numpy.ndarray (if symmetry_output is False)
+        :return: Tuple or numpy.array (if symmetry_output is False)
 
         Array of surface points if symmetry_output = False::
 
-            numpy.ndarray([[x1 y1 z1],
+            numpy.array([[x1 y1 z1],
                            [x2 y2 z2],
                             ...
                            [xN yN zN]])
 
         otherwise::
 
-                 numpy.ndarray([[x1 y1 z1],
+                 numpy.array([[x1 y1 z1],
                                 [x2 y2 z2],
                                  ...
                                 [xN yN zN]]) - array of surface points,
-                 numpy.ndarray([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
+                 numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
                                                                   quarter of surface,
                  numpy.float - number of points included in symmetrical one quarter of surface,
-                 numpy.ndarray([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
+                 numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
                                                                                    mapped basic symmetry quadrant to all
                                                                                     others quadrants
         """
@@ -1706,9 +1706,9 @@ class BinarySystem(System):
         Calculates surface faces from the given component's points in case of detached or semi-contact system.
 
         :param components_distance: float
-        :param points: numpy.ndarray
+        :param points: numpy.array
         :param component: str
-        :return: numpy.ndarray; N x 3 array of vertices indices
+        :return: numpy.array; N x 3 array of vertices indices
         """
         component_instance = getattr(self, component)
         if points is None:
@@ -1753,9 +1753,9 @@ class BinarySystem(System):
         """
         Calculates surface faces from the given component's points in case of over-contact system.
 
-        :param points: numpy.ndarray - points to triangulate
+        :param points: numpy.array - points to triangulate
         :param component: str; `primary` or `secondary`
-        :return: numpy.ndarray; N x 3 array of vertice indices
+        :return: numpy.array; N x 3 array of vertice indices
         """
 
         component_instance = getattr(self, component)
@@ -2137,7 +2137,7 @@ class BinarySystem(System):
     def get_bolometric_ld_coefficients(self, component, temperature, log_g):
         columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
         coeffs = ld.interpolate_on_ld_grid(temperature=temperature,
-                                           log_g=utils.convert_gravity_acceleration_array(log_g, units='log_cgs'),
+                                           log_g=log_g,
                                            metallicity=getattr(self, component).metallicity,
                                            passband=["bolometric"])["bolometric"][columns]
         return np.array(coeffs).T
@@ -2180,7 +2180,7 @@ class BinarySystem(System):
         Calculates shapes of distance and join vector matrices along with shapes
         of symetrical parts of those matrices used in reflection effect.
 
-        :param vis_test: numpy.ndarray
+        :param vis_test: numpy.array
         :return: Tuple
         """
         shape = (np.sum(vis_test['primary']), np.sum(vis_test['secondary']), 3)
@@ -2192,7 +2192,7 @@ class BinarySystem(System):
         """
         In this function array of `temperatures` is parsed into chunks that belong to stellar surface and spots.
 
-        :param temperatures: numpy.ndarray; temperatures from the whole surface, ordered: surface, spot1, spot2...
+        :param temperatures: numpy.array; temperatures from the whole surface, ordered: surface, spot1, spot2...
         :return:
         """
         for _component in ['primary', 'secondary']:
@@ -2256,7 +2256,7 @@ class BinarySystem(System):
             * ** left_bandwidth ** * - float
             * ** right_bandwidth ** * - float
             * ** atlas ** * - str
-            * ** phases ** * - numpy.ndarray
+            * ** phases ** * - numpy.array
             * ** position_method ** * - method
         :return: Dict
         """

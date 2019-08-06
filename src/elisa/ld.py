@@ -90,13 +90,16 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
 
     :param passband: Dict
     :param temperature: Iterable float
-    :param log_g: Iterable float
+    :param log_g: Iterable float; values expected in log_SI units
     :param metallicity: float
     :param author: str; (not implemented)
     :return: pandas.DataFrame
     """
     if isinstance(passband, dict):
         passband = passband.keys()
+
+    # convert logg from log(SI) to log(cgs)
+    log_g = utils.convert_gravity_acceleration_array(log_g, units='log_cgs')
 
     results = dict()
     logger.debug('interpolating limb darkening coefficients')
@@ -143,9 +146,9 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
     """
     calculates limb darkening factor for given surface element given by radius vector and line of sight vector
 
-    :param line_of_sight: numpy.ndarray; vector (or vectors) of line of sight (normalized to 1 !!!)
-    :param normal_vector: numpy.ndarray; single or multiple normal vectors (normalized to 1 !!!)
-    :param coefficients: numpy.ndarray;
+    :param line_of_sight: numpy.array; vector (or vectors) of line of sight (normalized to 1 !!!)
+    :param normal_vector: numpy.array; single or multiple normal vectors (normalized to 1 !!!)
+    :param coefficients: numpy.array;
 
     shape::
 
@@ -154,9 +157,9 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
                       [d0, d2, d3, c4,..., dn]] for sqrt and log law
 
     :param limb_darkening_law: str;  `linear` or `cosine`, `logarithmic`, `square_root`
-    :param cos_theta: numpy.ndarray; if supplied, function will skip calculation of its own cos theta and will disregard
+    :param cos_theta: numpy.array; if supplied, function will skip calculation of its own cos theta and will disregard
     `normal_vector` and `line_of_sight`
-    :return: numpy.ndarray; gravity darkening factors, the same type/shape as cos_theta
+    :return: numpy.array; gravity darkening factors, the same type/shape as cos_theta
     """
     if normal_vector is None and cos_theta is None:
         raise ValueError('Normal vector(s) was not supplied.')
@@ -198,7 +201,7 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, c
     D(int) = integral over hemisphere (D(theta)cos(theta)
 
     :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
-    :param coefficients: numpy.ndarray
+    :param coefficients: numpy.array
     :return: np.array - bolometric_limb_darkening_factor (scalar for the whole star)
     """
     if coefficients is None:

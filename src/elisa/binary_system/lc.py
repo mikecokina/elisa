@@ -354,17 +354,22 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
 def construct_geometry_symmetric_azimuths(self, azimuths, phases):
     """
-    prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
-    mirrored via apsidal line in order to reduce time for generating the light curve
+    Prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
+    mirrored via apsidal line in order to reduce time for generating the light curve.
+
     :param self: elisa.binary_star.system.BinarySystem
     :param azimuths: numpy.array - orbital azimuths of positions in which LC will be calculated
     :param phases: numpy.array - orbital phase of positions in which LC will be calculated
-    :return: tuple - unique_phase_indices - numpy.array : indices that points to the orbital positions from one half of the
-                                                       orbital motion divided by apsidal line
-                   - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by
-                                                         indices `unique_phase_indices`
-                   - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array
-                                                        form
+    :return: Tuple;
+
+
+     shape ::
+
+        - unique_phase_indices - numpy.array : indices that points to the orbital positions from one half of the
+        orbital motion divided by apsidal line
+        - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by
+        indices `unique_phase_indices`
+        - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
     """
     azimuth_boundaries = [self.argument_of_periastron, (self.argument_of_periastron + const.PI) % const.FULL_ARC]
     unique_geometry = np.logical_and(azimuths > azimuth_boundaries[0],

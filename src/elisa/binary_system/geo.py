@@ -32,7 +32,7 @@ def get_eclipse_boundaries(binary, components_distance):
 
     :param binary: elisa.binary_system.system.BinarySystem
     :param components_distance: float
-    :return: numpy.ndarray([primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop])
+    :return: numpy.array([primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop])
     """
     # check whether the inclination is high enough to enable eclipses
     if binary.morphology != 'over-contact':
@@ -61,9 +61,9 @@ def darkside_filter(line_of_sight, normals):
     Return indices for visible faces defined by given normals.
     Function assumes that `line_of_sight` ([1, 0, 0]) and `normals` are already normalized to one.
 
-    :param line_of_sight: numpy.ndarray
-    :param normals: numpy.ndarray
-    :return: numpy.ndarray
+    :param line_of_sight: numpy.array
+    :param normals: numpy.array
+    :return: numpy.array
     """
     # todo: resolve self shadowing in case of W UMa
     # calculating normals utilizing the fact that normals and line of sight vector [1, 0, 0] are already normalized
@@ -80,9 +80,9 @@ def plane_projection(points, plane, keep_3d=False):
     Function projects 3D points into given plane.
 
     :param keep_3d: if True, the dimensions of the array is kept the same, with given column equal to zero
-    :param points: numpy.ndarray
+    :param points: numpy.array
     :param plane: str; ('xy', 'yz', 'zx')
-    :return: numpy.ndarray
+    :return: numpy.array
     """
     rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
     if not keep_3d:
@@ -99,13 +99,13 @@ class EasyObject(object):
         """
         None default gives a capability to be used without such parameters
 
-        :param points: numpy.ndarray
-        :param normals: numpy.ndarray
+        :param points: numpy.array
+        :param normals: numpy.array
         :param indices: List
-        :param faces: numpy.ndarray
-        :param temperatures: numpy.ndarray
-        :param log_g: numpy.ndarray
-        :param coverage: numpy.ndarray
+        :param faces: numpy.array
+        :param temperatures: numpy.array
+        :param log_g: numpy.array
+        :param coverage: numpy.array
         """
         self._points = deepcopy(points)
         self._normals = deepcopy(normals)
@@ -136,7 +136,7 @@ class EasyObject(object):
         """
         Return points of instance.
 
-        :return: numpy.ndarray
+        :return: numpy.array
         """
         return self._points
 
@@ -145,7 +145,7 @@ class EasyObject(object):
         """
         Set points.
 
-        :param points: numpy.ndarray
+        :param points: numpy.array
         :return:
         """
         self._points = points
@@ -155,7 +155,7 @@ class EasyObject(object):
         """
         Get normals.
 
-        :return: numpy.ndarray
+        :return: numpy.array
         """
         return self._normals
 
@@ -164,7 +164,7 @@ class EasyObject(object):
         """
         Set normals.
 
-        :param normals: numpy.ndarray
+        :param normals: numpy.array
         :return:
         """
         self._normals = normals
@@ -174,7 +174,7 @@ class EasyObject(object):
         """
         Get faces.
 
-        :return: numpy.ndarray
+        :return: numpy.array
         """
         return self._faces
 
@@ -183,7 +183,7 @@ class EasyObject(object):
         """
         Get temperatures.
 
-        :return: numpy.ndarray
+        :return: numpy.array
         """
         return self._temperatures
 
@@ -192,7 +192,7 @@ class EasyObject(object):
         """
         Get log_g
 
-        :return: numpy.ndarray
+        :return: numpy.array
         """
         return self._log_g
 
@@ -206,8 +206,8 @@ class SystemOrbitalPosition(object):
         :param primary: elisa.base.Star
         :param secondary: elisa.base.Star
         :param inclination: float
-        :param motion: numpy.ndarray
-        :param ecl_boundaries: numpy.ndarray
+        :param motion: numpy.array
+        :param ecl_boundaries: numpy.array
         """
         self.inclination = inclination
         self.motion = motion
@@ -327,8 +327,8 @@ class SystemOrbitalPosition(object):
         """
         Test whether in given phases eclipse occurs or not.
 
-        :param ecl_boundaries: numpy.ndarray
-        :return: bool; numpy.ndarray
+        :param ecl_boundaries: numpy.array
+        :return: bool; numpy.array
         """
         azimuths = [position.azimuth for position in self.motion]
 
@@ -454,7 +454,7 @@ class SingleOrbitalPositionContainer(object):
         For given `component` set `indices`.
 
         :param component: `primary` or `secondary`; define EasyObject
-        :param indices: numpy.ndarray
+        :param indices: numpy.array
         :return:
         """
         attr = getattr(self, component)
@@ -465,7 +465,7 @@ class SingleOrbitalPositionContainer(object):
         For given `component` set `indices`.
 
         :param component: :param component: `primary` or `secondary`; define EasyObject
-        :param coverage: numpy.ndarray
+        :param coverage: numpy.array
         :return:
         """
         attr = getattr(self, component)
@@ -519,11 +519,11 @@ def surface_area_coverage(size, visible, visible_coverage, partial=None, partial
     Prepare array with coverage os surface areas.
 
     :param size: int; size of array
-    :param visible: numpy.ndarray; full visible areas (numpy fancy indexing), array like [False, True, True, False]
-    :param visible_coverage: numpy.ndarray; defines coverage of visible (coverage onTrue positions)
-    :param partial: numpy.ndarray; partial visible areas (numpy fancy indexing)
-    :param partial_coverage: numpy.ndarray; defines coverage of partial visible
-    :return: numpy.ndarray
+    :param visible: numpy.array; full visible areas (numpy fancy indexing), array like [False, True, True, False]
+    :param visible_coverage: numpy.array; defines coverage of visible (coverage onTrue positions)
+    :param partial: numpy.array; partial visible areas (numpy fancy indexing)
+    :param partial_coverage: numpy.array; defines coverage of partial visible
+    :return: numpy.array
     """
     # initialize zeros, since there is no input for invisible (it means everything what left after is invisible)
     coverage = np.zeros(size)
@@ -535,9 +535,9 @@ def surface_area_coverage(size, visible, visible_coverage, partial=None, partial
 
 def faces_to_pypex_poly(t_hulls):
     """
-    Convert all faces defined as numpy.ndarray to pypex Polygon class instance
+    Convert all faces defined as numpy.array to pypex Polygon class instance
 
-    :param t_hulls: List[numpy.ndarray]
+    :param t_hulls: List[numpy.array]
     :return: List
     """
     return [Polygon(t_hull, _validity=False) for t_hull in t_hulls]
@@ -566,9 +566,9 @@ def pypex_poly_surface_area(pypex_polys_gen):
 
 def hull_to_pypex_poly(hull):
     """
-    Convert convex polygon defined by points in List or numpy.ndarray to pypex.poly2d.polygon.Plygon.
+    Convert convex polygon defined by points in List or numpy.array to pypex.poly2d.polygon.Plygon.
 
-    :param hull: List or numpy.ndarray
+    :param hull: List or numpy.array
     :return: pypex.poly2d.polygon.Plygon
     """
     return Polygon(hull, _validity=False)

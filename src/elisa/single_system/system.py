@@ -382,7 +382,11 @@ class SingleSystem(System):
         """
         function for creating surface mesh of single star system
 
-        :return: numpy.array([[x1 y1 z1],
+        :return:
+
+        ::
+
+                numpy.array([[x1 y1 z1],
                               [x2 y2 z2],
                                 ...
                               [xN yN zN]]) - array of surface points if symmetry_output = False, else:
@@ -552,14 +556,23 @@ class SingleSystem(System):
         calculates triangulation of given set of points, if points are not given, star surface points are used. Returns
         set of triple indices of surface pints that make up given triangle
 
-        :param points: np.array: numpy.array([[x1 y1 z1],
-                                                [x2 y2 z2],
-                                                  ...
-                                                [xN yN zN]])
-        :return: np.array(): numpy.array([[point_index1 point_index2 point_index3],
-                                          [...],
-                                            ...
-                                          [...]])
+        :param points: np.array:
+
+        ::
+
+            numpy.array([[x1 y1 z1],
+                         [x2 y2 z2],
+                         ...
+                        [xN yN zN]])
+
+        :return: np.array():
+
+        ::
+
+            numpy.array([[point_index1 point_index2 point_index3],
+                         [...],
+                          ...
+                         [...]])
         """
         if points is None:
             points = self.star.points
