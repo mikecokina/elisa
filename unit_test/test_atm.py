@@ -303,9 +303,9 @@ class TestNaiveInterpolation(unittest.TestCase):
         t = np.array([4999, 11300, 11500])
 
         obtained = sorted([os.path.basename(v) for v in atm.NaiveInterpolatedAtm.atm_files(t, g, 0.5, "ck04")])
-        expected = ['ckp05_11250_g20.csv', 'ckp05_11500_g20.csv',
-                    'ckp05_11500_g20.csv', 'ckp05_11500_g20.csv',
-                    'ckp05_4750_g15.csv', 'ckp05_5000_g15.csv']
+        expected = ['ckp05_11250_g40.csv', 'ckp05_11500_g40.csv',
+                    'ckp05_11500_g40.csv', 'ckp05_11500_g40.csv',
+                    'ckp05_4750_g35.csv', 'ckp05_5000_g35.csv']
         assert_array_equal(obtained, expected)
 
     def test_compute_interpolation_weights(self):

@@ -137,7 +137,7 @@ def get_limbdarkening_cfs(self, **kwargs):
     """
     returns limg darkening coefficients for each face of each component
     :param self:
-    :param kwargs: dict - {'primary': np.array, 'secondary': np.array}
+    :param kwargs: dict - {'primary': numpy.array, 'secondary': numpy.array}
     :return:
     """
     return {
@@ -228,9 +228,9 @@ def phase_crv_symmetry(self, phase):
     Utilizing symmetry of circular systems without spots and pulastions where you need to evaluate only half of the
     phases. Function finds such redundant phases and returns only unique phases.
 
-    :param self:
+    :param self: elisa.binary_system.system.BinarySystem
     :param phase: numpy.array
-    :return:
+    :return: Tuple[numpy.array, numpy.array]
     """
     if not self.primary.has_pulsations() and not self.primary.has_pulsations() and \
             not self.primary.has_spots() and not self.secondary.has_spots():
@@ -320,20 +320,20 @@ def compute_eccentric_lightcurve(self, **kwargs):
     # orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
     # test and therefore the surface will be built
     if approximation_test1:
-        __logger__.info('One half of the points on LC on the one side of the apsidal line will be interpolated.')
+        __logger__.info('one half of the points on LC on the one side of the apsidal line will be interpolated')
         band_curves = integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart, unique_phase_indices,
                                                  uniq_geom_test, ecl_boundaries, phases,
                                                  orbital_motion_array_counterpart, new_geometry_test, **kwargs)
 
     elif approximation_test2:
-        __logger__.info('Geometry of the stellar surface on one half of the apsidal line will be copied from their '
-                           'symmetrical counterparts.')
+        __logger__.info('geometry of the stellar surface on one half of the apsidal '
+                        'line will be copied from their symmetrical counterparts')
         band_curves = integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, index_of_closest,
                                                  index_of_closest_reversed, uniq_geom_test, ecl_boundaries, phases,
                                                  new_geometry_test, **kwargs)
 
     else:
-        __logger__.info('LC will be calculated in a rigorous phase to phase manner without approximations.')
+        __logger__.info('lc will be calculated in a rigorous phase to phase manner without approximations')
         band_curves = integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
 
     return band_curves
@@ -341,17 +341,22 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
 def construct_geometry_symmetric_azimuths(self, azimuths, phases):
     """
-    prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
-    mirrored via apsidal line in order to reduce time for generating the light curve
-    :param self: BinarySystem
-    :param azimuths: np.array - orbital azimuths of positions in which LC will be calculated
-    :param phases: np.array - orbital phase of positions in which LC will be calculated
-    :return: tuple - unique_phase_indices - np.array : indices that points to the orbital positions from one half of the
-                                                       orbital motion divided by apsidal line
-                   - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by
-                                                         indices `unique_phase_indices`
-                   - orbital_motion_array_counterpart - np.array - sa as `orbital_motion_counterpart` but in np.array
-                                                        form
+    Prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
+    mirrored via apsidal line in order to reduce time for generating the light curve.
+
+    :param self: elisa.binary_star.system.BinarySystem
+    :param azimuths: numpy.array - orbital azimuths of positions in which LC will be calculated
+    :param phases: numpy.array - orbital phase of positions in which LC will be calculated
+    :return: Tuple;
+
+
+     shape ::
+
+        - unique_phase_indices - numpy.array : indices that points to the orbital positions from one half of the
+        orbital motion divided by apsidal line
+        - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by
+        indices `unique_phase_indices`
+        - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
     """
     azimuth_boundaries = [self.argument_of_periastron, (self.argument_of_periastron + const.PI) % const.FULL_ARC]
     unique_geometry = np.logical_and(azimuths > azimuth_boundaries[0],
@@ -377,7 +382,7 @@ def prepare_star_container(self, orbital_position, ecl_boundaries):
 
     :param self: BinarySystem
     :param orbital_position: Position
-    :param ecl_boundaries: np.array - orbital azimuths of eclipses
+    :param ecl_boundaries: numpy.array - orbital azimuths of eclipses
     :return: container - SingleOrbitalPositionContainer
     """
     system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
@@ -401,8 +406,8 @@ def calculate_surface_parameters(container, in_eclipse=True):
     :param container: SingleOrbitalPositionContainer
     :param in_eclipse: bool - switch to indicate if in orout of eclipse calculations to use, if you are not sure leave
                               it to True
-    :return: tuple - coverage - np.array - visible area of triangles
-                   - p_cosines, s_cosines - np.array - directional cosines for each face with respect to line-of-sight
+    :return: tuple - coverage - numpy.array - visible area of triangles
+                   - p_cosines, s_cosines - numpy.array - directional cosines for each face with respect to line-of-sight
                                                        vector
     """
     coverage = compute_surface_coverage(container, in_eclipse=in_eclipse)
@@ -418,8 +423,8 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
 
     :param container: SingleOrbitalPositionContainer
     :param band: str - name of the photometric band
-    :param ld_cfs: dict - {'primary': np.float of ld coefficents, etc for secondary}
-    :param normal_radiance: dict - {'primary': np.float of normal radiances, etc for secondary}
+    :param ld_cfs: dict - {'primary': numpy.float of ld coefficents, etc for secondary}
+    :param normal_radiance: dict - {'primary': numpy.float of normal radiances, etc for secondary}
     :return:
     """
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
@@ -606,7 +611,7 @@ def calculate_new_geometry(self, orbit_template_arr, rel_d_radii):
     :param self: BinarySystem instance
     :param orbit_template_arr: array of orbital positions from one side of the apsidal line used as the symmetry
     template
-    :param rel_d_radii: np.array - shape(2 x len(orbit_template arr) - relative changes in radii of each component with
+    :param rel_d_radii: numpy.array - shape(2 x len(orbit_template arr) - relative changes in radii of each component with
     respect to the previous OrbitalPosition, excluding the first postition.
     :return: bool array - mask to select Orbital positions, where orbits should be calculated
     """
