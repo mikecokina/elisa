@@ -3,7 +3,7 @@ import unittest
 from elisa.units import *
 
 
-class TestConfig(unittest.TestCase):
+class TestUnits(unittest.TestCase):
     def test_MASS_UNIT(self):
         self.assertEqual(MASS_UNIT, u.kg)
 

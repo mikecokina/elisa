@@ -317,9 +317,9 @@ class NaiveInterpolatedAtm(object):
         })
         directory = get_atm_directory(m, atlas)
         fnames = str(atlas) + \
-                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
-                 domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
-                 domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
+            domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
+            domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
+            domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
 
         return list(os.path.join(str(ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
 

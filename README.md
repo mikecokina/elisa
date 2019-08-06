@@ -14,3 +14,4 @@ Requirements::
 	pytz==2017.2
 	scipy==0.19.1
 	six==1.11.0
+	pypex==0.1.0
