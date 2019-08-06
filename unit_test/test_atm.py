@@ -90,8 +90,8 @@ class TestAtmModuleGeneral(unittest.TestCase):
 
     def test_strip_atm_container_by_bandwidth(self):
         c = atm.AtmDataContainer(pd.DataFrame({
-            ATM_MODEL_DATAFRAME_FLUX: np.array(list(range(0, 100, 10))),
-            ATM_MODEL_DATAFRAME_WAVE: np.array(list(range(10)))
+            ATM_MODEL_DATAFRAME_FLUX: np.arange(0, 100, 10, dtype=np.float),
+            ATM_MODEL_DATAFRAME_WAVE: np.arange(10, dtype=np.float)
         }), 10, 10, 10)
 
         l_band, r_band = 3.1, 7.8
@@ -134,8 +134,8 @@ class TestAtmModuleGeneral(unittest.TestCase):
 
     def test_extend_atm_container_on_bandwidth_boundary(self):
         c = atm.AtmDataContainer(pd.DataFrame({
-            ATM_MODEL_DATAFRAME_FLUX: np.array(list(range(0, 100, 10))),
-            ATM_MODEL_DATAFRAME_WAVE: np.array(list(range(10)))
+            ATM_MODEL_DATAFRAME_FLUX: np.arange(0, 100, 10, dtype=np.float),
+            ATM_MODEL_DATAFRAME_WAVE: np.arange(10, dtype=np.float)
         }), 10, 10, 10)
 
         l_band, r_band = 0.4, 8.8
@@ -271,8 +271,8 @@ class TestAtmModuleGeneral(unittest.TestCase):
 
     def test_apply_passband(self):
         atmc = atm.AtmDataContainer(pd.DataFrame({
-            ATM_MODEL_DATAFRAME_FLUX: list(range(10)),
-            ATM_MODEL_DATAFRAME_WAVE: list(range(0, 100, 10))
+            ATM_MODEL_DATAFRAME_FLUX: np.arange(10, dtype=np.float),
+            ATM_MODEL_DATAFRAME_WAVE: np.arange(0, 100, 10, dtype=np.float)
         }), 0, 0, 0)
 
         bandc = PassbandContainer(
