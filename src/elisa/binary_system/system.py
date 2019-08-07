@@ -360,6 +360,7 @@ class BinarySystem(System):
     def inclination(self, inclination):
         """
         Setter for inclination of binary system orbit.
+        If unit is not supplied, value in degrees is assumed.
 
         :param inclination: float
         :return:
@@ -367,7 +368,7 @@ class BinarySystem(System):
         if isinstance(inclination, u.quantity.Quantity):
             self._inclination = np.float64(inclination.to(units.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64(inclination)
+            self._inclination = np.float64((inclination * u.deg).to(units.ARC_UNIT))
         else:
             raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
