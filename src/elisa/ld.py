@@ -114,18 +114,17 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
             df = df.append(_df)
 
         df = df.drop_duplicates()
-        xyz_domain = np.array([np.array(val) for val in df[config.LD_DOMAIN_COLS].to_records(index=False)]).tolist()
-        xyz_values = df[config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].to_records(index=False).tolist()
+        xyz_domain = df[config.LD_DOMAIN_COLS].values
+        xyz_values = df[config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].values
 
-        uvw_domain = pd.DataFrame({
-            "temperature": temperature,
-            "gravity": log_g,
-        })[config.LD_DOMAIN_COLS].to_records(index=False).tolist()
+        uvw_domain = np.column_stack((temperature, log_g))
 
-        xyz_domain = np.asarray([np.asarray(val) for val in xyz_domain])
-        uvw_domain = np.asarray([np.asarray(val) for val in uvw_domain])
-        xyz_values = np.asarray([np.asarray(val) for val in xyz_values])
-
+        # uvw_values = np.empty((uvw_domain.shape[0], xyz_values.shape[1]), dtype=np.float)
+        # for ii in range(xyz_values.shape[1]):
+        #     f = interpolate.interp2d(xyz_domain[:, 0], xyz_domain[:, 1], xyz_values[:, ii], kind='linear')
+        #     uvw_values[:, ii] = f(uvw_domain[:, 0], uvw_domain[:, 1])[0, :]
+        #     # uvw_values[:, ii] = interpolate.griddata(xyz_domain, xyz_values[:, ii], uvw_domain, method="linear")
+        # uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="nearest")
         uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
 
         result_df = pd.DataFrame({"temperature": temperature, "log_g": log_g})
@@ -181,19 +180,19 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
     negative_cos_theta_test = cos_theta <= 0
     if limb_darkening_law in ['linear', 'cosine']:
         cos_theta[negative_cos_theta_test] = 0.0
-        retval = 1 - coefficients + coefficients * cos_theta
+        retval = 1.0 - coefficients + coefficients * cos_theta
         return retval[:, 0] if retval.shape[1] == 1 else retval
     elif limb_darkening_law == 'logarithmic':
         cos_theta_for_log = cos_theta.copy()
         cos_theta[negative_cos_theta_test] = 0.0
         cos_theta_for_log[negative_cos_theta_test] = 1.0
         retval = \
-            1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta_for_log)
-        return retval
+            1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta_for_log)
+        return retval.T
     elif limb_darkening_law == 'square_root':
         cos_theta[negative_cos_theta_test] = 0.0
-        retval = 1 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
-        return retval
+        retval = 1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
+        return retval.T
 
 
 def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, coefficients=None):

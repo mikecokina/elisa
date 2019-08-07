@@ -200,22 +200,18 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
         # integrating resulting flux
         for band in kwargs["passband"].keys():
-            flux = np.empty(2)
+            flux, ld_cors = np.empty(2), {}
             for ii, component in enumerate(config.BINARY_COUNTERPARTS.keys()):
-                # ld_new = 0.5 * np.ones(ld_cfs[component][band][ld_law_cfs_columns].values[visibility_test[component]].shape)
-                ld_cors = \
+                ld_cors[component] = \
                     ld.limb_darkening_factor(
-                        # coefficients=ld_new,
                         coefficients=ld_cfs[component][band][ld_law_cfs_columns].values[visibility_test[component]],
                         limb_darkening_law=config.LIMB_DARKENING_LAW,
                         cos_theta=cosines[component])
 
-                # ld_cors = 0.8 * np.ones(cosines[component].shape)
-
                 flux[ii] = np.sum(normal_radiance[component][band][visibility_test[component]] *
                                   cosines[component] *
                                   coverage[component][visibility_test[component]] *
-                                  ld_cors)
+                                  ld_cors[component])
             band_curves[band][idx] = np.sum(flux)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
