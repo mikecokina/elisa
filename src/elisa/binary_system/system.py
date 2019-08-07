@@ -260,9 +260,11 @@ class BinarySystem(System):
         :param eccentricity: (numpy.)int, (numpy.)float
         :return:
         """
-        if eccentricity < 0 or eccentricity >= 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
-            raise TypeError(
-                'Input of variable `eccentricity` is not (numpy.)int or (numpy.)float or it is out of boundaries.')
+        if not isinstance(eccentricity, (int, np.int, float, np.float)):
+            raise TypeError('Input of variable `eccentricity` is not (numpy.)int '
+                            'or (numpy.)float.')
+        if eccentricity < 0 or eccentricity >= 1:
+            raise ValueError('Input of variable `eccentricity` is  or it is out of boundaries.')
         self._eccentricity = eccentricity
         self._logger.debug(f"setting property eccentricity "
                            f"of class instance {self.__class__.__name__} to {self._eccentricity}")
