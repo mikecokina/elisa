@@ -29,7 +29,7 @@ class PassbandContainer(object):
         self.wave_unit = "angstrom"
         self.passband = passband
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
-        self.wave_to_si_mult: float = 1e-10
+        self.wave_to_si_mult = 1e-10
 
         setattr(self, 'table', table)
 
@@ -85,15 +85,19 @@ class Observer(object):
         self.init_passband(passband)
 
     @staticmethod
-    def bolometric(*args, **kwargs):
+    def bolometric(x):
         """
         Bolometric passband interpolation function in way of lambda x: 1.0
 
-        :param args:  Tuple
-        :param kwargs: Dict
-        :return: float; 1.0
+        :param x:
+        :return: float or numpy.array; 1.0s in shape of x
         """
-        return 1.0
+        if isinstance(x, (float, int)):
+            return 1.0
+        if isinstance(x, list):
+            return [1.0] * len(x)
+        if isinstance(x, np.ndarray):
+            return np.array([1.0] * len(x))
 
     def init_passband(self, passband):
         """
