@@ -49,7 +49,7 @@ class TestLimbDarkeningModule(unittest.TestCase):
         obtained = [ld.get_van_hamme_ld_table(**param) for param in params]
 
         for e, o in zip(expected, obtained):
-            assert_frame_equal(e, o)
+            assert_frame_equal(e, o, check_less_precise=True, check_dtype=False, check_exact=True)
 
     def test_get_van_hamme_ld_table_by_name(self):
         config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(__file__), "data", "vh93")
@@ -59,7 +59,7 @@ class TestLimbDarkeningModule(unittest.TestCase):
         obtained = [ld.get_van_hamme_ld_table_by_name(file) for file in filenames]
 
         for e, o in zip(expected, obtained):
-            assert_frame_equal(e, o)
+            assert_frame_equal(e, o, check_less_precise=True, check_dtype=False, check_exact=True)
 
     def test_get_van_hamme_ld_table_by_name_same_as_get_van_hamme_ld_table(self):
         params = [
