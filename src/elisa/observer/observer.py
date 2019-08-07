@@ -6,9 +6,8 @@ import pandas as pd
 
 from scipy import interpolate
 
-from elisa.conf import config
 from elisa.binary_system.system import BinarySystem
-from elisa.single_system.system import SingleSystem
+from elisa.conf import config
 from elisa.utils import is_empty
 
 config.set_up_logging()
@@ -74,7 +73,7 @@ class Observer(object):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._logger.info("initialising Observer instance")
         # specifying what kind of system is observed
-        self._system: BinarySystem or SingleSystem = system
+        self._system = system
         self._system_cls = type(self._system)
 
         # self._system._suppress_logger = True
@@ -235,11 +234,15 @@ class Observer(object):
             base_phases:  ndarray of unique phases between (0, 1)
             reverse_indices: ndarray mask applicable to `base_phases` which will reconstruct original `phases`
         """
-        if not self._system.primary.has_pulsations() and not self._system.primary.has_pulsations():
-            base_interval = np.round(phases % 1, 9)
-            return np.unique(base_interval, return_inverse=True)
+        if self._system_cls == BinarySystem:
+            if not self._system.primary.has_pulsations() and not self._system.secondary.has_pulsations():
+                base_interval = np.round(phases % 1, 9)
+                return np.unique(base_interval, return_inverse=True)
+            else:
+                return phases, np.arange(phases.shape[0])
         else:
-            return phases, np.arange(phases.shape[0])
+            # implement for single system
+            pass
 
 
 if __name__ == "__main__":
