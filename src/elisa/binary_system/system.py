@@ -464,12 +464,12 @@ class BinarySystem(System):
         neck_position = self.calculate_neck_position() if self.morphology == "over-contact" else 1e10
 
         for component, functions in fns.items():
-            self._logger.info(f"evaluating spots for {component} component")
+            self._logger.debug(f"evaluating spots for {component} component")
             potential_fn, precalc_fn = functions
             component_instance = getattr(self, component)
 
             if not component_instance.spots:
-                self._logger.info(f"no spots to evaluate for {component} component - continue")
+                self._logger.debug(f"no spots to evaluate for {component} component - continue")
                 continue
 
             # iterate over spots
@@ -2260,17 +2260,22 @@ class BinarySystem(System):
             * ** position_method ** * - method
         :return: Dict
         """
-        if self.eccentricity == 0 and self.primary.synchronicity == 1 and self.secondary.synchronicity == 1:
-            self._logger.debug('Implementing light curve generator function for synchronous binary system with '
-                               'circular orbit.')
+        synchronous_circular_test = \
+            self.eccentricity == 0 and self.primary.synchronicity == 1 and self.secondary.synchronicity == 1
+        assynchronous_clear_test = \
+            self.eccentricity == 0 and not self.primary.has_spots() and not self.secondary.has_spots()
+
+        if synchronous_circular_test or assynchronous_clear_test:
+            self._logger.info('Implementing light curve generator function for synchronous binary system with '
+                               'circular orbit or clear assynchronous systems.')
             return self._compute_circular_synchronous_lightcurve(**kwargs)
         elif self.eccentricity == 0 and (self.primary.synchronicity != 1 or self.secondary.synchronicity != 1) \
                 and (self.primary.has_spots() or self.secondary.has_spots()):
-            self._logger.debug('Implementing light curve generator function for asynchronous binary system with '
-                               'circular orbit.')
+            self._logger.info('Implementing light curve generator function for asynchronous binary system with '
+                              'circular orbit and spots.')
             return self._compute_circular_spoty_asynchronous_lightcurve(**kwargs)
         elif 1 > self.eccentricity > 0:
-            self._logger.debug('Implementing light curve generator function for eccentric orbit.')
+            self._logger.info('Implementing light curve generator function for eccentric orbit.')
             return self._compute_eccentric_lightcurve(**kwargs)
         raise NotImplementedError("Orbit type not implemented or invalid")
 

@@ -197,7 +197,6 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
         raise ValueError('Argument `component_distance` was not supplied.')
     component = static.component_to_list(component)
 
-    component_x_center = {'primary': 0.0, 'secondary': components_distance}
     for _component in component:
         component_instance = getattr(self, _component)
         # in case of spoted surface, symmetry is not used
@@ -211,10 +210,26 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
         component_instance.base_symmetry_points_number = _c
         component_instance.inverse_point_symmetry_matrix = _d
 
+    add_spots_to_mesh(self, components_distance, component=None)
+
+
+def add_spots_to_mesh(self, components_distance, component=None):
+    """
+    function implements surface points into clean mesh and removes stellar and other spot points under the given spot
+
+    :param self: BinarySystem instance
+    :param components_distance: float
+    :param component: str or empty
+    :return:
+    """
+    if components_distance is None:
+        raise ValueError('Argument `component_distance` was not supplied.')
+    component = static.component_to_list(component)
+    component_com = {'primary': 0.0, 'secondary': components_distance}
+    for _component in component:
         component_instance = getattr(self, _component)
         self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
-        component_instance.incorporate_spots_mesh(component_com=component_x_center[_component])
-        pass
+        component_instance.incorporate_spots_mesh(component_com=component_com[_component])
 
 
 def build_faces(self, component=None, components_distance=None):
