@@ -745,12 +745,7 @@ def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
             for spot_index, spot in instance.spots.items():
                 spot._longitude = spots_longitudes[comp][spot_index][ii]
 
-        self.build_mesh(component=None, components_distance=orbital_position.distance)
-        self.build_faces(component=None, components_distance=orbital_position.distance)
-        self.build_surface_areas(component=None)
-        self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
-        self.build_surface_gravity(component=None, components_distance=orbital_position.distance)
-        self.build_temperature_distribution(component=None, components_distance=orbital_position.distance)
+        self.build(components_distance=orbital_position.distance)
 
         container = prepare_star_container(self, orbital_position, ecl_boundaries)
 
