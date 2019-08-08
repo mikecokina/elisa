@@ -650,6 +650,13 @@ def update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
 
 
 def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
+    """
+    function returns light curve of assynchronous systems with circular orbits and spots
+    :param self: BinarySystem instance
+    :param args:
+    :param kwargs:
+    :return:
+    """
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
     points = {}
     for component in config.BINARY_COUNTERPARTS.keys():
@@ -668,6 +675,8 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
                                                            return_nparray=True, calculate_from='phase')
 
     # pre-calculate the longitudes of each spot for each phase
+    # TODO: implement minimum angular step in longitude which will result in mesh recalculation, it will save a lot of
+    # TODO: time for systems with synchronicities close to one
     azimuths = orbital_motion_array[:, 2]
     components = {'primary': getattr(self, 'primary'), 'secondary': getattr(self, 'secondary')}
     spots_longitudes = {comp: {spot_index: (instance.synchronicity - 1)*phases*const.FULL_ARC + spot.longitude
@@ -685,8 +694,6 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
         for comp, instance in components.items():
             for spot_index, spot in instance.spots.items():
                 spot._longitude = spots_longitudes[comp][spot_index][ii]
-
-        # self.build_mesh(component=None, components_distance=orbital_position.distance)
 
         # build the spots points
         build.add_spots_to_mesh(self, orbital_position.distance, component=None)
