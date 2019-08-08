@@ -260,9 +260,11 @@ class BinarySystem(System):
         :param eccentricity: (numpy.)int, (numpy.)float
         :return:
         """
-        if eccentricity < 0 or eccentricity >= 1 or not isinstance(eccentricity, (int, np.int, float, np.float)):
-            raise TypeError(
-                'Input of variable `eccentricity` is not (numpy.)int or (numpy.)float or it is out of boundaries.')
+        if not isinstance(eccentricity, (int, np.int, float, np.float)):
+            raise TypeError('Input of variable `eccentricity` is not (numpy.)int '
+                            'or (numpy.)float.')
+        if eccentricity < 0 or eccentricity >= 1:
+            raise ValueError('Input of variable `eccentricity` is  or it is out of boundaries.')
         self._eccentricity = eccentricity
         self._logger.debug(f"setting property eccentricity "
                            f"of class instance {self.__class__.__name__} to {self._eccentricity}")
@@ -360,6 +362,7 @@ class BinarySystem(System):
     def inclination(self, inclination):
         """
         Setter for inclination of binary system orbit.
+        If unit is not supplied, value in degrees is assumed.
 
         :param inclination: float
         :return:
@@ -367,7 +370,7 @@ class BinarySystem(System):
         if isinstance(inclination, u.quantity.Quantity):
             self._inclination = np.float64(inclination.to(units.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64(inclination)
+            self._inclination = np.float64((inclination * u.deg).to(units.ARC_UNIT))
         else:
             raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
