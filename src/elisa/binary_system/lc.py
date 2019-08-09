@@ -9,7 +9,7 @@ from elisa import logger, utils, const, atm, ld
 from elisa.binary_system import geo, build
 from elisa.const import BINARY_POSITION_PLACEHOLDER
 from scipy.interpolate import interp1d
-from copy import copy, deepcopy
+from copy import copy
 
 __logger__ = logging.getLogger(__name__)
 
@@ -176,16 +176,16 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     # injected attributes
     setattr(initial_props_container.primary, 'metallicity', self.primary.metallicity)
     setattr(initial_props_container.secondary, 'metallicity', self.secondary.metallicity)
-
-    # compute normal radiance for each face and each component
-    normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
-    # obtain limb darkening factor for each face
-    ld_cfs = get_limbdarkening_cfs(initial_props_container, **kwargs)
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion,
                                                                          ecl_boundaries=ecl_boundaries)
     system_positions_container = system_positions_container.darkside_filter()
+
+    # compute normal radiance for each face and each component
+    normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
+    # obtain limb darkening factor for each face
+    ld_cfs = get_limbdarkening_cfs(initial_props_container, **kwargs)
 
     band_curves = {key: np.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
     for idx, container in enumerate(system_positions_container):
@@ -677,9 +677,8 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     # TODO: implement minimum angular step in longitude which will result in mesh recalculation, it will save a lot of
     # TODO: time for systems with synchronicities close to one
     components = {'primary': getattr(self, 'primary'), 'secondary': getattr(self, 'secondary')}
-    spots_longitudes = {comp: {spot_index: (instance.synchronicity - 1)*phases*const.FULL_ARC + spot.longitude
-                               for spot_index, spot in instance.spots.items()}
-                        for comp, instance in components.items()}
+
+    spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
 
     # calculating lc with spots gradually shifting their positions in each phase
     band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
@@ -689,9 +688,7 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
         self.secondary.points = copy(points['secondary'])
 
         # assigning new longitudes for each spot
-        for comp, instance in components.items():
-            for spot_index, spot in instance.spots.items():
-                spot._longitude = spots_longitudes[comp][spot_index][ii]
+        geo.assign_spot_longitudes(self, spots_longitudes, index=ii, component=None)
 
         # build the spots points
         build.add_spots_to_mesh(self, orbital_position.distance, component=None)
@@ -733,17 +730,13 @@ def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
 
     # pre-calculate the longitudes of each spot for each phase
     components = {'primary': getattr(self, 'primary'), 'secondary': getattr(self, 'secondary')}
-    spots_longitudes = {comp: {spot_index: (instance.synchronicity - 1) * phases * const.FULL_ARC + spot.longitude
-                               for spot_index, spot in instance.spots.items()}
-                        for comp, instance in components.items()}
+    spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
 
     # calculating lc with spots gradually shifting their positions in each phase
     band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
     for ii, orbital_position in enumerate(orbital_motion):
         # assigning new longitudes for each spot
-        for comp, instance in components.items():
-            for spot_index, spot in instance.spots.items():
-                spot._longitude = spots_longitudes[comp][spot_index][ii]
+        geo.assign_spot_longitudes(self, spots_longitudes, index=ii, component=None)
 
         self.build(components_distance=orbital_position.distance)
 
