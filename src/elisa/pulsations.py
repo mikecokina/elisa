@@ -30,6 +30,9 @@ class PulsationMode(object):
         self._mode_axis_theta = 0
         self._mode_axis_phi = 0
 
+        # here the time-independent, renormalized associated Legendree polynomial is stored
+        self.rals = None
+
         self._logger = logging.getLogger(PulsationMode.__name__)
 
         utils.check_missing_kwargs(PulsationMode.MANDATORY_KWARGS, kwargs, instance_of=PulsationMode)

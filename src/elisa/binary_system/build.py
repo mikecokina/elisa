@@ -50,13 +50,16 @@ def build_surface_gravity(self, component=None, components_distance=None):
                 spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
 
 
-def build_faces_orientation(self, component=None, components_distance=None):
+def build_faces_orientation(self, component=None, components_distance=None, phase=None):
     """
-    Compute face orientation (normals) for each face.
+    Compute face orientation (normals) for each face. If pulsations are present, than calculate renormalized associated
+    Legendree polynomials (rALS) for each pulsation mode.
 
     :param self: BinarySystem instance
     :param component: str; `primary` or `secondary`
     :param components_distance: float
+    :param phase: float - orbital phase at which to build surface orientation, provide it only in case of assynchronous
+    orbit with misaligned pulsations, where pulsation axis drifts with star
     :return:
     """
     component = static.component_to_list(component)
@@ -66,6 +69,11 @@ def build_faces_orientation(self, component=None, components_distance=None):
         component_instance = getattr(self, _component)
         component_instance.set_all_surface_centres()
         component_instance.set_all_normals(com=com_x[_component])
+
+        # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
+        # pulsation mode
+        if component_instance.has_pulsations():
+            component_instance.set_rals(phase)
 
 
 def build_temperature_distribution(self, component=None, components_distance=None):

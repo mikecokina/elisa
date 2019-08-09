@@ -11,7 +11,8 @@ from pandas import DataFrame
 from scipy.spatial import distance_matrix as dstm
 from elisa import const as c
 from typing import Sized
-
+from scipy.special import sph_harm, lpmv
+from scipy.optimize import brute, fmin
 
 # auxiliary variable
 CUMULATIVE_TIME = 0.0
@@ -654,6 +655,68 @@ def find_idx_of_nearest(array, values):
     array = np.asarray(array)
     idx = (np.abs(array[np.newaxis, :] - values[:, np.newaxis])).argmin(axis=1)
     return idx
+
+
+def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
+    """
+    transformation of phi, theta spherical coordinates into new spherical coordinates produced by rotation around old
+    z_axis by `phi_rotation` and second rotation around new y axis by value `theta rotation`
+    :param phi: np.array - in radians
+    :param theta: np.array - in radians
+    :param phi_rotation: float - rotation of old spherical system around z axis, in radians
+    :param theta_rotation: float - rotation of z axis along new y axis by this value, in radians
+    :return:
+    """
+    # rotation around Z axis
+    phi_rot = (phi[:, 1] - phi_rotation) % c.FULL_ARC
+
+    # rotation around Y axis by `theta_rotation` angle
+    cos_phi = np.cos(phi_rot)
+    sin_theta = np.sin(theta)
+    sin_axis_theta = np.sin(theta_rotation)
+    cos_theta = np.cos(theta)
+    cos_axis_theta = np.cos(theta_rotation)
+    theta_new = np.arccos(cos_phi * sin_theta * sin_axis_theta + cos_theta * cos_axis_theta)
+    phi_new = np.arctan2(np.sin(phi_rot) * sin_theta, cos_phi * sin_theta * cos_axis_theta -
+                         cos_theta * sin_axis_theta)
+    return phi_new, theta_new
+
+
+def spherical_harmonics_renormalization_constant(l, m):
+    """
+    Spherical harmonic functions are by default normalized using orthogonality of ALS where integral(Y(l,m)**2) over the
+    spherical surface is one. However in our case, it is more useful to renormalise them in such way that maximum of
+    the real part of the spherical harmonics is one. This function returns such renormalization constant.
+    :param l: angular degree of the mode
+    :param m: azimuthal order of the mode
+    :return: float
+    """
+    def alp(xx, *args):
+        """
+        Returns negative value from imaginary part of associated Legendre polynomial (ALP),
+        used in minimizer to find global maximum of real part of spherical harmonics.
+
+        :param x: float - argument of function
+        :param args:
+
+        ::
+
+            l - angular degree of ALP
+            m - azimuthal order of ALP
+
+        :return: float; negative of absolute value of ALP
+        """
+        l, m = args
+        return -abs(lpmv(m, l, xx))
+
+    old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
+    Ns = int(np.power(5, np.ceil((l - m) / 23)) * ((l - m) + 1))
+    output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=Ns, finish=fmin, full_output=True)
+    np.seterr(**old_settings)
+
+    x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
+    result = abs(np.real(sph_harm(m, l, 0, np.arccos(x))))
+    return 1.0 / result
 
 
 class IterableQueue(object):
