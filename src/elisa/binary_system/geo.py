@@ -5,6 +5,8 @@ from copy import deepcopy
 from elisa import utils, const
 from pypex.poly2d.polygon import Polygon
 from elisa.binary_system import utils as bsutils
+from elisa import const
+from elisa.binary_system import static
 
 __logger__ = logging.getLogger(__name__)
 
@@ -92,6 +94,43 @@ def plane_projection(points, plane, keep_3d=False):
     in_plane = deepcopy(points)
     in_plane[:, rm_index] = 0.0
     return in_plane
+
+
+def calculate_spot_longitudes(binary_instance, phases, component=None):
+    """
+    function calculates the latitudes of every spot on given component(s) for every phase
+
+    :param binary_instance: BinarySystem instance
+    :param phases: np.array
+    :param component: 'primary' or 'secondary', if None both will be calculated
+    :return: dict {component: {spot_idx: np.array([....]), ...}, ...}
+    """
+    components_list = static.component_to_list(component)
+    components = {comp: getattr(binary_instance, comp) for comp in components_list}
+    spots_longitudes = {comp: {spot_index: (instance.synchronicity - 1) * phases * const.FULL_ARC + spot.longitude
+                               for spot_index, spot in instance.spots.items()}
+                        for comp, instance in components.items()}
+    return spots_longitudes
+
+
+def assign_spot_longitudes(binary_instance, spots_longitudes, index=None, component=None):
+    """
+    function assigns spot latitudes for each spot according to values in `spots_longitudes` in index `index`
+
+    :param binary_instance: BinarySystem instance
+    :param spots_longitudes: dict {component: {spot_idx: np.array([....]), ...}, ...}, takes output of function
+    `calculate_spot_latitudes`
+    :param index: index of spot longitude values to be used, if none is given, scalar values are expected in
+    `spots_longitudes`
+    :param component: 'primary' or 'secondary', if None both will be calculated
+    :return:
+    """
+    components_list = static.component_to_list(component)
+    components = {comp: getattr(binary_instance, comp) for comp in components_list}
+    for comp, instance in components.items():
+        for spot_index, spot in instance.spots.items():
+            spot._longitude = spots_longitudes[comp][spot_index] if index is None else \
+                spots_longitudes[comp][spot_index][index]
 
 
 class EasyObject(object):

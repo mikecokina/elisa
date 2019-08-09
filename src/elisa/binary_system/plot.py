@@ -1,5 +1,6 @@
 import numpy as np
 from astropy import units as u
+from elisa.binary_system import geo
 
 from elisa import utils, const, graphics, units
 
@@ -144,6 +145,10 @@ class Plot(object):
         kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
         kwargs['morphology'] = self._self.morphology
         kwg = {'suppress_parallelism': False}
+
+        # recalculating spot latitudes
+        spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phase'], component=None)
+        geo.assign_spot_longitudes(self._self, spots_longitudes, index=None, component=None)
 
         # this part decides if both components need to be calculated at once (due to reflection effect)
         # if kwargs['colormap'] == 'temperature' and self._self.reflection_effect_iterations != 0:
