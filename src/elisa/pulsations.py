@@ -1,249 +1,64 @@
 import numpy as np
-import logging
-from elisa import utils, const as c, units as e_units
-from astropy import units as u
+
+from elisa import utils, const
+
+from scipy.special import sph_harm
+
+"""file containing functions dealing with pulsations"""
 
 
-class PulsationMode(object):
+def set_rals(self, phase=None):
     """
-    pulsation mode data container
+    Function calculates and sets time independent, dimensionless part of the pulsation modes. They are calculated as
+    renormalized associated Legendre polynomials (rALS). This function needs to be evaluated only once except for the
+    case of assynchronously rotating component and missaligned mode. In such case, during all phases, the drift of
+    the mode axis needs to be taken into account and rALS needs to be recalculated.
+
+    :param self: Star instance
+    :param phase: float
+    :return:
     """
-    MANDATORY_KWARGS = ["l", "m", "amplitude", "frequency"]
+    phase = 0.0 if phase is None else phase
 
-    OPTIONAL_KWARGS = ["start_phase", 'mode_axis_theta', 'mode_axis_phi']
-    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
+    # conversion to spherical system in which ALS works
+    centres = utils.cartesian_to_spherical(self.face_centres)
+    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot.face_centres) for spot_idx, spot in self.spots}
 
-    def __init__(self, **kwargs):
-        utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=PulsationMode.ALL_KWARGS, instance=self.__class__.__name__)
-
-        # get logger
-        self._logger = logging.getLogger(PulsationMode.__name__)
-        self._logger.info(f"initialising object {self.__class__.__name__}")
-        self._logger.debug(f"setting property components of class instance {self.__class__.__name__}")
-
-        # self._n = np.nan
-        self._l = np.nan
-        self._m = np.nan
-        self._amplitude = np.nan
-        self._frequency = np.nan
-        self._start_phase = 0
-        self._mode_axis_theta = 0
-        self._mode_axis_phi = 0
-
-        # here the time-independent, renormalized associated Legendree polynomial is stored
-        self.rals = None
-
-        self._logger = logging.getLogger(PulsationMode.__name__)
-
-        utils.check_missing_kwargs(PulsationMode.MANDATORY_KWARGS, kwargs, instance_of=PulsationMode)
-
-        # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
-        for kwarg in kwargs:
-            self._logger.debug(f"setting property {kwarg} "
-                               f"of class instance {self.__class__.__name__} to {kwargs[kwarg]}")
-            setattr(self, kwarg, kwargs[kwarg])
-
-        # checking validity of parameters
-        if abs(self.m) > self.l:
-            raise ValueError(f'Absolute value of degree of mode m: {self.l} cannot '
-                             f'be higher than non-radial order of pulsations l: {self.m}.')
-
-    # @property
-    # def n(self):
-    #     """
-    #     returns radial degree `n` of pulsation mode
-    #     :return: int
-    #     """
-    #     return self._n
-    #
-    # @n.setter
-    # def n(self, radial_degree):
-    #     """
-    #     setter for radial degree of pulsation mode
-    #     :param radial_degree: int
-    #     :return:
-    #     """
-    #     try:
-    #         self._n = np.int(radial_degree)
-    #     except ValueError:
-    #         raise ValueError('Value for radial degree `n`={0} in pulsation mode class instance {1} is not valid.'
-    #                          .format(radial_degree, PulsationMode.__name__))
-
-    @property
-    def l(self):
-        """
-        R eturns number of surface nodal planes.
-
-        :return: int
-        """
-        return self._l
-
-    @l.setter
-    def l(self, surface_nodal_planes):
-        """
-        Setter for number of surface nodal planes.
-
-        :param surface_nodal_planes: int
-        :return:
-        """
-        try:
-            self._l = np.int(surface_nodal_planes)
-        except ValueError:
-            raise ValueError(f'Value for number of surface nodal planes is `l`={surface_nodal_planes} '
-                             f'in pulsation mode class instance {self.__class__.__name__} is not valid.')
-
-    @property
-    def m(self):
-        """
-        Returns number of azimutal surface nodal planes for given pulsation mode.
-
-        :return: int
-        """
-        return self._m
-
-    @m.setter
-    def m(self, azimutal_nodal_planes: int):
-        """
-        Setter for number of azimutal nodal planes.
-
-        :param azimutal_nodal_planes: int
-        :return:
-        """
-        try:
-            self._m = np.int(azimutal_nodal_planes)
-        except ValueError:
-            raise ValueError(f'Value for number of azimutal nodal planes is `m`={azimutal_nodal_planes} '
-                             f'in pulsation mode class instance {self.__class__.__name__} is not valid.')
-
-    @property
-    def amplitude(self):
-        """
-        Returns amplitude of pulsation mode in kelvins.
-
-        :return: float
-        """
-        return self._amplitude
-
-    @amplitude.setter
-    def amplitude(self, amplitude):
-        """
-        Setter for temperature amplitude of pulsation mode.
-        
-        :param amplitude: float or astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(amplitude, u.quantity.Quantity):
-            self._amplitude = np.float64(amplitude.to(e_units.TEMPERATURE_UNIT))
-        elif isinstance(amplitude, (int, np.int, float, np.float)):
-            self._amplitude = np.float64(amplitude)
+    for mode_index, mode in self.pulsations.items():
+        phi_spot, theta_spot = {}, {}
+        if mode.mode_axis_phi == 0.0 and mode.mode_axis_theta == 0.0:
+            # setting spherical variables in case the pulsation axis is parallel with orbital axis
+            phi, theta = centres[:, 1], centres[:, 2]
+            if self.has_spots():
+                for spot_idx, spot in self.spots.items():
+                    phi_spot[spot_idx] = centres_spot[spot_idx][:, 1]
+                    theta_spot[spot_idx] = centres_spot[spot_idx][:, 2]
         else:
-            raise TypeError('Value of `amplitude` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        if self._amplitude < 0:
-            raise ValueError('Temperature amplitude of mode has to be non-negative number.')
+            # this correction factor takes into account orbital/rotational phase when calculating drift of the mode
+            # axis
+            phi_corr = (self.synchronicity - 1) * phase * const.FULL_ARC if self.synchronicity is not np.nan else \
+                phase * const.FULL_ARC
+            # rotating spherical variable in case of misaligned mode
+            phi, theta = utils.rotation_in_spherical(centres[:, 1], centres[:, 2],
+                                                     mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
+            if self.has_spots():
+                for spot_idx, spot in self.spots.items():
+                    phi_spot[spot_idx], theta_spot[spot_idx] = \
+                        utils.rotation_in_spherical(centres_spot[spot_idx][:, 1], centres_spot[spot_idx][:, 2],
+                                                    mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
 
-    @property
-    def frequency(self):
-        """
-        Returns frequency of pulsation mode in default frequency unit.
-        
-        :return: float
-        """
-        return self._frequency
-
-    @frequency.setter
-    def frequency(self, frequency):
-        """
-        Frequency setter.
-        If unit in astropy format is not given, default frequency unit is assumed.
-
-        :param frequency: float or astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(frequency, u.quantity.Quantity):
-            self._frequency = np.float64(frequency.to(e_units.FREQUENCY_UNIT))
-        elif isinstance(frequency, (int, np.int, float, np.float)):
-            self._frequency = np.float64(frequency)
+        # renormalization constant for this mode
+        constant = utils.spherical_harmonics_renormalization_constant(mode.l, mode.m)
+        # calculating rALS for surface faces
+        surface_rals = constant * sph_harm(mode.m, mode.l, phi, theta)
+        # calculating rALS for spots (complex values)
+        if self.has_spots():
+            spot_rals = {spot_idx: constant * sph_harm(mode.m, mode.l, phi_spot[spot_idx], theta[spot_idx])
+                         for spot_idx, spot in self.spots.items()}
+            mode.rals = surface_rals, spot_rals
         else:
-            raise TypeError('Value of `frequency` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+            mode.rals = surface_rals, {}
 
-    @property
-    def start_phase(self):
-        """
-        Phase shift of the pulsation mode. 
-        It is basically constant that will be added to time dependent part of the equation.
 
-        :return: float
-        """
-        return self._start_phase
-
-    @start_phase.setter
-    def start_phase(self, phase):
-        """
-        Setter for phase shift of the given pulsation mode.
-
-        :param phase: float
-        :return:
-        """
-        try:
-            self._start_phase = np.float(phase) if phase is not None else 0.0
-        except TypeError:
-            raise TypeError(f'Invalid data type {type(phase)} for `start_phase` parameter for '
-                            f'{self.__class__.__name__} pulsation mode instance.')
-
-    @property
-    def mode_axis_theta(self):
-        """
-        Returns polar latitude angle of pulsation mode axis.
-
-        :return: (numpy.)float; in radians
-        """
-        return self._mode_axis_theta
-
-    @mode_axis_theta.setter
-    def mode_axis_theta(self, mode_axis_theta):
-        """
-        Setter for latitude of pulsation mode axis. 
-        If unit is not supplied, degrees are assumed.
-
-        :param mode_axis_theta: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(mode_axis_theta, u.quantity.Quantity):
-            self._mode_axis_theta = np.float64(mode_axis_theta.to(e_units.ARC_UNIT))
-        elif isinstance(mode_axis_theta, (int, np.int, float, np.float)):
-            self._mode_axis_theta = np.float64((mode_axis_theta*u.deg).to(e_units.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `mode_axis_theta` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        if not 0 <= self._mode_axis_theta < c.PI:
-            raise ValueError(f'Value of `mode_axis_theta`: {self._mode_axis_theta} is outside bounds (0, pi).')
-
-    @property
-    def mode_axis_phi(self):
-        """
-        Returns longitude angle of pulsation mode axis at t_0.
-
-        :return: (npumpy.)float; in radians
-        """
-        return self._mode_axis_phi
-
-    @mode_axis_phi.setter
-    def mode_axis_phi(self, mode_axis_phi):
-        """
-        Setter for longitude of pulsation mode axis. 
-        If unit is not supplied, degrees are assumed.
-
-        :param mode_axis_phi: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(mode_axis_phi, u.quantity.Quantity):
-            self._mode_axis_phi = np.float64(mode_axis_phi.to(e_units.ARC_UNIT))
-        elif isinstance(mode_axis_phi, (int, np.int, float, np.float)):
-            self._mode_axis_phi = np.float64((mode_axis_phi * u.deg).to(e_units.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `mode_axis_phi` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        if not 0 <= self._mode_axis_phi <= c.FULL_ARC:
-            raise ValueError(f'Value of `mode_axis_phi`: {self._mode_axis_phi} is outside bounds (0, 2pi).')
+def calculate_temperature_perturbation(self, time):
+    pass

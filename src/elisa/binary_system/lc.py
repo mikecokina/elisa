@@ -182,19 +182,29 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
                                                                          ecl_boundaries=ecl_boundaries)
     system_positions_container = system_positions_container.darkside_filter()
 
-    # compute normal radiance for each face and each component
-    normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
-    # obtain limb darkening factor for each face
-    ld_cfs = get_limbdarkening_cfs(initial_props_container, **kwargs)
+    has_pulsations = self.primary.has_pulsations or self.secondary.has_pulsations
+    if not has_pulsations:
+        # compute normal radiance for each face and each component
+        normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
+        # obtain limb darkening factor for each face
+        ld_cfs = get_limbdarkening_cfs(initial_props_container, **kwargs)
 
     band_curves = {key: np.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
     for idx, container in enumerate(system_positions_container):
+        # dict of components
+        components = {component: getattr(container, component) for component in config.BINARY_COUNTERPARTS.keys()}
+
+        if has_pulsations:
+            for component, component_instance in components.items():
+                # modifying temperatures in container
+                component_instance.temperatures += []
+            pass
+
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
 
         # calculating cosines between face normals and line of sight
         cosines, visibility_test = {}, {}
-        for component in config.BINARY_COUNTERPARTS.keys():
-            component_instance = getattr(container, component)
+        for component, component_instance in components.items():
             cosines[component] = utils.calculate_cos_theta_los_x(component_instance.normals)
             visibility_test[component] = cosines[component] > 0
             cosines[component] = cosines[component][visibility_test[component]]
