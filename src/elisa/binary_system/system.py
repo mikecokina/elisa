@@ -48,17 +48,18 @@ class BinarySystem(System):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, primary: Star, secondary: Star, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, primary, secondary, name=None, suppress_logger=False, **kwargs):
+        # initial validity checks
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
-        super(BinarySystem, self).__init__(name=name, suppress_logger=suppress_logger, **kwargs)
+        params = {
+            "primary": primary,
+            "secondary": secondary
+        }
+        params.update(**kwargs)
+        self._star_params_validity_check(**params)
+        utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
 
-        self.initial_kwargs.update(
-            dict(
-                primary=Star(name="star.dump.primary", suppress_logger=True, **primary.initial_kwargs),
-                secondary=Star(name="star.dump.secondary", suppress_logger=True, **secondary.initial_kwargs),
-                suppress_logger=True
-            )
-        )
+        super(BinarySystem, self).__init__(name=name, suppress_logger=suppress_logger, **kwargs)
 
         # get logger
         self._logger = logger.getLogger(name=self.__class__.__name__, suppress=suppress_logger)
@@ -88,15 +89,15 @@ class BinarySystem(System):
         self._morphology = ""
         self._inclination = np.nan
 
-        params = {
-            "primary": self.primary,
-            "secondary": self.secondary
-        }
-        params.update(**kwargs)
-        self._star_params_validity_check(**params)
+        self.initial_kwargs.update(
+            dict(
+                primary=Star(name="star.dump.primary", suppress_logger=True, **primary.initial_kwargs),
+                secondary=Star(name="star.dump.secondary", suppress_logger=True, **secondary.initial_kwargs),
+                suppress_logger=True
+            )
+        )
 
         # set attributes and test whether all parameters were initialized
-        utils.check_missing_kwargs(BinarySystem.KWARGS, kwargs, instance_of=BinarySystem)
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
         for kwarg in kwargs:
             self._logger.debug(f"setting property {kwarg} of class instance "
@@ -593,8 +594,10 @@ class BinarySystem(System):
         :param kwargs: list
         :return:
         """
+        primary = kwargs.get("primary")
+        secondary = kwargs.get("secondary")
 
-        if not isinstance(kwargs.get("primary"), Star):
+        if not isinstance(primary, Star):
             raise TypeError(f"Primary component is not instance of class {self.__class__.__name__}")
 
         if not isinstance(kwargs.get("secondary"), Star):
@@ -606,12 +609,12 @@ class BinarySystem(System):
         star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity',
                                  'albedo', 'metallicity', 'gravity_darkening']
         missing_kwargs = []
-        for component in [self.primary, self.secondary]:
+        for component in [primary, secondary]:
             for kwarg in star_mandatory_kwargs:
-                if np.isnan(getattr(component, kwarg)):
+                if utils.is_empty(getattr(component, kwarg)):
                     missing_kwargs.append(f"`{kwarg}`")
 
-            component_name = 'primary' if component == self.primary else 'secondary'
+            component_name = 'primary' if component == primary else 'secondary'
             if len(missing_kwargs) != 0:
                 raise ValueError(f'Mising argument(s): {", ".join(missing_kwargs)} '
                                  f'in {component_name} component Star class')
