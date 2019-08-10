@@ -37,7 +37,7 @@ class SingleSystem(System):
         self._period = self.rotation_period
 
         # testing if parameters were initialized
-        utils.check_missing_kwargs(SingleSystem.KWARGS, kwargs, instance_of=SingleSystem)
+        utils.check_missing_kwargs(SingleSystem.MANDATORY_KWARGS, kwargs, instance_of=SingleSystem)
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
         for kwarg in kwargs:
             self._logger.debug(f"setting property {kwarg} of class instance {SingleSystem.__name__} to {kwargs[kwarg]}")
