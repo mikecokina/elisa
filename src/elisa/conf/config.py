@@ -18,7 +18,7 @@ c_parse = ConfigParser()
 
 env_variable_config = os.environ.get('ELISA_CONFIG', '')
 venv_config = os.path.join(os.environ.get('VIRTUAL_ENV', ''), 'conf', 'elisa_conf.ini')
-default_config = os.path.join(os.path.dirname(__file__), "elisa_conf.ini")
+default_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "elisa_conf.ini")
 
 # read configuration file
 if os.path.isfile(env_variable_config):
@@ -34,7 +34,7 @@ else:
 
 # basic app configuration
 CONFIG_FILE = config_file
-LOG_CONFIG = os.path.join(dirname(__file__), 'logging.json')
+LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging.json')
 SUPPRESS_WARNINGS = False
 
 # physics

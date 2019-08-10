@@ -23,15 +23,15 @@ class TestMapDict(unittest.TestCase):
     def test_ATLAS_TO_BASE_DIR(self):
         ck04, k93 = config.CK04_ATM_TABLES, config.K93_ATM_TABLES
 
-        config.CK04_ATM_TABLES = os.path.join(os.path.dirname(__file__), 'ck04')
-        config.K93_ATM_TABLES = os.path.join(os.path.dirname(__file__), 'k93')
+        config.CK04_ATM_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ck04')
+        config.K93_ATM_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'k93')
 
         # reload module to rebuild ATLAS_TO_BASE_DIR in atm module
         reload(atm)
 
         supplied = ["castelli", "castelli-kurucz", "ck", "ck04", "kurucz", "k93", "k"]
-        expected = [os.path.join(os.path.dirname(__file__), 'ck04')] * 4 + \
-                   [os.path.join(os.path.dirname(__file__), 'k93')] * 3
+        expected = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ck04')] * 4 + \
+                   [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'k93')] * 3
         obtained = [atm.ATLAS_TO_BASE_DIR[s] for s in supplied]
         config.CK04_ATM_TABLES, config.K93_ATM_TABLES = ck04, k93
 
@@ -64,7 +64,7 @@ class TestAtmDataContainer(unittest.TestCase):
 
 class TestAtmModuleGeneral(unittest.TestCase):
     def setUp(self):
-        config.CK04_ATM_TABLES = os.path.join(os.path.dirname(__file__), 'data', 'ck04')
+        config.CK04_ATM_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'ck04')
         reload(atm)
 
     def test_arange_atm_to_same_wavelength(self):
@@ -193,7 +193,7 @@ class TestAtmModuleGeneral(unittest.TestCase):
         assert_array_equal(obtained, expected)
 
     def test_get_list_of_all_atm_tables(self):
-        config.CK04_ATM_TABLES = os.path.join(os.path.dirname(__file__), 'data', 'ck04')
+        config.CK04_ATM_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'ck04')
         reload(atm)
         obtained = sorted([os.path.basename(f) for f in atm.get_list_of_all_atm_tables("ck04")])
         expected = sorted(['ckp00_10000_g40.csv', 'ckp00_10250_g40.csv', 'ckp00_25000_g45.csv', 'ckp00_26000_g45.csv',
@@ -202,7 +202,8 @@ class TestAtmModuleGeneral(unittest.TestCase):
         assert_array_equal(expected, obtained)
 
     def test_get_atm_table(self):
-        expected = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data', 'ck04', 'ckp00', 'ckp00_10250_g40.csv'))
+        expected = pd.read_csv(os.path.join(os.path.dirname(
+            os.path.abspath(__file__)), 'data', 'ck04', 'ckp00', 'ckp00_10250_g40.csv'))
         obtained = atm.get_atm_table(10250, 4.0, 0, "ck")
         assert_frame_equal(expected, obtained, check_dtype=False)
 
@@ -244,7 +245,7 @@ class TestAtmModuleGeneral(unittest.TestCase):
         assert_array_equal(expected, obtained)
 
     def test_read_unique_atm_tables(self):
-        base_path = os.path.join(os.path.dirname(__file__), 'data', 'ck04', 'ckp00')
+        base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'ck04', 'ckp00')
         paths = [os.path.join(base_path, 'ckp00_4500_g50.csv'),
                  os.path.join(base_path, 'ckp00_10250_g40.csv'),
                  os.path.join(base_path, 'ckp00_4500_g50.csv')]
@@ -295,7 +296,7 @@ class TestAtmModuleGeneral(unittest.TestCase):
 
 class TestNaiveInterpolation(unittest.TestCase):
     def setUp(self):
-        config.CK04_ATM_TABLES = os.path.join(os.path.dirname(__file__), 'data', 'ck04')
+        config.CK04_ATM_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'ck04')
         reload(atm)
 
     def test_atm_files(self):

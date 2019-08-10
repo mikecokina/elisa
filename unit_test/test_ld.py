@@ -35,11 +35,11 @@ class TestLimbDarkeningModule(unittest.TestCase):
 
     @staticmethod
     def expected_ld_tables():
-        path = os.path.join(os.path.dirname(__file__), "data", "vh93")
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
         return [pd.read_csv(os.path.join(path, file)) for file in os.listdir(path)]
 
     def test_get_van_hamme_ld_table(self):
-        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(__file__), "data", "vh93")
+        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
         params = [
             dict(passband="Generic.Bessell.B", metallicity=-0.2, law="cosine"),
             dict(passband="Kepler", metallicity=-4, law="logarithmic")
@@ -52,7 +52,7 @@ class TestLimbDarkeningModule(unittest.TestCase):
             assert_frame_equal(e, o, check_less_precise=True, check_dtype=False, check_exact=True)
 
     def test_get_van_hamme_ld_table_by_name(self):
-        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(__file__), "data", "vh93")
+        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
         filenames = ["lin.Generic.Bessell.B.m02.csv", "log.Kepler.m40.csv"]
 
         expected = self.expected_ld_tables()
@@ -91,7 +91,7 @@ class TestLimbDarkeningModule(unittest.TestCase):
         assert_array_equal(obtained, expected)
 
     def test_interpolate_on_ld_grid(self):
-        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(__file__), "data", "ld_grid")
+        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "ld_grid")
         raise Exception("Unfinished unittest")
 
     def _raise_test_limb_darkening_factor(self, msg, **kwargs):

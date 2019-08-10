@@ -16,7 +16,7 @@ from elisa.observer.observer import PassbandContainer, Observer
 
 class TestPassbandContainer(unittest.TestCase):
     def setUp(self):
-        self._data_path = pjoin(dirname(__file__), "data", "passband")
+        self._data_path = pjoin(dirname(os.path.abspath(__file__)), "data", "passband")
         self._bessel_v_df = pd.read_csv(pjoin(self._data_path, 'Generic.Bessell.V.csv'))
         self.pb = PassbandContainer(self._bessel_v_df, 'Generic.Bessell.V')
 
@@ -67,7 +67,7 @@ class TestPassbandContainer(unittest.TestCase):
 
 class TestObserver(unittest.TestCase):
     def setUp(self):
-        self._data_path = pjoin(dirname(__file__), "data", "passband")
+        self._data_path = pjoin(dirname(os.path.abspath(__file__)), "data", "passband")
         self._passband = 'Generic.Bessell.V'
         self._bessel_v_df = pd.read_csv(pjoin(self._data_path, f'{self._passband}.csv'))
         config.PASSBAND_TABLES = self._data_path
