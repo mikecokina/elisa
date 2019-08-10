@@ -197,7 +197,6 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
         raise ValueError('Argument `component_distance` was not supplied.')
     component = static.component_to_list(component)
 
-    component_x_center = {'primary': 0.0, 'secondary': components_distance}
     for _component in component:
         component_instance = getattr(self, _component)
         # in case of spoted surface, symmetry is not used
@@ -211,10 +210,26 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
         component_instance.base_symmetry_points_number = _c
         component_instance.inverse_point_symmetry_matrix = _d
 
+    add_spots_to_mesh(self, components_distance, component=None)
+
+
+def add_spots_to_mesh(self, components_distance, component=None):
+    """
+    function implements surface points into clean mesh and removes stellar and other spot points under the given spot
+
+    :param self: BinarySystem instance
+    :param components_distance: float
+    :param component: str or empty
+    :return:
+    """
+    if components_distance is None:
+        raise ValueError('Argument `component_distance` was not supplied.')
+    component = static.component_to_list(component)
+    component_com = {'primary': 0.0, 'secondary': components_distance}
+    for _component in component:
         component_instance = getattr(self, _component)
         self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
-        component_instance.incorporate_spots_mesh(component_com=component_x_center[_component])
-        pass
+        component_instance.incorporate_spots_mesh(component_com=component_com[_component])
 
 
 def build_faces(self, component=None, components_distance=None):
@@ -243,7 +258,7 @@ def build_surface(self, component=None, components_distance=None, return_surface
     Function for building of general binary star component surfaces including spots. It will compute point mesh for
     Star instance and also spots, incorporate spots and makes a triangulation.
 
-    It is possible to return computet surface (points and faces indices) if `return_surface` parametre is set to True.
+    It is possible to return computed surface (points and faces indices) if `return_surface` parametre is set to True.
 
     :param self: BinarySystem; instance
     :param return_surface: bool; if True, function returns dictionary of arrays with all points and faces
@@ -255,28 +270,19 @@ def build_surface(self, component=None, components_distance=None, return_surface
     if not components_distance:
         raise ValueError('components_distance value was not provided.')
 
-    component = static.component_to_list(component)
     ret_points, ret_faces = {}, {}
 
-    for _component in component:
-        component_instance = getattr(self, _component)
+    self.build_mesh(component, components_distance)
+    self.build_faces(component, components_distance)
 
-        # build mesh and incorporate spots points to given obtained object mesh
-        self.build_mesh(component=_component, components_distance=components_distance)
-
-        if not component_instance.has_spots():
-            self.build_surface_with_no_spots(_component, components_distance=components_distance)
-            if return_surface:
-                ret_points[_component] = copy(component_instance.points)
-                ret_faces[_component] = copy(component_instance.faces)
-            continue
-        else:
-            self.build_surface_with_spots(_component, components_distance=components_distance)
-
-        if return_surface:
+    if return_surface:
+        component = static.component_to_list(component)
+        for _component in component:
+            component_instance = getattr(self, _component)
             ret_points[_component], ret_faces[_component] = component_instance.return_whole_surface()
-
-    return (ret_points, ret_faces) if return_surface else None
+        return ret_points, ret_faces
+    else:
+        return return_surface
 
 
 def build_surface_with_no_spots(self, component=None, components_distance=None):

@@ -468,12 +468,12 @@ class BinarySystem(System):
         neck_position = self.calculate_neck_position() if self.morphology == "over-contact" else 1e10
 
         for component, functions in fns.items():
-            self._logger.info(f"evaluating spots for {component} component")
+            self._logger.debug(f"evaluating spots for {component} component")
             potential_fn, precalc_fn = functions
             component_instance = getattr(self, component)
 
             if not component_instance.spots:
-                self._logger.info(f"no spots to evaluate for {component} component - continue")
+                self._logger.debug(f"no spots to evaluate for {component} component - continue")
                 continue
 
             # iterate over spots
@@ -2266,18 +2266,31 @@ class BinarySystem(System):
             * ** position_method ** * - method
         :return: Dict
         """
-        if self.eccentricity == 0 and self.primary.synchronicity == 1 and self.secondary.synchronicity == 1:
-            self._logger.debug('Implementing light curve generator function for synchronous binary system with '
-                               'circular orbit.')
-            return self._compute_circular_synchronous_lightcurve(**kwargs)
-        elif self.eccentricity == 0 and (self.primary.synchronicity != 1 or self.secondary.synchronicity != 1) \
-                and (self.primary.has_spots() or self.secondary.has_spots()):
-            self._logger.debug('Implementing light curve generator function for asynchronous binary system with '
-                               'circular orbit.')
-            return self._compute_circular_spoty_asynchronous_lightcurve(**kwargs)
-        elif 1 > self.eccentricity > 0:
-            self._logger.debug('Implementing light curve generator function for eccentric orbit.')
-            return self._compute_eccentric_lightcurve(**kwargs)
+        circular_test = self.eccentricity == 0
+        eccentric_test = 1 > self.eccentricity > 0
+        assynchronous_spotty_p = self.primary.synchronicity != 1 and self.primary.has_spots()
+        assynchronous_spotty_s = self.secondary.synchronicity != 1 and self.secondary.has_spots()
+        assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
+
+        if circular_test:
+            if assynchronous_spotty_test:
+                self._logger.info('Implementing light curve generator function for asynchronous binary system with '
+                                  'circular orbit and spots.')
+                return self._compute_circular_spoty_asynchronous_lightcurve(**kwargs)
+            else:
+                self._logger.info('Implementing light curve generator function for synchronous binary system with '
+                                  'circular orbit or circular assynchronous systems without spots.')
+                return self._compute_circular_synchronous_lightcurve(**kwargs)
+        elif eccentric_test:
+            if assynchronous_spotty_test:
+                self._logger.info('Implementing light curve generator function for asynchronous binary system with '
+                                  'eccentric orbit and spots.')
+                return self._compute_ecc_spoty_asynchronous_lightcurve(**kwargs)
+            else:
+                self._logger.info('Implementing light curve generator function for eccentric orbit with synchronous '
+                                  'rotation of the components or assynchronous rotation without spots.')
+                return self._compute_eccentric_lightcurve(**kwargs)
+
         raise NotImplementedError("Orbit type not implemented or invalid")
 
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
@@ -2285,6 +2298,9 @@ class BinarySystem(System):
 
     def _compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
         return lc.compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs)
+
+    def _compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
+        return lc.compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs)
 
     def _compute_eccentric_lightcurve(self, *args, **kwargs):
         # todo: just for testing, remove

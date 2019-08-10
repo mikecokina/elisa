@@ -190,4 +190,3 @@ class Spot(object):
             numpy.array([area_1, ..., area_n])
         """
         return utils.triangle_areas(triangles=self.faces, points=self.points)
-

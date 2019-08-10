@@ -6,9 +6,10 @@ from scipy.spatial.qhull import ConvexHull
 
 from elisa.conf import config
 from elisa import logger, utils, const, atm, ld
-from elisa.binary_system import geo
+from elisa.binary_system import geo, build
 from elisa.const import BINARY_POSITION_PLACEHOLDER
 from scipy.interpolate import interp1d
+from copy import copy
 
 __logger__ = logging.getLogger(__name__)
 
@@ -175,16 +176,16 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     # injected attributes
     setattr(initial_props_container.primary, 'metallicity', self.primary.metallicity)
     setattr(initial_props_container.secondary, 'metallicity', self.secondary.metallicity)
-
-    # compute normal radiance for each face and each component
-    normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
-    # obtain limb darkening factor for each face
-    ld_cfs = get_limbdarkening_cfs(initial_props_container, **kwargs)
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion,
                                                                          ecl_boundaries=ecl_boundaries)
     system_positions_container = system_positions_container.darkside_filter()
+
+    # compute normal radiance for each face and each component
+    normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
+    # obtain limb darkening factor for each face
+    ld_cfs = get_limbdarkening_cfs(initial_props_container, **kwargs)
 
     band_curves = {key: np.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
     for idx, container in enumerate(system_positions_container):
@@ -649,7 +650,108 @@ def update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
 
 
 def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
-    self.build(components_distance=1.0)
+    """
+    function returns light curve of assynchronous systems with circular orbits and spots
+    :param self: BinarySystem instance
+    :param args:
+    :param kwargs:
+    :return: dictionary of fluxes for each filter
+    """
+    ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
+    points = {}
+    for component in config.BINARY_COUNTERPARTS.keys():
+        component_instance = getattr(self, component)
+        _a, _b, _c, _d = self.mesh_detached(component=component, components_distance=1.0, symmetry_output=True)
+        points[component] = _a
+        component_instance.points = copy(_a)
+        component_instance.point_symmetry_vector = _b
+        component_instance.base_symmetry_points_number = _c
+        component_instance.inverse_point_symmetry_matrix = _d
+
+    phases = kwargs.pop("phases")
+    position_method = kwargs.pop("position_method")
+    orbital_motion, orbital_motion_array = position_method(input_argument=phases,
+                                                           return_nparray=True, calculate_from='phase')
+
+    # pre-calculate the longitudes of each spot for each phase
+    # TODO: implement minimum angular step in longitude which will result in mesh recalculation, it will save a lot of
+    # TODO: time for systems with synchronicities close to one
+    components = {'primary': getattr(self, 'primary'), 'secondary': getattr(self, 'secondary')}
+
+    spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
+
+    # calculating lc with spots gradually shifting their positions in each phase
+    band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
+    for ii, orbital_position in enumerate(orbital_motion):
+        # use clear system surface points as a starting place to save a time
+        self.primary.points = copy(points['primary'])
+        self.secondary.points = copy(points['secondary'])
+
+        # assigning new longitudes for each spot
+        geo.assign_spot_longitudes(self, spots_longitudes, index=ii, component=None)
+
+        # build the spots points
+        build.add_spots_to_mesh(self, orbital_position.distance, component=None)
+        # build the rest of the surface
+        self.build_faces(component=None, components_distance=orbital_position.distance)
+        self.build_surface_areas(component=None)
+        self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
+        self.build_surface_gravity(component=None, components_distance=orbital_position.distance)
+        self.build_temperature_distribution(component=None, components_distance=orbital_position.distance)
+
+        container = prepare_star_container(self, orbital_position, ecl_boundaries)
+
+        normal_radiance = get_normal_radiance(container, **kwargs)
+        ld_cfs = get_limbdarkening_cfs(container, **kwargs)
+
+        container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
+
+        for band in kwargs["passband"].keys():
+            band_curves[band][int(orbital_position.idx)] = \
+                calculate_lc_point(container, band, ld_cfs, normal_radiance)
+
+    return band_curves
+
+
+def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
+    """
+    function returns light curve of assynchronous systems with eccentric orbits and spots
+    :param self:
+    :param args:
+    :param kwargs:
+    :return: dictionary of fluxes for each filter
+    """
+    ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
+
+    phases = kwargs.pop("phases")
+    position_method = kwargs.pop("position_method")
+    orbital_motion, orbital_motion_array = position_method(input_argument=phases,
+                                                           return_nparray=True, calculate_from='phase')
+
+    # pre-calculate the longitudes of each spot for each phase
+    components = {'primary': getattr(self, 'primary'), 'secondary': getattr(self, 'secondary')}
+    spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
+
+    # calculating lc with spots gradually shifting their positions in each phase
+    band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
+    for ii, orbital_position in enumerate(orbital_motion):
+        # assigning new longitudes for each spot
+        geo.assign_spot_longitudes(self, spots_longitudes, index=ii, component=None)
+
+        self.build(components_distance=orbital_position.distance)
+
+        container = prepare_star_container(self, orbital_position, ecl_boundaries)
+
+        normal_radiance = get_normal_radiance(container, **kwargs)
+        ld_cfs = get_limbdarkening_cfs(container, **kwargs)
+
+        container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
+
+        for band in kwargs["passband"].keys():
+            band_curves[band][int(orbital_position.idx)] = \
+                calculate_lc_point(container, band, ld_cfs, normal_radiance)
+
+    return band_curves
 
 
 if __name__ == "__main__":
