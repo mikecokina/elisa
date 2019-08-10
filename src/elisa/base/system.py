@@ -14,9 +14,9 @@ class System(metaclass=ABCMeta):
     """
 
     ID = 1
-    KWARGS = []
+    MANDATORY_KWARGS = []
     OPTIONAL_KWARGS = []
-    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, suppress_logger=False, **kwargs):
 
