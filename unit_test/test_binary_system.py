@@ -1,20 +1,21 @@
 # import random
 # import sys
 import unittest
+from copy import copy
 
 from astropy import units as u
-
-from elisa import const as c
-from elisa.base.star import Star
-from elisa.binary_system.system import BinarySystem
-
-
 # from os.path import dirname
 # from os.path import join as pjoin
 #
 # import numpy as np
 # import pandas as pd
 from numpy.testing import assert_array_equal
+
+from elisa import const as c
+from elisa.base.star import Star
+from elisa.binary_system.system import BinarySystem
+
+
 # from pandas.testing import assert_frame_equal
 
 
@@ -98,6 +99,201 @@ class TestBinarySystemSetters(unittest.TestCase):
         self._test_generic_setter(inclinations, expected, 'inclination')
 
 
+class TestBinarySystemInit(unittest.TestCase):
+    def setUp(self):
+        self.params_combination = [
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
+             "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": c.HALF_PI * u.rad, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6,
+             },  # compact spherical components on circular orbit
+
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 100.0, "secondary_surface_potential": 80.0,
+             "primary_synchronicity": 400, "secondary_synchronicity": 550,
+             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             },  # rotationally squashed compact spherical components
+
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 3.5, "secondary_surface_potential": 3.0,
+             "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+             "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             },  # close tidally deformed components with asynchronous rotation on circular orbit
+
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
+             "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             },  # close tidally deformed components with asynchronous rotation on eccentric orbit
+
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 2.875844632141054,
+             "secondary_surface_potential": 2.875844632141054,
+             "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             },  # synchronous contact system
+
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 3.159639848886489,
+             "secondary_surface_potential": 3.229240544834036,
+             "primary_synchronicity": 1.5, "secondary_synchronicity": 2.0,
+             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             },  # asynchronous contact system (improbable but whatever...)
+
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 2.7,
+             "secondary_surface_potential": 2.7,
+             "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+             "argument_of_periastron": 90 * u.deg, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             }  # contact system
+        ]
+
+    def test_calculate_semi_major_axis(self):
+        pass
+
+    def test__setup_periastron_critical_potential(self):
+        pass
+
+    def test__setup_morphology(self):
+        pass
+
+    def test_setup_components_radii(self):
+        pass
+
+
+class TestValidity(unittest.TestCase):
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
+                        'primary_minimum_time', 'phase_shift']
+
+    def setUp(self):
+        self._initial_params = {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+            "eccentricity": 0.0, "inclination": c.HALF_PI * u.deg, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 5000, "secondary_t_eff": 5000,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 1.0, "secondary_albedo": 1.0,
+        }
+
+        self._primary = Star(mass=self._initial_params["primary_mass"],
+                             surface_potential=self._initial_params["primary_surface_potential"],
+                             synchronicity=self._initial_params["primary_synchronicity"],
+                             t_eff=self._initial_params["primary_t_eff"],
+                             gravity_darkening=self._initial_params["primary_gravity_darkening"],
+                             albedo=self._initial_params['primary_albedo'],
+                             metallicity=0.0)
+
+        self._secondary = Star(mass=self._initial_params["secondary_mass"],
+                               surface_potential=self._initial_params["secondary_surface_potential"],
+                               synchronicity=self._initial_params["secondary_synchronicity"],
+                               t_eff=self._initial_params["secondary_t_eff"],
+                               gravity_darkening=self._initial_params["secondary_gravity_darkening"],
+                               albedo=self._initial_params['secondary_albedo'],
+                               metallicity=0.0)
+
+    def test__star_params_validity_check(self):
+        with self.assertRaises(Exception) as context:
+            BinarySystem(primary=69,
+                         secondary=self._secondary,
+                         argument_of_periastron=self._initial_params["argument_of_periastron"],
+                         gamma=self._initial_params["gamma"],
+                         period=self._initial_params["period"],
+                         eccentricity=self._initial_params["eccentricity"],
+                         inclination=self._initial_params["inclination"],
+                         primary_minimum_time=self._initial_params["primary_minimum_time"],
+                         phase_shift=self._initial_params["phase_shift"])
+
+        self.assertTrue('Primary component is not instance of class' in str(context.exception))
+
+        star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity',
+                                 'albedo', 'metallicity', 'gravity_darkening']
+
+        for kw in star_mandatory_kwargs[:1]:
+            p = copy(self._primary)
+            setattr(p, f"_{kw}", None)
+
+            with self.assertRaises(Exception) as context:
+                BinarySystem(primary=p,
+                             secondary=self._secondary,
+                             argument_of_periastron=self._initial_params["argument_of_periastron"],
+                             gamma=self._initial_params["gamma"],
+                             period=self._initial_params["period"],
+                             eccentricity=self._initial_params["eccentricity"],
+                             inclination=self._initial_params["inclination"],
+                             primary_minimum_time=self._initial_params["primary_minimum_time"],
+                             phase_shift=self._initial_params["phase_shift"])
+
+            self.assertTrue(f'Mising argument(s): `{kw}`' in str(context.exception))
+
+    def test_invalid_kwarg_checker(self):
+        with self.assertRaises(Exception) as context:
+            BinarySystem(primary=self._primary,
+                         secondary=self._secondary,
+                         argument_of_periastron=self._initial_params["argument_of_periastron"],
+                         gamma=self._initial_params["gamma"],
+                         period=self._initial_params["period"],
+                         eccentricity=self._initial_params["eccentricity"],
+                         inclination=self._initial_params["inclination"],
+                         primary_minimum_time=self._initial_params["primary_minimum_time"],
+                         phase_shift=self._initial_params["phase_shift"],
+                         adhoc_param="xxx")
+        self.assertTrue('Invalid keyword argument(s): adhoc_param' in str(context.exception))
+
+    def test_check_missing_kwargs(self):
+        initial_kwargs = dict(primary=self._primary,
+                              secondary=self._secondary,
+                              argument_of_periastron=self._initial_params["argument_of_periastron"],
+                              gamma=self._initial_params["gamma"],
+                              period=self._initial_params["period"],
+                              eccentricity=self._initial_params["eccentricity"],
+                              inclination=self._initial_params["inclination"],
+                              primary_minimum_time=self._initial_params["primary_minimum_time"],
+                              phase_shift=self._initial_params["phase_shift"])
+
+        for kw in self.MANDATORY_KWARGS:
+            kwargs = copy(initial_kwargs)
+            del(kwargs[kw])
+            with self.assertRaises(Exception) as context:
+                BinarySystem(**kwargs)
+            self.assertTrue(f'Missing argument(s): `{kw}`' in str(context.exception))
 
 
 class Test(unittest.TestCase):
