@@ -32,6 +32,7 @@ class PulsationMode(object):
 
         # here the time-independent, renormalized associated Legendree polynomial is stored
         self.rals = None
+        self.rals_constant = None
 
         self._logger = logging.getLogger(PulsationMode.__name__)
 

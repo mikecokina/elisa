@@ -134,7 +134,8 @@ def assign_spot_longitudes(binary_instance, spots_longitudes, index=None, compon
 
 
 class EasyObject(object):
-    def __init__(self, points, normals, indices, faces=None, temperatures=None, log_g=None, coverage=None):
+    def __init__(self, points, normals, indices, faces=None, temperatures=None, log_g=None, coverage=None, rals=None,
+                 face_centres=None, metallicity=None):
         """
         None default gives a capability to be used without such parameters
 
@@ -153,6 +154,9 @@ class EasyObject(object):
         self._faces = deepcopy(faces)
         self._log_g = deepcopy(log_g)
         self._temperatures = deepcopy(temperatures)
+        self._rals = deepcopy(rals)
+        self._face_centres = deepcopy(face_centres)
+        self._metallicity = deepcopy(metallicity)
 
     def serialize(self):
         """
@@ -160,7 +164,7 @@ class EasyObject(object):
 
         :return: Tuple
         """
-        return self.points, self.normals, self.indices, self.faces, self.coverage
+        return self.points, self.normals, self.indices, self.faces, self.coverage, self.rals, self.centres
 
     def copy(self):
         """
@@ -226,6 +230,15 @@ class EasyObject(object):
         """
         return self._temperatures
 
+    @temperatures.setter
+    def temperatures(self, temperatures):
+        """
+        set temperatures
+        :param temperatures: array
+        :return:
+        """
+        self._temperatures = temperatures
+
     @property
     def log_g(self):
         """
@@ -234,6 +247,57 @@ class EasyObject(object):
         :return: numpy.array
         """
         return self._log_g
+
+    @property
+    def rals(self):
+        """
+        Get renormalized associated Legendre polynomials (rALS)
+        :return: array of complex arrays for each face
+        """
+        return self._rals
+
+    @rals.setter
+    def rals(self, rals):
+        """
+        Set renormalized associated Legendre polynomials (rALS)
+        :param rals:
+        :return:
+        """
+        self._rals = rals
+
+    @property
+    def face_centres(self):
+        """
+        Get face centres
+        :return: array
+        """
+        return self._face_centres
+
+    @face_centres.setter
+    def face_centres(self, centres):
+        """
+        Set face centres
+        :param centres: array
+        :return:
+        """
+        self._face_centres = centres
+
+    @property
+    def metallicity(self):
+        """
+        Get star metallicity
+        :return: array
+        """
+        return self._metallicity
+
+    @metallicity.setter
+    def metallicity(self, metallicity):
+        """
+        Set star metallicity
+        :param metallicity: float
+        :return:
+        """
+        self._metallicity = metallicity
 
 
 class SystemOrbitalPosition(object):
@@ -440,11 +504,11 @@ class SingleOrbitalPositionContainer(object):
 
 
         :param component: elisa.base.Star
-        :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray]
+        :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, ndarray]
 
         ::
 
-            Tuple(points, normals, faces, temperatures, log_g)
+            Tuple(points, normals, faces, temperatures, log_g, rals, centres)
         """
         return bsutils.get_flaten_properties(component)
 
@@ -465,8 +529,10 @@ class SingleOrbitalPositionContainer(object):
         :param value: elisa.base.Star
         :return:
         """
-        points, normals, faces, temp, log_g = self.get_flatten(value)
-        self._primary = EasyObject(points, normals, None, faces, temp, log_g)
+        points, normals, faces, temp, log_g, rals, centres = self.get_flatten(value)
+        self._primary = EasyObject(points, normals, None,
+                                   faces=faces, temperatures=temp, log_g=log_g,
+                                   rals=rals, face_centres=centres, metallicity=value.metallicity)
 
     @property
     def secondary(self):
@@ -485,8 +551,10 @@ class SingleOrbitalPositionContainer(object):
         :param value: elisa.base.Star
         :return:
         """
-        points, normals, faces, temp, log_g = self.get_flatten(value)
-        self._secondary = EasyObject(points, normals, None, faces, temp, log_g)
+        points, normals, faces, temp, log_g, rals, centres = self.get_flatten(value)
+        self._secondary = EasyObject(points, normals, None,
+                                     faces=faces, temperatures=temp, log_g=log_g,
+                                     rals=rals, face_centres=centres, metallicity=value.metallicity)
 
     def set_indices(self, component, indices):
         """

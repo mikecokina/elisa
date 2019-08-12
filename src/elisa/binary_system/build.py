@@ -95,21 +95,21 @@ def build_temperature_distribution(self, component=None, components_distance=Non
         self._logger.debug(f'computing effective temperature distibution '
                            f'on {_component} component name: {component_instance.name}')
         component_instance.temperatures = component_instance.calculate_effective_temperatures()
-        if component_instance.has_pulsations():
-            self._logger.debug(f'adding pulsations to surface temperature distribution '
-                               f'of the component instance: {_component}  / name: {component_instance.name}')
-            component_instance.temperatures = component_instance.add_pulsations()
+        # if component_instance.has_pulsations():
+        #     self._logger.debug(f'adding pulsations to surface temperature distribution '
+        #                        f'of the component instance: {_component}  / name: {component_instance.name}')
+        #     component_instance.temperatures = component_instance.add_pulsations()
 
         if component_instance.has_spots():
             for spot_index, spot in component_instance.spots.items():
                 self._logger.debug(f'computing temperature distribution of spot {spot_index} / {_component} component')
                 spot.temperatures = spot.temperature_factor * component_instance.calculate_effective_temperatures(
                     gradient_magnitudes=spot.potential_gradient_magnitudes)
-                if component_instance.has_pulsations():
-                    self._logger.debug(f'adding pulsations to temperature distribution '
-                                       f'of {_component} component / {spot_index} spot')
-                    spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
-                                                                          temperatures=spot.temperatures)
+                # if component_instance.has_pulsations():
+                #     self._logger.debug(f'adding pulsations to temperature distribution '
+                #                        f'of {_component} component / {spot_index} spot')
+                #     spot.temperatures = component_instance.add_pulsations(points=spot.points, faces=spot.faces,
+                #                                                           temperatures=spot.temperatures)
 
         self._logger.debug(f'renormalizing temperature map of components due to '
                            f'presence of spots in case of component {component}')

@@ -1,8 +1,9 @@
 import numpy as np
 
-from elisa import utils, const
+from elisa import utils, const, units
 
 from scipy.special import sph_harm
+from astropy import units as u
 
 """file containing functions dealing with pulsations"""
 
@@ -26,7 +27,7 @@ def set_rals(self, phase=None):
 
     for mode_index, mode in self.pulsations.items():
         phi_spot, theta_spot = {}, {}
-        if mode.mode_axis_phi == 0.0 and mode.mode_axis_theta == 0.0:
+        if mode.mode_axis_theta == 0.0:
             # setting spherical variables in case the pulsation axis is parallel with orbital axis
             phi, theta = centres[:, 1], centres[:, 2]
             if self.has_spots():
@@ -36,8 +37,7 @@ def set_rals(self, phase=None):
         else:
             # this correction factor takes into account orbital/rotational phase when calculating drift of the mode
             # axis
-            phi_corr = (self.synchronicity - 1) * phase * const.FULL_ARC if self.synchronicity is not np.nan else \
-                phase * const.FULL_ARC
+            phi_corr = phase_correction(self, phase)
             # rotating spherical variable in case of misaligned mode
             phi, theta = utils.rotation_in_spherical(centres[:, 1], centres[:, 2],
                                                      mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
@@ -49,6 +49,7 @@ def set_rals(self, phase=None):
 
         # renormalization constant for this mode
         constant = utils.spherical_harmonics_renormalization_constant(mode.l, mode.m)
+        mode.rals_constant = constant
         # calculating rALS for surface faces
         surface_rals = constant * sph_harm(mode.m, mode.l, phi, theta)
         # calculating rALS for spots (complex values)
@@ -60,5 +61,53 @@ def set_rals(self, phase=None):
             mode.rals = surface_rals, {}
 
 
-def calculate_temperature_perturbation(self, time):
-    pass
+# def prepare_missaligned_coordinates(self, mode, phase, centres, centres_spot):
+#     phi_spot, theta_spot = {}, {}
+#     phi_corr = (self.synchronicity - 1) * phase * const.FULL_ARC if self.synchronicity is not np.nan else \
+#         phase * const.FULL_ARC
+#     # rotating spherical variable in case of misaligned mode
+#     phi, theta = utils.rotation_in_spherical(centres[:, 1], centres[:, 2],
+#                                              mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
+#     if self.has_spots():
+#         for spot_idx, spot in self.spots.items():
+#             phi_spot[spot_idx], theta_spot[spot_idx] = \
+#                 utils.rotation_in_spherical(centres_spot[spot_idx][:, 1], centres_spot[spot_idx][:, 2],
+#                                             mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
+#
+#     return phi, theta, phi_spot, theta_spot
+
+
+def recalculate_rals(container, phi_corr, centres, mode, mode_index):
+    # this correction factor takes into account orbital/rotational phase when calculating drift of the mode
+    # axis
+    phi, theta = utils.rotation_in_spherical(centres[:, 1], centres[:, 2],
+                                             mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
+
+    container.rals[mode_index] = mode.rals_constant * sph_harm(mode.m, mode.l, phi, theta)
+
+
+def calculate_temperature_perturbation(self, container, phase, rot_period):
+    centres = utils.cartesian_to_spherical(container.face_centres)
+    phi_corr = phase_correction(self, phase)
+    temp_pert = np.zeros(np.shape(container.face_centres)[0])
+    for mode_index, mode in self.pulsations.items():
+        if mode.mode_axis_theta != 0.0:
+            recalculate_rals(container, phi_corr, centres, mode, mode_index)
+
+        period = (mode.frequency * units.FREQUENCY_UNIT).to(1/u.d).value
+        omega = const.FULL_ARC / period
+        temp_pert_cmplx= mode.amplitude * container.rals[mode_index] * np.exp(complex(0, omega * rot_period * phase))
+        temp_pert += temp_pert_cmplx.real
+    return temp_pert
+
+
+def phase_correction(self, phase):
+    """
+    calculate phase correction for mode axis drift
+
+    :param self: Star instance
+    :param phase: orbital/rotation phase
+    :return:
+    """
+    return (self.synchronicity - 1) * phase * const.FULL_ARC if self.synchronicity is not np.nan else \
+        phase * const.FULL_ARC
