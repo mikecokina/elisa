@@ -94,9 +94,9 @@ def calculate_temperature_perturbation(self, container, phase, rot_period):
         if mode.mode_axis_theta != 0.0:
             recalculate_rals(container, phi_corr, centres, mode, mode_index)
 
-        period = (mode.frequency * units.FREQUENCY_UNIT).to(1/u.d).value
-        omega = const.FULL_ARC / period
-        temp_pert_cmplx= mode.amplitude * container.rals[mode_index] * np.exp(complex(0, omega * rot_period * phase))
+        freq = (mode.frequency * units.FREQUENCY_UNIT).to(1/u.d).value
+        omega = const.FULL_ARC * freq
+        temp_pert_cmplx = mode.amplitude * container.rals[mode_index] * np.exp(complex(0, omega * rot_period * phase))
         temp_pert += temp_pert_cmplx.real
     return temp_pert
 
