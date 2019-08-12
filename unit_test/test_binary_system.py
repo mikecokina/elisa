@@ -386,7 +386,7 @@ class TestValidity(unittest.TestCase):
             self.assertTrue(f'Missing argument(s): `{kw}`' in str(context.exception))
 
 
-class Test(unittest.TestCase):
+class TestMethods(unittest.TestCase):
     def setUp(self):
         # self.params_combination = [
         #     {"primary_mass": 2.0, "secondary_mass": 1.0,

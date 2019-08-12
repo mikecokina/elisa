@@ -1,6 +1,8 @@
 import random
 import sys
 import unittest
+import os
+
 from os.path import dirname
 from os.path import join as pjoin
 
@@ -146,7 +148,7 @@ class TestObserver(unittest.TestCase):
 
         assert_array_equal(np.round(expected_phases, 2), np.round(obtained_phases, 2))
 
-    def test_BinarySystem_phase_interval_reduce_has_pulsation(self):
+    def test_BinarySystem_phase_interval_reduce_has_pulsation_and_no_spots(self):
         s = BinarySystemMock(pp=False, sp=True)
         o = Observer(self._passband, s)
         o._system_cls = BinarySystem
@@ -170,9 +172,17 @@ class BinarySystemMock(object):
     class Star(object):
         def __init__(self, p=False):
             self.p = p
+            self._synchronicity = 1.0
 
         def has_pulsations(self):
             return self.p
+
+        def has_spots(self):
+            return False
+
+        @property
+        def synchronicity(self):
+            return self._synchronicity
 
     def __init__(self, pp=False, sp=False):
         self.primary = self.Star(pp)

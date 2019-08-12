@@ -236,13 +236,13 @@ class Observer(object):
         """
         if self._system_cls == BinarySystem:
             # function shouldn't search for base phases if system has pulsations or is assynchronous with spots
-            has_pulsation_test = self._system.primary.has_pulsations() or self._system.primary.has_pulsations()
+            has_pulsation_test = self._system.primary.has_pulsations() | self._system.secondary.has_pulsations()
 
-            test1 = self._system.primary.synchronicity != 1.0 and self._system.primary.has_spots()
-            test2 = self._system.secondary.synchronicity != 1.0 and self._system.secondary.has_spots()
-            assynchronous_spotty_test = test1 or test2
+            test1 = (self._system.primary.synchronicity != 1.0) & self._system.primary.has_spots()
+            test2 = (self._system.secondary.synchronicity != 1.0) & self._system.secondary.has_spots()
+            assynchronous_spotty_test = test1 | test2
 
-            if has_pulsation_test or assynchronous_spotty_test:
+            if has_pulsation_test | assynchronous_spotty_test:
                 return phases, np.arange(phases.shape[0])
             else:
                 base_interval = np.round(phases % 1, 9)
