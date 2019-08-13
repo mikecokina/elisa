@@ -668,7 +668,7 @@ def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     :return:
     """
     # rotation around Z axis
-    phi_rot = (phi[:, 1] - phi_rotation) % c.FULL_ARC
+    phi_rot = (phi - phi_rotation) % c.FULL_ARC
 
     # rotation around Y axis by `theta_rotation` angle
     cos_phi = np.cos(phi_rot)

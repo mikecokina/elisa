@@ -41,7 +41,7 @@ def set_rals(self):
         surface_rals = constant * sph_harm(mode.m, mode.l, phi, theta)
         # calculating rALS for spots (complex values)
         if self.has_spots():
-            spot_rals = {spot_idx: constant * sph_harm(mode.m, mode.l, phi_spot[spot_idx], theta[spot_idx])
+            spot_rals = {spot_idx: constant * sph_harm(mode.m, mode.l, phi_spot[spot_idx], theta_spot[spot_idx])
                          for spot_idx, spot in self.spots.items()}
             mode.rals = surface_rals, spot_rals
         else:
