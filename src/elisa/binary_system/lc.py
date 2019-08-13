@@ -312,8 +312,9 @@ def compute_eccentric_lightcurve(self, **kwargs):
     orbital_motion, orbital_motion_array = position_method(input_argument=phases,
                                                            return_nparray=True, calculate_from='phase')
 
+    not_pulsations_test = not self.primary.has_pulsations() and not self.secondary.has_pulsations()
     # this condition checks if even to attempt to utilize apsidal line symmetry approximations
-    if config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None:
+    if config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None and not_pulsations_test:
         # in case of clean surface or synchronous rotation (more-less), symmetry around semi-major axis can be utilized
         # mask isolating the symmetrical part of the orbit
         azimuths = orbital_motion_array[:, 2]
@@ -345,12 +346,6 @@ def compute_eccentric_lightcurve(self, **kwargs):
             index_of_closest = np.append(index_of_closest, missing_phases_indices)
             orbit_template_arr = np.append(orbit_template_arr, orbit_template_arr[index_of_closest_reversed],
                                            axis=0)
-            orbit_counterpart_arr = np.append(orbit_counterpart_arr, orbit_counterpart_arr[missing_phases_indices],
-                                              axis=0)
-
-        # changes in component distances between symmetrical couples
-        d_distance = np.abs(orbit_template_arr[:, 1] -
-                            orbit_counterpart_arr[index_of_closest, 1])
 
         forward_radii = self.calculate_all_forward_radii(orbit_template_arr[:, 1], components=None)
         # calculating change in forward radius as a indicator of change in overall geometry, not calculated for the
@@ -648,10 +643,21 @@ def integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
     :return: dictionary of fluxes for each filter
     """
     band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
-    for orbital_position in orbital_motion:
+    for idx, orbital_position in enumerate(orbital_motion):
         self.build(components_distance=orbital_position.distance)
         container = prepare_star_container(self, orbital_position, ecl_boundaries)
 
+        pulsations_test = {'primary': self.primary.has_pulsations(), 'secondary': self.secondary.has_pulsations()}
+        if pulsations_test['primary'] or pulsations_test['secondary']:
+            star_containers = {component: getattr(container, component) for component in config.BINARY_COUNTERPARTS.keys()}
+            for component, star_container_instance in star_containers.items():
+                if pulsations_test[component]:
+                    component_instance = getattr(self, component)
+                    star_container_instance.temperatures += \
+                        pulsations.calc_temp_pert_on_container(component_instance,
+                                                               star_container_instance,
+                                                               orbital_motion[idx].phase,
+                                                               self.period)
         normal_radiance = get_normal_radiance(container, **kwargs)
         ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 
@@ -738,7 +744,6 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     # pre-calculate the longitudes of each spot for each phase
     # TODO: implement minimum angular step in longitude which will result in mesh recalculation, it will save a lot of
     # TODO: time for systems with synchronicities close to one
-    components = {'primary': getattr(self, 'primary'), 'secondary': getattr(self, 'secondary')}
 
     spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
 
