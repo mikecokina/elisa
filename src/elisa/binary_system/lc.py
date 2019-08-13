@@ -254,10 +254,10 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             if pulsations_test[component]:
                 component_instance = getattr(self, component)
                 star_container_instance.temperatures += \
-                    pulsations.calculate_temperature_perturbation(component_instance,
-                                                                  star_container_instance,
-                                                                  orbital_motion[idx].phase,
-                                                                  self.period)
+                    pulsations.calc_temp_pert_on_container(component_instance,
+                                                           star_container_instance,
+                                                           orbital_motion[idx].phase,
+                                                           self.period)
                 normal_radiance[component] = get_normal_radiance(container, component=component, **kwargs)
                 ld_cfs[component] = get_limbdarkening_cfs(container, component=component, **kwargs)
 
