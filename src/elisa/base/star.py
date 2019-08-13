@@ -1,7 +1,7 @@
 import numpy as np
 
 from elisa.base.body import Body
-from elisa.pulsations import PulsationMode
+from elisa.pulsation_mode import PulsationMode
 from elisa import logger, utils, const as c, units as e_units
 
 from copy import copy
@@ -365,8 +365,10 @@ class Star(Body):
 
     def add_pulsations(self, points=None, faces=None, temperatures=None):
         """
+        soon deprecated
         Function returns temperature map with added temperature perturbations caused by pulsations.
 
+        :param time: float
         :param points: ndarray - if `None` Star.points are used
         :param faces: ndarray - if `None` Star.faces are used
         :param temperatures: ndarray - if `None` Star.temperatures
@@ -375,7 +377,7 @@ class Star(Body):
 
         def alp(x, *args):
             """
-            Returns negative value from imaginary value of associated Legendre polynomial (ALP),
+            Returns negative value from imaginary part of associated Legendre polynomial (ALP),
             used in minimizer to find global maximum of real part of spherical harmonics.
 
             :param x: float - argument of function
@@ -383,7 +385,7 @@ class Star(Body):
 
             ::
 
-                l - order of ALP
+                l - angular degree of ALP
                 m - degree of ALP
 
             :return: float; negative of absolute value of ALP

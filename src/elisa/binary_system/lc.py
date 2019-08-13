@@ -5,7 +5,7 @@ import matplotlib.path as mpltpath
 from scipy.spatial.qhull import ConvexHull
 
 from elisa.conf import config
-from elisa import logger, utils, const, atm, ld
+from elisa import logger, utils, const, atm, ld, pulsations
 from elisa.binary_system import geo, build
 from elisa.const import BINARY_POSITION_PLACEHOLDER
 from scipy.interpolate import interp1d
@@ -109,7 +109,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     }
 
 
-def get_normal_radiance(single_orbital_position_container, **kwargs):
+def get_normal_radiance(single_orbital_position_container, component=None, **kwargs):
     """
     Compute normal radiance for all faces and all components in SingleOrbitalPositionContainer
 
@@ -121,35 +121,86 @@ def get_normal_radiance(single_orbital_position_container, **kwargs):
             * ** atlas ** * - str
     :return: Dict[String, numpy.array]
     """
-    return {
-        component:
-        atm.NaiveInterpolatedAtm.radiance(
-            **dict(
-                temperature=getattr(single_orbital_position_container, component).temperatures,
-                log_g=getattr(single_orbital_position_container, component).log_g,
-                metallicity=getattr(single_orbital_position_container, component).metallicity,
-                **kwargs
+    if component is None:
+        return {
+            component:
+            atm.NaiveInterpolatedAtm.radiance(
+                **dict(
+                    temperature=getattr(single_orbital_position_container, component).temperatures,
+                    log_g=getattr(single_orbital_position_container, component).log_g,
+                    metallicity=getattr(single_orbital_position_container, component).metallicity,
+                    **kwargs
+                )
+            ) for component in config.BINARY_COUNTERPARTS.keys()
+        }
+    elif component in config.BINARY_COUNTERPARTS.keys():
+        return atm.NaiveInterpolatedAtm.radiance(
+                **dict(
+                    temperature=getattr(single_orbital_position_container, component).temperatures,
+                    log_g=getattr(single_orbital_position_container, component).log_g,
+                    metallicity=getattr(single_orbital_position_container, component).metallicity,
+                    **kwargs
+                )
             )
-        ) for component in config.BINARY_COUNTERPARTS.keys()
-    }
+    else:
+        raise ValueError('Invalid value of `component` argument. '
+                         'Available parameters are `primary`, `secondary` or None.')
 
 
-def get_limbdarkening_cfs(self, **kwargs):
+def get_limbdarkening_cfs(self, component=None, **kwargs):
     """
     returns limg darkening coefficients for each face of each component
     :param self:
     :param kwargs: dict - {'primary': numpy.array, 'secondary': numpy.array}
     :return:
     """
-    return {
-        component:
-        ld.interpolate_on_ld_grid(
+    if component is None:
+        return {
+            component:
+            ld.interpolate_on_ld_grid(
+                temperature=getattr(self, component).temperatures,
+                log_g=getattr(self, component).log_g,
+                metallicity=getattr(self, component).metallicity,
+                passband=kwargs["passband"]
+            ) for component in config.BINARY_COUNTERPARTS.keys()
+        }
+    elif component in config.BINARY_COUNTERPARTS.keys():
+        return ld.interpolate_on_ld_grid(
             temperature=getattr(self, component).temperatures,
             log_g=getattr(self, component).log_g,
             metallicity=getattr(self, component).metallicity,
             passband=kwargs["passband"]
-        ) for component in config.BINARY_COUNTERPARTS.keys()
-    }
+        )
+    else:
+        raise ValueError('Invalid value of `component` argument. '
+                         'Available parameters are `primary`, `secondary` or None.')
+
+
+def prep_surface_params(initial_props_container, pulsations_test, **kwargs):
+    """
+    prepares normal radiances and limb darkening coefficients variables
+
+    :param initial_props_container: SingleOrbitalPosition
+    :param pulsations_test: dict {component: bool - has_pulsations, ...}
+    :param kwargs:
+    :return:
+    """
+    has_pulsations = pulsations_test['primary'] or pulsations_test['secondary']
+    if not has_pulsations:
+        # compute normal radiance for each face and each component
+        normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
+        # obtain limb darkening factor for each face
+        ld_cfs = get_limbdarkening_cfs(initial_props_container, **kwargs)
+    elif not pulsations_test['primary']:
+        normal_radiance = {'primary': get_normal_radiance(initial_props_container, component='primary', **kwargs)}
+        ld_cfs = {'primary': get_limbdarkening_cfs(initial_props_container, component='primary', **kwargs)}
+    elif not pulsations_test['secondary']:
+        normal_radiance = {'secondary': get_normal_radiance(initial_props_container, component='secondary', **kwargs)}
+        ld_cfs = {'secondary': get_limbdarkening_cfs(initial_props_container, component='secondary', **kwargs)}
+    else:
+        normal_radiance = {}
+        ld_cfs = {}
+    return normal_radiance, ld_cfs
 
 
 def compute_circular_synchronous_lightcurve(self, **kwargs):
@@ -182,22 +233,33 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
                                                                          ecl_boundaries=ecl_boundaries)
     system_positions_container = system_positions_container.darkside_filter()
 
-    # compute normal radiance for each face and each component
-    normal_radiance = get_normal_radiance(initial_props_container, **kwargs)
-    # obtain limb darkening factor for each face
-    ld_cfs = get_limbdarkening_cfs(initial_props_container, **kwargs)
+    pulsations_test = {'primary': self.primary.has_pulsations(), 'secondary': self.secondary.has_pulsations()}
+    normal_radiance, ld_cfs = prep_surface_params(initial_props_container, pulsations_test, **kwargs)
 
     band_curves = {key: np.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
     for idx, container in enumerate(system_positions_container):
+        # dict of components
+        star_containers = {component: getattr(container, component) for component in config.BINARY_COUNTERPARTS.keys()}
+
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
 
         # calculating cosines between face normals and line of sight
         cosines, visibility_test = {}, {}
-        for component in config.BINARY_COUNTERPARTS.keys():
-            component_instance = getattr(container, component)
-            cosines[component] = utils.calculate_cos_theta_los_x(component_instance.normals)
+        for component, star_container_instance in star_containers.items():
+            cosines[component] = utils.calculate_cos_theta_los_x(star_container_instance.normals)
             visibility_test[component] = cosines[component] > 0
             cosines[component] = cosines[component][visibility_test[component]]
+
+            # calculating temperature perturbation due to pulsations
+            if pulsations_test[component]:
+                component_instance = getattr(self, component)
+                star_container_instance.temperatures += \
+                    pulsations.calc_temp_pert_on_container(component_instance,
+                                                           star_container_instance,
+                                                           orbital_motion[idx].phase,
+                                                           self.period)
+                normal_radiance[component] = get_normal_radiance(container, component=component, **kwargs)
+                ld_cfs[component] = get_limbdarkening_cfs(container, component=component, **kwargs)
 
         # integrating resulting flux
         for band in kwargs["passband"].keys():
@@ -250,8 +312,9 @@ def compute_eccentric_lightcurve(self, **kwargs):
     orbital_motion, orbital_motion_array = position_method(input_argument=phases,
                                                            return_nparray=True, calculate_from='phase')
 
+    not_pulsations_test = not self.primary.has_pulsations() and not self.secondary.has_pulsations()
     # this condition checks if even to attempt to utilize apsidal line symmetry approximations
-    if config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None:
+    if config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None and not_pulsations_test:
         # in case of clean surface or synchronous rotation (more-less), symmetry around semi-major axis can be utilized
         # mask isolating the symmetrical part of the orbit
         azimuths = orbital_motion_array[:, 2]
@@ -283,12 +346,6 @@ def compute_eccentric_lightcurve(self, **kwargs):
             index_of_closest = np.append(index_of_closest, missing_phases_indices)
             orbit_template_arr = np.append(orbit_template_arr, orbit_template_arr[index_of_closest_reversed],
                                            axis=0)
-            orbit_counterpart_arr = np.append(orbit_counterpart_arr, orbit_counterpart_arr[missing_phases_indices],
-                                              axis=0)
-
-        # changes in component distances between symmetrical couples
-        d_distance = np.abs(orbit_template_arr[:, 1] -
-                            orbit_counterpart_arr[index_of_closest, 1])
 
         forward_radii = self.calculate_all_forward_radii(orbit_template_arr[:, 1], components=None)
         # calculating change in forward radius as a indicator of change in overall geometry, not calculated for the
@@ -586,10 +643,21 @@ def integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
     :return: dictionary of fluxes for each filter
     """
     band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
-    for orbital_position in orbital_motion:
+    for idx, orbital_position in enumerate(orbital_motion):
         self.build(components_distance=orbital_position.distance)
         container = prepare_star_container(self, orbital_position, ecl_boundaries)
 
+        pulsations_test = {'primary': self.primary.has_pulsations(), 'secondary': self.secondary.has_pulsations()}
+        if pulsations_test['primary'] or pulsations_test['secondary']:
+            star_containers = {component: getattr(container, component) for component in config.BINARY_COUNTERPARTS.keys()}
+            for component, star_container_instance in star_containers.items():
+                if pulsations_test[component]:
+                    component_instance = getattr(self, component)
+                    star_container_instance.temperatures += \
+                        pulsations.calc_temp_pert_on_container(component_instance,
+                                                               star_container_instance,
+                                                               orbital_motion[idx].phase,
+                                                               self.period)
         normal_radiance = get_normal_radiance(container, **kwargs)
         ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 
@@ -676,7 +744,6 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     # pre-calculate the longitudes of each spot for each phase
     # TODO: implement minimum angular step in longitude which will result in mesh recalculation, it will save a lot of
     # TODO: time for systems with synchronicities close to one
-    components = {'primary': getattr(self, 'primary'), 'secondary': getattr(self, 'secondary')}
 
     spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
 
@@ -697,7 +764,8 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
         self.build_surface_areas(component=None)
         self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
         self.build_surface_gravity(component=None, components_distance=orbital_position.distance)
-        self.build_temperature_distribution(component=None, components_distance=orbital_position.distance)
+        self.build_temperature_distribution(component=None, components_distance=orbital_position.distance,
+                                            do_pulsations=True, phase=orbital_position.phase)
 
         container = prepare_star_container(self, orbital_position, ecl_boundaries)
 

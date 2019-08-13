@@ -151,7 +151,6 @@ class Plot(object):
         geo.assign_spot_longitudes(self._self, spots_longitudes, index=None, component=None)
 
         # this part decides if both components need to be calculated at once (due to reflection effect)
-        # if kwargs['colormap'] == 'temperature' and self._self.reflection_effect_iterations != 0:
         if kwargs['colormap'] == 'temperature':
             points, faces = self._self.build_surface(components_distance=components_distance,
                                                      return_surface=True, **kwg)
@@ -161,7 +160,9 @@ class Plot(object):
             kwargs['secondary_triangles'] = faces['secondary']
 
             cmap = self._self.build_surface_map(colormap=kwargs['colormap'],
-                                                components_distance=components_distance, return_map=True)
+                                                components_distance=components_distance,
+                                                return_map=True,
+                                                phase=kwargs['phase'])
             kwargs['primary_cmap'] = cmap['primary']
             kwargs['secondary_cmap'] = cmap['secondary']
 
