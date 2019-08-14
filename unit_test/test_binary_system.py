@@ -551,8 +551,8 @@ class TestMethods(unittest.TestCase):
         obtained_g_cgs_primary = bs.calculate_polar_gravity_acceleration("primary", 1.0, logg=False) * 100
         obtained_g_cgs_secondary = bs.calculate_polar_gravity_acceleration("secondary", 1.0, logg=False) * 100
 
-        self.assertEqual(round(expected_g_cgs_primary, 2), round(obtained_g_cgs_primary, 2))
-        self.assertEqual(round(expected_g_cgs_secondary, 2), round(obtained_g_cgs_secondary, 2))
+        self.assertEqual(round(expected_g_cgs_primary, 4), round(obtained_g_cgs_primary, 4))
+        self.assertEqual(round(expected_g_cgs_secondary, 4), round(obtained_g_cgs_secondary, 4))
 
     def test_calculate_polar_gravity_acceleration_eccentric(self):
         bs = self._binaries[1]

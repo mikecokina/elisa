@@ -2221,7 +2221,7 @@ class BinarySystem(System):
 
             P * 1/2 * dp/dt = pi * a * b
 
-            e = sqrt( 1 - (b/2)^2)
+            e = sqrt(1 - (b/a)^2)
 
         where a, b are respectively semi major and semi minor axis, P is period and e is eccentricity.
 
