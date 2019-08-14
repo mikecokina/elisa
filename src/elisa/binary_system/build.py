@@ -68,7 +68,7 @@ def build_faces_orientation(self, component=None, components_distance=None):
 
     for _component in component:
         component_instance = getattr(self, _component)
-        component_instance.set_all_surface_centres()
+        component_instance.set_all_surface_centres(com_x=com_x[_component])
         component_instance.set_all_normals(com=com_x[_component])
 
         # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each

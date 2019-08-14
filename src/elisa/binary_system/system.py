@@ -37,6 +37,7 @@ from elisa import logger, utils, const, ld, units
 from elisa.binary_system import mp, geo
 from elisa.binary_system import static, build, lc
 from elisa.binary_system.plot import Plot
+from elisa.binary_system.animation import Animation
 from elisa.orbit import Orbit
 from elisa.base.star import Star
 from elisa.base.system import System
@@ -68,6 +69,7 @@ class BinarySystem(System):
         self._logger.debug(f"setting property components of class instance {self.__class__.__name__}")
 
         self.plot = Plot(self)
+        self.animation = Animation(self)
 
         # assign components to binary system
         self._primary = primary
