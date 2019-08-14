@@ -1956,8 +1956,9 @@ class BinarySystem(System):
         xlim = self.faces_visibility_x_limits(components_distance=components_distance)
 
         # this tests if you can use surface symmetries
-        # todo: what about high amplitude pulsations?
-        use_quarter_star_test = not self.primary.has_spots() and not self.secondary.has_spots()
+        not_pulsation_test = not self.primary.has_pulsations() and not self.secondary.has_pulsations()
+        not_spot_test = not self.primary.has_spots() and not self.secondary.has_spots()
+        use_quarter_star_test = not_pulsation_test and not_spot_test
         vis_test_symmetry = {}
 
         # declaring variables
@@ -2315,11 +2316,13 @@ class BinarySystem(System):
     def build_faces_orientation(self, component=None, components_distance=None):
         return build.build_faces_orientation(self, component, components_distance)
 
-    def build_temperature_distribution(self, component=None, components_distance=None):
-        return build.build_temperature_distribution(self, component, components_distance)
+    def build_temperature_distribution(self, component=None, components_distance=None, do_pulsations=False,
+                                       phase=None):
+        return build.build_temperature_distribution(self, component, components_distance, do_pulsations=do_pulsations,
+                                                    phase=phase)
 
-    def build_surface_map(self, colormap=None, component=None, components_distance=None, return_map=False):
-        return build.build_surface_map(self, colormap, component, components_distance, return_map)
+    def build_surface_map(self, colormap=None, component=None, components_distance=None, return_map=False, phase=None):
+        return build.build_surface_map(self, colormap, component, components_distance, return_map, phase=phase)
 
     def build_mesh(self, component=None, components_distance=None, **kwargs):
         return build.build_mesh(self, component, components_distance)

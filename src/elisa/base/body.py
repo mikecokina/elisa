@@ -46,7 +46,7 @@ class Body(metaclass=ABCMeta):
         self._polar_radius = np.nan
         self._areas = np.array([])
         self._discretization_factor = np.radians(3)
-        self._face_centers = np.array([])
+        self._face_centres = np.array([])
         self._spots = dict()
         self._point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])
@@ -380,7 +380,7 @@ class Body(metaclass=ABCMeta):
                             ...,
                            [face_centrexN, face_centrey2, face_centrez2]])
         """
-        return self._face_centers
+        return self._face_centres
 
     @face_centres.setter
     def face_centres(self, centres):
@@ -397,7 +397,7 @@ class Body(metaclass=ABCMeta):
         """
         if np.shape(centres)[0] != np.shape(self.faces)[0]:
             raise ValueError('Number of surface centres doesn`t equal to number of faces')
-        self._face_centers = centres
+        self._face_centres = centres
 
     @property
     def spots(self):
