@@ -387,89 +387,153 @@ class TestValidity(unittest.TestCase):
 
 
 class TestMethods(unittest.TestCase):
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
+                        'primary_minimum_time', 'phase_shift']
+    OPTIONAL_KWARGS = []
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
+
     def setUp(self):
-        # self.params_combination = [
-        #     {"primary_mass": 2.0, "secondary_mass": 1.0,
-        #      "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
-        #      "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-        #      "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-        #      "eccentricity": 0.0, "inclination": c.HALF_PI * u.deg, "primary_minimum_time": 0.0,
-        #      "phase_shift": 0.0,
-        #      "primary_t_eff": 5000, "secondary_t_eff": 5000,
-        #      "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        #      "primary_albedo": 0.6, "secondary_albedo": 0.6,
-        #      },
-        #     # compact spherical components on circular orbit
-        #
-        #     {"primary_mass": 2.0, "secondary_mass": 1.0,
-        #      "primary_surface_potential": 100.0, "secondary_surface_potential": 80.0,
-        #      "primary_synchronicity": 400, "secondary_synchronicity": 550,
-        #      "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-        #      "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-        #      "phase_shift": 0.0,
-        #      "primary_t_eff": 5000, "secondary_t_eff": 5000,
-        #      "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        #      "primary_albedo": 0.6, "secondary_albedo": 0.6
-        #      },  # rotationally squashed compact spherical components
-        #
-        #     {"primary_mass": 2.0, "secondary_mass": 1.0,
-        #      "primary_surface_potential": 3.5, "secondary_surface_potential": 3.0,
-        #      "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
-        #      "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
-        #      "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-        #      "phase_shift": 0.0,
-        #      "primary_t_eff": 5000, "secondary_t_eff": 5000,
-        #      "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        #      "primary_albedo": 0.6, "secondary_albedo": 0.6
-        #      },  # close tidally deformed components with asynchronous rotation
-        #     # on circular orbit
-        #
-        #     {"primary_mass": 2.0, "secondary_mass": 1.0,
-        #      "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
-        #      "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
-        #      "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-        #      "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-        #      "phase_shift": 0.0,
-        #      "primary_t_eff": 5000, "secondary_t_eff": 5000,
-        #      "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        #      "primary_albedo": 0.6, "secondary_albedo": 0.6
-        #      },  # close tidally deformed components with asynchronous rotation
-        #     # on eccentric orbit
-        #
-        #     {"primary_mass": 2.0, "secondary_mass": 1.0,
-        #      "primary_surface_potential": 2.875844632141054,
-        #      "secondary_surface_potential": 2.875844632141054,
-        #      "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-        #      "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-        #      "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-        #      "phase_shift": 0.0,
-        #      "primary_t_eff": 5000, "secondary_t_eff": 5000,
-        #      "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        #      "primary_albedo": 0.6, "secondary_albedo": 0.6
-        #      },  # synchronous contact system
-        #
-        #     {"primary_mass": 2.0, "secondary_mass": 1.0,
-        #      "primary_surface_potential": 3.159639848886489,
-        #      "secondary_surface_potential": 3.229240544834036,
-        #      "primary_synchronicity": 1.5, "secondary_synchronicity": 2.0,
-        #      "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-        #      "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-        #      "phase_shift": 0.0,
-        #      "primary_t_eff": 5000, "secondary_t_eff": 5000,
-        #      "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        #      "primary_albedo": 0.6, "secondary_albedo": 0.6
-        #      },  # asynchronous contact system (improbable but whatever...)
-        #
-        #     {"primary_mass": 2.0, "secondary_mass": 1.0,
-        #      "primary_surface_potential": 2.7,
-        #      "secondary_surface_potential": 2.7,
-        #      "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-        #      "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-        #      "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-        #      "phase_shift": 0.0,
-        #      "primary_t_eff": 5000, "secondary_t_eff": 5000,
-        #      "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        #      "primary_albedo": 0.6, "secondary_albedo": 0.6
-        #      }  # contact system
-        # ]
+        self.params_combination = [
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
+             "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": c.HALF_PI * u.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6,
+             },
+            # compact spherical components on circular orbit
+
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
+             "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             }  # close tidally deformed components with asynchronous rotation on eccentric orbit
+        ]
+
+        self._binaries = self._prepare_systems()
+
+    def _prepare_systems(self):
+        s = list()
+        for i, combo in enumerate(self.params_combination):
+            primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
+                           synchronicity=combo["primary_synchronicity"],
+                           t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"],
+                           albedo=combo['primary_albedo'], metallicity=0.0)
+
+            secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
+                             synchronicity=combo["secondary_synchronicity"],
+                             t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
+                             albedo=combo['secondary_albedo'], metallicity=0.0)
+
+            s.append(BinarySystem(primary=primary,
+                                  secondary=secondary,
+                                  argument_of_periastron=combo["argument_of_periastron"],
+                                  gamma=combo["gamma"],
+                                  period=combo["period"],
+                                  eccentricity=combo["eccentricity"],
+                                  inclination=combo["inclination"],
+                                  primary_minimum_time=combo["primary_minimum_time"],
+                                  phase_shift=combo["phase_shift"]))
+        return s
+
+    def test__kwargs_serializer(self):
+        bs = self._binaries[-1]
+        obtained = bs._kwargs_serializer()
+
+        expected = dict(
+            gamma=0.0,
+            inclination=c.HALF_PI,
+            period=1.0,
+            eccentricity=0.3,
+            argument_of_periastron=c.HALF_PI,
+            primary_minimum_time=0.0,
+            phase_shift=0.0
+        )
+
+        obtained_array, expectedd_array = list(), list()
+
+        for o_key, e_key in zip(obtained, expected):
+            obtained_array.append(round(obtained[o_key], 5))
+            expectedd_array.append(round(expected[e_key], 5))
+
+        assert_array_equal(expectedd_array, obtained_array)
+
+    def test_primary_potential_derivative_x(self):
+        d = 1.1,
+        x = 0.13
+        expected = np.round(np.array([-58.8584146731, -58.6146646731]), 4)
+        obtained = list()
+
+        for bs in self._binaries:
+            obtained.append(bs.primary_potential_derivative_x(x, *d))
+        obtained = np.round(obtained, 4)
+        assert_array_equal(expected, obtained)
+
+    def test_secondary_potential_derivative_x(self):
+        d = 1.1,
+        x = 0.13
+        expected = np.round(np.array([-59.268745, -59.908945]), 4)
+        obtained = list()
+
+        for bs in self._binaries:
+            obtained.append(bs.secondary_potential_derivative_x(x, *d))
+        obtained = np.round(obtained, 4)
+        assert_array_equal(expected, obtained)
+
+    def test_pre_calculate_for_potential_value_primary(self):
+        # single
+        distance, phi, theta = 1.1, c.HALF_PI, c.HALF_PI / 2.0
+        args = (distance, phi, theta)
+
+        obtained = list()
+        expected = [[1.21, 0., 0., 0.375],
+                    [1.21, 0., 0., 0.8437]]
+
+        for bs in self._binaries:
+            obtained.append(bs.pre_calculate_for_potential_value_primary(*args))
+
+        obtained = np.round(obtained, 4)
+        assert_array_equal(expected, obtained)
+
+    def test_potential_value_primary(self):
+        # tested by critical_potential test
         pass
+
+    def test_calculate_potential_gradient(self):
+        pass
+
+    def test_calculate_polar_gravity_acceleration(self):
+        pass
+
+    def test_angular_velocity(self):
+        pass
+
+    def test_calculate_orbital_motion(self):
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
