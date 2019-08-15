@@ -2216,6 +2216,17 @@ class BinarySystem(System):
     def angular_velocity(self, components_distance=None):
         """
         Compute angular velocity for given components distance.
+        This can be derived from facts that::
+
+
+            w = dp/dt
+
+            P * 1/2 * dp/dt = pi * a * b
+
+            e = sqrt(1 - (b/a)^2)
+
+        where a, b are respectively semi major and semi minor axis, P is period and e is eccentricity.
+
 
         :param components_distance: float
         :return: float
