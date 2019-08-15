@@ -3,6 +3,7 @@ import numpy as np
 from copy import copy
 
 from elisa import utils, logger, graphics, const
+from elisa.binary_system import geo
 
 
 class Animation(object):
@@ -44,10 +45,14 @@ class Animation(object):
         components_distance, azimuth = result[:, 0], result[:, 1]
         com = components_distance * self._self.mass_ratio / (1 + self._self.mass_ratio)
 
-        do_pulsations = self._self.primary.has_pulsations() or self._self.secondary.has_pulsations()
+        # in case of assynchronous component rotation and spots, the positions of spots are recalculated
+        spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phases'], component=None)
 
         self._logger.info('Calculating surface parameters (points, faces, colormap)')
         for idx, phase in enumerate(kwargs['phases']):
+            # assigning new longitudes for each spot
+            geo.assign_spot_longitudes(self._self, spots_longitudes, index=idx, component=None)
+
             points, faces = self._self.build_surface(component=None,
                                                      components_distance=components_distance[idx],
                                                      return_surface=True)
