@@ -547,7 +547,6 @@ def binary_surface_anim(**kwargs):
     :return:
     """
     def update_plot(frame_number, points, faces, clr, cmaps, plot):
-        # plot.pop(0).remove()
         for ii, p in enumerate(plot):
             p = ax.clear()
         for ii, p in enumerate(plot):
