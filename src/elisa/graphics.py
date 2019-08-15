@@ -1,9 +1,12 @@
 from elisa import utils
-import matplotlib.pyplot as plt
 from matplotlib import cm
 from astropy import units as u
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as axes3d
+
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import matplotlib
 
 
 def orbit(**kwargs):
@@ -395,9 +398,14 @@ def binary_surface(**kwargs):
     ax.set_zlim3d(-D, D)
 
     if kwargs['plot_axis']:
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
+        unit = str(kwargs['axis_unit'])
+        if kwargs['axis_unit'] == u.dimensionless_unscaled:
+            x_label, y_label, z_label = 'x', 'y', 'z'
+        else:
+            x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_zlabel(z_label)
     else:
         ax.set_axis_off()
 
@@ -523,3 +531,84 @@ def binary_wireframe(**kwargs):
         ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
+
+
+def binary_surface_anim(**kwargs):
+    """
+    function creates animation of the orbital motion
+    :param kwargs: dict
+        'start_phase' - float,
+        'stop_phase' - float,
+        'phase_step' - sloat,
+        'units' - units for gravity acceleration colormap,
+        'plot_axis' - bool - if False, axis will not be displayed,
+        'colormap' - `temperature`, `gravity_acceleration` or None,
+        'savepath' - string or None, animation will be stored to `savepath`
+    :return:
+    """
+    def update_plot(frame_number, points, faces, clr, cmaps, plot):
+        # plot.pop(0).remove()
+        for ii, p in enumerate(plot):
+            p = ax.clear()
+        for ii, p in enumerate(plot):
+            ax.set_xlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+            ax.set_ylim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+            ax.set_zlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
+
+            p = ax.plot_trisurf(points[ii][frame_number][:, 0],
+                                points[ii][frame_number][:, 1],
+                                points[ii][frame_number][:, 2],
+                                triangles=faces[ii][frame_number],
+                                antialiased=True, shade=False, color=clr[ii])
+            if kwargs.get('colormap', False):
+                p.set_cmap(cmap=cm.jet_r)
+                p.set_array(cmaps[ii][frame_number])
+
+    fig = plt.figure(figsize=(7, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_aspect('equal')
+
+    ax.set_xlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+    ax.set_ylim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+    ax.set_zlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+
+    clr = ['g', 'r']
+
+    if kwargs['morphology'] == 'over-contact':
+        points = [[np.concatenate((kwargs['points_primary'][ii], kwargs['points_secondary'][ii]), axis=0)
+                  for ii in range(kwargs['Nframes'])]]
+        faces = [[np.concatenate((kwargs['faces_primary'][ii],
+                                      kwargs['faces_secondary'][ii] + np.shape(kwargs['points_primary'][ii])[0]),
+                                      axis=0)
+                     for ii in range(kwargs['Nframes'])]]
+
+        plot = [ax.plot_trisurf(points[0][0][:, 0], points[0][0][:, 1], points[0][0][:, 2],
+                                triangles=faces[0][0], antialiased=True,
+                                shade=False, color=clr[0])]
+        if kwargs.get('colormap', False):
+            plot[0].set_cmap(cmap=cm.jet_r)
+            cmaps = [[np.concatenate((kwargs['primary_cmap'][ii], kwargs['secondary_cmap'][ii]), axis=0)
+                    for ii in range(kwargs['Nframes'])]]
+            plot[0].set_array(cmaps[0][0])
+    else:
+        points = [kwargs['points_primary'], kwargs['points_secondary']]
+        faces = [kwargs['faces_primary'], kwargs['faces_secondary']]
+        plot = [ax.plot_trisurf(kwargs['points_primary'][0][:, 0], kwargs['points_primary'][0][:, 1],
+                                kwargs['points_primary'][0][:, 2], triangles=kwargs['faces_primary'][0],
+                                antialiased=True, shade=False, color=clr[0]),
+                ax.plot_trisurf(kwargs['points_secondary'][0][:, 0], kwargs['points_secondary'][0][:, 1],
+                                kwargs['points_secondary'][0][:, 2], triangles=kwargs['faces_secondary'][0],
+                                antialiased=True, shade=False, color=clr[1])]
+        if kwargs.get('colormap', False):
+            plot[0].set_cmap(cmap=cm.jet_r)
+            plot[1].set_cmap(cmap=cm.jet_r)
+            cmaps = [kwargs['primary_cmap'], kwargs['secondary_cmap']]
+            plot[0].set_array(cmaps[0][0])
+            plot[1].set_array(cmaps[1][0])
+
+    args = (points, faces, clr, cmaps, plot)
+    ani = animation.FuncAnimation(fig, update_plot, kwargs['Nframes'], fargs=args, interval=20)
+    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='imagemagick', fps=20)
