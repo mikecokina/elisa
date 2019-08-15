@@ -586,7 +586,7 @@ class Body(metaclass=ABCMeta):
                                                                         centres=self.spots[spot_index].face_centres,
                                                                         com=com)
 
-    def set_all_surface_centres(self, com_x=None):
+    def set_all_surface_centres(self):
         """
         Calculates all surface centres for given body(including spots) and assign to object as `face_centers` property
 
@@ -598,11 +598,6 @@ class Body(metaclass=ABCMeta):
                 spot.face_centres = \
                     self.calculate_surface_centres(points=spot.points,
                                                    faces=spot.faces)
-        # this is here to calculate surface centres in ref frame of the given component
-        if com_x is not None:
-            self.face_centres[:, 0] -= com_x
-            for spot_index, spot in self.spots.items():
-                spot.face_centres[:, 0] -= com_x
 
     def calculate_surface_centres(self, points=None, faces=None):
         """
