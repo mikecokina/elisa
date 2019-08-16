@@ -739,28 +739,64 @@ class TestIntegrationNoSpots(unittest.TestCase):
 
         plt.show()
 
-    # def _test_build_faces(self, _key, _d, plot=False):
-    #     s = self._prepare_system(self.params[_key])
-    #     s.primary.discretization_factor = _d
-    #     s.secondary.discretization_factor = _d
-    #     s.build_mesh(components_distance=1.0)
-    #     s.build_faces(components_distance=1.0)
-    #
-    #     if True:
-    #         self._save_pickle(s.primary.points, f"build_faces_{_key}_primary.points")
-    #         self._save_pickle(s.secondary.points, f"build_faces_{_key}_secondary.points")
-    #
-    #     expected_primary_p = np.round(self._load_pickle(f"build_faces_{_key}_primary.points"), 4)
-    #     expected_secondary_p = np.round(self._load_pickle(f"build_faces_{_key}_secondary.points"), 4)
-    #
-    #     obtained_primary = np.round(s.primary.points, 4)
-    #     obtained_secondary = np.round(s.secondary.points, 4)
-    #
-    #     if plot:
-    #         self._plot_faces(s.primary.points, s.primary.faces, label="expected.primary")
-    #
-    # def test_build_faces_detached(self):
-    #     self._test_build_faces("detached", 10, plot=True)
+    def _test_build_faces(self, _key, _d, plot=False):
+        s = self._prepare_system(self.params[_key])
+        s.primary.discretization_factor = _d
+        s.secondary.discretization_factor = _d
+        s.build_mesh(components_distance=1.0)
+        s.build_faces(components_distance=1.0)
+
+        save = False
+        if save:
+            self._save_pickle(s.primary.points, f"build_faces_{_key}_primary.points")
+            self._save_pickle(s.secondary.points, f"build_faces_{_key}_secondary.points")
+
+            self._save_pickle(s.primary.faces, f"build_faces_{_key}_primary.faces")
+            self._save_pickle(s.secondary.faces, f"build_faces_{_key}_secondary.faces")
+
+        # points
+        expected_primary_p = np.round(self._load_pickle(f"build_faces_{_key}_primary.points"), 4)
+        expected_secondary_p = np.round(self._load_pickle(f"build_faces_{_key}_secondary.points"), 4)
+
+        obtained_primary_p = np.round(s.primary.points, 4)
+        obtained_secondary_p = np.round(s.secondary.points, 4)
+
+        # faces
+        expected_primary_f = np.round(self._load_pickle(f"build_faces_{_key}_primary.faces"), 4)
+        expected_secondary_f = np.round(self._load_pickle(f"build_faces_{_key}_secondary.faces"), 4)
+
+        obtained_primary_f = np.round(s.primary.faces, 4)
+        obtained_secondary_f = np.round(s.secondary.faces, 4)
+
+        assert_array_equal(expected_primary_f, obtained_primary_f)
+        assert_array_equal(expected_secondary_f, obtained_secondary_f)
+
+        if plot:
+            if _key in ["overcontact"]:
+                expected_p = np.concatenate((expected_primary_p, expected_secondary_p))
+                expected_f = np.concatenate((expected_primary_f, expected_secondary_f + expected_primary_f.max() + 1))
+
+                obtained_p = np.concatenate((obtained_primary_p, obtained_secondary_p))
+                obtained_f = np.concatenate((obtained_secondary_f, obtained_secondary_f + obtained_primary_f.max() + 1))
+
+                self._plot_faces(obtained_p, obtained_f, label="obtained.overcontact")
+                self._plot_faces(expected_p, expected_f, label="expected.overcontact")
+
+            else:
+                self._plot_faces(obtained_primary_p, obtained_primary_f, label="obtained.primary")
+                self._plot_faces(obtained_secondary_p, obtained_secondary_f, label="obtained.primary")
+
+                self._plot_faces(expected_primary_p, expected_primary_f, label="expected.primary")
+                self._plot_faces(expected_secondary_p, expected_secondary_f, label="expected.primary")
+
+    def test_build_faces_detached(self):
+        self._test_build_faces("detached", 10, plot=False)
+
+    def test_build_faces_semi_detached(self):
+        self._test_build_faces("semi-detached", 10, plot=False)
+
+    def test_build_faces_overcontact(self):
+        self._test_build_faces("overcontact", 10, plot=False)
 
     @staticmethod
     def _plot_faces(points, faces, label):
