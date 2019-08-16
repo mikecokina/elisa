@@ -661,11 +661,11 @@ class TestIntegrationNoSpots(unittest.TestCase):
 
     @classmethod
     def _save_pickle(cls, obj, filename):
-        pickle.dump(obj, open(pjoin(cls.__pickles__, f"{filename}.pickle"), "wb"))
+        pickle.dump(obj, open(pjoin(cls.__pickles__, f"{filename}.p"), "wb"))
 
     @classmethod
     def _load_pickle(cls, filename):
-        return pickle.load(open(pjoin(cls.__pickles__, f"{filename}.pickle"), "rb"))
+        return pickle.load(open(pjoin(cls.__pickles__, f"{filename}.p"), "rb"))
 
     def _test_build_mesh(self, _key, _d, plot=False, single=False):
         s = self._prepare_system(self.params[_key])
