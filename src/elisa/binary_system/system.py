@@ -46,7 +46,7 @@ from elisa.base.system import System
 class BinarySystem(System):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
                         'primary_minimum_time', 'phase_shift']
-    OPTIONAL_KWARGS = []
+    OPTIONAL_KWARGS = ['phase_shift']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, primary: Star, secondary: Star, name=None, suppress_logger=False, **kwargs):
@@ -84,7 +84,7 @@ class BinarySystem(System):
         self._argument_of_periastron = np.nan
         self._orbit = None
         self._primary_minimum_time = np.nan
-        self._phase_shift = np.nan
+        self._phase_shift = 0.0
         self._semi_major_axis = np.nan
         self._periastron_phase = np.nan
         self._morphology = ""
@@ -148,7 +148,7 @@ class BinarySystem(System):
         :return:
         """
         self._logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
-        orbit_kwargs = {key: getattr(self, key) for key in Orbit.MANDATORY_KWARGS}
+        orbit_kwargs = {key: getattr(self, key) for key in Orbit.ALL_KWARGS}
         self._orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
 
     @property

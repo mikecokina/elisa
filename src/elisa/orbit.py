@@ -7,7 +7,7 @@ from elisa import logger, utils, const, units
 class Orbit(object):
 
     MANDATORY_KWARGS = ['period', 'inclination', 'eccentricity', 'argument_of_periastron']
-    OPTIONAL_KWARGS = []
+    OPTIONAL_KWARGS = ['phase_shift']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, suppress_logger=False, **kwargs):
@@ -22,8 +22,9 @@ class Orbit(object):
         self._eccentricity: np.float64 = np.nan
         self._argument_of_periastron: np.float64 = np.nan
         self._periastron_distance: np.float64 = np.nan
-        self._perastron_phase: np.float64 = np.nan
+        self._periastron_phase: np.float64 = np.nan
         self._semimajor_axis: np.float64 = np.nan
+        self._phase_shift: np.float64 = 0.0
 
         # values of properties
         for kwarg in kwargs:
@@ -32,7 +33,7 @@ class Orbit(object):
             setattr(self, kwarg, kwargs[kwarg])
 
         self._periastron_distance = self.compute_periastron_distance()
-        self._perastron_phase = - self.get_conjuction()["primary_eclipse"]["true_phase"] % 1
+        self._periastron_phase = - self.get_conjuction()["primary_eclipse"]["true_phase"] % 1
 
     @property
     def semimajor_axis(self):
@@ -60,7 +61,7 @@ class Orbit(object):
 
         :return: float
         """
-        return self._perastron_phase
+        return self._periastron_phase
 
     @property
     def period(self):
@@ -136,6 +137,25 @@ class Orbit(object):
         self._eccentricity = eccentricity
 
     @property
+    def phase_shift(self):
+        """
+        Returns phase shift of binary system orbit.
+
+        :return: float
+        """
+        return self._phase_shift
+
+    @phase_shift.setter
+    def phase_shift(self, phase_shift):
+        """
+        Setter for phase shift of binary system orbit.
+
+        :param phase_shift: float
+        :return:
+        """
+        self._phase_shift = phase_shift
+
+    @property
     def argument_of_periastron(self):
         """
         Returns argument of periastron of binary system orbit.
@@ -172,8 +192,8 @@ class Orbit(object):
         """
         return phase + phase_shift
 
-    @classmethod
-    def phase(cls, true_phase, phase_shift):
+    @staticmethod
+    def phase(true_phase, phase_shift):
         """
         reverts the phase shift introduced in function true phase
 
@@ -324,6 +344,7 @@ class Orbit(object):
             phase = np.array([np.float(phase)])
         # photometric phase to phase measured from periastron
         true_phase = self.true_phase(phase=phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
+        true_phase = self.phase(true_phase=true_phase, phase_shift=self.phase_shift)
 
         mean_anomaly = self.phase_to_mean_anomaly(phase=true_phase)
         eccentric_anomaly = np.array([self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
@@ -357,7 +378,7 @@ class Orbit(object):
     def get_conjuction(self):
         """
         Compute and return photometric phase of conjunction (eclipses).
-        We assume that primary component is situated in center of coo system and observation unit vector is [-1, 0, 0]
+        We assume that primary component is placed in center of coo system and observation unit vector is [-1, 0, 0]
 
         return dictionary is in shape::
 
