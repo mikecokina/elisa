@@ -1,20 +1,22 @@
-# import random
-# import sys
+import os
+import pickle
 import unittest
 from copy import copy
+from os.path import dirname
+from os.path import join as pjoin
 
+import matplotlib.pyplot as plt
 import numpy as np
 from astropy import units as u
-# from os.path import dirname
-# from os.path import join as pjoin
-#
-# import numpy as np
-# import pandas as pd
+from mpl_toolkits.mplot3d import Axes3D
 from numpy.testing import assert_array_equal
 
 from elisa import const as c, const
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
+from elisa.utils import is_empty
+
+ax3 = Axes3D
 
 
 class TestBinarySystemSetters(unittest.TestCase):
@@ -566,14 +568,219 @@ class TestMethods(unittest.TestCase):
 
         print(expected_g_cgs_primary, obtained_g_cgs_primary)
         print(expected_g_cgs_secondary, obtained_g_cgs_secondary)
-
         print(distance)
 
-    def test_angular_velocity(self):
-        pass
+        raise Exception("Unfinished test")
 
-    def test_calculate_orbital_motion(self):
-        pass
+    def test_angular_velocity(self):
+        expected = np.round([7.27220521664e-05, 4.64936429032e-05], 8)
+        obtained = list()
+        for bs in self._binaries:
+            avcs = bs.angular_velocity(components_distance=bs.orbit.orbital_motion([0.35])[0][0])
+            obtained.append(round(avcs, 8))
+        assert_array_equal(expected, obtained)
+
+
+class TestIntegrationNoSpots(unittest.TestCase):
+    __pickles__ = pjoin(dirname(os.path.abspath(__file__)), "data", "pickles")
+
+    def setUp(self):
+        self.params = {
+            "detached": {
+                "primary_mass": 2.0, "secondary_mass": 1.0,
+                "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
+                "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+                "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+                "eccentricity": 0.0, "inclination": c.HALF_PI * u.deg, "primary_minimum_time": 0.0,
+                "phase_shift": 0.0,
+                "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+                "primary_albedo": 0.6, "secondary_albedo": 0.6,
+            },  # compact spherical components on circular orbit
+
+            "detached.ecc": {
+                "primary_mass": 2.0, "secondary_mass": 1.0,
+                "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
+                "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+                "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+                "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                "phase_shift": 0.0,
+                "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+                "primary_albedo": 0.6, "secondary_albedo": 0.6
+            },  # close tidally deformed components with asynchronous rotation on eccentric orbit
+
+            "overcontact": {
+                "primary_mass": 2.0, "secondary_mass": 1.0,
+                "primary_surface_potential": 2.7,
+                "secondary_surface_potential": 2.7,
+                "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+                "argument_of_periastron": 90 * u.deg, "gamma": 0.0, "period": 1.0,
+                "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                "phase_shift": 0.0,
+                "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+                "primary_albedo": 0.6, "secondary_albedo": 0.6
+            },  # over-contact system
+
+            "semi-detached": {
+                "primary_mass": 2.0, "secondary_mass": 1.0,
+                "primary_surface_potential": 2.875844632141054,
+                "secondary_surface_potential": 2.875844632141054,
+                "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+                "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+                "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+                "phase_shift": 0.0,
+                "primary_t_eff": 5000, "secondary_t_eff": 5000,
+                "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+                "primary_albedo": 0.6, "secondary_albedo": 0.6
+            }
+        }
+
+    @staticmethod
+    def _prepare_system(params):
+        primary = Star(mass=params["primary_mass"], surface_potential=params["primary_surface_potential"],
+                       synchronicity=params["primary_synchronicity"],
+                       t_eff=params["primary_t_eff"], gravity_darkening=params["primary_gravity_darkening"],
+                       albedo=params['primary_albedo'], metallicity=0.0)
+
+        secondary = Star(mass=params["secondary_mass"], surface_potential=params["secondary_surface_potential"],
+                         synchronicity=params["secondary_synchronicity"],
+                         t_eff=params["secondary_t_eff"], gravity_darkening=params["secondary_gravity_darkening"],
+                         albedo=params['secondary_albedo'], metallicity=0.0)
+
+        return BinarySystem(primary=primary,
+                            secondary=secondary,
+                            argument_of_periastron=params["argument_of_periastron"],
+                            gamma=params["gamma"],
+                            period=params["period"],
+                            eccentricity=params["eccentricity"],
+                            inclination=params["inclination"],
+                            primary_minimum_time=params["primary_minimum_time"],
+                            phase_shift=params["phase_shift"])
+
+    @classmethod
+    def _save_pickle(cls, obj, filename):
+        pickle.dump(obj, open(pjoin(cls.__pickles__, f"{filename}.pickle"), "wb"))
+
+    @classmethod
+    def _load_pickle(cls, filename):
+        return pickle.load(open(pjoin(cls.__pickles__, f"{filename}.pickle"), "rb"))
+
+    def _test_build_mesh(self, _key, _d, plot=False, single=False):
+        s = self._prepare_system(self.params[_key])
+        s.primary.discretization_factor = _d
+        s.secondary.discretization_factor = _d
+        s.build_mesh(components_distance=1.0)
+
+        # if points distribution on star will change due to refactor of any related method,
+        # you have to generate new pickles (change to True)
+        save = False
+        if save:
+            self._save_pickle(s.primary.points, f"build_mesh_{_key}_primary.points")
+            self._save_pickle(s.secondary.points, f"build_mesh_{_key}_secondary.points")
+
+        expected_primary = np.round(self._load_pickle(f"build_mesh_{_key}_primary.points"), 4)
+        expected_secondary = np.round(self._load_pickle(f"build_mesh_{_key}_secondary.points"), 4)
+
+        obtained_primary = np.round(s.primary.points, 4)
+        obtained_secondary = np.round(s.secondary.points, 4)
+
+        if plot:
+            if not single:
+                self._plot_points(points_1=expected_primary, points_2=expected_secondary, label="expected")
+                self._plot_points(points_1=obtained_primary, points_2=obtained_secondary, label="obtained")
+            else:
+                self._plot_points(points_1=expected_primary, points_2=[[]], label="expected.primary")
+                self._plot_points(points_1=obtained_primary, points_2=[[]], label="obtained.primary")
+                self._plot_points(points_1=expected_secondary, points_2=[[]], label="expected.secondary")
+                self._plot_points(points_1=obtained_secondary, points_2=[[]], label="obtained.secondary")
+
+        assert_array_equal(expected_primary, obtained_primary)
+        assert_array_equal(expected_secondary, obtained_secondary)
+
+    def test_build_mesh_detached(self):
+        self._test_build_mesh(_key="detached", _d=10, plot=False, single=True)
+
+    def test_build_mesh_overcontact(self):
+        self._test_build_mesh(_key="overcontact", _d=10, plot=False, single=True)
+
+    def test_build_mesh_semi_detached(self):
+        self._test_build_mesh(_key="semi-detached", _d=10, plot=False, single=True)
+
+    @staticmethod
+    def _plot_points(points_1, points_2, label):
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_aspect('equal')
+
+        var = np.concatenate([points_1, points_2]) if not is_empty(points_2) else points_1
+
+        xx = np.array(list(zip(*var))[0])
+        yy = np.array(list(zip(*var))[1])
+        zz = np.array(list(zip(*var))[2])
+
+        scat = ax.scatter(xx, yy, zz)
+        scat.set_label(label)
+        ax.legend()
+
+        max_range = np.array([xx.max() - xx.min(), yy.max() - yy.min(), zz.max() - zz.min()]).max() / 2.0
+
+        mid_x = (xx.max() + xx.min()) * 0.5
+        mid_y = (yy.max() + yy.min()) * 0.5
+        mid_z = (zz.max() + zz.min()) * 0.5
+        ax.set_xlim(mid_x - max_range, mid_x + max_range)
+        ax.set_ylim(mid_y - max_range, mid_y + max_range)
+        ax.set_zlim(mid_z - max_range, mid_z + max_range)
+
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
+
+        plt.show()
+
+    # def _test_build_faces(self, _key, _d, plot=False):
+    #     s = self._prepare_system(self.params[_key])
+    #     s.primary.discretization_factor = _d
+    #     s.secondary.discretization_factor = _d
+    #     s.build_mesh(components_distance=1.0)
+    #     s.build_faces(components_distance=1.0)
+    #
+    #     if True:
+    #         self._save_pickle(s.primary.points, f"build_faces_{_key}_primary.points")
+    #         self._save_pickle(s.secondary.points, f"build_faces_{_key}_secondary.points")
+    #
+    #     expected_primary_p = np.round(self._load_pickle(f"build_faces_{_key}_primary.points"), 4)
+    #     expected_secondary_p = np.round(self._load_pickle(f"build_faces_{_key}_secondary.points"), 4)
+    #
+    #     obtained_primary = np.round(s.primary.points, 4)
+    #     obtained_secondary = np.round(s.secondary.points, 4)
+    #
+    #     if plot:
+    #         self._plot_faces(s.primary.points, s.primary.faces, label="expected.primary")
+    #
+    # def test_build_faces_detached(self):
+    #     self._test_build_faces("detached", 10, plot=True)
+
+    @staticmethod
+    def _plot_faces(points, faces, label):
+        fig = plt.figure(figsize=(7, 7))
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_aspect('equal')
+        ax.set_label(label)
+        ax.legend()
+
+        clr = 'b'
+        pts = points
+        fcs = faces
+
+        plot = ax.plot_trisurf(
+            pts[:, 0], pts[:, 1],
+            pts[:, 2], triangles=fcs,
+            antialiased=True, shade=False, color=clr)
+        plot.set_edgecolor('black')
+
+        plt.show()
 
 
 def polar_gravity_acceleration(bs, component=None, components_distance=None):
