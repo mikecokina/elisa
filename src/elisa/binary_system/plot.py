@@ -127,7 +127,7 @@ class Plot(object):
 
     def surface(self, **kwargs):
         all_kwargs = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis', 'face_mask_primary',
-                      'face_mask_secondary', 'inclination', 'azimuth', 'units']
+                      'face_mask_secondary', 'inclination', 'azimuth', 'units', 'axis_unit']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.surface)
 
         kwargs['phase'] = kwargs.get('phase', 0)
@@ -140,6 +140,7 @@ class Plot(object):
         kwargs['face_mask_secondary'] = kwargs.get('face_mask_secondary', None)
         kwargs['inclination'] = kwargs.get('inclination', np.degrees(self._self.inclination))
         kwargs['units'] = kwargs.get('units', 'logg_cgs')
+        kwargs['axis_unit'] = kwargs.get('axis_unit', u.dimensionless_unscaled)
 
         components_distance, azim = self._self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
         kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
@@ -230,5 +231,12 @@ class Plot(object):
                 if kwargs['face_mask_secondary'] is not None:
                     kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
                     kwargs['secondary_cmap'] = kwargs['secondary_cmap'][kwargs['face_mask_secondary']]
+
+        sma = (self._self.semi_major_axis*units.DISTANCE_UNIT).to(kwargs['axis_unit']).value
+        kwargs['points_primary'] *= sma
+        kwargs['points_secondary'] *= sma
+        if kwargs['normals']:
+            kwargs['primary_centres'] *= sma
+            kwargs['secondary_centres'] *= sma
 
         graphics.binary_surface(**kwargs)

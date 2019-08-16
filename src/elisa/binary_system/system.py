@@ -37,6 +37,7 @@ from elisa import logger, utils, const, ld, units
 from elisa.binary_system import mp, geo
 from elisa.binary_system import static, build, lc
 from elisa.binary_system.plot import Plot
+from elisa.binary_system.animation import Animation
 from elisa.orbit import Orbit
 from elisa.base.star import Star
 from elisa.base.system import System
@@ -69,6 +70,7 @@ class BinarySystem(System):
         self._logger.debug(f"setting property components of class instance {self.__class__.__name__}")
 
         self.plot = Plot(self)
+        self.animation = Animation(self)
 
         # assign components to binary system
         self._primary = primary
@@ -399,7 +401,7 @@ class BinarySystem(System):
         :param value: Any
         :return:
         """
-        raise Exception("Parametre semi_major_axis is read only.")
+        raise Exception("Parameter semi_major_axis is read only.")
 
     def calculate_semi_major_axis(self):
         """
@@ -2354,7 +2356,7 @@ class BinarySystem(System):
     def build_surface_areas(self, component=None):
         return build.compute_all_surface_areas(self, component=component)
 
-    def build(self, component=None, components_distance=None):
+    def build(self, component=None, components_distance=None, do_pulsations=False, phase=None):
         """
         Main method to build binary star system from parameters given on init of BinaryStar.
 
@@ -2367,6 +2369,8 @@ class BinarySystem(System):
             - build_surface_gravity
             - build_temperature_distribution
 
+        :param phase:
+        :param do_pulsations: bool - switch to incorporate pulsations
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
         :return:
@@ -2376,7 +2380,7 @@ class BinarySystem(System):
         self.build_surface_areas(component)
         self.build_faces_orientation(component, components_distance)
         self.build_surface_gravity(component, components_distance)
-        self.build_temperature_distribution(component, components_distance)
+        self.build_temperature_distribution(component, components_distance, do_pulsations=do_pulsations, phase=phase)
 
     def prepare_system_positions_container(self, orbital_motion, ecl_boundaries):
         return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion, ecl_boundaries)
