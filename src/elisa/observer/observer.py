@@ -224,7 +224,7 @@ class Observer(object):
         if normalize_lc:
             pass
         self._logger.info("observation finished")
-        return curves
+        return phases, curves
 
     def phase_interval_reduce(self, phases):
         """

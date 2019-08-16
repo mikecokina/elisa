@@ -251,10 +251,23 @@ def single_star_surface(**kwargs):
 
 def binary_surface(**kwargs):
     """
-    todo: add all possibnble kwargs to docstring
-    :param kwargs:
-    :return:
-    """
+        function creates plot of binary system components
+        :param kwargs:
+            phase: float - phase at which plot the system, important for eccentric orbits
+            components_to_plot: str - `primary`, `secondary` or `both`(default),
+            normals: bool - plot normals of the surface phases as arrows
+            edges: bool - highlight edges of surface faces
+            colormap: str - 'gravity_acceleration`, `temperature` or None(default)
+            plot_axis: bool - if False, axis will be hidden
+            face_mask_primary - bool array: mask to select which faces to display
+            face_mask_secondary - bool array: mask to select which faces to display
+            inclination: float in degree - elevation of camera
+            azimuth: camera azimuth
+            units: str - units of gravity acceleration colormap  `log_cgs`, `SI`, `cgs`, `log_SI`
+            axis_units: astropy.unit or dimensionless - axis units
+            colorbar_orientation: str - `horizontal` or `vertical`(default)
+        :return:
+        """
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
@@ -330,11 +343,11 @@ def binary_surface(**kwargs):
                 plot.set_cmap(cmap=cm.jet_r)
             if kwargs['components_to_plot'] == 'primary':
                 plot.set_array(kwargs['primary_cmap'])
-                colorbar = fig.colorbar(plot, shrink=0.7)
+                colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
                 set_T_colorbar_label(colorbar, extra='primary')
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'])
-                colorbar = fig.colorbar(plot, shrink=0.7)
+                colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
                 set_T_colorbar_label(colorbar, extra='secondary')
             elif kwargs['components_to_plot'] == 'both':
                 if kwargs['morphology'] == 'over-contact':
@@ -345,9 +358,9 @@ def binary_surface(**kwargs):
                 else:
                     plot1.set_array(kwargs['primary_cmap'])
                     plot2.set_array(kwargs['secondary_cmap'])
-                    colorbar1 = fig.colorbar(plot1, shrink=0.7)
+                    colorbar1 = fig.colorbar(plot1, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
                     set_T_colorbar_label(colorbar1, extra='primary')
-                    colorbar2 = fig.colorbar(plot2, shrink=0.7)
+                    colorbar2 = fig.colorbar(plot2, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
                     set_T_colorbar_label(colorbar2, extra='secondary')
         elif kwargs['colormap'] == 'gravity_acceleration':
             try:

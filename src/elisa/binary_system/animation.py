@@ -12,6 +12,18 @@ class Animation(object):
         self._self = instance
 
     def orbital_motion(self, **kwargs):
+        """
+        function creates animation of the orbital motion
+        :param kwargs: dict
+            'start_phase' - float,
+            'stop_phase' - float,
+            'phase_step' - sloat,
+            'units' - units for gravity acceleration colormap,
+            'plot_axis' - bool - if False, axis will not be displayed,
+            'colormap' - `temperature`, `gravity_acceleration` or None,
+            'savepath' - string or None, animation will be stored to `savepath`
+        :return:
+        """
         all_kwargs = ['start_phase', 'stop_phase', 'phase_step', 'inclination', 'units', 'plot_axis', 'colormap',
                       'savepath']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.orbital_motion)
