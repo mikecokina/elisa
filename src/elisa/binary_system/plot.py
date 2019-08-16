@@ -126,8 +126,26 @@ class Plot(object):
         graphics.binary_wireframe(**kwargs)
 
     def surface(self, **kwargs):
+        """
+        function creates plot of binary system components
+        :param kwargs:
+            phase: float - phase at which plot the system, important for eccentric orbits
+            components_to_plot: str - `primary`, `secondary` or `both`(default),
+            normals: bool - plot normals of the surface phases as arrows
+            edges: bool - highlight edges of surface faces
+            colormap: str - 'gravity_acceleration`, `temperature` or None(default)
+            plot_axis: bool - if False, axis will be hidden
+            face_mask_primary - bool array: mask to select which faces to display
+            face_mask_secondary - bool array: mask to select which faces to display
+            inclination: float in degree - elevation of camera
+            azimuth: camera azimuth
+            units: str - units of gravity acceleration colormap  `log_cgs`, `SI`, `cgs`, `log_SI`
+            axis_units: astropy.unit or dimensionless - axis units
+            colorbar_orientation: str - `horizontal` or `vertical`(default)
+        :return:
+        """
         all_kwargs = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis', 'face_mask_primary',
-                      'face_mask_secondary', 'inclination', 'azimuth', 'units', 'axis_unit']
+                      'face_mask_secondary', 'inclination', 'azimuth', 'units', 'axis_unit', 'colorbar_orientation']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.surface)
 
         kwargs['phase'] = kwargs.get('phase', 0)
@@ -141,6 +159,7 @@ class Plot(object):
         kwargs['inclination'] = kwargs.get('inclination', np.degrees(self._self.inclination))
         kwargs['units'] = kwargs.get('units', 'logg_cgs')
         kwargs['axis_unit'] = kwargs.get('axis_unit', u.dimensionless_unscaled)
+        kwargs['colorbar_orientation'] = kwargs.get('colorbar_orientation', 'vertical')
 
         components_distance, azim = self._self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
         kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)

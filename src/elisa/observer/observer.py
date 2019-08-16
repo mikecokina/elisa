@@ -161,7 +161,7 @@ class Observer(object):
         df[config.PASSBAND_DATAFRAME_WAVE] = df[config.PASSBAND_DATAFRAME_WAVE] * 10.0
         return df
 
-    def observe(self, from_phase=None, to_phase=None, phase_step=None, phases=None):
+    def observe(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
         """
         Method for observation simulation. Based on input parmeters and supplied Ob server system on initialization
         will compute lightcurve.
@@ -219,8 +219,11 @@ class Observer(object):
         # remap unique phases back to original phase interval
         for items in curves:
             curves[items] = np.array(curves[items])[base_phases_to_origin]
+
+        if normalize_lc:
+            pass
         self._logger.info("observation finished")
-        return curves
+        return phases, curves
 
     def phase_interval_reduce(self, phases):
         """

@@ -4,23 +4,33 @@ from elisa import utils, const, units
 
 from scipy.special import sph_harm
 from astropy import units as u
+from copy import copy
 
 """file containing functions dealing with pulsations"""
 
 
-def set_rals(self):
+def set_rals(self, com_x=None):
     """
     Function calculates and sets time independent, dimensionless part of the pulsation modes. They are calculated as
     renormalized associated Legendre polynomials (rALS). This function needs to be evaluated only once except for the
     case of assynchronously rotating component and missaligned mode (see `set_misaligned_rals()`).
 
+    :param com_x: float - centre of mass
     :param self: Star instance
     :return:
     """
+    centres_cartesian = copy(self.face_centres)
+    centres_spot_cartesian = {spot_idx: spot.face_centres for spot_idx, spot in self.spots.items()}
+
+    # this is here to calculate surface centres in ref frame of the given component
+    if com_x is not None:
+        centres_cartesian[:, 0] -= com_x
+        for spot_index, spot in self.spots.items():
+            centres_spot_cartesian[spot_index][:, 0] -= com_x
 
     # conversion to spherical system in which ALS works
-    centres = utils.cartesian_to_spherical(self.face_centres)
-    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot.face_centres) for spot_idx, spot in self.spots.items()}
+    centres = utils.cartesian_to_spherical(centres_cartesian)
+    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot) for spot_idx, spot in self.spots.items()}
 
     for mode_index, mode in self.pulsations.items():
         phi_spot, theta_spot = {}, {}
@@ -48,21 +58,30 @@ def set_rals(self):
             mode.rals = surface_rals, {}
 
 
-def set_misaligned_rals(star_instance, phase):
+def set_misaligned_rals(star_instance, phase, com_x=None):
     """
     Function calculates and sets time independent, dimensionless part of the pulsation modes. They are calculated as
     renormalized associated Legendre polynomials (rALS). This function deals with a case of assynchronously rotating
     component and missaligned mode. In such case, during all phases, the drift of the mode axis needs to be taken
     into account and rALS needs to be recalculated.
 
+    :param phase:
+    :param com_x: float - centre of mass
     :type star_instance: Star instance
     :return:
     """
+    centres_cartesian = copy(star_instance.face_centres)
+    centres_spot_cartesian = {spot_idx: spot.face_centres for spot_idx, spot in star_instance.spots.items()}
+
+    # this is here to calculate surface centres in ref frame of the given component
+    if com_x is not None:
+        centres_cartesian[:, 0] -= com_x
+        for spot_index, spot in star_instance.spots.items():
+            centres_spot_cartesian[spot_index][:, 0] -= com_x
+
     # conversion to spherical system in which ALS works
-    centres = utils.cartesian_to_spherical(star_instance.face_centres)
-    if star_instance.has_spots():
-        centres_spot = {spot_idx: utils.cartesian_to_spherical(spot.face_centres)
-                        for spot_idx, spot in star_instance.spots.items()}
+    centres = utils.cartesian_to_spherical(centres_cartesian)
+    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot) for spot_idx, spot in star_instance.spots.items()}
 
     for mode_index, mode in star_instance.pulsations.items():
         phi_spot, theta_spot = {}, {}
@@ -104,10 +123,11 @@ def recalculate_rals(container, phi_corr, centres, mode, mode_index):
     container.rals[mode_index] = mode.rals_constant * sph_harm(mode.m, mode.l, phi, theta)
 
 
-def calc_temp_pert_on_container(star_instance, container, phase, rot_period):
+def calc_temp_pert_on_container(star_instance, container, phase, rot_period, com_x=None):
     """
     calculate temperature perturbation on EasyContainer
 
+    :param com_x: float - centre of mass
     :param star_instance:
     :param container:
     :param phase:
@@ -115,6 +135,9 @@ def calc_temp_pert_on_container(star_instance, container, phase, rot_period):
     :return:
     """
     centres = utils.cartesian_to_spherical(container.face_centres)
+    # this is here to calculate surface centres in ref frame of the given component
+    if com_x is not None:
+        centres[:, 0] -= com_x
     phi_corr = phase_correction(star_instance, phase)
     temp_pert = np.zeros(np.shape(container.face_centres)[0])
     for mode_index, mode in star_instance.pulsations.items():

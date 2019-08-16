@@ -64,17 +64,17 @@ def build_faces_orientation(self, component=None, components_distance=None):
     :return:
     """
     component = static.component_to_list(component)
-    com_x = {'primary': 0, 'secondary': components_distance}
+    com_x = {'primary': 0.0, 'secondary': components_distance}
 
     for _component in component:
         component_instance = getattr(self, _component)
-        component_instance.set_all_surface_centres(com_x=com_x[_component])
+        component_instance.set_all_surface_centres()
         component_instance.set_all_normals(com=com_x[_component])
 
         # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
         # pulsation mode
         if component_instance.has_pulsations():
-            pulsations.set_rals(component_instance)
+            pulsations.set_rals(component_instance, com_x=com_x[_component])
 
 
 def build_temperature_distribution(self, component=None, components_distance=None, do_pulsations=False, phase=None):
@@ -112,7 +112,9 @@ def build_temperature_distribution(self, component=None, components_distance=Non
         if component_instance.has_pulsations() and do_pulsations:
             self._logger.debug(f'adding pulsations to surface temperature distribution '
                                f'of the component instance: {_component}  / name: {component_instance.name}')
-            pulsations.set_misaligned_rals(component_instance, phase)
+
+            com_x = 0 if _component == 'primary' else components_distance
+            pulsations.set_misaligned_rals(component_instance, phase, com_x=com_x)
             temp_pert, temp_pert_spot = pulsations.calc_temp_pert(component_instance, phase, self.period)
             component_instance.temperatures += temp_pert
             if component_instance.has_spots():
@@ -120,6 +122,8 @@ def build_temperature_distribution(self, component=None, components_distance=Non
                     spot.temperatures += temp_pert_spot[spot_idx]
 
     if 'primary' in component and 'secondary' in component:
+        self._logger.debug(f'Calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
+                           f'iterations.')
         self.reflection_effect(iterations=config.REFLECTION_EFFECT_ITERATIONS,
                                components_distance=components_distance)
 

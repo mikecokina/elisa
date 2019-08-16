@@ -667,6 +667,7 @@ def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     :param theta_rotation: float - rotation of z axis along new y axis by this value, in radians
     :return:
     """
+    # TODO: write unit test to test_utils
     # rotation around Z axis
     phi_rot = (phi - phi_rotation) % c.FULL_ARC
 
@@ -691,6 +692,7 @@ def spherical_harmonics_renormalization_constant(l, m):
     :param m: azimuthal order of the mode
     :return: float
     """
+    # TODO: write unit test to test_utils
     def alp(xx, *args):
         """
         Returns negative value from imaginary part of associated Legendre polynomial (ALP),

@@ -252,12 +252,14 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
             # calculating temperature perturbation due to pulsations
             if pulsations_test[component]:
+                com_x = None if component == 'primary' else 1.0
                 component_instance = getattr(self, component)
                 star_container_instance.temperatures += \
                     pulsations.calc_temp_pert_on_container(component_instance,
                                                            star_container_instance,
                                                            orbital_motion[idx].phase,
-                                                           self.period)
+                                                           self.period,
+                                                           com_x=com_x)
                 normal_radiance[component] = get_normal_radiance(container, component=component, **kwargs)
                 ld_cfs[component] = get_limbdarkening_cfs(container, component=component, **kwargs)
 
@@ -652,12 +654,14 @@ def integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
             star_containers = {component: getattr(container, component) for component in config.BINARY_COUNTERPARTS.keys()}
             for component, star_container_instance in star_containers.items():
                 if pulsations_test[component]:
+                    com_x = None if component == 'primary' else orbital_position.distance
                     component_instance = getattr(self, component)
                     star_container_instance.temperatures += \
                         pulsations.calc_temp_pert_on_container(component_instance,
                                                                star_container_instance,
                                                                orbital_motion[idx].phase,
-                                                               self.period)
+                                                               self.period,
+                                                               com_x=com_x)
         normal_radiance = get_normal_radiance(container, **kwargs)
         ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 

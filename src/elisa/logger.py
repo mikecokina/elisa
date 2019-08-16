@@ -23,3 +23,4 @@ class Logger(object):
 
     def warn(self, *args, **kwargs):
         pass
+
