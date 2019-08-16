@@ -784,10 +784,10 @@ class TestIntegrationNoSpots(unittest.TestCase):
 
             else:
                 self._plot_faces(obtained_primary_p, obtained_primary_f, label="obtained.primary")
-                self._plot_faces(obtained_secondary_p, obtained_secondary_f, label="obtained.primary")
+                self._plot_faces(obtained_secondary_p, obtained_secondary_f, label="obtained.secondary")
 
                 self._plot_faces(expected_primary_p, expected_primary_f, label="expected.primary")
-                self._plot_faces(expected_secondary_p, expected_secondary_f, label="expected.primary")
+                self._plot_faces(expected_secondary_p, expected_secondary_f, label="expected.secondary")
 
     def test_build_faces_detached(self):
         self._test_build_faces("detached", 10, plot=False)
