@@ -13,6 +13,7 @@ from elisa import const as c
 from typing import Sized
 from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
+from matplotlib.cbook import flatten
 
 # auxiliary variable
 CUMULATIVE_TIME = 0.0
@@ -635,7 +636,7 @@ def is_empty(value):
         return True
     if isinstance(value, Sized):
         # this cover also strings
-        return len(value) == 0
+        return len(value) == 0 or len(list(flatten(value))) == 0
     if isinstance(value, DataFrame):
         return value.empty
     if isinstance(value, type(pd.NaT)):

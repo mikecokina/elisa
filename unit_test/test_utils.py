@@ -405,19 +405,3 @@ class TestElisaEngineUtils(unittest.TestCase):
             else:
                 obtained = utils.find_surrounded(look_in, look_for)
                 self.assertEqual(obtained, expect)
-
-#
-# def check_face_duplicity(faces=None, points=None):
-#     """
-#     checks if `faces` contains the same faces
-#
-#     :param faces: np.array of simplices
-#     :return:
-#     """
-#     checklist = [set(xx) for xx in faces]
-#     for ii, face1 in enumerate(checklist):
-#         for face2 in checklist[ii + 1:]:
-#             if face1 == face2:
-#                 return False
-#
-#     return True
