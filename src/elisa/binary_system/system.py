@@ -47,7 +47,7 @@ from elisa.base.system import System
 class BinarySystem(System):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
                         'primary_minimum_time', 'phase_shift']
-    OPTIONAL_KWARGS = ['phase_shift']
+    OPTIONAL_KWARGS = ['phase_shift', 'additional_light']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, primary: Star, secondary: Star, name=None, suppress_logger=False, **kwargs):

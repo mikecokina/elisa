@@ -309,6 +309,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
     phases = kwargs.pop("phases")
+    phases_span_test = np.max(phases) - np.min(phases) >= 0.8
 
     position_method = kwargs.pop("position_method")
     orbital_motion, orbital_motion_array = position_method(input_argument=phases,
@@ -316,7 +317,15 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
     not_pulsations_test = not self.primary.has_pulsations() and not self.secondary.has_pulsations()
     # this condition checks if even to attempt to utilize apsidal line symmetry approximations
-    if config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None and not_pulsations_test:
+
+    # curve has to have enough point on orbit and have to span at least in 0.8 phase
+    approx_test_test = \
+        config.POINTS_ON_ECC_ORBIT > 0 and \
+        config.POINTS_ON_ECC_ORBIT is not None and \
+        phases_span_test and \
+        not_pulsations_test
+
+    if approx_test_test:
         # in case of clean surface or synchronous rotation (more-less), symmetry around semi-major axis can be utilized
         # mask isolating the symmetrical part of the orbit
         azimuths = orbital_motion_array[:, 2]

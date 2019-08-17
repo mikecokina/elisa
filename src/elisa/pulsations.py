@@ -145,7 +145,7 @@ def calc_temp_pert_on_container(star_instance, container, phase, rot_period, com
             recalculate_rals(container, phi_corr, centres, mode, mode_index)
 
         freq = (mode.frequency * units.FREQUENCY_UNIT).to(1/u.d).value
-        exponent = const.FULL_ARC * freq * rot_period * phase
+        exponent = const.FULL_ARC * freq * rot_period * phase - mode.start_phase
         exponential = np.exp(complex(0, -exponent))
         temp_pert_cmplx = mode.amplitude * container.rals[mode_index] * exponential
         temp_pert += temp_pert_cmplx.real
@@ -167,7 +167,7 @@ def calc_temp_pert(star_instance, phase, rot_period):
 
     for mode_index, mode in star_instance.pulsations.items():
         freq = (mode.frequency * units.FREQUENCY_UNIT).to(1 / u.d).value
-        exponent = const.FULL_ARC * freq * rot_period * phase
+        exponent = const.FULL_ARC * freq * rot_period * phase - mode.start_phase
         exponential = np.exp(complex(0, -exponent))
         temp_pert_cmplx = mode.amplitude * mode.rals[0] * exponential
         temp_pert += temp_pert_cmplx.real

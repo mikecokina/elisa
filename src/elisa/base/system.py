@@ -27,6 +27,7 @@ class System(metaclass=ABCMeta):
         self._gamma = np.nan
         self._period = np.nan
         self._inclination = np.nan
+        self._additional_light = 0.0
 
         if is_empty(name):
             self._name = str(System.ID)
@@ -34,8 +35,6 @@ class System(metaclass=ABCMeta):
             System.ID += 1
         else:
             self._name = str(name)
-
-        self._inlination = None
 
     @property
     def name(self):
@@ -143,6 +142,27 @@ class System(metaclass=ABCMeta):
 
         self._logger.debug(f"setting property inclination "
                            f"of class instance {self.__class__.__name__} to {self._inclination}")
+
+    @property
+    def additional_light(self):
+        """
+        Returns additional light - light that does not originate from any member of system.
+
+        :return: float (0,1)
+        """
+        return self._additional_light
+
+    @additional_light.setter
+    def additional_light(self, add_light):
+        """
+        setter for additional light - light that does not originate from any member of system.
+
+        :param add_light: float (0, 1)
+        :return:
+        """
+        if not 0.0 <= add_light <= 1.0:
+            raise ValueError('Invalid value of additional light. Valid values are between 0 and 1.')
+        self._additional_light = add_light
 
     @abstractmethod
     def compute_lightcurve(self, *args, **kwargs):
