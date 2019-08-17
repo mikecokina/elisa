@@ -32,3 +32,14 @@ def get_flaten_properties(component):
             centres = np.concatenate((centres, spot.face_centres), axis=0)
 
     return points, normals, faces, temperatures, log_g, rals, centres
+
+
+def potential_from_radius(self, component, radius, phi, theta, component_distance):
+    precalc_fn = self.pre_calculate_for_potential_value_primary if component == 'primary' else \
+        self.pre_calculate_for_potential_value_secondary
+    potential_fn = self.potential_value_primary if component == 'primary' else \
+        self.potential_value_secondary
+
+    precalc_args = (component_distance, phi, theta)
+    args = precalc_fn(*precalc_args)
+    return potential_fn(radius, *args)
