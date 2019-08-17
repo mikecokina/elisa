@@ -35,6 +35,17 @@ def get_flaten_properties(component):
 
 
 def potential_from_radius(self, component, radius, phi, theta, component_distance):
+    """
+    calculate potential given spherical coordinates radius, phi, theta
+
+    :param self: BinarySystem
+    :param component: 'primary` or `secondary`
+    :param radius: float
+    :param phi: float
+    :param theta: float
+    :param component_distance: float
+    :return: float
+    """
     precalc_fn = self.pre_calculate_for_potential_value_primary if component == 'primary' else \
         self.pre_calculate_for_potential_value_secondary
     potential_fn = self.potential_value_primary if component == 'primary' else \

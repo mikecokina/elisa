@@ -2370,6 +2370,15 @@ class BinarySystem(System):
         return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion, ecl_boundaries)
 
     def correct_potentials(self, phases, component=None, iterations=2):
+        """
+        function calculates potential for each phase in phases in such eay that conserves volume of the component.
+        Volume is approximated by two half elipsoids.
+
+        :param phases: array
+        :param component: `primary`, `secondary` or None (=both)
+        :param iterations:
+        :return: array
+        """
         data = self.orbit.orbital_motion(phases)
         distances = data[:, 0]
 
