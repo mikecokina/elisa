@@ -309,6 +309,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
     phases = kwargs.pop("phases")
+    phases_span_test = np.max(phases) - np.min(phases) >= 0.8
 
     position_method = kwargs.pop("position_method")
     orbital_motion, orbital_motion_array = position_method(input_argument=phases,
@@ -316,7 +317,15 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
     not_pulsations_test = not self.primary.has_pulsations() and not self.secondary.has_pulsations()
     # this condition checks if even to attempt to utilize apsidal line symmetry approximations
-    if config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None and not_pulsations_test:
+
+    # curve has to have enough point on orbit and have to span at least in 0.8 phase
+    approx_test_test = \
+        config.POINTS_ON_ECC_ORBIT > 0 and \
+        config.POINTS_ON_ECC_ORBIT is not None and \
+        phases_span_test and \
+        not_pulsations_test
+
+    if approx_test_test:
         # in case of clean surface or synchronous rotation (more-less), symmetry around semi-major axis can be utilized
         # mask isolating the symmetrical part of the orbit
         azimuths = orbital_motion_array[:, 2]
@@ -525,8 +534,15 @@ def integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart,
     """
     band_curves = {key: list() for key in kwargs["passband"].keys()}
     band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
+
+    # surface potentials with constant volume of components
+    potentials = self.correct_potentials(phases[unique_phase_indices], component=None, iterations=2)
+
     # for orbital_position in orbital_motion:
     for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
+        self.primary.surface_potential = potentials['primary'][counterpart_idx]
+        self.secondary.surface_potential = potentials['secondary'][counterpart_idx]
+
         orbital_position = orbital_motion[unique_phase_idx]
         self = update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test[counterpart_idx])
 
@@ -602,13 +618,22 @@ def integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, ind
     counterpart_phases_idx = np.arange(phases.shape[0])[~uniq_geom_test]
     orb_motion_counterpart = [orbital_motion[ii] for ii in counterpart_phases_idx]
 
+    phases_to_correct = phases[uniq_geom_test]
     # appending orbital motion arrays to include missing phases to complete LC
     if len(missing_phases_indices) > 0:
         for ii, idx_reversed in enumerate(index_of_closest_reversed):
             orb_motion_template.append(orb_motion_template[idx_reversed])
             orb_motion_counterpart.append(orb_motion_counterpart[missing_phases_indices[ii]])
 
+            phases_to_correct = np.append(phases_to_correct, phases_to_correct[idx_reversed])
+
+    # surface potentials with constant volume of components
+    potentials = self.correct_potentials(phases_to_correct, component=None, iterations=2)
+
     for counterpart_idx, orbital_position in enumerate(orb_motion_template):
+        self.primary.surface_potential = potentials['primary'][counterpart_idx]
+        self.secondary.surface_potential = potentials['secondary'][counterpart_idx]
+
         self = update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test[counterpart_idx])
 
         orbital_position_counterpart = orb_motion_counterpart[index_of_closest[counterpart_idx]]
@@ -644,8 +669,14 @@ def integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
     :param kwargs: kwargs taken from `compute_eccentric_lightcurve` function
     :return: dictionary of fluxes for each filter
     """
+    # surface potentials with constant volume of components
+    potentials = self.correct_potentials(phases, component=None, iterations=2)
+
     band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
     for idx, orbital_position in enumerate(orbital_motion):
+        self.primary.surface_potential = potentials['primary'][idx]
+        self.secondary.surface_potential = potentials['secondary'][idx]
+
         self.build(components_distance=orbital_position.distance)
         container = prepare_star_container(self, orbital_position, ecl_boundaries)
 
@@ -806,7 +837,14 @@ def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
 
     # calculating lc with spots gradually shifting their positions in each phase
     band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"].keys()}
+
+    # surface potentials with constant volume of components
+    potentials = self.correct_potentials(phases, component=None, iterations=2)
+
     for ii, orbital_position in enumerate(orbital_motion):
+        self.primary.surface_potential = potentials['primary'][ii]
+        self.secondary.surface_potential = potentials['secondary'][ii]
+
         # assigning new longitudes for each spot
         geo.assign_spot_longitudes(self, spots_longitudes, index=ii, component=None)
 

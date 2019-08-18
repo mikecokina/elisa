@@ -722,6 +722,11 @@ def spherical_harmonics_renormalization_constant(l, m):
     return 1.0 / result
 
 
+def calculate_equiv_radius(a, b, c):
+    """returns equivalent radius of ellipsoid"""
+    return np.power(a * b * c, 1.0/3.0)
+
+
 class IterableQueue(object):
     """ Transform standard python Queue instance to iterable one"""
 

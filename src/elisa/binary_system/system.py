@@ -36,6 +36,7 @@ from elisa import logger, utils, const, ld, units
 # from elisa.binary_system import static, build, mp, lc
 from elisa.binary_system import mp, geo
 from elisa.binary_system import static, build, lc
+from elisa.binary_system import utils as bsutils
 from elisa.binary_system.plot import Plot
 from elisa.binary_system.animation import Animation
 from elisa.orbit import Orbit
@@ -46,7 +47,7 @@ from elisa.base.system import System
 class BinarySystem(System):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
                         'primary_minimum_time', 'phase_shift']
-    OPTIONAL_KWARGS = ['phase_shift']
+    OPTIONAL_KWARGS = ['phase_shift', 'additional_light']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, suppress_logger=False, **kwargs):
@@ -2384,3 +2385,63 @@ class BinarySystem(System):
 
     def prepare_system_positions_container(self, orbital_motion, ecl_boundaries):
         return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion, ecl_boundaries)
+
+    def correct_potentials(self, phases, component=None, iterations=2):
+        """
+        function calculates potential for each phase in phases in such eay that conserves volume of the component.
+        Volume is approximated by two half elipsoids.
+
+        :param phases: array
+        :param component: `primary`, `secondary` or None (=both)
+        :param iterations:
+        :return: array
+        """
+        data = self.orbit.orbital_motion(phases)
+        distances = data[:, 0]
+
+        retval = {}
+        components = static.component_to_list(component)
+        for component in components:
+            component_instance = getattr(self, component)
+            new_potentials = component_instance.surface_potential * np.ones(phases.shape)
+
+            # equivalent radii of the component at components distance 1.0 (desired value for all phases)
+            polar_tgt = self.calculate_polar_radius(component, components_distance=1.0)
+            side_tgt = self.calculate_side_radius(component, components_distance=1.0)
+            back_tgt = self.calculate_backward_radius(component, components_distance=1.0)
+            forward_tgt = self.calculate_forward_radius(component, components_distance=1.0)
+
+            x_radii = 0.5 * (forward_tgt + back_tgt)
+            equiv_r_mean = utils.calculate_equiv_radius(polar_tgt, side_tgt, x_radii)
+
+            for iter in range(iterations):
+                polar_radii = np.empty(phases.shape)
+                side_radii = np.empty(phases.shape)
+                back_radii = np.empty(phases.shape)
+                forward_radii = np.empty(phases.shape)
+                for ii, pot in enumerate(new_potentials):
+                    component_instance.surface_potential = new_potentials[ii]
+                    polar_radii[ii] = self.calculate_polar_radius(component, distances[ii])
+                    side_radii[ii] = self.calculate_side_radius(component, distances[ii])
+                    back_radii[ii] = self.calculate_backward_radius(component, distances[ii])
+                    forward_radii[ii] = self.calculate_forward_radius(component, distances[ii])
+
+                # calculation of equivalent radius (radius of a sphere with the same volume as elipsoid approximation of
+                # component)
+                # equiv_r = np.power(polar_radii * side_radii * 0.5 * (forward_radii + back_radii), 1.0/3.0)
+                x_radii = 0.5 * (forward_radii + back_radii)
+                equiv_r = utils.calculate_equiv_radius(polar_radii, side_radii, x_radii)
+
+                coeff = equiv_r_mean / equiv_r
+
+                corrected_side_radii = coeff * side_radii
+
+                new_potentials = np.array(
+                    [bsutils.potential_from_radius(self, 'secondary', corrected_side_radii[ii], const.HALF_PI,
+                                                   const.HALF_PI, distance)
+                     for ii, distance in enumerate(distances)])
+
+            retval[component] = new_potentials
+
+        return retval
+

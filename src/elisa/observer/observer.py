@@ -220,6 +220,10 @@ class Observer(object):
         for items in curves:
             curves[items] = np.array(curves[items])[base_phases_to_origin]
 
+            # adding additional light
+            correction = np.mean(curves[items]) * self._system.additional_light / (1.0 - self._system.additional_light)
+            curves[items] += correction
+
         if normalize_lc:
             pass
         self._logger.info("observation finished")
