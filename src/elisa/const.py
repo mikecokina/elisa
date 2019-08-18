@@ -29,7 +29,7 @@ VAN_HAMME_TEMPERATURE_LIST_LD = [3500.0, 3750.0, 4000.0, 4250.0, 4500.0, 4750.0,
                                  47500.0, 48000.0, 49000.0, 50000.0]
 
 # global GRAVITY_LIST_LD
-VAN_HAMME_GRAVITY_LIST_LD = [0.0, 0.5, 1.0, 1.5, 1.9, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+VAN_HAMME_GRAVITY_LIST_LD = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
 
 # global METALLICITY_LIST_LD
 VAN_HAMME_METALLICITY_LIST_LD = [-5.0, -4.5, -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, -0.3, -0.2, -0.1, 0.0,

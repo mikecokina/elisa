@@ -1,11 +1,9 @@
 import os
-import pickle
 import unittest
 from copy import copy
 from os.path import dirname
 from os.path import join as pjoin
 
-import matplotlib.pyplot as plt
 import numpy as np
 from astropy import units as u
 from mpl_toolkits.mplot3d import Axes3D
@@ -14,7 +12,7 @@ from numpy.testing import assert_array_equal
 from elisa import const as c, const
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
-from elisa.utils import is_empty
+from unit_test.utils import plot_points, plot_faces, polar_gravity_acceleration
 
 ax3 = Axes3D
 
@@ -659,191 +657,63 @@ class TestIntegrationNoSpots(unittest.TestCase):
                             primary_minimum_time=params["primary_minimum_time"],
                             phase_shift=params["phase_shift"])
 
-    @classmethod
-    def _save_pickle(cls, obj, filename):
-        pickle.dump(obj, open(pjoin(cls.__pickles__, f"{filename}.p"), "wb"))
-
-    @classmethod
-    def _load_pickle(cls, filename):
-        return pickle.load(open(pjoin(cls.__pickles__, f"{filename}.p"), "rb"))
-
-    def _test_build_mesh(self, _key, _d, plot=False, single=False):
+    def _test_build_mesh(self, _key, _d, _length, plot=False, single=False):
         s = self._prepare_system(self.params[_key])
         s.primary.discretization_factor = _d
         s.secondary.discretization_factor = _d
         s.build_mesh(components_distance=1.0)
-
-        # if points distribution on star will change due to refactor of any related method,
-        # you have to generate new pickles (change to True)
-        save = False
-        if save:
-            self._save_pickle(s.primary.points, f"build_mesh_{_key}_primary.points")
-            self._save_pickle(s.secondary.points, f"build_mesh_{_key}_secondary.points")
-
-        expected_primary = np.round(self._load_pickle(f"build_mesh_{_key}_primary.points"), 4)
-        expected_secondary = np.round(self._load_pickle(f"build_mesh_{_key}_secondary.points"), 4)
 
         obtained_primary = np.round(s.primary.points, 4)
         obtained_secondary = np.round(s.secondary.points, 4)
 
         if plot:
             if not single:
-                self._plot_points(points_1=expected_primary, points_2=expected_secondary, label="expected")
-                self._plot_points(points_1=obtained_primary, points_2=obtained_secondary, label="obtained")
+                plot_points(points_1=obtained_primary, points_2=obtained_secondary, label="obtained")
             else:
-                self._plot_points(points_1=expected_primary, points_2=[[]], label="expected.primary")
-                self._plot_points(points_1=obtained_primary, points_2=[[]], label="obtained.primary")
-                self._plot_points(points_1=expected_secondary, points_2=[[]], label="expected.secondary")
-                self._plot_points(points_1=obtained_secondary, points_2=[[]], label="obtained.secondary")
+                plot_points(points_1=obtained_primary, points_2=[[]], label="obtained.primary")
+                plot_points(points_1=obtained_secondary, points_2=[[]], label="obtained.secondary")
 
-        assert_array_equal(expected_primary, obtained_primary)
-        assert_array_equal(expected_secondary, obtained_secondary)
+        assert_array_equal([len(obtained_primary), len(obtained_secondary)], _length)
 
     def test_build_mesh_detached(self):
-        self._test_build_mesh(_key="detached", _d=10, plot=False, single=True)
+        self._test_build_mesh(_key="detached", _d=10, _length=[426, 426], plot=False, single=True)
 
     def test_build_mesh_overcontact(self):
-        self._test_build_mesh(_key="overcontact", _d=10, plot=False, single=True)
+        self._test_build_mesh(_key="overcontact", _d=10, _length=[413, 401], plot=False, single=True)
 
     def test_build_mesh_semi_detached(self):
-        self._test_build_mesh(_key="semi-detached", _d=10, plot=False, single=True)
+        self._test_build_mesh(_key="semi-detached", _d=10, _length=[426, 426], plot=False, single=True)
 
-    @staticmethod
-    def _plot_points(points_1, points_2, label):
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_aspect('equal')
-
-        var = np.concatenate([points_1, points_2]) if not is_empty(points_2) else points_1
-
-        xx = np.array(list(zip(*var))[0])
-        yy = np.array(list(zip(*var))[1])
-        zz = np.array(list(zip(*var))[2])
-
-        scat = ax.scatter(xx, yy, zz)
-        scat.set_label(label)
-        ax.legend()
-
-        max_range = np.array([xx.max() - xx.min(), yy.max() - yy.min(), zz.max() - zz.min()]).max() / 2.0
-
-        mid_x = (xx.max() + xx.min()) * 0.5
-        mid_y = (yy.max() + yy.min()) * 0.5
-        mid_z = (zz.max() + zz.min()) * 0.5
-        ax.set_xlim(mid_x - max_range, mid_x + max_range)
-        ax.set_ylim(mid_y - max_range, mid_y + max_range)
-        ax.set_zlim(mid_z - max_range, mid_z + max_range)
-
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
-
-        plt.show()
-
-    def _test_build_faces(self, _key, _d, plot=False):
+    def _test_build_faces(self, _key, _d, _max_s=10, plot=False):
         s = self._prepare_system(self.params[_key])
         s.primary.discretization_factor = _d
         s.secondary.discretization_factor = _d
         s.build_mesh(components_distance=1.0)
         s.build_faces(components_distance=1.0)
 
-        save = False
-        if save:
-            self._save_pickle(s.primary.points, f"build_faces_{_key}_primary.points")
-            self._save_pickle(s.secondary.points, f"build_faces_{_key}_secondary.points")
-
-            self._save_pickle(s.primary.faces, f"build_faces_{_key}_primary.faces")
-            self._save_pickle(s.secondary.faces, f"build_faces_{_key}_secondary.faces")
-
-        # points
-        expected_primary_p = np.round(self._load_pickle(f"build_faces_{_key}_primary.points"), 4)
-        expected_secondary_p = np.round(self._load_pickle(f"build_faces_{_key}_secondary.points"), 4)
-
-        obtained_primary_p = np.round(s.primary.points, 4)
-        obtained_secondary_p = np.round(s.secondary.points, 4)
-
-        # faces
-        expected_primary_f = np.round(self._load_pickle(f"build_faces_{_key}_primary.faces"), 4)
-        expected_secondary_f = np.round(self._load_pickle(f"build_faces_{_key}_secondary.faces"), 4)
-
         obtained_primary_f = np.round(s.primary.faces, 4)
         obtained_secondary_f = np.round(s.secondary.faces, 4)
 
-        assert_array_equal(expected_primary_f, obtained_primary_f)
-        assert_array_equal(expected_secondary_f, obtained_secondary_f)
-
         if plot:
             if _key in ["overcontact"]:
-                expected_p = np.concatenate((expected_primary_p, expected_secondary_p))
-                expected_f = np.concatenate((expected_primary_f, expected_secondary_f + expected_primary_f.max() + 1))
-
-                obtained_p = np.concatenate((obtained_primary_p, obtained_secondary_p))
+                obtained_p = np.concatenate((s.primary.points, s.secondary.points))
                 obtained_f = np.concatenate((obtained_secondary_f, obtained_secondary_f + obtained_primary_f.max() + 1))
 
-                self._plot_faces(obtained_p, obtained_f, label="obtained.overcontact")
-                self._plot_faces(expected_p, expected_f, label="expected.overcontact")
+                plot_faces(obtained_p, obtained_f, label="obtained.overcontact")
 
             else:
-                self._plot_faces(obtained_primary_p, obtained_primary_f, label="obtained.primary")
-                self._plot_faces(obtained_secondary_p, obtained_secondary_f, label="obtained.secondary")
+                plot_faces(s.primary.points, obtained_primary_f, label="obtained.primary")
+                plot_faces(s.secondary.points, obtained_secondary_f, label="obtained.secondary")
 
-                self._plot_faces(expected_primary_p, expected_primary_f, label="expected.primary")
-                self._plot_faces(expected_secondary_p, expected_secondary_f, label="expected.secondary")
+        s.build_surface_areas()
+        self.assertTrue(s.primary.areas.max() < _max_s)
+        self.assertTrue(s.secondary.areas.max() < _max_s)
 
     def test_build_faces_detached(self):
-        self._test_build_faces("detached", 10, plot=False)
+        self._test_build_faces("detached", 10, _max_s=2e-6, plot=False)
 
     def test_build_faces_semi_detached(self):
-        self._test_build_faces("semi-detached", 10, plot=False)
+        self._test_build_faces("semi-detached", 10, _max_s=6e-3, plot=False)
 
     def test_build_faces_overcontact(self):
-        self._test_build_faces("overcontact", 10, plot=False)
-
-    @staticmethod
-    def _plot_faces(points, faces, label):
-        fig = plt.figure(figsize=(7, 7))
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_aspect('equal')
-        ax.set_label(label)
-        ax.legend()
-
-        clr = 'b'
-        pts = points
-        fcs = faces
-
-        plot = ax.plot_trisurf(
-            pts[:, 0], pts[:, 1],
-            pts[:, 2], triangles=fcs,
-            antialiased=True, shade=False, color=clr)
-        plot.set_edgecolor('black')
-
-        plt.show()
-
-
-def polar_gravity_acceleration(bs, component=None, components_distance=None):
-    for _componet in component:
-        components_instance = getattr(bs, _componet)
-
-        mass_ratio = bs.mass_ratio if _componet == "primary" else 1.0 / bs.mass_ratio
-
-        polar_radius = components_instance.polar_radius
-        x_com = (mass_ratio * components_distance) / (1.0 + mass_ratio)
-        semi_major_axis = bs.semi_major_axis
-
-        primary_mass, secondary_mass = bs.primary.mass, bs.secondary.mass
-        if _componet == "secondary":
-            primary_mass, secondary_mass = secondary_mass, primary_mass
-
-        r_vector = np.array([0.0, 0.0, polar_radius * semi_major_axis])
-        centrifugal_distance = np.array([x_com * semi_major_axis, 0.0, 0.0])
-        actual_distance = np.array([components_distance * semi_major_axis, 0., 0.])
-        h_vector = r_vector - actual_distance
-        angular_velocity = bs.angular_velocity(components_distance=components_distance)
-
-        block_a = - ((const.G * primary_mass) / np.linalg.norm(r_vector) ** 3) * r_vector
-        block_b = - ((const.G * secondary_mass) / np.linalg.norm(h_vector) ** 3) * h_vector
-        block_c = - (angular_velocity ** 2) * centrifugal_distance
-
-        g = block_a + block_b + block_c
-
-        # magnitude of polar gravity acceleration in physical CGS units
-        return np.linalg.norm(g) * 1e2
+        self._test_build_faces("overcontact", 10, _max_s=7e-3, plot=False)

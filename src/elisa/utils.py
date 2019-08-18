@@ -436,6 +436,19 @@ def numeric_metallicity_to_string(metallicity):
     return "{sign}{leadzeronum}".format(sign=sign, leadzeronum=leadzeronum)
 
 
+def numeric_metallicity_from_string(n_metallicity):
+    """
+    Return numeric metallicity from string used in van-hamme tables.
+
+    :param n_metallicity: str
+    :return: float
+    """
+    m = n_metallicity
+    sign = 1 if str(m).startswith("p") else -1
+    value = float(m[1:]) / 10.0
+    return value * sign
+
+
 def find_nearest_value_as_matrix(look_in, look_for):
     """
     Finds values and indices of elements in `look_in` that are the closest to the each value in `values`.
