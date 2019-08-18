@@ -142,10 +142,12 @@ class Plot(object):
             units: str - units of gravity acceleration colormap  `log_cgs`, `SI`, `cgs`, `log_SI`
             axis_units: astropy.unit or dimensionless - axis units
             colorbar_orientation: str - `horizontal` or `vertical`(default)
+            colorbar: bool - colorabar on/off switch
         :return:
         """
         all_kwargs = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis', 'face_mask_primary',
-                      'face_mask_secondary', 'inclination', 'azimuth', 'units', 'axis_unit', 'colorbar_orientation']
+                      'face_mask_secondary', 'inclination', 'azimuth', 'units', 'axis_unit', 'colorbar_orientation',
+                      'colorbar']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.surface)
 
         kwargs['phase'] = kwargs.get('phase', 0)
@@ -160,6 +162,7 @@ class Plot(object):
         kwargs['units'] = kwargs.get('units', 'logg_cgs')
         kwargs['axis_unit'] = kwargs.get('axis_unit', u.dimensionless_unscaled)
         kwargs['colorbar_orientation'] = kwargs.get('colorbar_orientation', 'vertical')
+        kwargs['colorbar'] = kwargs.get('colorbar', 'True')
 
         components_distance, azim = self._self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
         kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
