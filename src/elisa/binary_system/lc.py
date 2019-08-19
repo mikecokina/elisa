@@ -111,8 +111,9 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
 
 def get_normal_radiance(single_orbital_position_container, component=None, **kwargs):
     """
-    Compute normal radiance for all faces and all components in SingleOrbitalPositionContainer
+    Compute normal radiance for all faces and all components in SingleOrbitalPositionContainer.
 
+    :param component: str
     :param single_orbital_position_container: elisa.binary_system.geo.SingleOrbitalPositionContainer
     :param kwargs: Dict; arguments to be passed into light curve generator functions
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
@@ -150,8 +151,9 @@ def get_normal_radiance(single_orbital_position_container, component=None, **kwa
 def get_limbdarkening_cfs(self, component=None, **kwargs):
     """
     returns limg darkening coefficients for each face of each component
+    :param component: str
     :param self:
-    :param kwargs: dict - {'primary': numpy.array, 'secondary': numpy.array}
+    :param kwargs: dict; {'primary': numpy.array, 'secondary': numpy.array}
     :return:
     """
     if component is None:
@@ -178,7 +180,7 @@ def get_limbdarkening_cfs(self, component=None, **kwargs):
 
 def prep_surface_params(initial_props_container, pulsations_test, **kwargs):
     """
-    prepares normal radiances and limb darkening coefficients variables
+    Prepares normal radiances and limb darkening coefficients variables.
 
     :param initial_props_container: SingleOrbitalPosition
     :param pulsations_test: dict {component: bool - has_pulsations, ...}
@@ -286,8 +288,8 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
 def phase_crv_symmetry(self, phase):
     """
-    Utilizing symmetry of circular systems without spots and pulastions where you need to evaluate only half of the
-    phases. Function finds such redundant phases and returns only unique phases.
+    Utilizing symmetry of circular systems without spots and pulastions where you need to evaluate only half
+    of the phases. Function finds such redundant phases and returns only unique phases.
 
     :param self: elisa.binary_system.system.BinarySystem
     :param phase: numpy.array
@@ -305,7 +307,6 @@ def phase_crv_symmetry(self, phase):
 
 
 def compute_eccentric_lightcurve(self, **kwargs):
-    self._logger = logger.getLogger(self.__class__.__name__, suppress=True)
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
     phases = kwargs.pop("phases")
@@ -331,34 +332,39 @@ def compute_eccentric_lightcurve(self, **kwargs):
         azimuths = orbital_motion_array[:, 2]
 
         # test whether mirroring around semi-major axis will be performed
+        # todo: consider asynchronosu test
         approximation_test1 = len(phases) > config.POINTS_ON_ECC_ORBIT and self.primary.synchronicity == 1.0 and \
             self.secondary.synchronicity == 1.0
 
-        unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, uniq_geom_test = \
+        unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, geometry_reduce_test = \
             construct_geometry_symmetric_azimuths(self, azimuths, phases)
 
         # spliting orbital motion into two separate groups on different sides of apsidal line
-        orbit_template_arr = orbital_motion_array[uniq_geom_test]
-        orbit_counterpart_arr = orbital_motion_array[~uniq_geom_test]
+        reduced_orbit_arr = orbital_motion_array[geometry_reduce_test]
+        reduced_orbit_couterpart_arr = orbital_motion_array[~geometry_reduce_test]
 
-        index_of_closest = utils.find_idx_of_nearest(orbit_counterpart_arr[:, 1],
-                                                     orbit_template_arr[:, 1])
+        # todo: unittest this method
+        # if `index_of_closest` is applied on `reduced_orbit_couterpart_arr` variable, you will get values which are
+        # related to `reduced_orbit_arr`
+        # example: reduced_orbit_couterpart_arr[index_of_closest[idx]] related to reduced_orbit_arr[idx]
+        index_of_closest = utils.find_idx_of_nearest(reduced_orbit_couterpart_arr[:, 1], reduced_orbit_arr[:, 1])
 
         # testing whether all counterpart phases were assigned to template part of orbital motion
-        isin_test = np.isin(np.arange(np.count_nonzero(~uniq_geom_test)), index_of_closest)
-        # finding indices of orbit_counterpart_arr which were not assigned to any symmetricall orbital position
-        missing_phases_indices = np.arange(np.count_nonzero(~uniq_geom_test))[~isin_test]
+        # fixme: add outlier point to computational site like [point, None] or whatever like that???
+        isin_test = np.isin(np.arange(np.count_nonzero(~geometry_reduce_test)), index_of_closest)
+        # finding indices of reduced_orbit_couterpart_arr which were not assigned to any symmetricall orbital position
+        missing_phases_indices = np.arange(np.count_nonzero(~geometry_reduce_test))[~isin_test]
 
         # finding index of closest symmetrical orbital position to the missing phase
         index_of_closest_reversed = []
         if len(missing_phases_indices) > 0:
-            index_of_closest_reversed = utils.find_idx_of_nearest(orbit_template_arr[:, 1],
-                                                                  orbit_counterpart_arr[missing_phases_indices, 1])
+            index_of_closest_reversed = utils.find_idx_of_nearest(reduced_orbit_arr[:, 1],
+                                                                  reduced_orbit_couterpart_arr[missing_phases_indices, 1])
             index_of_closest = np.append(index_of_closest, missing_phases_indices)
-            orbit_template_arr = np.append(orbit_template_arr, orbit_template_arr[index_of_closest_reversed],
+            reduced_orbit_arr = np.append(reduced_orbit_arr, reduced_orbit_arr[index_of_closest_reversed],
                                            axis=0)
 
-        forward_radii = self.calculate_all_forward_radii(orbit_template_arr[:, 1], components=None)
+        forward_radii = self.calculate_all_forward_radii(reduced_orbit_arr[:, 1], components=None)
         # calculating change in forward radius as a indicator of change in overall geometry, not calculated for the
         # first OrbitalPosition since it is True
         forward_radii = np.array(list(forward_radii.values()))
@@ -375,7 +381,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
         # this part checks if differences between geometries of adjacent phases are small enough to assume that
         # geometries are the same.
-        new_geometry_test = calculate_new_geometry(self, orbit_template_arr, rel_d_radii)
+        new_geometry_test = calculate_new_geometry(self, reduced_orbit_arr, rel_d_radii)
 
     else:
         approximation_test1 = False
@@ -387,14 +393,14 @@ def compute_eccentric_lightcurve(self, **kwargs):
     if approximation_test1:
         __logger__.info('one half of the points on LC on the one side of the apsidal line will be interpolated')
         band_curves = integrate_lc_using_approx1(self, orbital_motion, orbital_motion_counterpart, unique_phase_indices,
-                                                 uniq_geom_test, ecl_boundaries, phases,
+                                                 geometry_reduce_test, ecl_boundaries, phases,
                                                  orbital_motion_array_counterpart, new_geometry_test, **kwargs)
 
     elif approximation_test2:
         __logger__.info('geometry of the stellar surface on one half of the apsidal '
                         'line will be copied from their symmetrical counterparts')
         band_curves = integrate_lc_using_approx2(self, orbital_motion, missing_phases_indices, index_of_closest,
-                                                 index_of_closest_reversed, uniq_geom_test, ecl_boundaries, phases,
+                                                 index_of_closest_reversed, geometry_reduce_test, ecl_boundaries, phases,
                                                  new_geometry_test, **kwargs)
 
     else:
@@ -404,6 +410,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
     return band_curves
 
 
+# todo: unittest this method
 def construct_geometry_symmetric_azimuths(self, azimuths, phases):
     """
     Prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
