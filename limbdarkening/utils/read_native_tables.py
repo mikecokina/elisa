@@ -4,7 +4,7 @@ import pandas as pd
 
 from elisa import const, utils
 
-__BASE_PATH__ = pjoin(dirname(abspath(__file__)), "vh16")
+__BASE_PATH__ = pjoin(dirname(dirname(abspath(__file__))), "vh16.orig")
 __MH__ = const.VAN_HAMME_METALLICITY_LIST_LD
 __HEADER__ = ['xlin', 'qlin', 'xlog', 'ylog', 'qlog', 'xsqrt', 'ysqrt', 'qsqrt']
 
@@ -44,14 +44,15 @@ VH_TO_ELISA = {
         }
 }
 
-__PASSBANDS__ = [
-    'bolometric', 'GaiaDR2', 'Kepler',
-    'Generic.Bessell.U', 'Generic.Bessell.B', 'Generic.Bessell.V', 'Generic.Bessell.R', 'Generic.Bessell.I',
-    'Generic.Stromgren.b', 'Generic.Stromgren.u', 'Generic.Stromgren.v', 'Generic.Stromgren.y',
-    'SLOAN.SDSS.g', 'SLOAN.SDSS.i', 'SLOAN.SDSS.r', 'SLOAN.SDSS.u', 'SLOAN.SDSS.z'
-]
+# __PASSBANDS__ = [
+#     'bolometric', 'GaiaDR2', 'Kepler',
+#     'Generic.Bessell.U', 'Generic.Bessell.B', 'Generic.Bessell.V', 'Generic.Bessell.R', 'Generic.Bessell.I',
+#     'Generic.Stromgren.b', 'Generic.Stromgren.u', 'Generic.Stromgren.v', 'Generic.Stromgren.y',
+#     'SLOAN.SDSS.g', 'SLOAN.SDSS.i', 'SLOAN.SDSS.r', 'SLOAN.SDSS.u', 'SLOAN.SDSS.z'
+# ]
 
 __PASSBANDS_MAP__ = {
+    'bolometric': 'bolometric',
     'GaiaDR2': "gaia", 'Kepler': 'kepler',
     'Generic.Bessell.U': 'bessell', 'Generic.Bessell.B': 'bessell',
     'Generic.Bessell.V': 'bessell', 'Generic.Bessell.R': 'bessell',
@@ -60,6 +61,19 @@ __PASSBANDS_MAP__ = {
     'Generic.Stromgren.v': 'stromgren', 'Generic.Stromgren.y': 'stromgren',
     'SLOAN.SDSS.g': 'sdss', 'SLOAN.SDSS.i': 'sdss', 'SLOAN.SDSS.r': 'sdss', 'SLOAN.SDSS.u': 'sdss',
     'SLOAN.SDSS.z': 'sdss'
+}
+
+
+__PASSBANDS_MAP__ = {
+    'bolometric': 'bolometric',
+    # 'GaiaDR2': "gaia", 'Kepler': 'kepler',
+    # 'Generic.Bessell.U': 'bessell', 'Generic.Bessell.B': 'bessell',
+    # 'Generic.Bessell.V': 'bessell', 'Generic.Bessell.R': 'bessell',
+    # 'Generic.Bessell.I': 'bessell',
+    # 'Generic.Stromgren.b': 'stromgren', 'Generic.Stromgren.u': 'stromgren',
+    # 'Generic.Stromgren.v': 'stromgren', 'Generic.Stromgren.y': 'stromgren',
+    # 'SLOAN.SDSS.g': 'sdss', 'SLOAN.SDSS.i': 'sdss', 'SLOAN.SDSS.r': 'sdss', 'SLOAN.SDSS.u': 'sdss',
+    # 'SLOAN.SDSS.z': 'sdss'
 }
 
 
@@ -252,7 +266,7 @@ def get_stromgren(data):
 
 
 def main():
-    export_all_to_elisa_format(pjoin(dirname(abspath(__file__)), "vh16o"))
+    export_all_to_elisa_format(pjoin(dirname(dirname(abspath(__file__))), "vh16"))
 
 
 if __name__ == "__main__":
