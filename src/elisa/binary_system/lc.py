@@ -11,7 +11,6 @@ from elisa.conf.config import BINARY_COUNTERPARTS, POINTS_ON_ECC_ORBIT
 from elisa.const import BINARY_POSITION_PLACEHOLDER
 from scipy.interpolate import interp1d
 from copy import copy
-from collections.abc import Sequence
 
 __logger__ = logging.getLogger(__name__)
 
@@ -1166,81 +1165,34 @@ def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
 
     return band_curves
 
-# import numpy as np
-#
-# from collections.abc import Sequence
-# from elisa.utils import find_idx_of_nearest, is_empty
-#
-#
-# class OrbitalSupplements(Sequence):
-#     def __init__(self, body=None, mirror=None):
-#         if body is None and mirror is None:
-#             self._body = np.array([])
-#             self._mirror = np.array([])
-#
-#         else:
-#             self._body = np.append(self._body, body)
-#             self._mirror = np.append(self._mirror, mirror)
-#
-#     def append(self, body, mirror):
-#         self._body = np.append(self._body, body)
-#         self._mirror = np.append(self._mirror, mirror)
-#
-#     def __iter__(self):
-#         pass
-#
-#     def __setitem__(self, key, value):
-#         pass
-#
-#     def __getitem__(self, index):
-#         pass
-#
-#     def __len__(self):
-#         pass
-#
-#     def __str__(self):
-#         return f"{self.__class__.__name__}\nbodies: {self._body}\nmirrors: {self._mirror}"
-#
-#     def __repr__(self):
-#         return f"{self.__class__.__name__}\nbodies: {self._body}\nmirrors: {self._mirror}"
-#
-#
-# def find_apsidally_corresponding_positions(reduced_arr, supplement_arr, tol=1e-10):
-#     ids_of_closest_reduced_values = find_idx_of_nearest(reduced_arr, supplement_arr)
-#
-#     matrix_mask = (np.abs(reduced_arr[np.newaxis, :] - supplement_arr[:, np.newaxis])) <= tol
-#     is_supplement = [matrix_mask[i][idx] for i, idx in enumerate(ids_of_closest_reduced_values)]
-#
-#     twin_in_reduced = np.array([-1] * len(ids_of_closest_reduced_values))
-#     twin_in_reduced[is_supplement] = ids_of_closest_reduced_values[is_supplement]
-#
-#     supplements = OrbitalSupplements()
-#
-#     for id_supplement, id_reduced in enumerate(twin_in_reduced):
-#         args = (reduced_arr[id_reduced], supplement_arr[id_supplement]) if id_reduced > -1 \
-#             else (None, reduced_arr[id_supplement]) if not np.isin(reduced_arr[id_supplement], supplement_arr) \
-#             else ()
-#
-#         if not is_empty(args):
-#             supplements.append(*args)
-#
-#     # reduced_all_ids = np.arange(0, len(reduced_arr))
-#     # is_not_in = ~np.isin(reduced_all_ids, twin_in_reduced)
-#     #
-#     # for is_not_in_id in reduced_all_ids[is_not_in]:
-#     #     supplements.append(*(reduced_arr.tolist()[is_not_in_id], None))
-#
-#     return supplements
-#
-#
-# arr1 = np.array([1, 2, 3, 4, 5.0, 6, 7])
-# arr2 = np.array([1, 2, 3, 4, 5.5, 7])
-# print(find_apsidally_corresponding_positions(arr1, arr2))
-#
-#
-# arr2 = np.array([1, 2, 3, 4, 5.0, 6, 7])
-# arr1 = np.array([1, 2, 3, 4, 5.5, 7])
-# print(find_apsidally_corresponding_positions(arr1, arr2))
+
+def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr,
+                                           supplement_constraint, supplement_arr, tol=1e-10):
+    ids_of_closest_reduced_values = utils.find_idx_of_nearest(reduced_constraint, supplement_constraint)
+
+    matrix_mask = (np.abs(reduced_constraint[np.newaxis, :] - supplement_constraint[:, np.newaxis])) <= tol
+    is_supplement = [matrix_mask[i][idx] for i, idx in enumerate(ids_of_closest_reduced_values)]
+
+    twin_in_reduced = np.array([-1] * len(ids_of_closest_reduced_values))
+    twin_in_reduced[is_supplement] = ids_of_closest_reduced_values[is_supplement]
+
+    supplements = geo.OrbitalSupplements()
+
+    for id_supplement, id_reduced in enumerate(twin_in_reduced):
+        args = (reduced_arr[id_reduced], supplement_arr[id_supplement]) \
+            if id_reduced > -1 else (supplement_arr[id_supplement], None)
+
+        if not utils.is_empty(args):
+            supplements.append(*args)
+
+    reduced_all_ids = np.arange(0, len(reduced_arr))
+    is_not_in = ~np.isin(reduced_all_ids, twin_in_reduced)
+
+    for is_not_in_id in reduced_all_ids[is_not_in]:
+        if reduced_arr[is_not_in_id] not in supplement_arr:
+            supplements.append(*(reduced_arr[is_not_in_id], None))
+
+    return supplements
 
 
 if __name__ == "__main__":

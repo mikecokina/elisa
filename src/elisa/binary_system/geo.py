@@ -7,6 +7,8 @@ from pypex.poly2d.polygon import Polygon
 from elisa.binary_system import utils as bsutils
 from elisa import const
 from elisa.binary_system import static
+from collections.abc import Sequence
+
 
 __logger__ = logging.getLogger(__name__)
 
@@ -619,6 +621,56 @@ class SingleOrbitalPositionContainer(object):
         :return:
         """
         pass
+
+
+class OrbitalSupplements(Sequence):
+    def __init__(self, body=None, mirror=None):
+        if body is None and mirror is None:
+            self._body = []
+            self._mirror = []
+
+        else:
+            self._body = self._to_list(body)
+            self._mirror = self._to_list(mirror)
+
+    @staticmethod
+    def _to_list(x):
+        if not isinstance(x, list):
+            return [x]
+        return x
+
+    def append(self, body, mirror):
+        self._body.append(body)
+        self._mirror.append(mirror)
+
+    @property
+    def body(self):
+        return np.array(self._body)
+
+    @property
+    def mirror(self):
+        return np.array(self._mirror)
+
+    def __iter__(self):
+        pass
+
+    def __setitem__(self, key, value):
+        pass
+
+    def __getitem__(self, index):
+        pass
+
+    def __len__(self):
+        pass
+
+    def __eq__(self, other):
+        return all(self._body == other.body) & all(self._mirror == other.mirror)
+
+    def __str__(self):
+        return f"{self.__class__.__name__}\nbodies: {self.body}\nmirrors: {self._mirror}"
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}\nbodies: {self.body}\nmirrors: {self._mirror}"
 
 
 def surface_area_coverage(size, visible, visible_coverage, partial=None, partial_coverage=None):
