@@ -17,6 +17,7 @@ atmosphere/ck04/*
 atmosphere/k93/*
 atmosphere/*.csv
 conf/elisa_conf.ini
+objects/HD_99458.py
 
 *.log
 __main__.py
