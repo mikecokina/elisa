@@ -405,3 +405,19 @@ class TestElisaEngineUtils(unittest.TestCase):
             else:
                 obtained = utils.find_surrounded(look_in, look_for)
                 self.assertEqual(obtained, expect)
+
+    def test_find_idx_of_nearest(self):
+        values = np.array([0.951, 0.851])
+        array = np.array([0.81, 0.85, 0.95])
+
+        expected = [2, 1]
+        obtained = utils.find_idx_of_nearest(array, values)
+        assert_array_equal(expected, obtained)
+
+        array = np.array([0.951, 0.851])
+        values = np.array([0.81, 0.85, 0.95])
+
+        expected = [2, 1]
+        obtained = utils.find_idx_of_nearest(array, values)
+
+        print(obtained)

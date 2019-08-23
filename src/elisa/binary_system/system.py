@@ -153,6 +153,9 @@ class BinarySystem(System):
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.ALL_KWARGS}
         self._orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
 
+    def has_pulsations(self):
+        return self.primary.has_pulsations() or self.secondary.has_pulsations()
+
     @property
     def morphology(self):
         """
@@ -1162,21 +1165,23 @@ class BinarySystem(System):
         :param components_distance: float
         :return: float
         """
+
         args = (component, components_distance, 0.0, const.HALF_PI)
         return self.calculate_radius(*args)
 
     def calculate_all_forward_radii(self, distances, components=None):
         """
-        calculates forward radii for given object for given array of distances
+        Calculates forward radii for given object for given array of distances.
 
+        :param components: str
         :param distances: np.array: array of component distances at which to calculate the forward radii of given
         component(s)
-        :return: dict: {component: array of forward radii}
+        :return: dict: Dict[str, numpy.array]
         """
         components = static.component_to_list(components)
-        forward_rad = {}
+        forward_rad = dict()
         for component in components:
-            forward_rad[component] = np.empty(distances.shape)
+            forward_rad[component] = np.zeros(distances.shape)
             for ii, distance in enumerate(distances):
                 forward_rad[component][ii] = self.calculate_forward_radius(component, components_distance=distance)
         return forward_rad

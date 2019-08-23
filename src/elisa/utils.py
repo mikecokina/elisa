@@ -9,7 +9,7 @@ from copy import copy
 from numpy.linalg import norm
 from pandas import DataFrame
 from scipy.spatial import distance_matrix as dstm
-from elisa import const as c
+from elisa import const as c, const
 from typing import Sized
 from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
@@ -661,7 +661,8 @@ def is_empty(value):
 
 def find_idx_of_nearest(array, values):
     """
-    find indices of elements in `array` that are closest to elements in `values`
+    Find indices of elements in `array` that are closest to elements in `values`.
+
     :param array: 1D array (M) - points to be searched for the closest
     :param values: 1D array (N) - values to which closest point in the `array` should be found
     :return: np.array with shape (N) that points to the closest values in `array`
@@ -757,7 +758,11 @@ class IterableQueue(object):
                 return
 
 
+def is_even(x):
+    return x % 2 == 0
 
 
+def convert_binary_orbital_motion_arr_to_positions(arr):
+    return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in arr]
 
 
