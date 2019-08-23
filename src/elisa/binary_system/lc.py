@@ -433,6 +433,8 @@ def resolve_approximation_method(self, phases, position_method, try_to_find_appx
         return 'two', lambda: integrate_lc_appx_two(self, all_orbital_pos, missing_phases_indices, index_of_closest,
                                                     index_of_closest_reversed, reduced_phase_mask,
                                                     ecl_boundaries, phases, new_geometry_test, **kwargs)
+    else:
+        return 'none', lambda: integrate_lc_exactly(self, all_orbital_pos, ecl_boundaries, phases, **kwargs)
 
 
 def find_apsidally_corresponding_positions(reduced_arr, supplement_arr, tol=1e-10):
@@ -611,7 +613,7 @@ def _compute_eccentric_lightcurve(self, **kwargs):
     phases_span_test = np.max(phases) - np.min(phases) >= 0.8
 
     position_method = kwargs.pop("position_method")
-    orbital_motion_array = position_method(input_argument=phases, return_nparray=True, calculate_from='phase')
+    orbital_motion, orbital_motion_array = position_method(input_argument=phases, calculate_from='phase')
 
     # this condition checks if even to attempt to utilize apsidal line symmetry approximations
     # curve has to have enough point on orbit and have to span at least in 0.8 phase
@@ -1079,8 +1081,7 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
 
     phases = kwargs.pop("phases")
     position_method = kwargs.pop("position_method")
-    orbital_motion, orbital_motion_array = position_method(input_argument=phases,
-                                                           return_nparray=True, calculate_from='phase')
+    orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
 
     # pre-calculate the longitudes of each spot for each phase
     # TODO: implement minimum angular step in longitude which will result in mesh recalculation, it will save a lot of
@@ -1134,11 +1135,10 @@ def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
 
     phases = kwargs.pop("phases")
     position_method = kwargs.pop("position_method")
-    orbital_motion, orbital_motion_array = position_method(input_argument=phases,
-                                                           return_nparray=True, calculate_from='phase')
+    orbital_motion = position_method(input_argument=phases, return_nparray=False,
+                                     calculate_from='phase')
 
     # pre-calculate the longitudes of each spot for each phase
-    components = {'primary': getattr(self, 'primary'), 'secondary': getattr(self, 'secondary')}
     spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
 
     # calculating lc with spots gradually shifting their positions in each phase
