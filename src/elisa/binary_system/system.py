@@ -2437,7 +2437,7 @@ class BinarySystem(System):
                 corrected_side_radii = coeff * side_radii
 
                 new_potentials = np.array(
-                    [bsutils.potential_from_radius(self, 'secondary', corrected_side_radii[ii], const.HALF_PI,
+                    [bsutils.potential_from_radius(self, component, corrected_side_radii[ii], const.HALF_PI,
                                                    const.HALF_PI, distance)
                      for ii, distance in enumerate(distances)])
 
