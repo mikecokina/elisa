@@ -21,7 +21,7 @@ def get_metallicity_from_ld_table_filename(filename):
     """
     filename = os.path.basename(filename)
     m = str(filename).split(".")[-2]
-    utils.numeric_metallicity_from_string(m)
+    return utils.numeric_metallicity_from_string(m)
 
 
 def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
