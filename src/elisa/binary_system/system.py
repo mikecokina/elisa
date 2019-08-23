@@ -2261,6 +2261,7 @@ class BinarySystem(System):
         :return: Tuple[List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER], List[Integer]] or
         List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER]
         """
+        input_argument = np.array([input_argument]) if np.isscalar(input_argument) else input_argument
         orbital_motion = self.orbit.orbital_motion(phase=input_argument) if calculate_from == 'phase' \
             else self.orbit.orbital_motion_from_azimuths(azimuth=input_argument)
         idx = np.arange(np.shape(input_argument)[0], dtype=np.int)

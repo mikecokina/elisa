@@ -252,7 +252,7 @@ def build_surface(self, component=None, components_distance=None, return_surface
     :param self: BinarySystem; instance
     :param return_surface: bool; if True, function returns dictionary of arrays with all points and faces
                                  (surface + spots) for each component
-    :param components_distance: distance between components
+    :param components_distance: float; distance between components
     :param component: str; specify component, use `primary` or `secondary`
     :return: Tuple or None
     """
