@@ -362,8 +362,8 @@ def _split_orbit_by_apse_line(orbital_motion, orbital_mask):
     """
 
     reduced_orbit_arr = orbital_motion[orbital_mask]
-    reduced_orbit_couterpart_arr = orbital_motion[~orbital_mask]
-    return reduced_orbit_arr, reduced_orbit_couterpart_arr
+    supplement_to_reduced_arr = orbital_motion[~orbital_mask]
+    return reduced_orbit_arr, supplement_to_reduced_arr
 
 
 def resolve_approximation_method(self, phases, position_method, try_to_find_appx, **kwargs):
@@ -435,7 +435,7 @@ def resolve_approximation_method(self, phases, position_method, try_to_find_appx
                                                     ecl_boundaries, phases, new_geometry_test, **kwargs)
 
 
-def find_apsidally_corresponding_positions(reduced_arr, supplement_arr):
+def find_apsidally_corresponding_positions(reduced_arr, supplement_arr, tol=1e-10):
     pass
 
 
