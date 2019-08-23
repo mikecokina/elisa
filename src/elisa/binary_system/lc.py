@@ -221,7 +221,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     unique_phase_interval, reverse_phase_map = phase_crv_symmetry(self, phases)
 
     position_method = kwargs.pop("position_method")
-    orbital_motion = position_method(input_argument=unique_phase_interval, return_nparray=False, calculate_from='phase')
+    orbital_motion, _ = position_method(input_argument=unique_phase_interval, calculate_from='phase')
 
     initial_props_container = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
     initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
@@ -313,8 +313,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
     phases_span_test = np.max(phases) - np.min(phases) >= 0.8
 
     position_method = kwargs.pop("position_method")
-    orbital_motion, orbital_motion_array = position_method(input_argument=phases,
-                                                           return_nparray=True, calculate_from='phase')
+    orbital_motion, orbital_motion_array = position_method(input_argument=phases, calculate_from='phase')
 
     not_pulsations_test = not self.primary.has_pulsations() and not self.secondary.has_pulsations()
     # this condition checks if even to attempt to utilize apsidal line symmetry approximations
@@ -441,7 +440,6 @@ def construct_geometry_symmetric_azimuths(self, azimuths, phases):
 
     orbital_motion_counterpart, orbital_motion_array_counterpart = \
         self.calculate_orbital_motion(input_argument=unique_geometry_counterazimuths,
-                                      return_nparray=True,
                                       calculate_from='azimuth')
 
     return unique_phase_indices, orbital_motion_counterpart, orbital_motion_array_counterpart, unique_geometry
@@ -780,8 +778,7 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
 
     phases = kwargs.pop("phases")
     position_method = kwargs.pop("position_method")
-    orbital_motion, orbital_motion_array = position_method(input_argument=phases,
-                                                           return_nparray=True, calculate_from='phase')
+    orbital_motion, orbital_motion_array = position_method(input_argument=phases, calculate_from='phase')
 
     # pre-calculate the longitudes of each spot for each phase
     # TODO: implement minimum angular step in longitude which will result in mesh recalculation, it will save a lot of
@@ -836,10 +833,9 @@ def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     phases = kwargs.pop("phases")
     position_method = kwargs.pop("position_method")
     orbital_motion, orbital_motion_array = position_method(input_argument=phases,
-                                                           return_nparray=True, calculate_from='phase')
+                                                           calculate_from='phase')
 
     # pre-calculate the longitudes of each spot for each phase
-    components = {'primary': getattr(self, 'primary'), 'secondary': getattr(self, 'secondary')}
     spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
 
     # calculating lc with spots gradually shifting their positions in each phase

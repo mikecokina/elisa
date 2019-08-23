@@ -21,6 +21,12 @@ class Plot(object):
         self._self = instance
 
     def orbit(self, **kwargs):
+        """
+        function for quick 2D plot of the orbital motion in the orbital plane
+        :param kwargs:
+
+        :return:
+        """
         all_kwargs = ['start_phase', 'stop_phase', 'number_of_points', 'axis_unit', 'frame_of_reference']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self._self)
 
@@ -142,7 +148,7 @@ class Plot(object):
             units: str - units of gravity acceleration colormap  `log_cgs`, `SI`, `cgs`, `log_SI`
             axis_units: astropy.unit or dimensionless - axis units
             colorbar_orientation: str - `horizontal` or `vertical`(default)
-            colorbar: bool - colorabar on/off switch
+            colorbar: bool - colorabar on/off switchic
         :return:
         """
         all_kwargs = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis', 'face_mask_primary',
