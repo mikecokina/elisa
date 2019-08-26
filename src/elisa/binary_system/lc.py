@@ -437,10 +437,6 @@ def resolve_approximation_method(self, phases, position_method, try_to_find_appx
         return 'none', lambda: integrate_lc_exactly(self, all_orbital_pos, ecl_boundaries, phases, **kwargs)
 
 
-def find_apsidally_corresponding_positions(reduced_arr, supplement_arr, tol=1e-10):
-    pass
-
-
 def __compute_eccentric_lightcurve(self, **kwargs):
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
@@ -1168,6 +1164,35 @@ def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
                 calculate_lc_point(container, band, ld_cfs, normal_radiance)
 
     return band_curves
+
+
+def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr,
+                                           supplement_constraint, supplement_arr, tol=1e-10):
+    ids_of_closest_reduced_values = utils.find_idx_of_nearest(reduced_constraint, supplement_constraint)
+
+    matrix_mask = (np.abs(reduced_constraint[np.newaxis, :] - supplement_constraint[:, np.newaxis])) <= tol
+    is_supplement = [matrix_mask[i][idx] for i, idx in enumerate(ids_of_closest_reduced_values)]
+
+    twin_in_reduced = np.array([-1] * len(ids_of_closest_reduced_values))
+    twin_in_reduced[is_supplement] = ids_of_closest_reduced_values[is_supplement]
+
+    supplements = geo.OrbitalSupplements()
+
+    for id_supplement, id_reduced in enumerate(twin_in_reduced):
+        args = (reduced_arr[id_reduced], supplement_arr[id_supplement]) \
+            if id_reduced > -1 else (supplement_arr[id_supplement], None)
+
+        if not utils.is_empty(args):
+            supplements.append(*args)
+
+    reduced_all_ids = np.arange(0, len(reduced_arr))
+    is_not_in = ~np.isin(reduced_all_ids, twin_in_reduced)
+
+    for is_not_in_id in reduced_all_ids[is_not_in]:
+        if reduced_arr[is_not_in_id] not in supplement_arr:
+            supplements.append(*(reduced_arr[is_not_in_id], None))
+
+    return supplements
 
 
 if __name__ == "__main__":
