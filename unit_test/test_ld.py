@@ -36,7 +36,7 @@ class TestLimbDarkeningModule(unittest.TestCase):
     @staticmethod
     def expected_ld_tables():
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
-        return [pd.read_csv(os.path.join(path, file)) for file in os.listdir(path)]
+        return [pd.read_csv(os.path.join(path, file)) for file in sorted(os.listdir(path))]
 
     def test_get_van_hamme_ld_table(self):
         config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
