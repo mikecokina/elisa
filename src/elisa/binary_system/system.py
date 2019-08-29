@@ -489,7 +489,7 @@ class BinarySystem(System):
 
                 component_instance.setup_spot_instance_discretization_factor(spot_instance, spot_index)
                 alpha = spot_instance.discretization_factor
-                diameter = spot_instance.angular_diameter
+                spot_radius = spot_instance.angular_radius
 
                 # initial containers for current spot
                 boundary_points, spot_points = list(), list()
@@ -535,9 +535,9 @@ class BinarySystem(System):
 
                 # number of points in latitudal direction
                 # + 1 to obtain same discretization as object itself
-                num_radial = int(np.round((diameter * 0.5) / alpha)) + 1
+                num_radial = int(np.round(spot_radius / alpha)) + 1
                 self._logger.debug(f'number of rings in spot {spot_instance.kwargs_serializer()} is {num_radial}')
-                thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
+                thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
 
                 num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
                 deltas = [np.linspace(0., const.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]

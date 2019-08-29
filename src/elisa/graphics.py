@@ -142,13 +142,16 @@ def single_star_mesh(**kwargs):
 
 def binary_mesh(**kwargs):
     """
-    Plot function for descriptor `mesh`, plots surface mesh of binary star in BinaryStar system
+        Function plots 3D scatter plot of the surface points
 
-    :param kwargs: dict
-                   keywords: `phase`: np.float - phase in which system is plotted default value is 0
-                             `components_to_plot`: str - decides which argument to plot, choices: `primary`, secondary`
-                                                         , `both`, default is `both`
-    :return:
+        :param kwargs:
+        :**kwargs options**:
+            * **phase** * -- float; phase at which to construct plot
+            * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
+            * **plot_axis** * -- bool; switch the plot axis on/off
+            * **inclination** * -- float; elevation of the camera (in degrees)
+            * **azimuth** * -- float; azimuth of the camera (in degrees)
+        :return:
     """
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
@@ -493,6 +496,18 @@ def single_star_wireframe(**kwargs):
 
 
 def binary_wireframe(**kwargs):
+    """
+    Function displays wireframe model of the stellar surface
+
+    :param kwargs:
+    :**kwargs options**:
+        * **phase** * -- float; phase at which to construct plot
+        * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
+        * **plot_axis** * -- bool; switch the plot axis on/off
+        * **inclination** * -- float; elevation of the camera (in degrees)
+        * **azimuth** * -- float; azimuth of the camera (in degrees)
+    :return:
+    """
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
