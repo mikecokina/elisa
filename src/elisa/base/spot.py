@@ -9,7 +9,7 @@ class Spot(object):
     """
     Spot data container
     """
-    MANDATORY_KWARGS = ["longitude", "latitude", "angular_diameter", "temperature_factor"]
+    MANDATORY_KWARGS = ["longitude", "latitude", "angular_radius", "temperature_factor"]
     OPTIONAL_KWARGS = ["angular_density"]
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
@@ -21,7 +21,7 @@ class Spot(object):
         self._discretization_factor = np.nan
         self._latitude = np.nan
         self._longitude = np.nan
-        self._angular_diameter = np.nan
+        self._angular_radius = np.nan
         self._temperature_factor = np.nan
 
         self.boundary = np.array([])
@@ -118,26 +118,26 @@ class Spot(object):
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property
-    def angular_diameter(self):
+    def angular_radius(self):
         """
         :return: float
         """
-        return self._angular_diameter
+        return self._angular_radius
 
-    @angular_diameter.setter
-    def angular_diameter(self, angular_diameter):
+    @angular_radius.setter
+    def angular_radius(self, angular_radius):
         """
         Expecting value in degrees or as astropy units instance.
 
-        :param angular_diamter: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param angular_radius: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return:
         """
-        if isinstance(angular_diameter, u.quantity.Quantity):
-            self._angular_diameter = np.float64(angular_diameter.to(units.ARC_UNIT))
-        elif isinstance(angular_diameter, (int, np.int, float, np.float)):
-            self._angular_diameter = np.radians(np.float64(angular_diameter))
+        if isinstance(angular_radius, u.quantity.Quantity):
+            self._angular_radius = np.float64(angular_radius.to(units.ARC_UNIT))
+        elif isinstance(angular_radius, (int, np.int, float, np.float)):
+            self._angular_radius = np.radians(np.float64(angular_radius))
         else:
-            raise TypeError('Input of variable `angular_diamter` is not (numpy.)int or (numpy.)float '
+            raise TypeError('Input of variable `angular_radius` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
 
     @property

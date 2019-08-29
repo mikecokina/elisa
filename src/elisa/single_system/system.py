@@ -132,7 +132,7 @@ class SingleSystem(System):
                 self._logger.debug('Angular density of the spot {0} was not supplied and discretization factor of star '
                                    '{1} was used.'.format(spot_index, self.star.discretization_factor))
                 spot_instance.angular_density = 0.9 * self.star.discretization_factor * eunits.ARC_UNIT
-            alpha, diameter = spot_instance.angular_density, spot_instance.angular_diameter
+            alpha, spot_radius = spot_instance.angular_density, spot_instance.angular_radius
 
             # initial containers for current spot
             boundary_points, spot_points = [], []
@@ -173,8 +173,8 @@ class SingleSystem(System):
             x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
 
             # number of points in latitudal direction
-            num_radial = int(np.round((diameter * 0.5) / alpha)) + 1
-            thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
+            num_radial = int(np.round(spot_radius / alpha)) + 1
+            thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
 
             num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
             deltas = [np.linspace(0., c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
@@ -602,7 +602,7 @@ class SingleSystem(System):
             lon, lat = spot_instance.longitude, spot_instance.latitude
             self._setup_spot_instance_discretization_factor(spot_instance, spot_index, self.star)
 
-            alpha, diameter = spot_instance.discretization_factor, spot_instance.angular_diameter
+            alpha, spot_radius = spot_instance.discretization_factor, spot_instance.angular_radius
 
             # initial containers for current spot
             boundary_points, spot_points = [], []
@@ -643,8 +643,8 @@ class SingleSystem(System):
             x0 = np.sqrt(spot_center_r ** 2 + solution ** 2 - (2.0 * spot_center_r * solution * np.cos(alpha)))
 
             # number of points in latitudal direction
-            num_radial = int(np.round((diameter * 0.5) / alpha)) + 1
-            thetas = np.linspace(lat, lat + (diameter * 0.5), num=num_radial, endpoint=True)
+            num_radial = int(np.round(spot_radius / alpha)) + 1
+            thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
 
             num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
             deltas = [np.linspace(0., c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
