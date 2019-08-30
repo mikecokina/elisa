@@ -9,8 +9,8 @@ from elisa import utils, const, atm, ld, pulsations
 from elisa.binary_system import geo, build
 from elisa.conf.config import BINARY_COUNTERPARTS, POINTS_ON_ECC_ORBIT
 from elisa.const import BINARY_POSITION_PLACEHOLDER
-from scipy.interpolate import interp1d
-from copy import copy
+from scipy.interpolate import Akima1DInterpolator
+from copy import copy, deepcopy
 
 __logger__ = logging.getLogger(__name__)
 
@@ -151,11 +151,14 @@ def get_normal_radiance(single_orbital_position_container, component=None, **kwa
 
 def get_limbdarkening_cfs(self, component=None, **kwargs):
     """
-    returns limg darkening coefficients for each face of each component
+    Returns limg darkening coefficients for each face of each component.
+
     :param component: str
     :param self:
-    :param kwargs: dict; {'primary': numpy.array, 'secondary': numpy.array}
-    :return:
+    :param kwargs: Dict;
+            * **primary** * - numpy.array
+            * **secondary** * - numpy.array
+    :return: Dict[str, numpy.array]
     """
     if component is None:
         return {
@@ -297,8 +300,7 @@ def phase_crv_symmetry(self, phase):
     :return: Tuple[numpy.array, numpy.array]
     """
 
-    if not self.primary.has_pulsations() and not self.primary.has_pulsations() and \
-            not self.primary.has_spots() and not self.secondary.has_spots():
+    if (not self.has_pulsations()) & (not self.has_spots()):
         symmetrical_counterpart = phase > 0.5
         # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
         phase[symmetrical_counterpart] = np.round(1.0 - phase[symmetrical_counterpart], 9)
@@ -328,9 +330,7 @@ def _eval_approximation_one(self, phases):
     :return: bool
     """
 
-    if len(phases) > config.POINTS_ON_ECC_ORBIT \
-            and self.primary.synchronicity == 1.0 \
-            and self.secondary.synchronicity == 1.0:
+    if len(phases) > config.POINTS_ON_ECC_ORBIT and self.is_synchronous():
         return True
     return False
 
@@ -340,13 +340,15 @@ def _eval_approximation_two(self, rel_d):
     fixme: add description - what exactly is going to be done if this approx is satisfied
 
     :param self: elisa.binary_system.system.BinaryStar
-    :param rel_d: numpy.array; array of sorted realtive radii
+    :param rel_d: fixme: add
     :return: bool
     """
 
-    if np.max(rel_d[:, 1:]) < config.MAX_RELATIVE_D_R_POINT \
-            and self.primary.synchronicity == 1.0 \
-            and self.secondary.synchronicity == 1.0:
+    # defined bodies/objects/tempaltes in orbital supplements instance are sorted by distance,
+    # what means that also radii `rel_d` computed from such values have to be already sorted by
+    # their own size (radius changes based on components distance and it is monotonic function)
+
+    if np.max(rel_d[:, 1:]) < config.MAX_RELATIVE_D_R_POINT and self.is_synchronous():
         return True
     return False
 
@@ -366,63 +368,91 @@ def _split_orbit_by_apse_line(orbital_motion, orbital_mask):
     return reduced_orbit_arr, supplement_to_reduced_arr
 
 
-def resolve_approximation_method(self, phases, position_method, try_to_find_appx, **kwargs):
-    if not try_to_find_appx:
-        return 'zero', lambda: integrate_lc_exactly(self, all_orbital_pos, ecl_boundaries, phases, **kwargs)
+def _resolve_geometry_update(self, size, rel_d):
+    """
+    """
 
-    # todo: are you sure that distance should be 1.0???
-    ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
+    # in case of spots, the boundary points will cause problems if you want to use the same geometry
+    if self.has_spots():
+        return np.ones(size, dtype=np.bool)
+
+    require_new_geo = np.ones(size, dtype=np.bool)
+
+    cumulative_sum = np.array([0.0, 0.0])
+    for i in range(1, size):
+        cumulative_sum += rel_d[:, i - 1]
+        if (cumulative_sum <= config.MAX_RELATIVE_D_R_POINT).all():
+            require_new_geo[i] = False
+        else:
+            require_new_geo[i] = True
+            cumulative_sum = np.array([0.0, 0.0])
+
+    return require_new_geo
+
+
+def _compute_rel_d_radii(self, orbital_supplements):
+    """
+    Requires `orbital_supplements` sorted by distance.
+
+    :param self:
+    :param orbital_supplements:
+    :return: numpy.array
+    """
+
+    # note: defined bodies/objects/templates in orbital supplements instance are sorted by distance (line above),
+    # what means that also radii computed from such values have to be already sorted by their own size (radius changes
+    # based on components distance and it is, on the half of orbit defined by apsidal line, monotonic function)
+    fwd_radii = self.calculate_all_forward_radii(orbital_supplements.body[:, 1], components=None)
+    fwd_radii = np.array(list(fwd_radii.values()))
+    return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii[:, 1:]
+
+
+def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find_appx, **kwargs):
 
     params = dict(input_argument=phases, return_nparray=True, calculate_from='phase')
     all_orbital_pos_arr = position_method(**params)
-    azimuths = all_orbital_pos_arr[:, 2]
+    all_orbital_pos = utils.convert_binary_orbital_motion_arr_to_positions(all_orbital_pos_arr)
 
+    azimuths = all_orbital_pos_arr[:, 2]
     reduced_phase_ids, counterpart_postion_arr, reduced_phase_mask = prepare_geosymmetric_orbit(self, azimuths, phases)
 
     # spliting orbital motion into two separate groups on different sides of apsidal line
     reduced_orbit_arr, reduced_orbit_supplement_arr = _split_orbit_by_apse_line(all_orbital_pos_arr, reduced_phase_mask)
 
-    # if `index_of_closest` is applied on `reduced_orbit_supplement_arr` variable,
-    # you will get values which are related to `reduced_orbit_arr`
-    # example: reduced_orbit_supplement_arr[index_of_closest[idx]] related to reduced_orbit_arr[idx]
-    index_of_closest = utils.find_idx_of_nearest(reduced_orbit_supplement_arr[:, 1], reduced_orbit_arr[:, 1])
+    # APPX ZERO ********************************************************************************************************
+    if not try_to_find_appx:
+        return 'zero', lambda: integrate_lc_exactly(self, all_orbital_pos, None, phases, **kwargs)
 
-    # fixme: solve this shitcode, implement `find_apsidally_corresponding_positions` instead`
-    isin_test = np.isin(np.arange(np.count_nonzero(~reduced_phase_mask)), index_of_closest)
-    # finding indices of reduced_orbit_supplement_arr which were not assigned to any symmetricall orbital position
-    missing_phases_indices = np.arange(np.count_nonzero(~reduced_phase_mask))[~isin_test]
-
-    index_of_closest_reversed = []
-    if len(missing_phases_indices) > 0:
-        index_of_closest_reversed = utils.find_idx_of_nearest(reduced_orbit_arr[:, 1],
-                                                              reduced_orbit_supplement_arr[missing_phases_indices, 1])
-        index_of_closest = np.append(index_of_closest, missing_phases_indices)
-        reduced_orbit_arr = np.append(reduced_orbit_arr, reduced_orbit_arr[index_of_closest_reversed], axis=0)
-    # fixme: end of shitcode
-
-    fwd_radii = self.calculate_all_forward_radii(reduced_orbit_arr[:, 1], components=None)
-
-    # calculating change in forward radius as a indicator of change in overall geometry,
-    # not calculated for the first OrbitalPosition since it is True (first geometry is always computed)
-    fwd_radii = np.array(list(fwd_radii.values()))
-    rel_d_radii = np.abs(fwd_radii[:, 1:] - np.roll(fwd_radii, shift=1, axis=1)[:, 1:]) / fwd_radii[:, 1:]
-
-    # rel_d_radii = np.abs(fwd_radii[:, 1:] - np.roll(fwd_radii, shift=1, axis=1)[:, 1:]) / fwd_radii[:, 1:]
-    # second approximation does not interpolates the resulting light curve but assumes that geometry is the same as
-    # the geometry of the found counterpart
-    # testing if change in geometry will not be too severe, you should rather use changes in point radius instead
-
-    fwd_radii_sorted = np.sort(fwd_radii, axis=1)
-    rel_d_radii_sorted = np.abs(fwd_radii_sorted - np.roll(fwd_radii_sorted, shift=1, axis=1)) / fwd_radii_sorted
-
-    # this part checks if differences between geometries of adjacent phases are small enough to assume that
-    # geometries are the same.
-    new_geometry_test = calculate_new_geometry(self, reduced_orbit_arr, rel_d_radii)
-
+    # APPX ONE *********************************************************************************************************
     appx_one = _eval_approximation_one(self, phases)
-    appx_two = _eval_approximation_two(self, rel_d_radii_sorted)
+
+    if appx_one:
+        orbital_supplements = geo.OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
+        orbital_supplements.sort(by='distance')
+        rel_d_radii = _compute_rel_d_radii(self, orbital_supplements)
+        new_geometry_mask = _resolve_geometry_update(self, orbital_supplements.size(), rel_d_radii)
+
+        return 'one', lambda: integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
+
+    # APPX TWO *********************************************************************************************************
+
+    # create object of separated objects and supplements to bodies
+    orbital_supplements = find_apsidally_corresponding_positions(reduced_orbit_arr[:, 1],
+                                                                 reduced_orbit_arr,
+                                                                 reduced_orbit_supplement_arr[:, 1],
+                                                                 reduced_orbit_supplement_arr,
+                                                                 tol=config.MAX_SUPPLEMENTAR_D_DISTANCE)
+
+    orbital_supplements.sort(by='distance')
+    rel_d_radii = _compute_rel_d_radii(self, orbital_supplements)
+    appx_two = _eval_approximation_two(self, rel_d_radii)
+    new_geometry_mask = _resolve_geometry_update(self, orbital_supplements.size(), rel_d_radii)
+
+
+
 
     all_orbital_pos = utils.convert_binary_orbital_motion_arr_to_positions(all_orbital_pos_arr)
+
     if appx_one:
         orbital_motion_counterpart = utils.convert_binary_orbital_motion_arr_to_positions(counterpart_postion_arr)
         return 'one', lambda: integrate_lc_appx_one(self, all_orbital_pos, orbital_motion_counterpart,
@@ -430,11 +460,12 @@ def resolve_approximation_method(self, phases, position_method, try_to_find_appx
                                                     counterpart_postion_arr, new_geometry_test, **kwargs)
 
     if appx_two:
-        return 'two', lambda: integrate_lc_appx_two(self, all_orbital_pos, missing_phases_indices, index_of_closest,
-                                                    index_of_closest_reversed, reduced_phase_mask,
-                                                    ecl_boundaries, phases, new_geometry_test, **kwargs)
+        pass
+        # return 'two', lambda: integrate_lc_appx_two(self, all_orbital_pos, missing_phases_indices, index_of_closest,
+        #                                             index_of_closest_reversed, reduced_phase_mask,
+        #                                             ecl_boundaries, phases, new_geometry_test, **kwargs)
     else:
-        return 'none', lambda: integrate_lc_exactly(self, all_orbital_pos, ecl_boundaries, phases, **kwargs)
+        return 'zero', lambda: integrate_lc_exactly(self, all_orbital_pos, phases, ecl_boundaries=None, **kwargs)
 
 
 def __compute_eccentric_lightcurve(self, **kwargs):
@@ -468,12 +499,7 @@ def __compute_eccentric_lightcurve(self, **kwargs):
         reduced_orbit_arr, reduced_orbit_supplement_arr = \
             _split_orbit_by_apse_line(all_orbital_pos_arr, reduced_phase_mask)
 
-
-
-
-
         # replace code with method which will find supplements to each other
-
 
         # todo: unittest this method
         # if `index_of_closest` is applied on `reduced_orbit_supplement_arr` variable, you will get values which are
@@ -486,17 +512,6 @@ def __compute_eccentric_lightcurve(self, **kwargs):
         # finding indices of reduced_orbit_supplement_arr which were not assigned to any symmetricall orbital position
         missing_phases_indices = np.arange(np.count_nonzero(~reduced_phase_mask))[~isin_test]
 
-        from matplotlib import pyplot as plt
-        x, y = utils.polar_to_cartesian(reduced_orbit_arr[:, 1], reduced_orbit_arr[:, 2] - (np.pi / 2))
-        ax = plt.scatter(x, y, marker="o")
-
-        x, y = utils.polar_to_cartesian(reduced_orbit_supplement_arr[:, 1], reduced_orbit_supplement_arr[:, 2] - (np.pi / 2))
-        ax = plt.scatter(x, y, marker="x")
-        plt.grid(True)
-        plt.axes().set_aspect('equal')
-        plt.show()
-
-
         # finding index of closest symmetrical orbital position to the missing phase
         index_of_closest_reversed = []
         if len(missing_phases_indices) > 0:
@@ -504,24 +519,6 @@ def __compute_eccentric_lightcurve(self, **kwargs):
                                                                   reduced_orbit_supplement_arr[missing_phases_indices, 1])
             index_of_closest = np.append(index_of_closest, missing_phases_indices)
             reduced_orbit_arr = np.append(reduced_orbit_arr, reduced_orbit_arr[index_of_closest_reversed], axis=0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         forward_radii = self.calculate_all_forward_radii(reduced_orbit_arr[:, 1], components=None)
         # calculating change in forward radius as a indicator of change in overall geometry, not calculated for the
@@ -574,7 +571,7 @@ def __compute_eccentric_lightcurve(self, **kwargs):
 
     else:
         __logger__.info('lc will be calculated in a rigorous phase to phase manner without approximations')
-        band_curves = integrate_lc_exactly(self, all_orbital_pos, ecl_boundaries, phases, **kwargs)
+        band_curves = integrate_lc_exactly(self, all_orbital_pos, phases, ecl_boundaries, **kwargs)
 
     return band_curves
 
@@ -589,7 +586,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
     # curve has to have enough point on orbit and have to span at least in 0.8 phase
 
     try_to_find_appx = _look_for_approximation(phases_span_test, not self.has_pulsations())
-    appx_uid, run = resolve_approximation_method(self, phases, position_method, try_to_find_appx, **kwargs)
+    appx_uid, run = _resolve_ecc_approximation_method(self, phases, position_method, try_to_find_appx, **kwargs)
 
     logger_messages = {
         'zero': 'lc will be calculated in a rigorous `phase to phase manner` without approximations',
@@ -600,107 +597,6 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
     self._logger.info(logger_messages.get(appx_uid))
     return run()
-
-
-def _compute_eccentric_lightcurve(self, **kwargs):
-    ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
-
-    phases = kwargs.pop("phases")
-    phases_span_test = np.max(phases) - np.min(phases) >= 0.8
-
-    position_method = kwargs.pop("position_method")
-    orbital_motion, orbital_motion_array = position_method(input_argument=phases, calculate_from='phase')
-
-    # this condition checks if even to attempt to utilize apsidal line symmetry approximations
-    # curve has to have enough point on orbit and have to span at least in 0.8 phase
-
-    try_to_find_appx = _look_for_approximation(phases_span_test, not self.has_pulsations())
-    resolve_approximation_method(self, phases, position_method, try_to_find_appx, **kwargs)
-
-    if try_to_find_appx:
-        # in case of clean surface or synchronous rotation (more-less), symmetry around semi-major axis can be utilized
-        # mask isolating the symmetrical part of the orbit
-        azimuths = orbital_motion_array[:, 2]
-
-        # test whether mirroring around semi-major axis will be performed
-        # todo: consider asynchronosu test
-        approximation_test1 = len(phases) > config.POINTS_ON_ECC_ORBIT and self.primary.synchronicity == 1.0 and \
-            self.secondary.synchronicity == 1.0
-
-        unique_phase_indices, orbital_motion_array_counterpart, geometry_reduce_test = \
-            prepare_geosymmetric_orbit(self, azimuths, phases)
-
-        # spliting orbital motion into two separate groups on different sides of apsidal line
-        reduced_orbit_arr = orbital_motion_array[geometry_reduce_test]
-        reduced_orbit_couterpart_arr = orbital_motion_array[~geometry_reduce_test]
-
-        # todo: unittest this method
-        # if `index_of_closest` is applied on `reduced_orbit_couterpart_arr` variable, you will get values which are
-        # related to `reduced_orbit_arr`
-        # example: reduced_orbit_couterpart_arr[index_of_closest[idx]] related to reduced_orbit_arr[idx]
-        index_of_closest = utils.find_idx_of_nearest(reduced_orbit_couterpart_arr[:, 1], reduced_orbit_arr[:, 1])
-
-        # testing whether all counterpart phases were assigned to template part of orbital motion
-        # fixme: add outlier point to computational site like [point, None] or whatever like that???
-        isin_test = np.isin(np.arange(np.count_nonzero(~geometry_reduce_test)), index_of_closest)
-        # finding indices of reduced_orbit_couterpart_arr which were not assigned to any symmetricall orbital position
-        missing_phases_indices = np.arange(np.count_nonzero(~geometry_reduce_test))[~isin_test]
-
-        # finding index of closest symmetrical orbital position to the missing phase
-        index_of_closest_reversed = []
-        if len(missing_phases_indices) > 0:
-            index_of_closest_reversed = utils.find_idx_of_nearest(reduced_orbit_arr[:, 1],
-                                                                  reduced_orbit_couterpart_arr[missing_phases_indices, 1])
-            index_of_closest = np.append(index_of_closest, missing_phases_indices)
-            reduced_orbit_arr = np.append(reduced_orbit_arr, reduced_orbit_arr[index_of_closest_reversed],
-                                           axis=0)
-
-        forward_radii = self.calculate_all_forward_radii(reduced_orbit_arr[:, 1], components=None)
-        # calculating change in forward radius as a indicator of change in overall geometry, not calculated for the
-        # first OrbitalPosition since it is True
-        forward_radii = np.array(list(forward_radii.values()))
-        rel_d_radii = np.abs(forward_radii[:, 1:] - np.roll(forward_radii, shift=1, axis=1)[:, 1:]) / \
-                      forward_radii[:, 1:]
-        # second approximation does not interpolates the resulting light curve but assumes that geometry is the same as
-        # the geometry of the found counterpart
-        # testing if change in geometry will not be too severe, you should rather use changes in point radius instead
-        forward_radii_sorted = np.sort(forward_radii, axis=1)
-        rel_d_radii_sorted = np.abs(forward_radii_sorted - np.roll(forward_radii_sorted, shift=1, axis=1)) / \
-                             forward_radii_sorted
-        approximation_test2 = np.max(rel_d_radii_sorted[:, 1:]) < config.MAX_RELATIVE_D_R_POINT and \
-                              self.primary.synchronicity == 1.0 and self.secondary.synchronicity == 1.0  # spots???
-
-        # this part checks if differences between geometries of adjacent phases are small enough to assume that
-        # geometries are the same.
-        new_geometry_test = calculate_new_geometry(self, reduced_orbit_arr, rel_d_radii)
-
-    else:
-        approximation_test1 = False
-        approximation_test2 = False
-
-    # initial values of radii to be compared with
-    # orig_forward_rad_p, orig_forward_rad_p = 100.0, 100.0  # 100.0 is too large value, it will always fail the first
-    # test and therefore the surface will be built
-    orbital_motion_counterpart = utils.convert_binary_orbital_motion_arr_to_positions(orbital_motion_array_counterpart)
-    orbital_motion = utils.convert_binary_orbital_motion_arr_to_positions(orbital_motion_array)
-    if approximation_test1:
-        __logger__.info('one half of the points on LC on the one side of the apsidal line will be interpolated')
-        band_curves = integrate_lc_appx_one(self, orbital_motion, orbital_motion_counterpart, unique_phase_indices,
-                                                 geometry_reduce_test, ecl_boundaries, phases,
-                                                 orbital_motion_array_counterpart, new_geometry_test, **kwargs)
-
-    elif approximation_test2:
-        __logger__.info('geometry of the stellar surface on one half of the apsidal '
-                        'line will be copied from their symmetrical counterparts')
-        band_curves = integrate_lc_appx_two(self, orbital_motion, missing_phases_indices, index_of_closest,
-                                                 index_of_closest_reversed, geometry_reduce_test, ecl_boundaries, phases,
-                                                 new_geometry_test, **kwargs)
-
-    else:
-        __logger__.info('lc will be calculated in a rigorous phase to phase manner without approximations')
-        band_curves = integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs)
-
-    return band_curves
 
 
 # todo: unittest this method
@@ -775,6 +671,7 @@ def calculate_surface_parameters(container, in_eclipse=True):
                    - p_cosines, s_cosines - numpy.array - directional cosines for each face with respect to line-of-sight
                                                        vector
     """
+
     coverage = compute_surface_coverage(container, in_eclipse=in_eclipse)
     p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
     s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
@@ -794,10 +691,12 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
     """
 
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-    ld_cors = {component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values,
-                                                   limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                                   cos_theta=container.cosines[component])
-               for component in BINARY_COUNTERPARTS.keys()}
+    ld_cors = {
+        component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values,
+                                            limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                            cos_theta=container.cosines[component])
+        for component in BINARY_COUNTERPARTS
+    }
     # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
     flux = {
         component:
@@ -809,79 +708,76 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
     return flux
 
 
-def integrate_lc_appx_one(self, orbital_motion, orbital_motion_counterpart, unique_phase_indices, uniq_geom_test,
-                          ecl_boundaries, phases, orbital_motion_array_counterpart, new_geometry_test, **kwargs):
+def integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
     """
-    function calculates LC for eccentric orbits for selected filters using approximation where LC points on the one side
-    of the apsidal line are calculated exactly and the second half of the LC points are calculated by mirroring the
-    surface geometries of the first half of the points to the other side of the apsidal line. Since those mirrored
+    Function calculates light curves for eccentric orbits for selected filters using approximation
+    where light curve points on the one side of the apsidal line are calculated exactly and the second
+    half of the light curve points are calculated by mirroring the surface geometries of the first
+    half of the points to the other side of the apsidal line. Since those mirrored
     points are no alligned with desired phases, the fluxes for each phase is interpolated if missing.
 
-    :param new_geometry_test: bool array - mask to indicate, during which orbital position, surface geometry should be
-                                           recalculated
-    :param self: BinarySystem instance
-    :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
-    :param orbital_motion_counterpart: list of OrbitalPositions on one side of the apsidal line on which approximation
-    is performed
-    :param unique_phase_indices: list of indices that points to OrbitalPositions which geometries will be used for their
-    counterparts on the other side of apsidal line
-    :param uniq_geom_test: boll array that is used as a mask to select orbital positions from one side of the apsidal
-    line which LC points will be calculated exactly
-    :param ecl_boundaries: list of phase boundaries of eclipses
-    :param phases: phases in which the phase curve will be calculated
-    :param orbital_motion_array_counterpart: array of orbital positions that will be interpolated
-    :param kwargs: kwargs taken from `compute_eccentric_lightcurve` function
-    :return: dictionary of fluxes for each filter
+    :param self: elisa.binary_system.system.BinarySystem
+    :param phases: numpy.array
+    :param orbital_supplements: elisa.binary_system.geo.OrbitalSupplements
+    :param new_geometry_mask: numpy.array
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+    :return: Dict[str, numpy.array]
     """
-    band_curves = {key: list() for key in kwargs["passband"].keys()}
-    band_curves_counterpart = {key: list() for key in kwargs["passband"].keys()}
+
+    band_curves = {key: list() for key in kwargs["passband"]}
+    band_curves_body, band_curves_mirror = deepcopy(band_curves), deepcopy(band_curves)
 
     # surface potentials with constant volume of components
-    potentials = self.correct_potentials(phases[unique_phase_indices], component=None, iterations=2)
+    potentials = self.correct_potentials(orbital_supplements.body[:, 4], component=None, iterations=2)
 
-    # for orbital_position in orbital_motion:
-    for counterpart_idx, unique_phase_idx in enumerate(unique_phase_indices):
-        self.primary.surface_potential = potentials['primary'][counterpart_idx]
-        self.secondary.surface_potential = potentials['secondary'][counterpart_idx]
+    # both, body and mirror should be defined in this approximation (those points are created in way to be mirrored
+    # one to another), if it is not defined, there is most likely issue with method `prepare_geosymmetric_orbit`
+    for idx, position_pair in enumerate(orbital_supplements):
+        body, mirror = position_pair
+        body_orb_pos, mirror_orb_pos = utils.convert_binary_orbital_motion_arr_to_positions([body, mirror])
 
-        orbital_position = orbital_motion[unique_phase_idx]
-        self = update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test[counterpart_idx])
+        require_geometry_rebuild = new_geometry_mask[idx]
 
-        container = get_onpos_container(self, orbital_position, ecl_boundaries)
-        container_counterpart = get_onpos_container(self, orbital_motion_counterpart[counterpart_idx],
-                                                    ecl_boundaries)
+        self.primary.surface_potential = potentials['primary'][idx]
+        self.secondary.surface_potential = potentials['secondary'][idx]
 
-        normal_radiance = get_normal_radiance(container, **kwargs)
-        ld_cfs = get_limbdarkening_cfs(container, **kwargs)
+        self = update_surface_in_ecc_orbits(self, body_orb_pos, require_geometry_rebuild)
 
-        container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
-        container_counterpart.coverage, container_counterpart.cosines = \
-            calculate_surface_parameters(container_counterpart, in_eclipse=True)
+        container_body = get_onpos_container(self, body_orb_pos, ecl_boundaries=None)
+        container_mirror = get_onpos_container(self, mirror_orb_pos, ecl_boundaries=None)
+
+        normal_radiance = get_normal_radiance(container_body, **kwargs)
+        ld_cfs = get_limbdarkening_cfs(container_body, **kwargs)
+
+        container_body.coverage, \
+            container_body.cosines = calculate_surface_parameters(container_body, in_eclipse=True)
+        container_mirror.coverage, \
+            container_mirror.cosines = calculate_surface_parameters(container_mirror, in_eclipse=True)
 
         for band in kwargs["passband"].keys():
-            band_curves[band].append(calculate_lc_point(container, band, ld_cfs, normal_radiance))
-            band_curves_counterpart[band].append(calculate_lc_point(container_counterpart, band, ld_cfs,
-                                                                    normal_radiance))
+            band_curves_body[band].append(calculate_lc_point(container_body, band, ld_cfs, normal_radiance))
+            band_curves_mirror[band].append(calculate_lc_point(container_mirror, band, ld_cfs, normal_radiance))
 
     # interpolation of the points in the second half of the light curves using splines
-    x = np.concatenate((phases[unique_phase_indices], orbital_motion_array_counterpart[:, 4] % 1))
+    x = np.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4] % 1))
     sort_idx = np.argsort(x)
     x = x[sort_idx]
     x = np.concatenate(([x[-1] - 1], x, [x[0] + 1]))
-    phases_to_interp = phases[~uniq_geom_test]
-    for band in kwargs["passband"].keys():
-        y = np.concatenate((band_curves[band], band_curves_counterpart[band]))
+
+    for band in kwargs["passband"]:
+        y = np.concatenate((band_curves_body[band], band_curves_mirror[band]))
         y = y[sort_idx]
         y = np.concatenate(([y[-1]], y, [y[0]]))
-        f = interp1d(x, y, kind='cubic')
-        interpolated_fluxes = f(phases_to_interp)
-        # band_curves[band] = np.concatenate((band_curves[band], interpolated_fluxes))
-        full_crv = np.empty(phases.shape)
-        full_crv[uniq_geom_test] = band_curves[band]
-        full_crv[~uniq_geom_test] = interpolated_fluxes
-        band_curves[band] = full_crv
 
-    return band_curves
+        i = Akima1DInterpolator(x, y)
+        f = i(phases)
+        band_curves_body[band] = f
+
+    return band_curves_body
 
 
 def integrate_lc_appx_two(self, orbital_motion, missing_phases_indices, index_of_closest,
@@ -958,7 +854,7 @@ def integrate_lc_appx_two(self, orbital_motion, missing_phases_indices, index_of
     return band_curves
 
 
-def integrate_lc_exactly(self, orbital_motion, ecl_boundaries, phases, **kwargs):
+def integrate_lc_exactly(self, orbital_motion, phases, ecl_boundaries, **kwargs):
     """
     Function calculates LC for eccentric orbit for selected filters.
     LC is calculated exactly for each OrbitalPosition.
@@ -1020,7 +916,7 @@ def calculate_new_geometry(self, orbit_template_arr, rel_d_radii):
     """
 
     # in case of spots, the boundary points will cause problems if you want to use the same geometry
-    if self.primary.has_spots() or self.secondary.has_spots():
+    if self.has_spots():
         return np.ones(orbit_template_arr.shape[0], dtype=np.bool)
 
     calc_new_geometry = np.zeros(orbit_template_arr.shape[0], dtype=np.bool)
@@ -1167,10 +1063,15 @@ def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
 
 
 def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr,
-                                           supplement_constraint, supplement_arr, tol=1e-10):
+                                           supplement_constraint, supplement_arr,
+                                           tol=1e-10, as_empty=None):
+
+    if as_empty is None:
+        as_empty = [np.nan] * 5
+
     ids_of_closest_reduced_values = utils.find_idx_of_nearest(reduced_constraint, supplement_constraint)
 
-    matrix_mask = (np.abs(reduced_constraint[np.newaxis, :] - supplement_constraint[:, np.newaxis])) <= tol
+    matrix_mask = abs(np.abs(reduced_constraint[np.newaxis, :] - supplement_constraint[:, np.newaxis])) <= tol
     is_supplement = [matrix_mask[i][idx] for i, idx in enumerate(ids_of_closest_reduced_values)]
 
     twin_in_reduced = np.array([-1] * len(ids_of_closest_reduced_values))
@@ -1180,7 +1081,8 @@ def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr,
 
     for id_supplement, id_reduced in enumerate(twin_in_reduced):
         args = (reduced_arr[id_reduced], supplement_arr[id_supplement]) \
-            if id_reduced > -1 else (supplement_arr[id_supplement], None)
+            if id_reduced > -1 else (supplement_arr[id_supplement], as_empty)
+        # if id_reduced > -1 else (as_empty, supplement_arr[id_supplement])
 
         if not utils.is_empty(args):
             supplements.append(*args)
@@ -1190,7 +1092,7 @@ def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr,
 
     for is_not_in_id in reduced_all_ids[is_not_in]:
         if reduced_arr[is_not_in_id] not in supplement_arr:
-            supplements.append(*(reduced_arr[is_not_in_id], None))
+            supplements.append(*(reduced_arr[is_not_in_id], as_empty))
 
     return supplements
 

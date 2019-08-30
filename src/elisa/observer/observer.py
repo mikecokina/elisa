@@ -179,6 +179,8 @@ class Observer(object):
         if is_empty(phases):
             phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
 
+        phases = np.array(phases)
+
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
 

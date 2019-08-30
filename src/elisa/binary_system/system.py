@@ -154,7 +154,31 @@ class BinarySystem(System):
         self._orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
 
     def has_pulsations(self):
+        """
+        Resolve whether any of components has pulsation
+
+        :return: bool
+        """
         return self.primary.has_pulsations() or self.secondary.has_pulsations()
+
+    def has_spots(self):
+        """
+        Resolve whether any of components has spots
+
+        :return: bool
+        """
+
+        return self.primary.has_spots() or self.secondary.has_spots()
+
+    def is_synchronous(self):
+        """
+        Resolve whether system is synchronous (consider synchronous system
+        if sychnronicity of both components is equal to 1).
+
+        :return: bool
+        """
+
+        return (self.primary.synchronicity == 1) & (self.secondary.synchronicity == 1)
 
     @property
     def morphology(self):
@@ -1178,6 +1202,7 @@ class BinarySystem(System):
         component(s)
         :return: dict: Dict[str, numpy.array]
         """
+
         components = static.component_to_list(components)
         forward_rad = dict()
         for component in components:
@@ -1964,7 +1989,7 @@ class BinarySystem(System):
         xlim = self.faces_visibility_x_limits(components_distance=components_distance)
 
         # this tests if you can use surface symmetries
-        not_pulsation_test = not self.primary.has_pulsations() and not self.secondary.has_pulsations()
+        not_pulsation_test = not self.has_pulsations()
         not_spot_test = not self.primary.has_spots() and not self.secondary.has_spots()
         use_quarter_star_test = not_pulsation_test and not_spot_test
         vis_test_symmetry = {}
@@ -2387,7 +2412,7 @@ class BinarySystem(System):
         self.build_surface_gravity(component, components_distance)
         self.build_temperature_distribution(component, components_distance, do_pulsations=do_pulsations, phase=phase)
 
-    def prepare_system_positions_container(self, orbital_motion, ecl_boundaries):
+    def prepare_system_positions_container(self, orbital_motion, ecl_boundaries=None):
         return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion, ecl_boundaries)
 
     def correct_potentials(self, phases, component=None, iterations=2):
