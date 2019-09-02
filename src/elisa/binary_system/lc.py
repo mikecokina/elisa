@@ -26,7 +26,6 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     :param hull: matplotlib.path.Path; path of points boundary of infront component projection
     :return: numpy.array
     """
-
     pypex_hull = geo.hull_to_pypex_poly(hull)
     pypex_faces = geo.faces_to_pypex_poly(points[faces])
     # it is possible to None happens in intersection, tkae care about it latter
@@ -64,7 +63,6 @@ def get_eclipse_boundary_path(hull):
     :param hull:
     :return: matplotlib.path.Path
     """
-
     cover_bound = ConvexHull(hull)
     hull_points = hull[cover_bound.vertices]
     bb_path = mpltpath.Path(hull_points)
@@ -81,7 +79,6 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     :param in_eclipse: bool
     :return: Dict
     """
-
     __logger__.debug(f"computing surface coverage for {container.position}")
     cover_component = 'secondary' if 0.0 < container.position.azimuth < const.PI else 'primary'
     cover_object = getattr(container, cover_component)
@@ -153,7 +150,6 @@ def get_normal_radiance(single_orbital_position_container, component=None, **kwa
             * ** atlas ** * - str
     :return: Dict[String, numpy.array]
     """
-
     if component is None:
         return {
             component:
@@ -191,7 +187,6 @@ def get_limbdarkening_cfs(self, component=None, **kwargs):
             * **secondary** * - numpy.array
     :return: Dict[str, numpy.array]
     """
-
     if component is None:
         return {
             component:
@@ -223,7 +218,6 @@ def prep_surface_params(initial_props_container, pulsations_test, **kwargs):
     :param kwargs:
     :return:
     """
-
     has_pulsations = pulsations_test['primary'] or pulsations_test['secondary']
     if not has_pulsations:
         # compute normal radiance for each face and each component
@@ -251,7 +245,6 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     :param kwargs: todo: add kwargs
     :return: Dict[str, numpy.array]
     """
-
     self.build(components_distance=1.0)
 
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
@@ -335,7 +328,6 @@ def phase_crv_symmetry(self, phase):
     :param phase: numpy.array
     :return: Tuple[numpy.array, numpy.array]
     """
-
     if (not self.has_pulsations()) & (not self.has_spots()):
         symmetrical_counterpart = phase > 0.5
         # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
@@ -354,7 +346,6 @@ def _look_for_approximation(phases_span_test, not_pulsations_test):
     :param phases_span_test: bool
     :return: bool
     """
-
     return POINTS_ON_ECC_ORBIT > 0 and POINTS_ON_ECC_ORBIT is not None and phases_span_test and not_pulsations_test
 
 
@@ -366,7 +357,6 @@ def _eval_approximation_one(self, phases):
     :param phases: numpy.array
     :return: bool
     """
-
     if len(phases) > config.POINTS_ON_ECC_ORBIT and self.is_synchronous():
         return True
     return False
@@ -380,7 +370,6 @@ def _eval_approximation_two(self, rel_d):
     :param rel_d: fixme: add
     :return: bool
     """
-
     # defined bodies/objects/tempaltes in orbital supplements instance are sorted by distance,
     # what means that also radii `rel_d` computed from such values have to be already sorted by
     # their own size (radius changes based on components distance and it is monotonic function)
@@ -399,7 +388,6 @@ def _split_orbit_by_apse_line(orbital_motion, orbital_mask):
     :param orbital_mask: numpy.array[bool]; mask which defines separation (True is one side and False is other side)
     :return: Tuple[numpy.array, numpy.array]
     """
-
     reduced_orbit_arr = orbital_motion[orbital_mask]
     supplement_to_reduced_arr = orbital_motion[~orbital_mask]
     return reduced_orbit_arr, supplement_to_reduced_arr
@@ -414,7 +402,6 @@ def _resolve_geometry_update(self, size, rel_d):
     :param rel_d: numpy.array
     :return: numpy.array[bool]
     """
-
     # in case of spots, the boundary points will cause problems if you want to use the same geometry
     if self.has_spots():
         return np.ones(size, dtype=np.bool)
@@ -441,7 +428,6 @@ def _compute_rel_d_radii(self, orbital_supplements):
     :param orbital_supplements:
     :return: numpy.array
     """
-
     # note: defined bodies/objects/templates in orbital supplements instance are sorted by distance (line above),
     # what means that also radii computed from such values have to be already sorted by their own size (radius changes
     # based on components distance and it is, on the half of orbit defined by apsidal line, monotonic function)
@@ -466,7 +452,6 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
             * ** atlas ** * - str
     :return: lambda
     """
-
     params = dict(input_argument=phases, return_nparray=True, calculate_from='phase')
     all_orbital_pos_arr = position_method(**params)
     all_orbital_pos = utils.convert_binary_orbital_motion_arr_to_positions(all_orbital_pos_arr)
@@ -527,7 +512,6 @@ def compute_eccentric_lightcurve(self, **kwargs):
             * ** position_method** * - function definition
     :return: Dict[str, numpy.array]
     """
-
     phases = kwargs.pop("phases")
     phases_span_test = np.max(phases) - np.min(phases) >= 0.8
 
@@ -570,7 +554,6 @@ def prepare_geosymmetric_orbit(self, azimuths, phases):
         indices `unique_phase_indices`
         - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
     """
-
     azimuth_boundaries = [self.argument_of_periastron, (self.argument_of_periastron + const.PI) % const.FULL_ARC]
     unique_geometry = np.logical_and(azimuths > azimuth_boundaries[0],
                                      azimuths < azimuth_boundaries[1]) \
@@ -598,7 +581,6 @@ def get_onpos_container(self, orbital_position, ecl_boundaries):
     :param ecl_boundaries: numpy.array; orbital azimuths of eclipses
     :return: container; elisa.binary_system.geo.SingleOrbitalPositionContainer
     """
-
     system_positions_container = self.prepare_system_positions_container(orbital_motion=[orbital_position],
                                                                          ecl_boundaries=ecl_boundaries)
     system_positions_container = system_positions_container.darkside_filter()
@@ -622,7 +604,6 @@ def calculate_surface_parameters(container, in_eclipse=True):
                    - p_cosines, s_cosines - numpy.array - directional cosines for each face with respect to line-of-sight
                                                        vector
     """
-
     coverage = compute_surface_coverage(container, in_eclipse=in_eclipse)
     p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
     s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
@@ -640,7 +621,6 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
     :param normal_radiance: dict - {'primary': numpy.float of normal radiances, etc for secondary}
     :return: float
     """
-
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
     ld_cors = {
         component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values,
@@ -678,7 +658,6 @@ def integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, 
             * ** atlas ** * - str
     :return: Dict[str, numpy.array]
     """
-
     band_curves = {key: list() for key in kwargs["passband"]}
     band_curves_body, band_curves_mirror = deepcopy(band_curves), deepcopy(band_curves)
 
@@ -749,7 +728,6 @@ def integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, 
             * ** atlas ** * - str
     :return: Dict[str, numpy.array]
     """
-
     def _onpos_params(orbital_position):
         """
         Helper function
@@ -757,7 +735,6 @@ def integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, 
         :param orbital_position: collections.tamedtuple; elisa.const.BINARY_POSITION_PLACEHOLDER
         :return: Tuple
         """
-
         _container = get_onpos_container(self, orbital_position, ecl_boundaries=None)
         _normal_radiance = get_normal_radiance(_container, **kwargs)
         _ld_cfs = get_limbdarkening_cfs(_container, **kwargs)
@@ -774,7 +751,6 @@ def integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, 
         :param orbital_position: collections.tamedtuple; elisa.const.BINARY_POSITION_PLACEHOLDER
         :return:
         """
-
         for band in kwargs["passband"]:
             band_curves[band][int(orbital_position.idx)] = \
                 calculate_lc_point(container, band, ldc, n_radiance)
@@ -826,7 +802,6 @@ def integrate_lc_exactly(self, orbital_motion, phases, ecl_boundaries, **kwargs)
     :param kwargs: kwargs taken from `compute_eccentric_lightcurve` function
     :return: dictionary of fluxes for each filter
     """
-
     # surface potentials with constant volume of components
     potentials = self.correct_potentials(phases, component=None, iterations=2)
 
@@ -874,7 +849,6 @@ def calculate_new_geometry(self, orbit_template_arr, rel_d_radii):
     with respect to the previous OrbitalPosition, excluding the first postition.
     :return: numpy.array[bool]; mask to select Orbital positions, where orbits should be calculated
     """
-
     # in case of spots, the boundary points will cause problems if you want to use the same geometry
     if self.has_spots():
         return np.ones(orbit_template_arr.shape[0], dtype=np.bool)
@@ -905,7 +879,6 @@ def update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
     :return: elisa.binary_system.system.BinarySystem; instance with updated geometry
     # fixme: we don't need to return self, since values have been already updated and it has been reflected everywhere
     """
-
     if new_geometry_test:
         self.build(components_distance=orbital_position.distance)
     else:
@@ -926,7 +899,6 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     :param kwargs:
     :return: dictionary of fluxes for each filter
     """
-
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
     points = {}
     for component in BINARY_COUNTERPARTS:
@@ -992,7 +964,6 @@ def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     :param kwargs:
     :return: dictionary of fluxes for each filter
     """
-
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
     phases = kwargs.pop("phases")
@@ -1049,7 +1020,6 @@ def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr,
     :param as_empty: numpy.array; e.g. [np.nan, np.nan] depends on shape of reduced_arr item
     :return: elisa.binary_system.geo.OrbitalSupplements
     """
-
     if as_empty is None:
         as_empty = [np.nan] * 5
 
