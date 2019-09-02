@@ -707,6 +707,7 @@ def spherical_harmonics_renormalization_constant(l, m):
     :param m: azimuthal order of the mode
     :return: float
     """
+
     # TODO: write unit test to test_utils
     def alp(xx, *args):
         """
@@ -736,9 +737,9 @@ def spherical_harmonics_renormalization_constant(l, m):
     return 1.0 / result
 
 
-def calculate_equiv_radius(a, b, c):
+def calculate_equiv_radius(_a, _b, _c):
     """returns equivalent radius of ellipsoid"""
-    return np.power(a * b * c, 1.0/3.0)
+    return np.power(_a * _b * _c, 1.0 / 3.0)
 
 
 class IterableQueue(object):
