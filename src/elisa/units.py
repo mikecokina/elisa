@@ -1,5 +1,6 @@
 from astropy import units as u
 
+# DO NOT CHANGE THIS!!!
 MASS_UNIT = u.kg
 TEMPERATURE_UNIT = u.K
 DISTANCE_UNIT = u.m

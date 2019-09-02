@@ -634,7 +634,10 @@ class BinarySystem(System):
         """
         serialized_kwargs = dict()
         for kwarg in self.ALL_KWARGS:
-            serialized_kwargs[kwarg] = getattr(self, kwarg)
+            if kwarg in ['argument_of_periastron', 'inclination']:
+                serialized_kwargs[kwarg] = getattr(self, kwarg) * units.ARC_UNIT
+            else:
+                serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
 
     def _setup_periastron_critical_potential(self):
