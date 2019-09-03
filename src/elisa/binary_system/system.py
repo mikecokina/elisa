@@ -2443,7 +2443,7 @@ class BinarySystem(System):
             x_radii = 0.5 * (forward_tgt + back_tgt)
             equiv_r_mean = utils.calculate_equiv_radius(polar_tgt, side_tgt, x_radii)
 
-            for iter in range(iterations):
+            for _ in range(iterations):
                 polar_radii = np.empty(phases.shape)
                 side_radii = np.empty(phases.shape)
                 back_radii = np.empty(phases.shape)
