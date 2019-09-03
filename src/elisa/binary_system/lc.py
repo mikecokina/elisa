@@ -3,7 +3,6 @@ import logging
 import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
-
 from elisa.conf import config
 from elisa import utils, const, atm, ld, pulsations
 from elisa.binary_system import geo, build

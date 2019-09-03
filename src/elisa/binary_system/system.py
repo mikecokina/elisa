@@ -1566,30 +1566,29 @@ class BinarySystem(System):
         """
         Creates surface mesh of given binary star component in case of over-contact system.
 
-        :param symmetry_output: bool - if true, besides surface points are returned also `symmetry_vector`,
-                                       `base_symmetry_points_number`, `inverse_symmetry_matrix`
-        :param component: str - `primary` or `secondary`
+        :param symmetry_output: bool; if true, besides surface points are returned also `symmetry_vector`,
+        `base_symmetry_points_number`, `inverse_symmetry_matrix`
+        :param component: str; `primary` or `secondary`
         :return: Tuple or numpy.array (if symmetry_output is False)
 
         Array of surface points if symmetry_output = False::
 
             numpy.array([[x1 y1 z1],
-                           [x2 y2 z2],
-                            ...
-                           [xN yN zN]])
+                         [x2 y2 z2],
+                          ...
+                         [xN yN zN]])
 
         otherwise::
 
                  numpy.array([[x1 y1 z1],
-                                [x2 y2 z2],
-                                 ...
-                                [xN yN zN]]) - array of surface points,
+                              [x2 y2 z2],
+                               ...
+                              [xN yN zN]]) - array of surface points,
                  numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
-                                                                  quarter of surface,
+                 quarter of surface,
                  numpy.float - number of points included in symmetrical one quarter of surface,
                  numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
-                                                                                   mapped basic symmetry quadrant to all
-                                                                                    others quadrants
+                 mapped basic symmetry quadrant to all others quadrants
         """
         suppress_parallelism = kwargs.get("suppress_parallelism", True)
         component_instance = getattr(self, component)
@@ -1788,7 +1787,7 @@ class BinarySystem(System):
 
     def over_contact_system_surface(self, component=None, points=None, **kwargs):
         # do not remove kwargs, keep compatible interface w/ detached where components distance has to be provided
-        # in this case,m components distance is sinked in kwargs and not used
+        # in this case, components distance is sinked in kwargs and not used
         """
         Calculates surface faces from the given component's points in case of over-contact system.
 
@@ -2417,13 +2416,13 @@ class BinarySystem(System):
 
     def correct_potentials(self, phases, component=None, iterations=2):
         """
-        function calculates potential for each phase in phases in such eay that conserves volume of the component.
-        Volume is approximated by two half elipsoids.
+        Function calculates potential for each phase in phases in such way that conserves
+        volume of the component. Volume is approximated by two half elipsoids.
 
-        :param phases: array
-        :param component: `primary`, `secondary` or None (=both)
-        :param iterations:
-        :return: array
+        :param phases: numpy.array
+        :param component: str; `primary`, `secondary` or None (=both)
+        :param iterations: int
+        :return: numpy.array
         """
         data = self.orbit.orbital_motion(phases)
         distances = data[:, 0]

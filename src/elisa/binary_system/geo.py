@@ -38,7 +38,11 @@ def get_eclipse_boundaries(binary, components_distance):
 
     :param binary: elisa.binary_system.system.BinarySystem
     :param components_distance: float
-    :return: numpy.array([primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop])
+    :return: numpy.array;
+
+    shape::
+
+        [primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop]
     """
     # check whether the inclination is high enough to enable eclipses
     if binary.morphology != 'over-contact':
@@ -85,7 +89,7 @@ def plane_projection(points, plane, keep_3d=False):
     """
     Function projects 3D points into given plane.
 
-    :param keep_3d: if True, the dimensions of the array is kept the same, with given column equal to zero
+    :param keep_3d: bool; if True, the dimensions of the array is kept the same, with given column equal to zero
     :param points: numpy.array
     :param plane: str; ('xy', 'yz', 'zx')
     :return: numpy.array
@@ -105,9 +109,9 @@ def calculate_spot_longitudes(binary_instance, phases, component=None):
     function calculates the latitudes of every spot on given component(s) for every phase
 
     :param binary_instance: BinarySystem instance
-    :param phases: np.array
-    :param component: 'primary' or 'secondary', if None both will be calculated
-    :return: dict {component: {spot_idx: np.array([....]), ...}, ...}
+    :param phases: numpy.array
+    :param component: str; 'primary' or 'secondary', if None both will be calculated
+    :return: Dict; {component: {spot_idx: np.array([....]), ...}, ...}
     """
     components_list = static.component_to_list(component)
     components = {comp: getattr(binary_instance, comp) for comp in components_list}
@@ -233,7 +237,7 @@ class EasyObject(object):
 
         :return: Tuple
         """
-        return self.points, self.normals, self.indices, self.faces, self.coverage, self.rals, self.centres
+        return self.points, self.normals, self.indices, self.faces, self.coverage, self.rals, self.face_centres
 
     def copy(self):
         """

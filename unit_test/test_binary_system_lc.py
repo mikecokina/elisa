@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-import matplotlib.path as matpath
 
 from elisa.binary_system.geo import OrbitalSupplements
 from elisa.binary_system import lc
@@ -116,7 +115,7 @@ class SupportMethodsTestCase(unittest.TestCase):
 
         self.assertTrue(np.all(obtained == expected))
 
-    def test_phase_crv_symmetry(self):
+    def test__phase_crv_symmetry(self):
         phase = np.arange(0, 1.2, 0.2)
         obtained = lc._phase_crv_symmetry(MockSelf, phase)
         expected = np.array([0, 0.2, 0.4]), np.array([0, 1, 2, 2, 1, 0], dtype=int)

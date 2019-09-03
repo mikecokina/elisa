@@ -53,13 +53,13 @@ def build_surface_gravity(self, component=None, components_distance=None):
 
 def build_faces_orientation(self, component=None, components_distance=None):
     """
-    Compute face orientation (normals) for each face. If pulsations are present, than calculate renormalized associated
+    Compute face orientation (normals) for each face.
+    If pulsations are present, than calculate renormalized associated
     Legendree polynomials (rALS) for each pulsation mode.
 
     :param self: BinarySystem instance
     :param component: str; `primary` or `secondary`
     :param components_distance: float
-    :param phase: float - orbital phase at which to build surface orientation, provide it only in case of assynchronous
     orbit with misaligned pulsations, where pulsation axis drifts with star
     :return:
     """
@@ -204,7 +204,8 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
 
 def add_spots_to_mesh(self, components_distance, component=None):
     """
-    function implements surface points into clean mesh and removes stellar and other spot points under the given spot
+    Function implements surface points into clean mesh and removes stellar
+    points and other spot points under the given spot if such overlapped spots exists.
 
     :param self: BinarySystem instance
     :param components_distance: float
@@ -249,10 +250,10 @@ def build_surface(self, component=None, components_distance=None, return_surface
 
     It is possible to return computed surface (points and faces indices) if `return_surface` parametre is set to True.
 
-    :param self: BinarySystem; instance
+    :param self: elisa.binary_system.sytem.BinarySystem; instance
     :param return_surface: bool; if True, function returns dictionary of arrays with all points and faces
-                                 (surface + spots) for each component
-    :param components_distance: distance between components
+    (surface + spots) for each component
+    :param components_distance: float; distance between components
     :param component: str; specify component, use `primary` or `secondary`
     :return: Tuple or None
     """
@@ -280,7 +281,7 @@ def build_surface_with_no_spots(self, component=None, components_distance=None):
 
     :param self: BinarySystem; instance
     :param components_distance: float
-    :param component: `primary` or `secondary` if not supplied both component are calculated
+    :param component: str; `primary` or `secondary` if not supplied both component are calculated
     :return:
     """
     component = static.component_to_list(component)
