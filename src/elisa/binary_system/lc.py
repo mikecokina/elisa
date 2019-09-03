@@ -251,7 +251,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
     # in case of LC for spotless surface without pulsations unique phase interval is only (0, 0.5)
     phases = kwargs.pop("phases")
-    unique_phase_interval, reverse_phase_map = phase_crv_symmetry(self, phases)
+    unique_phase_interval, reverse_phase_map = _phase_crv_symmetry(self, phases)
 
     position_method = kwargs.pop("position_method")
     orbital_motion = position_method(input_argument=unique_phase_interval, return_nparray=False, calculate_from='phase')
@@ -319,15 +319,18 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     return band_curves
 
 
-def phase_crv_symmetry(self, phase):
+def _phase_crv_symmetry(self, phase):
     """
     Utilizing symmetry of circular systems without spots and pulastions where you need to evaluate only half
     of the phases. Function finds such redundant phases and returns only unique phases.
+    Expects phases from 0 to 1.0.
 
     :param self: elisa.binary_system.system.BinarySystem
     :param phase: numpy.array
     :return: Tuple[numpy.array, numpy.array]
     """
+    # keep those fucking methods imutable
+    phase = phase.copy()
     if (not self.has_pulsations()) & (not self.has_spots()):
         symmetrical_counterpart = phase > 0.5
         # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
