@@ -93,7 +93,7 @@ def plane_projection(points, plane, keep_3d=False):
     rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
     if not keep_3d:
         indices_to_keep = [0, 1, 2]
-        del indices_to_keep[0]
+        del indices_to_keep[rm_index]
         return points[:, indices_to_keep]
     in_plane = deepcopy(points)
     in_plane[:, rm_index] = 0.0
