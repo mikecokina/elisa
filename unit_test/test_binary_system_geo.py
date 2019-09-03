@@ -1,12 +1,19 @@
 import unittest
 import numpy as np
+
 from numpy.testing import assert_array_equal
-
-from elisa.binary_system import geo
 from pypex.poly2d import polygon
+from astropy import units as u
+
+from elisa.base.star import Star
+from elisa.binary_system import geo
+from elisa import const as c
+from elisa.conf import config
+from elisa.binary_system.system import BinarySystem
+from elisa.utils import is_empty
 
 
-class SupportMethodsTestCse(unittest.TestCase):
+class SupportMethodsTestCase(unittest.TestCase):
 
     def test_darkside_filter(self):
         normals = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])
@@ -78,7 +85,90 @@ class SupportMethodsTestCse(unittest.TestCase):
 
 
 class SystemOrbitalPositionTestCase(unittest.TestCase):
-    pass
+    def setUp(self):
+        self.params_combination = {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 10.0, "secondary_surface_potential": 10.0,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 2.0,
+            "eccentricity": 0.0, "inclination": c.HALF_PI * u.rad, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 5000, "secondary_t_eff": 5000,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 0.6, "secondary_albedo": 0.6,
+        }
+
+    def _prepare_system(self):
+        combo = self.params_combination
+        primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
+                       synchronicity=combo["primary_synchronicity"],
+                       t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"],
+                       albedo=combo['primary_albedo'], metallicity=0.0)
+
+        secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
+                         synchronicity=combo["secondary_synchronicity"],
+                         t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
+                         albedo=combo['secondary_albedo'], metallicity=0.0)
+
+        primary.discretization_factor, secondary.discretization_factor = 10, 10
+
+        return BinarySystem(primary=primary,
+                            secondary=secondary,
+                            argument_of_periastron=combo["argument_of_periastron"],
+                            gamma=combo["gamma"],
+                            period=combo["period"],
+                            eccentricity=combo["eccentricity"],
+                            inclination=combo["inclination"],
+                            primary_minimum_time=combo["primary_minimum_time"],
+                            phase_shift=combo["phase_shift"])
+
+    def test_initialize_SystemOrbitalPosition(self):
+        bs = self._prepare_system()
+        bs.build(components_distance=1.0)
+
+        orbital_motion = [
+            c.BINARY_POSITION_PLACEHOLDER(1, 1.0, np.pi / 2.0, 0.0, 0.0),
+            c.BINARY_POSITION_PLACEHOLDER(1, 1.0, c.FULL_ARC * (3. / 4.), np.pi, 0.0)
+        ]
+        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, np.pi / 2.0, orbital_motion)
+
+        k_attrs = ["points", "normals", "faces", "face_centres", "log_g", "temperatures"]
+
+        for component in config.BINARY_COUNTERPARTS:
+            c_instance = getattr(position.init_data, component)
+            for k_attr in k_attrs:
+                attr = getattr(c_instance, k_attr)
+                self.assertTrue(np.any(attr))
+
+            self.assertTrue(is_empty(getattr(c_instance, "coverage")))
+            self.assertTrue(is_empty(getattr(c_instance, "indices")))
+
+    def test_iterate_SystemOrbitalPosition_and_init_data_persists(self):
+
+        def serialize_geo_attrs():
+            attrs = list()
+            for component in config.BINARY_COUNTERPARTS:
+                c_instance = getattr(position.init_data, component)
+                for k_attr in ["points", "normals", "faces", "face_centres"]:
+                    attr = getattr(c_instance, k_attr)
+                    attrs.append(attr)
+            return attrs
+
+        bs = self._prepare_system()
+        bs.build(components_distance=1.0)
+
+        orbital_motion = [
+            c.BINARY_POSITION_PLACEHOLDER(1, 1.0, np.pi / 2.0, 0.0, 0.0),
+            c.BINARY_POSITION_PLACEHOLDER(1, 1.0, c.FULL_ARC * (3. / 4.), np.pi, 0.0)
+        ]
+        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, np.pi / 2.0, orbital_motion)
+
+        initial_data = serialize_geo_attrs()
+
+        for _ in position:
+            current_initial_data = serialize_geo_attrs()
+            for a, b in zip(initial_data, current_initial_data):
+                assert_array_equal(a, b)
 
 
 class OrbitalSupplementsTestCase(unittest.TestCase):

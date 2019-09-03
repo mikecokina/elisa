@@ -714,7 +714,7 @@ def spherical_harmonics_renormalization_constant(l, m):
         Returns negative value from imaginary part of associated Legendre polynomial (ALP),
         used in minimizer to find global maximum of real part of spherical harmonics.
 
-        :param x: float - argument of function
+        :param xx: float - argument of function
         :param args:
 
         ::
