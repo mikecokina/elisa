@@ -16,14 +16,14 @@ __logger__ = logging.getLogger(__name__)
 
 
 def partial_visible_faces_surface_coverage(points, faces, normals, hull):
-    # todo: add unittests
     """
     Compute surface coverage of partialy visible faces.
 
     :param points: numpy.array
     :param faces: numpy.array
     :param normals: numpy.array
-    :param hull: matplotlib.path.Path; path of points boundary of infront component projection
+    :param hull: numpy.array; sorted clockwise to create
+    matplotlib.path.Path; path of points boundary of infront component projection
     :return: numpy.array
     """
     pypex_hull = geo.hull_to_pypex_poly(hull)
@@ -42,7 +42,6 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
 
 
 def get_visible_projection(obj):
-    # todo: add unittests
     """
     Returns yz projection of nearside points.
 
@@ -58,9 +57,10 @@ def get_visible_projection(obj):
 
 def get_eclipse_boundary_path(hull):
     """
-    fixme: add docstring
+    Return `matplotlib.path.Path` object which represents boundary of component projection
+    to plane `yz`.
 
-    :param hull:
+    :param hull: numpy.array
     :return: matplotlib.path.Path
     """
     cover_bound = ConvexHull(hull)
@@ -183,8 +183,10 @@ def get_limbdarkening_cfs(self, component=None, **kwargs):
     :param component: str
     :param self:
     :param kwargs: Dict;
-            * **primary** * - numpy.array
-            * **secondary** * - numpy.array
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
     :return: Dict[str, numpy.array]
     """
     if component is None:
@@ -215,7 +217,11 @@ def prep_surface_params(initial_props_container, pulsations_test, **kwargs):
 
     :param initial_props_container: SingleOrbitalPosition
     :param pulsations_test: dict {component: bool - has_pulsations, ...}
-    :param kwargs:
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
     :return:
     """
     has_pulsations = pulsations_test['primary'] or pulsations_test['secondary']
@@ -231,8 +237,7 @@ def prep_surface_params(initial_props_container, pulsations_test, **kwargs):
         normal_radiance = {'secondary': get_normal_radiance(initial_props_container, component='secondary', **kwargs)}
         ld_cfs = {'secondary': get_limbdarkening_cfs(initial_props_container, component='secondary', **kwargs)}
     else:
-        normal_radiance = {}
-        ld_cfs = {}
+        normal_radiance, ld_cfs = dict(), dict()
     return normal_radiance, ld_cfs
 
 
@@ -242,7 +247,12 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     binary system.
 
     :param self: elisa.binary_system.system.BinarySystem
-    :param kwargs: todo: add kwargs
+    :param kwargs: Dict;
+    * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+            * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array]
     """
     self.build(components_distance=1.0)
@@ -354,7 +364,7 @@ def _look_for_approximation(phases_span_test, not_pulsations_test):
 
 def _eval_approximation_one(self, phases):
     """
-    fixme: add description - what exactly is going to be done if this approx is satisfied
+    Test if it is appropriate to compute eccentric binary system with approximation approax one.
 
     :param self: elisa.binary_system.system.BinaryStar
     :param phases: numpy.array
@@ -367,10 +377,10 @@ def _eval_approximation_one(self, phases):
 
 def _eval_approximation_two(self, rel_d):
     """
-    fixme: add description - what exactly is going to be done if this approx is satisfied
+    Test if it is appropriate to compute eccentric binary system with approximation approax two.
 
     :param self: elisa.binary_system.system.BinaryStar
-    :param rel_d: fixme: add
+    :param rel_d: numpy.array
     :return: bool
     """
     # defined bodies/objects/tempaltes in orbital supplements instance are sorted by distance,
@@ -460,14 +470,14 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
     all_orbital_pos = utils.convert_binary_orbital_motion_arr_to_positions(all_orbital_pos_arr)
 
     azimuths = all_orbital_pos_arr[:, 2]
-    reduced_phase_ids, counterpart_postion_arr, reduced_phase_mask = prepare_geosymmetric_orbit(self, azimuths, phases)
+    reduced_phase_ids, counterpart_postion_arr, reduced_phase_mask = _prepare_geosymmetric_orbit(self, azimuths, phases)
 
     # spliting orbital motion into two separate groups on different sides of apsidal line
     reduced_orbit_arr, reduced_orbit_supplement_arr = _split_orbit_by_apse_line(all_orbital_pos_arr, reduced_phase_mask)
 
     # APPX ZERO ********************************************************************************************************
     if not try_to_find_appx:
-        return 'zero', lambda: integrate_lc_exactly(self, all_orbital_pos, None, phases, **kwargs)
+        return 'zero', lambda: _integrate_lc_exactly(self, all_orbital_pos, None, phases, **kwargs)
 
     # APPX ONE *********************************************************************************************************
     appx_one = _eval_approximation_one(self, phases)
@@ -478,7 +488,7 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
         rel_d_radii = _compute_rel_d_radii(self, orbital_supplements)
         new_geometry_mask = _resolve_geometry_update(self, orbital_supplements.size(), rel_d_radii)
 
-        return 'one', lambda: integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
+        return 'one', lambda: _integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
 
     # APPX TWO *********************************************************************************************************
 
@@ -495,10 +505,10 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
     new_geometry_mask = _resolve_geometry_update(self, orbital_supplements.size(), rel_d_radii)
 
     if appx_two:
-        return 'two', lambda: integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
+        return 'two', lambda: _integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
     # APPX ZERO once again *********************************************************************************************
     else:
-        return 'zero', lambda: integrate_lc_exactly(self, all_orbital_pos, phases, ecl_boundaries=None, **kwargs)
+        return 'zero', lambda: _integrate_lc_exactly(self, all_orbital_pos, phases, ecl_boundaries=None, **kwargs)
 
 
 def compute_eccentric_lightcurve(self, **kwargs):
@@ -507,12 +517,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
     :param self: elisa.binary_star.system.BinarySystem
     :param kwargs: Dict;
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
-            * ** phases** * - numpy.array
-            * ** position_method** * - function definition
+
     :return: Dict[str, numpy.array]
     """
     phases = kwargs.pop("phases")
@@ -538,7 +543,7 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
 
 # todo: unittest this method
-def prepare_geosymmetric_orbit(self, azimuths, phases):
+def _prepare_geosymmetric_orbit(self, azimuths, phases):
     """
     Prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
     mirrored via apsidal line in order to reduce time for generating the light curve.
@@ -549,13 +554,15 @@ def prepare_geosymmetric_orbit(self, azimuths, phases):
     :return: Tuple;
 
 
-     shape ::
-
-        - unique_phase_indices - numpy.array : indices that points to the orbital positions from one half of the
-        orbital motion divided by apsidal line
-        - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by
-        indices `unique_phase_indices`
-        - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
+    shape ::
+        
+        (numpy.array, list, numpy.array)
+        
+    - unique_phase_indices - numpy.array : indices that points to the orbital positions from one half of the 
+    orbital motion divided by apsidal line
+    - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by 
+    indices `unique_phase_indices`
+    - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
     """
     azimuth_boundaries = [self.argument_of_periastron, (self.argument_of_periastron + const.PI) % const.FULL_ARC]
     unique_geometry = np.logical_and(azimuths > azimuth_boundaries[0],
@@ -576,8 +583,8 @@ def prepare_geosymmetric_orbit(self, azimuths, phases):
 
 def get_onpos_container(self, orbital_position, ecl_boundaries):
     """
-    Prepares a postion container for given orbital position where visibe/non visible faces are calculated and
-    metallicities are assigned.
+    Prepares a postion container for given orbital position
+    where visibe/non visible faces are calculated and metallicities are assigned.
 
     :param self: elisa.binary_system.system.BinarySystem
     :param orbital_position: collections.namedtuple; elisa.const.Position
@@ -597,15 +604,21 @@ def get_onpos_container(self, orbital_position, ecl_boundaries):
 
 def calculate_surface_parameters(container, in_eclipse=True):
     """
-    function prepares surface-related parameters such as coverage(area o visibility of the triangles), and directional
-    cosines towards line-of-sight vector
+    Function prepares surface-related parameters such as coverage(area of visibility
+    of the triangles) and directional cosines towards line-of-sight vector.
 
     :param container: SingleOrbitalPositionContainer
-    :param in_eclipse: bool - switch to indicate if in orout of eclipse calculations to use, if you are not sure leave
-                              it to True
-    :return: tuple - coverage - numpy.array - visible area of triangles
-                   - p_cosines, s_cosines - numpy.array - directional cosines for each face with respect to line-of-sight
-                                                       vector
+    :param in_eclipse: bool; indicate if eclipse occur for given position container.
+    If you are not sure leave it to True
+    :return: Tuple;
+
+    shape::
+
+        (numpy.array, Dict[str, numpy.array])
+
+    - coverage - numpy.array - visible area of triangles
+    - p_cosines, s_cosines - Dict[str, numpy.array] - directional cosines for each face with respect
+    to line-of-sight vector
     """
     coverage = compute_surface_coverage(container, in_eclipse=in_eclipse)
     p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
@@ -619,9 +632,9 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
     Calculates point on the light curve for given band.
 
     :param container: SingleOrbitalPositionContainer
-    :param band: str - name of the photometric band
-    :param ld_cfs: dict - {'primary': numpy.float of ld coefficents, etc for secondary}
-    :param normal_radiance: dict - {'primary': numpy.float of normal radiances, etc for secondary}
+    :param band: str; name of the photometric band
+    :param ld_cfs: Dict[str, Dict[str, pandas.DataFrame]]
+    :param normal_radiance: Dict[str, Dict[str, numpy.array]]
     :return: float
     """
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
@@ -642,7 +655,7 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
     return flux
 
 
-def integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
+def _integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
     """
     Function calculates light curves for eccentric orbits for selected filters using approximation
     where light curve points on the one side of the apsidal line are calculated exactly and the second
@@ -668,7 +681,7 @@ def integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, 
     potentials = self.correct_potentials(orbital_supplements.body[:, 4], component=None, iterations=2)
 
     # both, body and mirror should be defined in this approximation (those points are created in way to be mirrored
-    # one to another), if it is not defined, there is most likely issue with method `prepare_geosymmetric_orbit`
+    # one to another), if it is not defined, there is most likely issue with method `_prepare_geosymmetric_orbit`
     for idx, position_pair in enumerate(orbital_supplements):
         body, mirror = position_pair
         body_orb_pos, mirror_orb_pos = utils.convert_binary_orbital_motion_arr_to_positions([body, mirror])
@@ -678,7 +691,7 @@ def integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, 
         self.primary.surface_potential = potentials['primary'][idx]
         self.secondary.surface_potential = potentials['secondary'][idx]
 
-        self = update_surface_in_ecc_orbits(self, body_orb_pos, require_geometry_rebuild)
+        self = _update_surface_in_ecc_orbits(self, body_orb_pos, require_geometry_rebuild)
 
         container_body = get_onpos_container(self, body_orb_pos, ecl_boundaries=None)
         container_mirror = get_onpos_container(self, mirror_orb_pos, ecl_boundaries=None)
@@ -713,7 +726,7 @@ def integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, 
     return band_curves
 
 
-def integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
+def _integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
     """
     Function calculates light curve for eccentric orbit for selected filters using
     approximation where to each OrbitalPosition on one side of the apsidal line,
@@ -777,7 +790,7 @@ def integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, 
         self.primary.surface_potential = potentials['primary'][idx]
         self.secondary.surface_potential = potentials['secondary'][idx]
 
-        self = update_surface_in_ecc_orbits(self, body_orb_pos, require_geometry_rebuild)
+        self = _update_surface_in_ecc_orbits(self, body_orb_pos, require_geometry_rebuild)
 
         if body_orb_pos.phase not in used_phases:
             container_body, normal_radiance, ld_cfs = _onpos_params(body_orb_pos)
@@ -792,7 +805,7 @@ def integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, 
     return band_curves
 
 
-def integrate_lc_exactly(self, orbital_motion, phases, ecl_boundaries, **kwargs):
+def _integrate_lc_exactly(self, orbital_motion, phases, ecl_boundaries, **kwargs):
     """
     Function calculates LC for eccentric orbit for selected filters.
     LC is calculated exactly for each OrbitalPosition.
@@ -870,7 +883,7 @@ def calculate_new_geometry(self, orbit_template_arr, rel_d_radii):
     return calc_new_geometry
 
 
-def update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
+def _update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
     """
     Function decides how to update surface properties with respect to the degree of change
     in surface geometry given by new_geometry test.
