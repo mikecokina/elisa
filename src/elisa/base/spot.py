@@ -10,7 +10,7 @@ class Spot(object):
     Spot data container
     """
     MANDATORY_KWARGS = ["longitude", "latitude", "angular_radius", "temperature_factor"]
-    OPTIONAL_KWARGS = ["angular_density"]
+    OPTIONAL_KWARGS = ["discretization_factor"]
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, suppress_logger=False, **kwargs):

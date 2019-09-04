@@ -642,3 +642,15 @@ def binary_surface_anim(**kwargs):
     args = (points, faces, clr, cmaps, plot)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['Nframes'], fargs=args, interval=20)
     plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='imagemagick', fps=20)
+
+
+def light_curve(**kwargs):
+    plt.figure(figsize=(8,6))
+    for item in kwargs['curves']:
+        plt.plot(kwargs['phases'], kwargs['curves'][item], label=item)
+        plt.legend()
+
+    plt.xlabel('Phase')
+    plt.ylabel('Flux')
+    plt.legend(loc=1)
+    plt.show()
