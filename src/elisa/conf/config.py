@@ -187,7 +187,9 @@ PASSBANDS = [
     'Generic.Stromgren.u',
     'Generic.Stromgren.v',
     'Generic.Stromgren.b',
-    'Generic.Stromgren.y'
+    'Generic.Stromgren.y',
+    'Kepler',
+    'GaiaDR2',
 ]
 
 PASSBAND_DATAFRAME_THROUGHPUT = "throughput"

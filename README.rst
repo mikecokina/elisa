@@ -84,7 +84,7 @@ environment::
 When virtual environment is activated, inside `<any>/<path>/elisa` directory clone ``ELISa`` from github repository
 with::
 
-    git clone https://github.com/mikecokina/elisa.git ???
+    git clone https://github.com/mikecokina/elisa.git
 
 This will create subdirectory ``/<any>/<path>/elisa/elisa``. Required packages can be installed with::
 
@@ -116,6 +116,9 @@ Now, when virtual environment is prepared, run::
 And finally install ``ELISa``::
 
     placeholder
+
+Installing of atmosphere models
+----------------------------------
 
 Usage
 -------

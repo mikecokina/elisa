@@ -22,30 +22,37 @@ class Plot(object):
 
     def orbit(self, **kwargs):
         """
-        function for quick 2D plot of the orbital motion in the orbital plane
-        :param kwargs:
+        Function for quick 2D plot of the orbital motion in the orbital plane.
 
+        :param kwargs:
+        :**kwargs options**:
+            * **start_phase** * -- float; starting phase for the plot
+            * **stop_phase** * -- float; finishing phase for the plot
+            * **number_of_points** * -- int; number of points in the plot
+            * **axis_units** * -- astropy.unit or 'str'; specifying axis unit, use astropy units or `dimensionless` or
+            `SMA` (semi-major axis) units for axis scale
+            * **frame_of_reference** * -- str; `barycentric` or `primary`
         :return:
         """
-        all_kwargs = ['start_phase', 'stop_phase', 'number_of_points', 'axis_unit', 'frame_of_reference']
+        all_kwargs = ['start_phase', 'stop_phase', 'number_of_points', 'axis_units', 'frame_of_reference']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self._self)
 
         start_phase = kwargs.get('start_phase', 0.0)
         stop_phase = kwargs.get('stop_phase', 1.0)
         number_of_points = kwargs.get('number_of_points', 300)
 
-        kwargs['axis_unit'] = kwargs.get('axis_unit', u.solRad)
-        kwargs['frame_of_reference'] = kwargs.get('frame_of_reference', 'primary_component')
+        kwargs['axis_units'] = kwargs.get('axis_units', u.solRad)
+        kwargs['frame_of_reference'] = kwargs.get('frame_of_reference', 'primary')
 
-        if kwargs['axis_unit'] == 'dimensionless':
-            kwargs['axis_unit'] = u.dimensionless_unscaled
+        if kwargs['axis_units'] == 'dimensionless' or 'SMA':
+            kwargs['axis_units'] = u.dimensionless_unscaled
 
         # orbit calculation for given phases
         phases = np.linspace(start_phase, stop_phase, number_of_points)
         ellipse = self._self.orbit.orbital_motion(phase=phases)
         # if axis are without unit a = 1
-        if kwargs['axis_unit'] != u.dimensionless_unscaled:
-            a = self._self.semi_major_axis * units.DISTANCE_UNIT.to(kwargs['axis_unit'])
+        if kwargs['axis_units'] != u.dimensionless_unscaled:
+            a = self._self.semi_major_axis * units.DISTANCE_UNIT.to(kwargs['axis_units'])
             radius = a * ellipse[:, 0]
         else:
             radius = ellipse[:, 0]
@@ -56,7 +63,7 @@ class Plot(object):
             kwargs['y1_data'] = - self._self.mass_ratio * y / (1 + self._self.mass_ratio)
             kwargs['x2_data'] = x / (1 + self._self.mass_ratio)
             kwargs['y2_data'] = y / (1 + self._self.mass_ratio)
-        elif kwargs['frame_of_reference'] == 'primary_component':
+        elif kwargs['frame_of_reference'] == 'primary':
             kwargs['x_data'], kwargs['y_data'] = x, y
         graphics.orbit(**kwargs)
 
@@ -83,6 +90,18 @@ class Plot(object):
         graphics.equipotential(**kwargs)
 
     def mesh(self, **kwargs):
+        """
+        Function plots 3D scatter plot of the surface points
+
+        :param kwargs:
+        :**kwargs options**:
+            * **phase** * -- float; phase at which to construct plot
+            * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
+            * **plot_axis** * -- bool; switch the plot axis on/off
+            * **inclination** * -- float; elevation of the camera (in degrees)
+            * **azimuth** * -- float; azimuth of the camera (in degrees)
+        :return:
+        """
         all_kwargs = ['phase', 'components_to_plot', 'plot_axis', 'inclination', 'azimuth']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.mesh)
 
@@ -107,6 +126,18 @@ class Plot(object):
         graphics.binary_mesh(**kwargs)
 
     def wireframe(self, **kwargs):
+        """
+        Function displays wireframe model of the stellar surface
+
+        :param kwargs:
+        :**kwargs options**:
+            * **phase** * -- float; phase at which to construct plot
+            * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
+            * **plot_axis** * -- bool; switch the plot axis on/off
+            * **inclination** * -- float; elevation of the camera (in degrees)
+            * **azimuth** * -- float; azimuth of the camera (in degrees)
+        :return:
+        """
         all_kwargs = ['phase', 'components_to_plot', 'plot_axis', 'inclination', 'azimuth']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.wireframe)
 
@@ -134,6 +165,7 @@ class Plot(object):
     def surface(self, **kwargs):
         """
         function creates plot of binary system components
+
         :param kwargs:
             phase: float - phase at which plot the system, important for eccentric orbits
             components_to_plot: str - `primary`, `secondary` or `both`(default),
@@ -260,11 +292,12 @@ class Plot(object):
                     kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
                     kwargs['secondary_cmap'] = kwargs['secondary_cmap'][kwargs['face_mask_secondary']]
 
-        sma = (self._self.semi_major_axis*units.DISTANCE_UNIT).to(kwargs['axis_unit']).value
-        kwargs['points_primary'] *= sma
-        kwargs['points_secondary'] *= sma
-        if kwargs['normals']:
-            kwargs['primary_centres'] *= sma
-            kwargs['secondary_centres'] *= sma
+        if kwargs['axis_unit'] != u.dimensionless_unscaled and kwargs['axis_unit'] != 'SMA':
+            sma = (self._self.semi_major_axis*units.DISTANCE_UNIT).to(kwargs['axis_unit']).value
+            kwargs['points_primary'] *= sma
+            kwargs['points_secondary'] *= sma
+            if kwargs['normals']:
+                kwargs['primary_centres'] *= sma
+                kwargs['secondary_centres'] *= sma
 
         graphics.binary_surface(**kwargs)

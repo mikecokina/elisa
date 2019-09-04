@@ -11,27 +11,21 @@ import matplotlib
 
 def orbit(**kwargs):
     """
-    Plot function for descriptor = `orbit` in function BinarySystem.plot(). This function plots orbit of the secondary
-    component in the reference frame of the primary component.
+        Graphics part of the function for quick 2D plot of the orbital motion in the orbital plane.
 
-    :param kwargs: dict:
-                  keywords: start_phase = 0 - starting photometric phase (mean anomaly) of orbit, default value is 0
-                            stop_phase = 1 - starting photometric phase (mean anomaly) of orbit, default value is 1
-                            number_of_points = 300 - number of points where position is calculated, the more points,
-                                                     the less coarse orbit plot is, default value is 300
-                            axis_unit = astropy.units.solRad - unit in which axis will be displayed, please use
-                                                               astropy.units format, default unit is solar radius
-                                                               if you want dimensionless axis, use
-                                                               astropy.units.dimensionless_unscaled or `dimensionless`
-                            frame_or_reference = 'primary_component' - origin point for frame of reference in which
-                                                                       orbit will be displayed, choices:
-                                                                       primary_component - default
-                                                                       barycentric
-    :return:
+        :param kwargs:
+        :**kwargs options**:
+            * **start_phase** * -- float; starting phase for the plot
+            * **stop_phase** * -- float; finishing phase for the plot
+            * **number_of_points** * -- int; number of points in the plot
+            * **axis_units** * -- astropy.unit or 'str'; specifying axis unit, use astropy units or `dimensionless` or
+            `SMA` (semi-major axis) units for axis scale
+            * **frame_of_reference** * -- str; `barycentric` or `primary`
+        :return:
     """
-    unit = str(kwargs['axis_unit'])
-    if kwargs['axis_unit'] == u.dimensionless_unscaled:
-        x_label, y_label = 'x', 'y'
+    unit = str(kwargs['axis_units'])
+    if kwargs['axis_units'] == u.dimensionless_unscaled:
+        x_label, y_label = 'x/[SMA]', 'y/[SMA]'
     else:
         x_label, y_label = r'x/' + unit, r'y/' + unit
 
@@ -44,7 +38,7 @@ def orbit(**kwargs):
         ax.plot(x1, y1, label='primary')
         ax.plot(x2, y2, label='secondary')
         ax.scatter([0], [0], c='black', s=4)
-    elif kwargs['frame_of_reference'] == 'primary_component':
+    elif kwargs['frame_of_reference'] == 'primary':
         x, y = kwargs['x_data'], kwargs['y_data']
         ax.plot(x, y, label='secondary')
         # ax.scatter(x[0], y[0], c='r')
@@ -148,13 +142,16 @@ def single_star_mesh(**kwargs):
 
 def binary_mesh(**kwargs):
     """
-    Plot function for descriptor `mesh`, plots surface mesh of binary star in BinaryStar system
+        Function plots 3D scatter plot of the surface points
 
-    :param kwargs: dict
-                   keywords: `phase`: np.float - phase in which system is plotted default value is 0
-                             `components_to_plot`: str - decides which argument to plot, choices: `primary`, secondary`
-                                                         , `both`, default is `both`
-    :return:
+        :param kwargs:
+        :**kwargs options**:
+            * **phase** * -- float; phase at which to construct plot
+            * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
+            * **plot_axis** * -- bool; switch the plot axis on/off
+            * **inclination** * -- float; elevation of the camera (in degrees)
+            * **azimuth** * -- float; azimuth of the camera (in degrees)
+        :return:
     """
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
@@ -499,6 +496,18 @@ def single_star_wireframe(**kwargs):
 
 
 def binary_wireframe(**kwargs):
+    """
+    Function displays wireframe model of the stellar surface
+
+    :param kwargs:
+    :**kwargs options**:
+        * **phase** * -- float; phase at which to construct plot
+        * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
+        * **plot_axis** * -- bool; switch the plot axis on/off
+        * **inclination** * -- float; elevation of the camera (in degrees)
+        * **azimuth** * -- float; azimuth of the camera (in degrees)
+    :return:
+    """
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
@@ -633,3 +642,15 @@ def binary_surface_anim(**kwargs):
     args = (points, faces, clr, cmaps, plot)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['Nframes'], fargs=args, interval=20)
     plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='imagemagick', fps=20)
+
+
+def light_curve(**kwargs):
+    plt.figure(figsize=(8,6))
+    for item in kwargs['curves']:
+        plt.plot(kwargs['phases'], kwargs['curves'][item], label=item)
+        plt.legend()
+
+    plt.xlabel('Phase')
+    plt.ylabel('Flux')
+    plt.legend(loc=1)
+    plt.show()

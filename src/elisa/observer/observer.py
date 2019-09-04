@@ -7,6 +7,7 @@ import pandas as pd
 from scipy import interpolate
 
 from elisa.binary_system.system import BinarySystem
+from elisa.observer.plot import Plot
 from elisa.conf import config
 from elisa.utils import is_empty
 
@@ -82,6 +83,8 @@ class Observer(object):
         self.right_bandwidth = 0.0
         self.passband = dict()
         self.init_passband(passband)
+
+        self.plot = Plot(self)
 
     @staticmethod
     def bolometric(x):

@@ -778,11 +778,11 @@ class Body(metaclass=ABCMeta):
             self._logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
                                f'and discretization factor of star {self.discretization_factor} was used.')
             spot_instance.discretization_factor = 0.9 * self.discretization_factor * units.ARC_UNIT
-        if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter:
+        if spot_instance.discretization_factor > spot_instance.angular_radius:
             self._logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
                                f'component was larger than its angular radius. Therefore value of angular density was '
                                f'set to be equal to 0.5 * angular diameter')
-            spot_instance.discretization_factor = 0.5 * spot_instance.angular_diameter * units.ARC_UNIT
+            spot_instance.discretization_factor = spot_instance.angular_radius * units.ARC_UNIT
 
     def incorporate_spots_mesh(self, component_com=None):
         """
@@ -821,7 +821,7 @@ class Body(metaclass=ABCMeta):
         for spot_index, spot in self.spots.items():
             # average spacing in spot points
             vertices_to_remove, vertices_test = [], []
-            cos_max_angle_point = np.cos(0.5 * spot.angular_diameter + 0.30 * spot.discretization_factor)
+            cos_max_angle_point = np.cos(spot.angular_radius + 0.30 * spot.discretization_factor)
             spot_center = spot.center - np.array([component_com, 0., 0.])
 
             # removing star points in spot
@@ -1013,7 +1013,7 @@ class Body(metaclass=ABCMeta):
         """
         # checking each candidate one at a time trough all spots
         com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
-        cos_max_angle = {idx: np.cos(0.5 * spot.angular_diameter) for idx, spot in self.spots.items()}
+        cos_max_angle = {idx: np.cos(spot.angular_radius) for idx, spot in self.spots.items()}
         center = {idx: spot.center - np.array([component_com, 0.0, 0.0])
                   for idx, spot in self.spots.items()}
         for idx, _ in enumerate(spot_candidates["com"]):
