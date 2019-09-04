@@ -124,3 +124,8 @@ class SupportMethodsTestCase(unittest.TestCase):
 
         # is imutable???
         self.assertTrue(np.all(np.arange(0, 1.2, 0.2) == phase))
+
+
+class ComputeLightCurvesTestCase(unittest.TestCase):
+    def test_all(self):
+        raise Exception("Create unittests - compute full lightcurves")
