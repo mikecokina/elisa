@@ -713,21 +713,12 @@ class OrbitalSupplements(Sequence):
             self._mirror = np.array([])
 
         else:
-            self._body = self._to_array(body)
-            self._mirror = self._to_array(mirror)
-
-    @staticmethod
-    def _to_array(x):
-        if not isinstance(x, np.ndarray):
-            if isinstance(x, list):
-                return np.array(x)
-            else:
-                return np.array([x])
-        return x
+            self._body = np.array(body)
+            self._mirror = np.array(mirror)
 
     def append(self, body, mirror):
-        self._body = np.vstack((self._body, body)) if not is_empty(self._body) else self._to_array(body)
-        self._mirror = np.vstack((self._mirror, mirror)) if not is_empty(self._mirror) else self._to_array(mirror)
+        self._body = np.vstack((self._body, body)) if not is_empty(self._body) else np.array([body])
+        self._mirror = np.vstack((self._mirror, mirror)) if not is_empty(self._mirror) else np.array([mirror])
 
     @property
     def body(self):
