@@ -717,3 +717,8 @@ class TestIntegrationNoSpots(unittest.TestCase):
 
     def test_build_faces_overcontact(self):
         self._test_build_faces("overcontact", 10, _max_s=7e-3, plot=False)
+
+
+class TestIntegrationWithSpots(unittest.TestCase):
+    def test_all(self):
+        raise Exception("Add unittests")
