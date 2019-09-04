@@ -40,6 +40,7 @@ Requirements
     astropy==2.0.2
     scipy==1.0.0
     six==1.11.0
+    pypex==0.1.0
 
 and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
 
