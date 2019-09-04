@@ -742,6 +742,12 @@ class OrbitalSupplements(Sequence):
 
     @classmethod
     def not_empty(cls, arr):
+        """
+        Return values where supplied array is not empty.
+
+        :param arr: numpy.array
+        :return: numpy.array
+        """
         return arr[list(map(lambda x: not cls.is_empty(x), arr))]
 
     def sort(self, by='distance'):
