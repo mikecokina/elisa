@@ -30,7 +30,7 @@ def set_rals(self, com_x=None):
 
     # conversion to spherical system in which ALS works
     centres = utils.cartesian_to_spherical(centres_cartesian)
-    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot) for spot_idx, spot in self.spots.items()}
+    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot.points) for spot_idx, spot in self.spots.items()}
 
     for mode_index, mode in self.pulsations.items():
         phi_spot, theta_spot = {}, {}

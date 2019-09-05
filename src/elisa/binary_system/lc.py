@@ -476,7 +476,7 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
 
     # APPX ZERO ********************************************************************************************************
     if not try_to_find_appx:
-        return 'zero', lambda: _integrate_lc_exactly(self, all_orbital_pos, None, phases, **kwargs)
+        return 'zero', lambda: _integrate_lc_exactly(self, all_orbital_pos, phases, None, **kwargs)
 
     # APPX ONE *********************************************************************************************************
     appx_one = _eval_approximation_one(self, phases)
