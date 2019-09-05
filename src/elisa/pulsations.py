@@ -9,10 +9,10 @@ from copy import copy
 """file containing functions dealing with pulsations"""
 
 
-def set_rals(self, com_x=None):
+def set_ralp(self, com_x=None):
     """
     Function calculates and sets time independent, dimensionless part of the pulsation modes. They are calculated as
-    renormalized associated Legendre polynomials (rALS). This function needs to be evaluated only once except for the
+    renormalized associated Legendre polynomials (rALP). This function needs to be evaluated only once except for the
     case of assynchronously rotating component and missaligned mode (see `set_misaligned_rals()`).
 
     :param com_x: float - centre of mass
@@ -30,7 +30,8 @@ def set_rals(self, com_x=None):
 
     # conversion to spherical system in which ALS works
     centres = utils.cartesian_to_spherical(centres_cartesian)
-    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot.points) for spot_idx, spot in self.spots.items()}
+    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot_centres) for spot_idx, spot_centres in
+                    centres_spot_cartesian.items()}
 
     for mode_index, mode in self.pulsations.items():
         phi_spot, theta_spot = {}, {}
@@ -58,10 +59,10 @@ def set_rals(self, com_x=None):
             mode.rals = surface_rals, {}
 
 
-def set_misaligned_rals(star_instance, phase, com_x=None):
+def set_misaligned_ralp(star_instance, phase, com_x=None):
     """
     Function calculates and sets time independent, dimensionless part of the pulsation modes. They are calculated as
-    renormalized associated Legendre polynomials (rALS). This function deals with a case of assynchronously rotating
+    renormalized associated Legendre polynomials (rALP). This function deals with a case of assynchronously rotating
     component and missaligned mode. In such case, during all phases, the drift of the mode axis needs to be taken
     into account and rALS needs to be recalculated.
 
@@ -81,7 +82,8 @@ def set_misaligned_rals(star_instance, phase, com_x=None):
 
     # conversion to spherical system in which ALS works
     centres = utils.cartesian_to_spherical(centres_cartesian)
-    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot) for spot_idx, spot in star_instance.spots.items()}
+    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot_centres) for spot_idx, spot_centres in
+                    centres_spot_cartesian.items()}
 
     for mode_index, mode in star_instance.pulsations.items():
         phi_spot, theta_spot = {}, {}

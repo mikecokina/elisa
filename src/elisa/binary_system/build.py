@@ -74,7 +74,7 @@ def build_faces_orientation(self, component=None, components_distance=None):
         # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
         # pulsation mode
         if component_instance.has_pulsations():
-            pulsations.set_rals(component_instance, com_x=com_x[_component])
+            pulsations.set_ralp(component_instance, com_x=com_x[_component])
 
 
 def build_temperature_distribution(self, component=None, components_distance=None, do_pulsations=False, phase=None):
@@ -114,7 +114,7 @@ def build_temperature_distribution(self, component=None, components_distance=Non
                                f'of the component instance: {_component}  / name: {component_instance.name}')
 
             com_x = 0 if _component == 'primary' else components_distance
-            pulsations.set_misaligned_rals(component_instance, phase, com_x=com_x)
+            pulsations.set_misaligned_ralp(component_instance, phase, com_x=com_x)
             temp_pert, temp_pert_spot = pulsations.calc_temp_pert(component_instance, phase, self.period)
             component_instance.temperatures += temp_pert
             if component_instance.has_spots():
