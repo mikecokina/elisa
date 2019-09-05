@@ -8,7 +8,9 @@ from elisa.binary_system import utils as bsutils
 from elisa import const
 from elisa.binary_system import static
 from collections.abc import Sequence
+from matplotlib import pyplot as plt
 
+from elisa.utils import is_empty
 
 __logger__ = logging.getLogger(__name__)
 
@@ -36,7 +38,11 @@ def get_eclipse_boundaries(binary, components_distance):
 
     :param binary: elisa.binary_system.system.BinarySystem
     :param components_distance: float
-    :return: numpy.array([primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop])
+    :return: numpy.array;
+
+    shape::
+
+        [primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop]
     """
     # check whether the inclination is high enough to enable eclipses
     if binary.morphology != 'over-contact':
@@ -83,7 +89,7 @@ def plane_projection(points, plane, keep_3d=False):
     """
     Function projects 3D points into given plane.
 
-    :param keep_3d: if True, the dimensions of the array is kept the same, with given column equal to zero
+    :param keep_3d: bool; if True, the dimensions of the array is kept the same, with given column equal to zero
     :param points: numpy.array
     :param plane: str; ('xy', 'yz', 'zx')
     :return: numpy.array
@@ -91,7 +97,7 @@ def plane_projection(points, plane, keep_3d=False):
     rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
     if not keep_3d:
         indices_to_keep = [0, 1, 2]
-        del indices_to_keep[0]
+        del indices_to_keep[rm_index]
         return points[:, indices_to_keep]
     in_plane = deepcopy(points)
     in_plane[:, rm_index] = 0.0
@@ -103,9 +109,9 @@ def calculate_spot_longitudes(binary_instance, phases, component=None):
     function calculates the latitudes of every spot on given component(s) for every phase
 
     :param binary_instance: BinarySystem instance
-    :param phases: np.array
-    :param component: 'primary' or 'secondary', if None both will be calculated
-    :return: dict {component: {spot_idx: np.array([....]), ...}, ...}
+    :param phases: numpy.array
+    :param component: str; 'primary' or 'secondary', if None both will be calculated
+    :return: Dict; {component: {spot_idx: np.array([....]), ...}, ...}
     """
     components_list = static.component_to_list(component)
     components = {comp: getattr(binary_instance, comp) for comp in components_list}
@@ -133,6 +139,71 @@ def assign_spot_longitudes(binary_instance, spots_longitudes, index=None, compon
         for spot_index, spot in instance.spots.items():
             spot._longitude = spots_longitudes[comp][spot_index] if index is None else \
                 spots_longitudes[comp][spot_index][index]
+
+
+def surface_area_coverage(size, visible, visible_coverage, partial=None, partial_coverage=None):
+    """
+    Prepare array with coverage os surface areas.
+
+    :param size: int; size of array
+    :param visible: numpy.array; full visible areas (numpy fancy indexing), array like [False, True, True, False]
+    :param visible_coverage: numpy.array; defines coverage of visible (coverage onTrue positions)
+    :param partial: numpy.array; partial visible areas (numpy fancy indexing)
+    :param partial_coverage: numpy.array; defines coverage of partial visible
+    :return: numpy.array
+    """
+    # initialize zeros, since there is no input for invisible (it means everything what left after is invisible)
+    coverage = np.zeros(size)
+    coverage[visible] = visible_coverage
+    if partial is not None:
+        coverage[partial] = partial_coverage
+    return coverage
+
+
+def faces_to_pypex_poly(t_hulls):
+    """
+    Convert all faces defined as numpy.array to pypex Polygon class instance
+
+    :param t_hulls: List[numpy.array]
+    :return: List
+    """
+    return [Polygon(t_hull, _validity=False) for t_hull in t_hulls]
+
+
+def pypex_poly_hull_intersection(pypex_faces_gen, pypex_hull: Polygon):
+    """
+    Resolve intersection of polygons defined in `pypex_faces_gen` with polyogn `pypex_hull`.
+
+    :param pypex_faces_gen: List[pypex.poly2d.polygon.Plygon]
+    :param pypex_hull: pypex.poly2d.polygon.Plygon
+    :return: List[pypex.poly2d.polygon.Plygon]
+    """
+    return [pypex_hull.intersection(poly) for poly in pypex_faces_gen]
+
+
+def pypex_poly_surface_area(pypex_polys_gen):
+    """
+    Compute surface areas of pypex.poly2d.polygon.Plygon's.
+
+    :param pypex_polys_gen: List[pypex.poly2d.polygon.Plygon]
+    :return: List[float]
+    """
+    return [poly.surface_area() if poly is not None else 0.0 for poly in pypex_polys_gen]
+
+
+def hull_to_pypex_poly(hull):
+    """
+    Convert convex polygon defined by points in List or numpy.array to pypex.poly2d.polygon.Plygon.
+
+    :param hull: List or numpy.array
+    :return: pypex.poly2d.polygon.Plygon
+    """
+    return Polygon(hull, _validity=False)
+
+
+def adjust_distance(points, old_distance, new_distance):
+    points[:, 0] = points[:, 0] - old_distance + new_distance
+    return points
 
 
 class EasyObject(object):
@@ -166,7 +237,7 @@ class EasyObject(object):
 
         :return: Tuple
         """
-        return self.points, self.normals, self.indices, self.faces, self.coverage, self.rals, self.centres
+        return self.points, self.normals, self.indices, self.faces, self.coverage, self.rals, self.face_centres
 
     def copy(self):
         """
@@ -306,7 +377,7 @@ class SystemOrbitalPosition(object):
     """
     Class instance will keep iterator rotated and darkside filtered orbital positions.
     """
-    def __init__(self, primary, secondary, inclination, motion, ecl_boundaries):
+    def __init__(self, primary, secondary, inclination, motion, ecl_boundaries=None):
         """
         :param primary: elisa.base.Star
         :param secondary: elisa.base.Star
@@ -314,6 +385,7 @@ class SystemOrbitalPosition(object):
         :param motion: numpy.array
         :param ecl_boundaries: numpy.array
         """
+
         self.inclination = inclination
         self.motion = motion
         self.data = ()
@@ -417,6 +489,7 @@ class SystemOrbitalPosition(object):
         returns directional cosines for each surface face of both components with respect to line_of_sight
         :return: dict - {'primary': np.array, 'secondary': np.array}
         """
+
         return self._cosines
 
     @cosines.setter
@@ -426,6 +499,7 @@ class SystemOrbitalPosition(object):
         :param value: dict - {'primary': np.array, 'secondary': np.array}
         :return:
         """
+
         self._cosines = value
 
     def in_eclipse_test(self, ecl_boundaries):
@@ -435,25 +509,25 @@ class SystemOrbitalPosition(object):
         :param ecl_boundaries: numpy.array
         :return: bool; numpy.array
         """
+
+        if is_empty(ecl_boundaries):
+            return np.ones(len(self.motion), dtype=bool)
+
         azimuths = [position.azimuth for position in self.motion]
 
-        if ecl_boundaries[0] < 1.5* const.PI:
-            primary_ecl_test = np.logical_and((azimuths >= ecl_boundaries[0]),
-                                              (azimuths <= ecl_boundaries[1]))
+        if ecl_boundaries[0] < 1.5 * const.PI:
+            primary_ecl_test = np.logical_and((azimuths >= ecl_boundaries[0]), (azimuths <= ecl_boundaries[1]))
         else:
-            primary_ecl_test = np.logical_or((azimuths >= ecl_boundaries[0]),
-                                             (azimuths < ecl_boundaries[1]))
+            primary_ecl_test = np.logical_or((azimuths >= ecl_boundaries[0]), (azimuths < ecl_boundaries[1]))
 
         if ecl_boundaries[2] > const.HALF_PI:
             if ecl_boundaries[3] > const.HALF_PI:
-                secondary_ecl_test = np.logical_and((azimuths >= ecl_boundaries[2]),
-                                                    (azimuths <= ecl_boundaries[3]))
+                secondary_ecl_test = np.logical_and((azimuths >= ecl_boundaries[2]), (azimuths <= ecl_boundaries[3]))
             else:
-                secondary_ecl_test = np.logical_or((azimuths >= ecl_boundaries[2]),
-                                                   (azimuths <= ecl_boundaries[3]))
+                secondary_ecl_test = np.logical_or((azimuths >= ecl_boundaries[2]), (azimuths <= ecl_boundaries[3]))
         else:
-            secondary_ecl_test = np.logical_and((azimuths >= ecl_boundaries[2]),
-                                                (azimuths <= ecl_boundaries[3]))
+            secondary_ecl_test = np.logical_and((azimuths >= ecl_boundaries[2]), (azimuths <= ecl_boundaries[3]))
+
         return np.logical_or(primary_ecl_test, secondary_ecl_test)
 
 
@@ -624,115 +698,124 @@ class SingleOrbitalPositionContainer(object):
 
 
 class OrbitalSupplements(Sequence):
+    """
+    !!! BEWARE, THIS IS MUTABLE !!!
+
+
+    """
+
+    def __getitem__(self, index):
+        return self.body[index], self.mirror[index]
+
     def __init__(self, body=None, mirror=None):
         if body is None and mirror is None:
-            self._body = []
-            self._mirror = []
+            self._body = np.array([])
+            self._mirror = np.array([])
 
         else:
-            self._body = self._to_list(body)
-            self._mirror = self._to_list(mirror)
-
-    @staticmethod
-    def _to_list(x):
-        if not isinstance(x, list):
-            return [x]
-        return x
+            self._body = np.array(body)
+            self._mirror = np.array(mirror)
 
     def append(self, body, mirror):
-        self._body.append(body)
-        self._mirror.append(mirror)
+        self._body = np.vstack((self._body, body)) if not is_empty(self._body) else np.array([body])
+        self._mirror = np.vstack((self._mirror, mirror)) if not is_empty(self._mirror) else np.array([mirror])
 
     @property
     def body(self):
-        return np.array(self._body)
+        return self._body
 
     @property
     def mirror(self):
-        return np.array(self._mirror)
+        return self._mirror
+
+    @property
+    def body_defined(self):
+        return self.not_empty(self.body)
+
+    @property
+    def mirror_defined(self):
+        return self.not_empty(self.mirror)
+
+    @staticmethod
+    def is_empty(val):
+        return np.all(np.isnan(val))
+
+    @classmethod
+    def not_empty(cls, arr):
+        """
+        Return values where supplied array is not empty.
+
+        :param arr: numpy.array
+        :return: numpy.array
+        """
+        return arr[list(map(lambda x: not cls.is_empty(x), arr))]
+
+    def sort(self, by='distance'):
+        """
+        Sort by given quantity.
+        This method sorts bodies and mirrors based on quantity chosen on input.
+        Sorting of mirrors is based on sorting of bodies.
+
+        :param by: str
+        :return: self
+        """
+
+        if by == 'index':
+            by = 0
+        elif by == 'distance' or by == 'radius':
+            by = 1
+        else:
+            raise ValueError("Invalid value of `by`")
+
+        sort_index = np.argsort(self.body[:, by])
+        self._body = self.body[sort_index]
+        self._mirror = self.mirror[sort_index]
+
+        return self
+
+    def size(self):
+        return self.__len__()
+
+    def to_orbital_position(self):
+        pass
+
+    def plot_bodies(self):
+        self._plot(self.body_defined)
+
+    def plot_mirrors(self):
+        self._plot(self.mirror_defined, marker="x")
+
+    def plot(self):
+        self._plot(self.body_defined, self.mirror_defined)
+
+    @classmethod
+    def _plot(cls, arr1, arr2=None, marker="o"):
+
+        x, y = utils.polar_to_cartesian(arr1[:, 1], arr1[:, 2] - (np.pi / 2))
+        plt.scatter(x, y, marker=marker)
+
+        if not is_empty(arr2):
+            x, y = utils.polar_to_cartesian(arr2[:, 1], arr2[:, 2] - (np.pi / 2))
+            plt.scatter(x, y, marker="x")
+
+        plt.grid(True)
+        plt.axes().set_aspect('equal')
+        plt.show()
 
     def __iter__(self):
-        pass
-
-    def __setitem__(self, key, value):
-        pass
-
-    def __getitem__(self, index):
-        pass
+        for body, mirror in zip(self.body, self.mirror):
+            yield body, mirror
+        raise StopIteration
 
     def __len__(self):
-        pass
+        return len(self.body)
 
     def __eq__(self, other):
-        return all(self._body == other.body) & all(self._mirror == other.mirror)
+        return np.all(self._body == other.body) & \
+               np.all((self.mirror == other.mirror)[~np.all(np.isnan(other.mirror) & np.isnan(self.mirror), axis=1)])
 
     def __str__(self):
         return f"{self.__class__.__name__}\nbodies: {self.body}\nmirrors: {self._mirror}"
 
     def __repr__(self):
-        return f"{self.__class__.__name__}\nbodies: {self.body}\nmirrors: {self._mirror}"
-
-
-def surface_area_coverage(size, visible, visible_coverage, partial=None, partial_coverage=None):
-    """
-    Prepare array with coverage os surface areas.
-
-    :param size: int; size of array
-    :param visible: numpy.array; full visible areas (numpy fancy indexing), array like [False, True, True, False]
-    :param visible_coverage: numpy.array; defines coverage of visible (coverage onTrue positions)
-    :param partial: numpy.array; partial visible areas (numpy fancy indexing)
-    :param partial_coverage: numpy.array; defines coverage of partial visible
-    :return: numpy.array
-    """
-    # initialize zeros, since there is no input for invisible (it means everything what left after is invisible)
-    coverage = np.zeros(size)
-    coverage[visible] = visible_coverage
-    if partial is not None:
-        coverage[partial] = partial_coverage
-    return coverage
-
-
-def faces_to_pypex_poly(t_hulls):
-    """
-    Convert all faces defined as numpy.array to pypex Polygon class instance
-
-    :param t_hulls: List[numpy.array]
-    :return: List
-    """
-    return [Polygon(t_hull, _validity=False) for t_hull in t_hulls]
-
-
-def pypex_poly_hull_intersection(pypex_faces_gen, pypex_hull: Polygon):
-    """
-    Resolve intersection of polygons defined in `pypex_faces_gen` with polyogn `pypex_hull`.
-
-    :param pypex_faces_gen: List[pypex.poly2d.polygon.Plygon]
-    :param pypex_hull: pypex.poly2d.polygon.Plygon
-    :return: List[pypex.poly2d.polygon.Plygon]
-    """
-    return [pypex_hull.intersection(poly) for poly in pypex_faces_gen]
-
-
-def pypex_poly_surface_area(pypex_polys_gen):
-    """
-    Compute surface areas of pypex.poly2d.polygon.Plygon's.
-
-    :param pypex_polys_gen: List[pypex.poly2d.polygon.Plygon]
-    :return: List[float]
-    """
-    return [poly.surface_area() if poly is not None else 0.0 for poly in pypex_polys_gen]
-
-
-def hull_to_pypex_poly(hull):
-    """
-    Convert convex polygon defined by points in List or numpy.array to pypex.poly2d.polygon.Plygon.
-
-    :param hull: List or numpy.array
-    :return: pypex.poly2d.polygon.Plygon
-    """
-    return Polygon(hull, _validity=False)
-
-
-def adjust_distance(points, old_distance, new_distance):
-    points[:, 0] = points[:, 0] - old_distance + new_distance
-    return points
+        return self.__str__()

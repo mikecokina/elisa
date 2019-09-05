@@ -53,13 +53,13 @@ def build_surface_gravity(self, component=None, components_distance=None):
 
 def build_faces_orientation(self, component=None, components_distance=None):
     """
-    Compute face orientation (normals) for each face. If pulsations are present, than calculate renormalized associated
+    Compute face orientation (normals) for each face.
+    If pulsations are present, than calculate renormalized associated
     Legendree polynomials (rALS) for each pulsation mode.
 
     :param self: BinarySystem instance
     :param component: str; `primary` or `secondary`
     :param components_distance: float
-    :param phase: float - orbital phase at which to build surface orientation, provide it only in case of assynchronous
     orbit with misaligned pulsations, where pulsation axis drifts with star
     :return:
     """
@@ -74,7 +74,7 @@ def build_faces_orientation(self, component=None, components_distance=None):
         # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
         # pulsation mode
         if component_instance.has_pulsations():
-            pulsations.set_rals(component_instance, com_x=com_x[_component])
+            pulsations.set_ralp(component_instance, com_x=com_x[_component])
 
 
 def build_temperature_distribution(self, component=None, components_distance=None, do_pulsations=False, phase=None):
@@ -114,7 +114,7 @@ def build_temperature_distribution(self, component=None, components_distance=Non
                                f'of the component instance: {_component}  / name: {component_instance.name}')
 
             com_x = 0 if _component == 'primary' else components_distance
-            pulsations.set_misaligned_rals(component_instance, phase, com_x=com_x)
+            pulsations.set_misaligned_ralp(component_instance, phase, com_x=com_x)
             temp_pert, temp_pert_spot = pulsations.calc_temp_pert(component_instance, phase, self.period)
             component_instance.temperatures += temp_pert
             if component_instance.has_spots():
@@ -204,7 +204,8 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
 
 def add_spots_to_mesh(self, components_distance, component=None):
     """
-    function implements surface points into clean mesh and removes stellar and other spot points under the given spot
+    Function implements surface points into clean mesh and removes stellar
+    points and other spot points under the given spot if such overlapped spots exists.
 
     :param self: BinarySystem instance
     :param components_distance: float
@@ -249,9 +250,9 @@ def build_surface(self, component=None, components_distance=None, return_surface
 
     It is possible to return computed surface (points and faces indices) if `return_surface` parametre is set to True.
 
-    :param self: BinarySystem; instance
+    :param self: elisa.binary_system.sytem.BinarySystem; instance
     :param return_surface: bool; if True, function returns dictionary of arrays with all points and faces
-                                 (surface + spots) for each component
+    (surface + spots) for each component
     :param components_distance: float; distance between components
     :param component: str; specify component, use `primary` or `secondary`
     :return: Tuple or None
@@ -280,7 +281,7 @@ def build_surface_with_no_spots(self, component=None, components_distance=None):
 
     :param self: BinarySystem; instance
     :param components_distance: float
-    :param component: `primary` or `secondary` if not supplied both component are calculated
+    :param component: str; `primary` or `secondary` if not supplied both component are calculated
     :return:
     """
     component = static.component_to_list(component)

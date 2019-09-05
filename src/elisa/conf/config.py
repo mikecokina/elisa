@@ -46,10 +46,10 @@ LIMB_DARKENING_LAW = 'cosine'
 DISCRETIZATION_FACTOR = 5
 MAX_DISCRETIZATION_FACTOR = 20
 NUMBER_OF_THREADS = int(os.cpu_count())
-D_RADIUS = 0.001
 POINTS_ON_ECC_ORBIT = 99999
 MAX_D_DISTANCE = 0.0
-MAX_RELATIVE_D_R_POINT = 0.0
+MAX_RELATIVE_D_R_POINT = 0.003
+MAX_SUPPLEMENTAR_D_DISTANCE = 1e-2
 
 # support data
 PASSBAND_TABLES = os.path.expanduser(os.path.join("~", "passband"))
@@ -121,18 +121,16 @@ def update_config():
         global NUMBER_OF_THREADS
         NUMBER_OF_THREADS = c_parse.getint('computational', 'number_of_threads', fallback=NUMBER_OF_THREADS)
 
-        global D_RADIUS
-        D_RADIUS = c_parse.getfloat('computational', 'd_radius', fallback=D_RADIUS)
-
         global POINTS_ON_ECC_ORBIT
         POINTS_ON_ECC_ORBIT = c_parse.getint('computational', 'points_on_ecc_orbit', fallback=POINTS_ON_ECC_ORBIT)
-
-        global MAX_D_DISTANCE
-        MAX_D_DISTANCE = c_parse.getfloat('computational', 'max_d_distance', fallback=MAX_D_DISTANCE)
 
         global MAX_RELATIVE_D_R_POINT
         MAX_RELATIVE_D_R_POINT = c_parse.getfloat('computational', 'max_relative_d_r_point',
                                                   fallback=MAX_RELATIVE_D_R_POINT)
+
+        global MAX_SUPPLEMENTAR_D_DISTANCE
+        MAX_SUPPLEMENTAR_D_DISTANCE = c_parse.getfloat('computational', 'max_supplementar_d_distance',
+                                                       fallback=MAX_SUPPLEMENTAR_D_DISTANCE)
 
     # ******************************************************************************************************************
 

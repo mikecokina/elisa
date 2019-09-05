@@ -28,7 +28,7 @@ def get_flaten_properties(component):
             temperatures = np.concatenate((temperatures, spot.temperatures), axis=0)
             log_g = np.concatenate((log_g, spot.log_g), axis=0)
             for mode_idx, mode in component.pulsations.items():
-                rals[mode_idx] = np.concatenate((rals[mode_idx], mode.rals[1][mode_idx]), axis=0)
+                rals[mode_idx] = np.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
             centres = np.concatenate((centres, spot.face_centres), axis=0)
 
     return points, normals, faces, temperatures, log_g, rals, centres
