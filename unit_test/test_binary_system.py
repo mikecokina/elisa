@@ -461,6 +461,8 @@ class TestMethods(unittest.TestCase):
         obtained_array, expectedd_array = list(), list()
 
         for o_key, e_key in zip(obtained, expected):
+            if isinstance(obtained[o_key], u.Quantity):
+                obtained[o_key] = obtained[o_key].value
             obtained_array.append(round(obtained[o_key], 5))
             expectedd_array.append(round(expected[e_key], 5))
 
