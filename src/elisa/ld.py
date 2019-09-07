@@ -61,6 +61,7 @@ def get_van_hamme_ld_table_by_name(fname):
     :param fname: str
     :return: pandas.DataFrame
     """
+    logger.debug(f"accessing limb darkening file {fname}")
     path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"there is no file like {path}")

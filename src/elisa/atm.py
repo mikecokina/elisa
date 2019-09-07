@@ -21,7 +21,7 @@ from typing import Iterable
 
 
 config.set_up_logging()
-__logger__ = logging.getLogger("atm")
+__logger__ = logging.getLogger("atm-module")
 
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/np.pi)
@@ -827,6 +827,7 @@ def multithread_atm_tables_reader(path_queue, error_queue, result_queue):
             continue
         try:
             t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(file_path))
+            __logger__.debug(f"accessing atmosphere file {file_path}")
             atm_container = AtmDataContainer(pd.read_csv(file_path), t, l, m, file_path)
             result_queue.put((index, atm_container))
         except Exception as we:

@@ -1,4 +1,7 @@
+import os.path as op
 import numpy as np
+import json
+
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -111,3 +114,16 @@ def prepare_binary_system(params):
                         inclination=params["inclination"],
                         primary_minimum_time=params["primary_minimum_time"],
                         phase_shift=params["phase_shift"])
+
+
+def normalize_lc_for_unittests(flux_arr):
+    return np.array(flux_arr) / max(flux_arr)
+
+
+def load_light_curve(filename):
+    path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "curves", filename)
+    with open(path, "r") as f:
+        content = f.read()
+        return json.loads(content)
+
+

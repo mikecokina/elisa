@@ -77,7 +77,7 @@ def read_and_update_config(conf_path=None):
             "Couldn't find configuration file. Using default settings.\n"
             "   To customize configuration using file either\n"
             "    - specify config with environment variable ELISA_CONFIG\n"
-            "  -   add conf/elisa_conf.ini under your virtualenv root \n")
+            "    - add conf/elisa_conf.ini under your virtualenv root \n")
         warnings.warn(msg, Warning)
         return
 

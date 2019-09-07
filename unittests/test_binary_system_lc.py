@@ -1,11 +1,15 @@
+import os.path as op
 import unittest
+
 import numpy as np
+from astropy import units as u
 
 from elisa import const as c
-from astropy import units as u
 from elisa.binary_system import lc
 from elisa.binary_system.geo import OrbitalSupplements
 from elisa.conf import config
+from elisa.observer.observer import Observer
+from unittests.utils import prepare_binary_system, load_light_curve, normalize_lc_for_unittests
 
 
 class MockSelf(object):
@@ -128,17 +132,91 @@ class SupportMethodsTestCase(unittest.TestCase):
 
 
 class ComputeLightCurvesTestCase(unittest.TestCase):
-    detached_params = {
-                          "primary_mass": 2.0, "secondary_mass": 1.0,
-                          "primary_surface_potential": 10.0, "secondary_surface_potential": 10.0,
-                          "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-                          "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
-                          "eccentricity": 0.0, "inclination": c.HALF_PI * u.rad, "primary_minimum_time": 0.0,
-                          "phase_shift": 0.0,
-                          "primary_t_eff": 6500, "secondary_t_eff": 5000,
-                          "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-                          "primary_albedo": 1.0, "secondary_albedo": 1.0,
-                      },
+    params = {
+        'detached': {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
+            "eccentricity": 0.0, "inclination": c.HALF_PI * u.rad, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 6500, "secondary_t_eff": 6500,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 1.0, "secondary_albedo": 1.0,
+        },
+        'over-contact': {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 2.7,
+            "secondary_surface_potential": 2.7,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": 90 * u.deg, "gamma": 0.0, "period": 1.0,
+            "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 6000, "secondary_t_eff": 6000,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 1.0, "secondary_albedo": 1.0
+        }
+    }
+
+    def setUp(self):
+        # raise unittest.SkipTest(message)
+        self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.law = config.LIMB_DARKENING_LAW
+
+        config.VAN_HAMME_LD_TABLES = op.join(self.base_path, "limbdarkening")
+        config.CK04_ATM_TABLES = op.join(self.base_path, "atmosphere")
+        config.ATM_ATLAS = "ck04"
+
+    def tearDown(self):
+        config.LIMB_DARKENING_LAW = self.law
+
+    def test_light_curve_pass_on_all_ld_law(self):
+        """
+        no assert here, it just has to pass without error
+        """
+        bs = prepare_binary_system(self.params["detached"])
+        start_phs, stop_phs, step = -0.2, 1.2, 0.1
+
+        laws = config.LD_LAW_TO_FILE_PREFIX.keys()
+        for law in laws:
+            config.LIMB_DARKENING_LAW = law
+            o = Observer(passband=['Generic.Bessell.V'], system=bs)
+            o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
 
     def test_circular_synchronous_detached_system(self):
-        pass
+        bs = prepare_binary_system(self.params["detached"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+
+        start_phs, stop_phs, step = -0.2, 1.2, 0.01
+
+        expected = load_light_curve("detached.ecc.circ.generic.bessel.v.json")
+        expected_phases = expected[0]
+        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained_phases = obtained[0]
+        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
+        self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
+
+    def test_circular_synchronous_overcontact_system(self):
+        bs = prepare_binary_system(self.params["over-contact"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+
+        start_phs, stop_phs, step = -0.2, 1.2, 0.01
+
+        expected = load_light_curve("overcontact.ecc.circ.generic.bessel.v.json")
+        expected_phases = expected[0]
+        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained_phases = obtained[0]
+        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+
+        # from matplotlib import pyplot as plt
+        # plt.scatter(obtained_phases, obtained_flux)
+        # plt.show()
+
+        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
+        self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
