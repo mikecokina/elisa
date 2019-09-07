@@ -9,10 +9,11 @@ from astropy import units as u
 from mpl_toolkits.mplot3d import Axes3D
 from numpy.testing import assert_array_equal
 
-from elisa import const as c, const
+from elisa import const as c
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
-from unit_test.utils import plot_points, plot_faces, polar_gravity_acceleration
+from unittests.utils import plot_points, plot_faces, polar_gravity_acceleration, prepare_binary_system
+
 
 ax3 = Axes3D
 
@@ -182,28 +183,7 @@ class TestBinarySystemInit(unittest.TestCase):
         ]
 
     def _prepare_systems(self):
-        s = list()
-        for i, combo in enumerate(self.params_combination):
-            primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
-                           synchronicity=combo["primary_synchronicity"],
-                           t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"],
-                           albedo=combo['primary_albedo'], metallicity=0.0)
-
-            secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
-                             synchronicity=combo["secondary_synchronicity"],
-                             t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
-                             albedo=combo['secondary_albedo'], metallicity=0.0)
-
-            s.append(BinarySystem(primary=primary,
-                                  secondary=secondary,
-                                  argument_of_periastron=combo["argument_of_periastron"],
-                                  gamma=combo["gamma"],
-                                  period=combo["period"],
-                                  eccentricity=combo["eccentricity"],
-                                  inclination=combo["inclination"],
-                                  primary_minimum_time=combo["primary_minimum_time"],
-                                  phase_shift=combo["phase_shift"]))
-        return s
+        return [prepare_binary_system(combo) for combo in self.params_combination]
 
     def test_calculate_semi_major_axis(self):
         expected = [6702758048.0, 8783097736.0, 4222472978.0, 4222472978.0, 4222472978.0, 4222472978.0, 4222472978.0]
@@ -421,28 +401,7 @@ class TestMethods(unittest.TestCase):
         self._binaries = self._prepare_systems()
 
     def _prepare_systems(self):
-        s = list()
-        for i, combo in enumerate(self.params_combination):
-            primary = Star(mass=combo["primary_mass"], surface_potential=combo["primary_surface_potential"],
-                           synchronicity=combo["primary_synchronicity"],
-                           t_eff=combo["primary_t_eff"], gravity_darkening=combo["primary_gravity_darkening"],
-                           albedo=combo['primary_albedo'], metallicity=0.0)
-
-            secondary = Star(mass=combo["secondary_mass"], surface_potential=combo["secondary_surface_potential"],
-                             synchronicity=combo["secondary_synchronicity"],
-                             t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
-                             albedo=combo['secondary_albedo'], metallicity=0.0)
-
-            s.append(BinarySystem(primary=primary,
-                                  secondary=secondary,
-                                  argument_of_periastron=combo["argument_of_periastron"],
-                                  gamma=combo["gamma"],
-                                  period=combo["period"],
-                                  eccentricity=combo["eccentricity"],
-                                  inclination=combo["inclination"],
-                                  primary_minimum_time=combo["primary_minimum_time"],
-                                  phase_shift=combo["phase_shift"]))
-        return s
+        return [prepare_binary_system(combo) for combo in self.params_combination]
 
     def test__kwargs_serializer(self):
         bs = self._binaries[-1]
@@ -637,30 +596,8 @@ class TestIntegrationNoSpots(unittest.TestCase):
             }
         }
 
-    @staticmethod
-    def _prepare_system(params):
-        primary = Star(mass=params["primary_mass"], surface_potential=params["primary_surface_potential"],
-                       synchronicity=params["primary_synchronicity"],
-                       t_eff=params["primary_t_eff"], gravity_darkening=params["primary_gravity_darkening"],
-                       albedo=params['primary_albedo'], metallicity=0.0)
-
-        secondary = Star(mass=params["secondary_mass"], surface_potential=params["secondary_surface_potential"],
-                         synchronicity=params["secondary_synchronicity"],
-                         t_eff=params["secondary_t_eff"], gravity_darkening=params["secondary_gravity_darkening"],
-                         albedo=params['secondary_albedo'], metallicity=0.0)
-
-        return BinarySystem(primary=primary,
-                            secondary=secondary,
-                            argument_of_periastron=params["argument_of_periastron"],
-                            gamma=params["gamma"],
-                            period=params["period"],
-                            eccentricity=params["eccentricity"],
-                            inclination=params["inclination"],
-                            primary_minimum_time=params["primary_minimum_time"],
-                            phase_shift=params["phase_shift"])
-
     def _test_build_mesh(self, _key, _d, _length, plot=False, single=False):
-        s = self._prepare_system(self.params[_key])
+        s = prepare_binary_system(self.params[_key])
         s.primary.discretization_factor = _d
         s.secondary.discretization_factor = _d
         s.build_mesh(components_distance=1.0)
@@ -687,7 +624,7 @@ class TestIntegrationNoSpots(unittest.TestCase):
         self._test_build_mesh(_key="semi-detached", _d=10, _length=[426, 426], plot=False, single=True)
 
     def _test_build_faces(self, _key, _d, _max_s=10, plot=False):
-        s = self._prepare_system(self.params[_key])
+        s = prepare_binary_system(self.params[_key])
         s.primary.discretization_factor = _d
         s.secondary.discretization_factor = _d
         s.build_mesh(components_distance=1.0)

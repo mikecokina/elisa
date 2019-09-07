@@ -1,8 +1,10 @@
 import unittest
 import numpy as np
 
-from elisa.binary_system.geo import OrbitalSupplements
+from elisa import const as c
+from astropy import units as u
 from elisa.binary_system import lc
+from elisa.binary_system.geo import OrbitalSupplements
 from elisa.conf import config
 
 
@@ -94,7 +96,6 @@ class SupportMethodsTestCase(unittest.TestCase):
         self.assertTrue(np.all(expected == obtained))
 
     def test_get_visible_projection(self):
-
         obj = MockSelf()
         obj.faces = np.array([[0, 1, 2], [2, 3, 0]])
         obj.indices = np.array([0, 1])
@@ -127,5 +128,17 @@ class SupportMethodsTestCase(unittest.TestCase):
 
 
 class ComputeLightCurvesTestCase(unittest.TestCase):
-    def test_all(self):
-        raise Exception("Create unittests - compute full lightcurves")
+    detached_params = {
+                          "primary_mass": 2.0, "secondary_mass": 1.0,
+                          "primary_surface_potential": 10.0, "secondary_surface_potential": 10.0,
+                          "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+                          "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
+                          "eccentricity": 0.0, "inclination": c.HALF_PI * u.rad, "primary_minimum_time": 0.0,
+                          "phase_shift": 0.0,
+                          "primary_t_eff": 6500, "secondary_t_eff": 5000,
+                          "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+                          "primary_albedo": 1.0, "secondary_albedo": 1.0,
+                      },
+
+    def test_circular_synchronous_detached_system(self):
+        pass

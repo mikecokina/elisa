@@ -1,11 +1,11 @@
 import numpy as np
-
 from matplotlib import pyplot as plt
-
-from elisa import const
-from elisa.utils import is_empty
 from mpl_toolkits.mplot3d import Axes3D
 
+from elisa import const
+from elisa.base.star import Star
+from elisa.binary_system.system import BinarySystem
+from elisa.utils import is_empty
 
 ax3 = Axes3D
 
@@ -89,3 +89,25 @@ def polar_gravity_acceleration(bs, component=None, components_distance=None):
 
         # magnitude of polar gravity acceleration in physical CGS units
         return np.linalg.norm(g) * 1e2
+
+
+def prepare_binary_system(params):
+    primary = Star(mass=params["primary_mass"], surface_potential=params["primary_surface_potential"],
+                   synchronicity=params["primary_synchronicity"],
+                   t_eff=params["primary_t_eff"], gravity_darkening=params["primary_gravity_darkening"],
+                   albedo=params['primary_albedo'], metallicity=0.0)
+
+    secondary = Star(mass=params["secondary_mass"], surface_potential=params["secondary_surface_potential"],
+                     synchronicity=params["secondary_synchronicity"],
+                     t_eff=params["secondary_t_eff"], gravity_darkening=params["secondary_gravity_darkening"],
+                     albedo=params['secondary_albedo'], metallicity=0.0)
+
+    return BinarySystem(primary=primary,
+                        secondary=secondary,
+                        argument_of_periastron=params["argument_of_periastron"],
+                        gamma=params["gamma"],
+                        period=params["period"],
+                        eccentricity=params["eccentricity"],
+                        inclination=params["inclination"],
+                        primary_minimum_time=params["primary_minimum_time"],
+                        phase_shift=params["phase_shift"])
