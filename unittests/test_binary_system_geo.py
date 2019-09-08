@@ -1,4 +1,4 @@
-import unittest
+import os.path as op
 
 import numpy as np
 from astropy import units as u
@@ -11,9 +11,10 @@ from elisa.binary_system import geo
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.utils import is_empty
+from unittests.utils import ElisaTestCase
 
 
-class SupportMethodsTestCase(unittest.TestCase):
+class SupportMethodsTestCase(ElisaTestCase):
 
     def test_darkside_filter(self):
         normals = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])
@@ -84,7 +85,7 @@ class SupportMethodsTestCase(unittest.TestCase):
         self.assertTrue(isinstance(obtained, polygon.Polygon))
 
 
-class SystemOrbitalPositionTestCase(unittest.TestCase):
+class SystemOrbitalPositionTestCase(ElisaTestCase):
     orbital_motion = [
         c.BINARY_POSITION_PLACEHOLDER(1, 1.0, np.pi / 2.0, 0.0, 0.0),
         c.BINARY_POSITION_PLACEHOLDER(2, 1.0, c.FULL_ARC * (3. / 4.), np.pi, 0.0)
@@ -101,6 +102,11 @@ class SystemOrbitalPositionTestCase(unittest.TestCase):
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
         "primary_albedo": 0.6, "secondary_albedo": 0.6,
     }
+
+    def setUp(self):
+        path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        config.VAN_HAMME_LD_TABLES = op.join(path, "limbdarkening")
+        config._update_atlas_to_base_dir()
 
     def _prepare_system(self):
         combo = self.params_combination
@@ -198,7 +204,7 @@ class SystemOrbitalPositionTestCase(unittest.TestCase):
         self.assertTrue((not is_empty(nxt.primary.indices)) and (not is_empty(nxt.secondary.indices)))
 
 
-class OrbitalSupplementsTestCase(unittest.TestCase):
+class OrbitalSupplementsTestCase(ElisaTestCase):
     @staticmethod
     def test_init():
         bodies = [[1.0, 10], [2.0, 20], [3.0, 30]]

@@ -1,5 +1,4 @@
 import os
-import unittest
 from copy import copy
 from os.path import dirname
 from os.path import join as pjoin
@@ -13,12 +12,13 @@ from elisa import const as c
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from unittests.utils import plot_points, plot_faces, polar_gravity_acceleration, prepare_binary_system
+from unittests.utils import ElisaTestCase
 
 
 ax3 = Axes3D
 
 
-class TestBinarySystemSetters(unittest.TestCase):
+class TestBinarySystemSetters(ElisaTestCase):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
                         'primary_minimum_time', 'phase_shift']
 
@@ -98,7 +98,7 @@ class TestBinarySystemSetters(unittest.TestCase):
         self._test_generic_setter(inclinations, expected, 'inclination')
 
 
-class TestBinarySystemInit(unittest.TestCase):
+class TestBinarySystemInit(ElisaTestCase):
     def setUp(self):
         self.params_combination = [
             {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -266,7 +266,7 @@ class TestBinarySystemInit(unittest.TestCase):
         assert_array_equal(expected_points, obtained_points)
 
 
-class TestValidity(unittest.TestCase):
+class TestValidity(ElisaTestCase):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
                         'primary_minimum_time', 'phase_shift']
 
@@ -366,7 +366,7 @@ class TestValidity(unittest.TestCase):
             self.assertTrue(f'Missing argument(s): `{kw}`' in str(context.exception))
 
 
-class TestMethods(unittest.TestCase):
+class TestMethods(ElisaTestCase):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
                         'primary_minimum_time', 'phase_shift']
     OPTIONAL_KWARGS = []
@@ -540,7 +540,7 @@ class TestMethods(unittest.TestCase):
         assert_array_equal(expected, obtained)
 
 
-class TestIntegrationNoSpots(unittest.TestCase):
+class TestIntegrationNoSpots(ElisaTestCase):
     __pickles__ = pjoin(dirname(os.path.abspath(__file__)), "data", "pickles")
 
     def setUp(self):
@@ -658,6 +658,39 @@ class TestIntegrationNoSpots(unittest.TestCase):
         self._test_build_faces("overcontact", 10, _max_s=7e-3, plot=False)
 
 
-class TestIntegrationWithSpots(unittest.TestCase):
+class TestIntegrationWithSpots(ElisaTestCase):
     def test_all(self):
         raise Exception("Add unittests")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

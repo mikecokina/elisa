@@ -1,6 +1,5 @@
 import random
 import sys
-import unittest
 import os
 
 from os.path import dirname
@@ -14,9 +13,10 @@ from pandas.testing import assert_frame_equal
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.observer.observer import PassbandContainer, Observer
+from unittests.utils import ElisaTestCase
 
 
-class TestPassbandContainer(unittest.TestCase):
+class TestPassbandContainer(ElisaTestCase):
     def setUp(self):
         self._data_path = pjoin(dirname(os.path.abspath(__file__)), "data", "passband")
         self._bessel_v_df = pd.read_csv(pjoin(self._data_path, 'Generic.Bessell.V.csv'))
@@ -67,7 +67,7 @@ class TestPassbandContainer(unittest.TestCase):
         assert_array_equal(expected, obtained_direct)
 
 
-class TestObserver(unittest.TestCase):
+class TestObserver(ElisaTestCase):
     def setUp(self):
         self._data_path = pjoin(dirname(os.path.abspath(__file__)), "data", "passband")
         self._passband = 'Generic.Bessell.V'

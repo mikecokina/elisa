@@ -1,5 +1,4 @@
 import os
-import unittest
 
 import numpy as np
 import pandas as pd
@@ -8,9 +7,10 @@ from pandas.testing import assert_frame_equal
 
 from elisa import const, ld
 from elisa.conf import config
+from unittests.utils import ElisaTestCase
 
 
-class TestLimbDarkeningModule(unittest.TestCase):
+class TestLimbDarkeningModule(ElisaTestCase):
     def test_get_metallicity_from_ld_table_filename(self):
         filenames = ["lin.bolometric.m02.csv", "lin.bolometric.p00.csv",
                      "lin.Generic.Bessell.B.p10.csv", os.path.join("path.path.csv", "lin.Generic.Bessell.B.p10.csv")]

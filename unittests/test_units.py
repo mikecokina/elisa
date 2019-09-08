@@ -1,9 +1,8 @@
-import unittest
-
 from elisa.units import *
+from unittests.utils import ElisaTestCase
 
 
-class TestUnits(unittest.TestCase):
+class TestUnits(ElisaTestCase):
     def test_MASS_UNIT(self):
         self.assertEqual(MASS_UNIT, u.kg)
 

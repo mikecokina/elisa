@@ -1,4 +1,3 @@
-import unittest
 import numpy as np
 import pandas as pd
 
@@ -6,8 +5,10 @@ from numpy.testing import assert_array_equal
 from elisa import utils
 from queue import Queue
 
+from unittests.utils import ElisaTestCase
 
-class TestElisaEngineUtils(unittest.TestCase):
+
+class TestElisaEngineUtils(ElisaTestCase):
     def test_polar_to_cartesian(self):
         radius = np.array([0.5, 0.3, 6.1])
         phi = np.array([0.0, np.pi, np.pi / 2.0])

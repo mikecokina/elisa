@@ -1,14 +1,13 @@
-import unittest
-
 import numpy as np
 from astropy import units as u
 from numpy.testing import assert_array_equal
 
 import elisa.const as c
 from elisa.orbit import Orbit
+from unittests.utils import ElisaTestCase
 
 
-class TestOrbit(unittest.TestCase):
+class TestOrbit(ElisaTestCase):
 
     def setUp(self):
         self.params_combination = np.array(

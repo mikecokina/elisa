@@ -1,10 +1,11 @@
-import unittest
+import numpy as np
 
 from numpy.testing import assert_array_equal
 from elisa.conf import config
+from unittests.utils import ElisaTestCase
 
 
-class TestConfig(unittest.TestCase):
+class TestConfig(ElisaTestCase):
     def test_LD_LAW_TO_FILE_PREFIX(self):
         laws = "linear", "cosine", "logarithmic", "square_root"
         expected = ["lin", "lin", "log", "sqrt"]
@@ -31,3 +32,9 @@ class TestConfig(unittest.TestCase):
         expected = ["throughput", "wavelength"]
         obtained = [config.PASSBAND_DATAFRAME_THROUGHPUT, config.PASSBAND_DATAFRAME_WAVE]
         assert_array_equal(expected, obtained)
+
+    def test__update_atlas_to_base_dir(self):
+        config.CK04_ATM_TABLES = "x"
+        config._update_atlas_to_base_dir()
+        ck_values = [v for k, v in config.ATLAS_TO_BASE_DIR.items() if str(k).startswith("c")]
+        self.assertTrue(np.all(ck_values == ['x'] * len(ck_values)))

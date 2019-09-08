@@ -9,7 +9,7 @@ from elisa.binary_system import lc
 from elisa.binary_system.geo import OrbitalSupplements
 from elisa.conf import config
 from elisa.observer.observer import Observer
-from unittests.utils import prepare_binary_system, load_light_curve, normalize_lc_for_unittests
+from unittests.utils import prepare_binary_system, load_light_curve, normalize_lc_for_unittests, ElisaTestCase
 
 
 class MockSelf(object):
@@ -29,7 +29,7 @@ class MockSelf(object):
         }
 
 
-class SupportMethodsTestCase(unittest.TestCase):
+class SupportMethodsTestCase(ElisaTestCase):
     def _test_find_apsidally_corresponding_positions(self, arr1, arr2, expected, tol=1e-10):
         obtained = lc.find_apsidally_corresponding_positions(arr1[:, 0], arr1, arr2[:, 0], arr2, tol, [np.nan] * 2)
         # print(obtained)
@@ -131,7 +131,7 @@ class SupportMethodsTestCase(unittest.TestCase):
         self.assertTrue(np.all(np.arange(0, 1.2, 0.2) == phase))
 
 
-class ComputeLightCurvesTestCase(unittest.TestCase):
+class ComputeLightCurvesTestCase(ElisaTestCase):
     params = {
         'detached': {
             "primary_mass": 2.0, "secondary_mass": 1.0,
@@ -155,6 +155,18 @@ class ComputeLightCurvesTestCase(unittest.TestCase):
             "primary_t_eff": 6000, "secondary_t_eff": 6000,
             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
             "primary_albedo": 1.0, "secondary_albedo": 1.0
+        },
+        'eccentric': {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 15,
+            "secondary_surface_potential": 10,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": 135 * u.deg, "gamma": 0.0, "period": 5.0,
+            "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 6000, "secondary_t_eff": 6000,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 1.0, "secondary_albedo": 1.0
         }
     }
 
@@ -166,6 +178,7 @@ class ComputeLightCurvesTestCase(unittest.TestCase):
         config.VAN_HAMME_LD_TABLES = op.join(self.base_path, "limbdarkening")
         config.CK04_ATM_TABLES = op.join(self.base_path, "atmosphere")
         config.ATM_ATLAS = "ck04"
+        config._update_atlas_to_base_dir()
 
     def tearDown(self):
         config.LIMB_DARKENING_LAW = self.law
@@ -184,6 +197,8 @@ class ComputeLightCurvesTestCase(unittest.TestCase):
             o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
 
     def test_circular_synchronous_detached_system(self):
+        config.LIMB_DARKENING_LAW = "linear"
+
         bs = prepare_binary_system(self.params["detached"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
 
@@ -201,6 +216,8 @@ class ComputeLightCurvesTestCase(unittest.TestCase):
         self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
 
     def test_circular_synchronous_overcontact_system(self):
+        config.LIMB_DARKENING_LAW = "linear"
+
         bs = prepare_binary_system(self.params["over-contact"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
 
@@ -214,9 +231,25 @@ class ComputeLightCurvesTestCase(unittest.TestCase):
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
-        # from matplotlib import pyplot as plt
-        # plt.scatter(obtained_phases, obtained_flux)
-        # plt.show()
-
         self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
         self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
+
+    def test_eccentric_synchronous_detached_system_no_approximation(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+
+        bs = prepare_binary_system(self.params["eccentric"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+
+        start_phs, stop_phs, step = -0.2, 1.2, 0.01
+
+        # obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        # print(obtained)
+
+        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
+        expected_phases = expected[0]
+        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        # from matplotlib import pyplot as plt
+        # plt.scatter(expected_phases, expected_flux)
+        # plt.show()

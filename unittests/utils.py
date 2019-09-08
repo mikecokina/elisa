@@ -1,6 +1,7 @@
 import os.path as op
 import numpy as np
 import json
+import unittest
 
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -9,8 +10,13 @@ from elisa import const
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from elisa.utils import is_empty
+from elisa.conf import config
 
 ax3 = Axes3D
+
+
+def reset_config():
+    config.read_and_update_config(conf_path=None)
 
 
 def plot_points(points_1, points_2, label):
@@ -127,3 +133,6 @@ def load_light_curve(filename):
         return json.loads(content)
 
 
+class ElisaTestCase(unittest.TestCase):
+    def setUpClass(*args, **kwargs):
+        reset_config()
