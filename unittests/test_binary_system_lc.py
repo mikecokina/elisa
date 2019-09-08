@@ -189,7 +189,7 @@ class ComputeLightCurvesTestCase(unittest.TestCase):
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.01
 
-        expected = load_light_curve("detached.ecc.circ.generic.bessel.v.json")
+        expected = load_light_curve("detached.circ.sync.generic.bessel.v.json")
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
@@ -206,7 +206,7 @@ class ComputeLightCurvesTestCase(unittest.TestCase):
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.01
 
-        expected = load_light_curve("overcontact.ecc.circ.generic.bessel.v.json")
+        expected = load_light_curve("overcontact.circ.sync.generic.bessel.v.json")
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
