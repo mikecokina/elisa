@@ -5,7 +5,7 @@ import warnings
 
 from configparser import ConfigParser
 from logging import config as log_conf
-from os.path import dirname, isdir
+from os.path import dirname, isdir, pardir
 
 
 def level_up(path, n=0):
@@ -18,7 +18,7 @@ c_parse = ConfigParser()
 
 env_variable_config = os.environ.get('ELISA_CONFIG', '')
 venv_config = os.path.join(os.environ.get('VIRTUAL_ENV', ''), 'conf', 'elisa_conf.ini')
-default_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "elisa_conf.ini")
+default_config = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.ini")
 
 # read configuration file
 if os.path.isfile(env_variable_config):
@@ -43,7 +43,8 @@ REFLECTION_EFFECT_ITERATIONS = 2
 LIMB_DARKENING_LAW = 'cosine'
 
 # computational
-DISCRETIZATION_FACTOR = 5
+# todo: remove, not used
+# DISCRETIZATION_FACTOR = 5
 MAX_DISCRETIZATION_FACTOR = 20
 NUMBER_OF_THREADS = int(os.cpu_count())
 POINTS_ON_ECC_ORBIT = 99999
@@ -52,11 +53,32 @@ MAX_RELATIVE_D_R_POINT = 0.003
 MAX_SUPPLEMENTAR_D_DISTANCE = 1e-2
 
 # support data
-PASSBAND_TABLES = os.path.expanduser(os.path.join("~", "passband"))
+PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")
 VAN_HAMME_LD_TABLES = os.path.expanduser(os.path.join("~", "limbdarkening", "vh"))
 CK04_ATM_TABLES = os.path.expanduser(os.path.join("~", "atmosphere", "ck04"))
 K93_ATM_TABLES = os.path.expanduser(os.path.join("~", "atmosphere", "k93"))
 ATM_ATLAS = "ck04"
+ATLAS_TO_BASE_DIR = {
+    "castelli": CK04_ATM_TABLES,
+    "castelli-kurucz": CK04_ATM_TABLES,
+    "ck": CK04_ATM_TABLES,
+    "ck04": CK04_ATM_TABLES,
+    "kurucz": K93_ATM_TABLES,
+    "k": K93_ATM_TABLES,
+    "k93": K93_ATM_TABLES
+}
+
+
+def _update_atlas_to_base_dir():
+    ATLAS_TO_BASE_DIR.update({
+        "castelli": CK04_ATM_TABLES,
+        "castelli-kurucz": CK04_ATM_TABLES,
+        "ck": CK04_ATM_TABLES,
+        "ck04": CK04_ATM_TABLES,
+        "kurucz": K93_ATM_TABLES,
+        "k": K93_ATM_TABLES,
+        "k93": K93_ATM_TABLES
+    })
 
 
 def set_up_logging():
@@ -110,9 +132,10 @@ def update_config():
     # ******************************************************************************************************************
 
     if c_parse.has_section('computational'):
-        global DISCRETIZATION_FACTOR
-        DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'discretization_factor',
-                                                 fallback=DISCRETIZATION_FACTOR)
+        # todo: remove, not used (remove also from elia_conf.inni template file)
+        # global DISCRETIZATION_FACTOR
+        # DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'discretization_factor',
+        #                                          fallback=DISCRETIZATION_FACTOR)
 
         global MAX_DISCRETIZATION_FACTOR
         MAX_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'max_discretization_factor',
@@ -238,4 +261,22 @@ LD_DOMAIN_COLS = ["temperature", "gravity"]
 BINARY_COUNTERPARTS = {"primary": "secondary", "secondary": "primary"}
 
 
+ATLAS_TO_ATM_FILE_PREFIX = {
+    "castelli": "ck",
+    "castelli-kurucz": "ck",
+    "ck": "ck",
+    "ck04": "ck",
+    "kurucz": "k",
+    "k": "k",
+    "k93": "k"
+}
+
+ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
+    "temperature": "TEMPERATURE_LIST_ATM",
+    "gravity": "GRAVITY_LIST_ATM",
+    "metallicity": "METALLICITY_LIST_ATM"
+}
+
+
 read_and_update_config()
+_update_atlas_to_base_dir()
