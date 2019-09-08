@@ -8,7 +8,7 @@ from logging import config as log_conf
 from os.path import dirname, isdir, pardir
 
 
-def level_up(path, n=0):
+def parent_dir(path, n=0):
     for i in range(n):
         path = dirname(path)
     return path
