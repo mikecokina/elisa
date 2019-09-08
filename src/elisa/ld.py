@@ -122,7 +122,7 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
         result_df = pd.DataFrame({"temperature": temperature, "log_g": log_g})
 
         for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
-            if np.isin(np.nan, vals):
+            if np.any(np.isin(np.nan, vals)):
                 raise ValueError("Limb darkening interpolation lead to np.nan/None value.\n"
                                  "It might be caused by definition of unphysical object on input.")
             result_df[col] = vals
