@@ -151,24 +151,24 @@ def get_normal_radiance(single_orbital_position_container, component=None, **kwa
     if component is None:
         return {
             component:
-            atm.NaiveInterpolatedAtm.radiance(
-                **dict(
-                    temperature=getattr(single_orbital_position_container, component).temperatures,
-                    log_g=getattr(single_orbital_position_container, component).log_g,
-                    metallicity=getattr(single_orbital_position_container, component).metallicity,
-                    **kwargs
-                )
-            ) for component in config.BINARY_COUNTERPARTS.keys()
+                atm.NaiveInterpolatedAtm.radiance(
+                    **dict(
+                        temperature=getattr(single_orbital_position_container, component).temperatures,
+                        log_g=getattr(single_orbital_position_container, component).log_g,
+                        metallicity=getattr(single_orbital_position_container, component).metallicity,
+                        **kwargs
+                    )
+                ) for component in config.BINARY_COUNTERPARTS.keys()
         }
     elif component in config.BINARY_COUNTERPARTS.keys():
         return atm.NaiveInterpolatedAtm.radiance(
-                **dict(
-                    temperature=getattr(single_orbital_position_container, component).temperatures,
-                    log_g=getattr(single_orbital_position_container, component).log_g,
-                    metallicity=getattr(single_orbital_position_container, component).metallicity,
-                    **kwargs
-                )
+            **dict(
+                temperature=getattr(single_orbital_position_container, component).temperatures,
+                log_g=getattr(single_orbital_position_container, component).log_g,
+                metallicity=getattr(single_orbital_position_container, component).metallicity,
+                **kwargs
             )
+        )
     else:
         raise ValueError('Invalid value of `component` argument. '
                          'Available parameters are `primary`, `secondary` or None.')
@@ -190,12 +190,12 @@ def get_limbdarkening_cfs(self, component=None, **kwargs):
     if component is None:
         return {
             component:
-            ld.interpolate_on_ld_grid(
-                temperature=getattr(self, component).temperatures,
-                log_g=getattr(self, component).log_g,
-                metallicity=getattr(self, component).metallicity,
-                passband=kwargs["passband"]
-            ) for component in config.BINARY_COUNTERPARTS.keys()
+                ld.interpolate_on_ld_grid(
+                    temperature=getattr(self, component).temperatures,
+                    log_g=getattr(self, component).log_g,
+                    metallicity=getattr(self, component).metallicity,
+                    passband=kwargs["passband"]
+                ) for component in config.BINARY_COUNTERPARTS.keys()
         }
     elif component in config.BINARY_COUNTERPARTS.keys():
         return ld.interpolate_on_ld_grid(
@@ -369,7 +369,7 @@ def _eval_approximation_one(self, phases):
     :param phases: numpy.array
     :return: bool
     """
-    if len(phases) > config.config.POINTS_ON_ECC_ORBIT and self.is_synchronous():
+    if len(phases) > config.POINTS_ON_ECC_ORBIT and self.is_synchronous():
         return True
     return False
 
