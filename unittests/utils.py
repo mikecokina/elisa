@@ -1,3 +1,4 @@
+import logging
 import os.path as op
 import numpy as np
 import json
@@ -136,3 +137,4 @@ def load_light_curve(filename):
 class ElisaTestCase(unittest.TestCase):
     def setUpClass(*args, **kwargs):
         reset_config()
+        logging.disable(logging.CRITICAL)
