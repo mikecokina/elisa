@@ -43,14 +43,11 @@ REFLECTION_EFFECT_ITERATIONS = 2
 LIMB_DARKENING_LAW = 'cosine'
 
 # computational
-# todo: remove, not used
-# DISCRETIZATION_FACTOR = 5
 MAX_DISCRETIZATION_FACTOR = 20
 NUMBER_OF_THREADS = int(os.cpu_count())
 POINTS_ON_ECC_ORBIT = 99999
-MAX_D_DISTANCE = 0.0
-MAX_RELATIVE_D_R_POINT = 0.003
-MAX_SUPPLEMENTAR_D_DISTANCE = 1e-2
+MAX_RELATIVE_D_R_POINT = 0.0
+MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
 
 # support data
 PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")
@@ -132,11 +129,6 @@ def update_config():
     # ******************************************************************************************************************
 
     if c_parse.has_section('computational'):
-        # todo: remove, not used (remove also from elia_conf.inni template file)
-        # global DISCRETIZATION_FACTOR
-        # DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'discretization_factor',
-        #                                          fallback=DISCRETIZATION_FACTOR)
-
         global MAX_DISCRETIZATION_FACTOR
         MAX_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'max_discretization_factor',
                                                      fallback=MAX_DISCRETIZATION_FACTOR)
