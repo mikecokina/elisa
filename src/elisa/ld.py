@@ -61,6 +61,7 @@ def get_van_hamme_ld_table_by_name(fname):
     :param fname: str
     :return: pandas.DataFrame
     """
+    logger.debug(f"accessing limb darkening file {fname}")
     path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"there is no file like {path}")
@@ -116,19 +117,12 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
         xyz_values = df[config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].values
 
         uvw_domain = np.column_stack((temperature, log_g))
-
-        # uvw_values = np.empty((uvw_domain.shape[0], xyz_values.shape[1]), dtype=np.float)
-        # for ii in range(xyz_values.shape[1]):
-        #     f = interpolate.interp2d(xyz_domain[:, 0], xyz_domain[:, 1], xyz_values[:, ii], kind='linear')
-        #     uvw_values[:, ii] = f(uvw_domain[:, 0], uvw_domain[:, 1])[0, :]
-        #     # uvw_values[:, ii] = interpolate.griddata(xyz_domain, xyz_values[:, ii], uvw_domain, method="linear")
-        # uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="nearest")
         uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
 
         result_df = pd.DataFrame({"temperature": temperature, "log_g": log_g})
 
         for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
-            if np.isin(np.nan, vals):
+            if np.any(np.isnan(vals)):
                 raise ValueError("Limb darkening interpolation lead to np.nan/None value.\n"
                                  "It might be caused by definition of unphysical object on input.")
             result_df[col] = vals
@@ -179,15 +173,18 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
     if limb_darkening_law in ['linear', 'cosine']:
         cos_theta[negative_cos_theta_test] = 0.0
         retval = 1.0 - coefficients + coefficients * cos_theta
+        retval[negative_cos_theta_test] = 0.0
     elif limb_darkening_law == 'logarithmic':
         cos_theta_for_log = cos_theta.copy()
         cos_theta[negative_cos_theta_test] = 0.0
         cos_theta_for_log[negative_cos_theta_test] = 1.0
         retval = \
             1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta_for_log)
+        retval[negative_cos_theta_test] = 0.0
     elif limb_darkening_law == 'square_root':
         cos_theta[negative_cos_theta_test] = 0.0
         retval = 1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
+        retval[negative_cos_theta_test] = 0.0
     return retval[:, 0] if retval.shape[1] == 1 else retval
 
 

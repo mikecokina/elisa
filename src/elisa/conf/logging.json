@@ -32,7 +32,7 @@
             "handlers": ["console", "file_handler"],
             "propagate": 0
         },
-        "HttpImporter": {
+        "BinarySystem": {
             "level": "DEBUG",
             "handlers": ["console", "file_handler"],
             "propagate": 0
