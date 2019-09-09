@@ -138,3 +138,4 @@ class ElisaTestCase(unittest.TestCase):
     def setUpClass(*args, **kwargs):
         reset_config()
         logging.disable(logging.CRITICAL)
+        # logging.disable(logging.NOTSET)

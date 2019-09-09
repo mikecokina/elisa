@@ -3,6 +3,7 @@ import unittest
 
 import numpy as np
 from astropy import units as u
+from numpy.testing import assert_array_equal
 
 from elisa import const as c
 from elisa.binary_system import lc
@@ -231,7 +232,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
         self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
+        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
 
     def test_eccentric_synchronous_detached_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
@@ -251,7 +252,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
         self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
+        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
 
     def test_eccentric_synchronous_detached_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5

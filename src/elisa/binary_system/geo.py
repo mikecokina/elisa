@@ -805,7 +805,6 @@ class OrbitalSupplements(Sequence):
     def __iter__(self):
         for body, mirror in zip(self.body, self.mirror):
             yield body, mirror
-        raise StopIteration
 
     def __len__(self):
         return len(self.body)

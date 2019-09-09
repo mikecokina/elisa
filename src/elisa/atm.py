@@ -171,11 +171,12 @@ class NaiveInterpolatedAtm(object):
         :param bottom_atm_containers: numpy.array[AtmDataContainer]
         :return: numpy.array[float]
         """
-        top_temperatures = np.array([a.temperature for a in top_atm_containers])
-        bottom_temperatures = np.array([a.temperature for a in bottom_atm_containers])
-        result = (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
-        result[np.isnan(result)] = 1.0
-        return result
+        with np.errstate(divide='ignore', invalid='ignore'):
+            top_temperatures = np.array([a.temperature for a in top_atm_containers])
+            bottom_temperatures = np.array([a.temperature for a in bottom_atm_containers])
+            result = (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
+            result[np.isnan(result)] = 1.0
+            return result
 
     @staticmethod
     def compute_unknown_intensity_from_surounded_containers(weight, top_atm_container: AtmDataContainer,
@@ -607,9 +608,9 @@ def _validate_logg(temperature, log_g, atlas, _raise=True):
         is_out_of_bound(validation_hypertable[
                             str(int(utils.find_nearest_value(allowed, t)[0]))
                         ]["gravity"], [g], 0.1)[0] for t, g in zip(temperature, log_g)]
-    if any(invalid):
+    if np.any(invalid):
         if _raise:
-            raise ValueError("any gravity (log_g) in system atmosphere is out of bound; "
+            raise ValueError("Any gravity (log_g) in system atmosphere is out of bound; "
                              "it is usually caused by invalid physical model")
         return False
     return True

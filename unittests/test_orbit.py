@@ -40,7 +40,7 @@ class TestOrbit(ElisaTestCase):
         for i, combo in enumerate(self.params_combination):
             o = Orbit(**combo)
             obtained_distances.append(round(o.periastron_distance, 10))
-        self.assertEquals(expected_distances, obtained_distances)
+        self.assertEqual(expected_distances, obtained_distances)
 
     def test_periastron_phase(self):
         expected_distances, obtained_distances = [], []
@@ -53,7 +53,7 @@ class TestOrbit(ElisaTestCase):
             obtained_distances.append(round(o.orbital_motion(phase=o.periastron_phase)[0][0], 6))
 
         self.assertEqual(expected_distances, expected_hardcoded)
-        self.assertEquals(expected_distances, obtained_distances)
+        self.assertEqual(expected_distances, obtained_distances)
 
     def test_true_anomaly_to_azimuth(self):
         true_anomalies = np.array([np.radians(0.0), np.radians(45.0)])

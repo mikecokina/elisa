@@ -1,3 +1,7 @@
+.. image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
+    :target: https://travis-ci.org/mikecokina/elisa
+
+
 Eclipsing binaries Learning Interactive System
 ==============================================
 
