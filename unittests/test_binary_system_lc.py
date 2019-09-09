@@ -273,7 +273,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         # todo: for now, it is OK if phase are equal but fixme
         # fixme: alter approximation one/all methods to be computet with enforced significant phases like (minima, etc.)
-        self.assertTrue(np.all(np.round(expected_phases_exact, 4) == np.round(obtained_phases, 4)))
+        self.assertTrue(np.all(abs(np.round(expected_phases_exact, 4) == np.round(obtained_phases, 4))))
 
     def test_eccentric_synchronous_detached_system_approximation_two(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
