@@ -8,3 +8,11 @@ install:
 
 script:
   - python -m unittest discover -s unittests -p "test_*.py"
+
+notifications:
+  email:
+    recipients:
+      - mikecokina@gmail.com
+      - mirofedurco@gmail.com
+    on_success: always
+    on_failure: always
