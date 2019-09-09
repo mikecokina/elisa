@@ -11,7 +11,7 @@ from elisa import const as c
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
-from elisa.utils import is_empty
+from elisa.utils import is_empty, find_nearest_dist_3d
 from unittests.utils import ElisaTestCase
 from unittests.utils import plot_points, plot_faces, polar_gravity_acceleration, prepare_binary_system
 
@@ -755,3 +755,25 @@ class TestIntegrationWithSpots(ElisaTestCase):
         with self.assertRaises(ValueError) as context:
             s.build(components_distance=1.0)
         self.assertTrue('interpolation lead to np.nan' in str(context.exception))
+
+    def test_mesh_for_duplicate_points(self):
+        for params in self.params.values():
+            bs = prepare_binary_system(params)
+            components_distance = bs.orbit.orbital_motion(phase=0.0)[0][0]
+
+            bs.build_mesh(components_distance=components_distance)
+
+            distance1 = round(find_nearest_dist_3d(list(bs.primary.points)), 10)
+            distance2 = round(find_nearest_dist_3d(list(bs.secondary.points)), 10)
+
+            if distance1 < 1e-10:
+                bad_points = []
+                for i, point in enumerate(bs.primary.points):
+                    for j, xx in enumerate(bs.primary.points[i+1:]):
+                        dist = np.linalg.norm(point-xx)
+                        if dist <= 1e-10:
+                            print(f'Match: {point}, {i}, {j}')
+                            bad_points.append(point)
+
+            self.assertFalse(distance1 < 1e-10)
+            self.assertFalse(distance2 < 1e-10)
