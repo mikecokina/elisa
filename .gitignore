@@ -24,3 +24,7 @@ __main__.py
 *.pickle
 
 sandbox.py
+
+build/*
+dist/*
+elisa.egg-info

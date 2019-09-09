@@ -1,0 +1,7 @@
+include passband/*
+include conf/*
+include version.py
+include setup.py
+include setup.cfg
+include LICENCE
+include README.rst
