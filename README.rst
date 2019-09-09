@@ -7,20 +7,20 @@ ELISa
 **ELISa** is a python package dedicated to light curves modelling of close eclipsing binaries including surface features
 Current capabilities include:
 
-    - BinarySystem - class for modelling surfaces of detached, semi-detached and over-contact binaries
-    - Observer - class for generating light curves (and in future other observables)
-    - Spots - class for generating stellar spot with given longitude, latitude, radius and temperature factor
-    - Pulsations - class for modelling low amplitude pulsations based on spherical harmonics
+    - ``BinarySystem:`` class for modelling surfaces of detached, semi-detached and over-contact binaries
+    - ``Observer:`` class for generating light curves (and in future other observables)
+    - ``Spots:`` class for generating stellar spot with given longitude, latitude, radius and temperature factor
+    - ``Pulsations:`` class for modelling low amplitude pulsations based on spherical harmonics
 
 **ELISa** is currently under development. Following features are currently under development:
 
-    - SingleSystem - class for modelling surfaces of single star light curves with full implementation of spots and
+    - ``SingleSystem:`` class for modelling surfaces of single star light curves with full implementation of spots and
       pulsations
 
 We also plan to implement following features:
 
-    - addition of radial velocity curves to Observer class with Rossiter–McLaughlin effect
-    - LC and RV fitting using various methods
+    - addition of radial velocity curves to Observer class with ``Rossiter-McLaughlin`` effect
+    - ``LC`` and ``RV`` fitting using various methods
     - addition of synthetic spectral line modelling
 
 Requirements
@@ -28,25 +28,23 @@ Requirements
 
 **ELISa** is a python package which requires ``python v3.6+`` and has following dependencies::
 
+    astropy==2.0.2
     cycler==0.10.0
     matplotlib==2.1.0
     numpy==1.13.3
     pandas==0.23.0
     pyparsing==2.2.0
+    pypex==0.1.0
     pytest==3.2.3
     python-dateutil==2.6.1
     pytz==2017.2
     py==1.4.34
-    astropy==2.0.2
     scipy==1.0.0
     six==1.11.0
-    pypex==0.1.0
 
 and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
 
-Although python distribution and package versions are specified precisely, that does not mean that the package will not
-work with higher versions, only that it was not tested with higher versions of packages. However we
-highly recommend to stick with python distribution and package versions listed above.
+:note: although python distribution and package versions are specified precisely, that does not mean that the package will not work with higher versions, only that it was not tested with higher versions of packages. However we highly recommend to stick with python distribution and package versions listed above.
 
 Install
 -------
