@@ -1,5 +1,10 @@
-.. image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
+|Travis build|  |GitHub version|
+
+.. |Travis build| image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
     :target: https://travis-ci.org/mikecokina/elisa
+
+.. |GitHub version| image:: https://img.shields.io/badge/version-0.1.dev0-yellow.svg
+   :target: https://github.com/Naereen/StrapDown.js
 
 
 Eclipsing binaries Learning Interactive System

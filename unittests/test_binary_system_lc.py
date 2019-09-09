@@ -232,6 +232,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
         self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
+        print(np.round(obtained_flux, 4), np.round(expected_flux, 4))
         assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
 
     def test_eccentric_synchronous_detached_system_no_approximation(self):
