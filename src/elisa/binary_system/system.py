@@ -2313,28 +2313,28 @@ class BinarySystem(System):
             * ** position_method ** * - method
         :return: Dict
         """
-        circular_test = self.eccentricity == 0
-        eccentric_test = 1 > self.eccentricity > 0
+        is_circular = self.eccentricity == 0
+        is_eccentric = 1 > self.eccentricity > 0
         assynchronous_spotty_p = self.primary.synchronicity != 1 and self.primary.has_spots()
         assynchronous_spotty_s = self.secondary.synchronicity != 1 and self.secondary.has_spots()
         assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
 
-        if circular_test:
+        if is_circular:
             if assynchronous_spotty_test:
-                self._logger.info('Implementing light curve generator function for asynchronous binary system with '
+                self._logger.info('Applying light curve generator function for asynchronous binary system with '
                                   'circular orbit and spots.')
                 return self._compute_circular_spoty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('Implementing light curve generator function for synchronous binary system with '
+                self._logger.info('Applying light curve generator function for synchronous binary system with '
                                   'circular orbit or circular assynchronous systems without spots.')
                 return self._compute_circular_synchronous_lightcurve(**kwargs)
-        elif eccentric_test:
+        elif is_eccentric:
             if assynchronous_spotty_test:
-                self._logger.info('Implementing light curve generator function for asynchronous binary system with '
+                self._logger.info('Applying light curve generator function for asynchronous binary system with '
                                   'eccentric orbit and spots.')
-                return self._compute_ecc_spoty_asynchronous_lightcurve(**kwargs)
+                return self._compute_eccentric_spoty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('Implementing light curve generator function for eccentric orbit with synchronous '
+                self._logger.info('Applying light curve generator function for eccentric orbit with synchronous '
                                   'rotation of the components or assynchronous rotation without spots.')
                 return self._compute_eccentric_lightcurve(**kwargs)
 
@@ -2346,16 +2346,13 @@ class BinarySystem(System):
     def _compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
         return lc.compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs)
 
-    def _compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
-        return lc.compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs)
+    def _compute_eccentric_spoty_asynchronous_lightcurve(self, *args, **kwargs):
+        return lc.compute_eccentric_spoty_asynchronous_lightcurve(self, *args, **kwargs)
 
     def _compute_eccentric_lightcurve(self, *args, **kwargs):
-        # todo: just for testing, remove
         return lc.compute_eccentric_lightcurve(self, **kwargs)
 
     # ### build methods
-    # todo/idea: remove these definitions and call methods from `build` modul
-
     def build_surface_gravity(self, component=None, components_distance=None):
         return build.build_surface_gravity(self, component, components_distance)
 

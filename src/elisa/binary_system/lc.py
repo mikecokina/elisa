@@ -969,7 +969,7 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     return band_curves
 
 
-def compute_ecc_spoty_asynchronous_lightcurve(self, *args, **kwargs):
+def compute_eccentric_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     """
     Function returns light curve of assynchronous systems with eccentric orbits and spots.
     fixme: add params types
