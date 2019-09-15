@@ -33,8 +33,8 @@ def next_step(q, T):
 
 
 def derivatives(qn, Tn):
-    dq_plus, dq_minus = qn + dq, qn - dq
-    dT_plus, dT_minus = Tn + dT, Tn - dT
+    dq_plus, dq_minus = qn + (dq / 2.0), qn - (dq / 2.0)
+    dT_plus, dT_minus = Tn + (dT / 2.0), Tn - (dT / 2.0)
 
     diff_q = (error_fn(dq_plus, Tn) - error_fn(dq_minus, Tn)) / dq
     diff_T = (error_fn(qn, dT_plus) - error_fn(qn, dT_minus)) / dT
@@ -59,7 +59,7 @@ def main():
     print("q = 3, T = 1000")
     qn, Tn = q0, T0
 
-    for i in range(1000):
+    for i in range(10000):
         qn, Tn = next_step(qn, Tn)
         print(f"step {i}, qn: {qn}, Tn: {Tn}, \tr_squared: {r_squared(qn, Tn)}, \terror: {error_fn(qn, Tn)}")
 
