@@ -476,7 +476,7 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
 
     # APPX ZERO ********************************************************************************************************
     if not try_to_find_appx:
-        return 'zero', lambda: _integrate_lc_exactly(self, all_orbital_pos, phases, None, **kwargs)
+        return 'zero', lambda: _integrate_eccentric_lc_exactly(self, all_orbital_pos, phases, None, **kwargs)
 
     # APPX ONE *********************************************************************************************************
     appx_one = _eval_approximation_one(self, phases)
@@ -487,7 +487,7 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
         rel_d_radii = _compute_rel_d_radii(self, orbital_supplements)
         new_geometry_mask = _resolve_geometry_update(self, orbital_supplements.size(), rel_d_radii)
 
-        return 'one', lambda: _integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
+        return 'one', lambda: _integrate_eccentric_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
 
     # APPX TWO *********************************************************************************************************
 
@@ -504,10 +504,10 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
     new_geometry_mask = _resolve_geometry_update(self, orbital_supplements.size(), rel_d_radii)
 
     if appx_two:
-        return 'two', lambda: _integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
+        return 'two', lambda: _integrate_eccentric_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
     # APPX ZERO once again *********************************************************************************************
     else:
-        return 'zero', lambda: _integrate_lc_exactly(self, all_orbital_pos, phases, ecl_boundaries=None, **kwargs)
+        return 'zero', lambda: _integrate_eccentric_lc_exactly(self, all_orbital_pos, phases, ecl_boundaries=None, **kwargs)
 
 
 def compute_eccentric_lightcurve(self, **kwargs):
@@ -654,7 +654,7 @@ def calculate_lc_point(container, band, ld_cfs, normal_radiance):
     return flux
 
 
-def _integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
+def _integrate_eccentric_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
     """
     Function calculates light curves for eccentric orbits for selected filters using approximation
     where light curve points on the one side of the apsidal line are calculated exactly and the second
@@ -725,7 +725,7 @@ def _integrate_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask,
     return band_curves
 
 
-def _integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
+def _integrate_eccentric_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
     """
     Function calculates light curve for eccentric orbit for selected filters using
     approximation where to each OrbitalPosition on one side of the apsidal line,
@@ -804,7 +804,7 @@ def _integrate_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask,
     return band_curves
 
 
-def _integrate_lc_exactly(self, orbital_motion, phases, ecl_boundaries, **kwargs):
+def _integrate_eccentric_lc_exactly(self, orbital_motion, phases, ecl_boundaries, **kwargs):
     """
     Function calculates LC for eccentric orbit for selected filters.
     LC is calculated exactly for each OrbitalPosition.
@@ -907,7 +907,7 @@ def _update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
 def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     """
     Function returns light curve of assynchronous systems with circular orbits and spots.
-    #todo: add params types
+    # todo: add params types
 
     :param self: BinarySystem instance
     :param args:
@@ -959,19 +959,17 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
         container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
 
         for band in kwargs["passband"]:
-            band_curves[band][int(orbital_position.idx)] = \
-                calculate_lc_point(container, band, ld_cfs, normal_radiance)
+            band_curves[band][int(orbital_position.idx)] = calculate_lc_point(container, band, ld_cfs, normal_radiance)
 
     return band_curves
 
 
-def compute_eccentric_spoty_asynchronous_lightcurve(self, *args, **kwargs):
+def compute_eccentric_spoty_asynchronous_lightcurve(self, **kwargs):
     """
     Function returns light curve of assynchronous systems with eccentric orbits and spots.
     fixme: add params types
 
     :param self:
-    :param args:
     :param kwargs:
     :return: dictionary of fluxes for each filter
     """
@@ -979,8 +977,7 @@ def compute_eccentric_spoty_asynchronous_lightcurve(self, *args, **kwargs):
 
     phases = kwargs.pop("phases")
     position_method = kwargs.pop("position_method")
-    orbital_motion = position_method(input_argument=phases, return_nparray=False,
-                                     calculate_from='phase')
+    orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
 
     # pre-calculate the longitudes of each spot for each phase
     spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
