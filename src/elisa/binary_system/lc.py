@@ -947,13 +947,9 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
 
         # build the spots points
         build.add_spots_to_mesh(self, orbital_position.distance, component=None)
-        # build the rest of the surface
-        self.build_faces(component=None, components_distance=orbital_position.distance)
-        self.build_surface_areas(component=None)
-        self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
-        self.build_surface_gravity(component=None, components_distance=orbital_position.distance)
-        self.build_temperature_distribution(component=None, components_distance=orbital_position.distance,
-                                            do_pulsations=True, phase=orbital_position.phase)
+        # build the rest of the surface based on preset surface points
+        self.build_from_points(component=None, components_distance=orbital_position.distance,
+                               do_pulsations=True, phase=orbital_position.phase)
 
         container = get_onpos_container(self, orbital_position, ecl_boundaries)
 

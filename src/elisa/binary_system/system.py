@@ -2399,13 +2399,25 @@ class BinarySystem(System):
             - build_surface_gravity
             - build_temperature_distribution
 
-        :param phase:
-        :param do_pulsations: bool - switch to incorporate pulsations
+        :param phase: float; phase to build system on
+        :param do_pulsations: bool; switch to incorporate pulsations
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
         :return:
         """
         self.build_mesh(component, components_distance)
+        self.build_from_points(component, components_distance, do_pulsations, phase)
+
+    def build_from_points(self, component=None, components_distance=None, do_pulsations=False, phase=None):
+        """
+        Build binary system from preset surface points
+
+        :param component: str; `primary` or `secondary`
+        :param components_distance: float; distance of components is SMA units
+        :param do_pulsations: bool; switch to incorporate pulsations
+        :param phase: float; phase to build system on
+        :return:
+        """
         self.build_faces(component, components_distance)
         self.build_surface_areas(component)
         self.build_faces_orientation(component, components_distance)
