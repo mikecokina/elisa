@@ -1,5 +1,4 @@
 import os.path as op
-import unittest
 
 import numpy as np
 from astropy import units as u
@@ -52,6 +51,11 @@ class SupportMethodsTestCase(ElisaTestCase):
                 self.spots = {0: MockSpot()}
                 self.synchronicity = s
 
+        class MockStarNoSpot(object):
+            def __init__(self, s):
+                self.spots = {}
+                self.synchronicity = s
+
         class MockBinaryInstance(object):
             def __init__(self):
                 self.primary = MockStar(1.1)
@@ -66,7 +70,6 @@ class SupportMethodsTestCase(ElisaTestCase):
 
         obtained = geo.calculate_spot_longitudes(MockBinaryInstance(), phases)
         obtained = np.round(np.array([obtained["primary"][0], obtained["secondary"][0]]), 5)
-
         assert_array_equal(expected, obtained)
 
     def test_surface_area_coverage_not_partial(self):

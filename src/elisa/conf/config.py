@@ -3,15 +3,11 @@ import logging
 import os
 import warnings
 
+import numpy as np
+
 from configparser import ConfigParser
 from logging import config as log_conf
 from os.path import dirname, isdir, pardir
-
-
-def parent_dir(path, n=0):
-    for i in range(n):
-        path = dirname(path)
-    return path
 
 
 c_parse = ConfigParser()
@@ -48,6 +44,7 @@ NUMBER_OF_THREADS = int(os.cpu_count())
 POINTS_ON_ECC_ORBIT = 99999
 MAX_RELATIVE_D_R_POINT = 0.0
 MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
+MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
 
 # support data
 PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")

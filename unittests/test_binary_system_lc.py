@@ -1,11 +1,10 @@
 import os.path as op
-import unittest
 
 import numpy as np
 from astropy import units as u
 from numpy.testing import assert_array_equal
 
-from elisa import const as c
+from elisa import const as c, utils
 from elisa.binary_system import lc
 from elisa.binary_system.geo import OrbitalSupplements
 from elisa.conf import config
@@ -79,7 +78,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         obtained = lc.find_apsidally_corresponding_positions(arr1[:, 0], arr1, arr2[:, 0], arr2, as_empty=[np.nan] * 2)
         self.assertTrue(np.all(~np.isnan(obtained.body)))
 
-    def test__resolve_geometry_update(self):
+    def test__resolve_object_geometry_update(self):
         val_backup = config.MAX_RELATIVE_D_R_POINT
         config.MAX_RELATIVE_D_R_POINT = 0.1
         rel_d_radii = np.array([
@@ -88,10 +87,25 @@ class SupportMethodsTestCase(ElisaTestCase):
         ])
 
         expected = np.array([True, False, False, True, False, True, True, True, True], dtype=bool)
-        obtained = lc._resolve_geometry_update(MockSelf, rel_d_radii.shape[1] + 1, rel_d_radii)
+        obtained = lc._resolve_object_geometry_update(False, rel_d_radii.shape[1] + 1, rel_d_radii)
         config.MAX_RELATIVE_D_R_POINT = val_backup
 
         self.assertTrue(np.all(expected == obtained))
+
+    @staticmethod
+    def test__resolve_spots_geometry_update():
+        config.MAX_SPOT_D_LONGITUDE = 0.06
+        spots_longitudes = {
+            'primary': {
+                0: np.array([0.5, 0.55, 0.6, 0.75, 0.76, 0.77]),
+                1: np.array([0.5, 0.55, 0.6, 0.75, 0.76, 0.77]) - 0.1
+            },
+            'secondary': {}
+        }
+
+        obtained = np.array(lc._resolve_spots_geometry_update(spots_longitudes), dtype=bool)
+        expected = np.array([[True, False, True, True, False, False], [True] + [False] * 5], dtype=bool)
+        assert_array_equal(expected, obtained)
 
     def test__compute_rel_d_radii(self):
         mock_supplements = OrbitalSupplements([[1., 10.]], [[1., 10.]])

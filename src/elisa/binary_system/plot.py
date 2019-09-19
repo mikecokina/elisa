@@ -208,8 +208,8 @@ class Plot(object):
         kwg = {'suppress_parallelism': False}
 
         # recalculating spot latitudes
-        spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phase'], component=None)
-        geo.assign_spot_longitudes(self._self, spots_longitudes, index=None, component=None)
+        spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phase'], component="all")
+        geo.assign_spot_longitudes(self._self, spots_longitudes, index=None, component="all")
 
         # this part decides if both components need to be calculated at once (due to reflection effect)
         if kwargs['colormap'] == 'temperature':

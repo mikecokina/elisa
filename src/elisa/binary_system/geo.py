@@ -104,7 +104,7 @@ def plane_projection(points, plane, keep_3d=False):
     return in_plane
 
 
-def calculate_spot_longitudes(binary_instance, phases, component=None):
+def calculate_spot_longitudes(binary_instance, phases, component="all"):
     """
     function calculates the latitudes of every spot on given component(s) for every phase
 
@@ -124,7 +124,7 @@ def calculate_spot_longitudes(binary_instance, phases, component=None):
     return spots_longitudes
 
 
-def assign_spot_longitudes(binary_instance, spots_longitudes, index=None, component=None):
+def assign_spot_longitudes(binary_instance, spots_longitudes, index=None, component="all"):
     """
     function assigns spot latitudes for each spot according to values in `spots_longitudes` in index `index`
 

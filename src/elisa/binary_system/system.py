@@ -42,6 +42,7 @@ from elisa.binary_system.animation import Animation
 from elisa.orbit import Orbit
 from elisa.base.star import Star
 from elisa.base.system import System
+from elisa.utils import is_empty
 
 
 class BinarySystem(System):
@@ -465,7 +466,7 @@ class BinarySystem(System):
                     radius = self.calculate_forward_radius(component, components_distance)
                     setattr(component_instance, '_forward_radius', radius)
 
-    def _evaluate_spots_mesh(self, components_distance, component=None):
+    def _evaluate_spots_mesh(self, components_distance, component="all"):
         """
         Compute points of each spots and assigns values to spot container instance.
         If any of any spot point cannot be obtained, entire spot will be omitted.
@@ -1061,7 +1062,7 @@ class BinarySystem(System):
         return np.mean(points_gradients[faces], axis=1) if component_instance.spots \
             else np.mean(points_gradients[faces], axis=1)[component_instance.face_symmetry_vector]
 
-    def calculate_polar_potential_gradient_magnitude(self, component=None, components_distance=None):
+    def calculate_polar_potential_gradient_magnitude(self, component="all", components_distance=None):
         """
         Returns magnitude of polar potential gradient.
 
@@ -1565,7 +1566,7 @@ class BinarySystem(System):
         r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
         return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))
 
-    def mesh_over_contact(self, component=None, symmetry_output=False, **kwargs):
+    def mesh_over_contact(self, component="all", symmetry_output=False, **kwargs):
         """
         Creates surface mesh of given binary star component in case of over-contact system.
 
@@ -1742,7 +1743,7 @@ class BinarySystem(System):
         else:
             return points
 
-    def detached_system_surface(self, component=None, points=None, components_distance=None):
+    def detached_system_surface(self, component="all", points=None, components_distance=None):
         """
         Calculates surface faces from the given component's points in case of detached or semi-contact system.
 
@@ -1788,7 +1789,7 @@ class BinarySystem(System):
 
         return triangles_indices
 
-    def over_contact_system_surface(self, component=None, points=None, **kwargs):
+    def over_contact_system_surface(self, component="all", points=None, **kwargs):
         # do not remove kwargs, keep compatible interface w/ detached where components distance has to be provided
         # in this case, components distance is sinked in kwargs and not used
         """
@@ -1986,7 +1987,7 @@ class BinarySystem(System):
         if components_distance is None:
             raise ValueError('Components distance was not supplied.')
 
-        component = static.component_to_list(None)
+        component = static.component_to_list(component='all')
 
         xlim = self.faces_visibility_x_limits(components_distance=components_distance)
 
@@ -2343,50 +2344,50 @@ class BinarySystem(System):
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
-    def _compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
-        return lc.compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs)
+    def _compute_circular_spoty_asynchronous_lightcurve(self, **kwargs):
+        return lc.compute_circular_spoty_asynchronous_lightcurve(self, **kwargs)
 
-    def _compute_eccentric_spoty_asynchronous_lightcurve(self, *args, **kwargs):
-        return lc.compute_eccentric_spoty_asynchronous_lightcurve(self, *args, **kwargs)
+    def _compute_eccentric_spoty_asynchronous_lightcurve(self, **kwargs):
+        return lc.compute_eccentric_spoty_asynchronous_lightcurve(self, **kwargs)
 
-    def _compute_eccentric_lightcurve(self, *args, **kwargs):
+    def _compute_eccentric_lightcurve(self, **kwargs):
         return lc.compute_eccentric_lightcurve(self, **kwargs)
 
     # ### build methods
-    def build_surface_gravity(self, component=None, components_distance=None):
+    def build_surface_gravity(self, component="all", components_distance=None):
         return build.build_surface_gravity(self, component, components_distance)
 
-    def build_faces_orientation(self, component=None, components_distance=None):
+    def build_faces_orientation(self, component="all", components_distance=None):
         return build.build_faces_orientation(self, component, components_distance)
 
-    def build_temperature_distribution(self, component=None, components_distance=None, do_pulsations=False,
+    def build_temperature_distribution(self, component="all", components_distance=None, do_pulsations=False,
                                        phase=None):
         return build.build_temperature_distribution(self, component, components_distance, do_pulsations=do_pulsations,
                                                     phase=phase)
 
-    def build_surface_map(self, colormap=None, component=None, components_distance=None, return_map=False, phase=None):
+    def build_surface_map(self, colormap=None, component="all", components_distance=None, return_map=False, phase=None):
         return build.build_surface_map(self, colormap, component, components_distance, return_map, phase=phase)
 
-    def build_mesh(self, component=None, components_distance=None, **kwargs):
+    def build_mesh(self, component="all", components_distance=None, **kwargs):
         return build.build_mesh(self, component, components_distance)
 
-    def build_faces(self, component=None, components_distance=None):
+    def build_faces(self, component="all", components_distance=None):
         return build.build_faces(self, component, components_distance)
 
-    def build_surface(self, component=None, components_distance=None, **kwargs):
+    def build_surface(self, component="all", components_distance=None, **kwargs):
         return build.build_surface(self, component, components_distance, **kwargs)
 
-    def build_surface_with_no_spots(self, component=None, components_distance=None):
+    def build_surface_with_no_spots(self, component="all", components_distance=None):
         return build.build_surface_with_no_spots(self, component, components_distance)
 
-    def build_surface_with_spots(self, component=None, components_distance=None):
+    def build_surface_with_spots(self, component="all", components_distance=None):
         return build.build_surface_with_spots(self, component, components_distance)
 
     # this makes no sence but don't have a time to make it better
-    def build_surface_areas(self, component=None):
+    def build_surface_areas(self, component="all"):
         return build.compute_all_surface_areas(self, component=component)
 
-    def build(self, component=None, components_distance=None, do_pulsations=False, phase=None):
+    def build(self, component="all", components_distance=None, do_pulsations=False, phase=None):
         """
         Main method to build binary star system from parameters given on init of BinaryStar.
 
@@ -2408,7 +2409,7 @@ class BinarySystem(System):
         self.build_mesh(component, components_distance)
         self.build_from_points(component, components_distance, do_pulsations, phase)
 
-    def build_from_points(self, component=None, components_distance=None, do_pulsations=False, phase=None):
+    def build_from_points(self, component="all", components_distance=None, do_pulsations=False, phase=None):
         """
         Build binary system from preset surface points
 
@@ -2427,7 +2428,7 @@ class BinarySystem(System):
     def prepare_system_positions_container(self, orbital_motion, ecl_boundaries=None):
         return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion, ecl_boundaries)
 
-    def correct_potentials(self, phases, component=None, iterations=2):
+    def correct_potentials(self, phases, component="all", iterations=2):
         """
         Function calculates potential for each phase in phases in such way that conserves
         volume of the component. Volume is approximated by two half elipsoids.

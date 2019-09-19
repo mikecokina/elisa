@@ -10,6 +10,8 @@ from elisa.const import BINARY_POSITION_PLACEHOLDER
 from scipy.interpolate import Akima1DInterpolator
 from copy import copy, deepcopy
 
+from elisa.utils import is_empty
+
 __logger__ = logging.getLogger(__name__)
 
 
@@ -135,7 +137,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     }
 
 
-def get_normal_radiance(single_orbital_position_container, component=None, **kwargs):
+def get_normal_radiance(single_orbital_position_container, component="all", **kwargs):
     """
     Compute normal radiance for all faces and all components in SingleOrbitalPositionContainer.
 
@@ -148,7 +150,7 @@ def get_normal_radiance(single_orbital_position_container, component=None, **kwa
             * ** atlas ** * - str
     :return: Dict[String, numpy.array]
     """
-    if component is None:
+    if component in ["all", "both"]:
         return {
             component:
                 atm.NaiveInterpolatedAtm.radiance(
@@ -171,10 +173,10 @@ def get_normal_radiance(single_orbital_position_container, component=None, **kwa
         )
     else:
         raise ValueError('Invalid value of `component` argument. '
-                         'Available parameters are `primary`, `secondary` or None.')
+                         'Available parameters are `primary`, `secondary` or `all`.')
 
 
-def get_limbdarkening_cfs(self, component=None, **kwargs):
+def get_limbdarkening_cfs(self, component="all", **kwargs):
     """
     Returns limb darkening coefficients for each face of each component.
 
@@ -187,7 +189,7 @@ def get_limbdarkening_cfs(self, component=None, **kwargs):
             * ** atlas ** * - str
     :return: Dict[str, numpy.array]
     """
-    if component is None:
+    if component in ["all", "both"]:
         return {
             component:
                 ld.interpolate_on_ld_grid(
@@ -206,7 +208,7 @@ def get_limbdarkening_cfs(self, component=None, **kwargs):
         )
     else:
         raise ValueError('Invalid value of `component` argument. '
-                         'Available parameters are `primary`, `secondary` or None.')
+                         'Available parameters are `primary`, `secondary` or `all`.')
 
 
 def prep_surface_params(initial_props_container, pulsations_test, **kwargs):
@@ -405,25 +407,81 @@ def _split_orbit_by_apse_line(orbital_motion, orbital_mask):
     return reduced_orbit_arr, supplement_to_reduced_arr
 
 
-def _resolve_geometry_update(self, size, rel_d):
+def _resolve_object_geometry_update(has_spots, size, rel_d, max_allowed_difference=None):
+    """
+    Evaluate where on orbital position is necessary to fully update geometry.
+    Evaluation depends on difference of relative radii between upcomming orbital positions.
+    """
+    return _resolve_geometry_update(has_spots=has_spots, size=size, rel_d=rel_d, resolve="object",
+                                    max_allowed_difference=max_allowed_difference or config.MAX_RELATIVE_D_R_POINT)
+
+
+def _resolve_spots_geometry_update(spots_longitudes, max_allowed_difference=None):
+    """
+    Evaluate where on orbital position is necessary to fully update geometry.
+    Evaluation depends on difference of spots longitudes between upcomming orbital positions.
+    """
+    slp, sls = spots_longitudes["primary"], spots_longitudes["secondary"]
+
+    reference_long_p = list(utils.nested_dict_values(slp))[0] if not is_empty(slp) else np.array([])
+    reference_long_s = list(utils.nested_dict_values(sls))[0] if not is_empty(sls) else np.array([])
+
+    # compute longitudes differences, slice according to shift (zero value is difference agains last)
+    # and setup shape compatible with `_resolve_geometry_update` method
+    d_long_p = abs(reference_long_p - np.roll(reference_long_p, shift=1))
+    d_long_p = np.array([d_long_p[1:]] * 2)
+
+    d_long_s = abs(reference_long_s - np.roll(reference_long_s, shift=1))
+    d_long_s = np.array([d_long_s[1:]] * 2)
+
+    # this will find an array of longitudes of any spot and len basically defines how many
+    size = len(list(utils.nested_dict_values(spots_longitudes))[0])
+    if size <= 0:
+        raise ValueError("Unexpected value, at least single spot should be detected if this method is called")
+
+    primary_reducer = _resolve_geometry_update(
+        has_spots=True, size=size, rel_d=d_long_p, resolve="spot",
+        max_allowed_difference=max_allowed_difference or config.MAX_SPOT_D_LONGITUDE
+    )
+
+    secondary_reducer = _resolve_geometry_update(
+        has_spots=True, size=size, rel_d=d_long_s, resolve="spot",
+        max_allowed_difference=max_allowed_difference or config.MAX_SPOT_D_LONGITUDE
+    )
+
+    return primary_reducer, secondary_reducer
+
+
+def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, resolve="object"):
     """
     Evaluate where on orbital position is necessary to fully update geometry.
 
-    :param self: elisa.binary_system.system.BinarySystem
+    :param max_allowed_difference: float
+    :param has_spots: bool; define if system has spots
     :param size: int
-    :param rel_d: numpy.array
+    :param rel_d: numpy.array; array, based on geometry change is going to be evaluated
+    :param resolve: str; decision parameter whether resolved object on eccentric orbit or spots movement,
+    "object" or "spots"
     :return: numpy.array[bool]
     """
+    if resolve not in ["object", "spot"]:
+        raise ValueError("Invalid option for `resolve`, use `object` or `spot`")
+
     # in case of spots, the boundary points will cause problems if you want to use the same geometry
-    if self.has_spots():
+    if has_spots and resolve == "object":
         return np.ones(size, dtype=np.bool)
+    elif is_empty(rel_d) and resolve == "spot":
+        # if `rel_d` is empty and resolve is equal to `spot` it means given component has no spots
+        # and does require build only on first position
+        # fixme: do it better, this is really ugly way
+        return np.array([True] + [False] * (size - 1), dtype=np.bool)
 
     require_new_geo = np.ones(size, dtype=np.bool)
 
     cumulative_sum = np.array([0.0, 0.0])
     for i in range(1, size):
         cumulative_sum += rel_d[:, i - 1]
-        if (cumulative_sum <= config.MAX_RELATIVE_D_R_POINT).all():
+        if (cumulative_sum <= max_allowed_difference).all():
             require_new_geo[i] = False
         else:
             require_new_geo[i] = True
@@ -476,7 +534,8 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
 
     # APPX ZERO ********************************************************************************************************
     if not try_to_find_appx:
-        return 'zero', lambda: _integrate_eccentric_lc_exactly(self, all_orbital_pos, phases, None, **kwargs)
+        return 'zero', \
+               lambda: _integrate_eccentric_lc_exactly(self, all_orbital_pos, phases, None, **kwargs)
 
     # APPX ONE *********************************************************************************************************
     appx_one = _eval_approximation_one(self, phases)
@@ -485,9 +544,10 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
         orbital_supplements = geo.OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
         orbital_supplements.sort(by='distance')
         rel_d_radii = _compute_rel_d_radii(self, orbital_supplements)
-        new_geometry_mask = _resolve_geometry_update(self, orbital_supplements.size(), rel_d_radii)
+        new_geometry_mask = _resolve_object_geometry_update(self.has_spots(), orbital_supplements.size(), rel_d_radii)
 
-        return 'one', lambda: _integrate_eccentric_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
+        return 'one', \
+               lambda: _integrate_eccentric_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
 
     # APPX TWO *********************************************************************************************************
 
@@ -501,13 +561,15 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
     orbital_supplements.sort(by='distance')
     rel_d_radii = _compute_rel_d_radii(self, orbital_supplements)
     appx_two = _eval_approximation_two(self, rel_d_radii)
-    new_geometry_mask = _resolve_geometry_update(self, orbital_supplements.size(), rel_d_radii)
+    new_geometry_mask = _resolve_object_geometry_update(self.has_spots(), orbital_supplements.size(), rel_d_radii)
 
     if appx_two:
-        return 'two', lambda: _integrate_eccentric_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
+        return 'two', \
+               lambda: _integrate_eccentric_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs)
     # APPX ZERO once again *********************************************************************************************
     else:
-        return 'zero', lambda: _integrate_eccentric_lc_exactly(self, all_orbital_pos, phases, ecl_boundaries=None, **kwargs)
+        return 'zero', \
+               lambda: _integrate_eccentric_lc_exactly(self, all_orbital_pos, phases, ecl_boundaries=None, **kwargs)
 
 
 def compute_eccentric_lightcurve(self, **kwargs):
@@ -677,7 +739,7 @@ def _integrate_eccentric_lc_appx_one(self, phases, orbital_supplements, new_geom
     band_curves_body, band_curves_mirror = deepcopy(band_curves), deepcopy(band_curves)
 
     # surface potentials with constant volume of components
-    potentials = self.correct_potentials(orbital_supplements.body[:, 4], component=None, iterations=2)
+    potentials = self.correct_potentials(orbital_supplements.body[:, 4], component="all", iterations=2)
 
     # both, body and mirror should be defined in this approximation (those points are created in way to be mirrored
     # one to another), if it is not defined, there is most likely issue with method `_prepare_geosymmetric_orbit`
@@ -779,7 +841,7 @@ def _integrate_eccentric_lc_appx_two(self, phases, orbital_supplements, new_geom
     # surface potentials with constant volume of components
     # todo: compute only correction on orbital_supplements.body[:, 4][new_geometry_mask] and repopulate array
     phases_to_correct = orbital_supplements.body[:, 4]
-    potentials = self.correct_potentials(phases_to_correct, component=None, iterations=2)
+    potentials = self.correct_potentials(phases_to_correct, component="all", iterations=2)
 
     for idx, position_pair in enumerate(orbital_supplements):
         body, mirror = position_pair
@@ -818,7 +880,7 @@ def _integrate_eccentric_lc_exactly(self, orbital_motion, phases, ecl_boundaries
     :return: dictionary of fluxes for each filter
     """
     # surface potentials with constant volume of components
-    potentials = self.correct_potentials(phases, component=None, iterations=2)
+    potentials = self.correct_potentials(phases, component="all", iterations=2)
 
     band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"]}
     for idx, orbital_position in enumerate(orbital_motion):
@@ -853,35 +915,6 @@ def _integrate_eccentric_lc_exactly(self, orbital_motion, phases, ecl_boundaries
     return band_curves
 
 
-def calculate_new_geometry(self, orbit_template_arr, rel_d_radii):
-    """
-    This function chcecks at which OrbitalPositions it is necessary to recalculate geometry.
-
-    :param self: elisa.binary_system.system.BinarySystem
-    :param orbit_template_arr: numpy.array; array of orbital positions from one side of the apsidal
-    line used as the symmetry template
-    :param rel_d_radii: numpy.array; shape(2 x len(orbit_template arr) - relative changes in radii of each component
-    with respect to the previous OrbitalPosition, excluding the first postition.
-    :return: numpy.array[bool]; mask to select Orbital positions, where orbits should be calculated
-    """
-    # in case of spots, the boundary points will cause problems if you want to use the same geometry
-    if self.has_spots():
-        return np.ones(orbit_template_arr.shape[0], dtype=np.bool)
-
-    calc_new_geometry = np.zeros(orbit_template_arr.shape[0], dtype=np.bool)
-    calc_new_geometry[0] = True
-    cumulative_sum = np.array([0.0, 0.0])
-    for ii in range(1, orbit_template_arr.shape[0]):
-        cumulative_sum += rel_d_radii[:, ii - 1]
-        if (cumulative_sum <= config.MAX_RELATIVE_D_R_POINT).all():
-            calc_new_geometry[ii] = False
-        else:
-            calc_new_geometry[ii] = True
-            cumulative_sum = np.array([0.0, 0.0])
-
-    return calc_new_geometry
-
-
 def _update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
     """
     Function decides how to update surface properties with respect to the degree of change
@@ -897,22 +930,25 @@ def _update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
     if new_geometry_test:
         self.build(components_distance=orbital_position.distance)
     else:
-        self.build_mesh(component=None, components_distance=orbital_position.distance)
-        self.build_surface_areas(component=None)
-        self.build_faces_orientation(component=None, components_distance=orbital_position.distance)
+        self.build_mesh(component="all", components_distance=orbital_position.distance)
+        self.build_surface_areas(component="all")
+        self.build_faces_orientation(component="all", components_distance=orbital_position.distance)
 
     return self
 
 
-def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
+def compute_circular_spoty_asynchronous_lightcurve(self, **kwargs):
     """
     Function returns light curve of assynchronous systems with circular orbits and spots.
     # todo: add params types
 
-    :param self: BinarySystem instance
-    :param args:
-    :param kwargs:
-    :return: dictionary of fluxes for each filter
+    :param self: elisa.binary_system.system.BinarySystem
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+    :return: Dict; fluxes for each filter
     """
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
     points = {}
@@ -930,29 +966,40 @@ def compute_circular_spoty_asynchronous_lightcurve(self, *args, **kwargs):
     orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
 
     # pre-calculate the longitudes of each spot for each phase
-    # TODO: implement minimum angular step in longitude which will result in mesh recalculation, it will save a lot of
-    # TODO: time for systems with synchronicities close to one
-
-    spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
+    spots_longitudes = geo.calculate_spot_longitudes(self, phases, component="all")
+    primary_reducer, secondary_reducer = _resolve_spots_geometry_update(spots_longitudes)
+    combined_reducer = primary_reducer & secondary_reducer
 
     # calculating lc with spots gradually shifting their positions in each phase
     band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"]}
-    for ii, orbital_position in enumerate(orbital_motion):
+    for pos_index, orbital_position in enumerate(orbital_motion):
+        # setup component necessary to build/rebuild
+        require_build = "all" if combined_reducer[pos_index] \
+            else "primary" if primary_reducer[pos_index] \
+            else "secondary" if secondary_reducer[pos_index] \
+            else None
+
         # use clear system surface points as a starting place to save a time
-        self.primary.points = copy(points['primary'])
-        self.secondary.points = copy(points['secondary'])
+        # if reducers for related component is set to False, previous build will be used
+
+        # todo/fixme: we can remove `reset_spots_properties` when methods will work as expected
+        if primary_reducer[pos_index]:
+            self.primary.points = copy(points['primary'])
+            self.primary.reset_spots_properties()
+        if secondary_reducer[pos_index]:
+            self.secondary.points = copy(points['secondary'])
+            self.secondary.reset_spots_properties()
 
         # assigning new longitudes for each spot
-        geo.assign_spot_longitudes(self, spots_longitudes, index=ii, component=None)
+        geo.assign_spot_longitudes(self, spots_longitudes, index=pos_index, component="all")
 
         # build the spots points
-        build.add_spots_to_mesh(self, orbital_position.distance, component=None)
+        build.add_spots_to_mesh(self, orbital_position.distance, component=require_build)
         # build the rest of the surface based on preset surface points
-        self.build_from_points(component=None, components_distance=orbital_position.distance,
-                               do_pulsations=True, phase=orbital_position.phase)
+        self.build_from_points(components_distance=orbital_position.distance, do_pulsations=True,
+                               phase=orbital_position.phase, component=require_build)
 
         container = get_onpos_container(self, orbital_position, ecl_boundaries)
-
         normal_radiance = get_normal_radiance(container, **kwargs)
         ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 
@@ -973,31 +1020,30 @@ def compute_eccentric_spoty_asynchronous_lightcurve(self, **kwargs):
     :param kwargs:
     :return: dictionary of fluxes for each filter
     """
-    ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
     phases = kwargs.pop("phases")
     position_method = kwargs.pop("position_method")
     orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
 
     # pre-calculate the longitudes of each spot for each phase
-    spots_longitudes = geo.calculate_spot_longitudes(self, phases, component=None)
+    spots_longitudes = geo.calculate_spot_longitudes(self, phases, component="all")
 
     # calculating lc with spots gradually shifting their positions in each phase
     band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"]}
 
     # surface potentials with constant volume of components
-    potentials = self.correct_potentials(phases, component=None, iterations=2)
+    potentials = self.correct_potentials(phases, component="all", iterations=2)
 
     for ii, orbital_position in enumerate(orbital_motion):
         self.primary.surface_potential = potentials['primary'][ii]
         self.secondary.surface_potential = potentials['secondary'][ii]
 
         # assigning new longitudes for each spot
-        geo.assign_spot_longitudes(self, spots_longitudes, index=ii, component=None)
+        geo.assign_spot_longitudes(self, spots_longitudes, index=ii, component="all")
 
         self.build(components_distance=orbital_position.distance)
 
-        container = get_onpos_container(self, orbital_position, ecl_boundaries)
+        container = get_onpos_container(self, orbital_position, ecl_boundaries=None)
 
         normal_radiance = get_normal_radiance(container, **kwargs)
         ld_cfs = get_limbdarkening_cfs(container, **kwargs)

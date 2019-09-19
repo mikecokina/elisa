@@ -491,10 +491,12 @@ def component_to_list(component):
                             `primary` and `secondary` will be converted into lists [`primary`] and [`secondary`].
     :return: List[str]
     """
-    if is_empty(component):
+    if component in ["all", "both"]:
         component = ['primary', 'secondary']
     elif component in ['primary', 'secondary']:
         component = [component]
+    elif is_empty(component):
+        return []
     else:
-        raise ValueError('Invalid name of the component. Use `primary` or `secondary`.')
+        raise ValueError('Invalid name of the component. Use `primary`, `secondary`, `all` or `both`')
     return component

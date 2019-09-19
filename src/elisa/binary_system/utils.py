@@ -56,14 +56,14 @@ def potential_from_radius(self, component, radius, phi, theta, component_distanc
     return potential_fn(radius, *args)
 
 
-def calculate_phase(time, period, T0, offset=0.5):
+def calculate_phase(time, period, t0, offset=0.5):
     """
     calculates photometric phase from observations
 
     :param time: array
     :param period: array
-    :param T0: float
+    :param t0: float
     :param offset: float
     :return: array
     """
-    return np.mod((time - T0 + offset * period) / period, 1.0) - offset
+    return np.mod((time - t0 + offset * period) / period, 1.0) - offset

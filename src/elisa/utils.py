@@ -728,8 +728,8 @@ def spherical_harmonics_renormalization_constant(l, m):
         return -abs(lpmv(m, l, xx))
 
     old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
-    Ns = int(np.power(5, np.ceil((l - m) / 23)) * ((l - m) + 1))
-    output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=Ns, finish=fmin, full_output=True)
+    ns = int(np.power(5, np.ceil((l - m) / 23)) * ((l - m) + 1))
+    output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=ns, finish=fmin, full_output=True)
     np.seterr(**old_settings)
 
     x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
@@ -767,3 +767,9 @@ def convert_binary_orbital_motion_arr_to_positions(arr):
     return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in arr]
 
 
+def nested_dict_values(dictionary):
+    for value in dictionary.values():
+        if isinstance(value, dict):
+            yield from nested_dict_values(value)
+        else:
+            yield value

@@ -7,7 +7,7 @@ from elisa.utils import is_empty
 from elisa import pulsations, utils
 
 
-def build_surface_gravity(self, component=None, components_distance=None):
+def build_surface_gravity(self, component="all", components_distance=None):
     """
     Function calculates gravity potential gradient magnitude (surface gravity) for each face.
     Value assigned to face is mean of values calculated in corners of given face.
@@ -17,6 +17,9 @@ def build_surface_gravity(self, component=None, components_distance=None):
     :param components_distance: float
     :return:
     """
+    if is_empty(component):
+        self._logger.debug("no component set to build surface gravity")
+        return
 
     if is_empty(components_distance):
         raise ValueError('Component distance value was not supplied or is invalid.')
@@ -51,7 +54,7 @@ def build_surface_gravity(self, component=None, components_distance=None):
                 spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
 
 
-def build_faces_orientation(self, component=None, components_distance=None):
+def build_faces_orientation(self, component="all", components_distance=None):
     """
     Compute face orientation (normals) for each face.
     If pulsations are present, than calculate renormalized associated
@@ -63,6 +66,10 @@ def build_faces_orientation(self, component=None, components_distance=None):
     orbit with misaligned pulsations, where pulsation axis drifts with star
     :return:
     """
+    if is_empty(component):
+        self._logger.debug("no component set to build face orientation")
+        return
+
     component = static.component_to_list(component)
     com_x = {'primary': 0.0, 'secondary': components_distance}
 
@@ -77,7 +84,7 @@ def build_faces_orientation(self, component=None, components_distance=None):
             pulsations.set_ralp(component_instance, com_x=com_x[_component])
 
 
-def build_temperature_distribution(self, component=None, components_distance=None, do_pulsations=False, phase=None):
+def build_temperature_distribution(self, component="all", components_distance=None, do_pulsations=False, phase=None):
     """
     Function calculates temperature distribution on across all faces.
     Value assigned to face is mean of values calculated in corners of given face.
@@ -89,6 +96,10 @@ def build_temperature_distribution(self, component=None, components_distance=Non
     :param component: `primary` or `secondary`
     :return:
     """
+    if is_empty(component):
+        self._logger.debug("no component set to build temperature distribution")
+        return
+
     phase = 0 if phase is None else phase
     component = static.component_to_list(component)
 
@@ -128,7 +139,7 @@ def build_temperature_distribution(self, component=None, components_distance=Non
                                components_distance=components_distance)
 
 
-def build_surface_map(self, colormap=None, component=None, components_distance=None, return_map=False, phase=None):
+def build_surface_map(self, colormap=None, component="all", components_distance=None, return_map=False, phase=None):
     """
     Function calculates surface maps (temperature or gravity acceleration) for star and spot faces and it can return
     them as one array if return_map=True.
@@ -173,7 +184,7 @@ def build_surface_map(self, colormap=None, component=None, components_distance=N
     return
 
 
-def build_mesh(self, component=None, components_distance=None, **kwargs):
+def build_mesh(self, component="all", components_distance=None, **kwargs):
     """
     Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
 
@@ -182,6 +193,10 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
     :param components_distance: float
     :return:
     """
+    if is_empty(component):
+        self._logger.debug("no component set to build mesh")
+        return
+
     if components_distance is None:
         raise ValueError('Argument `component_distance` was not supplied.')
     component = static.component_to_list(component)
@@ -199,10 +214,10 @@ def build_mesh(self, component=None, components_distance=None, **kwargs):
         component_instance.base_symmetry_points_number = _c
         component_instance.inverse_point_symmetry_matrix = _d
 
-    add_spots_to_mesh(self, components_distance, component=None)
+    add_spots_to_mesh(self, components_distance, component="all")
 
 
-def add_spots_to_mesh(self, components_distance, component=None):
+def add_spots_to_mesh(self, components_distance, component="all"):
     """
     Function implements surface points into clean mesh and removes stellar
     points and other spot points under the given spot if such overlapped spots exists.
@@ -215,6 +230,11 @@ def add_spots_to_mesh(self, components_distance, component=None):
     if components_distance is None:
         raise ValueError('Argument `component_distance` was not supplied.')
     component = static.component_to_list(component)
+
+    if is_empty(component):
+        # skip building if not required
+        return
+
     component_com = {'primary': 0.0, 'secondary': components_distance}
     for _component in component:
         component_instance = getattr(self, _component)
@@ -222,7 +242,7 @@ def add_spots_to_mesh(self, components_distance, component=None):
         component_instance.incorporate_spots_mesh(component_com=component_com[_component])
 
 
-def build_faces(self, component=None, components_distance=None):
+def build_faces(self, component="all", components_distance=None):
     """
     Function creates faces of the star surface for given components. Faces are evaluated upon points that
     have to be in this time already calculated.
@@ -232,6 +252,10 @@ def build_faces(self, component=None, components_distance=None):
     :param component: `primary` or `secondary` if not supplied both component are calculated
     :return:
     """
+    if is_empty(component):
+        self._logger.debug("no component set to build faces")
+        return
+
     if is_empty(components_distance):
         raise ValueError('components_distance value was not provided.')
 
@@ -243,7 +267,7 @@ def build_faces(self, component=None, components_distance=None):
             else self.build_surface_with_no_spots(_component, components_distance=components_distance)
 
 
-def build_surface(self, component=None, components_distance=None, return_surface=False, **kwargs):
+def build_surface(self, component="all", components_distance=None, return_surface=False, **kwargs):
     """
     Function for building of general binary star component surfaces including spots. It will compute point mesh for
     Star instance and also spots, incorporate spots and makes a triangulation.
@@ -275,7 +299,7 @@ def build_surface(self, component=None, components_distance=None, return_surface
         return return_surface
 
 
-def build_surface_with_no_spots(self, component=None, components_distance=None):
+def build_surface_with_no_spots(self, component="all", components_distance=None):
     """
     Function for building binary star component surfaces without spots.
 
@@ -320,7 +344,7 @@ def build_surface_with_no_spots(self, component=None, components_distance=None):
         component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
 
 
-def build_surface_with_spots(self, component=None, components_distance=None):
+def build_surface_with_spots(self, component="all", components_distance=None):
     """
     Function capable of triangulation of spotty stellar surfaces.
     It merges all surface points, triangulates them and then sorts the resulting surface faces under star or spot.
@@ -354,6 +378,10 @@ def compute_all_surface_areas(self, component):
     :param component: str `primary` or `secondary`
     :return:
     """
+    if is_empty(component):
+        self._logger.debug("no component set to build surface areas")
+        return
+
     component = static.component_to_list(component)
     for _component in component:
         component_instance = getattr(self, _component)

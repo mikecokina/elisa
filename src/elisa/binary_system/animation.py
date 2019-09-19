@@ -58,18 +58,18 @@ class Animation(object):
         com = components_distance * self._self.mass_ratio / (1 + self._self.mass_ratio)
 
         # in case of assynchronous component rotation and spots, the positions of spots are recalculated
-        spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phases'], component=None)
+        spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phases'], component="all")
 
         self._logger.info('Calculating surface parameters (points, faces, colormap)')
         for idx, phase in enumerate(kwargs['phases']):
             # assigning new longitudes for each spot
-            geo.assign_spot_longitudes(self._self, spots_longitudes, index=idx, component=None)
+            geo.assign_spot_longitudes(self._self, spots_longitudes, index=idx, component="all")
 
-            points, faces = self._self.build_surface(component=None,
+            points, faces = self._self.build_surface(component="all",
                                                      components_distance=components_distance[idx],
                                                      return_surface=True)
             if kwargs['colormap']:
-                cmap = self._self.build_surface_map(colormap=kwargs['colormap'], component=None,
+                cmap = self._self.build_surface_map(colormap=kwargs['colormap'], component="all",
                                                     components_distance=components_distance[idx], return_map=True,
                                                     phase=phase)
 

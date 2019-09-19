@@ -330,6 +330,26 @@ class Star(Body):
         """
         self._filling_factor = filling_factor
 
+    def reset_spots_properties(self):
+        """
+        Reset computed spots properties
+        """
+        for _, spot_instance in self.spots.items():
+            spot_instance.boundary = np.array([])
+            spot_instance.boundary_center = np.array([])
+            spot_instance.center = np.array([])
+
+            spot_instance.points = np.array([])
+            spot_instance.normals = np.array([])
+            spot_instance.faces = np.array([])
+            spot_instance.face_centres = np.array([])
+
+            spot_instance.areas = np.array([])
+            spot_instance.potential_gradient_magnitudes = np.array([])
+            spot_instance.temperatures = np.array([])
+
+            spot_instance._log_g = np.array([])
+
     def calculate_polar_effective_temperature(self):
         """
         Returns polar effective temperature.
