@@ -1197,7 +1197,7 @@ class BinarySystem(System):
         args = (component, components_distance, 0.0, const.HALF_PI)
         return self.calculate_radius(*args)
 
-    def calculate_all_forward_radii(self, distances, components=None):
+    def calculate_all_forward_radii(self, distances, components='all'):
         """
         Calculates forward radii for given object for given array of distances.
 

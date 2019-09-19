@@ -501,7 +501,7 @@ def _compute_rel_d_radii(self, orbital_supplements):
     # note: defined bodies/objects/templates in orbital supplements instance are sorted by distance (line above),
     # what means that also radii computed from such values have to be already sorted by their own size (radius changes
     # based on components distance and it is, on the half of orbit defined by apsidal line, monotonic function)
-    fwd_radii = self.calculate_all_forward_radii(orbital_supplements.body[:, 1], components=None)
+    fwd_radii = self.calculate_all_forward_radii(orbital_supplements.body[:, 1], components='all')
     fwd_radii = np.array(list(fwd_radii.values()))
     return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii[:, 1:]
 
