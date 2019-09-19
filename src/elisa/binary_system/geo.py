@@ -115,9 +115,12 @@ def calculate_spot_longitudes(binary_instance, phases, component=None):
     """
     components_list = static.component_to_list(component)
     components = {comp: getattr(binary_instance, comp) for comp in components_list}
-    spots_longitudes = {comp: {spot_index: (instance.synchronicity - 1) * phases * const.FULL_ARC + spot.longitude
-                               for spot_index, spot in instance.spots.items()}
-                        for comp, instance in components.items()}
+    spots_longitudes = {
+        comp: {
+            spot_index: (instance.synchronicity - 1) * phases * const.FULL_ARC + spot.longitude
+            for spot_index, spot in instance.spots.items()}
+        for comp, instance in components.items()
+    }
     return spots_longitudes
 
 

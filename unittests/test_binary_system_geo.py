@@ -43,7 +43,31 @@ class SupportMethodsTestCase(ElisaTestCase):
         self._test_plane_projection(expected=expeceted, plane="zx")
 
     def test_calculate_spot_longitudes(self):
-        raise unittest.SkipTest("Unfinished unittest - implement")
+        class MockSpot(object):
+            def __init__(self):
+                self.longitude = 1.123
+
+        class MockStar(object):
+            def __init__(self, s):
+                self.spots = {0: MockSpot()}
+                self.synchronicity = s
+
+        class MockBinaryInstance(object):
+            def __init__(self):
+                self.primary = MockStar(1.1)
+                self.secondary = MockStar(0.9)
+
+        phases = np.array([-0.9, 0.0, 0.3, 1.2])
+
+        expected = np.round(np.array(
+            [np.array([0.55751332, 1.123, 1.31149556, 1.87698224]),
+             np.array([1.68848668, 1.123, 0.93450444, 0.36901776])]
+        ), 5)
+
+        obtained = geo.calculate_spot_longitudes(MockBinaryInstance(), phases)
+        obtained = np.round(np.array([obtained["primary"][0], obtained["secondary"][0]]), 5)
+
+        assert_array_equal(expected, obtained)
 
     def test_surface_area_coverage_not_partial(self):
         size = 5
