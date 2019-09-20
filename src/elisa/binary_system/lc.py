@@ -270,9 +270,6 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     initial_props_container = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
     initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
 
-    # injected attributes
-    setattr(initial_props_container.primary, 'metallicity', self.primary.metallicity)
-    setattr(initial_props_container.secondary, 'metallicity', self.secondary.metallicity)
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion,
@@ -290,7 +287,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
 
         # calculating cosines between face normals and line of sight
-        cosines, visibility_test = {}, {}
+        cosines, visibility_test = dict(), dict()
         for component, star_container_instance in star_containers.items():
             cosines[component] = utils.calculate_cos_theta_los_x(star_container_instance.normals)
             visibility_test[component] = cosines[component] > 0
