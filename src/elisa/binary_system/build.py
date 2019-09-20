@@ -4,7 +4,7 @@ from copy import copy
 from elisa.conf import config
 from elisa.binary_system import static
 from elisa.utils import is_empty
-from elisa import pulsations, utils
+from elisa import pulsations
 
 
 def build_surface_gravity(self, component="all", components_distance=None):

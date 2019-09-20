@@ -2,7 +2,7 @@ import numpy as np
 
 from elisa.base.body import Body
 from elisa.pulsation_mode import PulsationMode
-from elisa import logger, utils, const as c, units as e_units
+from elisa import utils, const as c, units as e_units
 
 from copy import copy
 from scipy.special import sph_harm, lpmv
@@ -18,12 +18,9 @@ class Star(Body):
                        'discretization_factor', 'spots', 'metallicity', 'polar_log_g']
     ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name: str = None, suppress_logger: bool = False, **kwargs):
+    def __init__(self, name=None, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
-        super(Star, self).__init__(name=name, **kwargs)
-
-        # get logger
-        self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
+        super(Star, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
 
         # default values of properties
         self._surface_potential = np.nan
@@ -416,8 +413,8 @@ class Star(Body):
 
         def spherical_harmonics_renormalization_constant(l: int, m: int):
             old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
-            Ns = int(np.power(5, np.ceil((l-m)/23))*((l-m)+1))
-            output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=Ns, finish=fmin, full_output=True)
+            ns = int(np.power(5, np.ceil((l-m)/23))*((l-m)+1))
+            output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=ns, finish=fmin, full_output=True)
             np.seterr(**old_settings)
 
             x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]

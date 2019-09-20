@@ -20,12 +20,13 @@ class Body(metaclass=ABCMeta):
 
     ID = 1
 
-    def __init__(self, name: str = None, suppress_logger: bool = False, **kwargs):
+    def __init__(self, name, logger_name=None, suppress_logger=False, **kwargs):
         """
         Parameters of abstract class Body.
         """
         self.initial_kwargs = kwargs.copy()
-        self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
+        self._suppress_logger = suppress_logger
+        self._logger = logger.getLogger(logger_name or self.__class__.__name__, suppress=self._suppress_logger)
 
         if is_empty(name):
             self._name = str(Body.ID)

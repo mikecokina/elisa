@@ -1,5 +1,4 @@
 import itertools
-import logging
 import os
 import sys
 import warnings
@@ -13,13 +12,14 @@ from copy import deepcopy
 from scipy import integrate, interpolate
 from pandas import DataFrame
 
-from elisa.conf import config 
+from elisa.conf import config
+from elisa import logger
 from elisa import utils, const
 from typing import Iterable
 
 
 config.set_up_logging()
-__logger__ = logging.getLogger("atm-module")
+__logger__ = logger.getLogger("atm-module")
 
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/np.pi)

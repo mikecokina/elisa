@@ -1,18 +1,21 @@
-import logging
 import numpy as np
 
-from copy import deepcopy
-from elisa import utils, const
-from pypex.poly2d.polygon import Polygon
+from elisa import utils
 from elisa.binary_system import utils as bsutils
 from elisa import const
 from elisa.binary_system import static
+from elisa import logger
+
+from copy import deepcopy
+from pypex.poly2d.polygon import Polygon
 from collections.abc import Sequence
 from matplotlib import pyplot as plt
 
+from elisa.conf import config
 from elisa.utils import is_empty
 
-__logger__ = logging.getLogger(__name__)
+config.set_up_logging()
+__logger__ = logger.getLogger(__name__)
 
 
 def get_critical_inclination(binary, components_distance):

@@ -8,7 +8,6 @@ from pandas.testing import assert_frame_equal
 from elisa.conf import config
 from elisa import atm
 from elisa.observer.observer import PassbandContainer
-
 from unittests.utils import ElisaTestCase
 
 

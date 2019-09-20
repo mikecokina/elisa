@@ -39,9 +39,12 @@ class Spot(object):
 
         self._log_g = np.array([])
 
+        self.init_properties(**kwargs)
+
+    def init_properties(self, **kwargs):
+        self._logger.debug(f"initialising spot properties of class instance {self.__class__.__name__}")
         for key in kwargs:
             set_val = kwargs.get(key)
-            self._logger.debug(f"setting property {key} of class instance {self.__class__.__name__} to {kwargs[key]}")
             setattr(self, key, set_val)
 
     def kwargs_serializer(self):

@@ -18,10 +18,10 @@ class System(metaclass=ABCMeta):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, name=None, logger_name=None, suppress_logger=False, **kwargs):
 
-        self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
-        self.initial_kwargs = kwargs.copy()
+        self._suppress_logger = suppress_logger
+        self._logger = logger.getLogger(logger_name or self.__class__.__name__, suppress=self._suppress_logger)
 
         # default params
         self._gamma = np.nan
@@ -247,4 +247,8 @@ class System(metaclass=ABCMeta):
         :param kwargs:
         :return:
         """
+        pass
+
+    @abstractmethod
+    def build(self, *args, **kwargs):
         pass

@@ -1,5 +1,4 @@
 import numpy as np
-import logging
 import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
@@ -10,9 +9,11 @@ from elisa.const import BINARY_POSITION_PLACEHOLDER
 from scipy.interpolate import Akima1DInterpolator
 from copy import copy, deepcopy
 
+from elisa import logger
 from elisa.utils import is_empty
 
-__logger__ = logging.getLogger(__name__)
+config.set_up_logging()
+__logger__ = logger.getLogger(__name__)
 
 
 def partial_visible_faces_surface_coverage(points, faces, normals, hull):

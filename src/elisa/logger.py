@@ -1,7 +1,11 @@
 import logging
+from elisa.conf import config
 
 
 def getLogger(name, suppress=False):
+    if config.SUPPRESS_LOGGER is not None:
+        suppress = config.SUPPRESS_LOGGER
+
     return logging.getLogger(name=name) if not suppress else Logger(name)
 
 
@@ -23,4 +27,3 @@ class Logger(object):
 
     def warn(self, *args, **kwargs):
         pass
-

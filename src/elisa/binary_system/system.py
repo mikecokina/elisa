@@ -21,19 +21,18 @@
 '''
 
 import gc
+import numpy as np
+import scipy
 
 from copy import copy
 from multiprocessing.pool import Pool
 
-import numpy as np
-import scipy
 from astropy import units as u
 from scipy.optimize import newton
 from scipy.spatial.qhull import Delaunay
 
 from elisa.conf import config
-from elisa import logger, utils, const, ld, units
-# from elisa.binary_system import static, build, mp, lc
+from elisa import utils, const, ld, units
 from elisa.binary_system import mp, geo
 from elisa.binary_system import static, build, lc
 from elisa.binary_system import utils as bsutils
@@ -42,33 +41,25 @@ from elisa.binary_system.animation import Animation
 from elisa.orbit import Orbit
 from elisa.base.star import Star
 from elisa.base.system import System
-from elisa.utils import is_empty
 
 
 class BinarySystem(System):
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
-                        'primary_minimum_time', 'phase_shift']
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity',
+                        'argument_of_periastron', 'primary_minimum_time', 'phase_shift']
     OPTIONAL_KWARGS = ['phase_shift', 'additional_light']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, primary, secondary, name=None, suppress_logger=False, **kwargs):
         # initial validity checks
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
-        params = {
-            "primary": primary,
-            "secondary": secondary
-        }
+        params = dict(primary=primary, secondary=secondary)
         params.update(**kwargs)
         self._star_params_validity_check(**params)
         utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
 
-        super(BinarySystem, self).__init__(name=name, suppress_logger=suppress_logger, **kwargs)
+        super(BinarySystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
 
-        # get logger
-        self._logger = logger.getLogger(name=self.__class__.__name__, suppress=suppress_logger)
         self._logger.info(f"initialising object {self.__class__.__name__}")
-        self._suppress_logger = suppress_logger
-
         self._logger.debug(f"setting property components of class instance {self.__class__.__name__}")
 
         self.plot = Plot(self)
@@ -78,7 +69,6 @@ class BinarySystem(System):
         self._primary = primary
         self._secondary = secondary
 
-        # physical properties check
         self._mass_ratio = self.secondary.mass / self.primary.mass
 
         # default values of properties
@@ -93,27 +83,15 @@ class BinarySystem(System):
         self._morphology = ""
         self._inclination = np.nan
 
-        self.initial_kwargs.update(
-            dict(
-                primary=Star(name="star.dump.primary", suppress_logger=True, **primary.initial_kwargs),
-                secondary=Star(name="star.dump.secondary", suppress_logger=True, **secondary.initial_kwargs),
-                suppress_logger=True
-            )
-        )
-
         # set attributes and test whether all parameters were initialized
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
-        for kwarg in kwargs:
-            self._logger.debug(f"setting property {kwarg} of class instance "
-                               f"{self.__class__.__name__} to {kwargs[kwarg]}")
-            setattr(self, kwarg, kwargs[kwarg])
+        self.init_properties(**kwargs)
 
         # calculation of dependent parameters
         self._logger.debug("computing semi-major axis")
         self._semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
-        self._logger.debug(f"initializing orbit instance in {self.__class__.__name__}")
         self.init_orbit()
 
         # setup critical surface potentials in periastron
@@ -131,9 +109,19 @@ class BinarySystem(System):
         if not self.secondary.kwargs.get('discretization_factor'):
             self.secondary.discretization_factor = \
                 self.primary.discretization_factor * self.primary.polar_radius / self.secondary.polar_radius * u.rad
-            self._logger.info(f"Setting discretization factor of secondary component to "
+            self._logger.info(f"setting discretization factor of secondary component to "
                               f"{np.degrees(self.secondary.discretization_factor):.2f} as a "
                               f"according to discretization factor of the primary component ")
+
+    def init_properties(self, **kwargs):
+        """
+        Setup system properties from input
+        :param kwargs: Dict; all supplied input properties
+        :return:
+        """
+        self._logger.debug(f"initialising propeties of binary system {self.name}, values: {kwargs}")
+        for kwarg in kwargs:
+            setattr(self, kwarg, kwargs[kwarg])
 
     def init(self):
         """
@@ -1382,9 +1370,9 @@ class BinarySystem(System):
         Array of surface points if symmetry_output = False::
 
              numpy.array([[x1 y1 z1],
-                            [x2 y2 z2],
-                             ...
-                            [xN yN zN]])
+                          [x2 y2 z2],
+                           ...
+                          [xN yN zN]])
 
         othervise::
 
@@ -2322,20 +2310,20 @@ class BinarySystem(System):
 
         if is_circular:
             if assynchronous_spotty_test:
-                self._logger.info('Applying light curve generator function for asynchronous binary system with '
+                self._logger.info('applying light curve generator function for asynchronous binary system with '
                                   'circular orbit and spots.')
                 return self._compute_circular_spoty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('Applying light curve generator function for synchronous binary system with '
+                self._logger.info('applying light curve generator function for synchronous binary system with '
                                   'circular orbit or circular assynchronous systems without spots.')
                 return self._compute_circular_synchronous_lightcurve(**kwargs)
         elif is_eccentric:
             if assynchronous_spotty_test:
-                self._logger.info('Applying light curve generator function for asynchronous binary system with '
+                self._logger.info('applying light curve generator function for asynchronous binary system with '
                                   'eccentric orbit and spots.')
                 return self._compute_eccentric_spoty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('Applying light curve generator function for eccentric orbit with synchronous '
+                self._logger.info('applying light curve generator function for eccentric orbit with synchronous '
                                   'rotation of the components or assynchronous rotation without spots.')
                 return self._compute_eccentric_lightcurve(**kwargs)
 

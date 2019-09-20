@@ -32,6 +32,7 @@ else:
 CONFIG_FILE = config_file
 LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging.json')
 SUPPRESS_WARNINGS = False
+SUPPRESS_LOGGER = None
 
 # physics
 REFLECTION_EFFECT = True
@@ -107,7 +108,10 @@ def update_config():
         SUPPRESS_WARNINGS = c_parse.getboolean('general', 'suppress_warnings', fallback=SUPPRESS_WARNINGS)
 
         global LOG_CONFIG
-        LOG_CONFIG = c_parse.get('general', 'log_config') if c_parse.get('general', 'log_config') else LOG_CONFIG
+        LOG_CONFIG = c_parse.get('general', 'log_config', fallback=LOG_CONFIG)
+
+        global SUPPRESS_LOGGER
+        SUPPRESS_LOGGER = c_parse.getboolean('general', 'suppress_logger', fallback=SUPPRESS_LOGGER)
     # ******************************************************************************************************************
 
     if c_parse.has_section('physics'):
