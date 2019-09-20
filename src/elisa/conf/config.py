@@ -109,6 +109,10 @@ def update_config():
 
         global LOG_CONFIG
         LOG_CONFIG = c_parse.get('general', 'log_config', fallback=LOG_CONFIG)
+        if not os.path.isfile(LOG_CONFIG):
+            if not SUPPRESS_WARNINGS:
+                warnings.warn(f"log config `{LOG_CONFIG}` doesn't exist, rollback to default")
+            LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging.json')
 
         global SUPPRESS_LOGGER
         SUPPRESS_LOGGER = c_parse.getboolean('general', 'suppress_logger', fallback=SUPPRESS_LOGGER)
