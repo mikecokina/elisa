@@ -767,11 +767,13 @@ class BinarySystem(System):
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
             3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
 
-    def pre_calculate_for_potential_value_primary(self, *args):
+    def pre_calculate_for_potential_value_primary(self, *args, return_as_tuple=False):
         """
         Function calculates auxiliary values for calculation of primary component potential,
         and therefore they don't need to be wastefully recalculated every iteration in solver.
 
+        :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+        :type return_as_tuple: bool
         :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
         :return: tuple: (b, c, d, e) such that: Psi1 = 1/r + a/sqrt(b+r^2+c*r) - d*r + e*x^2
         """
@@ -788,7 +790,7 @@ class BinarySystem(System):
             return b, c, d, e
         else:
             bb = b * np.ones(np.shape(phi))
-            return np.column_stack((bb, c, d, e))
+            return (bb, c, d, e) if return_as_tuple else np.column_stack((bb, c, d, e))
 
     def potential_value_primary(self, radius, *args):
         """
@@ -803,11 +805,29 @@ class BinarySystem(System):
 
         return 1 / radius + self.mass_ratio / np.sqrt(b + radius2 - c * radius) - d * radius + e * radius2
 
-    def pre_calculate_for_potential_value_primary_cylindrical(self, *args):
+    def radial_primary_potential_derivative(self, radius, *args):
+        """
+        function calculate radial derivative of primary potential function in spherical coordinates
+
+        :param radius: radius of given point(s) in spherical coordinates
+        :type radius: float or numpy array
+        :param args: b, c, d, e - such that: dPsi1/dr = -1/r^2 + 0.5*q*(c-2r)/(b-cr+r^2)^(3/2) - d +2er
+        :type args: tuple
+        :return:
+        """
+        b, c, d, e = args  # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
+        radius2 = np.power(radius, 2)
+
+        return -1 / radius2 + 0.5 * self.mass_ratio * (c - 2 * radius) / np.power(b - c * radius + radius2, 1.5) - d + \
+               2 * e * radius
+
+    def pre_calculate_for_potential_value_primary_cylindrical(self, *args, return_as_tuple=False):
         """
         Function calculates auxiliary values for calculation of primary component potential
         in cylindrical symmetry. Therefore they don't need to be wastefully recalculated every iteration in solver.
 
+        :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+        :type return_as_tuple: bool
         :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x))
         :return: tuple: (a, b, c, d, e, f) such that: Psi1 = 1/sqrt(a+r^2) + q/sqrt(b + r^2) - c + d*(e+f*r^2)
         """
@@ -827,7 +847,7 @@ class BinarySystem(System):
         else:
             cc = c * np.ones(np.shape(phi))
             dd = d * np.ones(np.shape(phi))
-            return np.column_stack((a, b, cc, dd, e, f))
+            return (a, b, cc, dd, e, f) if return_as_tuple else np.column_stack((a, b, cc, dd, e, f))
 
     def potential_value_primary_cylindrical(self, radius, *args):
         """
@@ -846,11 +866,29 @@ class BinarySystem(System):
         radius2 = np.power(radius, 2)
         return 1 / np.sqrt(a + radius2) + self.mass_ratio / np.sqrt(b + radius2) - c + d * (e + f * radius2)
 
-    def pre_calculate_for_potential_value_secondary(self, *args):
+    def radial_primary_potential_derivative_cylindrical(self, radius, *args):
+        """
+        function calculate radial derivative of primary potential function in cylindrical coordinates
+
+        :param radius: radius of given point(s) in cylindrical coordinates
+        :type radius: float or numpy array
+        :param args: a, b, c, d, e, f such that: dPsi1/dr = - r/(a+r^2)^(3/2) - rq/(b+r^2)^(3/2) + 2dfr
+        :type args: tuple
+        :return:
+        """
+        a, b, c, d, e, f = args
+
+        radius2 = np.power(radius, 2)
+        return - radius / np.power(a + radius2, 1.5) - radius * self.mass_ratio / np.power(b + radius2, 1.5) + \
+               2 * d * f * radius
+
+    def pre_calculate_for_potential_value_secondary(self, *args, return_as_tuple=False):
         """
         Function calculates auxiliary values for calculation of secondary component potential,
         and therefore they don't need to be wastefully recalculated every iteration in solver.
 
+        :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+        :type return_as_tuple: bool
         :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
         :return: tuple: (b, c, d, e, f) such that: Psi2 = q/r + 1/sqrt(b+r^2+Cr) - d*r + e*x^2 + f
         """
@@ -869,7 +907,7 @@ class BinarySystem(System):
         else:
             bb = b * np.ones(np.shape(phi))
             ff = f * np.ones(np.shape(phi))
-            return np.column_stack((bb, c, d, e, ff))
+            return (bb, c, d, e, ff) if return_as_tuple else np.column_stack((bb, c, d, e, ff))
 
     def potential_value_secondary(self, radius, *args):
         """
@@ -877,19 +915,37 @@ class BinarySystem(System):
 
         :param radius: np.float; spherical variable
         :param args: tuple: (b, c, d, e, f) such that: Psi2 = q/r + 1/sqrt(b+r^2-Cr) - d*r + e*x^2 + f
-        :return: float
+        :return:
         """
         b, c, d, e, f = args
         radius2 = np.power(radius, 2)
 
         return self.mass_ratio / radius + 1. / np.sqrt(b + radius2 - c * radius) - d * radius + e * radius2 + f
 
-    def pre_calculate_for_potential_value_secondary_cylindrical(self, *args):
+    def radial_secondary_potential_derivative(self, radius, *args):
+        """
+        function calculate radial derivative of secondary potential function in spherical coordinates
+
+        :param radius: radius of given point(s) in spherical coordinates
+        :type radius: float or numpy array
+        :param args: b, c, d, e, f - such that: dPsi2/dr = -q/r^2 + (0.5c - x)/(b - cx + r^2)^(3/2) - d + 2er
+        :type args: tuple
+        :return:
+        """
+        b, c, d, e, f = args  # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
+        radius2 = np.power(radius, 2)
+
+        return -self.mass_ratio / radius2 + (0.5 * c - radius) / np.power(b - c * radius + radius2, 1.5) - d + \
+               2 * e * radius
+
+    def pre_calculate_for_potential_value_secondary_cylindrical(self, *args, return_as_tuple=False):
         """
         Function calculates auxiliary values for calculation of secondary
         component potential in cylindrical symmetry, and therefore they don't need
         to be wastefully recalculated every iteration in solver.
 
+        :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+        :type return_as_tuple: bool
         :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x))
         :return: tuple: (a, b, c, d, e, f, G) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(e+f*r^2) + G
         """
@@ -909,7 +965,7 @@ class BinarySystem(System):
         else:
             cc = c * np.ones(np.shape(phi))
             ff = f * np.ones(np.shape(phi))
-            return np.column_stack((a, b, cc, d, e, ff))
+            return (a, b, cc, d, e, ff) if return_as_tuple else np.column_stack((a, b, cc, d, e, ff))
 
     def potential_value_secondary_cylindrical(self, radius, *args):
         """
@@ -927,6 +983,22 @@ class BinarySystem(System):
 
         radius2 = np.power(radius, 2)
         return self.mass_ratio / np.sqrt(a + radius2) + 1. / np.sqrt(b + radius2) + c * (d + e * radius2) + f
+
+    def radial_secondary_potential_derivative_cylindrical(self, radius, *args):
+        """
+        function calculate radial derivative of secondary potential function in cylindrical coordinates
+
+        :param radius: radius of given point(s) in cylindrical coordinates
+        :type radius: float or numpy array
+        :param args: a, b, c, d, e, f such that: dPsi2/dr = - qr/(a+r^2)^(3/2) - r/(b+r^2)^(3/2) + 2cer
+        :type args: tuple
+        :return:
+        """
+        a, b, c, d, e, f = args
+
+        radius2 = np.power(radius, 2)
+        return - radius * self.mass_ratio / np.power(a + radius2, 1.5) - radius / np.power(b + radius2, 1.5) + \
+               2 * c * e * radius
 
     def potential_primary_fn(self, radius, *args):
         """
@@ -1410,9 +1482,11 @@ class BinarySystem(System):
         if component == 'primary':
             potential_fn = self.potential_primary_fn
             precalc_fn = self.pre_calculate_for_potential_value_primary
+            potential_derivative_fn = self.radial_primary_potential_derivative
         elif component == 'secondary':
             potential_fn = self.potential_secondary_fn
             precalc_fn = self.pre_calculate_for_potential_value_secondary
+            potential_derivative_fn = self.radial_secondary_potential_derivative
         else:
             raise ValueError('Invalid value of `component` argument: `{}`. Expecting '
                              '`primary` or `secondary`.'.format(component))
@@ -1420,15 +1494,19 @@ class BinarySystem(System):
         # pre calculating azimuths for surface points on quarter of the star surface
         phi, theta, separator = static.pre_calc_azimuths_for_detached_points(alpha)
 
-        # calculating mesh in cartesian coordinates for quarter of the star
-        args = phi, theta, components_distance, precalc_fn, potential_fn
-
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
+            # calculating mesh in cartesian coordinates for quarter of the star
+            # args = phi, theta, components_distance, precalc_fn, potential_fn
+            args = phi, theta, components_distance, precalc_fn, potential_fn, potential_derivative_fn
             self._logger.debug(f'calculating surface points of {component} component in mesh_detached '
                                f'function using single process method')
 
-            points_q = static.get_surface_points(*args)
+            # points_q = static.get_surface_points(*args)
+            points_q = self.get_surface_points_parallel(component, *args)
         else:
+            # calculating mesh in cartesian coordinates for quarter of the star
+            args = phi, theta, components_distance, precalc_fn, potential_fn
+
             self._logger.debug(f'calculating surface points of {component} component in mesh_detached '
                                f'function using multi process method')
             points_q = self.get_surface_points_multiproc(*args)
@@ -1504,6 +1582,33 @@ class BinarySystem(System):
             return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
         else:
             return points
+
+    def get_surface_points_parallel(self, component, *args):
+        """
+        function calculates surface points using parallel Newton solver
+
+        :param component: `primary` or `secondary`
+        :param args: azimuth angles, polar angles, auxiliary function for pre-calculation of coefficients in potential
+        functions, potential function, function for radial derivative of potential function
+        :param args: tuple
+        :return: surface points in cartesian coordinates
+        """
+        phi, theta, components_distance, precalc_fn, potential_fn, potential_derivative_fn = args
+        precalc_vals = precalc_fn(*(components_distance, phi, theta), return_as_tuple=True)
+
+        components_instance = getattr(self, component)
+        initial_guess = components_instance.side_radius
+
+        # setting side radius as a initial guess for points
+        radius = initial_guess * np.ones(phi.shape)
+        tol = 1e-10  # RELATIVE precision of calculated points
+        while True:
+            difference = potential_fn(radius, *precalc_vals) / potential_derivative_fn(radius, *precalc_vals)
+            radius -= difference
+            if np.max(np.abs(difference)/radius) <= tol:
+                break
+
+        return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
     def get_surface_points_multiproc(self, *args):
         """
