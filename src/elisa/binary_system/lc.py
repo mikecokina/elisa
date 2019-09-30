@@ -5,6 +5,7 @@ from scipy.spatial.qhull import ConvexHull
 from elisa import utils, const, atm, ld, pulsations
 from elisa.binary_system import geo, build
 from elisa.conf import config
+from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.const import BINARY_POSITION_PLACEHOLDER
 from scipy.interpolate import Akima1DInterpolator
 from copy import copy, deepcopy
@@ -83,7 +84,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
     __logger__.debug(f"computing surface coverage for {container.position}")
     cover_component = 'secondary' if 0.0 < container.position.azimuth < const.PI else 'primary'
     cover_object = getattr(container, cover_component)
-    undercover_object = getattr(container, config.BINARY_COUNTERPARTS[cover_component])
+    undercover_object = getattr(container, BINARY_COUNTERPARTS[cover_component])
     undercover_visible_point_indices = np.unique(undercover_object.faces[undercover_object.indices])
 
     cover_object_obs_visible_projection = get_visible_projection(cover_object)
@@ -161,9 +162,9 @@ def get_normal_radiance(single_orbital_position_container, component="all", **kw
                         metallicity=getattr(single_orbital_position_container, component).metallicity,
                         **kwargs
                     )
-                ) for component in config.BINARY_COUNTERPARTS.keys()
+                ) for component in BINARY_COUNTERPARTS
         }
-    elif component in config.BINARY_COUNTERPARTS.keys():
+    elif component in BINARY_COUNTERPARTS:
         return atm.NaiveInterpolatedAtm.radiance(
             **dict(
                 temperature=getattr(single_orbital_position_container, component).temperatures,
@@ -256,7 +257,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array]
     """
-    self.build(components_distance=1.0)
+    self.build(components_distance=1.0, suppress_parallelism=False)
 
     ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
 
@@ -272,8 +273,8 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
 
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
-    system_positions_container = self.prepare_system_positions_container(orbital_motion=orbital_motion,
-                                                                         ecl_boundaries=ecl_boundaries)
+    params = dict(orbital_motion=orbital_motion, ecl_boundaries=ecl_boundaries)
+    system_positions_container = self.prepare_system_positions_container(**params)
     system_positions_container = system_positions_container.darkside_filter()
 
     pulsations_test = {'primary': self.primary.has_pulsations(), 'secondary': self.secondary.has_pulsations()}
@@ -282,7 +283,9 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     band_curves = {key: np.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
     for idx, container in enumerate(system_positions_container):
         # dict of components
-        star_containers = {component: getattr(container, component) for component in config.BINARY_COUNTERPARTS.keys()}
+        star_containers = {component: getattr(container, component) for component in BINARY_COUNTERPARTS}
+        props_containers = {component: getattr(self, component).properties_serializer()
+                            for component in BINARY_COUNTERPARTS}
 
         coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
 

@@ -38,16 +38,21 @@ class Star(Body):
         self._pulsations = dict()
         self._filling_factor = np.nan
         self._metallicity = np.nan
-        self.kwargs = kwargs
         self._log_g = np.array([])
 
         utils.check_missing_kwargs(Star.KWARGS, kwargs, instance_of=Star)
 
-        # values of properties
+        self.init_parameters(**kwargs)
+
+    def init_parameters(self, **kwargs):
+        """
+        Initialise instance paramters
+        :param kwargs: Dict; initial parameters
+        :return:
+        """
+        self._logger.debug(f"initialising properties of class instance {self.__class__.__name__}")
         for kwarg in Star.ALL_KWARGS:
             if kwarg in kwargs:
-                self._logger.debug(f"setting property {kwarg} of class instance "
-                                   f"{self.__class__.__name__} to {kwargs[kwarg]}")
                 setattr(self, kwarg, kwargs[kwarg])
 
     def has_pulsations(self):
@@ -485,3 +490,33 @@ class Star(Body):
         if self.spots:
             for spot_index, spot in self.spots.items():
                 spot.temperatures *= coefficient
+
+    def properties_serializer(self):
+        body_props = ['mass', 't_eff', 'points', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
+                      'polar_radius', 'areas', 'discretization_factor', 'face_centres', 'spots',
+                      'point_symmetry_vector', 'inverse_point_symmetry_matrix', 'base_symmetry_points_number',
+                      'face_symmetry_vector', 'base_symmetry_faces_number', 'base_symmetry_points',
+                      'base_symmetry_faces']
+        star_props = ['surface_potential', 'backward_radius', 'polar_radius', 'gravity_darkening', 'synchronicity',
+                      'forward_radius', 'side_radius', 'polar_log_g', 'equatorial_radius',
+                      'critical_surface_potential', 'potential_gradient_magnitudes',
+                      'polar_potential_gradient_magnitude', 'pulsations', 'filling_factor', 'metallicity', 'log_g']
+
+        properties_list = body_props + star_props
+        return StarProperties(**{prop: copy(getattr(self, prop)) for prop in properties_list})
+
+
+class StarProperties(object):
+    def __init__(self, **kwargs):
+        self.properties = kwargs
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def to_dict(self):
+        return self.properties
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def __str__(self):
+        return str(self.to_dict())

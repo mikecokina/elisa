@@ -24,7 +24,8 @@ class Body(metaclass=ABCMeta):
         """
         Parameters of abstract class Body.
         """
-        self.initial_kwargs = kwargs.copy()
+        # initial kwargs
+        self.kwargs = copy(kwargs)
         self._suppress_logger = suppress_logger
         self._logger = logger.getLogger(logger_name or self.__class__.__name__, suppress=self._suppress_logger)
 

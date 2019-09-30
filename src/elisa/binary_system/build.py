@@ -133,7 +133,7 @@ def build_temperature_distribution(self, component="all", components_distance=No
                     spot.temperatures += temp_pert_spot[spot_idx]
 
     if 'primary' in component and 'secondary' in component:
-        self._logger.debug(f'Calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
+        self._logger.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
                            f'iterations.')
         self.reflection_effect(iterations=config.REFLECTION_EFFECT_ITERATIONS,
                                components_distance=components_distance)

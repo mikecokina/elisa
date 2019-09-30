@@ -92,7 +92,7 @@ def set_misaligned_ralp(star_instance, phase, com_x=None):
         else:
             # this correction factor takes into account orbital/rotational phase when calculating drift of the mode
             # axis
-            phi_corr = phase_correction(star_instance, phase)
+            phi_corr = phase_correction(star_instance.synchronicity, phase)
             # rotating spherical variable in case of misaligned mode
             phi, theta = utils.rotation_in_spherical(centres[:, 1], centres[:, 2],
                                                      mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
@@ -140,7 +140,7 @@ def calc_temp_pert_on_container(star_instance, container, phase, rot_period, com
     # this is here to calculate surface centres in ref frame of the given component
     if com_x is not None:
         centres[:, 0] -= com_x
-    phi_corr = phase_correction(star_instance, phase)
+    phi_corr = phase_correction(star_instance.synchronicity, phase)
     temp_pert = np.zeros(np.shape(container.face_centres)[0])
     for mode_index, mode in star_instance.pulsations.items():
         if mode.mode_axis_theta != 0.0:
@@ -180,13 +180,12 @@ def calc_temp_pert(star_instance, phase, rot_period):
     return temp_pert, temp_pert_spot
 
 
-def phase_correction(self, phase):
+def phase_correction(synchronicity, phase):
     """
     calculate phase correction for mode axis drift
 
-    :param self: Star instance
+    :param synchronicity: float
     :param phase: orbital/rotation phase
     :return:
     """
-    return (self.synchronicity - 1) * phase * const.FULL_ARC if self.synchronicity is not np.nan else \
-        phase * const.FULL_ARC
+    return (synchronicity - 1) * phase * const.FULL_ARC if synchronicity is not np.nan else phase * const.FULL_ARC

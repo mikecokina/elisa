@@ -2357,7 +2357,7 @@ class BinarySystem(System):
         return build.build_surface_map(self, colormap, component, components_distance, return_map, phase=phase)
 
     def build_mesh(self, component="all", components_distance=None, **kwargs):
-        return build.build_mesh(self, component, components_distance)
+        return build.build_mesh(self, component, components_distance, **kwargs)
 
     def build_faces(self, component="all", components_distance=None):
         return build.build_faces(self, component, components_distance)
@@ -2375,7 +2375,7 @@ class BinarySystem(System):
     def build_surface_areas(self, component="all"):
         return build.compute_all_surface_areas(self, component=component)
 
-    def build(self, component="all", components_distance=None, do_pulsations=False, phase=None):
+    def build(self, component="all", components_distance=None, do_pulsations=False, phase=None, **kwargs):
         """
         Main method to build binary star system from parameters given on init of BinaryStar.
 
@@ -2394,7 +2394,7 @@ class BinarySystem(System):
         :param components_distance: float; distance of components is SMA units
         :return:
         """
-        self.build_mesh(component, components_distance)
+        self.build_mesh(component, components_distance, **kwargs)
         self.build_from_points(component, components_distance, do_pulsations, phase)
 
     def build_from_points(self, component="all", components_distance=None, do_pulsations=False, phase=None):
