@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
-from elisa import utils, const, atm, ld, pulsations
+from elisa import utils, const, atm, ld
+from elisa.pulse import pulsations
 from elisa.binary_system import geo, build
 from elisa.conf import config
 from elisa.conf.config import BINARY_COUNTERPARTS

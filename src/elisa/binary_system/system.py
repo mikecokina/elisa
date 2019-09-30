@@ -28,11 +28,12 @@ from copy import copy
 from multiprocessing.pool import Pool
 
 from astropy import units as u
-from scipy.optimize import newton
+from scipy import optimize
 from scipy.spatial.qhull import Delaunay
 
 from elisa.conf import config
 from elisa import utils, const, ld, units
+from elisa import opt
 from elisa.binary_system import mp, geo
 from elisa.binary_system import static, build, lc
 from elisa.binary_system import utils as bsutils
@@ -1039,9 +1040,9 @@ class BinarySystem(System):
         """
         args = components_distance,
         if component == "primary":
-            solution = newton(self.primary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
+            solution = optimize.newton(self.primary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
         elif component == "secondary":
-            solution = newton(self.secondary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
+            solution = optimize.newton(self.secondary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
         else:
             raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
 
@@ -1486,13 +1487,13 @@ class BinarySystem(System):
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
             # calculating mesh in cartesian coordinates for quarter of the star
             # args = phi, theta, components_distance, precalc_fn, potential_fn
-            args = phi, theta, components_distance, precalc_fn, potential_fn, potential_derivative_fn
+            args = phi, theta, component_instance.side_radius, \
+                   components_distance, precalc_fn, potential_fn, potential_derivative_fn
             self._logger.debug(f'calculating surface points of {component} component in mesh_detached '
                                f'function using single process method')
-
-            # points_q = static.get_surface_points(*args)
-            points_q = self.get_surface_points_parallel(component, *args)
+            points_q = static.get_surface_points(*args)
         else:
+            # todo: consider to remove following multiproc line if "parallel" solver implemented
             # calculating mesh in cartesian coordinates for quarter of the star
             args = phi, theta, components_distance, precalc_fn, potential_fn
 
@@ -1571,33 +1572,6 @@ class BinarySystem(System):
             return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
         else:
             return points
-
-    def get_surface_points_parallel(self, component, *args):
-        """
-        function calculates surface points using parallel Newton solver
-
-        :param component: `primary` or `secondary`
-        :param args: azimuth angles, polar angles, auxiliary function for pre-calculation of coefficients in potential
-        functions, potential function, function for radial derivative of potential function
-        :param args: tuple
-        :return: surface points in cartesian coordinates
-        """
-        phi, theta, components_distance, precalc_fn, potential_fn, potential_derivative_fn = args
-        precalc_vals = precalc_fn(*(components_distance, phi, theta), return_as_tuple=True)
-
-        components_instance = getattr(self, component)
-        initial_guess = components_instance.side_radius
-
-        # setting side radius as a initial guess for points
-        radius = initial_guess * np.ones(phi.shape)
-        tol = 1e-10  # RELATIVE precision of calculated points
-        while True:
-            difference = potential_fn(radius, *precalc_vals) / potential_derivative_fn(radius, *precalc_vals)
-            radius -= difference
-            if np.max(np.abs(difference)/radius) <= tol:
-                break
-
-        return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
     def get_surface_points_multiproc(self, *args):
         """
@@ -1756,10 +1730,11 @@ class BinarySystem(System):
         # solving points on farside
         # here implement multiprocessing
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
-            args = phi_farside, theta_farside, components_distance, precalc, fn, potential_derivative_fn
+            args = phi_farside, theta_farside, component_instance.polar_radius, \
+                   components_distance, precalc, fn, potential_derivative_fn
             self._logger.debug(f'calculating farside points of {component} component in mesh_overcontact '
                                f'function using single process method')
-            points_farside = self.get_surface_points_parallel(component, *args)
+            points_farside = static.get_surface_points(*args)
         else:
             args = phi_farside, theta_farside, components_distance, precalc, fn
             self._logger.debug(f'calculating farside points of {component} component in mesh_overcontact '
@@ -1788,10 +1763,11 @@ class BinarySystem(System):
 
         # solving points on neck
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
-            args = phi_neck, z_neck, precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn
+            args = phi_neck, z_neck, component_instance.polar_radius, \
+                   precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn
             self._logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
                                f'function using single process method')
-            points_neck = self.get_surface_points_cylindrical_parallel(component, *args)
+            points_neck = static.get_surface_points_cylindrical(*args)
         else:
             args = phi_neck, z_neck, precal_cylindrical, fn_cylindrical
             self._logger.debug(f'calculating neck points of {component} component in mesh_overcontact '

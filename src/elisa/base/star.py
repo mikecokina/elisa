@@ -1,7 +1,7 @@
 import numpy as np
 
 from elisa.base.body import Body
-from elisa.pulsation_mode import PulsationMode
+from elisa.pulse.mode import PulsationMode
 from elisa import utils, const as c, units as e_units
 
 from copy import copy

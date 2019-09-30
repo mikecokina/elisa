@@ -2,7 +2,7 @@ import numpy as np
 import scipy
 
 from copy import copy
-from elisa import utils, const, ld
+from elisa import utils, const, ld, opt
 from elisa.utils import is_empty
 from elisa.conf import config
 
@@ -437,23 +437,23 @@ def get_surface_points(*args):
 
     ::
 
-        Tuple[phi: numpy.array, theta: numpy.array, components_distance: float, precalc: method, fn: method]
+        Tuple[
+                phi: numpy.array,
+                theta: numpy.array,
+                x0: float,
+                components_distance: float,
+                precalc: method,
+                fn: method,
+                derivative_fn: method]
 
     :return: numpy.array
     """
-    phi, theta, components_distance, precalc, fn = args
-
-    pre_calc_vals = precalc(*(components_distance, phi, theta))
-
-    solver_init_value = np.array([1. / 10000.])
-    r = []
-    for ii, phii in enumerate(phi):
-        args = tuple(pre_calc_vals[ii, :])
-        solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
-        r.append(solution[0])
-
-    r = np.array(r)
-    return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
+    phi, theta, x0, components_distance, precalc_fn, potential_fn, potential_derivative_fn = args
+    precalc_vals = precalc_fn(*(components_distance, phi, theta), return_as_tuple=True)
+    x0 = x0 * np.ones(phi.shape)
+    radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn,
+                               maxiter=config.MAX_SOLVER_ITERS, args=precalc_vals, rtol=1e-10)
+    return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
 
 def get_surface_points_cylindrical(*args):
@@ -464,23 +464,24 @@ def get_surface_points_cylindrical(*args):
 
     ::
 
-         Tuple[phi: numpy.array, z: numpy.array, precalc: method, fn: method]
+         Tuple[
+                phi: numpy.array,
+                z: numpy.array,
+                x0: float,
+                precalc: method,
+                fn: method
+                fprime: method
+              ]
 
     :return: numpy.array
     """
-    phi, z, precalc, fn = args
+    phi, z, x0, precalc_fn, potential_fn, potential_derivative_fn = args
+    precalc_vals = precalc_fn(*(phi, z), return_as_tuple=True)
+    x0 = x0 * np.ones(phi.shape)
 
-    pre_calc_vals = precalc(*(phi, z))
-
-    solver_init_value = np.array([1. / 10000.])
-    r = []
-    for ii, phii in enumerate(phi):
-        args = tuple(pre_calc_vals[ii, :])
-        solution, _, ier, _ = scipy.optimize.fsolve(fn, solver_init_value, full_output=True, args=args, xtol=1e-12)
-        r.append(solution[0])
-
-    r = np.abs(r)
-    return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))
+    radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn, args=precalc_vals,
+                               maxiter=config.MAX_SOLVER_ITERS, rtol=1e-10)
+    return utils.cylindrical_to_cartesian(np.column_stack((np.abs(radius), phi, z)))
 
 
 def component_to_list(component):
