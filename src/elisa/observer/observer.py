@@ -1,4 +1,3 @@
-import logging
 import os
 import sys
 import numpy as np
@@ -6,12 +5,11 @@ import pandas as pd
 
 from scipy import interpolate
 
+from elisa import logger
 from elisa.binary_system.system import BinarySystem
 from elisa.observer.plot import Plot
 from elisa.conf import config
 from elisa.utils import is_empty
-
-config.set_up_logging()
 
 
 class PassbandContainer(object):
@@ -64,14 +62,15 @@ class PassbandContainer(object):
 
 
 class Observer(object):
-    def __init__(self, passband, system):
+    def __init__(self, passband, system, suppress_logger=False):
         """
         Initializer for observer class.
 
         :param passband: string; for valid filter name see config.py file
+        :param suppress_logger: bool;
         :param system: system instance (BinarySystem or SingleSystem)
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
         self._logger.info("initialising Observer instance")
         # specifying what kind of system is observed
         self._system = system
@@ -156,7 +155,6 @@ class Observer(object):
         :param passband: str
         :return: pandas.DataFrame
         """
-        logging.debug(f"obtaining passband response function: {passband}")
         if passband not in config.PASSBANDS:
             raise ValueError('Invalid or unsupported passband function')
         file_path = os.path.join(config.PASSBAND_TABLES, str(passband) + '.csv')

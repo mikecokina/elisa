@@ -41,7 +41,7 @@ LIMB_DARKENING_LAW = 'cosine'
 
 # computational
 MAX_DISCRETIZATION_FACTOR = 20
-NUMBER_OF_THREADS = int(os.cpu_count())
+NUMBER_OF_THREADS = 1  # int(os.cpu_count())
 POINTS_ON_ECC_ORBIT = 99999
 MAX_RELATIVE_D_R_POINT = 0.0
 MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
@@ -109,6 +109,10 @@ def update_config():
 
         global LOG_CONFIG
         LOG_CONFIG = c_parse.get('general', 'log_config', fallback=LOG_CONFIG)
+        if not os.path.isfile(LOG_CONFIG):
+            if not SUPPRESS_WARNINGS:
+                warnings.warn(f"log config `{LOG_CONFIG}` doesn't exist, rollback to default")
+            LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging.json')
 
         global SUPPRESS_LOGGER
         SUPPRESS_LOGGER = c_parse.getboolean('general', 'suppress_logger', fallback=SUPPRESS_LOGGER)
@@ -136,6 +140,8 @@ def update_config():
 
         global NUMBER_OF_THREADS
         NUMBER_OF_THREADS = c_parse.getint('computational', 'number_of_threads', fallback=NUMBER_OF_THREADS)
+        if NUMBER_OF_THREADS <= 0:
+            raise ValueError("Invalid value for `number_of_threads`, allowed >= 1")
 
         global POINTS_ON_ECC_ORBIT
         POINTS_ON_ECC_ORBIT = c_parse.getint('computational', 'points_on_ecc_orbit', fallback=POINTS_ON_ECC_ORBIT)
