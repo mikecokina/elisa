@@ -939,7 +939,7 @@ def _update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
     return self
 
 
-def compute_circular_spoty_asynchronous_lightcurve(self, **kwargs):
+def compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
     """
     Function returns light curve of assynchronous systems with circular orbits and spots.
     # todo: add params types
@@ -1013,7 +1013,7 @@ def compute_circular_spoty_asynchronous_lightcurve(self, **kwargs):
     return band_curves
 
 
-def compute_eccentric_spoty_asynchronous_lightcurve(self, **kwargs):
+def compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs):
     """
     Function returns light curve of assynchronous systems with eccentric orbits and spots.
     fixme: add params types

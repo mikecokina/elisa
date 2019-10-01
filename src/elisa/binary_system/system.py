@@ -2427,7 +2427,7 @@ class BinarySystem(System):
             if assynchronous_spotty_test:
                 self._logger.info('applying light curve generator function for asynchronous binary system with '
                                   'circular orbit and spots.')
-                return self._compute_circular_spoty_asynchronous_lightcurve(**kwargs)
+                return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
             else:
                 self._logger.info('applying light curve generator function for synchronous binary system with '
                                   'circular orbit or circular assynchronous systems without spots.')
@@ -2436,7 +2436,7 @@ class BinarySystem(System):
             if assynchronous_spotty_test:
                 self._logger.info('applying light curve generator function for asynchronous binary system with '
                                   'eccentric orbit and spots.')
-                return self._compute_eccentric_spoty_asynchronous_lightcurve(**kwargs)
+                return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
             else:
                 self._logger.info('applying light curve generator function for eccentric orbit with synchronous '
                                   'rotation of the components or assynchronous rotation without spots.')
@@ -2447,11 +2447,11 @@ class BinarySystem(System):
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
 
-    def _compute_circular_spoty_asynchronous_lightcurve(self, **kwargs):
-        return lc.compute_circular_spoty_asynchronous_lightcurve(self, **kwargs)
+    def _compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
+        return lc.compute_circular_spotty_asynchronous_lightcurve(self, **kwargs)
 
-    def _compute_eccentric_spoty_asynchronous_lightcurve(self, **kwargs):
-        return lc.compute_eccentric_spoty_asynchronous_lightcurve(self, **kwargs)
+    def _compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs):
+        return lc.compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs)
 
     def _compute_eccentric_lightcurve(self, **kwargs):
         return lc.compute_eccentric_lightcurve(self, **kwargs)
