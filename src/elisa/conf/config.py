@@ -46,7 +46,7 @@ POINTS_ON_ECC_ORBIT = 99999
 MAX_RELATIVE_D_R_POINT = 0.0
 MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
 MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
-MAX_SOLVER_ITERS = 50
+MAX_SOLVER_ITERS = 100
 
 # support data
 PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")

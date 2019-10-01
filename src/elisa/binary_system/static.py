@@ -1,5 +1,4 @@
 import numpy as np
-import scipy
 
 from copy import copy
 from elisa import utils, const, ld, opt

@@ -21,10 +21,11 @@ def newton(func, x0, fprime, args=(), maxiter=50, rtol=0.0):
     :param rtol: tolerance (relative) for termination
     :return: float or numpy.array; depends on the `x0` shape
     """
-    sol = np.copy(x0) if isinstance(x0, np.ndarray) else x0
+    x_n = np.copy(x0) if isinstance(x0, np.ndarray) else x0
     for _ in range(maxiter):
-        difference = func(sol, *args) / fprime(sol, *args)
-        sol -= difference
-        if np.max(np.abs(difference) / sol) <= rtol:
-            return sol
+        difference = func(x_n, *args) / fprime(x_n, *args)
+        x_m = x_n - difference
+        if np.max(np.abs(difference / x_n)) <= rtol:
+            return x_m
+        x_n = x_m
     raise error.MaxIterationError(f"Max iteration limit - {maxiter} - exceeded")
