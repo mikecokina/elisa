@@ -27,3 +27,26 @@ v0.1.dev0_
     - surface faces plot with visualization of distribution of physical quantities
     - orbit plot
     - animations of orbital motions
+
+* **in progress/pending** *
+
+    - in animation, do a spot shift
+    - rc curves
+    - compontents volumes
+
+
+Future plans
+============
+
+v0.2
+----
+
+    - multiprocess approach
+    - single system
+    - lc differencial correction
+    - genetic algorithm
+
+v0.3
+----
+
+    - pulsation geometric effects

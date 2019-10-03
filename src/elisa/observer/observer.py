@@ -167,6 +167,7 @@ class Observer(object):
         Method for observation simulation. Based on input parmeters and supplied Ob server system on initialization
         will compute lightcurve.
 
+        :param normalize_lc: bool
         :param from_phase: float
         :param to_phase: float
         :param phase_step: float
