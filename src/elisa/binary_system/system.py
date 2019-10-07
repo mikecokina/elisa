@@ -2614,6 +2614,7 @@ class BinarySystem(System):
                              f'Expecting `primary` or `secondary`.')
 
         phi1 = const.HALF_PI * np.ones(x.shape)
+
         phi2 = np.zeros(x.shape)
 
         phi = np.concatenate((phi1, phi2))
