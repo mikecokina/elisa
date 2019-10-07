@@ -765,7 +765,7 @@ class BinarySystem(System):
         :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
         :type return_as_tuple: bool
         :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
-        :return: tuple: (b, c, d, e) such that: Psi1 = 1/r + a/sqrt(b+r^2+c*r) - d*r + e*x^2
+        :return: tuple: (b, c, d, e) such that: Psi1 = 1/r + q/sqrt(b+r^2-c*r) - d*r + e*r^2
         """
         distance, phi, theta = args  # distance between components, azimuth angle, latitude angle (0,180)
 
@@ -774,7 +774,7 @@ class BinarySystem(System):
         b = np.power(distance, 2)
         c = 2 * distance * cs
         d = (self.mass_ratio * cs) / b
-        e = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
+        e = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio) * np.power(np.sin(theta), 2)
 
         if np.isscalar(phi):
             return b, c, d, e
@@ -787,7 +787,7 @@ class BinarySystem(System):
         Calculates modified Kopal's potential from point of view of primary component.
 
         :param radius: (numpy.)float; spherical variable
-        :param args: tuple: (B, C, D, E) such that: Psi1 = 1/r + A/sqrt(B+r^2+Cr) - D*r + E*x^2
+        :param args: tuple: (B, C, D, E) such that: Psi1 = 1/r + q/sqrt(B+r^2+Cr) - D*r + E*x^2
         :return: (numpy.)float
         """
         b, c, d, e = args  # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
@@ -818,26 +818,22 @@ class BinarySystem(System):
 
         :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
         :type return_as_tuple: bool
-        :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x))
-        :return: tuple: (a, b, c, d, e, f) such that: Psi1 = 1/sqrt(a+r^2) + q/sqrt(b + r^2) - c + d*(e+f*r^2)
+        :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x)), components distance
+        :return: tuple: (a, b, c, d, e) such that: Psi1 = 1/sqrt(a+r^2) + q/sqrt(b + r^2) - c + d*(a+e*r^2)
         """
-        phi, z = args
-
-        qq = self.mass_ratio / (1 + self.mass_ratio)
+        phi, z, distance = args
 
         a = np.power(z, 2)
-        b = np.power(1 - z, 2)
-        c = 0.5 * self.mass_ratio * qq
-        d = 0.5 + 0.5 * self.mass_ratio
-        e = np.power(qq - z, 2)
-        f = np.power(np.sin(phi), 2)
+        b = np.power(distance - z, 2)
+        c = self.mass_ratio * z / np.power(distance, 2)
+        d = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio)
+        e = np.power(np.sin(phi), 2)
 
         if np.isscalar(phi):
-            return a, b, c, d, e, f
+            return a, b, c, d, e
         else:
-            cc = c * np.ones(np.shape(phi))
             dd = d * np.ones(np.shape(phi))
-            return (a, b, cc, dd, e, f) if return_as_tuple else np.column_stack((a, b, cc, dd, e, f))
+            return (a, b, c, dd, e) if return_as_tuple else np.column_stack((a, b, c, dd, e))
 
     def potential_value_primary_cylindrical(self, radius, *args):
         """
@@ -848,13 +844,13 @@ class BinarySystem(System):
         of W UMa systems, therefore components distance = 1 an synchronicity = 1 is assumed.
 
         :param radius: np.float
-        :param args: tuple: (a, b, c, d, e, f) such that: Psi1 = 1/sqrt(a+r^2) + q/sqrt(b + r^2) - c + d*(e+f*r^2)
+        :param args: tuple: (a, b, c, d, e) such that: Psi1 = 1/sqrt(a+r^2) + q/sqrt(b + r^2) - c + d*(a+e*r^2)
         :return:
         """
-        a, b, c, d, e, f = args
+        a, b, c, d, e = args
 
         radius2 = np.power(radius, 2)
-        return 1 / np.sqrt(a + radius2) + self.mass_ratio / np.sqrt(b + radius2) - c + d * (e + f * radius2)
+        return 1 / np.sqrt(a + radius2) + self.mass_ratio / np.sqrt(b + radius2) - c + d * (a + e * radius2)
 
     def radial_primary_potential_derivative_cylindrical(self, radius, *args):
         """
@@ -866,11 +862,11 @@ class BinarySystem(System):
         :type args: tuple
         :return:
         """
-        a, b, c, d, e, f = args
+        a, b, c, d, e = args
 
         radius2 = np.power(radius, 2)
         return - radius / np.power(a + radius2, 1.5) - radius * self.mass_ratio / np.power(b + radius2, 1.5) + \
-               2 * d * f * radius
+               2 * d * e * radius
 
     def pre_calculate_for_potential_value_secondary(self, *args, return_as_tuple=False):
         """
@@ -880,7 +876,7 @@ class BinarySystem(System):
         :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
         :type return_as_tuple: bool
         :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
-        :return: tuple: (b, c, d, e, f) such that: Psi2 = q/r + 1/sqrt(b+r^2+Cr) - d*r + e*x^2 + f
+        :return: tuple: (b, c, d, e, f) such that: Psi2 = q/r + 1/sqrt(b+r^2+Cr) - d*r + e*r^2 + f
         """
         distance, phi, theta = args  # distance between components, azimut angle, latitude angle (0,180)
 
@@ -889,7 +885,7 @@ class BinarySystem(System):
         b = np.power(distance, 2)
         c = 2 * distance * cs
         d = cs / b
-        e = 0.5 * np.power(self.secondary.synchronicity, 2) * (1 + self.mass_ratio) * (1 - np.power(np.cos(theta), 2))
+        e = 0.5 * np.power(self.secondary.synchronicity, 2) * (1 + self.mass_ratio) * np.power(np.sin(theta), 2)
         f = 0.5 - 0.5 * self.mass_ratio
 
         if np.isscalar(phi):
@@ -904,7 +900,7 @@ class BinarySystem(System):
         Calculates modified Kopal's potential from point of view of secondary component.
 
         :param radius: np.float; spherical variable
-        :param args: tuple: (b, c, d, e, f) such that: Psi2 = q/r + 1/sqrt(b+r^2-Cr) - d*r + e*x^2 + f
+        :param args: tuple: (b, c, d, e, f) such that: Psi2 = q/r + 1/sqrt(b+r^2-Cr) - d*r + e*r^2 + f
         :return:
         """
         b, c, d, e, f = args
@@ -936,43 +932,38 @@ class BinarySystem(System):
 
         :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
         :type return_as_tuple: bool
-        :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x))
-        :return: tuple: (a, b, c, d, e, f, G) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(e+f*r^2) + G
+        :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x)), components distance
+        :return: tuple: (a, b, c, d, e, f) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(a+e*r^2)
         """
-        phi, z = args
-
-        qq = 1.0 / (1 + self.mass_ratio)
+        phi, z, distance = args
 
         a = np.power(z, 2)
-        b = np.power(1 - z, 2)
-        c = 0.5 / qq
-        d = np.power(qq - z, 2)
+        b = np.power(distance - z, 2)
+        c = z / np.power(distance, 2)
+        d = 0.5 * np.power(self.secondary.synchronicity, 2) * (1 + self.mass_ratio)
         e = np.power(np.sin(phi), 2)
-        f = 0.5 - 0.5 * self.mass_ratio - 0.5 * qq
+        f = 0.5 * (1 - self.mass_ratio)
 
         if np.isscalar(phi):
             return a, b, c, d, e, f
         else:
-            cc = c * np.ones(np.shape(phi))
+            dd = d * np.ones(np.shape(phi))
             ff = f * np.ones(np.shape(phi))
-            return (a, b, cc, d, e, ff) if return_as_tuple else np.column_stack((a, b, cc, d, e, ff))
+            return (a, b, c, dd, e, ff) if return_as_tuple else np.column_stack((a, b, c, dd, e, ff))
 
     def potential_value_secondary_cylindrical(self, radius, *args):
         """
         Calculates modified kopal potential from point of view of secondary
         component in cylindrical coordinates r_n, phi_n, z_n, where z_n = x and heads along z axis.
 
-        This function is intended for generation of ``necks``
-        of W UMa systems, therefore components distance = 1 an synchronicity = 1 is assumed.
-
         :param radius: np.float
-        :param args: tuple: (a, b, c, d, e, f, G) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b+r^2) - c + d*(e+f*r^2) + G
+        :param args: tuple: (a, b, c, d, e, f) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(a+e*r^2)
         :return:
         """
         a, b, c, d, e, f = args
 
         radius2 = np.power(radius, 2)
-        return self.mass_ratio / np.sqrt(a + radius2) + 1. / np.sqrt(b + radius2) + c * (d + e * radius2) + f
+        return self.mass_ratio / np.sqrt(a + radius2) + 1. / np.sqrt(b + radius2) - c + d * (e * radius2 + a) + f
 
     def radial_secondary_potential_derivative_cylindrical(self, radius, *args):
         """
@@ -988,7 +979,7 @@ class BinarySystem(System):
 
         radius2 = np.power(radius, 2)
         return - radius * self.mass_ratio / np.power(a + radius2, 1.5) - radius / np.power(b + radius2, 1.5) + \
-               2 * c * e * radius
+               2 * d * e * radius
 
     def potential_primary_fn(self, radius, *args):
         """
@@ -1611,8 +1602,8 @@ class BinarySystem(System):
         :return: numpy.array
         """
 
-        phi, z, precalc_fn, potential_fn = args
-        precalc_vals = precalc_fn(*(phi, z))
+        phi, z, components_distance, precalc_fn, potential_fn = args
+        precalc_vals = precalc_fn(*(phi, z, components_distance))
         preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
 
         if potential_fn == self.potential_primary_cylindrical_fn:
@@ -1763,13 +1754,13 @@ class BinarySystem(System):
 
         # solving points on neck
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
-            args = phi_neck, z_neck, component_instance.polar_radius, \
+            args = phi_neck, z_neck, components_distance, component_instance.polar_radius, \
                    precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn
             self._logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
                                f'function using single process method')
             points_neck = static.get_surface_points_cylindrical(*args)
         else:
-            args = phi_neck, z_neck, precal_cylindrical, fn_cylindrical
+            args = phi_neck, z_neck, components_distance, precal_cylindrical, fn_cylindrical
             self._logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
                                f'function using multi process method')
             points_neck = self.get_surface_points_multiproc_cylindrical(*args)
@@ -2557,7 +2548,11 @@ class BinarySystem(System):
             forward_tgt = self.calculate_forward_radius(component, components_distance=1.0)
 
             x_radii = 0.5 * (forward_tgt + back_tgt)
-            equiv_r_mean = utils.calculate_equiv_radius(polar_tgt, side_tgt, x_radii)
+            points = self.calculate_equator_and_meridian_points(component)
+            # volume = utils.calculate_component_volume(points)
+            volume = utils.calculate_ellipsoid_volume(polar_tgt, side_tgt, x_radii)
+
+            equiv_r_mean = utils.calculate_equiv_radius(volume)
 
             for _ in range(iterations):
                 polar_radii = np.empty(phases.shape)
@@ -2575,7 +2570,8 @@ class BinarySystem(System):
                 # component)
                 # equiv_r = np.power(polar_radii * side_radii * 0.5 * (forward_radii + back_radii), 1.0/3.0)
                 x_radii = 0.5 * (forward_radii + back_radii)
-                equiv_r = utils.calculate_equiv_radius(polar_radii, side_radii, x_radii)
+                volume = utils.calculate_ellipsoid_volume(polar_radii, side_radii, x_radii)
+                equiv_r = utils.calculate_equiv_radius(volume)
 
                 coeff = equiv_r_mean / equiv_r
 
@@ -2590,3 +2586,41 @@ class BinarySystem(System):
 
         return retval
 
+    def generate_equator_and_meridian_points_in_detached_sys(self, component, components_distance, forward_radius,
+                                                             backward_radius, discretization_factor=None):
+        component_instance = getattr(self, component)
+        discretization_factor = component_instance.discretization_factor if discretization_factor is None else \
+            discretization_factor
+
+        # generating equidistant angles
+        num = int(const.PI // discretization_factor)
+        theta = np.linspace(0., const.PI, num=num + 1, endpoint=True)
+
+        # generating x coordinates for both meridian and equator
+        A = 0.5 * (forward_radius + backward_radius)
+        C = forward_radius - A
+        x = A * np.cos(theta) + C
+
+        if component == 'primary':
+            fn_cylindrical = self.potential_primary_cylindrical_fn
+            precal_cylindrical = self.pre_calculate_for_potential_value_primary_cylindrical
+            cylindrical_potential_derivative_fn = self.radial_primary_potential_derivative_cylindrical
+        elif component == 'secondary':
+            fn_cylindrical = self.potential_secondary_cylindrical_fn
+            precal_cylindrical = self.pre_calculate_for_potential_value_secondary_cylindrical
+            cylindrical_potential_derivative_fn = self.radial_secondary_potential_derivative_cylindrical
+        else:
+            raise ValueError(f'Invalid value of `component` argument: `{component}`.\n'
+                             f'Expecting `primary` or `secondary`.')
+
+        phi1 = const.HALF_PI * np.ones(x.shape)
+        phi2 = np.zeros(x.shape)
+
+        phi = np.concatenate((phi1, phi2))
+        z = np.concatenate((x, x))
+
+        args = phi, z, component_instance.polar_radius, \
+               precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn
+        points = static.get_surface_points_cylindrical(*args)
+
+        return points[:points.shape[0]/2, :], points[points.shape[0]/2:, :]

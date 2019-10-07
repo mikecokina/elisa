@@ -737,9 +737,20 @@ def spherical_harmonics_renormalization_constant(l, m):
     return 1.0 / result
 
 
-def calculate_equiv_radius(_a, _b, _c):
-    """returns equivalent radius of ellipsoid"""
-    return np.power(_a * _b * _c, 1.0 / 3.0)
+def calculate_equiv_radius(volume):
+    """returns equivalent radius of a sphere with given volume"""
+    return np.power(3.0 * volume / (4.0 * const.PI), 1.0 / 3.0)
+
+
+def calculate_ellipsoid_volume(_a, _b, _c):
+    """
+    Calculates volume of ellipsoid with semi-axis _a, _b and _c.
+    :param _a: float or numpy array
+    :param _b: float or numpy array
+    :param _c: float or numpy array
+    :return: float or numpy array
+    """
+    return 4.0 * const.PI * _a * _b * _c / 3.0
 
 
 class IterableQueue(object):
@@ -773,3 +784,7 @@ def nested_dict_values(dictionary):
             yield from nested_dict_values(value)
         else:
             yield value
+
+
+def calculate_volume_w_equator_meridian(equator_points=None, meridian_points=None):
+    pass

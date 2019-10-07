@@ -474,8 +474,8 @@ def get_surface_points_cylindrical(*args):
 
     :return: numpy.array
     """
-    phi, z, x0, precalc_fn, potential_fn, potential_derivative_fn = args
-    precalc_vals = precalc_fn(*(phi, z), return_as_tuple=True)
+    phi, z, components_distance, x0, precalc_fn, potential_fn, potential_derivative_fn = args
+    precalc_vals = precalc_fn(*(phi, z, components_distance), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
 
     radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn, args=precalc_vals,
