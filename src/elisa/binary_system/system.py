@@ -42,6 +42,7 @@ from elisa.binary_system.animation import Animation
 from elisa.orbit import Orbit
 from elisa.base.star import Star
 from elisa.base.system import System
+from elisa.base import error
 
 
 class BinarySystem(System):
@@ -478,8 +479,10 @@ class BinarySystem(System):
 
         components = static.component_to_list(component)
         fns = {
-            "primary": (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary),
-            "secondary": (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary)
+            "primary": (self.potential_primary_fn, self.pre_calculate_for_potential_value_primary,
+                        self.radial_primary_potential_derivative),
+            "secondary": (self.potential_secondary_fn, self.pre_calculate_for_potential_value_secondary,
+                          self.radial_secondary_potential_derivative)
         }
         fns = {_component: fns[_component] for _component in components}
 
@@ -489,7 +492,7 @@ class BinarySystem(System):
 
         for component, functions in fns.items():
             self._logger.debug(f"evaluating spots for {component} component")
-            potential_fn, precalc_fn = functions
+            potential_fn, precalc_fn, potential_derivative_fn = functions
             component_instance = getattr(self, component)
 
             if not component_instance.spots:
@@ -556,42 +559,37 @@ class BinarySystem(System):
                 num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
                 deltas = [np.linspace(0., const.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 
+                spot_phi, spot_theta = [], []
+                for theta_index, theta in enumerate(thetas):
+                    # first point of n-th ring of spot (counting start from center)
+                    default_spherical_vector = [1.0, lon % const.FULL_ARC, theta]
+
+                    for delta_index, delta in enumerate(deltas[theta_index]):
+                        # rotating default spherical vector around spot center vector and thus generating concentric
+                        # circle of points around centre of spot
+                        delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
+                                                                vector=utils.spherical_to_cartesian(
+                                                                    default_spherical_vector),
+                                                                degrees=False,
+                                                                omega_normalized=True)
+
+                        spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
+
+                        spot_phi.append(spherical_delta_vector[1])
+                        spot_theta.append(spherical_delta_vector[2])
+
+                spot_phi, spot_theta = np.array(spot_phi), np.array(spot_theta)
+                args = spot_phi, spot_theta, spot_center_r, \
+                       components_distance, precalc_fn, potential_fn, potential_derivative_fn
                 try:
-                    for theta_index, theta in enumerate(thetas):
-                        # first point of n-th ring of spot (counting start from center)
-                        default_spherical_vector = [1.0, lon % const.FULL_ARC, theta]
-
-                        for delta_index, delta in enumerate(deltas[theta_index]):
-                            # rotating default spherical vector around spot center vector and thus generating concentric
-                            # circle of points around centre of spot
-                            delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
-                                                                    vector=utils.spherical_to_cartesian(
-                                                                        default_spherical_vector),
-                                                                    degrees=False,
-                                                                    omega_normalized=True)
-
-                            spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
-
-                            args1 = (components_distance, spherical_delta_vector[1], spherical_delta_vector[2])
-                            args2 = precalc_fn(*args1)
-                            kwargs = {'original_kwargs': args1}
-                            solution, use = self._solver(potential_fn, solver_condition, *args2, **kwargs)
-
-                            if not use:
-                                component_instance.remove_spot(spot_index=spot_index)
-                                raise StopIteration
-
-                            spot_point = utils.spherical_to_cartesian([solution, spherical_delta_vector[1],
-                                                                       spherical_delta_vector[2]])
-                            spot_points.append(spot_point)
-
-                            if theta_index == len(thetas) - 1:
-                                boundary_points.append(spot_point)
-
-                except StopIteration:
+                    spot_points = static.get_surface_points(*args)
+                except error.MaxIterationError:
                     self._logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
                                          f"doesn't satisfy reasonable conditions and entire spot will be omitted")
                     continue
+
+                boundary_points = spot_points[-len(deltas[-1]):]
+
                 if component == "primary":
                     spot_instance.points = np.array(spot_points)
                     spot_instance.boundary = np.array(boundary_points)
@@ -858,7 +856,7 @@ class BinarySystem(System):
 
         :param radius: radius of given point(s) in cylindrical coordinates
         :type radius: float or numpy array
-        :param args: a, b, c, d, e, f such that: dPsi1/dr = - r/(a+r^2)^(3/2) - rq/(b+r^2)^(3/2) + 2dfr
+        :param args: a, b, c, d, e such that: dPsi1/dr = - r/(a+r^2)^(3/2) - rq/(b+r^2)^(3/2) + 2der
         :type args: tuple
         :return:
         """
@@ -986,10 +984,11 @@ class BinarySystem(System):
         Implicit potential function from perspective of primary component.
 
         :param radius: numpy.float; spherical variable
-        :param args: (numpy.float, numpy.float, numpy.float); (component distance, azimutal angle, polar angle)
+        :param args: tuple; pre calculated values for potential function and desired value of potential
         :return:
         """
         return self.potential_value_primary(radius, *args) - self.primary.surface_potential
+        # return self.potential_value_primary(radius, *args[0]) - args[1]
 
     def potential_primary_cylindrical_fn(self, radius, *args):
         """
@@ -2541,36 +2540,27 @@ class BinarySystem(System):
             component_instance = getattr(self, component)
             new_potentials = component_instance.surface_potential * np.ones(phases.shape)
 
-            # equivalent radii of the component at components distance 1.0 (desired value for all phases)
-            polar_tgt = self.calculate_polar_radius(component, components_distance=1.0)
-            side_tgt = self.calculate_side_radius(component, components_distance=1.0)
-            back_tgt = self.calculate_backward_radius(component, components_distance=1.0)
-            forward_tgt = self.calculate_forward_radius(component, components_distance=1.0)
-
-            x_radii = 0.5 * (forward_tgt + back_tgt)
-            points = self.calculate_equator_and_meridian_points(component)
-            # volume = utils.calculate_component_volume(points)
-            volume = utils.calculate_ellipsoid_volume(polar_tgt, side_tgt, x_radii)
+            points_equator, points_meridian = \
+                self.generate_equator_and_meridian_points_in_detached_sys(component=component,
+                                                                          components_distance=1.0,
+                                                                          discretization_factor=None)
+            volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
 
             equiv_r_mean = utils.calculate_equiv_radius(volume)
 
             for _ in range(iterations):
-                polar_radii = np.empty(phases.shape)
                 side_radii = np.empty(phases.shape)
-                back_radii = np.empty(phases.shape)
-                forward_radii = np.empty(phases.shape)
+                volume = np.empty(phases.shape)
                 for ii, pot in enumerate(new_potentials):
                     component_instance.surface_potential = new_potentials[ii]
-                    polar_radii[ii] = self.calculate_polar_radius(component, distances[ii])
                     side_radii[ii] = self.calculate_side_radius(component, distances[ii])
-                    back_radii[ii] = self.calculate_backward_radius(component, distances[ii])
-                    forward_radii[ii] = self.calculate_forward_radius(component, distances[ii])
 
-                # calculation of equivalent radius (radius of a sphere with the same volume as elipsoid approximation of
-                # component)
-                # equiv_r = np.power(polar_radii * side_radii * 0.5 * (forward_radii + back_radii), 1.0/3.0)
-                x_radii = 0.5 * (forward_radii + back_radii)
-                volume = utils.calculate_ellipsoid_volume(polar_radii, side_radii, x_radii)
+                    points_equator, points_meridian = \
+                        self.generate_equator_and_meridian_points_in_detached_sys(component=component,
+                                                                                  components_distance=distances[ii],
+                                                                                  discretization_factor=None)
+                    volume[ii] = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
+
                 equiv_r = utils.calculate_equiv_radius(volume)
 
                 coeff = equiv_r_mean / equiv_r
@@ -2586,16 +2576,30 @@ class BinarySystem(System):
 
         return retval
 
-    def generate_equator_and_meridian_points_in_detached_sys(self, component, components_distance, forward_radius,
-                                                             backward_radius, discretization_factor=None):
+    def generate_equator_and_meridian_points_in_detached_sys(self, component, components_distance,
+                                                             discretization_factor=None):
+        """
+        function calculates a two arrays of points contouring equator and meridian calculating for the same x-values
+
+        :param component: string; `primary` or `secondary`
+        :param components_distance: float;
+        :param forward_radius: float;
+        :param backward_radius: float;
+        :param discretization_factor: None or float; if None it stays the same as the discretization factor of the
+        component
+        :return: tuple; (points on equator, points on meridian)
+        """
         component_instance = getattr(self, component)
         discretization_factor = component_instance.discretization_factor if discretization_factor is None else \
             discretization_factor
 
         # generating equidistant angles
         num = int(const.PI // discretization_factor)
-        theta = np.linspace(0., const.PI, num=num + 1, endpoint=True)
+        N = 5
+        theta = np.linspace(discretization_factor/N, const.PI-discretization_factor/N, num=num + 1, endpoint=True)
 
+        backward_radius = self.calculate_backward_radius(component, components_distance=components_distance)
+        forward_radius = self.calculate_forward_radius(component, components_distance=components_distance)
         # generating x coordinates for both meridian and equator
         A = 0.5 * (forward_radius + backward_radius)
         C = forward_radius - A
@@ -2614,14 +2618,13 @@ class BinarySystem(System):
                              f'Expecting `primary` or `secondary`.')
 
         phi1 = const.HALF_PI * np.ones(x.shape)
-
         phi2 = np.zeros(x.shape)
 
         phi = np.concatenate((phi1, phi2))
         z = np.concatenate((x, x))
 
-        args = phi, z, component_instance.polar_radius, \
+        args = phi, z, components_distance, A/2, \
                precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn
         points = static.get_surface_points_cylindrical(*args)
 
-        return points[:points.shape[0]/2, :], points[points.shape[0]/2:, :]
+        return points[:points.shape[0]//2, :], points[points.shape[0]//2:, :]

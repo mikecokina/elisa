@@ -466,6 +466,7 @@ def get_surface_points_cylindrical(*args):
          Tuple[
                 phi: numpy.array,
                 z: numpy.array,
+                components_distance: float,
                 x0: float,
                 precalc: method,
                 fn: method

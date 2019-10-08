@@ -786,5 +786,15 @@ def nested_dict_values(dictionary):
             yield value
 
 
-def calculate_volume_w_equator_meridian(equator_points=None, meridian_points=None):
-    pass
+def calculate_volume_ellipse_approx(equator_points=None, meridian_points=None):
+    """
+    function calculates volume of the object where only equator and meridian points where provided usin elipsoidal
+    approximation for the points with the same x-cordinates
+
+    :param equator_points: numpy array
+    :param meridian_points: numpy array
+    :return: float
+    """
+    areas = np.abs(const.PI * equator_points[:, 1] * meridian_points[:, 0])
+    return np.abs(np.trapz(areas, equator_points[:, 2]))
+
