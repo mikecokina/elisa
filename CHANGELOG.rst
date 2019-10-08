@@ -28,7 +28,7 @@ v0.1.dev0_
     - orbit plot
     - animations of orbital motions
 
-* **in progress/pending** *
+* **in progress/pending**
 
     - in animation, do a spot shift
     - rc curves
