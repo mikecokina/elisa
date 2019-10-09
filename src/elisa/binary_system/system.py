@@ -516,7 +516,7 @@ class BinarySystem(System):
                 center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
 
                 args1, use = (components_distance, radial_vector[1], radial_vector[2]), False
-                args2 = precalc_fn(*args1)
+                args2 = (precalc_fn(*args1), component_instance.surface_potential)
                 kwargs = {'original_kwargs': args1}
                 solution, use = self._solver(potential_fn, solver_condition, *args2, **kwargs)
 
@@ -535,7 +535,7 @@ class BinarySystem(System):
                 # compute euclidean distance of two points on spot (x0)
                 # we have to obtain distance between center and 1st point in 1st inner ring of spot
                 args1, use = (components_distance, lon, lat + alpha), False
-                args2 = precalc_fn(*args1)
+                args2 = (precalc_fn(*args1), component_instance.surface_potential)
                 kwargs = {'original_kwargs': args1}
                 solution, use = self._solver(potential_fn, solver_condition, *args2, **kwargs)
 
@@ -580,7 +580,8 @@ class BinarySystem(System):
 
                 spot_phi, spot_theta = np.array(spot_phi), np.array(spot_theta)
                 args = spot_phi, spot_theta, spot_center_r, \
-                       components_distance, precalc_fn, potential_fn, potential_derivative_fn
+                       components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
+                       component_instance.surface_potential
                 try:
                     spot_points = static.get_surface_points(*args)
                 except error.MaxIterationError:
@@ -707,19 +708,19 @@ class BinarySystem(System):
             self.primary.filling_factor, self.secondary.filling_factor = None, None
             if (abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
                     (abs(
-                            self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
+                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
                 __SETUP_VALUE__ = "double-contact"
 
             elif (not (not (abs(
-                        self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) or not (
-                        self.secondary.surface_potential > self.secondary.critical_surface_potential))) or \
+                    self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) or not (
+                    self.secondary.surface_potential > self.secondary.critical_surface_potential))) or \
                     ((abs(
-                            self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__)
+                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__)
                      and (self.primary.surface_potential > self.primary.critical_surface_potential)):
                 __SETUP_VALUE__ = "semi-detached"
 
             elif (self.primary.surface_potential > self.primary.critical_surface_potential) and (
-                        self.secondary.surface_potential > self.secondary.critical_surface_potential):
+                    self.secondary.surface_potential > self.secondary.critical_surface_potential):
                 __SETUP_VALUE__ = "detached"
 
             else:
@@ -740,7 +741,7 @@ class BinarySystem(System):
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-            3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+                3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
     def secondary_potential_derivative_x(self, x, *args):
         """
@@ -753,7 +754,7 @@ class BinarySystem(System):
         d, = args
         r_sqr, rw_sqr = x ** 2, (d - x) ** 2
         return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-            3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
+                3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
 
     def pre_calculate_for_potential_value_primary(self, *args, return_as_tuple=False):
         """
@@ -803,7 +804,7 @@ class BinarySystem(System):
         :type args: tuple
         :return:
         """
-        b, c, d, e = args  # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
+        b, c, d, e = args[0]  # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
         radius2 = np.power(radius, 2)
 
         return -1 / radius2 + 0.5 * self.mass_ratio * (c - 2 * radius) / np.power(b - c * radius + radius2, 1.5) - d + \
@@ -860,7 +861,7 @@ class BinarySystem(System):
         :type args: tuple
         :return:
         """
-        a, b, c, d, e = args
+        a, b, c, d, e = args[0]
 
         radius2 = np.power(radius, 2)
         return - radius / np.power(a + radius2, 1.5) - radius * self.mass_ratio / np.power(b + radius2, 1.5) + \
@@ -916,7 +917,7 @@ class BinarySystem(System):
         :type args: tuple
         :return:
         """
-        b, c, d, e, f = args  # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
+        b, c, d, e, f = args[0]  # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
         radius2 = np.power(radius, 2)
 
         return -self.mass_ratio / radius2 + (0.5 * c - radius) / np.power(b - c * radius + radius2, 1.5) - d + \
@@ -973,7 +974,7 @@ class BinarySystem(System):
         :type args: tuple
         :return:
         """
-        a, b, c, d, e, f = args
+        a, b, c, d, e, f = args[0]
 
         radius2 = np.power(radius, 2)
         return - radius * self.mass_ratio / np.power(a + radius2, 1.5) - radius / np.power(b + radius2, 1.5) + \
@@ -987,38 +988,41 @@ class BinarySystem(System):
         :param args: tuple; pre calculated values for potential function and desired value of potential
         :return:
         """
-        return self.potential_value_primary(radius, *args) - self.primary.surface_potential
-        # return self.potential_value_primary(radius, *args[0]) - args[1]
+        # return self.potential_value_primary(radius, *args) - self.primary.surface_potential
+        return self.potential_value_primary(radius, *args[0]) - args[1]
 
     def potential_primary_cylindrical_fn(self, radius, *args):
         """
         Implicit potential function from perspective of primary component given in cylindrical coordinates.
 
         :param radius: numpy.float
-        :param args: tuple: (phi, z) - polar coordinates
+        :param args: tuple; pre calculated values for potential function and desired value of potential
         :return:
         """
-        return self.potential_value_primary_cylindrical(radius, *args) - self.primary.surface_potential
+        # return self.potential_value_primary_cylindrical(radius, *args) - self.primary.surface_potential
+        return self.potential_value_primary_cylindrical(radius, *args[0]) - args[1]
 
     def potential_secondary_fn(self, radius, *args):
         """
         Implicit potential function from perspective of secondary component.
 
         :param radius: numpy.float; spherical variable
-        :param args: (numpy.float, numpy.float, numpy.float); (component distance, azimutal angle, polar angle)
+        :param args: pre calculated values for potential function and desired value of potential
         :return: numpy.float
         """
-        return self.potential_value_secondary(radius, *args) - self.secondary.surface_potential
+        # return self.potential_value_secondary(radius, *args) - self.secondary.surface_potential
+        return self.potential_value_secondary(radius, *args[0]) - args[1]
 
     def potential_secondary_cylindrical_fn(self, radius, *args):
         """
         Implicit potential function from perspective of secondary component given in cylindrical coordinates.
 
         :param radius: numpy.float
-        :param args: tuple: (phi, z) - polar coordinates
+        :param args: tuple: pre calculated values for potential function and desired value of potential
         :return: numpy.float
         """
-        return self.potential_value_secondary_cylindrical(radius, *args) - self.secondary.surface_potential
+        # return self.potential_value_secondary_cylindrical(radius, *args) - self.secondary.surface_potential
+        return self.potential_value_secondary_cylindrical(radius, *args[0]) - args[1]
 
     def critical_potential(self, component, components_distance):
         """
@@ -1066,14 +1070,14 @@ class BinarySystem(System):
         if component == 'primary':
             f2 = np.power(self.primary.synchronicity, 2)
             domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 + f2 * (
-                self.mass_ratio + 1) * points[:, 0] - self.mass_ratio / np.power(components_distance, 2)
+                    components_distance - points[:, 0]) / r_hat3 + f2 * (
+                                self.mass_ratio + 1) * points[:, 0] - self.mass_ratio / np.power(components_distance, 2)
         elif component == 'secondary':
             f2 = np.power(self.secondary.synchronicity, 2)
             domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 - f2 * (
-                self.mass_ratio + 1) * (
-                components_distance - points[:, 0]) * points[:, 0] + 1 / np.power(
+                    components_distance - points[:, 0]) / r_hat3 - f2 * (
+                                self.mass_ratio + 1) * (
+                                components_distance - points[:, 0]) * points[:, 0] + 1 / np.power(
                 components_distance, 2)
         else:
             raise ValueError(f'Invalid value `{component}` of argument `component`.\n Use `primary` or `secondary`.')
@@ -1160,11 +1164,12 @@ class BinarySystem(System):
         gradient = gradient / self.mass_ratio if component == 'secondary' else gradient
         return np.log10(gradient) if logg else gradient
 
-    def calculate_radius(self, *args):
+    def calculate_radius(self, *args, surface_potential=None):
         """
         Function calculates radius of the star in given direction of arbitrary direction vector (in spherical
         coordinates) starting from the centre of the star.
 
+        :param surface_potential: None or float; if None compoent surface potential is assumed
         :param args: Tuple;
 
         ::
@@ -1181,14 +1186,18 @@ class BinarySystem(System):
         if args[0] == 'primary':
             fn = self.potential_primary_fn
             precalc = self.pre_calculate_for_potential_value_primary
+            component_instance = getattr(self, 'primary')
         elif args[0] == 'secondary':
             fn = self.potential_secondary_fn
             precalc = self.pre_calculate_for_potential_value_secondary
+            component_instance = getattr(self, 'secondary')
         else:
             raise ValueError(f'Invalid value of `component` argument {args[0]}. \nExpecting `primary` or `secondary`.')
 
+        surface_potential = component_instance.surface_potential if surface_potential is None else surface_potential
+
         scipy_solver_init_value = np.array([args[1] / 1e4])
-        argss = precalc(*args[1:])
+        argss = (precalc(*args[1:]), surface_potential)
         solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value,
                                                     full_output=True, args=argss, xtol=1e-10)
 
@@ -1201,57 +1210,62 @@ class BinarySystem(System):
             else:
                 raise ValueError(f'Invalid value of radius {solution} was calculated.')
 
-    def calculate_polar_radius(self, component, components_distance):
+    def calculate_polar_radius(self, component, components_distance, surface_potential=None):
         """
         Calculates polar radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
 
+        :param surface_potential: None or float; if None compoent surface potential is assumed
         :param component: str; `primary` or `secondary`
         :param components_distance: float
         :return: float; polar radius
         """
         args = (component, components_distance, 0.0, 0.0)
-        return self.calculate_radius(*args)
+        return self.calculate_radius(*args, surface_potential=surface_potential)
 
-    def calculate_side_radius(self, component, components_distance):
+    def calculate_side_radius(self, component, components_distance, surface_potential=None):
         """
         Calculates side radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
 
+        :param surface_potential: None or float; if None compoent surface potential is assumed
         :param component: str; `primary` or `secondary`
         :param components_distance: float
         :return: float; side radius
         """
         args = (component, components_distance, const.HALF_PI, const.HALF_PI)
-        return self.calculate_radius(*args)
+        return self.calculate_radius(*args, surface_potential=surface_potential)
 
-    def calculate_backward_radius(self, component, components_distance):
+    def calculate_backward_radius(self, component, components_distance, surface_potential=None):
         """
         Calculates backward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float
+        :param surface_potential: None or float; if None compoent surface potential is assumed
         :return: float; polar radius
         """
 
         args = (component, components_distance, const.PI, const.HALF_PI)
-        return self.calculate_radius(*args)
+        return self.calculate_radius(*args, surface_potential=surface_potential)
 
-    def calculate_forward_radius(self, component, components_distance):
+    def calculate_forward_radius(self, component, components_distance, surface_potential=None):
         """
         Ccalculates forward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
         :warning: Do not use in case of over-contact systems.
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float
+        :param surface_potential: None or float; if None compoent surface potential is assumed
         :return: float
         """
 
         args = (component, components_distance, 0.0, const.HALF_PI)
-        return self.calculate_radius(*args)
+        return self.calculate_radius(*args, surface_potential=surface_potential)
 
-    def calculate_all_forward_radii(self, distances, components='all'):
+    def calculate_all_forward_radii(self, distances, components='all', surface_potential=None):
         """
         Calculates forward radii for given object for given array of distances.
 
+        :param surface_potential: None or float; if None compoent surface potential is assumed
         :param components: str
         :param distances: np.array: array of component distances at which to calculate the forward radii of given
         component(s)
@@ -1263,7 +1277,8 @@ class BinarySystem(System):
         for component in components:
             forward_rad[component] = np.zeros(distances.shape)
             for ii, distance in enumerate(distances):
-                forward_rad[component][ii] = self.calculate_forward_radius(component, components_distance=distance)
+                forward_rad[component][ii] = self.calculate_forward_radius(component, components_distance=distance,
+                                                                           surface_potential=surface_potential)
         return forward_rad
 
     def compute_equipotential_boundary(self, components_distance, plane):
@@ -1292,8 +1307,9 @@ class BinarySystem(System):
                 else:
                     raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
 
+                component_instance = getattr(self, component)
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
-                args = fn_map[component][1](*args)
+                args = (fn_map[component][1](*args), component_instance.surface_potential)
                 solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
                                                             full_output=True, args=args, xtol=1e-12)
 
@@ -1347,7 +1363,7 @@ class BinarySystem(System):
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
             return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+                    3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
 
         periastron_distance = self.orbit.periastron_distance
         xs = np.linspace(- periastron_distance * 3.0, periastron_distance * 3.0, 100)
@@ -1409,10 +1425,10 @@ class BinarySystem(System):
 
                 block_a = 1.0 / r
                 block_b = self.mass_ratio / (np.sqrt(np.power(d, 2) + np.power(r, 2) - (
-                    2.0 * r * np.cos(phi) * np.sin(theta) * d)))
+                        2.0 * r * np.cos(phi) * np.sin(theta) * d)))
                 block_c = (self.mass_ratio * r * np.cos(phi) * np.sin(theta)) / (np.power(d, 2))
                 block_d = 0.5 * (1 + self.mass_ratio) * np.power(r, 2) * (
-                    1 - np.power(np.cos(theta), 2))
+                        1 - np.power(np.cos(theta), 2))
 
                 p_values.append(block_a + block_b - block_c + block_d)
             return p_values
@@ -1478,7 +1494,8 @@ class BinarySystem(System):
             # calculating mesh in cartesian coordinates for quarter of the star
             # args = phi, theta, components_distance, precalc_fn, potential_fn
             args = phi, theta, component_instance.side_radius, \
-                   components_distance, precalc_fn, potential_fn, potential_derivative_fn
+                   components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
+                   component_instance.surface_potential
             self._logger.debug(f'calculating surface points of {component} component in mesh_detached '
                                f'function using single process method')
             points_q = static.get_surface_points(*args)
@@ -1645,7 +1662,7 @@ class BinarySystem(System):
         while True:
             difference = potential_fn(radius, *precalc_vals) / potential_derivative_fn(radius, *precalc_vals)
             radius -= difference
-            if np.max(np.abs(difference)/radius) <= tol:
+            if np.max(np.abs(difference) / radius) <= tol:
                 break
 
         radius = np.abs(radius)
@@ -1721,7 +1738,7 @@ class BinarySystem(System):
         # here implement multiprocessing
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
             args = phi_farside, theta_farside, component_instance.polar_radius, \
-                   components_distance, precalc, fn, potential_derivative_fn
+                   components_distance, precalc, fn, potential_derivative_fn, component_instance.surface_potential
             self._logger.debug(f'calculating farside points of {component} component in mesh_overcontact '
                                f'function using single process method')
             points_farside = static.get_surface_points(*args)
@@ -1754,7 +1771,8 @@ class BinarySystem(System):
         # solving points on neck
         if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
             args = phi_neck, z_neck, components_distance, component_instance.polar_radius, \
-                   precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn
+                   precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn, \
+                   component_instance.surface_potential
             self._logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
                                f'function using single process method')
             points_neck = static.get_surface_points_cylindrical(*args)
@@ -1974,10 +1992,11 @@ class BinarySystem(System):
         angles = np.linspace(0., const.HALF_PI, 100, endpoint=True)
         for component in components:
             for angle in angles:
+                component_instance = getattr(self, component)
                 args, use = (components_distance, angle, const.HALF_PI), False
 
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
-                args = fn_map[component][1](*args)
+                args = (fn_map[component][1](*args), component_instance.surface_potential)
                 solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
                                                             full_output=True, args=args, xtol=1e-12)
 
@@ -2103,7 +2122,7 @@ class BinarySystem(System):
             component_instance = getattr(self, _component)
 
             points[_component], faces[_component], centres[_component], normals[_component], temperatures[_component], \
-                areas[_component], log_g[_component] = static.init_surface_variables(component_instance)
+            areas[_component], log_g[_component] = static.init_surface_variables(component_instance)
 
             # test for visibility of star faces
             vis_test[_component], vis_test_symmetry[_component] = \
@@ -2116,7 +2135,7 @@ class BinarySystem(System):
 
                     # merge surface and spot face parameters into one variable
                     centres[_component], normals[_component], temperatures[_component], areas[_component], \
-                        vis_test[_component], log_g[_component] = \
+                    vis_test[_component], log_g[_component] = \
                         static.include_spot_to_surface_variables(centres[_component], spot.face_centres,
                                                                  normals[_component], spot.normals,
                                                                  temperatures[_component], spot.temperatures,
@@ -2541,24 +2560,30 @@ class BinarySystem(System):
             new_potentials = component_instance.surface_potential * np.ones(phases.shape)
 
             points_equator, points_meridian = \
-                self.generate_equator_and_meridian_points_in_detached_sys(component=component,
-                                                                          components_distance=1.0,
-                                                                          discretization_factor=None)
+                self.generate_equator_and_meridian_points_in_detached_sys(
+                    component=component,
+                    components_distance=1.0,
+                    surface_potential=component_instance.surface_potential,
+                    discretization_factor=None,
+                )
             volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
 
             equiv_r_mean = utils.calculate_equiv_radius(volume)
 
+            side_radii = np.empty(phases.shape)
+            volume = np.empty(phases.shape)
             for _ in range(iterations):
-                side_radii = np.empty(phases.shape)
-                volume = np.empty(phases.shape)
                 for ii, pot in enumerate(new_potentials):
-                    component_instance.surface_potential = new_potentials[ii]
-                    side_radii[ii] = self.calculate_side_radius(component, distances[ii])
+                    side_radii[ii] = self.calculate_side_radius(component, distances[ii],
+                                                                surface_potential=new_potentials[ii])
 
                     points_equator, points_meridian = \
-                        self.generate_equator_and_meridian_points_in_detached_sys(component=component,
-                                                                                  components_distance=distances[ii],
-                                                                                  discretization_factor=None)
+                        self.generate_equator_and_meridian_points_in_detached_sys(
+                            component=component,
+                            components_distance=distances[ii],
+                            surface_potential=new_potentials[ii],
+                            discretization_factor=None,
+                        )
                     volume[ii] = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
 
                 equiv_r = utils.calculate_equiv_radius(volume)
@@ -2573,14 +2598,14 @@ class BinarySystem(System):
                      for ii, distance in enumerate(distances)])
 
             retval[component] = new_potentials
-
         return retval
 
-    def generate_equator_and_meridian_points_in_detached_sys(self, component, components_distance,
+    def generate_equator_and_meridian_points_in_detached_sys(self, component, components_distance, surface_potential,
                                                              discretization_factor=None):
         """
         function calculates a two arrays of points contouring equator and meridian calculating for the same x-values
 
+        :param surface_potential: float;
         :param component: string; `primary` or `secondary`
         :param components_distance: float;
         :param forward_radius: float;
@@ -2596,10 +2621,12 @@ class BinarySystem(System):
         # generating equidistant angles
         num = int(const.PI // discretization_factor)
         N = 5
-        theta = np.linspace(discretization_factor/N, const.PI-discretization_factor/N, num=num + 1, endpoint=True)
+        theta = np.linspace(discretization_factor / N, const.PI - discretization_factor / N, num=num + 1, endpoint=True)
 
-        backward_radius = self.calculate_backward_radius(component, components_distance=components_distance)
-        forward_radius = self.calculate_forward_radius(component, components_distance=components_distance)
+        backward_radius = self.calculate_backward_radius(component, components_distance=components_distance,
+                                                         surface_potential=surface_potential)
+        forward_radius = self.calculate_forward_radius(component, components_distance=components_distance,
+                                                       surface_potential=surface_potential)
         # generating x coordinates for both meridian and equator
         A = 0.5 * (forward_radius + backward_radius)
         C = forward_radius - A
@@ -2623,8 +2650,8 @@ class BinarySystem(System):
         phi = np.concatenate((phi1, phi2))
         z = np.concatenate((x, x))
 
-        args = phi, z, components_distance, A/2, \
-               precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn
+        args = phi, z, components_distance, A / 2, \
+               precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn, surface_potential
         points = static.get_surface_points_cylindrical(*args)
 
-        return points[:points.shape[0]//2, :], points[points.shape[0]//2:, :]
+        return points[:points.shape[0] // 2, :], points[points.shape[0] // 2:, :]

@@ -447,11 +447,11 @@ def get_surface_points(*args):
 
     :return: numpy.array
     """
-    phi, theta, x0, components_distance, precalc_fn, potential_fn, potential_derivative_fn = args
+    phi, theta, x0, components_distance, precalc_fn, potential_fn, potential_derivative_fn, surface_potential = args
     precalc_vals = precalc_fn(*(components_distance, phi, theta), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
     radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn,
-                               maxiter=config.MAX_SOLVER_ITERS, args=precalc_vals, rtol=1e-10)
+                               maxiter=config.MAX_SOLVER_ITERS, args=(precalc_vals, surface_potential), rtol=1e-10)
     return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
 
@@ -475,11 +475,11 @@ def get_surface_points_cylindrical(*args):
 
     :return: numpy.array
     """
-    phi, z, components_distance, x0, precalc_fn, potential_fn, potential_derivative_fn = args
+    phi, z, components_distance, x0, precalc_fn, potential_fn, potential_derivative_fn, surface_potential = args
     precalc_vals = precalc_fn(*(phi, z, components_distance), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
 
-    radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn, args=precalc_vals,
+    radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn, args=(precalc_vals, surface_potential),
                                maxiter=config.MAX_SOLVER_ITERS, rtol=1e-10)
     return utils.cylindrical_to_cartesian(np.column_stack((np.abs(radius), phi, z)))
 
