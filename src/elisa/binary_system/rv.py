@@ -1,5 +1,8 @@
 import numpy as np
 
+from astropy import units as u
+from elisa import units
+
 
 def distance_to_center_of_mass(primary_mass, secondary_mass, positions):
     """
@@ -55,15 +58,16 @@ def radial_velocity(self, **kwargs):
     sma_primary = orbital_semi_major_axes(r1[-1], self.orbit.eccentricity, orbital_motion[:, 3][-1])
     sma_secondary = orbital_semi_major_axes(r2[-1], self.orbit.eccentricity, orbital_motion[:, 3][-1])
 
-    # in physical units
+    # in base SI units
     sma_primary *= self.semi_major_axis
     sma_secondary *= self.semi_major_axis
+    period = np.float64((self._period * units.PERIOD_UNIT).to(u.s))
 
     rv_primary = _radial_velocity(sma_primary, self.inclination, self.eccentricity,
-                                  self.argument_of_periastron, self.period, orbital_motion[:, 3]) * -1.0
+                                  self.argument_of_periastron, period, orbital_motion[:, 3]) * -1.0
 
     rv_secondary = _radial_velocity(sma_secondary, self.inclination, self.eccentricity,
-                                    self.argument_of_periastron, self.period, orbital_motion[:, 3])
+                                    self.argument_of_periastron, period, orbital_motion[:, 3])
 
     from matplotlib import pyplot as plt
     plt.scatter(orbital_motion[:, 4], rv_primary, label="primary")
