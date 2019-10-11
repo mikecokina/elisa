@@ -46,8 +46,8 @@ from elisa.base import error
 
 class BinarySystem(System):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity',
-                        'argument_of_periastron', 'primary_minimum_time', 'phase_shift']
-    OPTIONAL_KWARGS = ['phase_shift', 'additional_light']
+                        'argument_of_periastron', 'phase_shift']
+    OPTIONAL_KWARGS = ['phase_shift', 'additional_light', 'primary_minimum_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     COMPONENT_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'surface_potential', 'synchronicity',
@@ -81,7 +81,7 @@ class BinarySystem(System):
         self._eccentricity = np.nan
         self._argument_of_periastron = np.nan
         self._orbit = None
-        self._primary_minimum_time = np.nan
+        self._primary_minimum_time = 0.0
         self._phase_shift = 0.0
         self._semi_major_axis = np.nan
         self._periastron_phase = np.nan
@@ -346,38 +346,6 @@ class BinarySystem(System):
         self._phase_shift = phase_shift
         self._logger.debug(f"setting property phase_shift of class instance "
                            f"{self.__class__.__name__} to {self._phase_shift}")
-
-    @property
-    def inclination(self):
-        """
-        Returns inclination of binary system orbit.
-
-        :return: float
-        """
-        return self._inclination
-
-    @inclination.setter
-    def inclination(self, inclination):
-        """
-        Setter for inclination of binary system orbit.
-        If unit is not supplied, value in degrees is assumed.
-
-        :param inclination: float
-        :return:
-        """
-        if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(units.ARC_UNIT))
-        elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64((inclination * u.deg).to(units.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-        if not 0 <= self.inclination <= const.PI:
-            raise ValueError(f'Eccentricity value of {self.inclination} is out of bounds (0, pi).')
-
-        self._logger.debug(f"setting property inclination of class instance "
-                           f"{self.__class__.__name__} to {self._inclination}")
 
     @property
     def semi_major_axis(self):

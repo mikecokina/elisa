@@ -12,8 +12,8 @@ from elisa.single_system.animation import Animation
 
 
 class SingleSystem(System):
-    MANDATORY_KWARGS = ['star', 'gamma', 'inclination', 'rotation_period']
-    OPTIONAL_KWARGS = []
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'rotation_period']
+    OPTIONAL_KWARGS = ['reference_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g']
@@ -38,6 +38,7 @@ class SingleSystem(System):
 
         # default values of properties
         self._rotation_period = None
+        self._reference_time = 0
         self._angular_velocity = None
         self._period = self.rotation_period
 
@@ -51,6 +52,15 @@ class SingleSystem(System):
         # this is also check if star surface is closed
         self.init_radii()
 
+    def init(self):
+        """
+        function to reinitialize SingleSystem class instance after changing parameter(s) of binary system using setters
+
+        :return:
+        """
+        self._logger.info(f're/initialising class instance {SingleSystem.__name__}')
+        self.__init__(star=self.star, **self.kwargs_serializer())
+
     def init_radii(self):
         """
         auxiliary function for calculation of important radii
@@ -63,15 +73,6 @@ class SingleSystem(System):
         self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
         self._logger.debug('calculating equatorial radius')
         self.star._equatorial_radius = self.calculate_equatorial_radius()
-
-    def init(self):
-        """
-        function to reinitialize SingleSystem class instance after changing parameter(s) of binary system using setters
-
-        :return:
-        """
-        self._logger.info(f'reinitialising class instance {SingleSystem.__name__}')
-        self.__init__(**self.kwargs_serializer())
 
     @property
     def rotation_period(self):
@@ -98,6 +99,33 @@ class SingleSystem(System):
                             'nor astropy.unit.quantity.Quantity instance.')
         if self._rotation_period <= 0:
             raise ValueError(f'period of rotation must be non-zero positive value. Your value: {rotation_period}')
+
+    @property
+    def reference_time(self):
+        """
+        Returns reference time in default period unit. Time corresponding for rotation phase 0.
+
+        :return: float
+        """
+        return self._reference_time
+
+    @reference_time.setter
+    def reference_time(self, reference_time):
+        """
+        Setter for reference time.
+
+        :param reference_time: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        if isinstance(reference_time, u.quantity.Quantity):
+            self._reference_time = np.float64(reference_time.to(u.PERIOD_UNIT))
+        elif isinstance(reference_time, (int, np.int, float, np.float)):
+            self._reference_time = np.float64(reference_time)
+        else:
+            raise TypeError('Input of variable `reference_time` is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        self._logger.debug(f"setting property `reference_time` of class instance "
+                           f"{self.__class__.__name__} to {self._reference_time}")
 
     def _evaluate_spots(self):
         """

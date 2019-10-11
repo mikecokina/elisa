@@ -116,26 +116,25 @@ class System(metaclass=ABCMeta):
     @property
     def inclination(self):
         """
-        Inclination of system, angle between `z` axis and `line of sight`
+        Returns inclination of system.
 
         :return: float
         """
         return self._inclination
 
     @inclination.setter
-    def inclination(self, inclination: any):
+    def inclination(self, inclination):
         """
-        Set orbit inclination of system.
-        If unit is not specified, default unit is assumed
+        Setter for inclination of the system.
+        If unit is not supplied, value in degrees is assumed.
 
-        :param inclination: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param inclination: float
         :return:
         """
-
         if isinstance(inclination, u.quantity.Quantity):
             self._inclination = np.float64(inclination.to(units.ARC_UNIT))
         elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64(inclination)
+            self._inclination = np.float64((inclination * u.deg).to(units.ARC_UNIT))
         else:
             raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -143,8 +142,8 @@ class System(metaclass=ABCMeta):
         if not 0 <= self.inclination <= c.PI:
             raise ValueError(f'Inclination value of {self.inclination} is out of bounds (0, pi).')
 
-        self._logger.debug(f"setting property inclination "
-                           f"of class instance {self.__class__.__name__} to {self._inclination}")
+        self._logger.debug(f"setting property inclination of class instance "
+                           f"{self.__class__.__name__} to {self._inclination}")
 
     @property
     def additional_light(self):
