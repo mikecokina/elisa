@@ -13,7 +13,7 @@ from elisa.single_system.system import SingleSystem
 from elisa.conf import config
 from elisa.utils import is_empty, find_nearest_dist_3d
 from unittests.utils import ElisaTestCase
-from unittests.utils import plot_points, plot_faces, polar_gravity_acceleration, prepare_binary_system
+from unittests.utils import plot_points, plot_faces, polar_gravity_acceleration, prepare_single_system
 
 ax3 = Axes3D
 
@@ -48,7 +48,34 @@ class TestSingleSystemSetters(ElisaTestCase):
         expected = [0.25, 0.65, 1.0]
         self._test_generic_setter(periods, expected, 'rotation_period')
 
+    def test_reference_time(self):
+        periods = [0.25 * u.d, 0.65, 86400 * u.s]
+        expected = [0.25, 0.65, 1.0]
+        self._test_generic_setter(periods, expected, 'reference_time')
+
     def test_inclination(self):
         inclinations = [135 * u.deg, 90.0, 1.56 * u.rad]
         expected = [2.356, 1.571, 1.56]
         self._test_generic_setter(inclinations, expected, 'inclination')
+
+
+class TestSingleSystemInit(ElisaTestCase):
+    def setUp(self):
+        self.params_combination = [
+            {"mass": 1.0, 't_eff': 5774, 'gravity_darkening': 1.0, 'polar_log_g': 4.1,
+             "gamma": 0.0, 'inclination': 90*u.deg, 'rotation_period': 28
+             },  # solar like
+
+            {"mass": 1.0, 't_eff': 5774, 'gravity_darkening': 1.0, 'polar_log_g': 4.1,
+             "gamma": 0.0, 'inclination': 90*u.deg, 'rotation_period': 0.3818*u.d
+             },  # solar model near break-up rotational period
+        ]
+
+    def _prepare_systems(self):
+        return [prepare_single_system(combo) for combo in self.params_combination]
+
+    def tes_angular_velocities(self):
+        pass
+
+    def test_setup_components_radii(self):
+        pass

@@ -123,6 +123,17 @@ def prepare_binary_system(params, spots_primary=None, spots_secondary=None):
                         phase_shift=params["phase_shift"])
 
 
+def prepare_single_system(params, spots=None, pulsations=None):
+    star = Star(mass=params['mass'], t_eff=params['t_eff'],
+                gravity_darkening=params['gravity_darkening'],
+                polar_log_g=params['polar_log_g'], spots=spots, pulsations=pulsations)
+
+    return BinarySystem(star=star,
+                        gamma=params["gamma"],
+                        inclination=params["inclination"],
+                        rotation_period=params['rotation_period'])
+
+
 def normalize_lc_for_unittests(flux_arr):
     return np.array(flux_arr) / max(flux_arr)
 

@@ -118,7 +118,7 @@ class SingleSystem(System):
         :return:
         """
         if isinstance(reference_time, u.quantity.Quantity):
-            self._reference_time = np.float64(reference_time.to(u.PERIOD_UNIT))
+            self._reference_time = np.float64(reference_time.to(eunits.PERIOD_UNIT))
         elif isinstance(reference_time, (int, np.int, float, np.float)):
             self._reference_time = np.float64(reference_time)
         else:

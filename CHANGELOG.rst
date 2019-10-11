@@ -31,6 +31,7 @@ v0.1.dev0_
 * **in progress/pending**
 
     - rc curves
+    - LC normalization
 
 
 Future plans
