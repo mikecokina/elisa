@@ -531,6 +531,7 @@ class BinarySystem(System):
                 except error.MaxIterationError:
                     self._logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
                                          f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                    component_instance.remove_spot(spot_index=spot_index)
                     continue
 
                 boundary_points = spot_points[-len(deltas[-1]):]
