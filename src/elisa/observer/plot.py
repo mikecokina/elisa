@@ -28,7 +28,7 @@ class Plot(object):
         kwargs['fluxes'] = kwargs.get('fluxes', self._self.fluxes)
         kwargs['flux_unit'] = kwargs.get('flux_unit', self._self.fluxes_unit)
         kwargs['legend'] = kwargs.get('legend', True)
-        kwargs['legend_location'] = kwargs.get('legend', 4)
+        kwargs['legend_location'] = kwargs.get('legend_location', 4)
 
         graphics.phase_curve(**kwargs)
 

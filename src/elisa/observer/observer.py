@@ -84,12 +84,42 @@ class Observer(object):
         self.passband = dict()
         self.init_passband(passband)
 
+        self._observables = ['lc', 'rv']
         self.phases = None
         self.times = None
         self.fluxes = None
         self.fluxes_unit = None
+        self.radial_velocities = None
 
         self.plot = Plot(self)
+
+    @property
+    def observables(self):
+        """
+        Returns list of observables that will be calculated during Observer.observe()
+
+        :return: list; list of observables
+        """
+        return self._observables
+
+    @observables.setter
+    def observables(self, observables):
+        valid_observables = [
+            'lc',  # light/phase curve
+            'rv',  # radial velocity
+        ]
+        if isinstance(observables, str):
+            if observables not in valid_observables:
+                raise ValueError(f'Observables should be string or list containing: `{valid_observables}`')
+            else:
+                observables = [observables]
+        elif isinstance(observables, list):
+            for observable in observables:
+                if observable not in valid_observables:
+                    raise ValueError(f'Observables should be string or list containing only: `{valid_observables}`')
+
+        self._logger.info(f"Setting observables in Observer class to: {observables}.")
+        self._observables = observables
 
     @staticmethod
     def bolometric(x):
