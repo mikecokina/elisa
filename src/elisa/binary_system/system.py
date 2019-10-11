@@ -34,7 +34,7 @@ from scipy.spatial.qhull import Delaunay
 from elisa.conf import config
 from elisa import utils, const, ld, units
 from elisa.binary_system import mp, geo
-from elisa.binary_system import static, build, lc
+from elisa.binary_system import static, build, lc, rv
 from elisa.binary_system import utils as bsutils
 from elisa.binary_system.plot import Plot
 from elisa.binary_system.animation import Animation
@@ -2324,6 +2324,7 @@ class BinarySystem(System):
         else:
             return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
 
+    # light curves
     def compute_lightcurve(self, **kwargs):
         """
         This function decides which light curve generator function is used.
@@ -2376,6 +2377,10 @@ class BinarySystem(System):
 
     def _compute_eccentric_lightcurve(self, **kwargs):
         return lc.compute_eccentric_lightcurve(self, **kwargs)
+
+    # radial velocity curves
+    def compute_rv(self, **kwargs):
+        return rv.radial_velocity(self, **kwargs)
 
     # ### build methods
     def build_surface_gravity(self, component="all", components_distance=None):

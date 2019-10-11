@@ -212,7 +212,7 @@ class Observer(object):
         """
 
         if not phases and (from_phase is None or to_phase is None or phase_step is None):
-            raise ValueError("missing arguments")
+            raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
             phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
@@ -272,6 +272,23 @@ class Observer(object):
             self.fluxes_unit = u.W / u.m**2
         self._logger.info("observation finished")
         return phases, curves
+
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
+
+        # todo: put together with lc
+        if not phases and (from_phase is None or to_phase is None or phase_step is None):
+            raise ValueError("Missing arguments. Specify phases.")
+
+        if is_empty(phases):
+            phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
+        phases = np.array(phases)
+
+        return self._system.compute_rv(
+            **dict(
+                phases=phases,
+                position_method=self._system.get_positions_method()
+            )
+        )
 
     def phase_interval_reduce(self, phases):
         """
