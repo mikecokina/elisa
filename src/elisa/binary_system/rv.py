@@ -69,8 +69,8 @@ def radial_velocity(self, **kwargs):
     rv_secondary = _radial_velocity(sma_secondary, self.inclination, self.eccentricity,
                                     self.argument_of_periastron, period, orbital_motion[:, 3])
 
-    from matplotlib import pyplot as plt
-    plt.scatter(orbital_motion[:, 4], rv_primary, label="primary")
-    plt.scatter(orbital_motion[:, 4], rv_secondary, label="secondary")
-    plt.legend()
-    plt.show()
+    # from matplotlib import pyplot as plt
+    # plt.scatter(orbital_motion[:, 4], rv_primary, label="primary")
+    # plt.scatter(orbital_motion[:, 4], rv_secondary, label="secondary")
+    # plt.legend()
+    # plt.show()
