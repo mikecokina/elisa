@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from scipy import interpolate
+from astropy import units as u
 
 from elisa import logger
 from elisa.binary_system.system import BinarySystem
@@ -82,6 +83,11 @@ class Observer(object):
         self.right_bandwidth = 0.0
         self.passband = dict()
         self.init_passband(passband)
+
+        self.phases = None
+        self.times = None
+        self.fluxes = None
+        self.fluxes_unit = None
 
         self.plot = Plot(self)
 
@@ -228,8 +234,12 @@ class Observer(object):
             correction = np.mean(curves[items]) * self._system.additional_light / (1.0 - self._system.additional_light)
             curves[items] += correction
 
+        self.phases = phases
         if normalize_lc:
-            pass
+            self.fluxes_unit = u.dimensionless_unscaled
+        else:
+            self.fluxes = curves
+            self.fluxes_unit = u.W / u.m**2
         self._logger.info("observation finished")
         return phases, curves
 

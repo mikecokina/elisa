@@ -33,7 +33,9 @@ class AtmDataContainer(object):
         self.flux_unit = "flam"
         self.wave_unit = "angstrom"
         # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
-        self.flux_to_si_mult = 1e-7 * 1e4 * 1e10  # * (1.0/np.pi)
+        # flam = erg * s-1* cm-2 *A-1 = (10-7 * J) * s-1 * (10-2 * m)-2 * (10-10 * m)-1 =
+        #        10-7 * 10**4 * 10**10 * J * s-1 * m-3
+        self.flux_to_si_mult = 1e7  # * (1.0/np.pi)
         self.wave_to_si_mult = 1e-10
         self.left_bandwidth = np.nan
         self.right_bandwidth = np.nan

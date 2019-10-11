@@ -16,14 +16,19 @@ class Plot(object):
     def __init__(self, instance):
         self._self = instance
 
-    def light_curve(self, **kwargs):
-        phases = kwargs.get('phases', None)
-        curves = kwargs.get('curves', None)
+    def phase_curve(self, **kwargs):
+        """
+        function plots phase curves calculated in Observer class
 
-        if phases is None:
-            ValueError('Light curve phases were not specified.')
-        if curves is None:
-            ValueError('Light curves were not supplied.')
+        :param kwargs: dict; `phases` (array), `fluxes` (dict), `flux_unit` - unit of flux measurements,
+        `legend` (bool) onn/off, `legend_location` (int)
+        :return:
+        """
+        kwargs['phases'] = kwargs.get('phases', self._self.phases)
+        kwargs['fluxes'] = kwargs.get('fluxes', self._self.fluxes)
+        kwargs['flux_unit'] = kwargs.get('flux_unit', self._self.fluxes_unit)
+        kwargs['legend'] = kwargs.get('legend', True)
+        kwargs['legend_location'] = kwargs.get('legend', 4)
 
-        graphics.light_curve(**kwargs)
+        graphics.phase_curve(**kwargs)
 

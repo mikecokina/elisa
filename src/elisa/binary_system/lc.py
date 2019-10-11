@@ -72,12 +72,13 @@ def get_eclipse_boundary_path(hull):
     return bb_path
 
 
-def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_eclipse=True):
+def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, semi_major_axis, in_eclipse=True):
     # todo: add unittests
     """
     Compute surface coverage of faces for given orbital position
     defined by container/SingleOrbitalPositionContainer.
 
+    :param semi_major_axis: float
     :param container: elisa.binary_system.geo.SingleOrbitalPositionContainer
     :param in_eclipse: bool
     :return: Dict
@@ -133,6 +134,10 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, in_e
 
     visible_coverage = utils.poly_areas(cover_object.points[cover_object.faces[cover_object.indices]])
     cover_obj_coverage = geo.surface_area_coverage(len(cover_object.faces), cover_object.indices, visible_coverage)
+
+    # areas are now in SMA^2, converting to SI
+    cover_obj_coverage *= np.power(semi_major_axis, 2)
+    undercover_obj_coverage *= np.power(semi_major_axis, 2)
 
     return {
         cover_component: cover_obj_coverage,
@@ -285,10 +290,8 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
     for idx, container in enumerate(system_positions_container):
         # dict of components
         star_containers = {component: getattr(container, component) for component in BINARY_COUNTERPARTS}
-        props_containers = {component: getattr(self, component).properties_serializer()
-                            for component in BINARY_COUNTERPARTS}
 
-        coverage = compute_surface_coverage(container, in_eclipse=system_positions_container.in_eclipse[idx])
+        coverage = compute_surface_coverage(container, self.semi_major_axis, in_eclipse=system_positions_container.in_eclipse[idx])
 
         # calculating cosines between face normals and line of sight
         cosines, visibility_test = dict(), dict()
@@ -665,11 +668,12 @@ def get_onpos_container(self, orbital_position, ecl_boundaries):
     return container
 
 
-def calculate_surface_parameters(container, in_eclipse=True):
+def calculate_surface_parameters(container, semi_major_axis, in_eclipse=True):
     """
     Function prepares surface-related parameters such as coverage(area of visibility
     of the triangles) and directional cosines towards line-of-sight vector.
 
+    :param semi_major_axis: float
     :param container: SingleOrbitalPositionContainer
     :param in_eclipse: bool; indicate if eclipse occur for given position container.
     If you are not sure leave it to True
@@ -683,7 +687,7 @@ def calculate_surface_parameters(container, in_eclipse=True):
     - p_cosines, s_cosines - Dict[str, numpy.array] - directional cosines for each face with respect
     to line-of-sight vector
     """
-    coverage = compute_surface_coverage(container, in_eclipse=in_eclipse)
+    coverage = compute_surface_coverage(container, semi_major_axis=semi_major_axis, in_eclipse=in_eclipse)
     p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
     s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
     cosines = {'primary': p_cosines, 'secondary': s_cosines}
@@ -763,9 +767,10 @@ def _integrate_eccentric_lc_appx_one(self, phases, orbital_supplements, new_geom
         ld_cfs = get_limbdarkening_cfs(container_body, **kwargs)
 
         container_body.coverage, \
-            container_body.cosines = calculate_surface_parameters(container_body, in_eclipse=True)
+            container_body.cosines = calculate_surface_parameters(container_body, self.semi_major_axis, in_eclipse=True)
         container_mirror.coverage, \
-            container_mirror.cosines = calculate_surface_parameters(container_mirror, in_eclipse=True)
+            container_mirror.cosines = calculate_surface_parameters(container_mirror, self.semi_major_axis,
+                                                                    in_eclipse=True)
 
         for band in kwargs["passband"].keys():
             band_curves_body[band].append(calculate_lc_point(container_body, band, ld_cfs, normal_radiance))
@@ -817,7 +822,8 @@ def _integrate_eccentric_lc_appx_two(self, phases, orbital_supplements, new_geom
         _container = get_onpos_container(self, orbital_position, ecl_boundaries=None)
         _normal_radiance = get_normal_radiance(_container, **kwargs)
         _ld_cfs = get_limbdarkening_cfs(_container, **kwargs)
-        _container.coverage, _container.cosines = calculate_surface_parameters(_container, in_eclipse=True)
+        _container.coverage, _container.cosines = calculate_surface_parameters(_container, self.semi_major_axis,
+                                                                               in_eclipse=True)
         return _container, _normal_radiance, _ld_cfs
 
     def _incont_lc_point(container, ldc, n_radiance, orbital_position):
@@ -908,7 +914,8 @@ def _integrate_eccentric_lc_exactly(self, orbital_motion, phases, ecl_boundaries
         normal_radiance = get_normal_radiance(container, **kwargs)
         ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 
-        container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
+        container.coverage, container.cosines = calculate_surface_parameters(container, self.semi_major_axis,
+                                                                             in_eclipse=True)
 
         for band in kwargs["passband"]:
             band_curves[band][int(orbital_position.idx)] = \
@@ -1005,7 +1012,8 @@ def compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
         normal_radiance = get_normal_radiance(container, **kwargs)
         ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 
-        container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
+        container.coverage, container.cosines = calculate_surface_parameters(container, self.semi_major_axis,
+                                                                             in_eclipse=True)
 
         for band in kwargs["passband"]:
             band_curves[band][int(orbital_position.idx)] = calculate_lc_point(container, band, ld_cfs, normal_radiance)
@@ -1050,7 +1058,8 @@ def compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs):
         normal_radiance = get_normal_radiance(container, **kwargs)
         ld_cfs = get_limbdarkening_cfs(container, **kwargs)
 
-        container.coverage, container.cosines = calculate_surface_parameters(container, in_eclipse=True)
+        container.coverage, container.cosines = calculate_surface_parameters(container, self.semi_major_axis,
+                                                                             in_eclipse=True)
 
         for band in kwargs["passband"]:
             band_curves[band][int(orbital_position.idx)] = \

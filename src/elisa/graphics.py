@@ -644,13 +644,17 @@ def binary_surface_anim(**kwargs):
     plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='imagemagick', fps=20)
 
 
-def light_curve(**kwargs):
-    plt.figure(figsize=(8,6))
-    for item in kwargs['curves']:
-        plt.plot(kwargs['phases'], kwargs['curves'][item], label=item)
+def phase_curve(**kwargs):
+    plt.figure(figsize=(8, 6))
+    for item in kwargs['fluxes']:
+        plt.plot(kwargs['phases'], kwargs['fluxes'][item], label=item)
         plt.legend()
 
     plt.xlabel('Phase')
-    plt.ylabel('Flux')
-    plt.legend(loc=1)
+    if kwargs['flux_unit'] == u.W / u.m**2:
+        plt.ylabel(r'Flux/($W/m^{2}$)')
+    else:
+        plt.ylabel('Flux')
+    if kwargs['legend']:
+        plt.legend(loc=kwargs['legend_location'])
     plt.show()
