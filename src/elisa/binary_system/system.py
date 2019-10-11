@@ -33,7 +33,6 @@ from scipy.spatial.qhull import Delaunay
 
 from elisa.conf import config
 from elisa import utils, const, ld, units
-from elisa import opt
 from elisa.binary_system import mp, geo
 from elisa.binary_system import static, build, lc
 from elisa.binary_system import utils as bsutils
@@ -51,18 +50,22 @@ class BinarySystem(System):
     OPTIONAL_KWARGS = ['phase_shift', 'additional_light']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
+    COMPONENT_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'surface_potential', 'synchronicity',
+                                  'albedo', 'metallicity']
+    COMPONENT_OPTIONAL_KWARGS = []
+    COMPONENT_ALL_KWARGS = COMPONENT_MANDATORY_KWARGS + COMPONENT_OPTIONAL_KWARGS
+
     def __init__(self, primary, secondary, name=None, suppress_logger=False, **kwargs):
         # initial validity checks
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
-        params = dict(primary=primary, secondary=secondary)
-        params.update(**kwargs)
-        self._star_params_validity_check(**params)
         utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
+        self.stars = dict(primary=primary, secondary=secondary)
+        self._object_params_validity_check(self.stars, self.COMPONENT_MANDATORY_KWARGS)
 
         super(BinarySystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
 
         self._logger.info(f"initialising object {self.__class__.__name__}")
-        self._logger.debug(f"setting property components of class instance {self.__class__.__name__}")
+        self._logger.debug(f"setting properties of components of class instance {self.__class__.__name__}")
 
         self.plot = Plot(self)
         self.animation = Animation(self)
@@ -115,16 +118,6 @@ class BinarySystem(System):
                               f"{np.degrees(self.secondary.discretization_factor):.2f} as a "
                               f"according to discretization factor of the primary component ")
 
-    def init_properties(self, **kwargs):
-        """
-        Setup system properties from input
-        :param kwargs: Dict; all supplied input properties
-        :return:
-        """
-        self._logger.debug(f"initialising propeties of binary system {self.name}, values: {kwargs}")
-        for kwarg in kwargs:
-            setattr(self, kwarg, kwargs[kwarg])
-
     def init(self):
         """
         Function to reinitialize BinarySystem class instance after
@@ -143,23 +136,6 @@ class BinarySystem(System):
         self._logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.ALL_KWARGS}
         self._orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
-
-    def has_pulsations(self):
-        """
-        Resolve whether any of components has pulsation
-
-        :return: bool
-        """
-        return self.primary.has_pulsations() or self.secondary.has_pulsations()
-
-    def has_spots(self):
-        """
-        Resolve whether any of components has spots
-
-        :return: bool
-        """
-
-        return self.primary.has_spots() or self.secondary.has_spots()
 
     def is_synchronous(self):
         """
@@ -605,38 +581,6 @@ class BinarySystem(System):
                     spot_instance.center = \
                         np.array([components_distance - spot_center[0], -spot_center[1], spot_center[2]])
                 gc.collect()
-
-    def _star_params_validity_check(self, **kwargs):
-        """
-        Checking if star instances have all additional atributes set properly.
-
-        :param kwargs: list
-        :return:
-        """
-        primary = kwargs.get("primary")
-        secondary = kwargs.get("secondary")
-
-        if not isinstance(primary, Star):
-            raise TypeError(f"Primary component is not instance of class {self.__class__.__name__}")
-
-        if not isinstance(kwargs.get("secondary"), Star):
-            raise TypeError(f"Secondary component is not instance of class {self.__class__.__name__}")
-
-        # checking if stellar components have all mandatory parameters initialised
-        # these parameters are not mandatory in single star system, so validity check cannot be provided
-        # on whole set of KWARGS in star object
-        star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity',
-                                 'albedo', 'metallicity', 'gravity_darkening']
-        missing_kwargs = []
-        for component in [primary, secondary]:
-            for kwarg in star_mandatory_kwargs:
-                if utils.is_empty(getattr(component, kwarg)):
-                    missing_kwargs.append(f"`{kwarg}`")
-
-            component_name = 'primary' if component == primary else 'secondary'
-            if len(missing_kwargs) != 0:
-                raise ValueError(f'Mising argument(s): {", ".join(missing_kwargs)} '
-                                 f'in {component_name} component Star class')
 
     def _kwargs_serializer(self):
         """

@@ -12,11 +12,10 @@ from elisa.utils import is_empty
 
 
 class Star(Body):
-    KWARGS = ['mass', 't_eff', 'gravity_darkening']
-
+    MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening']
     OPTIONAL_KWARGS = ['surface_potential', 'synchronicity', 'albedo', 'pulsations',
                        'discretization_factor', 'spots', 'metallicity', 'polar_log_g']
-    ALL_KWARGS = KWARGS + OPTIONAL_KWARGS
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
@@ -39,8 +38,6 @@ class Star(Body):
         self._filling_factor = np.nan
         self._metallicity = np.nan
         self._log_g = np.array([])
-
-        utils.check_missing_kwargs(Star.KWARGS, kwargs, instance_of=Star)
 
         self.init_parameters(**kwargs)
 

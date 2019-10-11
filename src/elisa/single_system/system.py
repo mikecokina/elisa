@@ -8,6 +8,7 @@ from elisa.base.system import System
 from elisa.single_system import build
 from elisa.single_system import static
 from elisa.single_system.plot import Plot
+from elisa.single_system.animation import Animation
 
 
 class SingleSystem(System):
@@ -15,47 +16,38 @@ class SingleSystem(System):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name=None, suppress_logger=False, **kwargs):
-        utils.invalid_kwarg_checker(kwargs, SingleSystem.ALL_KWARGS, SingleSystem)
-        super(SingleSystem, self).__init__(name=name, **kwargs)
+    STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g']
+    STAR_OPTIONAL_KWARGS = []
+    STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
-        # get logger
-        self._logger = logger.getLogger(name=SingleSystem.__name__, suppress=suppress_logger)
-        self._logger.info(f"initialising object {SingleSystem.__name__}")
+    def __init__(self, star, name=None, suppress_logger=False, **kwargs):
+        utils.invalid_kwarg_checker(kwargs, SingleSystem.ALL_KWARGS, self.__class__)
+        utils.check_missing_kwargs(SingleSystem.MANDATORY_KWARGS, kwargs, instance_of=SingleSystem)
+        self.stars = dict(star=star)
+        self._object_params_validity_check(self.stars, self.STAR_MANDATORY_KWARGS)
 
-        self._logger.debug(f"setting property components of class instance {SingleSystem.__name__}")
+        super(SingleSystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
+
+        self._logger.info(f"initialising object {self.__class__.__name__}")
+        self._logger.debug(f"setting properties of a star in class instance {self.__class__.__name__}")
 
         self.plot = Plot(self)
+        self.animation = Animation(self)
 
-        # in case of SingleStar system there is no need for user to define stellar component because it is defined here
-        self.star = kwargs['star']
+        self.star = star
 
         # default values of properties
         self._rotation_period = None
-
-        # arguments for orbit placeholder
+        self._angular_velocity = None
         self._period = self.rotation_period
 
-        # testing if parameters were initialized
-        utils.check_missing_kwargs(SingleSystem.MANDATORY_KWARGS, kwargs, instance_of=SingleSystem)
+        # set attributes and test whether all parameters were initialized
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
-        for kwarg in kwargs:
-            self._logger.debug(f"setting property {kwarg} of class instance {SingleSystem.__name__} to {kwargs[kwarg]}")
-            setattr(self, kwarg, kwargs[kwarg])
-
-        # check if star object doesn't contain any meaningless parameters
-        meaningless_params = {'synchronicity': self.star.synchronicity,
-                              'backward radius': self.star.backward_radius,
-                              'forward_radius': self.star.forward_radius,
-                              'side_radius': self.star.side_radius}
-        for parameter in meaningless_params:
-            if meaningless_params[parameter] is not None:
-                meaningless_params[parameter] = None
-                self._logger.info(f'parameter `{parameter}` is meaningless in case of single star system\n '
-                                  f'setting parameter `{parameter}` value to None')
+        self.init_properties(**kwargs)
 
         # calculation of dependent parameters
         self._angular_velocity = static.angular_velocity(self.rotation_period)
+
         # this is also check if star surface is closed
         self.init_radii()
 
@@ -774,3 +766,6 @@ class SingleSystem(System):
         line_of_sight_spherical[:, 2] = self.inclination
         line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
         return np.hstack((idx[:, np.newaxis], line_of_sight))
+
+    def build(self, *args, **kwargs):
+        pass

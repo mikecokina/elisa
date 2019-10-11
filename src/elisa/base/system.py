@@ -5,7 +5,10 @@ from astropy import units as u
 from scipy.optimize import fsolve
 
 from elisa import logger, const as c, units
+from elisa import utils
 from elisa.utils import is_empty
+
+from elisa.base.body import Body
 
 
 class System(metaclass=ABCMeta):
@@ -252,3 +255,58 @@ class System(metaclass=ABCMeta):
     @abstractmethod
     def build(self, *args, **kwargs):
         pass
+
+    @staticmethod
+    def _object_params_validity_check(components, mandatory_kwargs):
+        """
+        Checking if star instances have all additional atributes set properly.
+
+        :param mandatory_kwargs: list
+        :return:
+        """
+        for component, component_instance in components.items():
+            if not isinstance(component_instance, Body):
+                raise TypeError(f"Component `{component}` is not instance of class {Body.__name__}")
+
+        # checking if system components have all mandatory parameters initialised
+        missing_kwargs = []
+        for component, component_instance in components.items():
+            for kwarg in mandatory_kwargs:
+                if utils.is_empty(getattr(component_instance, kwarg)):
+                    missing_kwargs.append(f"`{kwarg}`")
+
+            if len(missing_kwargs) != 0:
+                raise ValueError(f'Mising argument(s): {", ".join(missing_kwargs)} '
+                                 f'in {component} component Star class')
+
+    def init_properties(self, **kwargs):
+        """
+        Setup system properties from input
+        :param kwargs: Dict; all supplied input properties
+        :return:
+        """
+        self._logger.debug(f"initialising properties of system {self.name}, values: {kwargs}")
+        for kwarg in kwargs:
+            setattr(self, kwarg, kwargs[kwarg])
+
+    def has_pulsations(self):
+        """
+        Resolve whether any of components has pulsation
+
+        :return: bool
+        """
+        retval = False
+        for component_instance in self.stars.values():
+            retval = retval | component_instance.has_pulsations()
+        return retval
+
+    def has_spots(self):
+        """
+        Resolve whether any of components has spots
+
+        :return: bool
+        """
+        retval = False
+        for component_instance in self.stars.values():
+            retval = retval | component_instance.has_spots()
+        return retval

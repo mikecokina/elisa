@@ -311,7 +311,7 @@ class TestValidity(ElisaTestCase):
                          primary_minimum_time=self._initial_params["primary_minimum_time"],
                          phase_shift=self._initial_params["phase_shift"])
 
-        self.assertTrue('Primary component is not instance of class' in str(context.exception))
+        self.assertTrue('Component `primary` is not instance of class' in str(context.exception))
 
         star_mandatory_kwargs = ['mass', 'surface_potential', 'synchronicity',
                                  'albedo', 'metallicity', 'gravity_darkening']
