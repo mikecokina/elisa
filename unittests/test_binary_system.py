@@ -267,8 +267,7 @@ class TestBinarySystemInit(ElisaTestCase):
 
 
 class TestValidity(ElisaTestCase):
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
-                        'primary_minimum_time', 'phase_shift']
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'phase_shift']
 
     def setUp(self):
         self._initial_params = {
