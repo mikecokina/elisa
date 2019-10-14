@@ -901,8 +901,8 @@ class BinarySystem(System):
         :param args: tuple; pre calculated values for potential function and desired value of potential
         :return:
         """
-        # return self.potential_value_primary(radius, *args) - self.primary.surface_potential
-        return self.potential_value_primary(radius, *args[0]) - args[1]
+        target_potential = args[1]
+        return self.potential_value_primary(radius, *args[0]) - target_potential
 
     def potential_primary_cylindrical_fn(self, radius, *args):
         """
@@ -912,8 +912,8 @@ class BinarySystem(System):
         :param args: tuple; pre calculated values for potential function and desired value of potential
         :return:
         """
-        # return self.potential_value_primary_cylindrical(radius, *args) - self.primary.surface_potential
-        return self.potential_value_primary_cylindrical(radius, *args[0]) - args[1]
+        target_potential = args[1]
+        return self.potential_value_primary_cylindrical(radius, *args[0]) - target_potential
 
     def potential_secondary_fn(self, radius, *args):
         """
@@ -923,8 +923,8 @@ class BinarySystem(System):
         :param args: pre calculated values for potential function and desired value of potential
         :return: numpy.float
         """
-        # return self.potential_value_secondary(radius, *args) - self.secondary.surface_potential
-        return self.potential_value_secondary(radius, *args[0]) - args[1]
+        target_potential = args[1]
+        return self.potential_value_secondary(radius, *args[0]) - target_potential
 
     def potential_secondary_cylindrical_fn(self, radius, *args):
         """
@@ -934,8 +934,8 @@ class BinarySystem(System):
         :param args: tuple: pre calculated values for potential function and desired value of potential
         :return: numpy.float
         """
-        # return self.potential_value_secondary_cylindrical(radius, *args) - self.secondary.surface_potential
-        return self.potential_value_secondary_cylindrical(radius, *args[0]) - args[1]
+        target_potential = args[1]
+        return self.potential_value_secondary_cylindrical(radius, *args[0]) - target_potential
 
     def critical_potential(self, component, components_distance):
         """
@@ -1082,7 +1082,7 @@ class BinarySystem(System):
         Function calculates radius of the star in given direction of arbitrary direction vector (in spherical
         coordinates) starting from the centre of the star.
 
-        :param surface_potential: None or float; if None compoent surface potential is assumed
+        :param surface_potential: None or float; if None component surface potential is assumed
         :param args: Tuple;
 
         ::
@@ -2348,20 +2348,20 @@ class BinarySystem(System):
 
         if is_circular:
             if assynchronous_spotty_test:
-                self._logger.info('applying light curve generator function for asynchronous binary system with '
+                self._logger.info('Applying light curve generator function for asynchronous binary system with '
                                   'circular orbit and spots.')
                 return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('applying light curve generator function for synchronous binary system with '
+                self._logger.info('Applying light curve generator function for synchronous binary system with '
                                   'circular orbit or circular assynchronous systems without spots.')
                 return self._compute_circular_synchronous_lightcurve(**kwargs)
         elif is_eccentric:
             if assynchronous_spotty_test:
-                self._logger.info('applying light curve generator function for asynchronous binary system with '
+                self._logger.info('Applying light curve generator function for asynchronous binary system with '
                                   'eccentric orbit and spots.')
                 return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('applying light curve generator function for eccentric orbit with synchronous '
+                self._logger.info('Applying light curve generator function for eccentric orbit with synchronous '
                                   'rotation of the components or assynchronous rotation without spots.')
                 return self._compute_eccentric_lightcurve(**kwargs)
 
@@ -2464,7 +2464,7 @@ class BinarySystem(System):
         volume of the component. Volume is approximated by two half elipsoids.
 
         :param phases: numpy.array
-        :param component: str; `primary`, `secondary` or None (=both)
+        :param component: str; `primary`,component, components_distance,  `secondary` or None (=both)
         :param iterations: int
         :return: numpy.array
         """

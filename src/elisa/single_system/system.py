@@ -5,7 +5,7 @@ from scipy.spatial.qhull import Delaunay
 
 from elisa import logger, utils, const as c, units as eunits
 from elisa.base.system import System
-from elisa.single_system import build
+from elisa.single_system import build, lc
 from elisa.single_system import static
 from elisa.single_system.plot import Plot
 from elisa.single_system.animation import Animation
@@ -70,7 +70,8 @@ class SingleSystem(System):
         self.star._polar_radius = self.calculate_polar_radius()
         self._logger.debug('calculating surface potential')
         args = 0,
-        self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
+        p_args = self.pre_calculate_for_potential_value(*args)
+        self.star._surface_potential = static.potential(self.star.polar_radius, *p_args)
         self._logger.debug('calculating equatorial radius')
         self.star._equatorial_radius = self.calculate_equatorial_radius()
 
@@ -285,10 +286,11 @@ class SingleSystem(System):
 
         :return: float
         """
-        args, use = c.HALF_PI, False
+        args, use = (c.HALF_PI, ), False
+        p_args = (self.pre_calculate_for_potential_value(*args), self.star.surface_potential)
         scipy_solver_init_value = np.array([1 / 1000.0])
         solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
-                                                    full_output=True, args=args)
+                                                    full_output=True, args=p_args)
         # check if star is closed
         if ier == 1 and not np.isnan(solution[0]):
             solution = solution[0]
@@ -299,18 +301,6 @@ class SingleSystem(System):
             raise ValueError('Surface of the star is not closed. Check values of polar gravity an rotation period.')
 
         return solution
-
-    def surface_potential(self, radius, *args):
-        """
-        function calculates potential on the given point of the star
-
-        :param radius: (np.)float; spherical variable
-        :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
-        :return: (np.)float
-        """
-        theta, = args  # latitude angle (0,180)
-
-        return - c.G * self.star.mass / radius - 0.5 * np.power(self._angular_velocity * radius * np.sin(theta), 2.0)
 
     def calculate_face_magnitude_gradient(self, points=None, faces=None):
         """
@@ -349,6 +339,27 @@ class SingleSystem(System):
         domega_dz = c.G * self.star.mass * points_z / r3
         return domega_dz
 
+    def pre_calculate_for_potential_value(self, *args, return_as_tuple=False):
+        """
+        Function calculates auxiliary values for calculation of primary component potential,
+        and therefore they don't need to be wastefully recalculated every iteration in solver.
+
+        :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+        :type return_as_tuple: bool
+        :param args: tuple; (latitude angle (0, pi))
+        :return: tuple: (a, b) such that: Psi = -a/r - b*r**2
+        """
+        theta, = args
+
+        a = c.G * self.star.mass
+        b = 0.5 * np.power(self._angular_velocity * np.sin(theta), 2)
+
+        if np.isscalar(theta):
+            return a, b
+        else:
+            aa = a * np.ones(np.shape(theta))
+            return (aa, b) if return_as_tuple else np.column_stack((aa, b))
+
     def potential_fn(self, radius, *args):
         """
         implicit potential function
@@ -357,7 +368,8 @@ class SingleSystem(System):
         :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
         :return:
         """
-        return self.surface_potential(radius, *args) - self.star.surface_potential
+        target_potential = args[1]
+        return static.potential(radius, *args[0]) - target_potential
 
     def calculate_equipotential_boundary(self):
         """
@@ -398,7 +410,7 @@ class SingleSystem(System):
         """
         return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
 
-    def mesh(self, symmetry_output=False):
+    def mesh(self, symmetry_output=False, **kwargs):
         """
         function for creating surface mesh of single star system
 
@@ -426,21 +438,27 @@ class SingleSystem(System):
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
 
         alpha = self.star.discretization_factor
+
+        potential_fn = self.potential_fn
+        precalc_fn = self.pre_calculate_for_potential_value
+        potential_derivative_fn = static.radial_potential_derivative
+
         N = int(c.HALF_PI // alpha)
         characterictic_angle = c.HALF_PI / N
         characterictic_distance = self.star.equatorial_radius * characterictic_angle
 
         # calculating equatorial part
-        r_eq = np.array([self.star.equatorial_radius for ii in range(N)])
-        phi_eq = np.array([characterictic_angle * ii for ii in range(N)])
-        theta_eq = np.array([c.HALF_PI for ii in range(N)])
-        # converting quarter of equator to cartesian
-        equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
-        x_eq, y_eq, z_eq = equator[:, 0], equator[:, 1], equator[:, 2]
+        x_eq, y_eq, z_eq = self.calculate_equator_points(N)
 
-        # calculating radii for each latitude and generating one eighth of surface of the star without poles and equator
-        num = int((c.HALF_PI - 2 * characterictic_angle) // characterictic_angle)
-        thetas = np.linspace(characterictic_angle, c.HALF_PI - characterictic_angle, num=num, endpoint=True)
+        # axial symmetry, therefore calculating latitudes
+        theta = static.pre_calc_latitudes(characterictic_angle)
+
+        x0 = 0.5 * (self.star.equatorial_radius + self.star.polar_radius)
+        args = theta, x0, precalc_fn, potential_fn, potential_derivative_fn, self.star.surface_potential
+        radius = static.get_surface_points_radii(*args)
+
+        # TODO:finish
+
         r_q, phi_q, theta_q = [], [], []
         # also generating meridian line
         r_mer, phi_mer, theta_mer = [], [], []
@@ -570,6 +588,19 @@ class SingleSystem(System):
             return np.column_stack((x, y, z)), symmetry_vector, base_symmetry_points_number + 1, inverse_symmetry_matrix
         else:
             return np.column_stack((x, y, z))
+
+    def calculate_equator_points(self, n):
+        """
+        function calculates points on equator of rotating single star
+        :param n: int; number of points on one quarter of equator
+        :return: tuple; x, y, z cartesian coordinates of equator points
+        """
+        r_eq = self.star.equatorial_radius * np.ones(n)
+        phi_eq = np.linspace(0, c.HALF_PI, num=n, endpoint=False)
+        theta_eq = c.HALF_PI * np.ones(n)
+        # converting quarter of equator to cartesian
+        equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
+        return equator[:, 0], equator[:, 1], equator[:, 2]
 
     def single_surface(self, points=None):
         """
@@ -732,12 +763,6 @@ class SingleSystem(System):
                     spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                  temperatures=spot.temperatures)
 
-    def compute_lightcurve(self, **kwargs):
-        # calculating line of sights vector from time vector
-        # defining
-        positions = kwargs['positions'][2]
-        # print(line_of_sight)
-
     def get_info(self):
         pass
 
@@ -770,11 +795,11 @@ class SingleSystem(System):
         """
         return build.build_surface_map(self, colormap=colormap, return_map=return_map)
 
-    def build_mesh(self):
+    def build_mesh(self, **kwargs):
         """
         build points of surface for including spots
         """
-        build.build_mesh(self)
+        build.build_mesh(self, **kwargs)
 
     def get_positions_method(self):
         return self.calculate_lines_of_sight
@@ -795,5 +820,50 @@ class SingleSystem(System):
         line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
         return np.hstack((idx[:, np.newaxis], line_of_sight))
 
-    def build(self, *args, **kwargs):
-        pass
+    def compute_lightcurve(self, **kwargs):
+        """
+        This function decides which light curve generator function is used.
+        Depending on the basic properties of the single system.
+
+        :param kwargs: Dict; arguments to be passed into light curve generator functions
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+            * ** phases ** * - numpy.array
+            * ** position_method ** * - method
+        :return: Dict
+        """
+        self._logger.info('Applying light curve generator function for single system.')
+        return self._compute_general_lightcurve(**kwargs)
+
+    def _compute_general_lightcurve(self, **kwargs):
+        return lc.compute_general_lightcurve(self, **kwargs)
+
+    def build(self, do_pulsations=False, phase=False, **kwargs):
+        """
+        Main method to build single star system from parameters given on init of SingleStar.
+
+        called following methods::
+
+            - build_mesh
+            - build_faces
+            - build_surface_areas
+            - build_faces_orientation
+            - build_surface_gravity
+            - build_temperature_distribution
+
+        :param phase: float; phase to build system on
+        :param do_pulsations: bool; switch to incorporate pulsations
+        :return:
+        """
+        self.build_mesh(**kwargs)
+        self.build_from_points(do_pulsations, phase)
+
+    def build_from_points(self, do_pulsations=False, phase=False):
+        # TODO: not properly implemented
+        self.build_faces()
+        self.build_surface_areas()
+        self.build_faces_orientation()
+        self.build_surface_gravity()
+        self.build_temperature_distribution(do_pulsations=do_pulsations, phase=phase)

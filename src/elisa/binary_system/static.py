@@ -430,7 +430,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_pol
 def get_surface_points(*args):
     """
     Function solves radius for given azimuths that are passed in *args.
-    It use `scipy.optimize.fsolve` method. Function to solve is specified as last parameter in *args Tuple.
+    Function to solve is specified as last parameter in *args Tuple.
 
     :param args: Tuple;
 

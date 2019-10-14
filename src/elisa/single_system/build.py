@@ -139,11 +139,11 @@ def build_surface_map(self, colormap=None, return_map=False):
     return
 
 
-def build_mesh(self):
+def build_mesh(self, **kwargs):
     """
     build points of surface for including spots
     """
-    _a, _b, _c, _d = self.mesh(symmetry_output=True)
+    _a, _b, _c, _d = self.mesh(symmetry_output=True, **kwargs)
 
     self.star.points = _a
     self.star.point_symmetry_vector = _b
