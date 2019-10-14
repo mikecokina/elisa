@@ -1,25 +1,3 @@
-'''
-             _,--""--,_
-        _,,-"          \
-    ,-e"                ;
-   (*             \     |
-    \o\     __,-"  )    |
-     `,_   (((__,-"     L___,,--,,__
-        ) ,---\  /\    / -- '' -'-' )
-      _/ /     )_||   /---,,___  __/
-     """"     """"|_ /         ""
-                  """"
-
- ______ _______ ______ _______ ______
-|   __ \       |   __ \    ___|   __ \
-|   __ <   -   |   __ <    ___|      <
-|______/_______|______/_______|___|__|
-
-    Because of funny Polish video
-    https://www.youtube.com/watch?v=YHyOTyTXXdA
-
-'''
-
 import gc
 import numpy as np
 import scipy
@@ -31,6 +9,7 @@ from astropy import units as u
 from scipy import optimize
 from scipy.spatial.qhull import Delaunay
 
+from elisa.binary_system.transform import transform_binary_input
 from elisa.conf import config
 from elisa import utils, const, ld, units
 from elisa.binary_system import mp, geo
@@ -39,12 +18,25 @@ from elisa.binary_system import utils as bsutils
 from elisa.binary_system.plot import Plot
 from elisa.binary_system.animation import Animation
 from elisa.orbit import Orbit
-from elisa.base.star import Star
 from elisa.base.system import System
 from elisa.base import error
 
 
 class BinarySystem(System):
+    """
+    Compute and initialise minmal necessary attributes to be used in light curves computation.
+
+    :param primary: elisa.base.Star; Primary (Star) component into binary system.
+    :param secondary: elisa.base.Star; Secondary (Star) component into binary system.
+    :param morlphology: str; Morphology of binary star system. Do not modify manually.
+    :param orbit: elisa.orbit.Orbit; Instance of Orbit.
+    :param mass_ratio: float; Returns mass ratio m2/m1 of binary system components.
+    :param semi_major_axis: float; Returns semi major axis of the system in default distance unit.
+
+
+
+    """
+
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity',
                         'argument_of_periastron', 'phase_shift']
     OPTIONAL_KWARGS = ['phase_shift', 'additional_light', 'primary_minimum_time']
@@ -59,8 +51,8 @@ class BinarySystem(System):
         # initial validity checks
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
-        self.stars = dict(primary=primary, secondary=secondary)
-        self._object_params_validity_check(self.stars, self.COMPONENT_MANDATORY_KWARGS)
+        self._object_params_validity_check(dict(primary=primary, secondary=secondary), self.COMPONENT_MANDATORY_KWARGS)
+        kwargs = transform_binary_input(**kwargs)
 
         super(BinarySystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
 
@@ -70,22 +62,20 @@ class BinarySystem(System):
         self.plot = Plot(self)
         self.animation = Animation(self)
 
-        # assign components to binary system
-        self._primary = primary
-        self._secondary = secondary
-
-        self._mass_ratio = self.secondary.mass / self.primary.mass
+        self.primary = primary
+        self.secondary = secondary
+        self.mass_ratio = self.secondary.mass / self.primary.mass
 
         # default values of properties
-        self._period = np.nan
-        self._eccentricity = np.nan
-        self._argument_of_periastron = np.nan
-        self._orbit = None
-        self._primary_minimum_time = 0.0
+        self.morphology = ""
+        self.orbit = None
+        self.period = np.nan
+        self.eccentricity = np.nan
+        self.argument_of_periastron = np.nan
+        self.primary_minimum_time = 0.0
+
         self._phase_shift = 0.0
-        self._semi_major_axis = np.nan
         self._periastron_phase = np.nan
-        self._morphology = ""
         self._inclination = np.nan
 
         # set attributes and test whether all parameters were initialized
@@ -94,10 +84,10 @@ class BinarySystem(System):
 
         # calculation of dependent parameters
         self._logger.debug("computing semi-major axis")
-        self._semi_major_axis = self.calculate_semi_major_axis()
+        self.semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
-        self.init_orbit()
+        self._init_orbit()
 
         # setup critical surface potentials in periastron
         self._logger.debug("setting up critical surface potentials of components in periastron")
@@ -127,15 +117,15 @@ class BinarySystem(System):
         """
         self.__init__(primary=self.primary, secondary=self.secondary, **self._kwargs_serializer())
 
-    def init_orbit(self):
+    def _init_orbit(self):
         """
-        Encapsulating orbit class into binary system.
+        Orbit class in binary system.
 
         :return:
         """
         self._logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
         orbit_kwargs = {key: getattr(self, key) for key in Orbit.ALL_KWARGS}
-        self._orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
+        self.orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
 
     def is_synchronous(self):
         """
@@ -146,183 +136,6 @@ class BinarySystem(System):
         """
 
         return (self.primary.synchronicity == 1) & (self.secondary.synchronicity == 1)
-
-    @property
-    def morphology(self):
-        """
-        Morphology of binary star system.
-
-        :return: str; detached, semi-detached, over-contact, double-contact
-        """
-        return self._morphology
-
-    @morphology.setter
-    def morphology(self, value):
-        """
-        Create read only `morpholoy` parameter. Raise error when called.
-
-        :param value: Any
-        :return:
-        """
-        raise Exception("Parametre `morphology` is read only.")
-
-    @property
-    def mass_ratio(self):
-        """
-        Returns mass ratio m2/m1 of binary system components.
-
-        :return: float
-        """
-        return self._mass_ratio
-
-    @mass_ratio.setter
-    def mass_ratio(self, value):
-        """
-        Disabled setter for binary system mass ratio.
-        If user tries to set mass ratio manually it is going to raise an Exception.
-
-        :param value: Any
-        :return:
-        """
-        raise Exception("Property ``mass_ratio`` is read-only.")
-
-    @property
-    def primary(self):
-        """
-        Encapsulation of primary component into binary system.
-
-        :return: elisa.base.Star
-        """
-        return self._primary
-
-    @property
-    def secondary(self):
-        """
-        Encapsulation of secondary component into binary system.
-
-        :return: elisa.base.Star
-        """
-        return self._secondary
-
-    @property
-    def orbit(self):
-        """
-        Encapsulation of orbit class into binary system.
-
-        :return: elisa.orbit.Orbit
-        """
-        return self._orbit
-
-    @property
-    def period(self):
-        """
-        Returns orbital period of binary system.
-
-        :return: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        """
-        return self._period
-
-    @period.setter
-    def period(self, period):
-        """
-        Set orbital period of binary star system.
-        If unit is not specified, default period unit is assumed.
-
-        :param period: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(period, u.quantity.Quantity):
-            self._period = np.float64(period.to(units.PERIOD_UNIT))
-        elif isinstance(period, (int, np.int, float, np.float)):
-            self._period = np.float64(period)
-        else:
-            raise TypeError('Input of variable `period` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug(f"setting property period "
-                           f"of class instance {self.__class__.__name__} to {self._period}")
-
-    @property
-    def eccentricity(self):
-        """
-        Eccentricity of orbit of binary star system.
-
-        :return: (numpy.)int, (numpy.)float
-        """
-        return self._eccentricity
-
-    @eccentricity.setter
-    def eccentricity(self, eccentricity):
-        """
-        Set eccentricity.
-
-        :param eccentricity: (numpy.)int, (numpy.)float
-        :return:
-        """
-        if not isinstance(eccentricity, (int, np.int, float, np.float)):
-            raise TypeError('Input of variable `eccentricity` is not (numpy.)int '
-                            'or (numpy.)float.')
-        if eccentricity < 0 or eccentricity >= 1:
-            raise ValueError('Input of variable `eccentricity` is  or it is out of boundaries.')
-        self._eccentricity = eccentricity
-        self._logger.debug(f"setting property eccentricity "
-                           f"of class instance {self.__class__.__name__} to {self._eccentricity}")
-
-    @property
-    def argument_of_periastron(self):
-        """
-        Get argument of periastron.
-
-        :return: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        """
-        return self._argument_of_periastron
-
-    @argument_of_periastron.setter
-    def argument_of_periastron(self, argument_of_periastron):
-        """
-        Setter for argument of periastron, if unit is not supplied, value in degrees is assumed.
-
-        :param argument_of_periastron: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(argument_of_periastron, u.quantity.Quantity):
-            self._argument_of_periastron = np.float64(argument_of_periastron.to(units.ARC_UNIT))
-        elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
-            self._argument_of_periastron = np.float64((argument_of_periastron * u.deg).to(units.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-        if not 0 <= self._argument_of_periastron <= const.FULL_ARC:
-            self._argument_of_periastron %= const.FULL_ARC
-        self._logger.debug(f"setting property argument of periastron of class instance "
-                           f"{self.__class__.__name__} to {self._argument_of_periastron}")
-
-    @property
-    def primary_minimum_time(self):
-        """
-        Returns time of primary minimum in default period unit.
-
-        :return: float
-        """
-        return self._primary_minimum_time
-
-    @primary_minimum_time.setter
-    def primary_minimum_time(self, primary_minimum_time):
-        """
-        Setter for time of primary minima.
-
-        :param primary_minimum_time: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(primary_minimum_time, u.quantity.Quantity):
-            self._primary_minimum_time = np.float64(primary_minimum_time.to(units.PERIOD_UNIT))
-        elif isinstance(primary_minimum_time, (int, np.int, float, np.float)):
-            self._primary_minimum_time = np.float64(primary_minimum_time)
-        else:
-            raise TypeError('Input of variable `primary_minimum_time` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug(f"setting property primary_minimum_time of class instance "
-                           f"{self.__class__.__name__} to {self._primary_minimum_time}")
 
     @property
     def phase_shift(self):
@@ -346,25 +159,6 @@ class BinarySystem(System):
         self._phase_shift = phase_shift
         self._logger.debug(f"setting property phase_shift of class instance "
                            f"{self.__class__.__name__} to {self._phase_shift}")
-
-    @property
-    def semi_major_axis(self):
-        """
-        Returns semi major axis of the system in default distance unit.
-
-        :return: float
-        """
-        return self._semi_major_axis
-
-    @semi_major_axis.setter
-    def semi_major_axis(self, value):
-        """
-        Make semi_major_axis read only parametre.
-
-        :param value: Any
-        :return:
-        """
-        raise Exception("Parameter semi_major_axis is read only.")
 
     def calculate_semi_major_axis(self):
         """
@@ -573,12 +367,11 @@ class BinarySystem(System):
 
         :return:
         """
-        self.primary.critical_surface_potential = self.critical_potential(
-            component="primary", components_distance=1 - self.eccentricity
-        )
-        self.secondary.critical_surface_potential = self.critical_potential(
-            component="secondary", components_distance=1 - self.eccentricity
-        )
+        for component in config.BINARY_COUNTERPARTS:
+            setattr(
+                getattr(self, component), "critical_surface_potential",
+                self.critical_potential(component=component, components_distance=1.0 - self.eccentricity)
+            )
 
     def _setup_morphology(self):
         """
@@ -638,7 +431,7 @@ class BinarySystem(System):
 
             else:
                 raise ValueError("Non-Physical system. Change stellar parameters.")
-        self._morphology = __SETUP_VALUE__
+        self.morphology = __SETUP_VALUE__
 
     def get_info(self):
         pass
@@ -2526,8 +2319,6 @@ class BinarySystem(System):
         :param surface_potential: float;
         :param component: string; `primary` or `secondary`
         :param components_distance: float;
-        :param forward_radius: float;
-        :param backward_radius: float;
         :param discretization_factor: None or float; if None it stays the same as the discretization factor of the
         component
         :return: tuple; (points on equator, points on meridian)

@@ -12,6 +12,26 @@ from elisa.utils import is_empty
 
 
 class Star(Body):
+    """
+    :param log_g: numpy.array; Returns surface gravity array.
+    :param filling_factor: float;
+
+    ::
+        Return filling factor of Star with another Star in binary system.
+        This parameter makes sence only if Star is part of binary system.
+        Filling factor is computed as (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter}) where Omega_X denote
+        potential value and `Omega` is potential of given Star. Inner and outter are critical inner and outter
+        potentials for given binary star system.
+
+    :param critical_surface_potential: float;
+    ::
+
+        Return critical surface potential (If used such potential in binary system,
+        Star fills exactly Roche lobe in periastron).
+        This parameter makes sence only if star is part of binary system.
+
+
+    """
     MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening']
     OPTIONAL_KWARGS = ['surface_potential', 'synchronicity', 'albedo', 'pulsations',
                        'discretization_factor', 'spots', 'metallicity', 'polar_log_g']
@@ -22,22 +42,22 @@ class Star(Body):
         super(Star, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
 
         # default values of properties
+        self.log_g = np.array([])
+        self.filling_factor = np.nan
+        self.critical_surface_potential = np.nan
+
         self._surface_potential = np.nan
         self._backward_radius = np.nan
         self._polar_radius = np.nan
         self._gravity_darkening = np.nan
-        self._synchronicity = np.nan
         self._forward_radius = np.nan
         self._side_radius = np.nan
         self._polar_log_g = np.nan
         self._equatorial_radius = np.nan
-        self._critical_surface_potential = np.nan
         self._potential_gradient_magnitudes = np.nan
         self._polar_potential_gradient_magnitude = np.nan
         self._pulsations = dict()
-        self._filling_factor = np.nan
         self._metallicity = np.nan
-        self._log_g = np.array([])
 
         self.init_parameters(**kwargs)
 
@@ -113,25 +133,6 @@ class Star(Body):
                            f"{self.__class__.__name__} to {self._metallicity}")
 
     @property
-    def log_g(self):
-        """
-        Returns surface gravity array.
-
-        :return: ndarray
-        """
-        return self._log_g
-
-    @log_g.setter
-    def log_g(self, log_g):
-        """
-        Setter for log g array.
-
-        :param log_g: ndarray
-        :return:
-        """
-        self._log_g = log_g
-
-    @property
     def pulsations(self):
         """
         Return pulsation modes for given Star instance.
@@ -159,27 +160,6 @@ class Star(Body):
         """
         if pulsations:
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
-
-    @property
-    def critical_surface_potential(self):
-        """
-        Return critical surface potential (If used such potential in binary system,
-        Star fills exactly Roche lobe in periastron).
-        This parameter makes sence only if star is part of binary system.
-
-        :return: float
-        """
-        return self._critical_surface_potential
-
-    @critical_surface_potential.setter
-    def critical_surface_potential(self, potential):
-        """
-        Set critical potential for given Star in binary system.
-
-        :param potential:
-        :return:
-        """
-        self._critical_surface_potential = potential
 
     @property
     def surface_potential(self):
@@ -304,30 +284,6 @@ class Star(Body):
         :return:
         """
         self._polar_potential_gradient_magnitude = potential_gradient_magnitude
-
-    @property
-    def filling_factor(self):
-        """
-        Return filling factor of Star with another Star in binary system.
-        This parameter makes sence only if Star is part of binary system.
-
-        Filling factor is computed as (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter}) where Omega_X denote
-        potential value and `Omega` is potential of given Star. Inner and outter are critical inner and outter
-        potentials for given binary star system.
-
-        :return: float
-        """
-        return self._filling_factor
-
-    @filling_factor.setter
-    def filling_factor(self, filling_factor):
-        """
-        Setter for filling factor.
-
-        :param filling_factor: float
-        :return:
-        """
-        self._filling_factor = filling_factor
 
     def reset_spots_properties(self):
         """

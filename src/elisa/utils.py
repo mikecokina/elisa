@@ -35,7 +35,7 @@ def polar_to_cartesian(radius, phi):
 def invalid_kwarg_checker(kwargs, kwarglist, instance):
     """
 
-    :param kwargs: Dict; kwargs to evaluate if are in kwarglist
+    :param kwargs: Dict; kwargs to evaluate if are in kwarg list
     :param kwarglist: Dict;
     :param instance: Any class
     :return:

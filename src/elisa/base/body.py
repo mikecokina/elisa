@@ -16,6 +16,37 @@ class Body(metaclass=ABCMeta):
     Units are imported from astropy.units module::
 
         see documentation http://docs.astropy.org/en/stable/units/
+
+    :param points: numpy.array;
+
+    ::
+
+        Numpy array of points that form surface of Body.
+        Input dictionary has to be in shape::
+            points = numpy.array([[x1 y1 z1],
+                                  [x2 y2 z2],
+                                   ...
+                                  [xN yN zN]])
+        where xi, yi, zi are cartesian coordinates of vertice i.
+
+    :param faces: numpy.array;
+
+    ::
+
+        Numpy array of triangles that will create surface of body.
+        Triangles are stored as list of indices of points.
+            numpy.array(
+            [[vertice_index_k, vertice_index_l, vertice_index_m]),
+             [...]),
+              ...
+             [...]])
+
+
+
+
+
+
+
     """
 
     ID = 1
@@ -30,23 +61,25 @@ class Body(metaclass=ABCMeta):
         self._logger = logger.getLogger(logger_name or self.__class__.__name__, suppress=self._suppress_logger)
 
         if is_empty(name):
-            self._name = str(Body.ID)
-            self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self._name}")
+            self.name = str(Body.ID)
+            self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
             Body.ID += 1
         else:
-            self._name = str(name)
+            self.name = str(name)
 
         # initializing parmas to default values
+        self.points = np.array([])
+        self.faces = np.array([])
+        self.normals = np.array([])
+        self.areas = np.array([])
+        self.temperatures = np.array([])
+
+        self.synchronicity = np.nan
+
         self._mass = np.nan
         self._t_eff = np.nan
-        self._points = np.array([])
-        self._faces = np.array([])
-        self._normals = np.array([])
-        self._temperatures = np.array([])
-        self._synchronicity = np.nan
         self._albedo = np.nan
         self._polar_radius = np.nan
-        self._areas = np.array([])
         self._discretization_factor = np.radians(3)
         self._face_centres = np.array([])
         self._spots = dict()
@@ -68,28 +101,7 @@ class Body(metaclass=ABCMeta):
         return len(self._spots) > 0
 
     @property
-    def name(self):
-        """
-        *<instance>* name getter
-        usage: *<instance>*.name
-
-        :return: str
-        """
-        return str(self._name)
-
-    @name.setter
-    def name(self, name):
-        """
-        :param name: str
-        :return:
-        """
-        self._name = str(name)
-
-    @property
     def mass(self):
-        """
-        :return: float
-        """
         return self._mass
 
     @mass.setter
@@ -133,169 +145,6 @@ class Body(metaclass=ABCMeta):
         else:
             raise TypeError('Value of `t_eff` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
-
-    @property
-    def points(self):
-        """
-        Returns dictionary of points that forms surface of Body.
-
-        :return: numpy.array
-        """
-        return self._points
-
-    @points.setter
-    def points(self, points):
-        """
-        Setting numpy array of points that form surface of Body.
-        Input dictionary has to be in shape::
-
-            points = numpy.array([[x1 y1 z1],
-                                  [x2 y2 z2],
-                                   ...
-                                  [xN yN zN]])
-
-        where xi, yi, zi are cartesian coordinates of vertice i.
-
-        :param points: numpy.array; [xi, yi, zi]: float
-        :return:
-        """
-        self._points = np.array(points)
-
-    @property
-    def faces(self):
-        """
-        Returns dictionary of triangles that will create surface of body.
-        Triangles are stored as list of indices of points.
-
-        :return: numpy.array
-
-        ::
-
-            numpy.array([[vertice_index_k, vertice_index_l, vertice_index_m]),
-            [...]),
-             ...
-            [...]])
-        """
-        return self._faces
-
-    @faces.setter
-    def faces(self, faces):
-        """
-        Faces dictionary has to be in shape::
-
-            points = np.array([vertice_index_k, vertice_index_l, vertice_index_m],
-                              [...],
-                               ...
-                              [...]]
-
-        :param faces: numpy.array
-        :return:
-        """
-        self._faces = faces
-
-    @property
-    def normals(self):
-        """
-        Returns array containing normalised outward facing normals of corresponding faces with same index.
-
-        :return: numpy.array
-
-        ::
-
-            normals = numpy_array([[normal_x1, normal_y1, normal_z1],
-                                   [normal_x2, normal_y2, normal_z2],
-                                    ...
-                                   [normal_xn, normal_yn, normal_zn]]
-        """
-        return self._normals
-
-    @normals.setter
-    def normals(self, normals):
-        """
-        Setter for normalised outward facing normals of corresponding faces with same index.
-        Expected shape of normals matrix::
-
-            normals = numpy_array([[normal_x1, normal_y1, normal_z1],
-                                   [normal_x2, normal_y2, normal_z2],
-                                           ...
-                                   [normal_xn, normal_yn, normal_zn]]
-
-        :param normals: dnarray
-        :return:
-        """
-        self._normals = normals
-
-    @property
-    def areas(self):
-        """
-        Returns array of areas of corresponding faces.
-
-        :return: numpy.array
-
-        ::
-
-            numpy.array([area_1, ..., area_n])
-        """
-        return self._areas
-
-    @areas.setter
-    def areas(self, areas):
-        """
-        Returns array of areas of corresponding faces.
-
-        :param areas
-
-        ::
-
-            numpy.array([area_1, ..., area_n])
-
-        :return:
-        """
-        self._areas = areas
-
-    @property
-    def temperatures(self):
-        """
-        Returns array of temeratures of corresponding faces.
-
-        :return: numpy.array
-
-        ::
-
-            numpy.array([t_eff1, ..., t_effn])
-        """
-        return self._temperatures
-
-    @temperatures.setter
-    def temperatures(self, temperatures):
-        """
-        Aetter for array of temeratures of corresponding faces in shape::
-
-            numpy.array([t_eff1, ..., t_effn])
-
-        :param temperatures: numpy.array
-        :return:
-        """
-        self._temperatures = temperatures
-
-    @property
-    def synchronicity(self):
-        """
-        Returns synchronicity parameter F = omega_rot/omega_orb.
-
-        :return: float
-        """
-        return self._synchronicity
-
-    @synchronicity.setter
-    def synchronicity(self, synchronicity):
-        """
-        Object synchronicity (F = omega_rot/omega_orb) setter.
-        Expects number input convertible to numpy float64 / float.
-
-        :param synchronicity: float
-        """
-        self._synchronicity = np.float64(synchronicity)
 
     @property
     def albedo(self):

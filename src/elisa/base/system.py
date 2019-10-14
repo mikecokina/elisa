@@ -33,30 +33,11 @@ class System(metaclass=ABCMeta):
         self._additional_light = 0.0
 
         if is_empty(name):
-            self._name = str(System.ID)
-            self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self._name}")
-            System.ID += 1
+            self.name = str(System.ID)
+            self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
+            self.__class__.ID += 1
         else:
-            self._name = str(name)
-
-    @property
-    def name(self):
-        """
-        Name of object initialized on base of this abstract class.
-
-        :return: str
-        """
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        """
-        Setter for name of system.
-
-        :param name: str
-        :return:
-        """
-        self._name = str(name)
+            self.name = str(name)
 
     @property
     def gamma(self):
@@ -207,48 +188,18 @@ class System(metaclass=ABCMeta):
 
     @abstractmethod
     def build_mesh(self, *args, **kwargs):
-        """
-        Abstract method for creating surface points.
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
         pass
 
     @abstractmethod
     def build_faces(self, *args, **kwargs):
-        """
-        Abstract method for building body surface (faces) from given set of points in already calculated and stored in
-        Object.points.
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
         pass
 
     @abstractmethod
     def build_surface(self, *args, **kwargs):
-        """
-        Abstract method which builds surface from ground up including points and faces of surface and spots.
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
         pass
 
     @abstractmethod
     def build_surface_map(self, *args, **kwargs):
-        """
-        Abstract method which calculates surface maps for surface faces of given body (eg. temperature or gravity
-        acceleration map).
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
         pass
 
     @abstractmethod
