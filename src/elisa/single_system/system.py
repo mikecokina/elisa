@@ -9,6 +9,7 @@ from elisa.single_system import build, lc
 from elisa.single_system import static
 from elisa.single_system.plot import Plot
 from elisa.single_system.animation import Animation
+from elisa.base import error
 
 
 class SingleSystem(System):
@@ -451,45 +452,15 @@ class SingleSystem(System):
         x_eq, y_eq, z_eq = self.calculate_equator_points(N)
 
         # axial symmetry, therefore calculating latitudes
-        theta = static.pre_calc_latitudes(characterictic_angle)
+        thetas = static.pre_calc_latitudes(characterictic_angle)
 
         x0 = 0.5 * (self.star.equatorial_radius + self.star.polar_radius)
-        args = theta, x0, precalc_fn, potential_fn, potential_derivative_fn, self.star.surface_potential
+        args = thetas, x0, precalc_fn, potential_fn, potential_derivative_fn, self.star.surface_potential
         radius = static.get_surface_points_radii(*args)
 
-        # TODO:finish
-
-        r_q, phi_q, theta_q = [], [], []
-        # also generating meridian line
-        r_mer, phi_mer, theta_mer = [], [], []
-        for theta in thetas:
-            args, use = theta, False
-            scipy_solver_init_value = np.array([1 / 1000.0])
-            solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
-                                                        full_output=True, args=args)
-            radius = solution[0]
-            num = int(c.HALF_PI * radius * np.sin(theta) // characterictic_distance)
-            r_q += [radius for xx in range(1, num)]
-            M = c.HALF_PI / num
-            phi_q += [xx * M for xx in range(1, num)]
-            theta_q += [theta for xx in range(1, num)]
-
-            r_mer.append(radius)
-            phi_mer.append(0)
-            theta_mer.append(theta)
-
-        r_q = np.array(r_q)
-        phi_q = np.array(phi_q)
-        theta_q = np.array(theta_q)
-        r_mer = np.array(r_mer)
-        phi_mer = np.array(phi_mer)
-        theta_mer = np.array(theta_mer)
-
         # converting this eighth of surface to cartesian coordinates
-        quarter = utils.spherical_to_cartesian(np.column_stack((r_q, phi_q, theta_q)))
-        meridian = utils.spherical_to_cartesian(np.column_stack((r_mer, phi_mer, theta_mer)))
-        x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
-        x_mer, y_mer, z_mer = meridian[:, 0], meridian[:, 1], meridian[:, 2]
+        x_q, y_q, z_q = static.calculate_points_on_quarter_surface(radius, thetas, characterictic_distance)
+        x_mer, y_mer, z_mer = static.calculate_points_on_meridian(radius, thetas)
 
         # stitching together equator and 8 sectors of stellar surface
         # in order: north hemisphere: north pole, x_meridian, xy_equator, xy_quarter, y_meridian, y-x_equator,
@@ -647,11 +618,15 @@ class SingleSystem(System):
             self._logger.info("No spots to evaluate.")
             return
 
+        potential_fn = self.potential_fn
+        precalc_fn = self.pre_calculate_for_potential_value
+        potential_derivative_fn = static.radial_potential_derivative
+
         # iterate over spots
         for spot_index, spot_instance in list(self.star.spots.items()):
             # lon -> phi, lat -> theta
             lon, lat = spot_instance.longitude, spot_instance.latitude
-            self._setup_spot_instance_discretization_factor(spot_instance, spot_index, self.star)
+            self.star.setup_spot_instance_discretization_factor(spot_instance, spot_index, self.star)
 
             alpha, spot_radius = spot_instance.discretization_factor, spot_instance.angular_radius
 
@@ -700,42 +675,36 @@ class SingleSystem(System):
             num_azimuthal = [1 if i == 0 else int(i * 2.0 * np.pi * x0 // x0) for i in range(0, len(thetas))]
             deltas = [np.linspace(0., c.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 
-            # todo: add condition to die
+            spot_phi, spot_theta = [], []
+            for theta_index, theta in enumerate(thetas):
+                # first point of n-th ring of spot (counting start from center)
+                default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
+
+                for delta_index, delta in enumerate(deltas[theta_index]):
+                    # rotating default spherical vector around spot center vector and thus generating concentric
+                    # circle of points around centre of spot
+                    delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
+                                                            vector=utils.spherical_to_cartesian(
+                                                                default_spherical_vector),
+                                                            degrees=False,
+                                                            omega_normalized=True)
+
+                    spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
+
+                    spot_phi.append(spherical_delta_vector[1])
+                    spot_theta.append(spherical_delta_vector[2])
+
+            spot_phi, spot_theta = np.array(spot_phi), np.array(spot_theta)
+            args = spot_phi, spot_theta, spot_center_r, precalc_fn, potential_fn, potential_derivative_fn, \
+                   self.star.surface_potential
             try:
-                for theta_index, theta in enumerate(thetas):
-                    # first point of n-th ring of spot (counting start from center)
-                    default_spherical_vector = [1.0, lon % c.FULL_ARC, theta]
+                spot_points = static.get_surface_points(*args)
+            except error.MaxIterationError:
+                self._logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
+                                     f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                component_instance.remove_spot(spot_index=spot_index)
+                continue
 
-                    for delta_index, delta in enumerate(deltas[theta_index]):
-                        # rotating default spherical vector around spot center vector and thus generating concentric
-                        # circle of points around centre of spot
-                        delta_vector = utils.arbitrary_rotation(theta=delta, omega=center_vector,
-                                                                vector=utils.spherical_to_cartesian(
-                                                                    default_spherical_vector),
-                                                                degrees=False,
-                                                                omega_normalized=True)
-
-                        spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
-
-                        args = (spherical_delta_vector[2],)
-                        solution, use = self._solver(self.potential_fn, solver_condition, *args)
-
-                        if not use:
-                            self.star.remove_spot(spot_index=spot_index)
-                            raise StopIteration
-
-                        spot_point = utils.spherical_to_cartesian([solution, spherical_delta_vector[1],
-                                                                   spherical_delta_vector[2]])
-                        spot_points.append(spot_point)
-
-                        if theta_index == len(thetas) - 1:
-                            boundary_points.append(spot_point)
-
-            except StopIteration:
-                self._logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
-                                  "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
-                return
-            # todo: make sure this value is correct = make an unittests for spots
             spot_instance.points = np.array(spot_points)
             spot_instance.boundary = np.array(boundary_points)
             spot_instance.boundary_center = spot_points[0]
