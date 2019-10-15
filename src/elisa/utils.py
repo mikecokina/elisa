@@ -11,9 +11,9 @@ from pandas import DataFrame
 from scipy.spatial import distance_matrix as dstm
 from elisa import const as c, const
 from typing import Sized
-from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
 from matplotlib.cbook import flatten
+from elisa import umpy as up
 
 # auxiliary variable
 CUMULATIVE_TIME = 0.0
@@ -27,8 +27,8 @@ def polar_to_cartesian(radius, phi):
     :param phi: (numpy.)float, (numpy.)int
     :return: Tuple ((numpy.)float, (numpy.)float)
     """
-    x = radius * np.cos(phi)
-    y = radius * np.sin(phi)
+    x = radius * up.cos(phi)
+    y = radius * up.sin(phi)
     return x, y
 
 
@@ -104,18 +104,18 @@ def cartesian_to_spherical(points, degrees=False):
     r = np.linalg.norm(points, axis=1)
 
     np.seterr(divide='ignore', invalid='ignore')
-    phi = np.arcsin(points[:, 1] / (np.linalg.norm(points[:, :2], axis=1)))  # vypocet azimutalneho (rovinneho) uhla
-    phi[np.isnan(phi)] = 0
+    phi = up.arcsin(points[:, 1] / (np.linalg.norm(points[:, :2], axis=1)))  # vypocet azimutalneho (rovinneho) uhla
+    phi[up.isnan(phi)] = 0
 
-    theta = np.arccos(points[:, 2] / r)  # vypocet polarneho (elevacneho) uhla
-    theta[np.isnan(theta)] = 0
+    theta = up.arccos(points[:, 2] / r)  # vypocet polarneho (elevacneho) uhla
+    theta[up.isnan(theta)] = 0
     np.seterr(divide='print', invalid='print')
 
     signtest = points[:, 0] < 0
-    phi[signtest] = (np.pi - phi[signtest])
+    phi[signtest] = (const.PI - phi[signtest])
 
-    return_val = np.column_stack((r, phi, theta)) if not degrees else np.column_stack((r, np.degrees(phi),
-                                                                                       np.degrees(theta)))
+    return_val = np.column_stack((r, phi, theta)) if not degrees else np.column_stack((r, up.degrees(phi),
+                                                                                       up.degrees(theta)))
     return np.squeeze(return_val, axis=0) if np.shape(return_val)[0] == 1 else return_val
 
 
@@ -146,9 +146,9 @@ def spherical_to_cartesian(spherical_points):
     spherical_points = np.array(spherical_points)
     spherical_points = np.expand_dims(spherical_points, axis=0) if len(np.shape(spherical_points)) == 1 \
         else spherical_points
-    x = spherical_points[:, 0] * np.cos(spherical_points[:, 1]) * np.sin(spherical_points[:, 2])
-    y = spherical_points[:, 0] * np.sin(spherical_points[:, 1]) * np.sin(spherical_points[:, 2])
-    z = spherical_points[:, 0] * np.cos(spherical_points[:, 2])
+    x = spherical_points[:, 0] * up.cos(spherical_points[:, 1]) * up.sin(spherical_points[:, 2])
+    y = spherical_points[:, 0] * up.sin(spherical_points[:, 1]) * up.sin(spherical_points[:, 2])
+    z = spherical_points[:, 0] * up.cos(spherical_points[:, 2])
     points = np.column_stack((x, y, z))
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
@@ -180,8 +180,8 @@ def cylindrical_to_cartesian(cylindrical_points):
     cylindrical_points = np.array(cylindrical_points)
     cylindrical_points = np.expand_dims(cylindrical_points, axis=0) if len(np.shape(cylindrical_points)) == 1 \
         else cylindrical_points
-    x = cylindrical_points[:, 0] * np.cos(cylindrical_points[:, 1])
-    y = cylindrical_points[:, 0] * np.sin(cylindrical_points[:, 1])
+    x = cylindrical_points[:, 0] * up.cos(cylindrical_points[:, 1])
+    y = cylindrical_points[:, 0] * up.sin(cylindrical_points[:, 1])
     points = np.column_stack((x, y, cylindrical_points[:, 2]))
     return np.squeeze(points, axis=0) if np.shape(points)[0] == 1 else points
 
@@ -202,23 +202,23 @@ def arbitrary_rotation(theta, omega, vector, degrees=False, omega_normalized=Fal
     if not omega_normalized:
         omega = np.array(omega) / np.linalg.norm(np.array(omega))
 
-    theta = theta if not degrees else np.radians(theta)
+    theta = theta if not degrees else up.radians(theta)
 
-    matrix = np.arange(9, dtype=np.float).reshape((3, 3))
+    matrix = up.arange(9, dtype=np.float).reshape((3, 3))
 
-    matrix[0, 0] = (np.cos(theta)) + (omega[0] ** 2 * (1. - np.cos(theta)))
-    matrix[1, 0] = (omega[0] * omega[1] * (1. - np.cos(theta))) - (omega[2] * np.sin(theta))
-    matrix[2, 0] = (omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
+    matrix[0, 0] = (up.cos(theta)) + (omega[0] ** 2 * (1. - up.cos(theta)))
+    matrix[1, 0] = (omega[0] * omega[1] * (1. - up.cos(theta))) - (omega[2] * up.sin(theta))
+    matrix[2, 0] = (omega[1] * up.sin(theta)) + (omega[0] * omega[2] * (1. - up.cos(theta)))
 
-    matrix[0, 1] = (omega[2] * np.sin(theta)) + (omega[0] * omega[1] * (1. - np.cos(theta)))
-    matrix[1, 1] = (np.cos(theta)) + (omega[1] ** 2 * (1. - np.cos(theta)))
-    matrix[2, 1] = (- omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
+    matrix[0, 1] = (omega[2] * up.sin(theta)) + (omega[0] * omega[1] * (1. - up.cos(theta)))
+    matrix[1, 1] = (up.cos(theta)) + (omega[1] ** 2 * (1. - up.cos(theta)))
+    matrix[2, 1] = (- omega[0] * up.sin(theta)) + (omega[1] * omega[2] * (1. - up.cos(theta)))
 
-    matrix[0, 2] = (- omega[1] * np.sin(theta)) + (omega[0] * omega[2] * (1. - np.cos(theta)))
-    matrix[1, 2] = (omega[0] * np.sin(theta)) + (omega[1] * omega[2] * (1. - np.cos(theta)))
-    matrix[2, 2] = (np.cos(theta)) + (omega[2] ** 2 * (1. - np.cos(theta)))
+    matrix[0, 2] = (- omega[1] * up.sin(theta)) + (omega[0] * omega[2] * (1. - up.cos(theta)))
+    matrix[1, 2] = (omega[0] * up.sin(theta)) + (omega[1] * omega[2] * (1. - up.cos(theta)))
+    matrix[2, 2] = (up.cos(theta)) + (omega[2] ** 2 * (1. - up.cos(theta)))
 
-    return np.matmul(vector, matrix)
+    return up.matmul(vector, matrix)
 
 
 def around_axis_rotation(theta, vector, axis, inverse=False, degrees=False):
@@ -232,30 +232,29 @@ def around_axis_rotation(theta, vector, axis, inverse=False, degrees=False):
     :param degrees: bool; if True value theta is assumed to be in degrees
     :return: ndarray; rotated vector(s)
     """
-    matrix = np.arange(9, dtype=np.float).reshape((3, 3))
-    theta = theta if not degrees else np.radians(theta)
+    matrix = up.arange(9, dtype=np.float).reshape((3, 3))
+    theta = theta if not degrees else up.radians(theta)
     vector = np.array(vector)
 
     if axis == "x":
         matrix[0][0], matrix[1][0], matrix[2][0] = 1, 0, 0
-        matrix[0][1], matrix[1][1], matrix[2][1] = 0, np.cos(theta), - np.sin(theta)
-        matrix[0][2], matrix[1][2], matrix[2][2] = 0, np.sin(theta), np.cos(theta)
+        matrix[0][1], matrix[1][1], matrix[2][1] = 0, up.cos(theta), - up.sin(theta)
+        matrix[0][2], matrix[1][2], matrix[2][2] = 0, up.sin(theta), up.cos(theta)
         if inverse:
-            matrix[2][1], matrix[1][2] = np.sin(theta), - np.sin(theta)
+            matrix[2][1], matrix[1][2] = up.sin(theta), - up.sin(theta)
     if axis == "y":
-        matrix[0][0], matrix[1][0], matrix[2][0] = np.cos(theta), 0, np.sin(theta)
+        matrix[0][0], matrix[1][0], matrix[2][0] = up.cos(theta), 0, up.sin(theta)
         matrix[0][1], matrix[1][1], matrix[2][1] = 0, 1, 0
-        matrix[0][2], matrix[1][2], matrix[2][2] = - np.sin(theta), 0, np.cos(theta)
+        matrix[0][2], matrix[1][2], matrix[2][2] = - up.sin(theta), 0, up.cos(theta)
         if inverse:
-            matrix[0][2], matrix[2][0] = + np.sin(theta), - np.sin(theta)
+            matrix[0][2], matrix[2][0] = + up.sin(theta), - up.sin(theta)
     if axis == "z":
-        matrix[0][0], matrix[1][0], matrix[2][0] = np.cos(theta), - np.sin(theta), 0
-        matrix[0][1], matrix[1][1], matrix[2][1] = np.sin(theta), np.cos(theta), 0
+        matrix[0][0], matrix[1][0], matrix[2][0] = up.cos(theta), - up.sin(theta), 0
+        matrix[0][1], matrix[1][1], matrix[2][1] = up.sin(theta), up.cos(theta), 0
         matrix[0][2], matrix[1][2], matrix[2][2] = 0, 0, 1
         if inverse:
-            matrix[1][0], matrix[0][1] = + np.sin(theta), - np.sin(theta)
-    # return np.matmul(matrix, vector.T).T
-    return np.matmul(vector, matrix)
+            matrix[1][0], matrix[0][1] = + up.sin(theta), - up.sin(theta)
+    return up.matmul(vector, matrix)
 
 
 def average_spacing_cgal(data, neighbours=6):
@@ -458,7 +457,7 @@ def find_nearest_value_as_matrix(look_in, look_for):
     :return: Tuple[ndarray, ndarray]
     """
     val = np.array([look_for]) if np.isscalar(look_for) else look_for
-    dif = np.abs(val[:, np.newaxis] - look_in)
+    dif = up.abs(val[:, np.newaxis] - look_in)
     argmins = dif.argmin(axis=1)
     val = look_in[argmins]
     return val, argmins
@@ -473,8 +472,8 @@ def find_nearest_value(look_in, look_for):
     :return: List[look_for: float, int (index from look_for)]
     """
     look_in = np.array(look_in)
-    look_for = look_in[(np.abs(look_in - look_for)).argmin()]
-    index = np.where(look_in == look_for)[0][0]
+    look_for = look_in[(up.abs(look_in - look_for)).argmin()]
+    index = up.where(look_in == look_for)[0][0]
     return [look_for, index]
 
 
@@ -487,7 +486,7 @@ def find_surrounded_as_matrix(look_in, look_for):
     :param look_for: ndarray;
     :return: ndarray;
     """
-    if not ((look_in.min() <= look_for).all() and (look_for <= look_in.max()).all()):
+    if not (np.array(look_in.min() <= look_for).all() and np.array(look_for <= look_in.max()).all()):
         raise ValueError("At least one value in `look_for` is out of bound of `look_in`")
 
     dif = look_for[:, np.newaxis] - look_in
@@ -496,11 +495,11 @@ def find_surrounded_as_matrix(look_in, look_for):
     all_positive = np.all(positive_mask, axis=1)
     # add artificial sign change for right boundary value
     # switch 'fancy' indexing to integer index since in numpy, combined assigment can't be done by fancy indexing)
-    all_positive_inline = np.arange(0, len(look_for))[all_positive]
+    all_positive_inline = up.arange(0, len(look_for))[all_positive]
     positive_mask[all_positive_inline, -1] = False
     # find signs switching columns
-    sign_swith_mask = np.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
-    idx_array = np.ones(np.shape(dif), dtype=np.int) * np.arange(np.shape(look_in)[0])
+    sign_swith_mask = up.logical_xor(positive_mask[:, :-1], positive_mask[:, 1:])
+    idx_array = np.ones(np.shape(dif), dtype=np.int) * up.arange(np.shape(look_in)[0])
     idx_array = idx_array[:, :-1][sign_swith_mask]
     ret_matrix = np.column_stack((look_in[idx_array], look_in[idx_array + 1]))
     # consider on place value as not surounded (surounded by itself)
@@ -566,9 +565,9 @@ def calculate_cos_theta(normals, line_of_sight_vector):
     :param line_of_sight_vector: ndarray
     :return: ndarray
     """
-    return np.sum(np.multiply(normals, line_of_sight_vector[None, :]), axis=1) \
+    return np.sum(up.multiply(normals, line_of_sight_vector[None, :]), axis=1) \
         if np.ndim(line_of_sight_vector) == 1 \
-        else np.sum(np.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]), axis=2)
+        else np.sum(up.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]), axis=2)
 
 
 def calculate_cos_theta_los_x(normals):
@@ -610,9 +609,9 @@ def convert_gravity_acceleration_array(colormap, units):
         # for more information read python docs about __add__ and __iadd__ class methods
         colormap = colormap + 2
     elif units == 'SI':
-        colormap = np.power(10, colormap)
+        colormap = up.power(10, colormap)
     elif units == 'cgs':
-        colormap = np.power(10, colormap + 2)
+        colormap = up.power(10, colormap + 2)
     elif units == 'log_SI':
         pass
     return colormap
@@ -629,7 +628,7 @@ def cosine_similarity(a, b):
     :param b: ndarray
     :return: float
     """
-    return np.inner(a, b) / (norm(a) * norm(b))
+    return up.inner(a, b) / (norm(a) * norm(b))
 
 
 def is_empty(value):
@@ -654,7 +653,7 @@ def is_empty(value):
         return value.empty
     if isinstance(value, type(pd.NaT)):
         return True
-    if np.isnan(value):
+    if up.isnan(value):
         return True
     return False
 
@@ -668,7 +667,7 @@ def find_idx_of_nearest(array, values):
     :return: np.array with shape (N) that points to the closest values in `array`
     """
     array = np.asarray(array)
-    idx = (np.abs(array[np.newaxis, :] - values[:, np.newaxis])).argmin(axis=1)
+    idx = (up.abs(array[np.newaxis, :] - values[:, np.newaxis])).argmin(axis=1)
     return idx
 
 
@@ -687,17 +686,18 @@ def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     phi_rot = (phi - phi_rotation) % c.FULL_ARC
 
     # rotation around Y axis by `theta_rotation` angle
-    cos_phi = np.cos(phi_rot)
-    sin_theta = np.sin(theta)
-    sin_axis_theta = np.sin(theta_rotation)
-    cos_theta = np.cos(theta)
-    cos_axis_theta = np.cos(theta_rotation)
-    theta_new = np.arccos(cos_phi * sin_theta * sin_axis_theta + cos_theta * cos_axis_theta)
-    phi_new = np.arctan2(np.sin(phi_rot) * sin_theta, cos_phi * sin_theta * cos_axis_theta -
+    cos_phi = up.cos(phi_rot)
+    sin_theta = up.sin(theta)
+    sin_axis_theta = up.sin(theta_rotation)
+    cos_theta = up.cos(theta)
+    cos_axis_theta = up.cos(theta_rotation)
+    theta_new = up.arccos(cos_phi * sin_theta * sin_axis_theta + cos_theta * cos_axis_theta)
+    phi_new = up.arctan2(up.sin(phi_rot) * sin_theta, cos_phi * sin_theta * cos_axis_theta -
                          cos_theta * sin_axis_theta)
     return phi_new, theta_new
 
 
+# todo: write unit test to test_utils
 def spherical_harmonics_renormalization_constant(l, m):
     """
     Spherical harmonic functions are by default normalized using orthogonality of ALS where integral(Y(l,m)**2) over the
@@ -708,14 +708,13 @@ def spherical_harmonics_renormalization_constant(l, m):
     :return: float
     """
 
-    # TODO: write unit test to test_utils
-    def alp(xx, *args):
+    def alp(xx: float, *args) -> float:
         """
         Returns negative value from imaginary part of associated Legendre polynomial (ALP),
         used in minimizer to find global maximum of real part of spherical harmonics.
 
         :param xx: float - argument of function
-        :param args:
+        :param args: Tuple
 
         ::
 
@@ -724,22 +723,22 @@ def spherical_harmonics_renormalization_constant(l, m):
 
         :return: float; negative of absolute value of ALP
         """
-        l, m = args
-        return -abs(lpmv(m, l, xx))
+        l_mode, m_mode = args
+        return -abs(up.lpmv(m_mode, l_mode, xx))
 
     old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
-    ns = int(np.power(5, np.ceil((l - m) / 23)) * ((l - m) + 1))
-    output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=ns, finish=fmin, full_output=True)
+    ns = int(up.power(5, up.ceil((l - m) / 23)) * ((l - m) + 1))
+    output = np.array(brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=ns, finish=fmin, full_output=True))
     np.seterr(**old_settings)
 
     x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
-    result = abs(np.real(sph_harm(m, l, 0, np.arccos(x))))
+    result = abs(np.real(up.sph_harm(m, l, 0, up.arccos(x))))
     return 1.0 / result
 
 
 def calculate_equiv_radius(volume):
     """returns equivalent radius of a sphere with given volume"""
-    return np.power(3.0 * volume / (4.0 * const.PI), 1.0 / 3.0)
+    return up.power(3.0 * volume / (4.0 * const.PI), 1.0 / 3.0)
 
 
 def calculate_ellipsoid_volume(_a, _b, _c):
@@ -795,6 +794,6 @@ def calculate_volume_ellipse_approx(equator_points=None, meridian_points=None):
     :param meridian_points: numpy array
     :return: float
     """
-    areas = np.abs(const.PI * equator_points[:, 1] * meridian_points[:, 0])
-    return np.abs(np.trapz(areas, equator_points[:, 2]))
+    areas = up.abs(const.PI * equator_points[:, 1] * meridian_points[:, 0])
+    return up.abs(np.trapz(areas, equator_points[:, 2]))
 
