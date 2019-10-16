@@ -1,9 +1,7 @@
 import numpy as np
 
 from abc import ABCMeta, abstractmethod
-from scipy.optimize import fsolve
-
-from elisa import logger, utils, umpy as up
+from elisa import logger, utils
 from elisa.utils import is_empty
 from elisa.base.body import Body
 
@@ -73,69 +71,23 @@ class System(metaclass=ABCMeta):
     def transform_input(self, *args, **kwargs):
         pass
 
-    def has_pulsations(self):
-        return False
-
-    def has_spots(self):
-        return False
-
-    # fixme: reimplement, since star is not defined in general (currenlty not defined at all)
-    # def has_pulsations(self):
-    #     """
-    #     Resolve whether any of components has pulsation
-    #
-    #     :return: bool
-    #     """
-    #     retval = False
-    #     for component_instance in self.stars.values():
-    #         retval = retval | component_instance.has_pulsations()
-    #     return retval
-    #
-    # def has_spots(self):
-    #     """
-    #     Resolve whether any of components has spots
-    #
-    #     :return: bool
-    #     """
-    #     retval = False
-    #     for component_instance in self.stars.values():
-    #         retval = retval | component_instance.has_spots()
-    #     return retval
-
-    # fixme: use fsolver
-    def _solver(self, fn, condition, *args, **kwargs):
+    def init_properties(self, **kwargs):
         """
-        Will solve `fn` implicit function taking args by using scipy.optimize.fsolve method and return
-        solution if satisfy conditional function.
-
-        :param fn: function
-        :param condition: function
-        :param args: tuple
-        :return: float, bool
+        Setup system properties from input.
+        :param kwargs: Dict; all supplied input properties
+        :return:
         """
-        # precalculation of auxiliary values
-        solution, use = np.nan, False
-        scipy_solver_init_value = np.array([1. / 10000.])
-        try:
-            solution, _, ier, mesg = fsolve(fn, scipy_solver_init_value, full_output=True, args=args, xtol=1e-10)
-            if ier == 1 and not up.isnan(solution[0]):
-                solution = solution[0]
-                use = True if 1e15 > solution > 0 else False
-            else:
-                self._logger.warning(f'solution in implicit solver was not found, cause: {mesg}')
-        except Exception as e:
-            self._logger.debug(f"attempt to solve function {fn.__name__} finished w/ exception: {str(e)}")
-            use = False
-
-        args_to_use = kwargs.get('original_kwargs', args)
-        return (solution, use) if condition(solution, *args_to_use) else (np.nan, False)
+        self._logger.debug(f"initialising properties of system {self.name}, values: {kwargs}")
+        for kwarg in kwargs:
+            setattr(self, kwarg, kwargs[kwarg])
 
     @staticmethod
-    def _object_params_validity_check(components, mandatory_kwargs):
+    def object_params_validity_check(components, mandatory_kwargs):
         """
         Checking if star instances have all additional atributes set properly.
 
-        :param mandatory_kwargs: list
+        :param components: str
+        :param mandatory_kwargs: List
         :return:
         """
         for component, component_instance in components.items():
@@ -153,12 +105,28 @@ class System(metaclass=ABCMeta):
                 raise ValueError(f'Mising argument(s): {", ".join(missing_kwargs)} '
                                  f'in {component} component Star class')
 
-    def init_properties(self, **kwargs):
+    @property
+    @abstractmethod
+    def components(self):
+        pass
+
+    def has_pulsations(self):
         """
-        Setup system properties from input
-        :param kwargs: Dict; all supplied input properties
-        :return:
+        Resolve whether any of components has pulsation
+        :return: bool
         """
-        self._logger.debug(f"initialising properties of system {self.name}, values: {kwargs}")
-        for kwarg in kwargs:
-            setattr(self, kwarg, kwargs[kwarg])
+        retval = False
+        for component_instance in self.components.values():
+            retval = retval | component_instance.has_pulsations()
+        return retval
+
+    def has_spots(self):
+        """
+        Resolve whether any of components has spots
+
+        :return: bool
+        """
+        retval = False
+        for component_instance in self.components.values():
+            retval = retval | component_instance.has_spots()
+        return retval

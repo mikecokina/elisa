@@ -185,5 +185,16 @@ class TransformStarParametersTestCase(ElisaTestCase):
         self.assertTrue("Invalid surface potential" in str(context.exception))
 
     @staticmethod
+    def test_gravity_darkening():
+        valid_values = [0.1, 0.0, 1]
+        obtained = np.round([StarParameters.gravity_darkening(val) for val in valid_values], 4)
+        assert_array_equal(valid_values, obtained)
+
+    def test_gravity_darkening_raise(self):
+        with self.assertRaises(Exception) as context:
+            StarParameters.gravity_darkening(-0.1)
+        self.assertTrue("is out of range" in str(context.exception))
+
+    @staticmethod
     def test_polar_log_g():
         pass

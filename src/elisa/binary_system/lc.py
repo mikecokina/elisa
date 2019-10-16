@@ -3,8 +3,9 @@ import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
 from elisa import utils, const, atm, ld
+from elisa.binary_system.container import OrbitalSupplements
 from elisa.pulse import pulsations
-from elisa.binary_system import geo, build
+from elisa.binary_system import geo, build, utils as bsutils
 from elisa.conf import config
 from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.const import BINARY_POSITION_PLACEHOLDER
@@ -29,13 +30,13 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     matplotlib.path.Path; path of points boundary of infront component projection
     :return: numpy.array
     """
-    pypex_hull = geo.hull_to_pypex_poly(hull)
-    pypex_faces = geo.faces_to_pypex_poly(points[faces])
+    pypex_hull = bsutils.hull_to_pypex_poly(hull)
+    pypex_faces = bsutils.faces_to_pypex_poly(points[faces])
     # it is possible to None happens in intersection, tkae care about it latter
-    pypex_intersection = geo.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
+    pypex_intersection = bsutils.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
 
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to loss in precission
-    pypex_polys_surface_area = np.array(geo.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
+    pypex_polys_surface_area = np.array(bsutils.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
 
     inplane_points_3d = np.concatenate((points.T, [[0.0] * len(points)])).T
     inplane_surface_area = utils.triangle_areas(triangles=faces, points=inplane_points_3d)
@@ -546,7 +547,7 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
     appx_one = _eval_approximation_one(self, phases)
 
     if appx_one:
-        orbital_supplements = geo.OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
+        orbital_supplements = OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
         orbital_supplements.sort(by='distance')
         rel_d_radii = _compute_rel_d_radii(self, orbital_supplements)
         new_geometry_mask = _resolve_object_geometry_update(self.has_spots(), orbital_supplements.size(), rel_d_radii)
@@ -866,7 +867,7 @@ def _integrate_eccentric_lc_appx_two(self, phases, orbital_supplements, new_geom
             _incont_lc_point(container_body, ld_cfs, normal_radiance, body_orb_pos)
             used_phases += [body_orb_pos.phase]
 
-        if (not geo.OrbitalSupplements.is_empty(mirror)) and (mirror_orb_pos.phase not in used_phases):
+        if (not OrbitalSupplements.is_empty(mirror)) and (mirror_orb_pos.phase not in used_phases):
             container_mirror, normal_radiance, ld_cfs = _onpos_params(mirror_orb_pos)
             _incont_lc_point(container_mirror, ld_cfs, normal_radiance, mirror_orb_pos)
             used_phases += [mirror_orb_pos.phase]
@@ -1083,7 +1084,7 @@ def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr,
     :param supplement_arr: numpy.array
     :param tol: float
     :param as_empty: numpy.array; e.g. [np.nan, np.nan] depends on shape of reduced_arr item
-    :return: elisa.binary_system.geo.OrbitalSupplements
+    :return: elisa.binary_system.container.OrbitalSupplements
     """
     if as_empty is None:
         as_empty = [np.nan] * 5
@@ -1096,7 +1097,7 @@ def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr,
     twin_in_reduced = np.array([-1] * len(ids_of_closest_reduced_values))
     twin_in_reduced[is_supplement] = ids_of_closest_reduced_values[is_supplement]
 
-    supplements = geo.OrbitalSupplements()
+    supplements = OrbitalSupplements()
 
     for id_supplement, id_reduced in enumerate(twin_in_reduced):
         args = (reduced_arr[id_reduced], supplement_arr[id_supplement]) \

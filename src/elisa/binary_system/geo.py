@@ -4,12 +4,13 @@ from elisa import utils
 from elisa.binary_system import utils as bsutils
 from elisa import const
 from elisa.binary_system import static
+from elisa.binary_system.container import StarContainer
 from elisa.utils import is_empty
 
 from copy import deepcopy
-from pypex.poly2d.polygon import Polygon
-from collections.abc import Sequence
-from matplotlib import pyplot as plt
+
+
+from elisa.binary_system.static import darkside_filter, plane_projection
 
 
 def get_critical_inclination(binary, components_distance):
@@ -61,43 +62,6 @@ def get_eclipse_boundaries(binary, components_distance):
     else:
         return np.array([0, const.PI, const.PI, const.FULL_ARC])
 
-
-def darkside_filter(line_of_sight, normals):
-    """
-    Return indices for visible faces defined by given normals.
-    Function assumes that `line_of_sight` ([1, 0, 0]) and `normals` are already normalized to one.
-
-    :param line_of_sight: numpy.array
-    :param normals: numpy.array
-    :return: numpy.array
-    """
-    # todo: resolve self shadowing in case of W UMa
-    # calculating normals utilizing the fact that normals and line of sight vector [1, 0, 0] are already normalized
-    if (line_of_sight == np.array([1.0, 0.0, 0.0])).all():
-        cosines = utils.calculate_cos_theta_los_x(normals=normals)
-    else:
-        cosines = utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
-    # recovering indices of points on near-side (from the point of view of observer)
-    return np.arange(np.shape(normals)[0])[cosines > 0]
-
-
-def plane_projection(points, plane, keep_3d=False):
-    """
-    Function projects 3D points into given plane.
-
-    :param keep_3d: bool; if True, the dimensions of the array is kept the same, with given column equal to zero
-    :param points: numpy.array
-    :param plane: str; ('xy', 'yz', 'zx')
-    :return: numpy.array
-    """
-    rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
-    if not keep_3d:
-        indices_to_keep = [0, 1, 2]
-        del indices_to_keep[rm_index]
-        return points[:, indices_to_keep]
-    in_plane = deepcopy(points)
-    in_plane[:, rm_index] = 0.0
-    return in_plane
 
 
 def calculate_spot_longitudes(binary_instance, phases, component="all"):
@@ -159,217 +123,9 @@ def surface_area_coverage(size, visible, visible_coverage, partial=None, partial
     return coverage
 
 
-def faces_to_pypex_poly(t_hulls):
-    """
-    Convert all faces defined as numpy.array to pypex Polygon class instance
-
-    :param t_hulls: List[numpy.array]
-    :return: List
-    """
-    return [Polygon(t_hull, _validity=False) for t_hull in t_hulls]
-
-
-def pypex_poly_hull_intersection(pypex_faces_gen, pypex_hull: Polygon):
-    """
-    Resolve intersection of polygons defined in `pypex_faces_gen` with polyogn `pypex_hull`.
-
-    :param pypex_faces_gen: List[pypex.poly2d.polygon.Plygon]
-    :param pypex_hull: pypex.poly2d.polygon.Plygon
-    :return: List[pypex.poly2d.polygon.Plygon]
-    """
-    return [pypex_hull.intersection(poly) for poly in pypex_faces_gen]
-
-
-def pypex_poly_surface_area(pypex_polys_gen):
-    """
-    Compute surface areas of pypex.poly2d.polygon.Plygon's.
-
-    :param pypex_polys_gen: List[pypex.poly2d.polygon.Plygon]
-    :return: List[float]
-    """
-    return [poly.surface_area() if poly is not None else 0.0 for poly in pypex_polys_gen]
-
-
-def hull_to_pypex_poly(hull):
-    """
-    Convert convex polygon defined by points in List or numpy.array to pypex.poly2d.polygon.Plygon.
-
-    :param hull: List or numpy.array
-    :return: pypex.poly2d.polygon.Plygon
-    """
-    return Polygon(hull, _validity=False)
-
-
 def adjust_distance(points, old_distance, new_distance):
     points[:, 0] = points[:, 0] - old_distance + new_distance
     return points
-
-
-class EasyObject(object):
-    def __init__(self, points, normals, indices, faces=None, temperatures=None, log_g=None, coverage=None, rals=None,
-                 face_centres=None, metallicity=None):
-        """
-        None default gives a capability to be used without such parameters
-
-        :param points: numpy.array
-        :param normals: numpy.array
-        :param indices: List
-        :param faces: numpy.array
-        :param temperatures: numpy.array
-        :param log_g: numpy.array
-        :param coverage: numpy.array
-        """
-        self._points = deepcopy(points)
-        self._normals = deepcopy(normals)
-        self.indices = deepcopy(indices)
-        self.coverage = deepcopy(coverage)
-        self._faces = deepcopy(faces)
-        self._log_g = deepcopy(log_g)
-        self._temperatures = deepcopy(temperatures)
-        self._rals = deepcopy(rals)
-        self._face_centres = deepcopy(face_centres)
-        self._metallicity = deepcopy(metallicity)
-
-    def serialize(self):
-        """
-        Return all class properties at once.
-
-        :return: Tuple
-        """
-        return self.points, self.normals, self.indices, self.faces, self.coverage, self.rals, self.face_centres
-
-    def copy(self):
-        """
-        Copy self instance
-
-        :return: self; copied self instance
-        """
-        return deepcopy(self)
-
-    @property
-    def points(self):
-        """
-        Return points of instance.
-
-        :return: numpy.array
-        """
-        return self._points
-
-    @points.setter
-    def points(self, points):
-        """
-        Set points.
-
-        :param points: numpy.array
-        :return:
-        """
-        self._points = points
-
-    @property
-    def normals(self):
-        """
-        Get normals.
-
-        :return: numpy.array
-        """
-        return self._normals
-
-    @normals.setter
-    def normals(self, normals):
-        """
-        Set normals.
-
-        :param normals: numpy.array
-        :return:
-        """
-        self._normals = normals
-
-    @property
-    def faces(self):
-        """
-        Get faces.
-
-        :return: numpy.array
-        """
-        return self._faces
-
-    @property
-    def temperatures(self):
-        """
-        Get temperatures.
-
-        :return: numpy.array
-        """
-        return self._temperatures
-
-    @temperatures.setter
-    def temperatures(self, temperatures):
-        """
-        set temperatures
-        :param temperatures: array
-        :return:
-        """
-        self._temperatures = temperatures
-
-    @property
-    def log_g(self):
-        """
-        Get log_g
-
-        :return: numpy.array
-        """
-        return self._log_g
-
-    @property
-    def rals(self):
-        """
-        Get renormalized associated Legendre polynomials (rALS)
-        :return: array of complex arrays for each face
-        """
-        return self._rals
-
-    @rals.setter
-    def rals(self, rals):
-        """
-        Set renormalized associated Legendre polynomials (rALS)
-        :param rals:
-        :return:
-        """
-        self._rals = rals
-
-    @property
-    def face_centres(self):
-        """
-        Get face centres
-        :return: array
-        """
-        return self._face_centres
-
-    @face_centres.setter
-    def face_centres(self, centres):
-        """
-        Set face centres
-        :param centres: array
-        :return:
-        """
-        self._face_centres = centres
-
-    @property
-    def metallicity(self):
-        """
-        Get star metallicity
-        :return: array
-        """
-        return self._metallicity
-
-    @metallicity.setter
-    def metallicity(self, metallicity):
-        """
-        Set star metallicity
-        :param metallicity: float
-        :return:
-        """
-        self._metallicity = metallicity
 
 
 class SystemOrbitalPosition(object):
@@ -605,7 +361,7 @@ class SingleOrbitalPositionContainer(object):
         :return:
         """
         points, normals, faces, temp, log_g, rals, centres = self.get_flatten(value)
-        self._primary = EasyObject(points, normals, None,
+        self._primary = StarContainer(points, normals, None,
                                    faces=faces, temperatures=temp, log_g=log_g,
                                    rals=rals, face_centres=centres, metallicity=value.metallicity)
 
@@ -627,7 +383,7 @@ class SingleOrbitalPositionContainer(object):
         :return:
         """
         points, normals, faces, temp, log_g, rals, centres = self.get_flatten(value)
-        self._secondary = EasyObject(points, normals, None,
+        self._secondary = StarContainer(points, normals, None,
                                      faces=faces, temperatures=temp, log_g=log_g,
                                      rals=rals, face_centres=centres, metallicity=value.metallicity)
 
@@ -694,126 +450,3 @@ class SingleOrbitalPositionContainer(object):
         :return:
         """
         pass
-
-
-class OrbitalSupplements(Sequence):
-    """
-    !!! BEWARE, THIS IS MUTABLE !!!
-
-
-    """
-
-    def __getitem__(self, index):
-        return self.body[index], self.mirror[index]
-
-    def __init__(self, body=None, mirror=None):
-        if body is None and mirror is None:
-            self._body = np.array([])
-            self._mirror = np.array([])
-
-        else:
-            self._body = np.array(body)
-            self._mirror = np.array(mirror)
-
-    def append(self, body, mirror):
-        self._body = np.vstack((self._body, body)) if not is_empty(self._body) else np.array([body])
-        self._mirror = np.vstack((self._mirror, mirror)) if not is_empty(self._mirror) else np.array([mirror])
-
-    @property
-    def body(self):
-        return self._body
-
-    @property
-    def mirror(self):
-        return self._mirror
-
-    @property
-    def body_defined(self):
-        return self.not_empty(self.body)
-
-    @property
-    def mirror_defined(self):
-        return self.not_empty(self.mirror)
-
-    @staticmethod
-    def is_empty(val):
-        return np.all(np.isnan(val))
-
-    @classmethod
-    def not_empty(cls, arr):
-        """
-        Return values where supplied array is not empty.
-
-        :param arr: numpy.array
-        :return: numpy.array
-        """
-        return arr[list(map(lambda x: not cls.is_empty(x), arr))]
-
-    def sort(self, by='distance'):
-        """
-        Sort by given quantity.
-        This method sorts bodies and mirrors based on quantity chosen on input.
-        Sorting of mirrors is based on sorting of bodies.
-
-        :param by: str
-        :return: self
-        """
-
-        if by == 'index':
-            by = 0
-        elif by == 'distance' or by == 'radius':
-            by = 1
-        else:
-            raise ValueError("Invalid value of `by`")
-
-        sort_index = np.argsort(self.body[:, by])
-        self._body = self.body[sort_index]
-        self._mirror = self.mirror[sort_index]
-
-        return self
-
-    def size(self):
-        return self.__len__()
-
-    def to_orbital_position(self):
-        pass
-
-    def plot_bodies(self):
-        self._plot(self.body_defined)
-
-    def plot_mirrors(self):
-        self._plot(self.mirror_defined, marker="x")
-
-    def plot(self):
-        self._plot(self.body_defined, self.mirror_defined)
-
-    @classmethod
-    def _plot(cls, arr1, arr2=None, marker="o"):
-
-        x, y = utils.polar_to_cartesian(arr1[:, 1], arr1[:, 2] - (np.pi / 2))
-        plt.scatter(x, y, marker=marker)
-
-        if not is_empty(arr2):
-            x, y = utils.polar_to_cartesian(arr2[:, 1], arr2[:, 2] - (np.pi / 2))
-            plt.scatter(x, y, marker="x")
-
-        plt.grid(True)
-        plt.axes().set_aspect('equal')
-        plt.show()
-
-    def __iter__(self):
-        for body, mirror in zip(self.body, self.mirror):
-            yield body, mirror
-
-    def __len__(self):
-        return len(self.body)
-
-    def __eq__(self, other):
-        return np.all(self._body == other.body) & \
-               np.all((self.mirror == other.mirror)[~np.all(np.isnan(other.mirror) & np.isnan(self.mirror), axis=1)])
-
-    def __str__(self):
-        return f"{self.__class__.__name__}\nbodies: {self.body}\nmirrors: {self._mirror}"
-
-    def __repr__(self):
-        return self.__str__()

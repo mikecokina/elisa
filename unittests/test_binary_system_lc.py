@@ -5,9 +5,9 @@ from astropy import units as u
 from numpy.testing import assert_array_equal
 from unittest import skip
 
-from elisa import const as c, utils
+from elisa import const as c
 from elisa.binary_system import lc
-from elisa.binary_system.geo import OrbitalSupplements
+from elisa.binary_system.container import OrbitalSupplements
 from elisa.conf import config
 from elisa.observer.observer import Observer
 from unittests.utils import prepare_binary_system, load_light_curve, normalize_lc_for_unittests, ElisaTestCase

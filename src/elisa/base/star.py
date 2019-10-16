@@ -5,10 +5,10 @@ from elisa.pulse.mode import PulsationMode
 from elisa import utils, const as c
 from elisa import umpy as up
 from elisa.base.transform import StarParameters
+from elisa.utils import is_empty
 
 from copy import copy
 from scipy.optimize import brute, fmin
-from elisa.utils import is_empty
 
 
 class Star(Body):
@@ -29,7 +29,11 @@ class Star(Body):
         Return critical surface potential (If used such potential in binary system,
         Star fills exactly Roche lobe in periastron).
         This parameter makes sence only if star is part of binary system.
-
+    
+    :param suface_potential: float;
+    :param metallicity: float;
+    :param polar_log_g: float;
+    :param gravity_darkening: float;
 
     """
     MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening']
@@ -48,8 +52,8 @@ class Star(Body):
         self.surface_potential = np.nan
         self.metallicity = np.nan
         self.polar_log_g = np.nan
-
-
+        self.gravity_darkening = np.nan
+        self._pulsations = dict()
 
 
 
@@ -57,17 +61,14 @@ class Star(Body):
 
         self.log_g = np.array([])
         self.side_radius = np.nan
-        self._gravity_darkening = np.nan
         self._potential_gradient_magnitudes = np.nan
         self._polar_potential_gradient_magnitude = np.nan
-        self._pulsations = dict()
 
         self.init_parameters(**kwargs)
 
     def transform_input(self, **kwargs):
         """
         Transform and validate input kwargs.
-
         :param kwargs: Dict
         :return: Dict
         """
@@ -95,12 +96,11 @@ class Star(Body):
     def pulsations(self):
         """
         Return pulsation modes for given Star instance.
-
         :return: Dict:
 
         ::
 
-        {index: PulsationMode}
+            {index: PulsationMode}
         """
         return self._pulsations
 
@@ -108,45 +108,35 @@ class Star(Body):
     def pulsations(self, pulsations):
         """
         Set pulsation mode for given Star instance defined by dict.
-
         :param pulsations: Dict:
 
         ::
 
-        [{"l": <int>, "m": <int>, "amplitude": <float>, "frequency": <float>}, ...]
+            [{"l": <int>, "m": <int>, "amplitude": <float>, "frequency": <float>}, ...]
 
         :return:
         """
         if pulsations:
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
 
-    @property
-    def gravity_darkening(self):
-        """
-        Returns value of gravity darkening.
 
-        :return: float
-        """
-        return self._gravity_darkening
 
-    @gravity_darkening.setter
-    def gravity_darkening(self, gravity_darkening):
-        """
-        Setter for gravity darkening.
-        Accepts values of gravity darkening in range (0, 1)
 
-        :param gravity_darkening: float
-        """
-        if 0 <= gravity_darkening <= 1:
-            self._gravity_darkening = np.float64(gravity_darkening)
-        else:
-            raise ValueError(f'Parameter gravity darkening = {gravity_darkening} is out of range (0, 1)')
+
+
+
+
+
+
+
+
+
+
 
     @property
     def potential_gradient_magnitudes(self):
         """
         Returns array of absolute values of potential gradients for each face of surface.
-
         :return: ndarray
         """
         return self._potential_gradient_magnitudes
@@ -165,7 +155,6 @@ class Star(Body):
     def polar_potential_gradient_magnitude(self):
         """
         Returns value of magnitude of polar potential gradient.
-
         :return: float
         """
         return self._polar_potential_gradient_magnitude
@@ -174,7 +163,6 @@ class Star(Body):
     def polar_potential_gradient_magnitude(self, potential_gradient_magnitude):
         """
         Set magnituded of polar potential gradient.
-
         :param potential_gradient_magnitude: float
         :return:
         """
@@ -203,11 +191,10 @@ class Star(Body):
     def calculate_polar_effective_temperature(self):
         """
         Returns polar effective temperature.
-
         :return: float
         """
-        return self.t_eff * np.power(np.sum(self.areas) /
-                                     np.sum(self.areas * np.power(self.potential_gradient_magnitudes /
+        return self.t_eff * up.power(np.sum(self.areas) /
+                                     np.sum(self.areas * up.power(self.potential_gradient_magnitudes /
                                                                   self.polar_potential_gradient_magnitude,
                                                                   self.gravity_darkening)),
                                      0.25)
@@ -216,7 +203,6 @@ class Star(Body):
         """
         Calculates effective temperatures for given gradient magnitudes.
         If None is given, star surface t_effs are calculated.
-
         :param gradient_magnitudes:
         :return:
         """
@@ -228,7 +214,7 @@ class Star(Body):
                 gradient_magnitudes = self.potential_gradient_magnitudes[:self.base_symmetry_faces_number]
 
         t_eff_polar = self.calculate_polar_effective_temperature()
-        t_eff = t_eff_polar * np.power(gradient_magnitudes / self.polar_potential_gradient_magnitude,
+        t_eff = t_eff_polar * up.power(gradient_magnitudes / self.polar_potential_gradient_magnitude,
                                        0.25 * self.gravity_darkening)
 
         return t_eff if self.spots else t_eff[self.face_symmetry_vector]
@@ -237,8 +223,6 @@ class Star(Body):
         """
         soon deprecated
         Function returns temperature map with added temperature perturbations caused by pulsations.
-
-        :param time: float
         :param points: ndarray - if `None` Star.points are used
         :param faces: ndarray - if `None` Star.faces are used
         :param temperatures: ndarray - if `None` Star.temperatures
@@ -249,7 +233,6 @@ class Star(Body):
             """
             Returns negative value from imaginary part of associated Legendre polynomial (ALP),
             used in minimizer to find global maximum of real part of spherical harmonics.
-
             :param x: float - argument of function
             :param args:
 
@@ -266,7 +249,7 @@ class Star(Body):
 
         def spherical_harmonics_renormalization_constant(l: int, m: int):
             old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
-            ns = int(np.power(5, np.ceil((l-m)/23))*((l-m)+1))
+            ns = int(up.power(5, np.ceil((l-m)/23))*((l-m)+1))
             output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=ns, finish=fmin, full_output=True)
             np.seterr(**old_settings)
 
@@ -317,7 +300,6 @@ class Star(Body):
         """
         In case of spot presence, renormalize temperatures to fit effective temperature again,
         since spots disrupt effective temperature of Star as entity.
-
         :return:
         """
         # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
@@ -332,7 +314,7 @@ class Star(Body):
             for spot_index, spot in self.spots.items():
                 current_flux += np.sum(spot.areas * spot.temperatures)
 
-        coefficient = np.power(desired_flux_value / current_flux, 0.25)
+        coefficient = up.power(desired_flux_value / current_flux, 0.25)
         self._logger.debug(f'surface temperature map renormalized by a factor {coefficient}')
         self.temperatures *= coefficient
         if self.spots:

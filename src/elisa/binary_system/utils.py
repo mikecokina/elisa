@@ -1,5 +1,8 @@
 import numpy as np
 
+from pypex.poly2d.polygon import Polygon
+from elisa import umpy as up
+
 
 def get_flaten_properties(component):
     """
@@ -22,14 +25,14 @@ def get_flaten_properties(component):
 
     if isinstance(component.spots, (dict,)):
         for idx, spot in component.spots.items():
-            faces = np.concatenate((faces, spot.faces + len(points)), axis=0)
-            points = np.concatenate((points, spot.points), axis=0)
-            normals = np.concatenate((normals, spot.normals), axis=0)
-            temperatures = np.concatenate((temperatures, spot.temperatures), axis=0)
-            log_g = np.concatenate((log_g, spot.log_g), axis=0)
+            faces = up.concatenate((faces, spot.faces + len(points)), axis=0)
+            points = up.concatenate((points, spot.points), axis=0)
+            normals = up.concatenate((normals, spot.normals), axis=0)
+            temperatures = up.concatenate((temperatures, spot.temperatures), axis=0)
+            log_g = up.concatenate((log_g, spot.log_g), axis=0)
             for mode_idx, mode in component.pulsations.items():
-                rals[mode_idx] = np.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
-            centres = np.concatenate((centres, spot.face_centres), axis=0)
+                rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
+            centres = up.concatenate((centres, spot.face_centres), axis=0)
 
     return points, normals, faces, temperatures, log_g, rals, centres
 
@@ -67,3 +70,44 @@ def calculate_phase(time, period, t0, offset=0.5):
     :return: array
     """
     return np.mod((time - t0 + offset * period) / period, 1.0) - offset
+
+
+def faces_to_pypex_poly(t_hulls):
+    """
+    Convert all faces defined as numpy.array to pypex Polygon class instance
+
+    :param t_hulls: List[numpy.array]
+    :return: List
+    """
+    return [Polygon(t_hull, _validity=False) for t_hull in t_hulls]
+
+
+def pypex_poly_hull_intersection(pypex_faces_gen, pypex_hull: Polygon):
+    """
+    Resolve intersection of polygons defined in `pypex_faces_gen` with polyogn `pypex_hull`.
+
+    :param pypex_faces_gen: List[pypex.poly2d.polygon.Plygon]
+    :param pypex_hull: pypex.poly2d.polygon.Plygon
+    :return: List[pypex.poly2d.polygon.Plygon]
+    """
+    return [pypex_hull.intersection(poly) for poly in pypex_faces_gen]
+
+
+def pypex_poly_surface_area(pypex_polys_gen):
+    """
+    Compute surface areas of pypex.poly2d.polygon.Plygon's.
+
+    :param pypex_polys_gen: List[pypex.poly2d.polygon.Plygon]
+    :return: List[float]
+    """
+    return [poly.surface_area() if poly is not None else 0.0 for poly in pypex_polys_gen]
+
+
+def hull_to_pypex_poly(hull):
+    """
+    Convert convex polygon defined by points in List or numpy.array to pypex.poly2d.polygon.Plygon.
+
+    :param hull: List or numpy.array
+    :return: pypex.poly2d.polygon.Plygon
+    """
+    return Polygon(hull, _validity=False)

@@ -201,6 +201,12 @@ class StarParameters(BodyParameters):
         """
         return quantity_transform(value, units.LOG_ACCELERATION_UNIT, WHEN_FLOAT64)
 
+    @staticmethod
+    def gravity_darkening(value):
+        if value > 1 or value < 0:
+            raise ValueError(f'Parameter gravity darkening = {value} is out of range <0, 1>')
+        return np.float64(value)
+
     @classmethod
     def transform_star_input(cls, **kwargs):
         return {key: getattr(cls, key)(val) if hasattr(cls, key) else val for key, val in kwargs.items()}

@@ -5,9 +5,10 @@ from astropy import units as u
 from numpy.testing import assert_array_equal
 from pypex.poly2d import polygon
 
-from elisa import const as c, umpy as up
+from elisa import const as c, umpy as up, const
 from elisa.base.star import Star
-from elisa.binary_system import geo
+from elisa.binary_system import geo, utils as bsutils, static
+from elisa.binary_system.container import OrbitalSupplements
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.utils import is_empty
@@ -15,6 +16,11 @@ from unittests.utils import ElisaTestCase
 
 
 class SupportMethodsTestCase(ElisaTestCase):
+    def test_compute_filling_factor(self):
+        potential, l_points = 100.0, [2.4078, 2.8758, 2.5772]
+        expected = -325.2652
+        obtained = round(static.compute_filling_factor(potential, l_points), 4)
+        self.assertEqual(expected, obtained)
 
     def test_darkside_filter(self):
         normals = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])
@@ -51,10 +57,10 @@ class SupportMethodsTestCase(ElisaTestCase):
                 self.spots = {0: MockSpot()}
                 self.synchronicity = s
 
-        class MockStarNoSpot(object):
-            def __init__(self, s):
-                self.spots = {}
-                self.synchronicity = s
+        # class MockStarNoSpot(object):
+        #     def __init__(self, s):
+        #         self.spots = {}
+        #         self.synchronicity = s
 
         class MockBinaryInstance(object):
             def __init__(self):
@@ -95,7 +101,7 @@ class SupportMethodsTestCase(ElisaTestCase):
     def test_faces_to_pypex_poly(self):
         points = np.array([[1, 1], [0.3, 0.1], [-2, -3]])
         faces = np.array([points[[0, 1, 2]]])
-        obtained = geo.faces_to_pypex_poly(faces)[0]
+        obtained = bsutils.faces_to_pypex_poly(faces)[0]
         expected = polygon.Polygon(points)
         self.assertTrue(obtained == expected)
 
@@ -103,20 +109,20 @@ class SupportMethodsTestCase(ElisaTestCase):
     def test_pypex_poly_surface_area():
         points = np.array([[1, 1], [0.3, 0.1], [-2, -3]])
         polygons = [None, polygon.Polygon(points), None]
-        obtained = np.round(geo.pypex_poly_surface_area(polygons), 5)
+        obtained = np.round(bsutils.pypex_poly_surface_area(polygons), 5)
         expected = [0.0, 0.05, 0.0]
         assert_array_equal(obtained, expected)
 
     def test_hull_to_pypex_poly(self):
         hull = np.array([[0, 0], [0, 1], [1, 1]])
-        obtained = geo.hull_to_pypex_poly(hull)
+        obtained = bsutils.hull_to_pypex_poly(hull)
         self.assertTrue(isinstance(obtained, polygon.Polygon))
 
 
 class SystemOrbitalPositionTestCase(ElisaTestCase):
     orbital_motion = [
-        c.BINARY_POSITION_PLACEHOLDER(1, 1.0, np.pi / 2.0, 0.0, 0.0),
-        c.BINARY_POSITION_PLACEHOLDER(2, 1.0, c.FULL_ARC * (3. / 4.), np.pi, 0.0)
+        c.BINARY_POSITION_PLACEHOLDER(1, 1.0, const.PI / 2.0, 0.0, 0.0),
+        c.BINARY_POSITION_PLACEHOLDER(2, 1.0, c.FULL_ARC * (3. / 4.), const.PI, 0.0)
     ]
 
     params_combination = {
@@ -163,7 +169,7 @@ class SystemOrbitalPositionTestCase(ElisaTestCase):
     def test_initialize_SystemOrbitalPosition(self):
         bs = self._prepare_system()
         bs.build(components_distance=1.0)
-        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, np.pi / 2.0, self.orbital_motion)
+        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, const.PI / 2.0, self.orbital_motion)
         k_attrs = ["points", "normals", "faces", "face_centres", "log_g", "temperatures"]
 
         for component in config.BINARY_COUNTERPARTS:
@@ -189,7 +195,7 @@ class SystemOrbitalPositionTestCase(ElisaTestCase):
         bs = self._prepare_system()
         bs.build(components_distance=1.0)
 
-        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, np.pi / 2.0, self.orbital_motion)
+        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, const.PI / 2.0, self.orbital_motion)
 
         initial_data = serialize_geo_attrs()
 
@@ -209,7 +215,7 @@ class SystemOrbitalPositionTestCase(ElisaTestCase):
         bs.secondary.points = test_values.copy()
         bs.secondary.normals = test_values.copy()
 
-        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, np.pi / 4.0, self.orbital_motion)
+        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, const.PI / 4.0, self.orbital_motion)
 
         expected = [np.array([[0.7071, 0., -0.7071],
                               [-0.3536, 1., 2.4749]]),
@@ -224,8 +230,8 @@ class SystemOrbitalPositionTestCase(ElisaTestCase):
         bs = self._prepare_system()
         bs.build(components_distance=1.0)
 
-        orbital_motion = [c.BINARY_POSITION_PLACEHOLDER(1, 1.0, np.pi / 2.0, np.pi, 0.0)]
-        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, np.pi / 2.0, orbital_motion)
+        orbital_motion = [c.BINARY_POSITION_PLACEHOLDER(1, 1.0, const.PI / 2.0, const.PI, 0.0)]
+        position = geo.SystemOrbitalPosition(bs.primary, bs.secondary, const.PI / 2.0, orbital_motion)
         position = position.darkside_filter()
         nxt = next(iter(position))
 
@@ -238,7 +244,7 @@ class OrbitalSupplementsTestCase(ElisaTestCase):
         bodies = [[1.0, 10], [2.0, 20], [3.0, 30]]
         mirrors = [[1.0, 10], [np.nan, np.nan], [3.0, 30]]
 
-        supplements = geo.OrbitalSupplements(bodies, mirrors)
+        supplements = OrbitalSupplements(bodies, mirrors)
 
         assert_array_equal(bodies, supplements.body)
         assert_array_equal(mirrors, supplements.mirror)
@@ -249,7 +255,7 @@ class OrbitalSupplementsTestCase(ElisaTestCase):
         bodies = [[1.0, 10], [2.0, 20], [3.0, 30]]
         mirrors = [[1.0, 10], [np.nan, np.nan], [3.0, 30]]
 
-        supplements = geo.OrbitalSupplements(bodies, mirrors)
+        supplements = OrbitalSupplements(bodies, mirrors)
         supplements.append(*ad)
 
         bodies.append(ad[0])
@@ -259,25 +265,25 @@ class OrbitalSupplementsTestCase(ElisaTestCase):
         assert_array_equal(mirrors, supplements.mirror)
 
     def test_append_of_zero_value(self):
-        supplements = geo.OrbitalSupplements()
+        supplements = OrbitalSupplements()
         supplements.append([1, 1], np.array([10, 10]))
         self.assertTrue(len(supplements.body.shape) == 2)
 
     def test_is_empty(self):
         arr = [[np.nan, np.nan], [np.nan, np.nan]]
-        self.assertTrue(geo.OrbitalSupplements.is_empty(arr))
+        self.assertTrue(OrbitalSupplements.is_empty(arr))
 
         arr = [[6, 10], [np.nan, np.nan]]
-        self.assertFalse(geo.OrbitalSupplements.is_empty(arr))
+        self.assertFalse(OrbitalSupplements.is_empty(arr))
 
     def test_not_empty(self):
         arr = np.array([[10, 10], [np.nan, np.nan], [20, 12], [np.nan, np.nan]])
-        not_empty = geo.OrbitalSupplements.not_empty(arr)
+        not_empty = OrbitalSupplements.not_empty(arr)
         self.assertTrue(np.all(np.array([[10, 10], [20, 12]]) == not_empty))
 
     def test_defined_only(self):
         arr = np.array([[10, 10], [np.nan, np.nan], [20, 12], [np.nan, np.nan]])
-        supplements = geo.OrbitalSupplements(arr, arr)
+        supplements = OrbitalSupplements(arr, arr)
         not_empty = supplements.body_defined
         self.assertTrue(np.all(np.array([[10, 10], [20, 12]]) == not_empty))
 
@@ -288,12 +294,12 @@ class OrbitalSupplementsTestCase(ElisaTestCase):
         bodies = [[2.0, 20], [1.0, 10], [4.0, 30], [3.0, 40]]
         mirrors = [[1.0, 10], [0.0, 0.0], [3.0, 30], [100.0, 5.0]]
 
-        expected = geo.OrbitalSupplements(
+        expected = OrbitalSupplements(
             [[1., 10.], [2., 20.], [3., 40.], [4., 30.]],
             [[0., 0.], [1., 10.], [100., 5.], [3., 30.]]
         )
 
-        supplements = geo.OrbitalSupplements(bodies, mirrors)
+        supplements = OrbitalSupplements(bodies, mirrors)
         obtained = supplements.sort(by="index")
 
         self.assertTrue(obtained == expected)
@@ -302,12 +308,12 @@ class OrbitalSupplementsTestCase(ElisaTestCase):
         bodies = [[2.0, 20], [1.0, 10], [4.0, 30], [3.0, 40]]
         mirrors = [[1.0, 10], [0.0, 0.0], [3.0, 30], [100.0, 5.0]]
 
-        expected = geo.OrbitalSupplements(
+        expected = OrbitalSupplements(
             [[1., 10.], [2., 20.], [4., 30.], [3., 40.]],
             [[0., 0.], [1., 10.], [3., 30.], [100., 5.]]
         )
 
-        supplements = geo.OrbitalSupplements(bodies, mirrors)
+        supplements = OrbitalSupplements(bodies, mirrors)
         obtained = supplements.sort(by="distance")
 
         self.assertTrue(obtained == expected)

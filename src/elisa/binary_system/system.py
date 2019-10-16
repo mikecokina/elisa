@@ -19,6 +19,7 @@ from elisa.orbit import Orbit
 from elisa.base.system import System
 from elisa.base import error
 from elisa import umpy as up
+from elisa.opt.fsolver import fsolver
 
 
 class BinarySystem(System):
@@ -54,7 +55,7 @@ class BinarySystem(System):
         # initial validity checks
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
-        self._object_params_validity_check(dict(primary=primary, secondary=secondary), self.COMPONENT_MANDATORY_KWARGS)
+        self.object_params_validity_check(dict(primary=primary, secondary=secondary), self.COMPONENT_MANDATORY_KWARGS)
         kwargs = self.transform_input(**kwargs)
 
         super(BinarySystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
@@ -68,6 +69,7 @@ class BinarySystem(System):
         self.primary = primary
         self.secondary = secondary
         self.mass_ratio = self.secondary.mass / self.primary.mass
+        self._components = dict(primary=self.primary, secondary=self.secondary)
 
         # default values of properties
         self.orbit = None
@@ -99,6 +101,14 @@ class BinarySystem(System):
 
         # adjust and setup discretization factor if necessary
         self.setup_discretisation_factor()
+
+    @property
+    def components(self):
+        """
+        Return components object in Dict.
+        :return: Dict[str, elisa.base.Star]
+        """
+        return self._components
 
     def init(self):
         """
@@ -230,8 +240,6 @@ class BinarySystem(System):
                 getattr(self, component), "critical_surface_potential",
                 self.critical_potential(component=component, components_distance=1.0 - self.eccentricity)
             )
-
-
 
 
 
@@ -455,7 +463,7 @@ class BinarySystem(System):
                 args1, use = (components_distance, radial_vector[1], radial_vector[2]), False
                 args2 = (precalc_fn(*args1), component_instance.surface_potential)
                 kwargs = {'original_kwargs': args1}
-                solution, use = self._solver(potential_fn, solver_condition, *args2, **kwargs)
+                solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
 
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from
@@ -474,7 +482,7 @@ class BinarySystem(System):
                 args1, use = (components_distance, lon, lat + alpha), False
                 args2 = (precalc_fn(*args1), component_instance.surface_potential)
                 kwargs = {'original_kwargs': args1}
-                solution, use = self._solver(potential_fn, solver_condition, *args2, **kwargs)
+                solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
 
                 if not use:
                     # in case of spots, each point should be usefull, otherwise remove spot from

@@ -9,6 +9,7 @@ from elisa.single_system import build
 from elisa.single_system import static
 from elisa.single_system.plot import Plot
 from elisa.single_system.animation import Animation
+from elisa.opt.fsolver import fsolver
 
 
 class SingleSystem(System):
@@ -24,7 +25,7 @@ class SingleSystem(System):
         utils.invalid_kwarg_checker(kwargs, SingleSystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(SingleSystem.MANDATORY_KWARGS, kwargs, instance_of=SingleSystem)
         self.stars = dict(star=star)
-        self._object_params_validity_check(self.stars, self.STAR_MANDATORY_KWARGS)
+        self.object_params_validity_check(self.stars, self.STAR_MANDATORY_KWARGS)
 
         super(SingleSystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
 
@@ -163,7 +164,7 @@ class SingleSystem(System):
 
             args, use = (radial_vector[2],), False
 
-            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+            solution, use = fsolver(self.potential_fn, solver_condition, *args)
 
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
@@ -180,7 +181,7 @@ class SingleSystem(System):
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st ring of spot
             args, use = (lat + alpha,), False
-            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+            solution, use = fsolver(self.potential_fn, solver_condition, *args)
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
@@ -215,7 +216,7 @@ class SingleSystem(System):
                         spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
                         args = (spherical_delta_vector[2],)
-                        solution, use = self._solver(self.potential_fn, solver_condition, *args)
+                        solution, use = fsolver(self.potential_fn, solver_condition, *args)
 
                         if not use:
                             self.star.remove_spot(spot_index=spot_index)
@@ -235,7 +236,7 @@ class SingleSystem(System):
 
             boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
             boundary_com = utils.cartesian_to_spherical(boundary_com)
-            solution, _ = self._solver(self.potential_fn, solver_condition, *(boundary_com[2],))
+            solution, _ = fsolver(self.potential_fn, solver_condition, *(boundary_com[2],))
             boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
 
             # first point will be always barycenter of boundary
@@ -633,7 +634,7 @@ class SingleSystem(System):
 
             args, use = (radial_vector[2],), False
 
-            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+            solution, use = fsolver(self.potential_fn, solver_condition, *args)
 
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
@@ -650,7 +651,7 @@ class SingleSystem(System):
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st ring of spot
             args, use = (lat + alpha,), False
-            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+            solution, use = fsolver(self.potential_fn, solver_condition, *args)
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
@@ -687,7 +688,7 @@ class SingleSystem(System):
                         spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
                         args = (spherical_delta_vector[2],)
-                        solution, use = self._solver(self.potential_fn, solver_condition, *args)
+                        solution, use = fsolver(self.potential_fn, solver_condition, *args)
 
                         if not use:
                             self.star.remove_spot(spot_index=spot_index)
