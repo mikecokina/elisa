@@ -1,5 +1,7 @@
 import numpy as np
+
 from scipy import special
+from astropy import units as u
 
 # numpy
 degrees = np.degrees
@@ -21,9 +23,13 @@ arange = np.arange
 abs = np.abs
 ceil = np.ceil
 where = np.where
+invert = np.invert
+concatenate = np.concatenate
 
 logical_xor = np.logical_xor
 
-# cipy
+# scipy
 sph_harm = special.sph_harm
 lpmv = special.lpmv
+
+# astropy units

@@ -796,4 +796,3 @@ def calculate_volume_ellipse_approx(equator_points=None, meridian_points=None):
     """
     areas = up.abs(const.PI * equator_points[:, 1] * meridian_points[:, 0])
     return up.abs(np.trapz(areas, equator_points[:, 2]))
-

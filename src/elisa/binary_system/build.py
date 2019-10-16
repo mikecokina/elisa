@@ -38,7 +38,7 @@ def build_surface_gravity(self, component="all", components_distance=None):
         component_instance.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(
             component=_component, components_distance=components_distance)
 
-        component_instance._log_g = np.log10(
+        component_instance.log_g = np.log10(
             gravity_scalling_factor * component_instance.potential_gradient_magnitudes)
 
         if component_instance.has_spots():

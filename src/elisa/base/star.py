@@ -2,12 +2,12 @@ import numpy as np
 
 from elisa.base.body import Body
 from elisa.pulse.mode import PulsationMode
-from elisa import utils, const as c, units as e_units
+from elisa import utils, const as c
+from elisa import umpy as up
+from elisa.base.transform import StarParameters
 
 from copy import copy
-from scipy.special import sph_harm, lpmv
 from scipy.optimize import brute, fmin
-from astropy import units as u
 from elisa.utils import is_empty
 
 
@@ -40,26 +40,38 @@ class Star(Body):
     def __init__(self, name=None, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
         super(Star, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
+        kwargs = self.transform_input(**kwargs)
 
         # default values of properties
-        self.log_g = np.array([])
         self.filling_factor = np.nan
         self.critical_surface_potential = np.nan
+        self.surface_potential = np.nan
+        self.metallicity = np.nan
+        self.polar_log_g = np.nan
 
-        self._surface_potential = np.nan
-        self._backward_radius = np.nan
-        self._polar_radius = np.nan
+
+
+
+
+
+
+        self.log_g = np.array([])
+        self.side_radius = np.nan
         self._gravity_darkening = np.nan
-        self._forward_radius = np.nan
-        self._side_radius = np.nan
-        self._polar_log_g = np.nan
-        self._equatorial_radius = np.nan
         self._potential_gradient_magnitudes = np.nan
         self._polar_potential_gradient_magnitude = np.nan
         self._pulsations = dict()
-        self._metallicity = np.nan
 
         self.init_parameters(**kwargs)
+
+    def transform_input(self, **kwargs):
+        """
+        Transform and validate input kwargs.
+
+        :param kwargs: Dict
+        :return: Dict
+        """
+        return StarParameters.transform_star_input(**kwargs)
 
     def init_parameters(self, **kwargs):
         """
@@ -78,59 +90,6 @@ class Star(Body):
         :return: bool
         """
         return len(self._pulsations) > 0
-
-    @property
-    def polar_log_g(self):
-        """
-        Returns logarithm of polar surface gravity in SI.
-
-        :return: float
-        """
-        return self._polar_log_g
-
-    @polar_log_g.setter
-    def polar_log_g(self, polar_log_g):
-        """
-        Setter for polar surface gravity.
-        If unit is not specified in astropy.units format, value in cgs unit is assumed (it means log(g) in cgs).
-
-        :param polar_log_g: float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(polar_log_g, u.quantity.Quantity):
-            self._polar_log_g = np.float64(polar_log_g.to(e_units.LOG_ACCELERATION_UNIT))
-        elif isinstance(polar_log_g, (int, np.int, float, np.float)):
-            self._polar_log_g = np.float64(polar_log_g)
-        else:
-            raise TypeError('Input of variable `polar_log_g` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-        self._logger.debug(f"setting property polar_log_g "
-                           f"of class instance {self.__class__.__name__} to {self._polar_log_g}")
-
-    @property
-    def metallicity(self):
-        """
-        Returns metallicity of the star, measured as log10(N_Fe/N_H).
-        :return: float
-        """
-        return self._metallicity
-
-    @metallicity.setter
-    def metallicity(self, metallicity):
-        """
-        Set metalicity. Float number is assumed to be in [M/H] (cgs) units.
-
-        :param metallicity: float
-        :return:
-        """
-        if isinstance(metallicity, (int, np.int, float, np.float)):
-            self._metallicity = metallicity
-        else:
-            raise TypeError('Input of variable `metallicity` is not (np.)int or (np.)float '
-                            'instance.')
-        self._logger.debug(f"setting property metalllicity of class instance "
-                           f"{self.__class__.__name__} to {self._metallicity}")
 
     @property
     def pulsations(self):
@@ -162,61 +121,6 @@ class Star(Body):
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
 
     @property
-    def surface_potential(self):
-        """
-        Returns surface potential of Star.
-
-        :return: float
-        """
-        return self._surface_potential
-
-    @surface_potential.setter
-    def surface_potential(self, potential):
-        """
-        Setter for surface potential.
-
-        :param potential: float
-        """
-        self._surface_potential = np.float64(potential)
-
-    @property
-    def backward_radius(self):
-        """
-        Returns value of backward radius of an object in default unit.
-
-        :return: float
-        """
-        return self._backward_radius
-
-    @property
-    def forward_radius(self):
-        """
-        Returns value of forward radius of an object in default unit.
-        Returns None if it doesn't exist (in case of W UMa binary systems)
-
-        :return: float
-        """
-        return self._forward_radius
-
-    @property
-    def polar_radius(self):
-        """
-        Returns value of polar radius of an object in default unit.
-
-        :return: float
-        """
-        return self._polar_radius
-
-    @property
-    def side_radius(self):
-        """
-        Returns value of side radius of an object in default unit.
-
-        :return: float
-        """
-        return self._side_radius
-
-    @property
     def gravity_darkening(self):
         """
         Returns value of gravity darkening.
@@ -237,15 +141,6 @@ class Star(Body):
             self._gravity_darkening = np.float64(gravity_darkening)
         else:
             raise ValueError(f'Parameter gravity darkening = {gravity_darkening} is out of range (0, 1)')
-
-    @property
-    def equatorial_radius(self):
-        """
-        Returns equatorial radius in default units.
-
-        :return: float
-        """
-        return self._equatorial_radius
 
     @property
     def potential_gradient_magnitudes(self):
@@ -366,8 +261,8 @@ class Star(Body):
             :return: float; negative of absolute value of ALP
             """
             l, m = args
-            return -abs(lpmv(m, l, x))
-            # return -abs(np.real(sph_harm(m, l, x[0], x[1])))
+            return -abs(up.lpmv(m, l, x))
+            # return -abs(np.real(up.sph_harm(m, l, x[0], x[1])))
 
         def spherical_harmonics_renormalization_constant(l: int, m: int):
             old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
@@ -376,7 +271,7 @@ class Star(Body):
             np.seterr(**old_settings)
 
             x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
-            result = abs(np.real(sph_harm(m, l, 0, np.arccos(x))))
+            result = abs(np.real(up.sph_harm(m, l, 0, np.arccos(x))))
             return 1.0 / result
 
         if not is_empty(points):
@@ -412,7 +307,7 @@ class Star(Body):
 
             # generating of renormalised spherical harmonics (maximum value on sphere equuals to 1)
             constant = spherical_harmonics_renormalization_constant(pulsation.l, pulsation.m)
-            spherical_harmonics = constant * np.real(sph_harm(pulsation.m, pulsation.l, phi, theta))
+            spherical_harmonics = constant * np.real(up.sph_harm(pulsation.m, pulsation.l, phi, theta))
 
             temperatures += pulsation.amplitude * spherical_harmonics
 
@@ -444,32 +339,32 @@ class Star(Body):
             for spot_index, spot in self.spots.items():
                 spot.temperatures *= coefficient
 
-    def properties_serializer(self):
-        body_props = ['mass', 't_eff', 'points', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
-                      'polar_radius', 'areas', 'discretization_factor', 'face_centres', 'spots',
-                      'point_symmetry_vector', 'inverse_point_symmetry_matrix', 'base_symmetry_points_number',
-                      'face_symmetry_vector', 'base_symmetry_faces_number', 'base_symmetry_points',
-                      'base_symmetry_faces']
-        star_props = ['surface_potential', 'backward_radius', 'polar_radius', 'gravity_darkening', 'synchronicity',
-                      'forward_radius', 'side_radius', 'polar_log_g', 'equatorial_radius',
-                      'critical_surface_potential', 'potential_gradient_magnitudes',
-                      'polar_potential_gradient_magnitude', 'pulsations', 'filling_factor', 'metallicity', 'log_g']
-
-        properties_list = body_props + star_props
-        return StarProperties(**{prop: copy(getattr(self, prop)) for prop in properties_list})
-
-
-class StarProperties(object):
-    def __init__(self, **kwargs):
-        self.properties = kwargs
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-    def to_dict(self):
-        return self.properties
-
-    def __getitem__(self, item):
-        return getattr(self, item)
-
-    def __str__(self):
-        return str(self.to_dict())
+#     def properties_serializer(self):
+#         body_props = ['mass', 't_eff', 'points', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
+#                       'polar_radius', 'areas', 'discretization_factor', 'face_centres', 'spots',
+#                       'point_symmetry_vector', 'inverse_point_symmetry_matrix', 'base_symmetry_points_number',
+#                       'face_symmetry_vector', 'base_symmetry_faces_number', 'base_symmetry_points',
+#                       'base_symmetry_faces']
+#         star_props = ['surface_potential', 'backward_radius', 'polar_radius', 'gravity_darkening', 'synchronicity',
+#                       'forward_radius', 'side_radius', 'polar_log_g', 'equatorial_radius',
+#                       'critical_surface_potential', 'potential_gradient_magnitudes',
+#                       'polar_potential_gradient_magnitude', 'pulsations', 'filling_factor', 'metallicity', 'log_g']
+#
+#         properties_list = body_props + star_props
+#         return StarProperties(**{prop: copy(getattr(self, prop)) for prop in properties_list})
+#
+#
+# class StarProperties(object):
+#     def __init__(self, **kwargs):
+#         self.properties = kwargs
+#         for k, v in kwargs.items():
+#             setattr(self, k, v)
+#
+#     def to_dict(self):
+#         return self.properties
+#
+#     def __getitem__(self, item):
+#         return getattr(self, item)
+#
+#     def __str__(self):
+#         return str(self.to_dict())

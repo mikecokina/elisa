@@ -9,17 +9,16 @@ from astropy import units as u
 from scipy import optimize
 from scipy.spatial.qhull import Delaunay
 
-from elisa.binary_system.transform import transform_binary_input
+from elisa.binary_system.transform import BinarySystemParameters
 from elisa.conf import config
 from elisa import utils, const, ld, units
-from elisa.binary_system import mp, geo
-from elisa.binary_system import static, build, lc, rv
-from elisa.binary_system import utils as bsutils
+from elisa.binary_system import static, build, lc, rv, mp, geo, utils as bsutils
 from elisa.binary_system.plot import Plot
 from elisa.binary_system.animation import Animation
 from elisa.orbit import Orbit
 from elisa.base.system import System
 from elisa.base import error
+from elisa import umpy as up
 
 
 class BinarySystem(System):
@@ -32,13 +31,17 @@ class BinarySystem(System):
     :param orbit: elisa.orbit.Orbit; Instance of Orbit.
     :param mass_ratio: float; Returns mass ratio m2/m1 of binary system components.
     :param semi_major_axis: float; Returns semi major axis of the system in default distance unit.
-
+    :param period: float; Period of binary star system.
+    :param eccentricity: float; Eccentricity of binary system.
+    :param argument_of_periastron: float; Argument of periastron of binary sytem
+    :param primary_minimum_time: float;
+    :param phase_shift: float; Returns phase shift of the primary eclipse minimum with respect to ephemeris
+    true_phase is used during calculations, where: true_phase = phase + phase_shift.
 
 
     """
 
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity',
-                        'argument_of_periastron', 'phase_shift']
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'phase_shift']
     OPTIONAL_KWARGS = ['phase_shift', 'additional_light', 'primary_minimum_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
@@ -52,7 +55,7 @@ class BinarySystem(System):
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
         self._object_params_validity_check(dict(primary=primary, secondary=secondary), self.COMPONENT_MANDATORY_KWARGS)
-        kwargs = transform_binary_input(**kwargs)
+        kwargs = self.transform_input(**kwargs)
 
         super(BinarySystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
 
@@ -67,16 +70,12 @@ class BinarySystem(System):
         self.mass_ratio = self.secondary.mass / self.primary.mass
 
         # default values of properties
-        self.morphology = ""
         self.orbit = None
         self.period = np.nan
         self.eccentricity = np.nan
         self.argument_of_periastron = np.nan
         self.primary_minimum_time = 0.0
-
-        self._phase_shift = 0.0
-        self._periastron_phase = np.nan
-        self._inclination = np.nan
+        self.phase_shift = 0.0
 
         # set attributes and test whether all parameters were initialized
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
@@ -87,37 +86,29 @@ class BinarySystem(System):
         self.semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
-        self._init_orbit()
+        self.init_orbit()
 
         # setup critical surface potentials in periastron
         self._logger.debug("setting up critical surface potentials of components in periastron")
-        self._setup_periastron_critical_potential()
+        self.setup_periastron_critical_potential()
 
-        # binary star morphology estimation
         self._logger.debug("setting up morphological classification of binary system")
-        self._setup_morphology()
+        self.morphology = self.compute_morphology()
 
-        # polar radius of both component in periastron
         self.setup_components_radii(components_distance=self.orbit.periastron_distance)
 
-        # if secondary discretization factor was not set, it will be now with respect to primary component
-        if not self.secondary.kwargs.get('discretization_factor'):
-            self.secondary.discretization_factor = \
-                self.primary.discretization_factor * self.primary.polar_radius / self.secondary.polar_radius * u.rad
-            self._logger.info(f"setting discretization factor of secondary component to "
-                              f"{np.degrees(self.secondary.discretization_factor):.2f} as a "
-                              f"according to discretization factor of the primary component ")
+        # adjust and setup discretization factor if necessary
+        self.setup_discretisation_factor()
 
     def init(self):
         """
-        Function to reinitialize BinarySystem class instance after
-        changing parameter(s) of binary system using setters.
+        Function to reinitialize BinarySystem class instance after changing parameter(s) of binary system.
 
         :return:
         """
         self.__init__(primary=self.primary, secondary=self.secondary, **self._kwargs_serializer())
 
-    def _init_orbit(self):
+    def init_orbit(self):
         """
         Orbit class in binary system.
 
@@ -134,31 +125,7 @@ class BinarySystem(System):
 
         :return: bool
         """
-
         return (self.primary.synchronicity == 1) & (self.secondary.synchronicity == 1)
-
-    @property
-    def phase_shift(self):
-        """
-        Returns phase shift of the primary eclipse minimum with respect to ephemeris
-        true_phase is used during calculations, where: true_phase = phase + phase_shift.
-
-        :return: float
-        """
-        return self._phase_shift
-
-    @phase_shift.setter
-    def phase_shift(self, phase_shift):
-        """
-        Setter for phase shift of the primary eclipse minimum with respect to ephemeris
-        this will cause usage of true_phase during calculations, where: true_phase = phase + phase_shift.
-
-        :param phase_shift: float
-        :return:
-        """
-        self._phase_shift = phase_shift
-        self._logger.debug(f"setting property phase_shift of class instance "
-                           f"{self.__class__.__name__} to {self._phase_shift}")
 
     def calculate_semi_major_axis(self):
         """
@@ -166,15 +133,122 @@ class BinarySystem(System):
 
         :return: float
         """
-        period = np.float64((self._period * units.PERIOD_UNIT).to(u.s))
+        period = np.float64((self.period * units.PERIOD_UNIT).to(u.s))
         return (const.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * const.PI ** 2)) ** (1.0 / 3)
+
+    def compute_morphology(self):
+        """
+        Setup binary star class property `morphology`.
+        It find out morphology based on current system parameters
+        and setup `morphology` parameter of `self `system instance.
+
+        :return: str
+        """
+        __PRECISSION__ = 1e-8
+        __MORPHOLOGY__ = None
+        if (self.primary.synchronicity == 1 and self.secondary.synchronicity == 1) and self.eccentricity == 0.0:
+            lp = self.libration_potentials()
+
+            self.primary.filling_factor = static.compute_filling_factor(self.primary.surface_potential, lp)
+            self.secondary.filling_factor = static.compute_filling_factor(self.secondary.surface_potential, lp)
+
+            if ((1 > self.secondary.filling_factor > 0) or (1 > self.primary.filling_factor > 0)) and \
+                    (abs(self.primary.filling_factor - self.secondary.filling_factor) > __PRECISSION__):
+                raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
+            if self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
+                raise ValueError("Non-Physical system: primary_filling_factor or "
+                                 "secondary_filling_factor is greater then 1\n"
+                                 "Filling factor is obtained as following:"
+                                 "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
+
+            if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or \
+                    (self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__) or \
+                    (abs(self.primary.filling_factor) < __PRECISSION__ and abs(self.secondary.filling_factor)
+                     < __PRECISSION__):
+                __MORPHOLOGY__ = "semi-detached"
+            elif self.primary.filling_factor < 0 and self.secondary.filling_factor < 0:
+                __MORPHOLOGY__ = "detached"
+            elif 1 >= self.primary.filling_factor > 0:
+                __MORPHOLOGY__ = "over-contact"
+            elif self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
+                raise ValueError("Non-Physical system: potential of components is to low.")
+
+        else:
+            self.primary.filling_factor, self.secondary.filling_factor = None, None
+            if (abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
+                    (abs(
+                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
+                __MORPHOLOGY__ = "double-contact"
+
+            elif (not (not (abs(
+                    self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) or not (
+                    self.secondary.surface_potential > self.secondary.critical_surface_potential))) or \
+                    ((abs(
+                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__)
+                     and (self.primary.surface_potential > self.primary.critical_surface_potential)):
+                __MORPHOLOGY__ = "semi-detached"
+
+            elif (self.primary.surface_potential > self.primary.critical_surface_potential) and (
+                    self.secondary.surface_potential > self.secondary.critical_surface_potential):
+                __MORPHOLOGY__ = "detached"
+
+            else:
+                raise ValueError("Non-Physical system. Change stellar parameters.")
+        return __MORPHOLOGY__
+
+    def setup_discretisation_factor(self):
+        """
+        If secondary discretization factor was not set, it will be now with respect to primary component.
+
+        :return:
+        """
+        if not self.secondary.kwargs.get('discretization_factor'):
+            self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
+                                                    / self.secondary.polar_radius * u.rad).value
+            self._logger.info(f"setting discretization factor of secondary component to "
+                              f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
+                              f"according to discretization factor of the primary component ")
+
+    def transform_input(self, **kwargs):
+        """
+        Transform and validate input kwargs.
+
+        :param kwargs: Dict
+        :return: Dict
+        """
+        return BinarySystemParameters.transform_binary_input(**kwargs)
+
+    def setup_periastron_critical_potential(self):
+        """
+        Compute and set critical surface potential for both components.
+        Critical surface potential is for componetn defined as potential when component fill its Roche lobe.
+
+        :return:
+        """
+        for component in config.BINARY_COUNTERPARTS:
+            setattr(
+                getattr(self, component), "critical_surface_potential",
+                self.critical_potential(component=component, components_distance=1.0 - self.eccentricity)
+            )
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def setup_components_radii(self, components_distance):
         """
         Setup component radii.
         Use methods to calculate polar, side, backward and if not W UMa also
         forward radius and assign to component instance.
-
         :param components_distance: float
         :return:
         """
@@ -187,12 +261,137 @@ class BinarySystem(System):
                 self._logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
                                    f'for {component} component')
 
-                param = f'_{"_".join(str(fn.__name__).split("_")[1:])}'
+                param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
                 radius = fn(component, components_distance)
                 setattr(component_instance, param, radius)
                 if self.morphology != 'over-contact':
                     radius = self.calculate_forward_radius(component, components_distance)
-                    setattr(component_instance, '_forward_radius', radius)
+                    setattr(component_instance, 'forward_radius', radius)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def calculate_radius(self, *args, surface_potential=None):
+        """
+        Function calculates radius of the star in given direction of arbitrary direction vector (in spherical
+        coordinates) starting from the centre of the star.
+
+        :param surface_potential: None or float; if None compoent surface potential is assumed
+        :param args: Tuple;
+
+        ::
+
+            (
+                component: str - `primary` or `secondary`,
+                components_distance: float - distance between components in SMA units,
+                phi: float - longitudonal angle of direction vector measured from point under L_1 in
+                             positive direction (in radians)
+                omega: float - latitudonal angle of direction vector measured from north pole (in radians)
+             )
+        :return: float; radius
+        """
+        if args[0] == 'primary':
+            fn = self.potential_primary_fn
+            precalc = self.pre_calculate_for_potential_value_primary
+            component_instance = getattr(self, 'primary')
+        elif args[0] == 'secondary':
+            fn = self.potential_secondary_fn
+            precalc = self.pre_calculate_for_potential_value_secondary
+            component_instance = getattr(self, 'secondary')
+        else:
+            raise ValueError(f'Invalid value of `component` argument {args[0]}. \nExpecting `primary` or `secondary`.')
+
+        surface_potential = component_instance.surface_potential if surface_potential is None else surface_potential
+
+        scipy_solver_init_value = np.array([args[1] / 1e4])
+        argss = (precalc(*args[1:]), surface_potential)
+        solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value,
+                                                    full_output=True, args=argss, xtol=1e-10)
+
+        # check for regular solution
+        if ier == 1 and not np.isnan(solution[0]) and 30 >= solution[0] >= 0:
+            return solution[0]
+        else:
+            if 0 < solution[0] < 1.0:
+                return solution[0]
+            else:
+                raise ValueError(f'Invalid value of radius {solution} was calculated.')
+
+    def calculate_polar_radius(self, component, components_distance, surface_potential=None):
+        """
+        Calculates polar radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
+
+        :param surface_potential: None or float; if None compoent surface potential is assumed
+        :param component: str; `primary` or `secondary`
+        :param components_distance: float
+        :return: float; polar radius
+        """
+        args = (component, components_distance, 0.0, 0.0)
+        return self.calculate_radius(*args, surface_potential=surface_potential)
+
+    def calculate_side_radius(self, component, components_distance, surface_potential=None):
+        """
+        Calculates side radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
+
+        :param surface_potential: None or float; if None compoent surface potential is assumed
+        :param component: str; `primary` or `secondary`
+        :param components_distance: float
+        :return: float; side radius
+        """
+        args = (component, components_distance, const.HALF_PI, const.HALF_PI)
+        return self.calculate_radius(*args, surface_potential=surface_potential)
+
+    def calculate_backward_radius(self, component, components_distance, surface_potential=None):
+        """
+        Calculates backward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
+
+        :param component: str; `primary` or `secondary`
+        :param components_distance: float
+        :param surface_potential: None or float; if None compoent surface potential is assumed
+        :return: float; polar radius
+        """
+
+        args = (component, components_distance, const.PI, const.HALF_PI)
+        return self.calculate_radius(*args, surface_potential=surface_potential)
+
+    def calculate_forward_radius(self, component, components_distance, surface_potential=None):
+        """
+        Calculates forward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
+        :warning: Do not use in case of over-contact systems.
+
+        :param component: str; `primary` or `secondary`
+        :param components_distance: float
+        :param surface_potential: None or float; if None compoent surface potential is assumed
+        :return: float
+        """
+
+        args = (component, components_distance, 0.0, const.HALF_PI)
+        return self.calculate_radius(*args, surface_potential=surface_potential)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def _evaluate_spots_mesh(self, components_distance, component="all"):
         """
@@ -359,82 +558,6 @@ class BinarySystem(System):
             else:
                 serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
-
-    def _setup_periastron_critical_potential(self):
-        """
-        Compute and set critical surface potential for both components.
-        Critical surface potential is for componetn defined as potential when component fill its Roche lobe.
-
-        :return:
-        """
-        for component in config.BINARY_COUNTERPARTS:
-            setattr(
-                getattr(self, component), "critical_surface_potential",
-                self.critical_potential(component=component, components_distance=1.0 - self.eccentricity)
-            )
-
-    def _setup_morphology(self):
-        """
-        Setup binary star class property `morphology`.
-        It find out morphology based on current system parameters
-        and setup `morphology` parameter of `self `system instance.
-
-        :return:
-        """
-        __PRECISSION__ = 1e-8
-        __SETUP_VALUE__ = None
-        if (self.primary.synchronicity == 1 and self.secondary.synchronicity == 1) and self.eccentricity == 0.0:
-            lp = self.libration_potentials()
-
-            self.primary.filling_factor = static.compute_filling_factor(self.primary.surface_potential, lp)
-            self.secondary.filling_factor = static.compute_filling_factor(self.secondary.surface_potential, lp)
-
-            if ((1 > self.secondary.filling_factor > 0) or (1 > self.primary.filling_factor > 0)) and \
-                    (abs(self.primary.filling_factor - self.secondary.filling_factor) > __PRECISSION__):
-                raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
-            if self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
-                raise ValueError("Non-Physical system: primary_filling_factor or "
-                                 "secondary_filling_factor is greater then 1\n"
-                                 "Filling factor is obtained as following:"
-                                 "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
-
-            if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or \
-                    (self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__) or \
-                    (abs(self.primary.filling_factor) < __PRECISSION__ and abs(self.secondary.filling_factor)
-                     < __PRECISSION__):
-                __SETUP_VALUE__ = "semi-detached"
-            elif self.primary.filling_factor < 0 and self.secondary.filling_factor < 0:
-                __SETUP_VALUE__ = "detached"
-            elif 1 >= self.primary.filling_factor > 0:
-                __SETUP_VALUE__ = "over-contact"
-            elif self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
-                raise ValueError("Non-Physical system: potential of components is to low.")
-
-        else:
-            self.primary.filling_factor, self.secondary.filling_factor = None, None
-            if (abs(self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) and \
-                    (abs(
-                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__):
-                __SETUP_VALUE__ = "double-contact"
-
-            elif (not (not (abs(
-                    self.primary.surface_potential - self.primary.critical_surface_potential) < __PRECISSION__) or not (
-                    self.secondary.surface_potential > self.secondary.critical_surface_potential))) or \
-                    ((abs(
-                        self.secondary.surface_potential - self.secondary.critical_surface_potential) < __PRECISSION__)
-                     and (self.primary.surface_potential > self.primary.critical_surface_potential)):
-                __SETUP_VALUE__ = "semi-detached"
-
-            elif (self.primary.surface_potential > self.primary.critical_surface_potential) and (
-                    self.secondary.surface_potential > self.secondary.critical_surface_potential):
-                __SETUP_VALUE__ = "detached"
-
-            else:
-                raise ValueError("Non-Physical system. Change stellar parameters.")
-        self.morphology = __SETUP_VALUE__
-
-    def get_info(self):
-        pass
 
     def primary_potential_derivative_x(self, x, *args):
         """
@@ -869,103 +992,6 @@ class BinarySystem(System):
             np.power(self.semi_major_axis, 2)
         gradient = gradient / self.mass_ratio if component == 'secondary' else gradient
         return np.log10(gradient) if logg else gradient
-
-    def calculate_radius(self, *args, surface_potential=None):
-        """
-        Function calculates radius of the star in given direction of arbitrary direction vector (in spherical
-        coordinates) starting from the centre of the star.
-
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :param args: Tuple;
-
-        ::
-
-            (
-                component: str - `primary` or `secondary`,
-                components_distance: float - distance between components in SMA units,
-                phi: float - longitudonal angle of direction vector measured from point under L_1 in
-                             positive direction (in radians)
-                omega: float - latitudonal angle of direction vector measured from north pole (in radians)
-             )
-        :return: float; radius
-        """
-        if args[0] == 'primary':
-            fn = self.potential_primary_fn
-            precalc = self.pre_calculate_for_potential_value_primary
-            component_instance = getattr(self, 'primary')
-        elif args[0] == 'secondary':
-            fn = self.potential_secondary_fn
-            precalc = self.pre_calculate_for_potential_value_secondary
-            component_instance = getattr(self, 'secondary')
-        else:
-            raise ValueError(f'Invalid value of `component` argument {args[0]}. \nExpecting `primary` or `secondary`.')
-
-        surface_potential = component_instance.surface_potential if surface_potential is None else surface_potential
-
-        scipy_solver_init_value = np.array([args[1] / 1e4])
-        argss = (precalc(*args[1:]), surface_potential)
-        solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value,
-                                                    full_output=True, args=argss, xtol=1e-10)
-
-        # check for regular solution
-        if ier == 1 and not np.isnan(solution[0]) and 30 >= solution[0] >= 0:
-            return solution[0]
-        else:
-            if 0 < solution[0] < 1.0:
-                return solution[0]
-            else:
-                raise ValueError(f'Invalid value of radius {solution} was calculated.')
-
-    def calculate_polar_radius(self, component, components_distance, surface_potential=None):
-        """
-        Calculates polar radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
-
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float
-        :return: float; polar radius
-        """
-        args = (component, components_distance, 0.0, 0.0)
-        return self.calculate_radius(*args, surface_potential=surface_potential)
-
-    def calculate_side_radius(self, component, components_distance, surface_potential=None):
-        """
-        Calculates side radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
-
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float
-        :return: float; side radius
-        """
-        args = (component, components_distance, const.HALF_PI, const.HALF_PI)
-        return self.calculate_radius(*args, surface_potential=surface_potential)
-
-    def calculate_backward_radius(self, component, components_distance, surface_potential=None):
-        """
-        Calculates backward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
-
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :return: float; polar radius
-        """
-
-        args = (component, components_distance, const.PI, const.HALF_PI)
-        return self.calculate_radius(*args, surface_potential=surface_potential)
-
-    def calculate_forward_radius(self, component, components_distance, surface_potential=None):
-        """
-        Ccalculates forward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
-        :warning: Do not use in case of over-contact systems.
-
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :return: float
-        """
-
-        args = (component, components_distance, 0.0, const.HALF_PI)
-        return self.calculate_radius(*args, surface_potential=surface_potential)
 
     def calculate_all_forward_radii(self, distances, components='all', surface_potential=None):
         """

@@ -171,7 +171,7 @@ def build_surface_gravity(self):
     self._logger.debug('computing magnitude of polar potential gradient')
     self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
     gravity_scalling_factor = np.power(10, self.star.polar_log_g) / self.star.polar_potential_gradient_magnitude
-    self.star._log_g = np.log10(gravity_scalling_factor * self.star.potential_gradient_magnitudes)
+    self.star.log_g = np.log10(gravity_scalling_factor * self.star.potential_gradient_magnitudes)
 
     if self.star.spots:
         for spot_index, spot in self.star.spots.items():

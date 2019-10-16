@@ -18,6 +18,50 @@ def visibility_test(centres, xlim, component):
     return centres[:, 0] >= xlim if component == 'primary' else centres[:, 0] <= xlim
 
 
+def compute_filling_factor(surface_potential, lagrangian_points):
+    """
+    Compute filling factor of given BinaryStar system.
+    Filling factor is computed as::
+
+        (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter}),
+
+    where Omega_X denote potential value and `Omega` is potential of given Star.
+    Inner and outter are critical inner and outter potentials for given binary star system.
+
+    :param surface_potential:
+    :param lagrangian_points: list; lagrangian points in `order` (in order to ensure that L2)
+    :return:
+    """
+    return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis_test_symmetry):
     """
     Function uses symmetries of the stellar component in order to reduce time in calculation distance matrix.
@@ -218,23 +262,6 @@ def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
                               gamma['secondary'][:shape_reduced[0], shape_reduced[1]:]),
                   np.power(distance[:shape_reduced[0], shape_reduced[1]:], 2))
     return q_ab
-
-
-def compute_filling_factor(surface_potential, lagrangian_points):
-    """
-    Compute filling factor of given BinaryStar system.
-    Filling factor is computed as::
-
-        (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter}),
-
-    where Omega_X denote potential value and `Omega` is potential of given Star.
-    Inner and outter are critical inner and outter potentials for given binary star system.
-
-    :param surface_potential:
-    :param lagrangian_points: list; lagrangian points in `order` (in order to ensure that L2)
-    :return:
-    """
-    return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
 
 
 def pre_calc_azimuths_for_detached_points(alpha):

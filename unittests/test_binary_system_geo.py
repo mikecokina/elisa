@@ -5,7 +5,7 @@ from astropy import units as u
 from numpy.testing import assert_array_equal
 from pypex.poly2d import polygon
 
-from elisa import const as c
+from elisa import const as c, umpy as up
 from elisa.base.star import Star
 from elisa.binary_system import geo
 from elisa.binary_system.system import BinarySystem
@@ -148,7 +148,7 @@ class SystemOrbitalPositionTestCase(ElisaTestCase):
                          t_eff=combo["secondary_t_eff"], gravity_darkening=combo["secondary_gravity_darkening"],
                          albedo=combo['secondary_albedo'], metallicity=0.0)
 
-        primary.discretization_factor, secondary.discretization_factor = 10, 10
+        primary.discretization_factor, secondary.discretization_factor = up.radians(10), up.radians(10)
 
         return BinarySystem(primary=primary,
                             secondary=secondary,

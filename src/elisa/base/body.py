@@ -1,22 +1,13 @@
 import gc
 import numpy as np
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from copy import copy
-from astropy import units as u
-
-from elisa import logger, utils, units
+from elisa import logger, utils, units, umpy as up
 from elisa.utils import is_empty
 from elisa.base.spot import Spot
 
-
-class Body(metaclass=ABCMeta):
-    """
-    Abstract class that defines bodies that can be modelled by this software.
-    Units are imported from astropy.units module::
-
-        see documentation http://docs.astropy.org/en/stable/units/
-
+"""
     :param points: numpy.array;
 
     ::
@@ -40,11 +31,24 @@ class Body(metaclass=ABCMeta):
              [...]),
               ...
              [...]])
+"""
 
 
+class Body(metaclass=ABCMeta):
+    """
+    Abstract class that defines bodies that can be modelled by this software.
+    Units are imported from astropy.units module::
 
+        see documentation http://docs.astropy.org/en/stable/units/
 
-
+    :param synchronicity: float;
+    :param mass: float or astropy.quantity.Quantity;
+    :param albedo: float;
+    :param discretization_factor: float or astropy.quantity.Quantity;
+    :param t_eff: float or astropy.quantity.Quantity;
+    :param polar_radius: float or astropy.quantity.Quantity;
+    :param equatorial_radius: float;
+    :param spots: Dict;
 
 
     """
@@ -68,21 +72,28 @@ class Body(metaclass=ABCMeta):
             self.name = str(name)
 
         # initializing parmas to default values
+        self.synchronicity = np.nan
+        self.mass = np.nan
+        self.albedo = np.nan
+        self.discretization_factor = up.radians(3)
+        self.t_eff = np.nan
+        self.polar_radius = np.nan
+        self._spots = dict()
+        self.equatorial_radius = np.nan
+
+
+
+
+
+
+        # move to container
         self.points = np.array([])
         self.faces = np.array([])
         self.normals = np.array([])
         self.areas = np.array([])
         self.temperatures = np.array([])
 
-        self.synchronicity = np.nan
-
-        self._mass = np.nan
-        self._t_eff = np.nan
-        self._albedo = np.nan
-        self._polar_radius = np.nan
-        self._discretization_factor = np.radians(3)
         self._face_centres = np.array([])
-        self._spots = dict()
         self._point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])
         self.base_symmetry_points_number = 0
@@ -92,6 +103,45 @@ class Body(metaclass=ABCMeta):
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
 
+    @abstractmethod
+    def transform_input(self, *args, **kwargs):
+        pass
+
+    @property
+    def spots(self):
+        """
+        :return: Dict[int, Spot]
+        """
+        return self._spots
+
+    @spots.setter
+    def spots(self, spots):
+        # todo: update example
+        """
+        example of defined spots
+
+        ::
+
+            [
+                 {"longitude": 90,
+                  "latitude": 58,
+                  "angular_radius": 15,
+                  "temperature_factor": 0.9},
+                 {"longitude": 85,
+                  "latitude": 80,
+                  "angular_radius": 30,
+                  "temperature_factor": 1.05},
+                 {"longitude": 45,
+                  "latitude": 90,
+                  "angular_radius": 30,
+                  "temperature_factor": 0.95},
+             ]
+
+        :param spots: Iterable[Dict]; definition of spots for given object
+        :return:
+        """
+        self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)} if not is_empty(spots) else dict()
+
     def has_spots(self):
         """
         Find whether object has defined spots.
@@ -100,122 +150,33 @@ class Body(metaclass=ABCMeta):
         """
         return len(self._spots) > 0
 
-    @property
-    def mass(self):
-        return self._mass
-
-    @mass.setter
-    def mass(self, mass):
+    def remove_spot(self, spot_index: int):
         """
-        If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
-        If mass astropy.unit.quantity.Quantity instance, program converts it to default units and stores it's value in
-        attribute _mass.
+        Remove n-th spot index of object.
 
-        :param mass: int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity
+        :param spot_index: int
         :return:
         """
-        if isinstance(mass, u.quantity.Quantity):
-            self._mass = np.float64(mass.to(units.MASS_UNIT))
-        elif isinstance(mass, (int, np.int, float, np.float)):
-            self._mass = np.float64(mass * u.solMass.to(units.MASS_UNIT))
-        else:
-            raise TypeError('User input is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+        del (self._spots[spot_index])
 
-    @property
-    def t_eff(self):
-        """
-        :return: float
-        """
-        return self._t_eff
 
-    @t_eff.setter
-    def t_eff(self, t_eff):
-        """
-        This function accepts value in Any temperature unit.
-        If your input is without unit, function assumes that supplied value is in Kelvins.
 
-        :param t_eff: int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(t_eff, u.quantity.Quantity):
-            self._t_eff = np.float64(t_eff.to(units.TEMPERATURE_UNIT))
-        elif isinstance(t_eff, (int, np.int, float, np.float)):
-            self._t_eff = np.float64(t_eff)
-        else:
-            raise TypeError('Value of `t_eff` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
 
-    @property
-    def albedo(self):
-        """
-        Returns bolometric albedo of an object (reradiated energy/ irradiance energy).
 
-        :return: float
-        """
-        return self._albedo
 
-    @albedo.setter
-    def albedo(self, albedo):
-        """
-        Setter for bolometric albedo (reradiated energy/ irradiance energy).
-        Accepts value of albedo in range (0, 1).
 
-        :param albedo: float
-        """
-        if 0. <= albedo <= 1.:
-            self._albedo = np.float64(albedo)
-        else:
-            raise ValueError(f'Parameter albedo = {albedo} is out of range (0, 1)')
 
-    @property
-    def polar_radius(self):
-        """
-        Returns value polar radius of an object in default unit.
 
-        :return: float
-        """
-        return self._polar_radius
 
-    @polar_radius.setter
-    def polar_radius(self, polar_radius):
-        """
-        Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
-        If quantity is not specified, default distance unit is assumed.
 
-        :param polar_radius: float
-        :return:
-        """
-        if isinstance(polar_radius, u.quantity.Quantity):
-            self._polar_radius = np.float64(polar_radius.to(units.DISTANCE_UNIT))
-        elif isinstance(polar_radius, (int, np.int, float, np.float)):
-            self._polar_radius = np.float64(polar_radius)
-        else:
-            raise TypeError('Value of variable `polar radius` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
 
-    @property
-    def discretization_factor(self):
-        """
-        returns mean angular distance between surface points
 
-        :return: float
-        """
-        return self._discretization_factor
 
-    @discretization_factor.setter
-    def discretization_factor(self, discretization_factor):
-        """
-        :param discretization_factor: float
-        :return:
-        """
-        if isinstance(discretization_factor, u.quantity.Quantity):
-            self._discretization_factor = np.float64(discretization_factor.to(units.ARC_UNIT))
-        elif isinstance(discretization_factor, (int, np.int, float, np.float)):
-            self._discretization_factor = np.radians(np.float64(discretization_factor))
-        else:
-            raise TypeError('Input of variable `discretization_factor` is not (numpy.)int'
-                            ' or (numpy.)float nor astropy.unit.quantity.Quantity instance.')
+
+
+
+
+
 
     @property
     def face_centres(self):
@@ -249,40 +210,6 @@ class Body(metaclass=ABCMeta):
         if np.shape(centres)[0] != np.shape(self.faces)[0]:
             raise ValueError('Number of surface centres doesn`t equal to number of faces')
         self._face_centres = centres
-
-    @property
-    def spots(self):
-        """
-        :return: Dict[int, Spot]
-        """
-        return self._spots
-
-    @spots.setter
-    def spots(self, spots):
-        """
-        example of defined spots
-
-        ::
-
-            [
-                 {"longitude": 90,
-                  "latitude": 58,
-                  "angular_diameter": 15,
-                  "temperature_factor": 0.9},
-                 {"longitude": 85,
-                  "latitude": 80,
-                  "angular_diameter": 30,
-                  "temperature_factor": 1.05},
-                 {"longitude": 45,
-                  "latitude": 90,
-                  "angular_diameter": 30,
-                  "temperature_factor": 0.95},
-             ]
-
-        :param spots: Iterable[Dict]; definition of spots for given object
-        :return:
-        """
-        self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)} if not is_empty(spots) else dict()
 
     @property
     def point_symmetry_vector(self):
@@ -341,62 +268,6 @@ class Body(metaclass=ABCMeta):
             raise ValueError(f'Length of symmetry vector {np.shape(symmetry_vector)[0]} is not '
                              f'the same as number of surface faces {np.shape(self.faces)[0]}')
         self._face_symmetry_vector = symmetry_vector
-
-    # <units> **********************************************************************************************************
-    @property
-    def mass_unit(self):
-        """
-        Returns default mass unit.
-
-        :return: astropy.unit.quantity.Quantity
-        """
-        return units.MASS_UNIT
-
-    @property
-    def temperature_unit(self):
-        """
-        Returns default unit of temperature.
-
-        :return: astropy.unit.quantity.Quantity
-        """
-        return units.TEMPERATURE_UNIT
-
-    @property
-    def distance_unit(self):
-        """
-        Rreturns default unit of length.
-
-        :return: astropy.unit.quantity.Quantity
-        """
-        return units.DISTANCE_UNIT
-
-    @property
-    def time_unit(self):
-        """
-        Returns default unit of time.
-
-        :return: astropy.unit.quantity.Quantity
-        """
-        return units.TIME_UNIT
-
-    @property
-    def arc_unit(self):
-        """
-        Returns default unit of time.
-
-        :return: astropy.unit.quantity.Quantity
-        """
-        return units.ARC_UNIT
-    # </units> *********************************************************************************************************
-
-    def remove_spot(self, spot_index: int):
-        """
-        Remove n-th spot index of object.
-
-        :param spot_index: int
-        :return:
-        """
-        del (self._spots[spot_index])
 
     def calculate_normals(self, points, faces, centres=None, com=None):
         """
@@ -528,12 +399,12 @@ class Body(metaclass=ABCMeta):
         """
         points = copy(self.points)
         for spot_index, spot_instance in self.spots.items():
-            points = np.concatenate([points, spot_instance.points])
+            points = up.concatenate([points, spot_instance.points])
 
         if return_vertices_map:
             vertices_map = [{"type": "object", "enum": -1}] * len(self.points)
             for spot_index, spot_instance in self.spots.items():
-                vertices_map = np.concatenate(
+                vertices_map = up.concatenate(
                     [vertices_map, [{"type": "spot", "enum": spot_index}] * len(spot_instance.points)]
                 )
             return points, vertices_map
