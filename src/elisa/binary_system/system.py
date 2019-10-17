@@ -226,7 +226,7 @@ class BinarySystem(System):
         :param kwargs: Dict
         :return: Dict
         """
-        return BinarySystemParameters.transform_binary_input(**kwargs)
+        return BinarySystemParameters.transform_input(**kwargs)
 
     def setup_periastron_critical_potential(self):
         """

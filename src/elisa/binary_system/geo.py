@@ -13,21 +13,21 @@ from copy import deepcopy
 from elisa.binary_system.static import darkside_filter, plane_projection
 
 
-def get_critical_inclination(binary, components_distance):
-    """
-    Get critical inclination for eclipses.
-
-    :param binary: elisa.binary_system.system.BinarySystem
-    :param components_distance: float
-    :return: float
-    """
-    if binary.morphology != 'over-contact':
-        radius1 = np.mean([binary.primary.side_radius, binary.primary.forward_radius, binary.primary.backward_radius,
-                           binary.primary.polar_radius])
-        radius2 = np.mean([binary.secondary.side_radius, binary.secondary.forward_radius,
-                           binary.secondary.backward_radius, binary.secondary.polar_radius])
-        cos_i_critical = (radius1 + radius2) / components_distance
-        return np.degrees(np.arccos(cos_i_critical))
+# def get_critical_inclination(binary, components_distance):
+#     """
+#     Get critical inclination for eclipses.
+#
+#     :param binary: elisa.binary_system.system.BinarySystem
+#     :param components_distance: float
+#     :return: float
+#     """
+#     if binary.morphology != 'over-contact':
+#         radius1 = np.mean([binary.primary.side_radius, binary.primary.forward_radius, binary.primary.backward_radius,
+#                            binary.primary.polar_radius])
+#         radius2 = np.mean([binary.secondary.side_radius, binary.secondary.forward_radius,
+#                            binary.secondary.backward_radius, binary.secondary.polar_radius])
+#         cos_i_critical = (radius1 + radius2) / components_distance
+#         return np.degrees(np.arccos(cos_i_critical))
 
 
 def get_eclipse_boundaries(binary, components_distance):

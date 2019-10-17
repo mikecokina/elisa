@@ -59,13 +59,3 @@ class BinarySystemParameters(transform.SystemParameters):
         :return: float
         """
         return transform.quantity_transform(value, units.PERIOD_UNIT, transform.WHEN_FLOAT64)
-
-    @classmethod
-    def transform_binary_input(cls, **kwargs):
-        """
-        Transform BinarySystem input kwargs to internal representations.
-
-        :param kwargs: Dict
-        :return: Dict
-        """
-        return {key: getattr(cls, key)(val) if hasattr(cls, key) else val for key, val in kwargs.items()}

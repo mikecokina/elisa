@@ -1,9 +1,8 @@
 import numpy as np
 
+from elisa import utils, const as c, umpy as up
 from elisa.base.body import Body
 from elisa.pulse.mode import PulsationMode
-from elisa import utils, const as c
-from elisa import umpy as up
 from elisa.base.transform import StarParameters
 from elisa.utils import is_empty
 
@@ -35,6 +34,13 @@ class Star(Body):
     :param polar_log_g: float;
     :param gravity_darkening: float;
 
+    :return:
+
+        :param potential_gradient_magnitudes: numpy.array; Returns array of absolute values of potential
+        gradients for each face of surface.
+
+        :param polar_potential_gradient_magnitude: numpy.array; Returns value of magnitude of polar potential gradient.
+
     """
     MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening']
     OPTIONAL_KWARGS = ['surface_potential', 'synchronicity', 'albedo', 'pulsations',
@@ -55,15 +61,12 @@ class Star(Body):
         self.gravity_darkening = np.nan
         self._pulsations = dict()
 
-
-
+        self.potential_gradient_magnitudes = np.nan
+        self.polar_potential_gradient_magnitude = np.nan
 
 
         self.log_g = np.array([])
         self.side_radius = np.nan
-        self._potential_gradient_magnitudes = np.nan
-        self._polar_potential_gradient_magnitude = np.nan
-
         self.init_parameters(**kwargs)
 
     def transform_input(self, **kwargs):
@@ -72,7 +75,7 @@ class Star(Body):
         :param kwargs: Dict
         :return: Dict
         """
-        return StarParameters.transform_star_input(**kwargs)
+        return StarParameters.transform_input(**kwargs)
 
     def init_parameters(self, **kwargs):
         """
@@ -131,42 +134,6 @@ class Star(Body):
 
 
 
-
-
-    @property
-    def potential_gradient_magnitudes(self):
-        """
-        Returns array of absolute values of potential gradients for each face of surface.
-        :return: ndarray
-        """
-        return self._potential_gradient_magnitudes
-
-    @potential_gradient_magnitudes.setter
-    def potential_gradient_magnitudes(self, potential_gradient_magnitudes):
-        """
-        Set potential gradient magnitudes.
-
-        :param potential_gradient_magnitudes: ndarray
-        :return:
-        """
-        self._potential_gradient_magnitudes = potential_gradient_magnitudes
-
-    @property
-    def polar_potential_gradient_magnitude(self):
-        """
-        Returns value of magnitude of polar potential gradient.
-        :return: float
-        """
-        return self._polar_potential_gradient_magnitude
-
-    @polar_potential_gradient_magnitude.setter
-    def polar_potential_gradient_magnitude(self, potential_gradient_magnitude):
-        """
-        Set magnituded of polar potential gradient.
-        :param potential_gradient_magnitude: float
-        :return:
-        """
-        self._polar_potential_gradient_magnitude = potential_gradient_magnitude
 
     def reset_spots_properties(self):
         """

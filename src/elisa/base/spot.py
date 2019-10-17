@@ -1,29 +1,34 @@
 import numpy as np
 
-from astropy import units as u
-from elisa import logger, utils, units
+from elisa import utils
+from elisa.base.transform import SpotParameters
 from elisa.utils import is_empty
 
 
 class Spot(object):
     """
-    Spot data container
+    Spot data container.
+
+    :param log_g: numpy.array
+
     """
     MANDATORY_KWARGS = ["longitude", "latitude", "angular_radius", "temperature_factor"]
     OPTIONAL_KWARGS = ["discretization_factor"]
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, suppress_logger=False, **kwargs):
+    def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.ALL_KWARGS, instance=Spot)
         utils.check_missing_kwargs(Spot.MANDATORY_KWARGS, kwargs, instance_of=Spot)
-        self._logger = logger.getLogger(Spot.__name__, suppress=suppress_logger)
+        kwargs = self.transform_input(**kwargs)
 
-        self._discretization_factor = np.nan
-        self._latitude = np.nan
-        self._longitude = np.nan
-        self._angular_radius = np.nan
-        self._temperature_factor = np.nan
+        # supplied parameters
+        self.discretization_factor = np.nan
+        self.latitude = np.nan
+        self.longitude = np.nan
+        self.angular_radius = np.nan
+        self.temperature_factor = np.nan
 
+        # container parameters
         self.boundary = np.array([])
         self.boundary_center = np.array([])
         self.center = np.array([])
@@ -36,156 +41,17 @@ class Spot(object):
         self.areas = np.array([])
         self.potential_gradient_magnitudes = np.array([])
         self.temperatures = np.array([])
-
-        self._log_g = np.array([])
+        self.log_g = np.array([])
 
         self.init_properties(**kwargs)
 
-    def init_properties(self, **kwargs):
-        self._logger.debug(f"initialising spot properties of class instance {self.__class__.__name__}")
-        for key in kwargs:
-            set_val = kwargs.get(key)
-            setattr(self, key, set_val)
-
-    def kwargs_serializer(self):
-        """
-        Serializer and return mandatory kwargs of sefl (Spot) instance to dict.
-
-        :return: Dict
-
-        ::
-
-            { kwarg: value }
-        """
-        return {kwarg: getattr(self, kwarg) for kwarg in self.MANDATORY_KWARGS if not is_empty(getattr(self, kwarg))}
-
-    @property
-    def log_g(self):
-        """
-        :return: ndarray
-        """
-        return self._log_g
-
-    @log_g.setter
-    def log_g(self, log_g):
-        """
-        :param log_g: ndarray
-        :return:
-        """
-        self._log_g = log_g
-
-    @property
-    def longitude(self):
-        """
-        :return: float
-        """
-        return self._longitude
-
-    @longitude.setter
-    def longitude(self, longitude):
-        """
-        Expecting value in degrees or as astropy units instance.
-
-        :param longitude: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(longitude, u.quantity.Quantity):
-            self._longitude = np.float64(longitude.to(units.ARC_UNIT))
-        elif isinstance(longitude, (int, np.int, float, np.float)):
-            self._longitude = np.radians(np.float64(longitude))
-        else:
-            raise TypeError('Input of variable `longitude` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-    @property
-    def latitude(self):
-        """
-        :return: float
-        """
-        return self._latitude
-
-    @latitude.setter
-    def latitude(self, latitude):
-        """
-        Expecting value in degrees or as astropy units instance.
-
-        :param latitude: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(latitude, u.quantity.Quantity):
-            self._latitude = np.float64(latitude.to(units.ARC_UNIT))
-        elif isinstance(latitude, (int, np.int, float, np.float)):
-            self._latitude = np.radians(np.float64(latitude))
-        else:
-            raise TypeError('Input of variable `latitude` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-    @property
-    def angular_radius(self):
-        """
-        :return: float
-        """
-        return self._angular_radius
-
-    @angular_radius.setter
-    def angular_radius(self, angular_radius):
-        """
-        Expecting value in degrees or as astropy units instance.
-
-        :param angular_radius: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(angular_radius, u.quantity.Quantity):
-            self._angular_radius = np.float64(angular_radius.to(units.ARC_UNIT))
-        elif isinstance(angular_radius, (int, np.int, float, np.float)):
-            self._angular_radius = np.radians(np.float64(angular_radius))
-        else:
-            raise TypeError('Input of variable `angular_radius` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-    @property
-    def discretization_factor(self):
-        """
-        :return: float
-        """
-        return self._discretization_factor
-
-    @discretization_factor.setter
-    def discretization_factor(self, discretization_factor):
-        """
-        Setter for spot discretization_factor (mean angular size of spot face)
-        Expecting value in degrees or as astropy units instance.
-
-        :param discretization_factor: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(discretization_factor, u.quantity.Quantity):
-            self._discretization_factor = np.float64(discretization_factor.to(units.ARC_UNIT))
-        elif isinstance(discretization_factor, (int, np.int, float, np.float)):
-            self._discretization_factor = np.radians(np.float64(discretization_factor))
-        else:
-            raise TypeError('Input of variable `angular_density` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-    @property
-    def temperature_factor(self):
-        return self._temperature_factor
-
-    @temperature_factor.setter
-    def temperature_factor(self, temperature_factor):
-        """
-       :param temperature_factor: (numpy.)int, (numpy.)float
-       :return:
-       """
-        if isinstance(temperature_factor, (int, np.int, float, np.float)):
-            self._temperature_factor = np.float64(temperature_factor)
-        else:
-            raise TypeError('Input of variable `temperature_factor` is not (numpy.)int or (numpy.)float.')
+    @staticmethod
+    def transform_input(**kwargs):
+        return SpotParameters.transform_input(**kwargs)
 
     def calculate_areas(self):
         """
         Returns areas of each face of the spot build_surface.
-
         :return: ndarray:
 
         ::
@@ -193,3 +59,15 @@ class Spot(object):
             numpy.array([area_1, ..., area_n])
         """
         return utils.triangle_areas(triangles=self.faces, points=self.points)
+
+    def init_properties(self, **kwargs):
+        for key in kwargs:
+            set_val = kwargs.get(key)
+            setattr(self, key, set_val)
+
+    def kwargs_serializer(self):
+        """
+        Serializer and return mandatory kwargs of sefl (Spot) instance to dict.
+        :return: Dict; { kwarg: value }
+        """
+        return {kwarg: getattr(self, kwarg) for kwarg in self.MANDATORY_KWARGS if not is_empty(getattr(self, kwarg))}

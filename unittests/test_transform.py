@@ -197,4 +197,20 @@ class TransformStarParametersTestCase(ElisaTestCase):
 
     @staticmethod
     def test_polar_log_g():
+        raise Exception("Not implemented")
+
+
+class TransformSpotParametersTestCase(ElisaTestCase):
+    def test_latitude(self):
         pass
+
+    def test_longitude(self):
+        pass
+
+    def test_angular_radius(self):
+        pass
+
+    def test_temperature_factor(self):
+        pass
+
+

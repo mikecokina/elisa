@@ -25,14 +25,30 @@ def quantity_transform(value, unit, when_float64):
     return value
 
 
-class SystemParameters(object):
+def deg_transform(value, unit, when_float64):
+    if isinstance(value, au.quantity.Quantity):
+        value = np.float64(value.to(unit))
+    elif isinstance(value, when_float64):
+        value = up.radians(np.float64(value))
+    else:
+        raise TypeError('Input of variable `longitude` is not (numpy.)int or (numpy.)float '
+                        'nor astropy.unit.quantity.Quantity instance.')
+    return value
+
+
+class TransformParameters(object):
+    @classmethod
+    def transform_input(cls, **kwargs):
+        return {key: getattr(cls, key)(val) if hasattr(cls, key) else val for key, val in kwargs.items()}
+
+
+class SystemParameters(TransformParameters):
 
     @staticmethod
     def inclination(value):
         """
         Transform and validity check for inclination of the system.
         If unit is not supplied, value in degrees is assumed.
-
         :param value:
         :return: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         """
@@ -53,7 +69,6 @@ class SystemParameters(object):
         """
         Transform and validate orbital period of binary star system.
         If unit is not specified, default period unit is assumed.
-
         :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return: float
         """
@@ -75,7 +90,6 @@ class SystemParameters(object):
     def additional_light(value):
         """
         Validate and transform for additional light - light that does not originate from any member of system.
-
         :param value: float (0, 1)
         :return:
         """
@@ -84,13 +98,12 @@ class SystemParameters(object):
         return np.float64(value)
 
 
-class BodyParameters(object):
+class BodyParameters(TransformParameters):
     @staticmethod
     def synchronicity(value):
         """
         Object synchronicity (F = omega_rot/omega_orb) validator.
         Expects number input convertible to numpy float64 / float.
-
         :param value: float
         """
         if value <= 0:
@@ -123,7 +136,6 @@ class BodyParameters(object):
         """
         Validate and transform bolometric albedo (reradiated energy/ irradiance energy).
         Accepts value of albedo in range (0, 1).
-
         :param value: float
         :return: float
         """
@@ -139,21 +151,13 @@ class BodyParameters(object):
         :param value: float or astropy.quantity.Quantity
         :return: float
         """
-        if isinstance(value, au.quantity.Quantity):
-            value = np.float64(value.to(units.ARC_UNIT))
-        elif isinstance(value, WHEN_FLOAT64):
-            value = up.radians(np.float64(value))
-        else:
-            raise TypeError('Input of variable `discretization_factor` is not (numpy.)int'
-                            ' or (numpy.)float nor astropy.unit.quantity.Quantity instance.')
-        return value
+        return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def t_eff(value):
         """
         This function accepts value in Any temperature unit.
         If your input is without unit, function assumes that supplied value is in Kelvins.
-
         :param value: int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity
         :return: float
         """
@@ -164,7 +168,6 @@ class BodyParameters(object):
         """
         Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
         If quantity is not specified, default distance unit is assumed.
-
         :param value: float
         :return:
         """
@@ -176,7 +179,6 @@ class StarParameters(BodyParameters):
     def surface_potential(value):
         """
         Returns surface potential of Star.
-
         :param value: float
         :return: float
         """
@@ -195,7 +197,6 @@ class StarParameters(BodyParameters):
         """
         Setter for polar surface gravity.
         If unit is not specified in astropy.units format, value in cgs unit is assumed (it means log(g) in cgs).
-
         :param value: float or astropy.unit.quantity.Quantity
         :return: float
         """
@@ -203,10 +204,50 @@ class StarParameters(BodyParameters):
 
     @staticmethod
     def gravity_darkening(value):
+        """
+        Gravity darkening validator.
+        :param value: float;
+        :return: float
+        """
         if value > 1 or value < 0:
             raise ValueError(f'Parameter gravity darkening = {value} is out of range <0, 1>')
         return np.float64(value)
 
-    @classmethod
-    def transform_star_input(cls, **kwargs):
-        return {key: getattr(cls, key)(val) if hasattr(cls, key) else val for key, val in kwargs.items()}
+
+class SpotParameters(BodyParameters):
+    @staticmethod
+    def latitude(value):
+        """
+        Expecting value in degrees or as astropy units instance.
+        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :return: float
+        """
+        return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+
+    @staticmethod
+    def longitude(value):
+        """
+        Expecting value in degrees or as astropy units instance.
+        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :return: float
+        """
+        return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+
+    @staticmethod
+    def angular_radius(value):
+        """
+        Expecting value in degrees or as astropy units instance.
+        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :return:
+        """
+        return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+
+    @staticmethod
+    def temperature_factor(value):
+        """
+        :param value: flaot
+        :return: float
+        """
+        if not isinstance(value, (int, np.int, float, np.float)):
+            raise TypeError('Input of variable `temperature_factor` is not (numpy.)int or (numpy.)float.')
+        return np.float64(value)
