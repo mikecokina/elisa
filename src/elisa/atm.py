@@ -115,7 +115,7 @@ class NaiveInterpolatedAtm(object):
     @staticmethod
     def radiance(temperature, log_g, metallicity, atlas, **kwargs):
         """
-        Compute radiance for given atmospheric parametres with regards to given passbands.
+        Compute radiance for given atmospheric parametres and given passbands.
 
         :param temperature: numpy.array
         :param log_g: numpy.array
