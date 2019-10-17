@@ -626,7 +626,7 @@ class SingleSystem(System):
         for spot_index, spot_instance in list(self.star.spots.items()):
             # lon -> phi, lat -> theta
             lon, lat = spot_instance.longitude, spot_instance.latitude
-            self.star.setup_spot_instance_discretization_factor(spot_instance, spot_index, self.star)
+            self.star.setup_spot_instance_discretization_factor(spot_instance, spot_index)
 
             alpha, spot_radius = spot_instance.discretization_factor, spot_instance.angular_radius
 
@@ -637,9 +637,10 @@ class SingleSystem(System):
             radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
             center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
 
-            args, use = (radial_vector[2],), False
+            args = (radial_vector[2],)
+            p_args = (self.pre_calculate_for_potential_value(args, return_as_tuple=True), self.star.surface_potential)
 
-            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+            solution, use = self._solver(self.potential_fn, solver_condition, *p_args)
 
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
@@ -656,7 +657,9 @@ class SingleSystem(System):
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st ring of spot
             args, use = (lat + alpha,), False
-            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+            p_args = (self.pre_calculate_for_potential_value(args, return_as_tuple=True), self.star.surface_potential)
+
+            solution, use = self._solver(self.potential_fn, solver_condition, *p_args)
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
@@ -702,7 +705,7 @@ class SingleSystem(System):
             except error.MaxIterationError:
                 self._logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
                                      f"doesn't satisfy reasonable conditions and entire spot will be omitted")
-                component_instance.remove_spot(spot_index=spot_index)
+                self.star.remove_spot(spot_index=spot_index)
                 continue
 
             spot_instance.points = np.array(spot_points)

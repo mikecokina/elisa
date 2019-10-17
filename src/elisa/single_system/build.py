@@ -32,16 +32,15 @@ def build_surface_with_spots(self):
 
     :return:
     """
-    points, vertices_map = self._return_all_points(self.star, return_vertices_map=True)
+    points, vertices_map = self.star.return_all_points(return_vertices_map=True)
     faces = self.single_surface(points=points)
-    model, spot_candidates = self._initialize_model_container(vertices_map)
-    model = self._split_spots_and_component_faces(
-        points, faces, model, spot_candidates, vertices_map, self.star,
-        component_com=0
+    model, spot_candidates = self.star.initialize_model_container(vertices_map)
+    model = self.star.split_spots_and_component_faces(
+        points, faces, model, spot_candidates, vertices_map, component_com=0
     )
 
-    self._remove_overlaped_spots(vertices_map, self.star)
-    self._remap_surface_elements(model, self.star, points)
+    self.star.remove_overlaped_spots_by_vertex_map(vertices_map)
+    self.star.remap_surface_elements(model, points)
 
 
 def build_faces(self):
@@ -51,10 +50,7 @@ def build_faces(self):
     :return:
     """
     # build surface if there is no spot specified
-    if not self.star.spots:
-        build_surface_with_no_spots(self)
-    else:
-        build_surface_with_spots(self)
+    build_surface_with_spots(self) if self.star.has_spots() else build_surface_with_no_spots(self)
 
 
 def build_surface(self, return_surface=False):
