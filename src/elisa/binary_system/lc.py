@@ -158,6 +158,7 @@ def get_normal_radiance(single_orbital_position_container, component="all", **kw
             * ** atlas ** * - str
     :return: Dict[String, numpy.array]
     """
+    # TODO: incorporate surface symmetries
     if component in ["all", "both"]:
         return {
             component:
@@ -197,6 +198,7 @@ def get_limbdarkening_cfs(self, component="all", **kwargs):
             * ** atlas ** * - str
     :return: Dict[str, numpy.array]
     """
+    # TODO: implement surface symmetry
     if component in ["all", "both"]:
         return {
             component:
