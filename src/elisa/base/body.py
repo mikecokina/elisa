@@ -562,7 +562,10 @@ class Body(metaclass=ABCMeta):
                           ...
                          [normal_xn, normal_yn, normal_zn]])
         """
-        normals = np.array([np.cross(points[xx[1]] - points[xx[0]], points[xx[2]] - points[xx[0]]) for xx in faces])
+        # vectors defining triangle ABC, a = B - A, b = C - A
+        a = points[faces[:, 1]] - points[faces[:, 0]]
+        b = points[faces[:, 2]] - points[faces[:, 0]]
+        normals = np.cross(a, b)
         normals /= np.linalg.norm(normals, axis=1)[:, None]
         cntr = self.calculate_surface_centres(points, faces) if is_empty(centres) else copy(centres)
 
