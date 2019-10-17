@@ -41,6 +41,8 @@ class Star(Body):
 
         self.init_parameters(**kwargs)
 
+        self.symmetry_test = not self.has_spots() and not self.has_pulsations()
+
     def init_parameters(self, **kwargs):
         """
         Initialise instance paramters

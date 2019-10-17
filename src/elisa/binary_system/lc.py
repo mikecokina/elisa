@@ -4,7 +4,7 @@ import matplotlib.path as mpltpath
 from scipy.spatial.qhull import ConvexHull
 from elisa import utils, const, atm, ld
 from elisa.pulse import pulsations
-from elisa.binary_system import geo, build
+from elisa.binary_system import geo, build, static
 from elisa.conf import config
 from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.const import BINARY_POSITION_PLACEHOLDER
@@ -184,11 +184,11 @@ def get_normal_radiance(single_orbital_position_container, component="all", **kw
                          'Available parameters are `primary`, `secondary` or `all`.')
 
 
-def get_limbdarkening_cfs(self, component="all", **kwargs):
+def get_limbdarkening_cfs(self, components="all", **kwargs):
     """
     Returns limb darkening coefficients for each face of each component.
 
-    :param component: str
+    :param components: str
     :param self:
     :param kwargs: Dict;
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
@@ -197,7 +197,8 @@ def get_limbdarkening_cfs(self, component="all", **kwargs):
             * ** atlas ** * - str
     :return: Dict[str, numpy.array]
     """
-    if component in ["all", "both"]:
+
+    if components in ["all", "both"]:
         return {
             component:
                 ld.interpolate_on_ld_grid(
@@ -207,11 +208,11 @@ def get_limbdarkening_cfs(self, component="all", **kwargs):
                     passband=kwargs["passband"]
                 ) for component in config.BINARY_COUNTERPARTS.keys()
         }
-    elif component in config.BINARY_COUNTERPARTS.keys():
+    elif components in config.BINARY_COUNTERPARTS.keys():
         return ld.interpolate_on_ld_grid(
-            temperature=getattr(self, component).temperatures,
-            log_g=getattr(self, component).log_g,
-            metallicity=getattr(self, component).metallicity,
+            temperature=getattr(self, components).temperatures,
+            log_g=getattr(self, components).log_g,
+            metallicity=getattr(self, components).metallicity,
             passband=kwargs["passband"]
         )
     else:

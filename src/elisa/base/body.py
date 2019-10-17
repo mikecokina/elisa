@@ -54,7 +54,7 @@ class Body(metaclass=ABCMeta):
         self.inverse_point_symmetry_matrix = np.array([])
         self.base_symmetry_points_number = 0
         self._face_symmetry_vector = np.array([])
-        self.base_symmetry_faces_number = 0
+        self.base_symmetry_faces_number = None
         # those are used only if case of spots are used
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
