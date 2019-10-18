@@ -1,25 +1,25 @@
-import gc
-import numpy as np
-import scipy
-
 from copy import copy
 from multiprocessing.pool import Pool
 
+import gc
+import numpy as np
+import scipy
 from astropy import units as u
 from scipy import optimize
 from scipy.spatial.qhull import Delaunay
 
+from elisa import umpy as up
+from elisa import utils, const, ld, units
+from elisa.base import error
+from elisa.base.system import System
+from elisa.binary_system import static, build, lc, rv, mp, geo, utils as bsutils
+from elisa.binary_system.animation import Animation
+from elisa.binary_system.plot import Plot
+from elisa.binary_system.surface import mesh
 from elisa.binary_system.transform import BinarySystemParameters
 from elisa.conf import config
-from elisa import utils, const, ld, units
-from elisa.binary_system import static, build, lc, rv, mp, geo, utils as bsutils
-from elisa.binary_system.plot import Plot
-from elisa.binary_system.animation import Animation
-from elisa.orbit import Orbit
-from elisa.base.system import System
-from elisa.base import error
-from elisa import umpy as up
 from elisa.opt.fsolver import fsolver
+from elisa.orbit.orbit import Orbit
 
 
 class BinarySystem(System):
@@ -116,7 +116,22 @@ class BinarySystem(System):
 
         :return:
         """
-        self.__init__(primary=self.primary, secondary=self.secondary, **self._kwargs_serializer())
+        self.__init__(primary=self.primary, secondary=self.secondary, **self.kwargs_serializer())
+
+    def kwargs_serializer(self):
+        """
+        Creating dictionary of keyword arguments of BinarySystem class in order to be able to reinitialize the class
+        instance in init().
+
+        :return: Dict
+        """
+        serialized_kwargs = dict()
+        for kwarg in self.ALL_KWARGS:
+            if kwarg in ['argument_of_periastron', 'inclination']:
+                serialized_kwargs[kwarg] = getattr(self, kwarg) * units.ARC_UNIT
+            else:
+                serialized_kwargs[kwarg] = getattr(self, kwarg)
+        return serialized_kwargs
 
     def init_orbit(self):
         """
@@ -252,6 +267,17 @@ class BinarySystem(System):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
     def setup_components_radii(self, components_distance):
         """
         Setup component radii.
@@ -275,19 +301,6 @@ class BinarySystem(System):
                 if self.morphology != 'over-contact':
                     radius = self.calculate_forward_radius(component, components_distance)
                     setattr(component_instance, 'forward_radius', radius)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def calculate_radius(self, *args, surface_potential=None):
         """
@@ -385,21 +398,6 @@ class BinarySystem(System):
 
         args = (component, components_distance, 0.0, const.HALF_PI)
         return self.calculate_radius(*args, surface_potential=surface_potential)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def _evaluate_spots_mesh(self, components_distance, component="all"):
         """
@@ -528,7 +526,7 @@ class BinarySystem(System):
                        components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
                        component_instance.surface_potential
                 try:
-                    spot_points = static.get_surface_points(*args)
+                    spot_points = mesh.get_surface_points(*args)
                 except error.MaxIterationError:
                     self._logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
                                          f"doesn't satisfy reasonable conditions and entire spot will be omitted")
@@ -551,21 +549,6 @@ class BinarySystem(System):
                     spot_instance.center = \
                         np.array([components_distance - spot_center[0], -spot_center[1], spot_center[2]])
                 gc.collect()
-
-    def _kwargs_serializer(self):
-        """
-        Creating dictionary of keyword arguments of BinarySystem class in order to be able to reinitialize the class
-        instance in init().
-
-        :return: Dict
-        """
-        serialized_kwargs = dict()
-        for kwarg in self.ALL_KWARGS:
-            if kwarg in ['argument_of_periastron', 'inclination']:
-                serialized_kwargs[kwarg] = getattr(self, kwarg) * units.ARC_UNIT
-            else:
-                serialized_kwargs[kwarg] = getattr(self, kwarg)
-        return serialized_kwargs
 
     def primary_potential_derivative_x(self, x, *args):
         """
@@ -1176,150 +1159,6 @@ class BinarySystem(System):
         lagrangian_points = self.lagrangian_points()
         return potential(lagrangian_points)
 
-    def mesh_detached(self, component, components_distance, symmetry_output=False, **kwargs):
-        """
-        Creates surface mesh of given binary star component in case of detached or semi-detached system.
-
-        :param symmetry_output: bool; if True, besides surface points are returned also `symmetry_vector`,
-                                      `base_symmetry_points_number`, `inverse_symmetry_matrix`
-        :param component: str; `primary` or `secondary`
-        :param components_distance: numpy.float
-        :return: Tuple or numpy.array (if `symmetry_output` is False)
-
-        Array of surface points if symmetry_output = False::
-
-             numpy.array([[x1 y1 z1],
-                          [x2 y2 z2],
-                           ...
-                          [xN yN zN]])
-
-        othervise::
-
-            (
-             numpy.array([[x1 y1 z1],
-                          [x2 y2 z2],
-                            ...
-                          [xN yN zN]]) - array of surface points,
-             numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
-                                                              quarter of surface,
-             numpy.float - number of points included in symmetrical one quarter of surface,
-             numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
-                                                                                mapped basic symmetry quadrant to all
-                                                                                others quadrants
-            )
-        """
-        suppress_parallelism = kwargs.get("suppress_parallelism", True)
-        component_instance = getattr(self, component)
-        if component_instance.discretization_factor > const.HALF_PI:
-            raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
-
-        alpha = component_instance.discretization_factor
-
-        if component == 'primary':
-            potential_fn = self.potential_primary_fn
-            precalc_fn = self.pre_calculate_for_potential_value_primary
-            potential_derivative_fn = self.radial_primary_potential_derivative
-        elif component == 'secondary':
-            potential_fn = self.potential_secondary_fn
-            precalc_fn = self.pre_calculate_for_potential_value_secondary
-            potential_derivative_fn = self.radial_secondary_potential_derivative
-        else:
-            raise ValueError('Invalid value of `component` argument: `{}`. Expecting '
-                             '`primary` or `secondary`.'.format(component))
-
-        # pre calculating azimuths for surface points on quarter of the star surface
-        phi, theta, separator = static.pre_calc_azimuths_for_detached_points(alpha)
-
-        if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
-            # calculating mesh in cartesian coordinates for quarter of the star
-            # args = phi, theta, components_distance, precalc_fn, potential_fn
-            args = phi, theta, component_instance.side_radius, \
-                   components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
-                   component_instance.surface_potential
-            self._logger.debug(f'calculating surface points of {component} component in mesh_detached '
-                               f'function using single process method')
-            points_q = static.get_surface_points(*args)
-        else:
-            # todo: consider to remove following multiproc line if "parallel" solver implemented
-            # calculating mesh in cartesian coordinates for quarter of the star
-            args = phi, theta, components_distance, precalc_fn, potential_fn
-
-            self._logger.debug(f'calculating surface points of {component} component in mesh_detached '
-                               f'function using multi process method')
-            points_q = self.get_surface_points_multiproc(*args)
-
-        equator = points_q[:separator[0], :]
-        # assigning equator points and nearside and farside points A and B
-        x_a, x_eq, x_b = equator[0, 0], equator[1: -1, 0], equator[-1, 0]
-        y_a, y_eq, y_b = equator[0, 1], equator[1: -1, 1], equator[-1, 1]
-        z_a, z_eq, z_b = equator[0, 2], equator[1: -1, 2], equator[-1, 2]
-
-        # calculating points on phi = 0 meridian
-        meridian = points_q[separator[0]: separator[1], :]
-        x_meridian, y_meridian, z_meridian = meridian[:, 0], meridian[:, 1], meridian[:, 2]
-
-        # the rest of the surface
-        quarter = points_q[separator[1]:, :]
-        x_q, y_q, z_q = quarter[:, 0], quarter[:, 1], quarter[:, 2]
-
-        # stiching together 4 quarters of stellar surface in order:
-        # north hemisphere: left_quadrant (from companion point of view):
-        #                   nearside_point, farside_point, equator, quarter, meridian
-        #                   right_quadrant:
-        #                   quadrant, equator
-        # south hemisphere: right_quadrant:
-        #                   quadrant, meridian
-        #                   left_quadrant:
-        #                   quadrant
-        x = np.array([x_a, x_b])
-        y = np.array([y_a, y_b])
-        z = np.array([z_a, z_b])
-        x = np.concatenate((x, x_eq, x_q, x_meridian, x_q, x_eq, x_q, x_meridian, x_q))
-        y = np.concatenate((y, y_eq, y_q, y_meridian, -y_q, -y_eq, -y_q, -y_meridian, y_q))
-        z = np.concatenate((z, z_eq, z_q, z_meridian, z_q, z_eq, -z_q, -z_meridian, -z_q))
-
-        x = -x + components_distance if component == 'secondary' else x
-        points = np.column_stack((x, y, z))
-        if symmetry_output:
-            equator_length = np.shape(x_eq)[0]
-            meridian_length = np.shape(x_meridian)[0]
-            quarter_length = np.shape(x_q)[0]
-            quadrant_start = 2 + equator_length
-            base_symmetry_points_number = 2 + equator_length + quarter_length + meridian_length
-            symmetry_vector = np.concatenate((np.arange(base_symmetry_points_number),  # 1st quadrant
-                                              np.arange(quadrant_start, quadrant_start + quarter_length),
-                                              np.arange(2, quadrant_start),  # 2nd quadrant
-                                              np.arange(quadrant_start, base_symmetry_points_number),  # 3rd quadrant
-                                              np.arange(quadrant_start, quadrant_start + quarter_length)
-                                              ))
-
-            points_length = np.shape(x)[0]
-            inverse_symmetry_matrix = \
-                np.array([np.arange(base_symmetry_points_number),  # 1st quadrant
-                          np.concatenate(([0, 1],
-                                          np.arange(base_symmetry_points_number + quarter_length,
-                                                    base_symmetry_points_number + quarter_length + equator_length),
-                                          np.arange(base_symmetry_points_number,
-                                                    base_symmetry_points_number + quarter_length),
-                                          np.arange(base_symmetry_points_number - meridian_length,
-                                                    base_symmetry_points_number))),  # 2nd quadrant
-                          np.concatenate(([0, 1],
-                                          np.arange(base_symmetry_points_number + quarter_length,
-                                                    base_symmetry_points_number + quarter_length + equator_length),
-                                          np.arange(base_symmetry_points_number + quarter_length + equator_length,
-                                                    base_symmetry_points_number + 2 * quarter_length + equator_length +
-                                                    meridian_length))),  # 3rd quadrant
-                          np.concatenate((np.arange(2 + equator_length),
-                                          np.arange(points_length - quarter_length, points_length),
-                                          np.arange(base_symmetry_points_number + 2 * quarter_length + equator_length,
-                                                    base_symmetry_points_number + 2 * quarter_length + equator_length +
-                                                    meridian_length)))  # 4th quadrant
-                          ])
-
-            return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
-        else:
-            return points
-
     def get_surface_points_multiproc(self, *args):
         """
         Function solves radius for given azimuths that are passed in *argss via multithreading approach.
@@ -1407,192 +1246,6 @@ class BinarySystem(System):
 
         radius = np.abs(radius)
         return utils.cylindrical_to_cartesian(np.column_stack((radius, phi, z)))
-
-    def mesh_over_contact(self, component="all", symmetry_output=False, **kwargs):
-        """
-        Creates surface mesh of given binary star component in case of over-contact system.
-
-        :param symmetry_output: bool; if true, besides surface points are returned also `symmetry_vector`,
-        `base_symmetry_points_number`, `inverse_symmetry_matrix`
-        :param component: str; `primary` or `secondary`
-        :return: Tuple or numpy.array (if symmetry_output is False)
-
-        Array of surface points if symmetry_output = False::
-
-            numpy.array([[x1 y1 z1],
-                         [x2 y2 z2],
-                          ...
-                         [xN yN zN]])
-
-        otherwise::
-
-                 numpy.array([[x1 y1 z1],
-                              [x2 y2 z2],
-                               ...
-                              [xN yN zN]]) - array of surface points,
-                 numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
-                 quarter of surface,
-                 numpy.float - number of points included in symmetrical one quarter of surface,
-                 numpy.array([quadrant[indexes_of_remapped_points_in_quadrant]) - matrix of four sub matrices that
-                 mapped basic symmetry quadrant to all others quadrants
-        """
-        suppress_parallelism = kwargs.get("suppress_parallelism", True)
-        component_instance = getattr(self, component)
-        if component_instance.discretization_factor > const.HALF_PI:
-            raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
-
-        alpha = component_instance.discretization_factor
-
-        # calculating distance between components
-        components_distance = self.orbit.orbital_motion(phase=0)[0][0]
-
-        if component == 'primary':
-            fn = self.potential_primary_fn
-            fn_cylindrical = self.potential_primary_cylindrical_fn
-            precalc = self.pre_calculate_for_potential_value_primary
-            precal_cylindrical = self.pre_calculate_for_potential_value_primary_cylindrical
-            potential_derivative_fn = self.radial_primary_potential_derivative
-            cylindrical_potential_derivative_fn = self.radial_primary_potential_derivative_cylindrical
-        elif component == 'secondary':
-            fn = self.potential_secondary_fn
-            fn_cylindrical = self.potential_secondary_cylindrical_fn
-            precalc = self.pre_calculate_for_potential_value_secondary
-            precal_cylindrical = self.pre_calculate_for_potential_value_secondary_cylindrical
-            potential_derivative_fn = self.radial_secondary_potential_derivative
-            cylindrical_potential_derivative_fn = self.radial_secondary_potential_derivative_cylindrical
-        else:
-            raise ValueError(f'Invalid value of `component` argument: `{component}`.\n'
-                             f'Expecting `primary` or `secondary`.')
-
-        # precalculating azimuths for farside points
-        phi_farside, theta_farside, separator_farside = static.pre_calc_azimuths_for_overcontact_farside_points(alpha)
-
-        # generating the azimuths for neck
-        neck_position, neck_polynomial = self.calculate_neck_position(return_polynomial=True)
-        phi_neck, z_neck, separator_neck = \
-            static.pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial,
-                                                                 polar_radius=component_instance.polar_radius,
-                                                                 component=component)
-
-        # solving points on farside
-        # here implement multiprocessing
-        if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
-            args = phi_farside, theta_farside, component_instance.polar_radius, \
-                   components_distance, precalc, fn, potential_derivative_fn, component_instance.surface_potential
-            self._logger.debug(f'calculating farside points of {component} component in mesh_overcontact '
-                               f'function using single process method')
-            points_farside = static.get_surface_points(*args)
-        else:
-            args = phi_farside, theta_farside, components_distance, precalc, fn
-            self._logger.debug(f'calculating farside points of {component} component in mesh_overcontact '
-                               f'function using multi process method')
-            points_farside = self.get_surface_points_multiproc(*args)
-
-        # assigning equator points and point A (the point on the tip of the farside equator)
-        equator_farside = points_farside[:separator_farside[0], :]
-        x_eq1, x_a = equator_farside[: -1, 0], equator_farside[-1, 0]
-        y_eq1, y_a = equator_farside[: -1, 1], equator_farside[-1, 1]
-        z_eq1, z_a = equator_farside[: -1, 2], equator_farside[-1, 2]
-
-        # assigning points on phi = pi
-        meridian_farside1 = points_farside[separator_farside[0]: separator_farside[1], :]
-        x_meridian1, y_meridian1, z_meridian1 = \
-            meridian_farside1[:, 0], meridian_farside1[:, 1], meridian_farside1[:, 2]
-
-        # assigning points on phi = pi/2 meridian, perpendicular to component`s distance vector
-        meridian_farside2 = points_farside[separator_farside[1]: separator_farside[2], :]
-        x_meridian2, y_meridian2, z_meridian2 = \
-            meridian_farside2[:, 0], meridian_farside2[:, 1], meridian_farside2[:, 2]
-
-        # assigning the rest of the surface on farside
-        quarter = points_farside[separator_farside[2]:, :]
-        x_q1, y_q1, z_q1 = quarter[:, 0], quarter[:, 1], quarter[:, 2]
-
-        # solving points on neck
-        if config.NUMBER_OF_THREADS == 1 or suppress_parallelism:
-            args = phi_neck, z_neck, components_distance, component_instance.polar_radius, \
-                   precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn, \
-                   component_instance.surface_potential
-            self._logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
-                               f'function using single process method')
-            points_neck = static.get_surface_points_cylindrical(*args)
-        else:
-            args = phi_neck, z_neck, components_distance, precal_cylindrical, fn_cylindrical
-            self._logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
-                               f'function using multi process method')
-            points_neck = self.get_surface_points_multiproc_cylindrical(*args)
-
-        # assigning equator points on neck
-        r_eqn = points_neck[:separator_neck[0], :]
-        z_eqn, y_eqn, x_eqn = r_eqn[:, 0], r_eqn[:, 1], r_eqn[:, 2]
-
-        # assigning points on phi = 0 meridian, perpendicular to component`s distance vector
-        r_meridian_n = points_neck[separator_neck[0]: separator_neck[1], :]
-        z_meridian_n, y_meridian_n, x_meridian_n = r_meridian_n[:, 0], r_meridian_n[:, 1], r_meridian_n[:, 2]
-
-        # assigning the rest of the surface on neck
-        r_n = points_neck[separator_neck[1]:, :]
-        z_n, y_n, x_n = r_n[:, 0], r_n[:, 1], r_n[:, 2]
-
-        # building point blocks similar to those in detached system (equator pts, meridian pts and quarter pts)
-        x_eq = np.concatenate((x_eqn, x_eq1), axis=0)
-        y_eq = np.concatenate((y_eqn, y_eq1), axis=0)
-        z_eq = np.concatenate((z_eqn, z_eq1), axis=0)
-        x_q = np.concatenate((x_n, x_meridian2, x_q1), axis=0)
-        y_q = np.concatenate((y_n, y_meridian2, y_q1), axis=0)
-        z_q = np.concatenate((z_n, z_meridian2, z_q1), axis=0)
-        x_meridian = np.concatenate((x_meridian_n, x_meridian1), axis=0)
-        y_meridian = np.concatenate((y_meridian_n, y_meridian1), axis=0)
-        z_meridian = np.concatenate((z_meridian_n, z_meridian1), axis=0)
-
-        x = np.array([x_a])
-        y = np.array([y_a])
-        z = np.array([z_a])
-        x = np.concatenate((x, x_eq, x_q, x_meridian, x_q, x_eq, x_q, x_meridian, x_q))
-        y = np.concatenate((y, y_eq, y_q, y_meridian, -y_q, -y_eq, -y_q, -y_meridian, y_q))
-        z = np.concatenate((z, z_eq, z_q, z_meridian, z_q, z_eq, -z_q, -z_meridian, -z_q))
-
-        x = -x + components_distance if component == 'secondary' else x
-        points = np.column_stack((x, y, z))
-        if symmetry_output:
-            equator_length = np.shape(x_eq)[0]
-            meridian_length = np.shape(x_meridian)[0]
-            quarter_length = np.shape(x_q)[0]
-            quadrant_start = 1 + equator_length
-            base_symmetry_points_number = 1 + equator_length + quarter_length + meridian_length
-            symmetry_vector = np.concatenate((np.arange(base_symmetry_points_number),  # 1st quadrant
-                                              np.arange(quadrant_start, quadrant_start + quarter_length),
-                                              np.arange(1, quadrant_start),  # 2nd quadrant
-                                              np.arange(quadrant_start, base_symmetry_points_number),  # 3rd quadrant
-                                              np.arange(quadrant_start, quadrant_start + quarter_length)
-                                              ))
-
-            points_length = np.shape(x)[0]
-            inverse_symmetry_matrix = \
-                np.array([np.arange(base_symmetry_points_number),  # 1st quadrant
-                          np.concatenate(([0],
-                                          np.arange(base_symmetry_points_number + quarter_length,
-                                                    base_symmetry_points_number + quarter_length + equator_length),
-                                          np.arange(base_symmetry_points_number,
-                                                    base_symmetry_points_number + quarter_length),
-                                          np.arange(base_symmetry_points_number - meridian_length,
-                                                    base_symmetry_points_number))),  # 2nd quadrant
-                          np.concatenate(([0],
-                                          np.arange(base_symmetry_points_number + quarter_length,
-                                                    base_symmetry_points_number + quarter_length + equator_length),
-                                          np.arange(base_symmetry_points_number + quarter_length + equator_length,
-                                                    base_symmetry_points_number + 2 * quarter_length + equator_length +
-                                                    meridian_length))),  # 3rd quadrant
-                          np.concatenate((np.arange(1 + equator_length),
-                                          np.arange(points_length - quarter_length, points_length),
-                                          np.arange(base_symmetry_points_number + 2 * quarter_length + equator_length,
-                                                    base_symmetry_points_number + 2 * quarter_length + equator_length +
-                                                    meridian_length)))  # 4th quadrant
-                          ])
-
-            return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
-        else:
-            return points
 
     def detached_system_surface(self, component="all", points=None, components_distance=None):
         """
@@ -2395,6 +2048,6 @@ class BinarySystem(System):
 
         args = phi, z, components_distance, A / 2, \
                precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn, surface_potential
-        points = static.get_surface_points_cylindrical(*args)
+        points = mesh.get_surface_points_cylindrical(*args)
 
         return points[:points.shape[0] // 2, :], points[points.shape[0] // 2:, :]

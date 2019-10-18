@@ -1,5 +1,3 @@
-import numpy as np
-
 from pypex.poly2d.polygon import Polygon
 from elisa import umpy as up
 
@@ -69,7 +67,7 @@ def calculate_phase(time, period, t0, offset=0.5):
     :param offset: float
     :return: array
     """
-    return np.mod((time - t0 + offset * period) / period, 1.0) - offset
+    return up.mod((time - t0 + offset * period) / period, 1.0) - offset
 
 
 def faces_to_pypex_poly(t_hulls):

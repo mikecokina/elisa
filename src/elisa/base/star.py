@@ -2,6 +2,7 @@ import numpy as np
 
 from elisa import utils, const as c, umpy as up
 from elisa.base.body import Body
+from elisa.binary_system.container import StarPropertiesContainer
 from elisa.pulse.mode import PulsationMode
 from elisa.base.transform import StarParameters
 from elisa.utils import is_empty
@@ -122,9 +123,14 @@ class Star(Body):
         if pulsations:
             self._pulsations = {idx: PulsationMode(**pulsation_meta) for idx, pulsation_meta in enumerate(pulsations)}
 
+    def properties_serializer(self):
+        properties_list = ['mass', 't_eff', 'synchronicity', 'albedo', 'discretization_factor', 'polar_radius',
+                           'spots', 'equatorial_radius', 'gravity_darkening', 'surface_potential', 'pulsations'
+                           'metallicity', 'polar_log_g', 'critical_surface_potential']
+        return {prop: copy(getattr(self, prop)) for prop in properties_list}
 
-
-
+    def to_star_properties_container(self):
+        return StarPropertiesContainer(**self.properties_serializer())
 
 
 
@@ -153,7 +159,7 @@ class Star(Body):
             spot_instance.potential_gradient_magnitudes = np.array([])
             spot_instance.temperatures = np.array([])
 
-            spot_instance._log_g = np.array([])
+            spot_instance.log_g = np.array([])
 
     def calculate_polar_effective_temperature(self):
         """
@@ -216,12 +222,12 @@ class Star(Body):
 
         def spherical_harmonics_renormalization_constant(l: int, m: int):
             old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
-            ns = int(up.power(5, np.ceil((l-m)/23))*((l-m)+1))
+            ns = int(up.power(5, up.ceil((l-m)/23))*((l-m)+1))
             output = brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=ns, finish=fmin, full_output=True)
             np.seterr(**old_settings)
 
             x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
-            result = abs(np.real(up.sph_harm(m, l, 0, np.arccos(x))))
+            result = abs(np.real(up.sph_harm(m, l, 0, up.arccos(x))))
             return 1.0 / result
 
         if not is_empty(points):
@@ -245,14 +251,14 @@ class Star(Body):
             else:
                 phi_rot = (centres[:, 1] - pulsation.mode_axis_phi) % c.FULL_ARC  # rotation around Z
                 # axis
-                cos_phi = np.cos(phi_rot)
-                sin_theta = np.sin(centres[:, 2])
-                sin_axis_theta = np.sin(pulsation.mode_axis_theta)
-                cos_theta = np.cos(centres[:, 2])
+                cos_phi = up.cos(phi_rot)
+                sin_theta = up.sin(centres[:, 2])
+                sin_axis_theta = up.sin(pulsation.mode_axis_theta)
+                cos_theta = up.cos(centres[:, 2])
                 # rotation around Y axis by `mode_axis_theta` angle
-                cos_axis_theta = np.cos(pulsation.mode_axis_theta)
-                theta = np.arccos(cos_phi * sin_theta * sin_axis_theta + cos_theta * cos_axis_theta)
-                phi = np.arctan2(np.sin(phi_rot) * sin_theta, cos_phi * sin_theta * cos_axis_theta -
+                cos_axis_theta = up.cos(pulsation.mode_axis_theta)
+                theta = up.arccos(cos_phi * sin_theta * sin_axis_theta + cos_theta * cos_axis_theta)
+                phi = up.arctan2(up.sin(phi_rot) * sin_theta, cos_phi * sin_theta * cos_axis_theta -
                                  cos_theta * sin_axis_theta)
 
             # generating of renormalised spherical harmonics (maximum value on sphere equuals to 1)
@@ -287,33 +293,3 @@ class Star(Body):
         if self.spots:
             for spot_index, spot in self.spots.items():
                 spot.temperatures *= coefficient
-
-#     def properties_serializer(self):
-#         body_props = ['mass', 't_eff', 'points', 'faces', 'normals', 'temperatures', 'synchronicity', 'albedo',
-#                       'polar_radius', 'areas', 'discretization_factor', 'face_centres', 'spots',
-#                       'point_symmetry_vector', 'inverse_point_symmetry_matrix', 'base_symmetry_points_number',
-#                       'face_symmetry_vector', 'base_symmetry_faces_number', 'base_symmetry_points',
-#                       'base_symmetry_faces']
-#         star_props = ['surface_potential', 'backward_radius', 'polar_radius', 'gravity_darkening', 'synchronicity',
-#                       'forward_radius', 'side_radius', 'polar_log_g', 'equatorial_radius',
-#                       'critical_surface_potential', 'potential_gradient_magnitudes',
-#                       'polar_potential_gradient_magnitude', 'pulsations', 'filling_factor', 'metallicity', 'log_g']
-#
-#         properties_list = body_props + star_props
-#         return StarProperties(**{prop: copy(getattr(self, prop)) for prop in properties_list})
-#
-#
-# class StarProperties(object):
-#     def __init__(self, **kwargs):
-#         self.properties = kwargs
-#         for k, v in kwargs.items():
-#             setattr(self, k, v)
-#
-#     def to_dict(self):
-#         return self.properties
-#
-#     def __getitem__(self, item):
-#         return getattr(self, item)
-#
-#     def __str__(self):
-#         return str(self.to_dict())

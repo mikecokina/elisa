@@ -1,10 +1,45 @@
 import numpy as np
 
 from copy import copy
+
+from elisa.binary_system.surface import mesh
 from elisa.conf import config
 from elisa.binary_system import static
 from elisa.utils import is_empty
 from elisa.pulse import pulsations
+
+
+def build_mesh(self, component="all", components_distance=None, **kwargs):
+    """
+    Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
+
+    :param self: BinarySystem; instance
+    :param component: str or empty
+    :param components_distance: float
+    :return:
+    """
+    if is_empty(component):
+        self._logger.debug("no component set to build mesh")
+        return
+
+    if components_distance is None:
+        raise ValueError('Argument `component_distance` was not supplied.')
+    component = static.component_to_list(component)
+
+    for _component in component:
+        component_instance = getattr(self, _component)
+        # in case of spoted surface, symmetry is not used
+        _a, _b, _c, _d = mesh.mesh_over_contact(self, component=_component, symmetry_output=True, **kwargs) \
+            if self.morphology == 'over-contact' \
+            else mesh.mesh_detached(
+            self, component=_component, components_distance=components_distance, symmetry_output=True, **kwargs
+        )
+        component_instance.points = _a
+        component_instance.point_symmetry_vector = _b
+        component_instance.base_symmetry_points_number = _c
+        component_instance.inverse_point_symmetry_matrix = _d
+
+    add_spots_to_mesh(self, components_distance, component="all")
 
 
 def build_surface_gravity(self, component="all", components_distance=None):
@@ -182,39 +217,6 @@ def build_surface_map(self, colormap=None, component="all", components_distance=
                         return_map[_component] = np.append(return_map[_component], spot.temperatures)
         return return_map
     return
-
-
-def build_mesh(self, component="all", components_distance=None, **kwargs):
-    """
-    Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
-
-    :param self: BinarySystem; instance
-    :param component: str or empty
-    :param components_distance: float
-    :return:
-    """
-    if is_empty(component):
-        self._logger.debug("no component set to build mesh")
-        return
-
-    if components_distance is None:
-        raise ValueError('Argument `component_distance` was not supplied.')
-    component = static.component_to_list(component)
-
-    for _component in component:
-        component_instance = getattr(self, _component)
-        # in case of spoted surface, symmetry is not used
-        _a, _b, _c, _d = self.mesh_over_contact(component=_component, symmetry_output=True, **kwargs) \
-            if self.morphology == 'over-contact' \
-            else self.mesh_detached(
-            component=_component, components_distance=components_distance, symmetry_output=True, **kwargs
-        )
-        component_instance.points = _a
-        component_instance.point_symmetry_vector = _b
-        component_instance.base_symmetry_points_number = _c
-        component_instance.inverse_point_symmetry_matrix = _d
-
-    add_spots_to_mesh(self, components_distance, component="all")
 
 
 def add_spots_to_mesh(self, components_distance, component="all"):

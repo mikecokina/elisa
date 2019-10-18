@@ -10,6 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from elisa import const
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
+from elisa.orbit import orbit
 from elisa.utils import is_empty
 from elisa.conf import config
 
@@ -89,7 +90,7 @@ def polar_gravity_acceleration(bs, component=None, components_distance=None):
         centrifugal_distance = np.array([x_com * semi_major_axis, 0.0, 0.0])
         actual_distance = np.array([components_distance * semi_major_axis, 0., 0.])
         h_vector = r_vector - actual_distance
-        angular_velocity = bs.angular_velocity(components_distance=components_distance)
+        angular_velocity = orbit.angular_velocity(bs.period, bs.eccentricity, components_distance)
 
         block_a = - ((const.G * primary_mass) / np.linalg.norm(r_vector) ** 3) * r_vector
         block_b = - ((const.G * secondary_mass) / np.linalg.norm(h_vector) ** 3) * h_vector

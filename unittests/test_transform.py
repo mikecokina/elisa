@@ -1,11 +1,12 @@
 import numpy as np
+from astropy import units as au
 from numpy.testing import assert_array_equal
 
+from elisa import const, units
 from elisa.base.transform import SystemParameters, BodyParameters, StarParameters
 from elisa.binary_system.transform import BinarySystemParameters
+from elisa.orbit.transform import OrbitParameters
 from unittests.utils import ElisaTestCase
-from elisa import const, units
-from astropy import units as au
 
 
 class TransformBinarySystemParametersTestCase(ElisaTestCase):
@@ -55,7 +56,7 @@ class TransformSystemParametersTestCase(ElisaTestCase):
         obtained = np.round([SystemParameters.inclination(val) for val in valid_values], 4)
         expected = [0., 3.1416, 3.1416, 3.1416]
         assert_array_equal(expected, obtained)
-    
+
     def test_inclination_raise(self):
         with self.assertRaises(Exception) as context:
             SystemParameters.inclination(const.FULL_ARC * units.rad)
@@ -67,7 +68,7 @@ class TransformSystemParametersTestCase(ElisaTestCase):
         obtained = [SystemParameters.period(val) for val in valid_values]
         expected = [1.0, 180.0, 1.0]
         assert_array_equal(expected, obtained)
-    
+
     def test_period_raise(self):
         with self.assertRaises(Exception) as context:
             SystemParameters.period("98.2")
@@ -141,9 +142,9 @@ class TransformBodyParametersTestCase(ElisaTestCase):
 
     @staticmethod
     def test_discretization_factor():
-        valid_values = [0.0, 180., const.PI * units.rad, 180.0 * units.deg]
+        valid_values = [0.0, 45., 0.25 * units.rad, 45.0 * units.deg]
         obtained = np.round([BodyParameters.discretization_factor(val) for val in valid_values], 4)
-        expected = [0., 3.1416, 3.1416, 3.1416]
+        expected = [0., 0.7854, 0.25, 0.7854]
         assert_array_equal(expected, obtained)
 
     @staticmethod
@@ -152,7 +153,7 @@ class TransformBodyParametersTestCase(ElisaTestCase):
         obtained = np.round([BodyParameters.t_eff(val) for val in valid_values], 4)
         expected = [10., 180.]
         assert_array_equal(expected, obtained)
-        
+
     def test_t_eff_raise(self):
         with self.assertRaises(Exception) as context:
             BodyParameters.t_eff("10")
@@ -214,3 +215,30 @@ class TransformSpotParametersTestCase(ElisaTestCase):
         pass
 
 
+class TransformOrbitParameters(ElisaTestCase):
+    @staticmethod
+    def test_period():
+        periods = [0.25 * units.d, 0.65, 86400 * units.s]
+        expected = [0.25, 0.65, 1.0]
+        obtained = [OrbitParameters.period(val) for val in periods]
+        assert_array_equal(obtained, expected)
+
+    @staticmethod
+    def test_eccentricity():
+        values = [0.0 * 0.1, 0.2, 0.999999]
+        obtained = [OrbitParameters.eccentricity(val) for val in values]
+        assert_array_equal(obtained, values)
+
+    @staticmethod
+    def test_argument_of_periastron():
+        periastrons = [135 * units.deg, 0.65, 1.56 * units.rad]
+        expected = [2.356, 0.65, 1.56]
+        obtained = np.round([OrbitParameters.argument_of_periastron(val) for val in periastrons], 3)
+        assert_array_equal(obtained, expected)
+
+    @staticmethod
+    def test_inclination():
+        inclinations = [135 * units.deg, 0.65, 1.56 * units.rad]
+        expected = [2.356, 0.65, 1.56]
+        obtained = np.round([OrbitParameters.inclination(val) for val in inclinations], 3)
+        assert_array_equal(obtained, expected)

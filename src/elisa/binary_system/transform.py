@@ -2,10 +2,10 @@ import numpy as np
 
 from astropy import units as au
 from elisa import units, const
-from elisa.base import transform
+from elisa.base.transform import SystemParameters, WHEN_FLOAT64, quantity_transform
 
 
-class BinarySystemParameters(transform.SystemParameters):
+class BinarySystemParameters(SystemParameters):
     @staticmethod
     def eccentricity(value):
         """
@@ -30,7 +30,7 @@ class BinarySystemParameters(transform.SystemParameters):
         """
         if isinstance(value, au.quantity.Quantity):
             value = np.float64(value.to(units.ARC_UNIT))
-        elif isinstance(value, transform.WHEN_FLOAT64):
+        elif isinstance(value, WHEN_FLOAT64):
             value = np.float64((value * units.deg).to(units.ARC_UNIT))
         else:
             raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
@@ -58,4 +58,4 @@ class BinarySystemParameters(transform.SystemParameters):
         :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return: float
         """
-        return transform.quantity_transform(value, units.PERIOD_UNIT, transform.WHEN_FLOAT64)
+        return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)

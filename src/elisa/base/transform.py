@@ -151,7 +151,10 @@ class BodyParameters(TransformParameters):
         :param value: float or astropy.quantity.Quantity
         :return: float
         """
-        return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        value = deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        if value > const.HALF_PI:
+            raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
+        return value
 
     @staticmethod
     def t_eff(value):

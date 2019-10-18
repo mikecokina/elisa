@@ -19,3 +19,5 @@ km = u.km
 solMass = u.solMass
 deg_C = u.deg_C
 m = u.m
+d = u.d
+s = u.s

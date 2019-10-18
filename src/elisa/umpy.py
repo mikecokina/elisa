@@ -25,8 +25,10 @@ ceil = np.ceil
 where = np.where
 invert = np.invert
 concatenate = np.concatenate
+sqrt = np.sqrt
 
 logical_xor = np.logical_xor
+mod = np.mod
 
 # scipy
 sph_harm = special.sph_harm

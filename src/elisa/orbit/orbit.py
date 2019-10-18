@@ -1,7 +1,31 @@
 import numpy as np
 
-from astropy import units as u
-from elisa import logger, utils, const, units
+from elisa import logger, utils, const, umpy as up
+from elisa.orbit.transform import OrbitParameters
+
+
+def angular_velocity(period, eccentricity, distance):
+    """
+    Compute angular velocity for given components distance.
+    This can be derived from facts that::
+
+
+        w = dp/dt
+
+        P * 1/2 * dp/dt = pi * a * b
+
+        e = sqrt(1 - (b/a)^2)
+
+    where a, b are respectively semi major and semi minor axis, P is period and e is eccentricity.
+
+
+    :param period:
+    :param eccentricity:
+    :param distance: float
+    :return: float
+    """
+    return ((2.0 * up.pi) / (period * 86400.0 * (distance ** 2))) * up.sqrt(
+        (1.0 - eccentricity) * (1.0 + eccentricity))  # $\rad.sec^{-1}$
 
 
 class Orbit(object):
@@ -13,173 +37,27 @@ class Orbit(object):
     def __init__(self, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Orbit.ALL_KWARGS, Orbit)
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
-
+        kwargs = OrbitParameters.transform_input(**kwargs)
         self._logger = logger.getLogger(name=self.__class__.__name__, suppress=suppress_logger)
 
         # default valeus of properties
-        self._period: np.float64 = np.nan
-        self._inclination: np.float64 = np.nan
-        self._eccentricity: np.float64 = np.nan
-        self._argument_of_periastron: np.float64 = np.nan
-        self._periastron_distance: np.float64 = np.nan
-        self._periastron_phase: np.float64 = np.nan
-        self._semimajor_axis: np.float64 = np.nan
-        self._phase_shift: np.float64 = 0.0
+        self.period = np.nan
+        self.eccentricity = np.nan
+        self.argument_of_periastron = np.nan
+        self.inclination = np.nan
+
+        self.periastron_distance = np.nan
+        self.periastron_phase = np.nan
+        self.semimajor_axis = np.nan
+        self.phase_shift = 0.0
 
         # values of properties
+        self._logger.debug(f"setting properties of orbit")
         for kwarg in kwargs:
-            self._logger.debug(f"setting property {kwarg} "
-                               f"of class instance {self.__class__.__name__} to {kwargs[kwarg]}")
             setattr(self, kwarg, kwargs[kwarg])
 
-        self._periastron_distance = self.compute_periastron_distance()
-        self._periastron_phase = - self.get_conjuction()["primary_eclipse"]["true_phase"] % 1
-
-    @property
-    def semimajor_axis(self):
-        """
-        Returns semimajor axis in SI units.
-
-        :return: float
-        """
-        return self._semimajor_axis
-
-    @semimajor_axis.setter
-    def semimajor_axis(self, semimajor_axis):
-        """
-        Semimajor axis setter.
-
-        :param semimajor_axis: float
-        :return:
-        """
-        self._semimajor_axis = semimajor_axis
-    
-    @property
-    def periastron_phase(self):
-        """
-        Photometric phase of periastron.
-
-        :return: float
-        """
-        return self._periastron_phase
-
-    @property
-    def period(self):
-        """
-        Returns orbital period of the binary system in default period unit.
-
-        :return: numpy.float
-        """
-        return self._period
-
-    @period.setter
-    def period(self, period):
-        """
-        Setter for orbital period of binary system orbit.
-        If unitless values is supplied, default units suppose to be days.
-
-        :param period: float
-        :return:
-        """
-        if isinstance(period, u.quantity.Quantity):
-            self._period = np.float64(period.to(units.PERIOD_UNIT))
-        elif isinstance(period, (int, np.int, float, np.float)):
-            self._period = np.float64(period)
-        else:
-            raise TypeError('Input of variable `period` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug(f"setting property period "
-                           f"of class instance {self.__class__.__name__} to {self._period}")
-
-    @property
-    def inclination(self):
-        """
-        Returns inclination of binary system orbit.
-
-        :return: float
-        """
-        return self._inclination
-
-    @inclination.setter
-    def inclination(self, inclination):
-        """
-        Setter for inclination of binary system orbit.
-        If unitless values is supplied, default units suppose to be radians.
-
-        :param inclination: float
-        :return:
-        """
-        if isinstance(inclination, u.quantity.Quantity):
-            self._inclination = np.float64(inclination.to(units.ARC_UNIT))
-        elif isinstance(inclination, (int, np.int, float, np.float)):
-            self._inclination = np.float64(inclination)
-        else:
-            raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-
-    @property
-    def eccentricity(self):
-        """
-        Returns eccentricity of binary system orbit.
-
-        :return: float
-        """
-        return self._eccentricity
-
-    @eccentricity.setter
-    def eccentricity(self, eccentricity):
-        """
-        Setter for eccentricity of binary system orbit.
-
-        :param eccentricity: float
-        :return:
-        """
-        self._eccentricity = eccentricity
-
-    @property
-    def phase_shift(self):
-        """
-        Returns phase shift of binary system orbit.
-
-        :return: float
-        """
-        return self._phase_shift
-
-    @phase_shift.setter
-    def phase_shift(self, phase_shift):
-        """
-        Setter for phase shift of binary system orbit.
-
-        :param phase_shift: float
-        :return:
-        """
-        self._phase_shift = phase_shift
-
-    @property
-    def argument_of_periastron(self):
-        """
-        Returns argument of periastron of binary system orbit.
-
-        :return: float
-        """
-        return self._argument_of_periastron
-
-    @argument_of_periastron.setter
-    def argument_of_periastron(self, argument_of_periastron):
-        """
-        Setter for argument of periastron.
-        If unit is not supplied, value in radians is assumed.
-
-        :param argument_of_periastron: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(argument_of_periastron, u.quantity.Quantity):
-            self._argument_of_periastron = np.float64(argument_of_periastron.to(units.ARC_UNIT))
-        elif isinstance(argument_of_periastron, (int, np.int, float, np.float)):
-            self._argument_of_periastron = np.float(argument_of_periastron)
-        else:
-            raise TypeError('Input of variable `argument_of_periastron` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+        self.periastron_distance = self.compute_periastron_distance()
+        self.periastron_phase = - self.get_conjuction()["primary_eclipse"]["true_phase"] % 1
 
     @classmethod
     def true_phase(cls, phase, phase_shift):
@@ -429,15 +307,6 @@ class Orbit(object):
             conjunction_quantities[idx]["true_phase"] = true_phase_of_conjunction
 
         return conjunction_quantities
-
-    @property
-    def periastron_distance(self):
-        """
-        Return periastron distance.
-
-        :return: float
-        """
-        return self._periastron_distance
 
     def compute_periastron_distance(self):
         """

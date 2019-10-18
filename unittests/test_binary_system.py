@@ -322,9 +322,9 @@ class TestMethods(ElisaTestCase):
     def _prepare_systems(self):
         return [prepare_binary_system(combo) for combo in self.params_combination]
 
-    def test__kwargs_serializer(self):
+    def test_kwargs_serializer(self):
         bs = self._binaries[-1]
-        obtained = bs._kwargs_serializer()
+        obtained = bs.kwargs_serializer()
 
         expected = dict(
             gamma=0.0,

@@ -130,6 +130,30 @@ class OrbitalSupplements(Sequence):
         return self.__str__()
 
 
+class PropertiesContainer(object):
+    def __init__(self, **kwargs):
+        self.properties = kwargs
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def to_dict(self):
+        return self.properties
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def __str__(self):
+        return str(self.to_dict())
+
+
+class StarPropertiesContainer(PropertiesContainer):
+    pass
+
+
+class SystemPropertiesContainer(PropertiesContainer):
+    pass
+
+
 class StarContainer(object):
     """
     Container carrying non-static properties of Star objecet (properties which vary from phase to phase).
@@ -143,6 +167,7 @@ class StarContainer(object):
     :param face_centres: numpy.array; Get renormalized associated Legendre polynomials (rALS). Array of complex
     arrays for each face.
     :param metallicity: float;
+    :param: properties Dict;
     """
 
     def __init__(self,
@@ -155,7 +180,8 @@ class StarContainer(object):
                  coverage=None,
                  rals=None,
                  face_centres=None,
-                 metallicity=None):
+                 metallicity=None,
+                 **properties):
 
         self.points = points
         self.normals = normals
@@ -167,6 +193,7 @@ class StarContainer(object):
         self.rals = rals
         self.face_centres = face_centres
         self.metallicity = metallicity
+        self.properties = StarPropertiesContainer(**properties)
 
     def copy(self):
         """
@@ -175,3 +202,15 @@ class StarContainer(object):
         :return: self; copied self instance
         """
         return deepcopy(self)
+
+
+class OrbitalPositionContainer(object):
+    def __init__(self, primary: StarContainer, secondary, position, **properties):
+        self.primary = primary
+        self.secondary = secondary
+        self.position = position
+        self.properties = SystemPropertiesContainer(**properties)
+
+    def build_mesh(self, components_distance, component="all", **kwargs):
+        pass
+
