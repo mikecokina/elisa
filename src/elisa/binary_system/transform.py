@@ -2,10 +2,10 @@ import numpy as np
 
 from astropy import units as au
 from elisa import units, const
-from elisa.base.transform import SystemParameters, WHEN_FLOAT64, quantity_transform
+from elisa.base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
 
 
-class BinarySystemParameters(SystemParameters):
+class BinarySystemProperties(SystemProperties):
     @staticmethod
     def eccentricity(value):
         """

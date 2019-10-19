@@ -203,6 +203,9 @@ class StarContainer(object):
         """
         return deepcopy(self)
 
+    def flatten(self):
+        pass
+
 
 class OrbitalPositionContainer(object):
     def __init__(self, primary: StarContainer, secondary, position, **properties):
@@ -210,6 +213,9 @@ class OrbitalPositionContainer(object):
         self.secondary = secondary
         self.position = position
         self.properties = SystemPropertiesContainer(**properties)
+
+    def build(self, components_distance, component="all", **kwargs):
+        pass
 
     def build_mesh(self, components_distance, component="all", **kwargs):
         pass

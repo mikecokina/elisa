@@ -1,7 +1,7 @@
 import numpy as np
 
 from elisa import utils
-from elisa.base.transform import SpotParameters
+from elisa.base.transform import SpotProperties
 from elisa.utils import is_empty
 
 
@@ -47,7 +47,7 @@ class Spot(object):
 
     @staticmethod
     def transform_input(**kwargs):
-        return SpotParameters.transform_input(**kwargs)
+        return SpotProperties.transform_input(**kwargs)
 
     def calculate_areas(self):
         """

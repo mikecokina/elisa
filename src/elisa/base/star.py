@@ -4,7 +4,7 @@ from elisa import utils, const as c, umpy as up
 from elisa.base.body import Body
 from elisa.binary_system.container import StarPropertiesContainer
 from elisa.pulse.mode import PulsationMode
-from elisa.base.transform import StarParameters
+from elisa.base.transform import StarProperties
 from elisa.utils import is_empty
 
 from copy import copy
@@ -76,7 +76,7 @@ class Star(Body):
         :param kwargs: Dict
         :return: Dict
         """
-        return StarParameters.transform_input(**kwargs)
+        return StarProperties.transform_input(**kwargs)
 
     def init_parameters(self, **kwargs):
         """
@@ -125,11 +125,13 @@ class Star(Body):
 
     def properties_serializer(self):
         properties_list = ['mass', 't_eff', 'synchronicity', 'albedo', 'discretization_factor', 'polar_radius',
-                           'spots', 'equatorial_radius', 'gravity_darkening', 'surface_potential', 'pulsations'
-                           'metallicity', 'polar_log_g', 'critical_surface_potential']
+                           'spots', 'equatorial_radius', 'gravity_darkening', 'surface_potential', 'pulsations',
+                           'metallicity', 'polar_log_g', 'critical_surface_potential',
+                           # todo: remove side_radius when figured out starting point for solver
+                           'side_radius']
         return {prop: copy(getattr(self, prop)) for prop in properties_list}
 
-    def to_star_properties_container(self):
+    def to_properties_container(self):
         return StarPropertiesContainer(**self.properties_serializer())
 
 

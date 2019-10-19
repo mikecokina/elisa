@@ -57,7 +57,7 @@ class Body(metaclass=ABCMeta):
 
     def __init__(self, name, logger_name=None, suppress_logger=False, **kwargs):
         """
-        Parameters of abstract class Body.
+        Properties of abstract class Body.
         """
         # initial kwargs
         self.kwargs = copy(kwargs)

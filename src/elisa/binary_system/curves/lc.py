@@ -3,7 +3,7 @@ import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
 from elisa import utils, const, atm, ld
-from elisa.binary_system.container import OrbitalSupplements
+from elisa.binary_system.container import OrbitalSupplements, OrbitalPositionContainer
 from elisa.pulse import pulsations
 from elisa.binary_system import geo, build, utils as bsutils
 from elisa.conf import config
@@ -250,12 +250,12 @@ def prep_surface_params(initial_props_container, pulsations_test, **kwargs):
     return normal_radiance, ld_cfs
 
 
-def compute_circular_synchronous_lightcurve(self, **kwargs):
+def compute_circular_synchronous_lightcurve(system, **kwargs):
     """
     Compute light curve, exactly, from position to position, for synchronous circular
     binary system.
 
-    :param self: elisa.binary_system.system.BinarySystem
+    :param system: elisa.binary_system.system.BinarySystem
     :param kwargs: Dict;
     * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
@@ -264,27 +264,36 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array]
     """
-    self.build(components_distance=1.0, suppress_parallelism=False)
+    orbital_position_container = OrbitalPositionContainer(
+        primary=system.primary.to_properties_container(),
+        secondary=system.secondary.to_properties_container(),
+        position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+        **system.properties_serializer()
 
-    ecl_boundaries = geo.get_eclipse_boundaries(self, 1.0)
+    )
+    orbital_position_container.build(components_distance=1.0)
+
+
+    system.build(components_distance=1.0, suppress_parallelism=False)
+    ecl_boundaries = geo.get_eclipse_boundaries(system, 1.0)
 
     # in case of LC for spotless surface without pulsations unique phase interval is only (0, 0.5)
     phases = kwargs.pop("phases")
-    unique_phase_interval, reverse_phase_map = _phase_crv_symmetry(self, phases)
+    unique_phase_interval, reverse_phase_map = _phase_crv_symmetry(system, phases)
 
     position_method = kwargs.pop("position_method")
     orbital_motion = position_method(input_argument=unique_phase_interval, return_nparray=False, calculate_from='phase')
 
-    initial_props_container = geo.SingleOrbitalPositionContainer(self.primary, self.secondary)
-    initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), self.inclination)
+    initial_props_container = geo.SingleOrbitalPositionContainer(system.primary, system.secondary)
+    initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), system.inclination)
 
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
     params = dict(orbital_motion=orbital_motion, ecl_boundaries=ecl_boundaries)
-    system_positions_container = self.prepare_system_positions_container(**params)
+    system_positions_container = system.prepare_system_positions_container(**params)
     system_positions_container = system_positions_container.darkside_filter()
 
-    pulsations_test = {'primary': self.primary.has_pulsations(), 'secondary': self.secondary.has_pulsations()}
+    pulsations_test = {'primary': system.primary.has_pulsations(), 'secondary': system.secondary.has_pulsations()}
     normal_radiance, ld_cfs = prep_surface_params(initial_props_container, pulsations_test, **kwargs)
 
     band_curves = {key: np.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
@@ -292,7 +301,7 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
         # dict of components
         star_containers = {component: getattr(container, component) for component in BINARY_COUNTERPARTS}
 
-        coverage = compute_surface_coverage(container, self.semi_major_axis, in_eclipse=system_positions_container.in_eclipse[idx])
+        coverage = compute_surface_coverage(container, system.semi_major_axis, in_eclipse=system_positions_container.in_eclipse[idx])
 
         # calculating cosines between face normals and line of sight
         cosines, visibility_test = dict(), dict()
@@ -304,12 +313,12 @@ def compute_circular_synchronous_lightcurve(self, **kwargs):
             # calculating temperature perturbation due to pulsations
             if pulsations_test[component]:
                 com_x = None if component == 'primary' else 1.0
-                component_instance = getattr(self, component)
+                component_instance = getattr(system, component)
                 star_container_instance.temperatures += \
                     pulsations.calc_temp_pert_on_container(component_instance,
                                                            star_container_instance,
                                                            orbital_motion[idx].phase,
-                                                           self.period,
+                                                           system.period,
                                                            com_x=com_x)
                 normal_radiance[component] = get_normal_radiance(container, component=component, **kwargs)
                 ld_cfs[component] = get_limbdarkening_cfs(container, component=component, **kwargs)

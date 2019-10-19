@@ -1,7 +1,7 @@
 import numpy as np
 
 from elisa import logger, utils, const, umpy as up
-from elisa.orbit.transform import OrbitParameters
+from elisa.orbit.transform import OrbitProperties
 
 
 def angular_velocity(period, eccentricity, distance):
@@ -37,7 +37,7 @@ class Orbit(object):
     def __init__(self, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Orbit.ALL_KWARGS, Orbit)
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
-        kwargs = OrbitParameters.transform_input(**kwargs)
+        kwargs = OrbitProperties.transform_input(**kwargs)
         self._logger = logger.getLogger(name=self.__class__.__name__, suppress=suppress_logger)
 
         # default valeus of properties
@@ -110,7 +110,7 @@ class Orbit(object):
         :return: float
         """
         mean_anomaly, = args
-        return eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly) - mean_anomaly
+        return eccentric_anomaly - self.eccentricity * up.sin(eccentric_anomaly) - mean_anomaly
 
     def mean_anomaly_to_eccentric_anomaly(self, mean_anomaly: float) -> float:
         """
@@ -122,7 +122,7 @@ class Orbit(object):
         import scipy.optimize
         try:
             solution = scipy.optimize.newton(self.mean_anomaly_fn, 1.0, args=(mean_anomaly, ), tol=1e-10)
-            if not np.isnan(solution):
+            if not up.isnan(solution):
                 if solution < 0:
                     solution += const.FULL_ARC
                 return solution
@@ -140,7 +140,7 @@ class Orbit(object):
         :param eccentric_anomaly: numpy.array
         :return:
         """
-        return (eccentric_anomaly - self.eccentricity * np.sin(eccentric_anomaly)) % const.FULL_ARC
+        return (eccentric_anomaly - self.eccentricity * up.sin(eccentric_anomaly)) % const.FULL_ARC
 
     def eccentric_anomaly_to_true_anomaly(self, eccentric_anomaly):
         """
@@ -149,8 +149,8 @@ class Orbit(object):
         :param eccentric_anomaly: ndarray
         :return: ndarray
         """
-        true_anomaly = 2.0 * np.arctan(
-            np.sqrt((1.0 + self.eccentricity) / (1.0 - self.eccentricity)) * np.tan(eccentric_anomaly / 2.0))
+        true_anomaly = 2.0 * up.arctan(
+            up.sqrt((1.0 + self.eccentricity) / (1.0 - self.eccentricity)) * up.tan(eccentric_anomaly / 2.0))
         true_anomaly[true_anomaly < 0] += const.FULL_ARC
         return true_anomaly
 
@@ -162,7 +162,7 @@ class Orbit(object):
         :return:
         """
         eccentric_anomaly = \
-            2.0 * np.arctan(np.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) * np.tan(true_anomaly / 2.0))
+            2.0 * up.arctan(up.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) * up.tan(true_anomaly / 2.0))
         eccentric_anomaly[eccentric_anomaly < 0] += const.FULL_ARC
         return eccentric_anomaly
 
@@ -173,7 +173,7 @@ class Orbit(object):
         :param true_anomaly: numpy.array
         :return: numpy.array
         """
-        return (1.0 - self.eccentricity ** 2) / (1.0 + self.eccentricity * np.cos(true_anomaly))
+        return (1.0 - self.eccentricity ** 2) / (1.0 + self.eccentricity * up.cos(true_anomaly))
 
     def true_anomaly_to_azimuth(self, true_anomaly):
         """
@@ -280,7 +280,7 @@ class Orbit(object):
             elif const.PI / 2.0 < self.inclination <= const.PI:
                 conjuction_arc_list = [3.0 * const.PI / 2.0, const.PI / 2.0]
         except Exception as e:
-            raise TypeError(f'Invalid type of {self.__class__.__name__}.inclination.')
+            raise TypeError(f'Invalid type of {self.__class__.__name__}.inclination - {str(e)}.')
 
         conjunction_quantities = dict()
         for alpha, idx in list(zip(conjuction_arc_list, ['primary_eclipse', 'secondary_eclipse'])):
@@ -288,14 +288,14 @@ class Orbit(object):
             true_anomaly_of_conjuction = (alpha - self.argument_of_periastron) % const.FULL_ARC  # \nu_{con}
 
             # eccentric anomaly of conjunction (measured from apse line)
-            eccentric_anomaly_of_conjunction = (2.0 * np.arctan(
-                np.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) *
-                np.tan(true_anomaly_of_conjuction / 2.0))) % const.FULL_ARC
+            eccentric_anomaly_of_conjunction = (2.0 * up.arctan(
+                up.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) *
+                up.tan(true_anomaly_of_conjuction / 2.0))) % const.FULL_ARC
 
             # mean anomaly of conjunction (measured from apse line)
             mean_anomaly_of_conjunction = (eccentric_anomaly_of_conjunction -
                                            self.eccentricity *
-                                           np.sin(eccentric_anomaly_of_conjunction)) % const.FULL_ARC
+                                           up.sin(eccentric_anomaly_of_conjunction)) % const.FULL_ARC
 
             # true phase of conjunction (measured from apse line)
             true_phase_of_conjunction = (mean_anomaly_of_conjunction / const.FULL_ARC) % 1.0

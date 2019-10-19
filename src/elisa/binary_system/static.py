@@ -295,22 +295,3 @@ def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
                               gamma['secondary'][:shape_reduced[0], shape_reduced[1]:]),
                   np.power(distance[:shape_reduced[0], shape_reduced[1]:], 2))
     return q_ab
-
-
-def component_to_list(component):
-    """
-    Converts component name string into list.
-
-    :param component: str;  If None, `['primary', 'secondary']` will be returned otherwise
-                            `primary` and `secondary` will be converted into lists [`primary`] and [`secondary`].
-    :return: List[str]
-    """
-    if component in ["all", "both"]:
-        component = ['primary', 'secondary']
-    elif component in ['primary', 'secondary']:
-        component = [component]
-    elif is_empty(component):
-        return []
-    else:
-        raise ValueError('Invalid name of the component. Use `primary`, `secondary`, `all` or `both`')
-    return component

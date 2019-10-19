@@ -4,7 +4,7 @@ from copy import copy
 
 from elisa.binary_system.surface import mesh
 from elisa.conf import config
-from elisa.binary_system import static
+from elisa.binary_system import utils as bsutils
 from elisa.utils import is_empty
 from elisa.pulse import pulsations
 
@@ -24,7 +24,7 @@ def build_mesh(self, component="all", components_distance=None, **kwargs):
 
     if components_distance is None:
         raise ValueError('Argument `component_distance` was not supplied.')
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
 
     for _component in component:
         component_instance = getattr(self, _component)
@@ -59,7 +59,7 @@ def build_surface_gravity(self, component="all", components_distance=None):
     if is_empty(components_distance):
         raise ValueError('Component distance value was not supplied or is invalid.')
 
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
     for _component in component:
         component_instance = getattr(self, _component)
 
@@ -105,7 +105,7 @@ def build_faces_orientation(self, component="all", components_distance=None):
         self._logger.debug("no component set to build face orientation")
         return
 
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
     com_x = {'primary': 0.0, 'secondary': components_distance}
 
     for _component in component:
@@ -136,7 +136,7 @@ def build_temperature_distribution(self, component="all", components_distance=No
         return
 
     phase = 0 if phase is None else phase
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
 
     for _component in component:
         component_instance = getattr(self, _component)
@@ -198,7 +198,7 @@ def build_surface_map(self, colormap=None, component="all", components_distance=
     if colormap == 'temperature':
         self.build_temperature_distribution(component, components_distance, do_pulsations=True, phase=phase)
 
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
     if return_map:
         return_map = {}
         for _component in component:
@@ -231,7 +231,7 @@ def add_spots_to_mesh(self, components_distance, component="all"):
     """
     if components_distance is None:
         raise ValueError('Argument `component_distance` was not supplied.')
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
 
     if is_empty(component):
         # skip building if not required
@@ -261,7 +261,7 @@ def build_faces(self, component="all", components_distance=None):
     if is_empty(components_distance):
         raise ValueError('components_distance value was not provided.')
 
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
     for _component in component:
         component_instance = getattr(self, _component)
         self.build_surface_with_spots(_component, components_distance=components_distance) \
@@ -292,7 +292,7 @@ def build_surface(self, component="all", components_distance=None, return_surfac
     self.build_faces(component, components_distance)
 
     if return_surface:
-        component = static.component_to_list(component)
+        component = bsutils.component_to_list(component)
         for _component in component:
             component_instance = getattr(self, _component)
             ret_points[_component], ret_faces[_component] = component_instance.return_whole_surface()
@@ -310,7 +310,7 @@ def build_surface_with_no_spots(self, component="all", components_distance=None)
     :param component: str; `primary` or `secondary` if not supplied both component are calculated
     :return:
     """
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
 
     for _component in component:
         component_instance = getattr(self, _component)
@@ -356,7 +356,7 @@ def build_surface_with_spots(self, component="all", components_distance=None):
     :param component: str `primary` or `secondary`
     :return:
     """
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
     component_com = {'primary': 0.0, 'secondary': components_distance}
     for _component in component:
         component_instance = getattr(self, _component)
@@ -384,7 +384,7 @@ def compute_all_surface_areas(self, component):
         self._logger.debug("no component set to build surface areas")
         return
 
-    component = static.component_to_list(component)
+    component = bsutils.component_to_list(component)
     for _component in component:
         component_instance = getattr(self, _component)
         self._logger.debug(f'computing surface areas of component: '

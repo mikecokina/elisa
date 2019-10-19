@@ -6,7 +6,7 @@ from numpy.testing import assert_array_equal
 from unittest import skip
 
 from elisa import const as c
-from elisa.binary_system import lc
+from elisa.binary_system.curves import lc
 from elisa.binary_system.container import OrbitalSupplements
 from elisa.conf import config
 from elisa.observer.observer import Observer

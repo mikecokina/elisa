@@ -36,13 +36,13 @@ def deg_transform(value, unit, when_float64):
     return value
 
 
-class TransformParameters(object):
+class TransformProperties(object):
     @classmethod
     def transform_input(cls, **kwargs):
         return {key: getattr(cls, key)(val) if hasattr(cls, key) else val for key, val in kwargs.items()}
 
 
-class SystemParameters(TransformParameters):
+class SystemProperties(TransformProperties):
 
     @staticmethod
     def inclination(value):
@@ -98,7 +98,7 @@ class SystemParameters(TransformParameters):
         return np.float64(value)
 
 
-class BodyParameters(TransformParameters):
+class BodyProperties(TransformProperties):
     @staticmethod
     def synchronicity(value):
         """
@@ -177,7 +177,7 @@ class BodyParameters(TransformParameters):
         return quantity_transform(value, units.DISTANCE_UNIT, WHEN_FLOAT64)
 
 
-class StarParameters(BodyParameters):
+class StarProperties(BodyProperties):
     @staticmethod
     def surface_potential(value):
         """
@@ -217,7 +217,7 @@ class StarParameters(BodyParameters):
         return np.float64(value)
 
 
-class SpotParameters(BodyParameters):
+class SpotProperties(BodyProperties):
     @staticmethod
     def latitude(value):
         """

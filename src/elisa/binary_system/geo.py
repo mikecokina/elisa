@@ -3,7 +3,6 @@ import numpy as np
 from elisa import utils
 from elisa.binary_system import utils as bsutils
 from elisa import const
-from elisa.binary_system import static
 from elisa.binary_system.container import StarContainer
 from elisa.utils import is_empty
 
@@ -63,7 +62,6 @@ def get_eclipse_boundaries(binary, components_distance):
         return np.array([0, const.PI, const.PI, const.FULL_ARC])
 
 
-
 def calculate_spot_longitudes(binary_instance, phases, component="all"):
     """
     function calculates the latitudes of every spot on given component(s) for every phase
@@ -73,7 +71,7 @@ def calculate_spot_longitudes(binary_instance, phases, component="all"):
     :param component: str; 'primary' or 'secondary', if None both will be calculated
     :return: Dict; {component: {spot_idx: np.array([....]), ...}, ...}
     """
-    components_list = static.component_to_list(component)
+    components_list = bsutils.component_to_list(component)
     components = {comp: getattr(binary_instance, comp) for comp in components_list}
     spots_longitudes = {
         comp: {
@@ -96,7 +94,7 @@ def assign_spot_longitudes(binary_instance, spots_longitudes, index=None, compon
     :param component: 'primary' or 'secondary', if None both will be calculated
     :return:
     """
-    components_list = static.component_to_list(component)
+    components_list = bsutils.component_to_list(component)
     components = {comp: getattr(binary_instance, comp) for comp in components_list}
     for comp, instance in components.items():
         for spot_index, spot in instance.spots.items():

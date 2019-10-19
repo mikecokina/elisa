@@ -1,5 +1,7 @@
 from pypex.poly2d.polygon import Polygon
 from elisa import umpy as up
+from elisa.binary_system import model
+from elisa.utils import is_empty
 
 
 def get_flaten_properties(component):
@@ -35,7 +37,7 @@ def get_flaten_properties(component):
     return points, normals, faces, temperatures, log_g, rals, centres
 
 
-def potential_from_radius(self, component, radius, phi, theta, component_distance):
+def potential_from_radius(self, component, radius, phi, theta, component_distance, mass_ratio):
     """
     calculate potential given spherical coordinates radius, phi, theta
 
@@ -49,11 +51,11 @@ def potential_from_radius(self, component, radius, phi, theta, component_distanc
     """
     precalc_fn = self.pre_calculate_for_potential_value_primary if component == 'primary' else \
         self.pre_calculate_for_potential_value_secondary
-    potential_fn = self.potential_value_primary if component == 'primary' else \
-        self.potential_value_secondary
+    potential_fn = model.potential_value_primary if component == 'primary' else \
+        model.potential_value_secondary
 
     precalc_args = (component_distance, phi, theta)
-    args = precalc_fn(*precalc_args)
+    args = (mass_ratio, ) + precalc_fn(*precalc_args)
     return potential_fn(radius, *args)
 
 
@@ -109,3 +111,22 @@ def hull_to_pypex_poly(hull):
     :return: pypex.poly2d.polygon.Plygon
     """
     return Polygon(hull, _validity=False)
+
+
+def component_to_list(component):
+    """
+    Converts component name string into list.
+
+    :param component: str;  If None, `['primary', 'secondary']` will be returned otherwise
+                            `primary` and `secondary` will be converted into lists [`primary`] and [`secondary`].
+    :return: List[str]
+    """
+    if component in ["all", "both"]:
+        component = ['primary', 'secondary']
+    elif component in ['primary', 'secondary']:
+        component = [component]
+    elif is_empty(component):
+        return []
+    else:
+        raise ValueError('Invalid name of the component. Use `primary`, `secondary`, `all` or `both`')
+    return component

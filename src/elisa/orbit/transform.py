@@ -1,10 +1,10 @@
 import numpy as np
 
 from elisa import units
-from elisa.base.transform import TransformParameters, WHEN_FLOAT64, quantity_transform
+from elisa.base.transform import TransformProperties, WHEN_FLOAT64, quantity_transform
 
 
-class OrbitParameters(TransformParameters):
+class OrbitProperties(TransformProperties):
     #
     @staticmethod
     def eccentricity(value):
