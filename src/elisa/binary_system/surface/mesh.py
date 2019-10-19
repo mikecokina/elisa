@@ -11,30 +11,28 @@ config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-mesh-module")
 
 
-def pre_calc_azimuths_for_detached_points(deiscretization_factor):
+def pre_calc_azimuths_for_detached_points(deiscretization):
     """
     Returns azimuths for the whole quarter surface in specific order::
 
         (near point, equator, far point and the rest)
 
     separator gives you information about position of these sections.
-
-    :param deiscretization_factor: float; discretization factor
+    :param deiscretization: float; discretization factor
     :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: numpy.array)
     """
     separator = []
 
     # azimuths for points on equator
-    num = int(const.PI // deiscretization_factor)
+    num = int(const.PI // deiscretization)
     phi = np.linspace(0., const.PI, num=num + 1)
     theta = np.array([const.HALF_PI for _ in phi])
     separator.append(np.shape(theta)[0])
 
     # azimuths for points on meridian
-    num = int(const.HALF_PI // deiscretization_factor)
+    num = int(const.HALF_PI // deiscretization)
     phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
-    theta_meridian = up.concatenate((np.linspace(const.HALF_PI - deiscretization_factor,
-                                                 deiscretization_factor, num=num - 1),
+    theta_meridian = up.concatenate((np.linspace(const.HALF_PI - deiscretization, deiscretization, num=num - 1),
                                      np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
 
     phi = up.concatenate((phi, phi_meridian))
@@ -42,11 +40,11 @@ def pre_calc_azimuths_for_detached_points(deiscretization_factor):
     separator.append(np.shape(theta)[0])
 
     # azimuths for rest of the quarter
-    num = int(const.HALF_PI // deiscretization_factor)
-    thetas = np.linspace(deiscretization_factor, const.HALF_PI, num=num - 1, endpoint=False)
+    num = int(const.HALF_PI // deiscretization)
+    thetas = np.linspace(deiscretization, const.HALF_PI, num=num - 1, endpoint=False)
     phi_q, theta_q = [], []
     for tht in thetas:
-        alpha_corrected = deiscretization_factor / up.sin(tht)
+        alpha_corrected = deiscretization / up.sin(tht)
         num = int(const.PI // alpha_corrected)
         alpha_corrected = const.PI / (num + 1)
         phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
@@ -59,24 +57,23 @@ def pre_calc_azimuths_for_detached_points(deiscretization_factor):
     return phi, theta, separator
 
 
-def pre_calc_azimuths_for_overcontact_farside_points(alpha):
+def pre_calc_azimuths_for_overcontact_farside_points(discretization):
     """
-    Calculates azimuths (directions) to the surface points of over-contact component on its far-side.
-
-    :param alpha: float; discretization factor
+    Calculates azimuths (directions) to the surface points of over-contact component on its far-side (convex part).
+    :param discretization: float; discretization factor
     :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: numpy.array)
     """
     separator = []
 
     # calculating points on farside equator
-    num = int(const.HALF_PI // alpha)
+    num = int(const.HALF_PI // discretization)
     phi = np.linspace(const.HALF_PI, const.PI, num=num + 1)
     theta = np.array([const.HALF_PI for _ in phi])
     separator.append(np.shape(theta)[0])
 
     # calculating points on phi = pi meridian
     phi_meridian1 = np.array([const.PI for _ in range(num)])
-    theta_meridian1 = np.linspace(0., const.HALF_PI - alpha, num=num)
+    theta_meridian1 = np.linspace(0., const.HALF_PI - discretization, num=num)
     phi = up.concatenate((phi, phi_meridian1))
     theta = up.concatenate((theta, theta_meridian1))
     separator.append(np.shape(theta)[0])
@@ -84,16 +81,16 @@ def pre_calc_azimuths_for_overcontact_farside_points(alpha):
     # calculating points on phi = pi/2 meridian, perpendicular to component`s distance vector
     num -= 1
     phi_meridian2 = np.array([const.HALF_PI for _ in range(num)])
-    theta_meridian2 = np.linspace(alpha, const.HALF_PI, num=num, endpoint=False)
+    theta_meridian2 = np.linspace(discretization, const.HALF_PI, num=num, endpoint=False)
     phi = up.concatenate((phi, phi_meridian2))
     theta = up.concatenate((theta, theta_meridian2))
     separator.append(np.shape(theta)[0])
 
     # calculating the rest of the surface on farside
-    thetas = np.linspace(alpha, const.HALF_PI, num=num, endpoint=False)
+    thetas = np.linspace(discretization, const.HALF_PI, num=num, endpoint=False)
     phi_q1, theta_q1 = [], []
     for tht in thetas:
-        alpha_corrected = alpha / up.sin(tht)
+        alpha_corrected = discretization / up.sin(tht)
         num = int(const.HALF_PI // alpha_corrected)
         alpha_corrected = const.HALF_PI / (num + 1)
         phi_q_add = [const.HALF_PI + alpha_corrected * ii for ii in range(1, num + 1)]
@@ -106,11 +103,11 @@ def pre_calc_azimuths_for_overcontact_farside_points(alpha):
     return phi, theta, separator
 
 
-def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_polynomial, polar_radius, component):
+def pre_calc_azimuths_for_overcontact_neck_points(
+        discretization, neck_position, neck_polynomial, polar_radius, component):
     """
     Calculates azimuths (directions) to the surface points of over-contact component on neck.
-
-    :param alpha: float; doscretiozation factor
+    :param discretization: float; doscretiozation factor
     :param neck_position: float; x position of neck of over-contact binary
     :param neck_polynomial: scipy.Polynome; polynome that define neck profile in plane `xz`
     :param polar_radius: float
@@ -121,14 +118,14 @@ def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_pol
 
     # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
     # z axis
-    delta_z = alpha * polar_radius
+    delta_z = discretization * polar_radius
 
     # test radii on neck_position
     r_neck = []
     separator = []
 
     if component == 'primary':
-        num = 15 * int(neck_position // (polar_radius * alpha))
+        num = 15 * int(neck_position // (polar_radius * discretization))
         # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
         x_curve = np.linspace(0., neck_position, num=num, endpoint=True)
         z_curve = np.polyval(neck_polynomial, x_curve)
@@ -153,7 +150,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(alpha, neck_position, neck_pol
         r_neck.append(mid_r)
         z_ns = np.array(z_ns)
     else:
-        num = 15 * int((1 - neck_position) // (polar_radius * alpha))
+        num = 15 * int((1 - neck_position) // (polar_radius * discretization))
         # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
         x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
         z_curve = np.polyval(neck_polynomial, x_curve)
@@ -206,7 +203,6 @@ def get_surface_points(*args):
     """
     Function solves radius for given azimuths that are passed in *args.
     It use `scipy.optimize.fsolve` method. Function to solve is specified as last parameter in *args Tuple.
-
     :param args: Tuple;
 
     ::
@@ -221,17 +217,19 @@ def get_surface_points(*args):
                 potential_derivative_fn: method,
                 surface_potential: float,
                 mass_ratio: float
+                symchronicity: float
             ]
 
     :return: numpy.array
     """
-    phi, theta, x0, components_distance, precalc_fn = args[:5]
-    potential_fn, potential_derivative_fn, surface_potential, mass_ratio, synchronicity = args[5:]
+    phi, theta, x0, components_distance, precalc_fn, potential_fn = args[:6]
+    potential_derivative_fn, surface_potential, mass_ratio, synchronicity = args[6:]
+
     precalc_vals = precalc_fn(*(synchronicity, mass_ratio, components_distance, phi, theta), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
-    radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn,
-                               maxiter=config.MAX_SOLVER_ITERS,
-                               args=((mass_ratio, ) + precalc_vals, surface_potential), rtol=1e-10)
+    radius_kwargs = dict(fprime=potential_derivative_fn, maxiter=config.MAX_SOLVER_ITERS,
+                         args=((mass_ratio, ) + precalc_vals, surface_potential), rtol=1e-10)
+    radius = opt.newton.newton(potential_fn, x0, **radius_kwargs)
     return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
 
@@ -248,15 +246,20 @@ def get_surface_points_cylindrical(*args):
                 z: numpy.array,
                 components_distance: float,
                 x0: float,
-                precalc: method,
-                fn: method
-                fprime: method
+                precalc_fn: method,
+                potential_fn: method,
+                potential_derivative_fn: method (fprime),
+                surface_potential: float,
+                mass_ratio: float,
+                synchronicity: float
               ]
 
     :return: numpy.array
     """
-    phi, z, components_distance, x0, precalc_fn, potential_fn, potential_derivative_fn, surface_potential, mass_ratio = args
-    precalc_vals = precalc_fn(*(phi, z, components_distance), return_as_tuple=True)
+    phi, z, components_distance, x0, precalc_fn, potential_fn = args[:6]
+    potential_derivative_fn, surface_potential, mass_ratio, synchronicity = args[6:]
+
+    precalc_vals = precalc_fn(*(synchronicity, mass_ratio, phi, z, components_distance), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
 
     radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn,
@@ -451,14 +454,14 @@ def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
         fn = model.potential_primary_fn
         fn_cylindrical = model.potential_primary_cylindrical_fn
         precalc = model.pre_calculate_for_potential_value_primary
-        precal_cylindrical = system.pre_calculate_for_potential_value_primary_cylindrical
+        precal_cylindrical = model.pre_calculate_for_potential_value_primary_cylindrical
         potential_derivative_fn = model.radial_primary_potential_derivative
         cylindrical_potential_derivative_fn = model.radial_primary_potential_derivative_cylindrical
     elif component == 'secondary':
         fn = model.potential_secondary_fn
         fn_cylindrical = model.potential_secondary_cylindrical_fn
         precalc = model.pre_calculate_for_potential_value_secondary
-        precal_cylindrical = system.pre_calculate_for_potential_value_secondary_cylindrical
+        precal_cylindrical = model.pre_calculate_for_potential_value_secondary_cylindrical
         potential_derivative_fn = model.radial_secondary_potential_derivative
         cylindrical_potential_derivative_fn = model.radial_secondary_potential_derivative_cylindrical
     else:
@@ -515,7 +518,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
     if config.NUMBER_OF_THREADS:
         args = phi_neck, z_neck, components_distance, star_container.polar_radius, \
                precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn, \
-               star_container.surface_potential, system.mass_ratio
+               star_container.surface_potential, system.mass_ratio, synchronicity
         __logger__.debug(f'calculating neck points of {component} component in mesh_overcontact '
                          f'function using single process method')
         points_neck = get_surface_points_cylindrical(*args)

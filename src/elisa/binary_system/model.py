@@ -293,3 +293,54 @@ def radial_secondary_potential_derivative_cylindrical(radius, *args):
     radius2 = up.power(radius, 2)
     return + 0 - radius * mass_ratio / up.power(a + radius2, 1.5) - radius / up.power(b + radius2, 1.5) \
            + 2 * d * e * radius
+
+
+def pre_calculate_for_potential_value_primary_cylindrical(*args, return_as_tuple=False):
+    """
+    Function calculates auxiliary values for calculation of primary component potential
+    in cylindrical symmetry. Therefore they don't need to be wastefully recalculated every iteration in solver.
+    :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+    :type return_as_tuple: bool
+    :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x)), components distance
+    :return: tuple: (a, b, c, d, e) such that: Psi1 = 1/sqrt(a+r^2) + q/sqrt(b + r^2) - c + d*(a+e*r^2)
+    """
+    synchronicity, mass_ratio, phi, z, distance = args
+
+    a = up.power(z, 2)
+    b = up.power(distance - z, 2)
+    c = mass_ratio * z / up.power(distance, 2)
+    d = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio)
+    e = up.power(up.sin(phi), 2)
+
+    if np.isscalar(phi):
+        return a, b, c, d, e
+    else:
+        dd = d * np.ones(np.shape(phi))
+        return (a, b, c, dd, e) if return_as_tuple else np.column_stack((a, b, c, dd, e))
+
+
+def pre_calculate_for_potential_value_secondary_cylindrical(*args, return_as_tuple=False):
+    """
+    Function calculates auxiliary values for calculation of secondary
+    component potential in cylindrical symmetry, and therefore they don't need
+    to be wastefully recalculated every iteration in solver.
+    :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+    :type return_as_tuple: bool
+    :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x)), components distance
+    :return: tuple: (a, b, c, d, e, f) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(a+e*r^2)
+    """
+    synchronicity, mass_ratio, phi, z, distance = args
+
+    a = up.power(z, 2)
+    b = up.power(distance - z, 2)
+    c = z / up.power(distance, 2)
+    d = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio)
+    e = up.power(up.sin(phi), 2)
+    f = 0.5 * (1 - mass_ratio)
+
+    if np.isscalar(phi):
+        return a, b, c, d, e, f
+    else:
+        dd = d * np.ones(np.shape(phi))
+        ff = f * np.ones(np.shape(phi))
+        return (a, b, c, dd, e, ff) if return_as_tuple else np.column_stack((a, b, c, dd, e, ff))

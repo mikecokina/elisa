@@ -637,61 +637,6 @@ class BinarySystem(System):
     def _evaluate_spots_mesh(self, *args, **kwargs):
         return mesh.evaluate_spots_mesh(self, *args, **kwargs)
 
-    def pre_calculate_for_potential_value_primary_cylindrical(self, *args, return_as_tuple=False):
-        """
-        Function calculates auxiliary values for calculation of primary component potential
-        in cylindrical symmetry. Therefore they don't need to be wastefully recalculated every iteration in solver.
-
-        :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
-        :type return_as_tuple: bool
-        :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x)), components distance
-        :return: tuple: (a, b, c, d, e) such that: Psi1 = 1/sqrt(a+r^2) + q/sqrt(b + r^2) - c + d*(a+e*r^2)
-        """
-        phi, z, distance = args
-
-        a = np.power(z, 2)
-        b = np.power(distance - z, 2)
-        c = self.mass_ratio * z / np.power(distance, 2)
-        d = 0.5 * np.power(self.primary.synchronicity, 2) * (1 + self.mass_ratio)
-        e = np.power(np.sin(phi), 2)
-
-        if np.isscalar(phi):
-            return a, b, c, d, e
-        else:
-            dd = d * np.ones(np.shape(phi))
-            return (a, b, c, dd, e) if return_as_tuple else np.column_stack((a, b, c, dd, e))
-
-    def pre_calculate_for_potential_value_secondary_cylindrical(self, *args, return_as_tuple=False):
-        """
-        Function calculates auxiliary values for calculation of secondary
-        component potential in cylindrical symmetry, and therefore they don't need
-        to be wastefully recalculated every iteration in solver.
-
-        :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
-        :type return_as_tuple: bool
-        :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x)), components distance
-        :return: tuple: (a, b, c, d, e, f) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(a+e*r^2)
-        """
-        phi, z, distance = args
-
-        a = np.power(z, 2)
-        b = np.power(distance - z, 2)
-        c = z / np.power(distance, 2)
-        d = 0.5 * np.power(self.secondary.synchronicity, 2) * (1 + self.mass_ratio)
-        e = np.power(np.sin(phi), 2)
-        f = 0.5 * (1 - self.mass_ratio)
-
-        if np.isscalar(phi):
-            return a, b, c, d, e, f
-        else:
-            dd = d * np.ones(np.shape(phi))
-            ff = f * np.ones(np.shape(phi))
-            return (a, b, c, dd, e, ff) if return_as_tuple else np.column_stack((a, b, c, dd, e, ff))
-
-    @staticmethod
-    def potential_primary_cylindrical_fn(radius, *args):
-        return model.potential_primary_cylindrical_fn(radius, *args)
-
     def calculate_potential_gradient(self, component, components_distance, points=None):
         """
         Return outter gradients in each point of star surface or defined points.
@@ -1632,11 +1577,11 @@ class BinarySystem(System):
 
         if component == 'primary':
             fn_cylindrical = model.potential_primary_cylindrical_fn
-            precal_cylindrical = self.pre_calculate_for_potential_value_primary_cylindrical
+            precal_cylindrical = model.pre_calculate_for_potential_value_primary_cylindrical
             cylindrical_potential_derivative_fn = model.radial_primary_potential_derivative_cylindrical
         elif component == 'secondary':
             fn_cylindrical = model.potential_secondary_cylindrical_fn
-            precal_cylindrical = self.pre_calculate_for_potential_value_secondary_cylindrical
+            precal_cylindrical = model.pre_calculate_for_potential_value_secondary_cylindrical
             cylindrical_potential_derivative_fn = model.radial_secondary_potential_derivative_cylindrical
         else:
             raise ValueError(f'Invalid value of `component` argument: `{component}`.\n'
@@ -1650,7 +1595,7 @@ class BinarySystem(System):
 
         args = phi, z, components_distance, A / 2, \
             precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn, \
-            surface_potential, self.mass_ratio
+            surface_potential, self.mass_ratio, component_instance.synchronicity
         points = mesh.get_surface_points_cylindrical(*args)
 
         return points[:points.shape[0] // 2, :], points[points.shape[0] // 2:, :]
