@@ -2,7 +2,7 @@ import numpy as np
 
 from elisa import utils, const as c, umpy as up
 from elisa.base.body import Body
-from elisa.binary_system.container import StarPropertiesContainer
+from elisa.base.container import StarPropertiesContainer
 from elisa.pulse.mode import PulsationMode
 from elisa.base.transform import StarProperties
 from elisa.utils import is_empty
@@ -129,7 +129,9 @@ class Star(Body):
                            'metallicity', 'polar_log_g', 'critical_surface_potential',
                            # todo: remove side_radius when figured out starting point for solver
                            'side_radius']
-        return {prop: copy(getattr(self, prop)) for prop in properties_list}
+        props = {prop: copy(getattr(self, prop)) for prop in properties_list}
+        props.update({"name": self.name})
+        return props
 
     def to_properties_container(self):
         return StarPropertiesContainer(**self.properties_serializer())

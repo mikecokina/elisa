@@ -5,11 +5,11 @@ from astropy import units as u
 from numpy.testing import assert_array_equal
 from unittest import skip
 
-from elisa import const as c
+from elisa import const as c, units
 from elisa.binary_system.curves import lc
-from elisa.binary_system.container import OrbitalSupplements
 from elisa.conf import config
 from elisa.observer.observer import Observer
+from elisa.orbit.container import OrbitalSupplements
 from unittests.utils import prepare_binary_system, load_light_curve, normalize_lc_for_unittests, ElisaTestCase
 
 
@@ -315,3 +315,65 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         # from matplotlib import pyplot as plt
         # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
         # plt.show()
+
+class ComputeLightCurveWithSpots(ElisaTestCase):
+    spots_metadata = {
+        "primary":
+            [
+                {"longitude": 90,
+                 "latitude": 58,
+                 "angular_radius": 35,
+                 "temperature_factor": 0.95},
+            ],
+
+        "secondary":
+            [
+                {"longitude": 60,
+                 "latitude": 45,
+                 "angular_radius": 28,
+                 "temperature_factor": 0.9},
+            ]
+    }
+
+    params = {
+        "detached": {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 10.0, "secondary_surface_potential": 10.0,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
+            "eccentricity": 0.0, "inclination": c.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 5000, "secondary_t_eff": 5000,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 0.6, "secondary_albedo": 0.6,
+        },
+        "over-contact": {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 2.7,
+            "secondary_surface_potential": 2.7,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": 90 * units.deg, "gamma": 0.0, "period": 1.0,
+            "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 5000, "secondary_t_eff": 5000,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 0.6, "secondary_albedo": 0.6
+        }
+    }
+
+    def setUp(self):
+        self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+
+        config.VAN_HAMME_LD_TABLES = op.join(self.base_path, "limbdarkening")
+        config.CK04_ATM_TABLES = op.join(self.base_path, "atmosphere")
+        config.ATM_ATLAS = "ck04"
+        config._update_atlas_to_base_dir()
+
+    def test_test_circular_synchronous_detached_system_w_spots(self):
+        s = prepare_binary_system(self.params["detached"],
+                                  spots_primary=self.spots_metadata["primary"],
+                                  spots_secondary=self.spots_metadata["secondary"])
+
+        o = Observer(passband=['Generic.Bessell.V'], system=s)
+        start_phs, stop_phs, step = -0.2, 1.2, 0.1
+        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)

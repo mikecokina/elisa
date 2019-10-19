@@ -9,9 +9,9 @@ from scipy.spatial.qhull import Delaunay
 
 from elisa import umpy as up
 from elisa import utils, const, ld, units
+from elisa.base.container import SystemPropertiesContainer
 from elisa.base.system import System
 from elisa.binary_system import static, build, mp, geo, utils as bsutils, model
-from elisa.binary_system.container import SystemPropertiesContainer
 from elisa.binary_system.curves import lc, rv
 from elisa.binary_system.animation import Animation
 from elisa.binary_system.plot import Plot
@@ -135,8 +135,9 @@ class BinarySystem(System):
     def properties_serializer(self):
         props = BinarySystemProperties.transform_input(**self.kwargs_serializer())
         props.update({
-            "semi-major-axis": self.semi_major_axis,
-            "morphology": self.morphology
+            "semi_major_axis": self.semi_major_axis,
+            "morphology": self.morphology,
+            "mass_ratio": self.mass_ratio
         })
         return props
 
@@ -966,78 +967,6 @@ class BinarySystem(System):
         new_triangles_indices = triangles_indices[neck_test]
 
         return new_triangles_indices
-
-    def calculate_neck_position(self, return_polynomial=False):
-        """
-        Function calculates x-coordinate of the `neck` (the narrowest place) of an over-contact system.
-
-        :return: Tuple (if return_polynomial is True) or float;
-
-        If return_polynomial is set to True::
-
-            (neck position: float, polynomial degree: int)
-
-        otherwise::
-
-            float
-        """
-        neck_position = None
-        components_distance = 1.0
-        components = ['primary', 'secondary']
-        points_primary, points_secondary = [], []
-
-        fn_map = {
-            'primary': (model.potential_primary_fn, model.pre_calculate_for_potential_value_primary),
-            'secondary': (model.potential_secondary_fn, model.pre_calculate_for_potential_value_secondary)
-        }
-
-        # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
-        angles = np.linspace(0., const.HALF_PI, 100, endpoint=True)
-        for component in components:
-            for angle in angles:
-                component_instance = getattr(self, component)
-                args, use = (components_distance, angle, const.HALF_PI), False
-
-                scipy_solver_init_value = np.array([components_distance / 10000.0])
-                args = ((self.mass_ratio,) +
-                        fn_map[component][1](*((component_instance.synchronicity, self.mass_ratio) + args)),
-                        component_instance.surface_potential)
-                solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
-                                                            full_output=True, args=args, xtol=1e-12)
-
-                # check for regular solution
-                if ier == 1 and not up.isnan(solution[0]):
-                    solution = solution[0]
-                    if 30 >= solution >= 0:
-                        use = True
-                else:
-                    continue
-
-                if use:
-                    if component == 'primary':
-                        points_primary.append([solution * np.cos(angle), solution * np.sin(angle)])
-                    elif component == 'secondary':
-                        points_secondary.append([- (solution * np.cos(angle) - components_distance),
-                                                 solution * np.sin(angle)])
-
-        neck_points = np.array(points_secondary + points_primary)
-        # fitting of the neck with polynomial in order to find minimum
-        polynomial_fit = np.polyfit(neck_points[:, 0], neck_points[:, 1], deg=15)
-        polynomial_fit_differentiation = np.polyder(polynomial_fit)
-        roots = np.roots(polynomial_fit_differentiation)
-        roots = [np.real(xx) for xx in roots if np.imag(xx) == 0]
-        # choosing root that is closest to the middle of the system, should work...
-        # idea is to rule out roots near 0 or 1
-        comparision_value = 1
-        for root in roots:
-            new_value = abs(0.5 - root)
-            if new_value < comparision_value:
-                comparision_value = new_value
-                neck_position = root
-        if return_polynomial:
-            return neck_position, polynomial_fit
-        else:
-            return neck_position
 
     def _get_surface_builder_fn(self):
         """

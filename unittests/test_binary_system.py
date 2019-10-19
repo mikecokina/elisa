@@ -137,35 +137,35 @@ class TestBinarySystemInit(ElisaTestCase):
             obtained.append(bs.morphology)
         assert_array_equal(expected, obtained)
 
-    # fixme: change method to compute radii anytime necessary
-    # def test_setup_components_radii(self):
-    #     radii = ["forward_radius", "side_radius", "equatorial_radius", "backward_radius", "polar_radius"]
-    #     obtained = dict()
-    #
-    #     expected = {
-    #         "primary": {
-    #             "forward_radius": [0.01005, 0.01229, 0.3783, 0.26257, 0.57075, 0.53029, np.nan],
-    #             "side_radius": [0.01005, 0.01229, 0.35511, 0.24859, 0.43994, 0.41553, 0.48182],
-    #             "equatorial_radius": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
-    #             "backward_radius": [0.01005, 0.01229, 0.36723, 0.25608, 0.46794, 0.44207, 0.52573],
-    #             "polar_radius": [0.01005, 0.01005, 0.33055, 0.24242, 0.41427, 0.37162, 0.44577]
-    #         },
-    #         "secondary": {
-    #             "forward_radius": [0.00506, 0.00763, 0.34966, 0.25693, 0.42925, 0.36743, np.nan],
-    #             "side_radius": [0.00506, 0.00763, 0.29464, 0.21419, 0.31288, 0.28094, 0.35376],
-    #             "equatorial_radius": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
-    #             "backward_radius": [0.00506, 0.00763, 0.32018, 0.23324, 0.34537, 0.30842, 0.41825],
-    #             "polar_radius": [0.00506, 0.00635, 0.2798, 0.20994, 0.29977, 0.2489, 0.33306]
-    #         }
-    #     }
-    #
-    #     for component in ["primary", "secondary"]:
-    #         obtained[component] = dict()
-    #         for radius in radii:
-    #             obtained[component][radius] = list()
-    #             for i, bs in enumerate(self._prepare_systems()):
-    #                 value = np.round(getattr(getattr(bs, component), radius), 5)
-    #                 assert_array_equal([value], [expected[component][radius][i]])
+    def test_setup_components_radii(self):
+        radii = ["forward_radius", "side_radius", "equatorial_radius", "backward_radius", "polar_radius"]
+        obtained = dict()
+
+        expected = {
+            "primary": {
+                "forward_radius": [0.01005, 0.01229, 0.3783, 0.26257, 0.57075, 0.53029, np.nan],
+                "side_radius": [0.01005, 0.01229, 0.35511, 0.24859, 0.43994, 0.41553, 0.48182],
+                "equatorial_radius": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+                "backward_radius": [0.01005, 0.01229, 0.36723, 0.25608, 0.46794, 0.44207, 0.52573],
+                "polar_radius": [0.01005, 0.01005, 0.33055, 0.24242, 0.41427, 0.37162, 0.44577]
+            },
+            "secondary": {
+                "forward_radius": [0.00506, 0.00763, 0.34966, 0.25693, 0.42925, 0.36743, np.nan],
+                "side_radius": [0.00506, 0.00763, 0.29464, 0.21419, 0.31288, 0.28094, 0.35376],
+                "equatorial_radius": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+                "backward_radius": [0.00506, 0.00763, 0.32018, 0.23324, 0.34537, 0.30842, 0.41825],
+                "polar_radius": [0.00506, 0.00635, 0.2798, 0.20994, 0.29977, 0.2489, 0.33306]
+            }
+        }
+
+        for component in ["primary", "secondary"]:
+            obtained[component] = dict()
+            for radius in radii:
+                obtained[component][radius] = list()
+                for i, bs in enumerate(self._prepare_systems()):
+                    value = np.round(getattr(getattr(bs, component), radius), 5) \
+                        if hasattr(getattr(bs, component), radius) else np.nan
+                    assert_array_equal([value], [expected[component][radius][i]])
 
     def test_lagrangian_points(self):
 

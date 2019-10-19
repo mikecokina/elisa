@@ -1,4 +1,6 @@
 import numpy as np
+
+from elisa import umpy as up
 from elisa.base import error
 
 
@@ -25,7 +27,7 @@ def newton(func, x0, fprime, args=(), maxiter=50, rtol=0.0):
     for _ in range(maxiter):
         difference = func(x_n, *args) / fprime(x_n, *args)
         x_m = x_n - difference
-        if np.max(np.abs(difference / x_n)) <= rtol:
+        if np.max(up.abs(difference / x_n)) <= rtol:
             return x_m
         x_n = x_m
     raise error.MaxIterationError(f"Max iteration limit - {maxiter} - exceeded")

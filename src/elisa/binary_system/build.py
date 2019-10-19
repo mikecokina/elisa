@@ -29,10 +29,10 @@ def build_mesh(self, component="all", components_distance=None, **kwargs):
     for _component in component:
         component_instance = getattr(self, _component)
         # in case of spoted surface, symmetry is not used
-        _a, _b, _c, _d = mesh.mesh_over_contact(self, component=_component, symmetry_output=True, **kwargs) \
+        _a, _b, _c, _d = mesh.mesh_over_contact(self, component=_component, symmetry_output=True) \
             if self.morphology == 'over-contact' \
             else mesh.mesh_detached(
-            self, component=_component, components_distance=components_distance, symmetry_output=True, **kwargs
+            self, component=_component, components_distance=components_distance, symmetry_output=True
         )
         component_instance.points = _a
         component_instance.point_symmetry_vector = _b

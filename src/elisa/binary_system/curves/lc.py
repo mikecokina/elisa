@@ -3,7 +3,9 @@ import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
 from elisa import utils, const, atm, ld
-from elisa.binary_system.container import OrbitalSupplements, OrbitalPositionContainer
+from elisa.base.container import StarContainer
+from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.orbit.container import OrbitalSupplements
 from elisa.pulse import pulsations
 from elisa.binary_system import geo, build, utils as bsutils
 from elisa.conf import config
@@ -265,13 +267,13 @@ def compute_circular_synchronous_lightcurve(system, **kwargs):
     :return: Dict[str, numpy.array]
     """
     orbital_position_container = OrbitalPositionContainer(
-        primary=system.primary.to_properties_container(),
-        secondary=system.secondary.to_properties_container(),
+        primary=StarContainer.from_properties_container(system.primary.to_properties_container()),
+        secondary=StarContainer.from_properties_container(system.secondary.to_properties_container()),
         position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
         **system.properties_serializer()
 
     )
-    orbital_position_container.build(components_distance=1.0)
+    orbital_position_container.build_mesh(components_distance=1.0)
 
 
     system.build(components_distance=1.0, suppress_parallelism=False)

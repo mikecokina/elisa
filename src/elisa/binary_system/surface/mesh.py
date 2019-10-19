@@ -6,6 +6,7 @@ from elisa.base.error import MaxIterationError
 from elisa.conf import config
 from elisa.binary_system import utils as bsutils, model
 from elisa.opt.fsolver import fsolver
+from elisa.utils import is_empty
 
 config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-mesh-module")
@@ -261,14 +262,13 @@ def get_surface_points_cylindrical(*args):
 
     precalc_vals = precalc_fn(*(synchronicity, mass_ratio, phi, z, components_distance), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
-
-    radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn,
-                               args=((mass_ratio, ) + precalc_vals, surface_potential),
-                               maxiter=config.MAX_SOLVER_ITERS, rtol=1e-10)
+    radius_kwargs = dict(fprime=potential_derivative_fn, maxiter=config.MAX_SOLVER_ITERS, rtol=1e-10,
+                         args=((mass_ratio,) + precalc_vals, surface_potential))
+    radius = opt.newton.newton(potential_fn, x0, **radius_kwargs)
     return utils.cylindrical_to_cartesian(np.column_stack((up.abs(radius), phi, z)))
 
 
-def mesh_detached(system, components_distance, component, symmetry_output=False, **kwargs):
+def mesh_detached(system, components_distance, component, symmetry_output=False):
     """
     Creates surface mesh of given binary star component in case of detached or semi-detached system.
 
@@ -414,7 +414,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False,
         return points
 
 
-def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
+def mesh_over_contact(system, component="all", symmetry_output=False):
     """
     Creates surface mesh of given binary star component in case of over-contact system.
 
@@ -448,7 +448,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
     synchronicity = star_container.synchronicity
 
     # calculating distance between components
-    components_distance = system.orbit.orbital_motion(phase=0)[0][0]
+    components_distance = 1.0  # system.orbit.orbital_motion(phase=0)[0][0]
 
     if component == 'primary':
         fn = model.potential_primary_fn
@@ -473,7 +473,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
         pre_calc_azimuths_for_overcontact_farside_points(discretization_factor)
 
     # generating the azimuths for neck
-    neck_position, neck_polynomial = system.calculate_neck_position(return_polynomial=True)
+    neck_position, neck_polynomial = calculate_neck_position(system, return_polynomial=True)
     phi_neck, z_neck, separator_neck = \
         pre_calc_azimuths_for_overcontact_neck_points(discretization_factor, neck_position, neck_polynomial,
                                                       polar_radius=star_container.polar_radius,
@@ -551,12 +551,9 @@ def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
     y_meridian = up.concatenate((y_meridian_n, y_meridian1), axis=0)
     z_meridian = up.concatenate((z_meridian_n, z_meridian1), axis=0)
 
-    x = np.array([x_a])
-    y = np.array([y_a])
-    z = np.array([z_a])
-    x = up.concatenate((x, x_eq, x_q, x_meridian, x_q, x_eq, x_q, x_meridian, x_q))
-    y = up.concatenate((y, y_eq, y_q, y_meridian, -y_q, -y_eq, -y_q, -y_meridian, y_q))
-    z = up.concatenate((z, z_eq, z_q, z_meridian, z_q, z_eq, -z_q, -z_meridian, -z_q))
+    x = up.concatenate((np.array([x_a]), x_eq, x_q, x_meridian, x_q, x_eq, x_q, x_meridian, x_q))
+    y = up.concatenate((np.array([y_a]), y_eq, y_q, y_meridian, -y_q, -y_eq, -y_q, -y_meridian, y_q))
+    z = up.concatenate((np.array([z_a]), z_eq, z_q, z_meridian, z_q, z_eq, -z_q, -z_meridian, -z_q))
 
     x = -x + components_distance if component == 'secondary' else x
     points = np.column_stack((x, y, z))
@@ -601,7 +598,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
         return points
 
 
-def evaluate_spots_mesh(system, components_distance, component="all"):
+def evaluate_spots_mesh(system_container, components_distance, component="all"):
     """
     Compute points of each spots and assigns values to spot container instance.
     If any of any spot point cannot be obtained, entire spot will be omitted.
@@ -617,7 +614,7 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
         point = utils.spherical_to_cartesian([x, _args[1], _args[2]])
         point[0] = point[0] if component == "primary" else components_distance - point[0]
         # ignore also spots where one of points is situated just on the neck
-        if system.morphology == "over-contact":
+        if getattr(system_container, "morphology") == "over-contact":
             if (component == "primary" and point[0] >= neck_position) or \
                     (component == "secondary" and point[0] <= neck_position):
                 return False
@@ -630,16 +627,16 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
         "secondary": (model.potential_secondary_fn, model.pre_calculate_for_potential_value_secondary,
                       model.radial_secondary_potential_derivative)
     }
-    fns = {_component: fns[_component] for _component in components}
+    fns = {component: fns[component] for component in components}
 
-    # in case of wuma system, get separation and make additional test of location of each point (if primary
+    # in case of wuma system_container, get separation and make additional test of location of each point (if primary
     # spot doesn't intersect with secondary, if does, then such spot will be skipped completly)
-    neck_position = system.calculate_neck_position() if system.morphology == "over-contact" else 1e10
+    neck_position = calculate_neck_position(system_container) if system_container.morphology == "over-contact" else 1e10
 
     for component, functions in fns.items():
         __logger__.debug(f"evaluating spots for {component} component")
         potential_fn, precalc_fn, potential_derivative_fn = functions
-        component_instance = getattr(system, component)
+        component_instance = getattr(system_container, component)
 
         if not component_instance.spots:
             __logger__.debug(f"no spots to evaluate for {component} component - continue")
@@ -650,16 +647,15 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
             # lon -> phi, lat -> theta
             lon, lat = spot_instance.longitude, spot_instance.latitude
 
-            component_instance.setup_spot_instance_discretization_factor(spot_instance, spot_index)
             alpha = spot_instance.discretization_factor
             spot_radius = spot_instance.angular_radius
 
             # initial radial vector
             radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
             center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
-            args1, use = (component_instance.synchronicity, system.mass_ratio,
+            args1, use = (component_instance.synchronicity, system_container.mass_ratio,
                           components_distance, radial_vector[1], radial_vector[2]), False
-            args2 = ((system.mass_ratio,) + precalc_fn(*args1), component_instance.surface_potential)
+            args2 = ((system_container.mass_ratio,) + precalc_fn(*args1), component_instance.surface_potential)
             kwargs = {'original_kwargs': args1}
             solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
 
@@ -677,9 +673,9 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
 
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st inner ring of spot
-            args1, use = (component_instance.synchronicity, system.mass_ratio,
+            args1, use = (component_instance.synchronicity, system_container.mass_ratio,
                           components_distance, lon, lat + alpha), False
-            args2 = ((system.mass_ratio,) + precalc_fn(*args1), component_instance.surface_potential)
+            args2 = ((system_container.mass_ratio,) + precalc_fn(*args1), component_instance.surface_potential)
             kwargs = {'original_kwargs': args1}
             solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
 
@@ -724,8 +720,8 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
 
             spot_phi, spot_theta = np.array(spot_phi), np.array(spot_theta)
             args = spot_phi, spot_theta, spot_center_r, \
-                components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
-                component_instance.surface_potential, system.mass_ratio, component_instance.synchronicity
+                   components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
+                   component_instance.surface_potential, system_container.mass_ratio, component_instance.synchronicity
             try:
                 spot_points = get_surface_points(*args)
             except MaxIterationError:
@@ -750,3 +746,100 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
                 spot_instance.center = \
                     np.array([components_distance - spot_center[0], -spot_center[1], spot_center[2]])
             gc.collect()
+
+
+def calculate_neck_position(system_container, return_polynomial=False):
+    """
+    Function calculates x-coordinate of the `neck` (the narrowest place) of an over-contact system_container.
+
+    :return: Tuple (if return_polynomial is True) or float;
+
+    If return_polynomial is set to True::
+
+        (neck position: float, polynomial degree: int)
+
+    otherwise::
+
+        float
+    """
+    neck_position = None
+    components_distance = 1.0
+    components = ['primary', 'secondary']
+    points_primary, points_secondary = [], []
+
+    fn_map = {
+        'primary': (model.potential_primary_fn, model.pre_calculate_for_potential_value_primary),
+        'secondary': (model.potential_secondary_fn, model.pre_calculate_for_potential_value_secondary)
+    }
+
+    # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
+    angles = np.linspace(0., const.HALF_PI, 100, endpoint=True)
+    for component in components:
+        for angle in angles:
+            component_instance = getattr(system_container, component)
+            args, use = (components_distance, angle, const.HALF_PI), False
+
+            scipy_solver_init_value = np.array([components_distance / 10000.0])
+            args = ((system_container.mass_ratio,) +
+                    fn_map[component][1](*((component_instance.synchronicity, system_container.mass_ratio) + args)),
+                    component_instance.surface_potential)
+            solution, _, ier, _ = up.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
+                                                     full_output=True, args=args, xtol=1e-12)
+
+            # check for regular solution
+            if ier == 1 and not up.isnan(solution[0]):
+                solution = solution[0]
+                if 30 >= solution >= 0:
+                    use = True
+            else:
+                continue
+
+            if use:
+                if component == 'primary':
+                    points_primary.append([solution * up.cos(angle), solution * up.sin(angle)])
+                elif component == 'secondary':
+                    points_secondary.append([- (solution * up.cos(angle) - components_distance),
+                                             solution * up.sin(angle)])
+
+    neck_points = np.array(points_secondary + points_primary)
+    # fitting of the neck with polynomial in order to find minimum
+    polynomial_fit = np.polyfit(neck_points[:, 0], neck_points[:, 1], deg=15)
+    polynomial_fit_differentiation = np.polyder(polynomial_fit)
+    roots = np.roots(polynomial_fit_differentiation)
+    roots = [np.real(xx) for xx in roots if np.imag(xx) == 0]
+    # choosing root that is closest to the middle of the system_container, should work...
+    # idea is to rule out roots near 0 or 1
+    comparision_value = 1
+    for root in roots:
+        new_value = abs(0.5 - root)
+        if new_value < comparision_value:
+            comparision_value = new_value
+            neck_position = root
+    if return_polynomial:
+        return neck_position, polynomial_fit
+    else:
+        return neck_position
+
+
+def add_spots_to_mesh(system_container, components_distance, component="all"):
+    """
+    Function implements surface points into clean mesh and removes stellar
+    points and other spot points under the given spot if such overlapped spots exists.
+    :param system_container: BinarySystem instance
+    :param components_distance: float
+    :param component: str or empty
+    :return:
+    """
+    if components_distance is None:
+        raise ValueError('Argument `component_distance` was not supplied.')
+    components = bsutils.component_to_list(component)
+
+    if is_empty(components):
+        # skip building if not required
+        return
+
+    component_com = {'primary': 0.0, 'secondary': components_distance}
+    for component in components:
+        star_container = getattr(system_container, component)
+        evaluate_spots_mesh(system_container, components_distance=components_distance, component=component)
+        star_container.incorporate_spots_mesh(component_com=component_com[component])

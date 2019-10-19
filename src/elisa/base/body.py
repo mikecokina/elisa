@@ -4,6 +4,7 @@ import numpy as np
 from abc import ABCMeta, abstractmethod
 from copy import copy
 from elisa import logger, utils, units, umpy as up
+from elisa.base import spot
 from elisa.utils import is_empty
 from elisa.base.spot import Spot
 
@@ -141,6 +142,8 @@ class Body(metaclass=ABCMeta):
         :return:
         """
         self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)} if not is_empty(spots) else dict()
+        for spot_idx, spot_instance in self.spots.items():
+            self.setup_spot_instance_discretization_factor(spot_instance, spot_idx)
 
     def has_spots(self):
         """
@@ -159,12 +162,29 @@ class Body(metaclass=ABCMeta):
         """
         del (self._spots[spot_index])
 
+    def setup_spot_instance_discretization_factor(self, spot_instance, spot_index):
+        """
+        Setup discretization factor for given spot instance based on defined rules::
 
+            - used Star discretization factor if not specified in spot
+            - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
+              0.5 * spot_instance.angular_diameter
+        :param spot_instance: Spot
+        :param spot_index: int; spot index (has no affect on process, used for logging)
+        :return:
+        """
+        # component_instance = getattr(self, component)
+        if is_empty(spot_instance.discretization_factor):
+            self._logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
+                               f'and discretization factor of star {self.discretization_factor} was used.')
+            spot_instance.discretization_factor = (0.9 * self.discretization_factor * units.ARC_UNIT).value
+        if spot_instance.discretization_factor > spot_instance.angular_radius:
+            self._logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
+                               f'component was larger than its angular radius. Therefore value of angular density was '
+                               f'set to be equal to 0.5 * angular diameter')
+            spot_instance.discretization_factor = spot_instance.angular_radius * units.ARC_UNIT
 
-
-
-
-
+        return spot_instance
 
 
 
@@ -411,26 +431,7 @@ class Body(metaclass=ABCMeta):
         return points, None
 
     def setup_body_points(self, points):
-        """
-        Setup points for Star instance and spots based on input `points` Dict object.
-        Such `points` map looks like following
-
-        ::
-
-            {
-                "object": [[point0_x, point0_y, point0_z], ..., [pointN_x, pointN_y, pointN_z]],
-                "0": [<points>],
-                "1": [<points>]...
-            },
-
-            where `object` contain numpy.array of object points and indices points for given spot.
-
-        :param points: Dict[str, numpy.array]
-        :return:
-        """
-        self.points = points.pop("object")
-        for spot_index, spot_points in points.items():
-            self.spots[int(spot_index)].points = points[spot_index]
+        spot.setup_body_points(self, points)
 
     def remove_overlaped_spots_by_vertex_map(self, vertices_map):
         """
@@ -483,151 +484,22 @@ class Body(metaclass=ABCMeta):
             self.spots[spot_index].faces = remap_list[model["spots"][spot_index]]
         gc.collect()
 
-    def setup_spot_instance_discretization_factor(self, spot_instance, spot_index):
-        """
-        Setup discretization factor for given spot instance based on defined rules::
-
-            - used Star discretization factor if not specified in spot
-            - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
-              0.5 * spot_instance.angular_diameter
-
-        :param spot_instance: Spot
-        :param spot_index: int; spot index (has no affect on process, used for logging)
-        :return:
-        """
-        # component_instance = getattr(self, component)
-        if is_empty(spot_instance.discretization_factor):
-            self._logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
-                               f'and discretization factor of star {self.discretization_factor} was used.')
-            spot_instance.discretization_factor = (0.9 * self.discretization_factor * units.ARC_UNIT).value
-        if spot_instance.discretization_factor > spot_instance.angular_radius:
-            self._logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
-                               f'component was larger than its angular radius. Therefore value of angular density was '
-                               f'set to be equal to 0.5 * angular diameter')
-            spot_instance.discretization_factor = spot_instance.angular_radius * units.ARC_UNIT
-
     def incorporate_spots_mesh(self, component_com=None):
-        """
-        Based on spots definitions, evaluate spot points on Star surface and remove those points of Star itself
-        which are inside of any spots. Do the same operation with spot to each other.
-        Evaluation is running from index 0, what means that spot with lower index
-        is overwriten by spot with higher index.
-
-        All points are assigned to given object (Star points to Star object and Spot points to related Spot object).
-
-        # todo: change structure flat array like [-1, -1, -1, ..., 0, ..., 1, ...]
-        Defines variable `vertices_map` used in others method. Strutcure of this variable is following::
-
-            [{"enum": -1}, {"enum": 0}, {"enum": 1}, ..., {"enum": N}].
-
-        Enum index -1 means that points in joined array of points on current
-        index position of vertices_map belongs to Star point.
-        Enum indices >= 0 means the same, but for Spot.
-
-        :param component_com: center of mass of component
-        :return:
-        """
-        if not self.spots:
-            self._logger.debug(f"not spots found, skipping incorporating spots to mesh on component {self.name}")
-            return
-        self._logger.debug(f"incorporating spot points to component {self.name} mesh")
-
-        if is_empty(component_com):
-            raise ValueError('Object centre of mass was not supplied')
-
-        vertices_map = [{"enum": -1} for _ in self.points]
-        # `all_component_points` do not contain points of Any spot
-        all_component_points = copy(self.points)
-        neck = np.min(all_component_points[:self.base_symmetry_points_number, 0])
-
-        for spot_index, spot in self.spots.items():
-            # average spacing in spot points
-            vertices_to_remove, vertices_test = [], []
-            cos_max_angle_point = np.cos(spot.angular_radius + 0.30 * spot.discretization_factor)
-            spot_center = spot.center - np.array([component_com, 0., 0.])
-
-            # removing star points in spot
-            # all component points means just points of component NOT merged points + spots
-            for ix, pt in enumerate(all_component_points):
-                surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
-                cos_angle = \
-                    np.inner(spot_center, surface_point) / (
-                        np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
-                # skip all points of object outside of spot
-                if cos_angle < cos_max_angle_point or np.linalg.norm(pt[0] - neck) < 1e-9:
-                    continue
-                # mark component point (NOT point of spot) for removal if is within the spot
-                vertices_to_remove.append(ix)
-
-            # simplices of target object for testing whether point lying inside or not of spot boundary, removing
-            # duplicate points on the spot border
-            # kedze vo vertice_map nie su body skvrny tak toto tu je zbytocne viac menej
-            vertices_to_remove = list(set(vertices_to_remove))
-
-            # points and vertices_map update
-            _points, _vertices_map = list(), list()
-
-            for ix, vertex in list(zip(range(0, len(all_component_points)), all_component_points)):
-                if ix in vertices_to_remove:
-                    # skip point if is marked for removal
-                    continue
-
-                # append only points of currrent object that do not intervent to spot
-                # [current, since there should be already spot from previous iteration step]
-                _points.append(vertex)
-                _vertices_map.append({"enum": vertices_map[ix]["enum"]})
-
-            for vertex in spot.points:
-                _points.append(vertex)
-                _vertices_map.append({"enum": spot_index})
-
-            all_component_points = copy(_points)
-            vertices_map = copy(_vertices_map)
-
-        separated_points = self.split_points_of_spots_and_component(all_component_points, vertices_map)
-        self.setup_body_points(separated_points)
+        spot.incorporate_spots_mesh(self, component_com)
 
     def split_points_of_spots_and_component(self, points, vertices_map):
-        """
-        Based on vertices map, separates points to points which belong to Star object
-        and points which belong to each defined Spot object.
-        During the process remove overlapped spots.
+        return spot.split_points_of_spots_and_component(self, points, vertices_map)
 
-        :param points: numpy.array; all points of object (spot points and component points together)
-        :param vertices_map: List or numpy.array; map which define refrences of index in
-                             given Iterable to object (Spot or Star).
-        :return: Dict;
-
-        ::
-
-            {
-                "object": numpy.array([[pointN_x, pointN_y, pointN_z], ...]),
-                "spot_index": numpy.array([[pointM_x, pointM_y, pointM_z], ...]), ...
-            }
-        """
-        points = np.array(points)
-        component_points = {
-            "object": points[np.where(np.array(vertices_map) == {'enum': -1})[0]]
-        }
-        self.remove_overlaped_spots_by_spot_index(
-            spot_indices=set([int(val["enum"]) for val in vertices_map if val["enum"] > -1])
-        )
-        spots_points = {
-            f"{i}": points[np.where(np.array(vertices_map) == {'enum': i})[0]] for i in range(len(self.spots))
-            if len(np.where(np.array(vertices_map) == {'enum': i})[0]) > 0
-        }
-        return {**component_points, **spots_points}
-
-    def remove_overlaped_spots_by_spot_index(self, spot_indices):
+    def remove_overlaped_spots_by_spot_index(self, keep_spot_indices):
         """
         Remove definition and instance of those spots that are overlaped
         by another one and basically has no face to work with.
 
-        :param spot_indices: List[int]; list of spot indices to remove
+        :param keep_spot_indices: List[int]; list of spot indices to keep
         :return:
         """
         all_spot_indices = set([int(val) for val in self.spots.keys()])
-        spot_indices_to_remove = all_spot_indices.difference(spot_indices)
+        spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
 
         for spot_index in spot_indices_to_remove:
             self.remove_spot(spot_index)

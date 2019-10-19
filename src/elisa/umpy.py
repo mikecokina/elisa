@@ -1,6 +1,7 @@
 import numpy as np
 
 from scipy import special
+from scipy import optimize
 
 # numpy
 degrees = np.degrees
@@ -34,3 +35,4 @@ mod = np.mod
 # scipy
 sph_harm = special.sph_harm
 lpmv = special.lpmv
+optimize = optimize

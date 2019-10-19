@@ -181,10 +181,11 @@ def radial_primary_potential_derivative(radius, *args):
     :param radius: radius of given point(s) in spherical coordinates
     :type radius: float or numpy array
     :param args: b, c, d, e - such that: dPsi1/dr = -1/r^2 + 0.5*q*(c-2r)/(b-cr+r^2)^(3/2) - d +2er
-    :type args: tuple
-    :return:
+    :type args: Tuple
+    :return: flaot or numpy.array
     """
     # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
+    # fixme: it is inappropriate to take *args but use just args[0], solve it on higher layer
     mass_ratio, b, c, d, e = args[0]
     radius2 = up.power(radius, 2)
 

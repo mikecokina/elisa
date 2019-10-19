@@ -3,7 +3,7 @@ from astropy import units as au
 from numpy.testing import assert_array_equal
 
 from elisa import const, units
-from elisa.base.transform import SystemProperties, BodyProperties, StarProperties
+from elisa.base.transform import SystemProperties, BodyProperties, StarProperties, SpotProperties
 from elisa.binary_system.transform import BinarySystemProperties
 from elisa.orbit.transform import OrbitProperties
 from unittests.utils import ElisaTestCase
@@ -198,21 +198,39 @@ class TransformStarPropertiesTestCase(ElisaTestCase):
 
     @staticmethod
     def test_polar_log_g():
-        raise Exception("Not implemented")
+        valid_values = [0.0, 1.0, 4.0 * units.LOG_ACCELERATION_UNIT]
+        obtained = np.round([StarProperties.polar_log_g(val) for val in valid_values], 4)
+        expected = [0.0, 1.0, 4.0]
+        assert_array_equal(expected, obtained)
 
 
 class TransformSpotPropertiesTestCase(ElisaTestCase):
-    def test_latitude(self):
-        pass
+    @staticmethod
+    def test_latitude():
+        valid_values = [0.0, 180., const.PI * units.rad, 180.0 * units.deg]
+        obtained = np.round([SpotProperties.latitude(val) for val in valid_values], 4)
+        expected = [0., 3.1416, 3.1416, 3.1416]
+        assert_array_equal(expected, obtained)
 
-    def test_longitude(self):
-        pass
+    @staticmethod
+    def test_longitude():
+        valid_values = [0.0, 180., const.PI * units.rad, 180.0 * units.deg]
+        obtained = np.round([SpotProperties.longitude(val) for val in valid_values], 4)
+        expected = [0., 3.1416, 3.1416, 3.1416]
+        assert_array_equal(expected, obtained)
 
-    def test_angular_radius(self):
-        pass
+    @staticmethod
+    def test_angular_radius():
+        valid_values = [0.0, 180., const.PI * units.rad, 180.0 * units.deg]
+        obtained = np.round([SpotProperties.angular_radius(val) for val in valid_values], 4)
+        expected = [0., 3.1416, 3.1416, 3.1416]
+        assert_array_equal(expected, obtained)
 
-    def test_temperature_factor(self):
-        pass
+    @staticmethod
+    def test_temperature_factor():
+        valid_values = [0.1, 0.5, 0.9999]
+        obtained = np.round([SpotProperties.temperature_factor(val) for val in valid_values], 4)
+        assert_array_equal(valid_values, obtained)
 
 
 class TransformOrbitProperties(ElisaTestCase):
