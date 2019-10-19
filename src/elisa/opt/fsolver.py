@@ -30,11 +30,10 @@ def fsolver(fn, condition, *args, **kwargs):
             use = True if 1e15 > solution > 0 else False
         else:
             __logger__.warning(f'solution in implicit solver was not found, cause: {msg}')
-    except ValueError:
-        raise
     except Exception as e:
         __logger__.debug(f"attempt to solve function {fn.__name__} finished w/ exception: {str(e)}")
         use = False
+        raise
 
     args_to_use = kwargs.get('original_kwargs', args)
     return (solution, use) if condition(solution, *args_to_use) else (np.nan, False)

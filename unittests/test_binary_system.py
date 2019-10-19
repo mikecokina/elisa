@@ -9,6 +9,7 @@ from numpy.testing import assert_array_equal
 
 from elisa import const as c, umpy as up, units
 from elisa.base.star import Star
+from elisa.binary_system import model
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.utils import is_empty, find_nearest_dist_3d
@@ -378,7 +379,8 @@ class TestMethods(ElisaTestCase):
                     [1.21, 0., 0., 0.8438]]
 
         for bs in self._binaries:
-            obtained.append(bs.pre_calculate_for_potential_value_primary(*args))
+            argss = (bs.primary.synchronicity, bs.mass_ratio) + args
+            obtained.append(model.pre_calculate_for_potential_value_primary(*argss))
 
         obtained = np.round(obtained, 4)
         assert_array_equal(expected, obtained)

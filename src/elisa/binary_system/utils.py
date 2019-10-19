@@ -37,11 +37,11 @@ def get_flaten_properties(component):
     return points, normals, faces, temperatures, log_g, rals, centres
 
 
-def potential_from_radius(self, component, radius, phi, theta, component_distance, mass_ratio):
+def potential_from_radius(component, radius, phi, theta, component_distance, mass_ratio, synchronicity):
     """
     calculate potential given spherical coordinates radius, phi, theta
 
-    :param self: BinarySystem
+    :param mass_ratio: float
     :param component: 'primary` or `secondary`
     :param radius: float
     :param phi: float
@@ -49,12 +49,12 @@ def potential_from_radius(self, component, radius, phi, theta, component_distanc
     :param component_distance: float
     :return: float
     """
-    precalc_fn = self.pre_calculate_for_potential_value_primary if component == 'primary' else \
-        self.pre_calculate_for_potential_value_secondary
+    precalc_fn = model.pre_calculate_for_potential_value_primary if component == 'primary' else \
+        model.pre_calculate_for_potential_value_secondary
     potential_fn = model.potential_value_primary if component == 'primary' else \
         model.potential_value_secondary
 
-    precalc_args = (component_distance, phi, theta)
+    precalc_args = (synchronicity, mass_ratio, component_distance, phi, theta)
     args = (mass_ratio, ) + precalc_fn(*precalc_args)
     return potential_fn(radius, *args)
 

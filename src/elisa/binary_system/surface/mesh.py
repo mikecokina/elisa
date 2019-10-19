@@ -226,8 +226,8 @@ def get_surface_points(*args):
     :return: numpy.array
     """
     phi, theta, x0, components_distance, precalc_fn = args[:5]
-    potential_fn, potential_derivative_fn, surface_potential, mass_ratio = args[5:]
-    precalc_vals = precalc_fn(*(components_distance, phi, theta), return_as_tuple=True)
+    potential_fn, potential_derivative_fn, surface_potential, mass_ratio, synchronicity = args[5:]
+    precalc_vals = precalc_fn(*(synchronicity, mass_ratio, components_distance, phi, theta), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
     radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn,
                                maxiter=config.MAX_SOLVER_ITERS,
@@ -303,12 +303,14 @@ def mesh_detached(system, components_distance, component, symmetry_output=False,
 
     if component == 'primary':
         potential_fn = model.potential_primary_fn
-        precalc_fn = system.pre_calculate_for_potential_value_primary
-        potential_derivative_fn = system.radial_primary_potential_derivative
+        precalc_fn = model.pre_calculate_for_potential_value_primary
+        potential_derivative_fn = model.radial_primary_potential_derivative
+        synchronicity = star_container.synchronicity
     elif component == 'secondary':
         potential_fn = model.potential_secondary_fn
-        precalc_fn = system.pre_calculate_for_potential_value_secondary
-        potential_derivative_fn = system.radial_secondary_potential_derivative
+        precalc_fn = model.pre_calculate_for_potential_value_secondary
+        potential_derivative_fn = model.radial_secondary_potential_derivative
+        synchronicity = star_container.synchronicity
     else:
         raise ValueError('Invalid value of `component` argument: `{}`. Expecting '
                          '`primary` or `secondary`.'.format(component))
@@ -321,18 +323,20 @@ def mesh_detached(system, components_distance, component, symmetry_output=False,
         # args = phi, theta, components_distance, precalc_fn, potential_fn
         args = phi, theta, star_container.side_radius, \
                components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
-               star_container.surface_potential, system.mass_ratio
+               star_container.surface_potential, system.mass_ratio, synchronicity
         __logger__.debug(f'calculating surface points of {component} component in mesh_detached '
                          f'function using single process method')
         points_q = get_surface_points(*args)
     else:
-        # todo: consider to remove following multiproc line if "parallel" solver implemented
-        # calculating mesh in cartesian coordinates for quarter of the star
-        args = phi, theta, components_distance, precalc_fn, potential_fn
-
-        __logger__.debug(f'calculating surface points of {component} component in mesh_detached '
-                         f'function using multi process method')
-        points_q = system.get_surface_points_multiproc(*args)
+        raise NotImplemented("not implemented")
+        # todo: reimplement when containers will be ready (!!! will require adjust args for fns from `model` module)
+        # # todo: consider to remove following multiproc line if "parallel" solver implemented
+        # # calculating mesh in cartesian coordinates for quarter of the star
+        # args = phi, theta, components_distance, precalc_fn, potential_fn
+        #
+        # __logger__.debug(f'calculating surface points of {component} component in mesh_detached '
+        #                  f'function using multi process method')
+        # points_q = system.get_surface_points_multiproc(*args)
 
     equator = points_q[:separator[0], :]
     # assigning equator points and nearside and farside points A and B
@@ -438,6 +442,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
     """
     star_container = getattr(system, component)
     discretization_factor = star_container.discretization_factor
+    synchronicity = star_container.synchronicity
 
     # calculating distance between components
     components_distance = system.orbit.orbital_motion(phase=0)[0][0]
@@ -445,17 +450,17 @@ def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
     if component == 'primary':
         fn = model.potential_primary_fn
         fn_cylindrical = model.potential_primary_cylindrical_fn
-        precalc = system.pre_calculate_for_potential_value_primary
+        precalc = model.pre_calculate_for_potential_value_primary
         precal_cylindrical = system.pre_calculate_for_potential_value_primary_cylindrical
-        potential_derivative_fn = system.radial_primary_potential_derivative
-        cylindrical_potential_derivative_fn = system.radial_primary_potential_derivative_cylindrical
+        potential_derivative_fn = model.radial_primary_potential_derivative
+        cylindrical_potential_derivative_fn = model.radial_primary_potential_derivative_cylindrical
     elif component == 'secondary':
         fn = model.potential_secondary_fn
         fn_cylindrical = model.potential_secondary_cylindrical_fn
-        precalc = system.pre_calculate_for_potential_value_secondary
+        precalc = model.pre_calculate_for_potential_value_secondary
         precal_cylindrical = system.pre_calculate_for_potential_value_secondary_cylindrical
-        potential_derivative_fn = system.radial_secondary_potential_derivative
-        cylindrical_potential_derivative_fn = system.radial_secondary_potential_derivative_cylindrical
+        potential_derivative_fn = model.radial_secondary_potential_derivative
+        cylindrical_potential_derivative_fn = model.radial_secondary_potential_derivative_cylindrical
     else:
         raise ValueError(f'Invalid value of `component` argument: `{component}`.\n'
                          f'Expecting `primary` or `secondary`.')
@@ -476,7 +481,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False, **kwargs):
     if config.NUMBER_OF_THREADS == 1:
         args = phi_farside, theta_farside, star_container.polar_radius, \
                components_distance, precalc, fn, potential_derivative_fn, \
-               star_container.surface_potential, system.mass_ratio
+               star_container.surface_potential, system.mass_ratio, synchronicity
         __logger__.debug(f'calculating farside points of {component} component in mesh_overcontact '
                          f'function using single process method')
         points_farside = get_surface_points(*args)
@@ -617,10 +622,10 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
 
     components = bsutils.component_to_list(component)
     fns = {
-        "primary": (model.potential_primary_fn, system.pre_calculate_for_potential_value_primary,
-                    system.radial_primary_potential_derivative),
-        "secondary": (model.potential_secondary_fn, system.pre_calculate_for_potential_value_secondary,
-                      system.radial_secondary_potential_derivative)
+        "primary": (model.potential_primary_fn, model.pre_calculate_for_potential_value_primary,
+                    model.radial_primary_potential_derivative),
+        "secondary": (model.potential_secondary_fn, model.pre_calculate_for_potential_value_secondary,
+                      model.radial_secondary_potential_derivative)
     }
     fns = {_component: fns[_component] for _component in components}
 
@@ -649,8 +654,8 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
             # initial radial vector
             radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
             center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
-
-            args1, use = (components_distance, radial_vector[1], radial_vector[2]), False
+            args1, use = (component_instance.synchronicity, system.mass_ratio,
+                          components_distance, radial_vector[1], radial_vector[2]), False
             args2 = ((system.mass_ratio,) + precalc_fn(*args1), component_instance.surface_potential)
             kwargs = {'original_kwargs': args1}
             solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
@@ -669,7 +674,8 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
 
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st inner ring of spot
-            args1, use = (components_distance, lon, lat + alpha), False
+            args1, use = (component_instance.synchronicity, system.mass_ratio,
+                          components_distance, lon, lat + alpha), False
             args2 = ((system.mass_ratio,) + precalc_fn(*args1), component_instance.surface_potential)
             kwargs = {'original_kwargs': args1}
             solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
@@ -716,7 +722,7 @@ def evaluate_spots_mesh(system, components_distance, component="all"):
             spot_phi, spot_theta = np.array(spot_phi), np.array(spot_theta)
             args = spot_phi, spot_theta, spot_center_r, \
                 components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
-                component_instance.surface_potential, system.mass_ratio
+                component_instance.surface_potential, system.mass_ratio, component_instance.synchronicity
             try:
                 spot_points = get_surface_points(*args)
             except MaxIterationError:

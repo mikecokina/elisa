@@ -1,3 +1,5 @@
+import numpy as np
+
 from elisa import umpy as up
 
 
@@ -142,7 +144,7 @@ def potential_value_secondary_cylindrical(radius, *args):
     """
     Calculates modified kopal potential from point of view of secondary
     component in cylindrical coordinates r_n, phi_n, z_n, where z_n = x and heads along z axis.
-    :param radius: np.float
+    :param radius: up.float
     :param args: tuple: (a, b, c, d, e, f) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(a+e*r^2)
     :return:
     """
@@ -171,3 +173,123 @@ def potential_secondary_cylindrical_fn(radius, *args):
     """
     # return self.potential_value_secondary_cylindrical(radius, *args) - self.secondary.surface_potential
     return potential_value_secondary_cylindrical(radius, *args[0]) - args[1]
+
+
+def radial_primary_potential_derivative(radius, *args):
+    """
+    Function calculate radial derivative of primary potential function in spherical coordinates
+    :param radius: radius of given point(s) in spherical coordinates
+    :type radius: float or numpy array
+    :param args: b, c, d, e - such that: dPsi1/dr = -1/r^2 + 0.5*q*(c-2r)/(b-cr+r^2)^(3/2) - d +2er
+    :type args: tuple
+    :return:
+    """
+    # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
+    mass_ratio, b, c, d, e = args[0]
+    radius2 = up.power(radius, 2)
+
+    return - 1 / radius2 + 0.5 * mass_ratio * (c - 2 * radius) / up.power(b - c * radius + radius2, 1.5) \
+           - d + 2 * e * radius
+
+
+def radial_secondary_potential_derivative(radius, *args):
+    """
+    Function calculate radial derivative of secondary potential function in spherical coordinates
+    :param radius: radius of given point(s) in spherical coordinates
+    :type radius: float or numpy array
+    :param args: b, c, d, e, f - such that: dPsi2/dr = -q/r^2 + (0.5c - x)/(b - cx + r^2)^(3/2) - d + 2er
+    :type args: tuple
+    :return:
+    """
+    # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
+    mass_ratio, b, c, d, e, f = args[0]
+    radius2 = up.power(radius, 2)
+
+    return - mass_ratio / radius2 + (0.5 * c - radius) / up.power(b - c * radius + radius2, 1.5) \
+           - d + 2 * e * radius
+
+
+def pre_calculate_for_potential_value_primary(*args, return_as_tuple=False):
+    """
+    Function calculates auxiliary values for calculation of primary component potential,
+    and therefore they don't need to be wastefully recalculated every iteration in solver.
+    :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+    :type return_as_tuple: bool
+    :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
+    :return: tuple: (b, c, d, e) such that: Psi1 = 1/r + q/sqrt(b+r^2-c*r) - d*r + e*r^2
+    """
+    # synchronicity, mass_ratio, distance between components, azimuth angle, latitude angle (0,180)
+    synchronicity, mass_ratio, distance, phi, theta = args
+
+    cs = up.cos(phi) * up.sin(theta)
+
+    b = up.power(distance, 2)
+    c = 2 * distance * cs
+    d = (mass_ratio * cs) / b
+    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(up.sin(theta), 2)
+
+    if np.isscalar(phi):
+        return b, c, d, e
+    else:
+        bb = b * np.ones(np.shape(phi))
+        return (bb, c, d, e) if return_as_tuple else np.column_stack((bb, c, d, e))
+
+
+def pre_calculate_for_potential_value_secondary(*args, return_as_tuple=False):
+    """
+    Function calculates auxiliary values for calculation of secondary component potential,
+    and therefore they don't need to be wastefully recalculated every iteration in solver.
+    :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
+    :type return_as_tuple: bool
+    :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
+    :return: tuple: (b, c, d, e, f) such that: Psi2 = q/r + 1/sqrt(b+r^2+Cr) - d*r + e*r^2 + f
+    """
+    # synchronicity, mass_ratio, distance between components, azimuth angle, latitude angle (0,180)
+    synchronicity, mass_ratio, distance, phi, theta = args
+
+    cs = up.cos(phi) * up.sin(theta)
+
+    b = up.power(distance, 2)
+    c = 2 * distance * cs
+    d = cs / b
+    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(up.sin(theta), 2)
+    f = 0.5 - 0.5 * mass_ratio
+
+    if np.isscalar(phi):
+        return b, c, d, e, f
+    else:
+        bb = b * np.ones(np.shape(phi))
+        ff = f * np.ones(np.shape(phi))
+        return (bb, c, d, e, ff) if return_as_tuple else np.column_stack((bb, c, d, e, ff))
+
+
+def radial_primary_potential_derivative_cylindrical(radius, *args):
+    """
+    Function calculate radial derivative of primary potential function in cylindrical coordinates
+    :param radius: radius of given point(s) in cylindrical coordinates
+    :type radius: float or numpy array
+    :param args: a, b, c, d, e such that: dPsi1/dr = - r/(a+r^2)^(3/2) - rq/(b+r^2)^(3/2) + 2der
+    :type args: tuple
+    :return:
+    """
+    mass_ratio, a, b, c, d, e = args[0]
+
+    radius2 = up.power(radius, 2)
+    return + 0 - radius / up.power(a + radius2, 1.5) - radius * mass_ratio / up.power(b + radius2, 1.5) \
+           + 2 * d * e * radius
+
+
+def radial_secondary_potential_derivative_cylindrical(radius, *args):
+    """
+    Function calculate radial derivative of secondary potential function in cylindrical coordinates
+    :param radius: radius of given point(s) in cylindrical coordinates
+    :type radius: float or numpy array
+    :param args: a, b, c, d, e, f such that: dPsi2/dr = - qr/(a+r^2)^(3/2) - r/(b+r^2)^(3/2) + 2cer
+    :type args: tuple
+    :return:
+    """
+    mass_ratio, a, b, c, d, e, f = args[0]
+
+    radius2 = up.power(radius, 2)
+    return + 0 - radius * mass_ratio / up.power(a + radius2, 1.5) - radius / up.power(b + radius2, 1.5) \
+           + 2 * d * e * radius
