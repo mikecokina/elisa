@@ -4,6 +4,7 @@ from elisa import logger
 from elisa.conf import config
 from copy import deepcopy
 from elisa.base import spot
+from elisa.utils import is_empty
 
 config.set_up_logging()
 __logger__ = logger.getLogger("base-container-module")
@@ -115,6 +116,8 @@ class StarContainer(object):
         """
         all_spot_indices = set([int(val) for val in self.spots.keys()])
         spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
-        raise ValueError(f"Spots {spot_indices_to_remove} have no pointns to continue. Please, specify spots wisely.")
+        if not is_empty(spot_indices_to_remove):
+            raise ValueError(f"Spots {spot_indices_to_remove} have no pointns to continue. "
+                             f"Please, specify spots wisely.")
         # for spot_index in spot_indices_to_remove:
         #     self.remove_spot(spot_index)
