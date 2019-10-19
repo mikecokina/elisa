@@ -115,6 +115,6 @@ class StarContainer(object):
         """
         all_spot_indices = set([int(val) for val in self.spots.keys()])
         spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
-
-        for spot_index in spot_indices_to_remove:
-            self.remove_spot(spot_index)
+        raise ValueError(f"Spots {spot_indices_to_remove} have no pointns to continue. Please, specify spots wisely.")
+        # for spot_index in spot_indices_to_remove:
+        #     self.remove_spot(spot_index)
