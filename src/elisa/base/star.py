@@ -7,7 +7,7 @@ from elisa.pulse.mode import PulsationMode
 from elisa.base.transform import StarProperties
 from elisa.utils import is_empty
 
-from copy import copy
+from copy import copy, deepcopy
 from scipy.optimize import brute, fmin
 
 
@@ -125,12 +125,15 @@ class Star(Body):
 
     def properties_serializer(self):
         properties_list = ['mass', 't_eff', 'synchronicity', 'albedo', 'discretization_factor', 'polar_radius',
-                           'spots', 'equatorial_radius', 'gravity_darkening', 'surface_potential', 'pulsations',
+                           'equatorial_radius', 'gravity_darkening', 'surface_potential', 'pulsations',
                            'metallicity', 'polar_log_g', 'critical_surface_potential',
                            # todo: remove side_radius when figured out starting point for solver
                            'side_radius']
         props = {prop: copy(getattr(self, prop)) for prop in properties_list}
-        props.update({"name": self.name})
+        props.update({
+            "name": self.name,
+            "spots": deepcopy(self.spots)
+        })
         return props
 
     def to_properties_container(self):

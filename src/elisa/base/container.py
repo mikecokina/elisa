@@ -116,8 +116,10 @@ class StarContainer(object):
         """
         all_spot_indices = set([int(val) for val in self.spots.keys()])
         spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
+        spots_meta = [self.spots[idx].kwargs_serializer() for idx in self.spots if idx in spot_indices_to_remove]
+        spots_meta = '\n'.join(spots_meta)
         if not is_empty(spot_indices_to_remove):
-            raise ValueError(f"Spots {spot_indices_to_remove} have no pointns to continue. "
+            raise ValueError(f"Spots {spots_meta} have no pointns to continue.\n"
                              f"Please, specify spots wisely.")
         # for spot_index in spot_indices_to_remove:
         #     self.remove_spot(spot_index)

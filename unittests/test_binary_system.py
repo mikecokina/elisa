@@ -8,17 +8,20 @@ from mpl_toolkits.mplot3d import Axes3D
 from numpy.testing import assert_array_equal
 
 from elisa import const as c, umpy as up, units
+from elisa.base.container import StarContainer
 from elisa.base.star import Star
 from elisa.binary_system import model
+from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
+from elisa.const import BINARY_POSITION_PLACEHOLDER
 from elisa.utils import is_empty, find_nearest_dist_3d
 from unittests.utils import ElisaTestCase, prepare_binary_system, plot_points, plot_faces, polar_gravity_acceleration
 
 ax3 = Axes3D
 
 
-class TestBinarySystemInit(ElisaTestCase):
+class BinarySystemInitTestCase(ElisaTestCase):
     def setUp(self):
         self.params_combination = [
             {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -187,7 +190,7 @@ class TestBinarySystemInit(ElisaTestCase):
         assert_array_equal(expected_points, obtained_points)
 
 
-class TestValidity(ElisaTestCase):
+class ValidityTestCase(ElisaTestCase):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'phase_shift']
 
     def setUp(self):
@@ -286,7 +289,7 @@ class TestValidity(ElisaTestCase):
             self.assertTrue(f'Missing argument(s): `{kw}`' in str(context.exception))
 
 
-class TestMethods(ElisaTestCase):
+class EvaluateMethodsTestCase(ElisaTestCase):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
                         'primary_minimum_time', 'phase_shift']
     OPTIONAL_KWARGS = []
@@ -462,7 +465,7 @@ class TestMethods(ElisaTestCase):
         assert_array_equal(expected, obtained)
 
 
-class TestIntegrationNoSpots(ElisaTestCase):
+class IntegrationTestNoSpots(ElisaTestCase):
     params = {
         "detached": {
             "primary_mass": 2.0, "secondary_mass": 1.0,
@@ -575,6 +578,34 @@ class TestIntegrationNoSpots(ElisaTestCase):
 
     def test_build_faces_overcontact(self):
         self._test_build_faces("over-contact", up.radians(10), _max_s=7e-3, plot=False)
+
+
+class IntegrationTestWithNoSpotsUponContainer(IntegrationTestNoSpots):
+    def _test_build_mesh_upon_containers(self, _key, _d, _length):
+        s = prepare_binary_system(self.params[_key])
+        s.primary.discretization_factor = _d
+        s.secondary.discretization_factor = _d
+
+        orbital_position_container = OrbitalPositionContainer(
+            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
+            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            **s.properties_serializer()
+        )
+        orbital_position_container.build_mesh(components_distance=1.0)
+
+        obtained_primary = np.round(orbital_position_container.primary.points, 4)
+        obtained_secondary = np.round(orbital_position_container.secondary.points, 4)
+        assert_array_equal([len(obtained_primary), len(obtained_secondary)], _length)
+
+    def test_build_mesh_detached(self):
+        self._test_build_mesh_upon_containers(_key="detached", _d=up.radians(10), _length=[426, 426])
+
+    def test_build_mesh_overcontact(self):
+        self._test_build_mesh_upon_containers(_key="over-contact", _d=up.radians(10), _length=[413, 401])
+
+    def test_build_mesh_semi_detached(self):
+        self._test_build_mesh_upon_containers(_key="semi-detached", _d=up.radians(10), _length=[426, 426])
 
 
 class TestIntegrationWithSpots(ElisaTestCase):
@@ -699,3 +730,33 @@ class TestIntegrationWithSpots(ElisaTestCase):
 
             self.assertFalse(distance1 < 1e-10)
             self.assertFalse(distance2 < 1e-10)
+
+    def test_spots_are_presented_after_mesh_build_upon_containers_in_detached(self):
+        s = prepare_binary_system(self.params["detached"],
+                                  spots_primary=self.spots_metadata["primary"],
+                                  spots_secondary=self.spots_metadata["secondary"])
+
+        orbital_position_container = OrbitalPositionContainer(
+            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
+            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            **s.properties_serializer()
+        )
+        orbital_position_container.build_mesh(components_distance=1.0)
+
+        self.assertTrue(not is_empty(orbital_position_container.primary.spots[0].points))
+        self.assertTrue(not is_empty(orbital_position_container.secondary.spots[0].points))
+
+    def test_spots_are_presented_after_mesh_build_upon_containers_in_overcontact(self):
+        s = prepare_binary_system(self.params["over-contact"],
+                                  spots_primary=self.spots_metadata["primary"],
+                                  spots_secondary=self.spots_metadata["secondary"])
+        orbital_position_container = OrbitalPositionContainer(
+            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
+            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            **s.properties_serializer()
+        )
+        orbital_position_container.build_mesh(components_distance=1.0)
+        self.assertTrue(not is_empty(orbital_position_container.primary.spots[0].points))
+        self.assertTrue(not is_empty(orbital_position_container.secondary.spots[0].points))

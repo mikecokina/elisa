@@ -316,6 +316,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
         # plt.show()
 
+
 class ComputeLightCurveWithSpots(ElisaTestCase):
     spots_metadata = {
         "primary":
