@@ -15,6 +15,7 @@ arcsin = np.arcsin
 arccos = np.arccos
 arctan2 = np.arctan2
 pi = np.pi
+zeros = np.zeros
 
 isnan = np.isnan
 power = np.power
@@ -30,7 +31,9 @@ concatenate = np.concatenate
 sqrt = np.sqrt
 
 logical_xor = np.logical_xor
+logical_and = np.logical_and
 mod = np.mod
+equal = np.equal
 
 # scipy
 sph_harm = special.sph_harm

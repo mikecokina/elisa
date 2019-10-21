@@ -48,23 +48,11 @@ class System(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def build_mesh(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
     def build_faces(self, *args, **kwargs):
         pass
 
     @abstractmethod
-    def build_surface(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
     def build_surface_map(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
-    def build(self, *args, **kwargs):
         pass
 
     @abstractmethod

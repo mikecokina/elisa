@@ -1,8 +1,10 @@
 import numpy as np
 
-from elisa import logger
+from abc import abstractmethod
+from copy import deepcopy, copy
+
+from elisa import logger, umpy as up
 from elisa.conf import config
-from copy import deepcopy
 from elisa.base import spot
 from elisa.utils import is_empty
 
@@ -32,6 +34,16 @@ class StarPropertiesContainer(PropertiesContainer):
 
 class SystemPropertiesContainer(PropertiesContainer):
     pass
+
+
+class PositionContainer(object):
+    @abstractmethod
+    def build(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def build_mesh(self, *args, **kwargs):
+        pass
 
 
 class StarContainer(object):
@@ -78,13 +90,15 @@ class StarContainer(object):
         self.base_symmetry_points_number = 0
 
         self.spots = dict()
+        self.pulsations = dict()
+
+    def has_spots(self):
+        return len(self.spots) > 0
+
+    def has_pulsations(self):
+        return len(self.pulsations) > 0
 
     def copy(self):
-        """
-        Copy self instance
-
-        :return: self; copied self instance
-        """
         return deepcopy(self)
 
     @staticmethod
@@ -107,7 +121,7 @@ class StarContainer(object):
         """
         del (self.spots[spot_index])
 
-    def remove_overlaped_spots_by_spot_index(self, keep_spot_indices):
+    def remove_overlaped_spots_by_spot_index(self, keep_spot_indices, _raise=True):
         """
         Remove definition and instance of those spots that are overlaped
         by another one and basically has no face to work with.
@@ -118,8 +132,25 @@ class StarContainer(object):
         spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
         spots_meta = [self.spots[idx].kwargs_serializer() for idx in self.spots if idx in spot_indices_to_remove]
         spots_meta = '\n'.join(spots_meta)
-        if not is_empty(spot_indices_to_remove):
+        if _raise and not is_empty(spot_indices_to_remove):
             raise ValueError(f"Spots {spots_meta} have no pointns to continue.\n"
                              f"Please, specify spots wisely.")
-        # for spot_index in spot_indices_to_remove:
-        #     self.remove_spot(spot_index)
+        for spot_index in spot_indices_to_remove:
+            self.remove_spot(spot_index)
+
+    def get_flatten_points_map(self):
+        """
+        Function returns all surface point and faces optionally with corresponding map of vertices.
+        :param self: Star instance
+        :return: Tuple[numpy.array, Any]: [all surface points including star and surface points, vertices map or None]
+        """
+        points = copy(self.points)
+        for spot_index, spot_instance in self.spots.items():
+            points = up.concatenate([points, spot_instance.points])
+
+        vertices_map = [{"type": "object", "enum": -1}] * len(self.points)
+        for spot_index, spot_instance in self.spots.items():
+            vertices_map = up.concatenate(
+                [vertices_map, [{"type": "spot", "enum": spot_index}] * len(spot_instance.points)]
+            )
+        return points, vertices_map

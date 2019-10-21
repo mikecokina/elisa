@@ -2,13 +2,15 @@ import numpy as np
 
 from copy import copy
 
-from elisa.binary_system.surface import mesh
+from elisa.binary_system.surface import mesh, faces
+from elisa.binary_system.surface.mesh import add_spots_to_mesh
 from elisa.conf import config
 from elisa.binary_system import utils as bsutils
 from elisa.utils import is_empty
 from elisa.pulse import pulsations
 
 
+# TODO: remove
 def build_mesh(self, component="all", components_distance=None, **kwargs):
     """
     Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
@@ -219,157 +221,48 @@ def build_surface_map(self, colormap=None, component="all", components_distance=
     return
 
 
-def add_spots_to_mesh(self, components_distance, component="all"):
-    """
-    Function implements surface points into clean mesh and removes stellar
-    points and other spot points under the given spot if such overlapped spots exists.
-
-    :param self: BinarySystem instance
-    :param components_distance: float
-    :param component: str or empty
-    :return:
-    """
-    if components_distance is None:
-        raise ValueError('Argument `component_distance` was not supplied.')
-    component = bsutils.component_to_list(component)
-
-    if is_empty(component):
-        # skip building if not required
-        return
-
-    component_com = {'primary': 0.0, 'secondary': components_distance}
-    for _component in component:
-        component_instance = getattr(self, _component)
-        self._evaluate_spots_mesh(components_distance=components_distance, component=_component)
-        component_instance.incorporate_spots_mesh(component_com=component_com[_component])
-
-
 def build_faces(self, component="all", components_distance=None):
-    """
-    Function creates faces of the star surface for given components. Faces are evaluated upon points that
-    have to be in this time already calculated.
-
-    :param self: BinarySystem; instance
-    :type components_distance: float
-    :param component: `primary` or `secondary` if not supplied both component are calculated
-    :return:
-    """
-    if is_empty(component):
-        self._logger.debug("no component set to build faces")
-        return
-
-    if is_empty(components_distance):
-        raise ValueError('components_distance value was not provided.')
-
-    component = bsutils.component_to_list(component)
-    for _component in component:
-        component_instance = getattr(self, _component)
-        self.build_surface_with_spots(_component, components_distance=components_distance) \
-            if component_instance.has_spots() \
-            else self.build_surface_with_no_spots(_component, components_distance=components_distance)
+    faces.build_faces(self, components_distance, component)
 
 
-def build_surface(self, component="all", components_distance=None, return_surface=False, **kwargs):
-    """
-    Function for building of general binary star component surfaces including spots. It will compute point mesh for
-    Star instance and also spots, incorporate spots and makes a triangulation.
+# def build_surface(self, component="all", components_distance=None, return_surface=False, **kwargs):
+#     """
+#     Function for building of general binary star component surfaces including spots. It will compute point mesh for
+#     Star instance and also spots, incorporate spots and makes a triangulation.
+#
+#     It is possible to return computed surface (points and faces indices) if `return_surface` parametre is set to True.
+#
+#     :param self: elisa.binary_system.sytem.BinarySystem; instance
+#     :param return_surface: bool; if True, function returns dictionary of arrays with all points and faces
+#     (surface + spots) for each component
+#     :param components_distance: float; distance between components
+#     :param component: str; specify component, use `primary` or `secondary`
+#     :return: Tuple or None
+#     """
+#     if not components_distance:
+#         raise ValueError('components_distance value was not provided.')
+#
+#     ret_points, ret_faces = {}, {}
+#
+#     self.build_mesh(component, components_distance)
+#     self.build_faces(component, components_distance)
+#
+#     if return_surface:
+#         component = bsutils.component_to_list(component)
+#         for _component in component:
+#             component_instance = getattr(self, _component)
+#             ret_points[_component], ret_faces[_component] = component_instance.return_whole_surface()
+#         return ret_points, ret_faces
+#     else:
+#         return return_surface
 
-    It is possible to return computed surface (points and faces indices) if `return_surface` parametre is set to True.
-
-    :param self: elisa.binary_system.sytem.BinarySystem; instance
-    :param return_surface: bool; if True, function returns dictionary of arrays with all points and faces
-    (surface + spots) for each component
-    :param components_distance: float; distance between components
-    :param component: str; specify component, use `primary` or `secondary`
-    :return: Tuple or None
-    """
-    if not components_distance:
-        raise ValueError('components_distance value was not provided.')
-
-    ret_points, ret_faces = {}, {}
-
-    self.build_mesh(component, components_distance)
-    self.build_faces(component, components_distance)
-
-    if return_surface:
-        component = bsutils.component_to_list(component)
-        for _component in component:
-            component_instance = getattr(self, _component)
-            ret_points[_component], ret_faces[_component] = component_instance.return_whole_surface()
-        return ret_points, ret_faces
-    else:
-        return return_surface
-
-
+# TODO: remove
 def build_surface_with_no_spots(self, component="all", components_distance=None):
-    """
-    Function for building binary star component surfaces without spots.
-
-    :param self: BinarySystem; instance
-    :param components_distance: float
-    :param component: str; `primary` or `secondary` if not supplied both component are calculated
-    :return:
-    """
-    component = bsutils.component_to_list(component)
-
-    for _component in component:
-        component_instance = getattr(self, _component)
-        # triangulating only one quarter of the star
-
-        if self.morphology != 'over-contact':
-            points_to_triangulate = component_instance.points[:component_instance.base_symmetry_points_number, :]
-            triangles = self.detached_system_surface(component=_component, points=points_to_triangulate,
-                                                     components_distance=components_distance)
-
-        else:
-            neck = np.max(component_instance.points[:, 0]) if component[0] == 'primary' \
-                else np.min(component_instance.points[:, 0])
-            points_to_triangulate = \
-                np.append(component_instance.points[:component_instance.base_symmetry_points_number, :],
-                          np.array([[neck, 0, 0]]), axis=0)
-            triangles = self.over_contact_system_surface(component=_component, points=points_to_triangulate)
-            # filtering out triangles containing last point in `points_to_triangulate`
-            triangles = triangles[(triangles < component_instance.base_symmetry_points_number).all(1)]
-
-        # filtering out faces on xy an xz planes
-        y0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 1], 0).all(1)
-        z0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 2], 0).all(1)
-        triangles = triangles[np.logical_and(y0_test, z0_test)]
-
-        component_instance.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
-        # lets exploit axial symmetry and fill the rest of the surface of the star
-        all_triangles = [inv[triangles] for inv in component_instance.inverse_point_symmetry_matrix]
-        component_instance.base_symmetry_faces = triangles
-        component_instance.faces = np.concatenate(all_triangles, axis=0)
-
-        base_face_symmetry_vector = np.arange(component_instance.base_symmetry_faces_number)
-        component_instance.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(4)])
+    faces.build_surface_with_no_spots(self, components_distance, component)
 
 
 def build_surface_with_spots(self, component="all", components_distance=None):
-    """
-    Function capable of triangulation of spotty stellar surfaces.
-    It merges all surface points, triangulates them and then sorts the resulting surface faces under star or spot.
-
-    :param self: BinarySystem instance
-    :param components_distance: float
-    :param component: str `primary` or `secondary`
-    :return:
-    """
-    component = bsutils.component_to_list(component)
-    component_com = {'primary': 0.0, 'secondary': components_distance}
-    for _component in component:
-        component_instance = getattr(self, _component)
-        points, vertices_map = component_instance.return_all_points(return_vertices_map=True)
-
-        surface_fn = self._get_surface_builder_fn()
-        faces = surface_fn(component=_component, points=points, components_distance=components_distance)
-        model, spot_candidates = component_instance.initialize_model_container(vertices_map)
-        model = component_instance.split_spots_and_component_faces(
-            points, faces, model, spot_candidates, vertices_map, component_com[_component]
-        )
-        component_instance.remove_overlaped_spots_by_vertex_map(vertices_map)
-        component_instance.remap_surface_elements(model, points)
+    faces.build_surface_with_spots(self, components_distance, component)
 
 
 def compute_all_surface_areas(self, component):
@@ -384,9 +277,9 @@ def compute_all_surface_areas(self, component):
         self._logger.debug("no component set to build surface areas")
         return
 
-    component = bsutils.component_to_list(component)
-    for _component in component:
-        component_instance = getattr(self, _component)
+    components = bsutils.component_to_list(component)
+    for component in components:
+        component_instance = getattr(self, component)
         self._logger.debug(f'computing surface areas of component: '
                            f'{component_instance} / name: {component_instance.name}')
         component_instance.calculate_all_areas()

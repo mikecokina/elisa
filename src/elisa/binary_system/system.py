@@ -15,7 +15,7 @@ from elisa.binary_system import static, build, mp, geo, utils as bsutils, model
 from elisa.binary_system.curves import lc, rv
 from elisa.binary_system.animation import Animation
 from elisa.binary_system.plot import Plot
-from elisa.binary_system.surface import mesh
+from elisa.binary_system.surface import mesh, faces
 from elisa.binary_system.transform import BinarySystemProperties
 from elisa.conf import config
 from elisa.orbit import orbit
@@ -859,114 +859,10 @@ class BinarySystem(System):
         return utils.cylindrical_to_cartesian(np.column_stack((radius, phi, z)))
 
     def detached_system_surface(self, component="all", points=None, components_distance=None):
-        """
-        Calculates surface faces from the given component's points in case of detached or semi-contact system.
-
-        :param components_distance: float
-        :param points: numpy.array
-        :param component: str
-        :return: numpy.array; N x 3 array of vertices indices
-        """
-        component_instance = getattr(self, component)
-        if points is None:
-            points = component_instance.points
-
-        if not np.any(points):
-            raise ValueError(f"{component} component, with class instance name {component_instance.name} do not "
-                             "contain any valid surface point to triangulate")
-        # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
-        critical_pot = self.primary.critical_surface_potential if component == 'primary' \
-            else self.secondary.critical_surface_potential
-        potential = self.primary.surface_potential if component == 'primary' \
-            else self.secondary.surface_potential
-        if potential - critical_pot > 0.01:
-            self._logger.debug(f'triangulating surface of {component} component using standard method')
-            triangulation = Delaunay(points)
-            triangles_indices = triangulation.convex_hull
-        else:
-            self._logger.debug(f'surface of {component} component is near or at critical potential; '
-                               f'therefore custom triangulation method for (near)critical '
-                               f'potential surfaces will be used')
-            # calculating closest point to the barycentre
-            r_near = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
-            # projection of component's far side surface into ``sphere`` with radius r1
-
-            points_to_transform = copy(points)
-            if component == 'secondary':
-                points_to_transform[:, 0] -= components_distance
-            projected_points = \
-                r_near * points_to_transform / np.linalg.norm(points_to_transform, axis=1)[:, None]
-            if component == 'secondary':
-                projected_points[:, 0] += components_distance
-
-            triangulation = Delaunay(projected_points)
-            triangles_indices = triangulation.convex_hull
-
-        return triangles_indices
+        return faces.detached_system_surface(self, components_distance, points, component)
 
     def over_contact_system_surface(self, component="all", points=None, **kwargs):
-        # do not remove kwargs, keep compatible interface w/ detached where components distance has to be provided
-        # in this case, components distance is sinked in kwargs and not used
-        """
-        Calculates surface faces from the given component's points in case of over-contact system.
-
-        :param points: numpy.array - points to triangulate
-        :param component: str; `primary` or `secondary`
-        :return: numpy.array; N x 3 array of vertice indices
-        """
-
-        component_instance = getattr(self, component)
-        if points is None:
-            points = component_instance.points
-        if np.isnan(points).any():
-            raise ValueError(f"{component} component, with class instance name {component_instance.name} "
-                             f"contain any valid point to triangulate")
-        # calculating position of the neck
-        neck_x = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
-        # parameter k is used later to transform inner surface to quasi sphere (convex object) which will be then
-        # triangulated
-        k = neck_x / (neck_x + 0.01) if component == 'primary' else neck_x / ((1 - neck_x) + 0.01)
-
-        # projection of component's far side surface into ``sphere`` with radius r1
-        projected_points = np.empty(np.shape(points), dtype=float)
-
-        # outside facing points are just inflated to match with transformed inner surface
-        # condition to select outward facing points
-        outside_points_test = points[:, 0] <= 0 if component == 'primary' else points[:, 0] >= 1
-        outside_points = points[outside_points_test]
-        if component == 'secondary':
-            outside_points[:, 0] -= 1
-        projected_points[outside_points_test] = \
-            neck_x * outside_points / np.linalg.norm(outside_points, axis=1)[:, None]
-        if component == 'secondary':
-            projected_points[:, 0] += 1
-
-        # condition to select outward facing points
-        inside_points_test = (points[:, 0] > 0)[:-1] if component == 'primary' else (points[:, 0] < 1)[:-1]
-        # if auxiliary point was used than  it is not appended to list of inner points to be transformed
-        # (it would cause division by zero error)
-        inside_points_test = np.append(inside_points_test, False) if \
-            np.array_equal(points[-1], np.array([neck_x, 0, 0])) else np.append(inside_points_test, True)
-        inside_points = points[inside_points_test]
-        # scaling radii for each point in cylindrical coordinates
-        r = (neck_x ** 2 - (k * inside_points[:, 0]) ** 2) ** 0.5 if component == 'primary' else \
-            (neck_x ** 2 - (k * (1 - inside_points[:, 0])) ** 2) ** 0.5
-
-        length = np.linalg.norm(inside_points[:, 1:], axis=1)
-        projected_points[inside_points_test, 0] = inside_points[:, 0]
-        projected_points[inside_points_test, 1:] = r[:, None] * inside_points[:, 1:] / length[:, None]
-        # if auxiliary point was used, than it will be appended to list of transformed points
-        if np.array_equal(points[-1], np.array([neck_x, 0, 0])):
-            projected_points[-1] = points[-1]
-
-        triangulation = Delaunay(projected_points)
-        triangles_indices = triangulation.convex_hull
-
-        # removal of faces on top of the neck
-        neck_test = ~(np.equal(points[triangles_indices][:, :, 0], neck_x).all(-1))
-        new_triangles_indices = triangles_indices[neck_test]
-
-        return new_triangles_indices
+        return faces.over_contact_system_surface(self, points, component, **kwargs)
 
     def _get_surface_builder_fn(self):
         """
@@ -1359,9 +1255,6 @@ class BinarySystem(System):
     def build_faces(self, component="all", components_distance=None):
         return build.build_faces(self, component, components_distance)
 
-    def build_surface(self, component="all", components_distance=None, **kwargs):
-        return build.build_surface(self, component, components_distance, **kwargs)
-
     def build_surface_with_no_spots(self, component="all", components_distance=None):
         return build.build_surface_with_no_spots(self, component, components_distance)
 
@@ -1518,7 +1411,6 @@ class BinarySystem(System):
 
         phi1 = const.HALF_PI * np.ones(x.shape)
         phi2 = np.zeros(x.shape)
-
         phi = np.concatenate((phi1, phi2))
         z = np.concatenate((x, x))
 

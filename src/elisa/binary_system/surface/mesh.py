@@ -122,8 +122,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(
     delta_z = discretization * polar_radius
 
     # test radii on neck_position
-    r_neck = []
-    separator = []
+    r_neck, separator = [], []
 
     if component == 'primary':
         num = 15 * int(neck_position // (polar_radius * discretization))
@@ -268,11 +267,11 @@ def get_surface_points_cylindrical(*args):
     return utils.cylindrical_to_cartesian(np.column_stack((up.abs(radius), phi, z)))
 
 
-def mesh_detached(system, components_distance, component, symmetry_output=False):
+def mesh_detached(system_container, components_distance, component, symmetry_output=False):
     """
     Creates surface mesh of given binary star component in case of detached or semi-detached system.
 
-    :param system: 
+    :param system_container:
     :param symmetry_output: bool; if True, besides surface points are returned also `symmetry_vector`,
                                   `base_symmetry_points_number`, `inverse_symmetry_matrix`
     :param component: str; `primary` or `secondary`
@@ -301,19 +300,18 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
                                                                             others quadrants
         )
     """
-    star_container = getattr(system, component)
+    star_container = getattr(system_container, component)
     discretization_factor = star_container.discretization_factor
+    synchronicity = star_container.synchronicity
 
     if component == 'primary':
         potential_fn = model.potential_primary_fn
         precalc_fn = model.pre_calculate_for_potential_value_primary
         potential_derivative_fn = model.radial_primary_potential_derivative
-        synchronicity = star_container.synchronicity
     elif component == 'secondary':
         potential_fn = model.potential_secondary_fn
         precalc_fn = model.pre_calculate_for_potential_value_secondary
         potential_derivative_fn = model.radial_secondary_potential_derivative
-        synchronicity = star_container.synchronicity
     else:
         raise ValueError('Invalid value of `component` argument: `{}`. Expecting '
                          '`primary` or `secondary`.'.format(component))
@@ -324,9 +322,9 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
     if config.NUMBER_OF_THREADS == 1:
         # calculating mesh in cartesian coordinates for quarter of the star
         # args = phi, theta, components_distance, precalc_fn, potential_fn
-        args = phi, theta, star_container.side_radius, \
-               components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
-               star_container.surface_potential, system.mass_ratio, synchronicity
+        args = phi, theta, star_container.side_radius, components_distance, \
+               precalc_fn, potential_fn, potential_derivative_fn, \
+               star_container.surface_potential, system_container.mass_ratio, synchronicity
         __logger__.debug(f'calculating surface points of {component} component in mesh_detached '
                          f'function using single process method')
         points_q = get_surface_points(*args)
@@ -339,7 +337,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
         #
         # __logger__.debug(f'calculating surface points of {component} component in mesh_detached '
         #                  f'function using multi process method')
-        # points_q = system.get_surface_points_multiproc(*args)
+        # points_q = system_container.get_surface_points_multiproc(*args)
 
     equator = points_q[:separator[0], :]
     # assigning equator points and nearside and farside points A and B
@@ -502,13 +500,11 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
 
     # assigning points on phi = pi
     meridian_farside1 = points_farside[separator_farside[0]: separator_farside[1], :]
-    x_meridian1, y_meridian1, z_meridian1 = \
-        meridian_farside1[:, 0], meridian_farside1[:, 1], meridian_farside1[:, 2]
+    x_meridian1, y_meridian1, z_meridian1 = meridian_farside1[:, 0], meridian_farside1[:, 1], meridian_farside1[:, 2]
 
     # assigning points on phi = pi/2 meridian, perpendicular to component`s distance vector
     meridian_farside2 = points_farside[separator_farside[1]: separator_farside[2], :]
-    x_meridian2, y_meridian2, z_meridian2 = \
-        meridian_farside2[:, 0], meridian_farside2[:, 1], meridian_farside2[:, 2]
+    x_meridian2, y_meridian2, z_meridian2 = meridian_farside2[:, 0], meridian_farside2[:, 1], meridian_farside2[:, 2]
 
     # assigning the rest of the surface on farside
     quarter = points_farside[separator_farside[2]:, :]
@@ -603,6 +599,7 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
     Compute points of each spots and assigns values to spot container instance.
     If any of any spot point cannot be obtained, entire spot will be omitted.
 
+    :param system_container:
     :param component: str;
     :param components_distance: float;
     :return:
@@ -719,9 +716,9 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
                     spot_theta.append(spherical_delta_vector[2])
 
             spot_phi, spot_theta = np.array(spot_phi), np.array(spot_theta)
-            args = spot_phi, spot_theta, spot_center_r, \
-                   components_distance, precalc_fn, potential_fn, potential_derivative_fn, \
-                   component_instance.surface_potential, system_container.mass_ratio, component_instance.synchronicity
+            args = spot_phi, spot_theta, spot_center_r, components_distance, precalc_fn, \
+                potential_fn, potential_derivative_fn, component_instance.surface_potential, \
+                system_container.mass_ratio, component_instance.synchronicity
             try:
                 spot_points = get_surface_points(*args)
             except MaxIterationError:
@@ -743,8 +740,7 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
                 spot_instance.boundary = np.array([np.array([components_distance - point[0], -point[1], point[2]])
                                                    for point in boundary_points])
 
-                spot_instance.center = \
-                    np.array([components_distance - spot_center[0], -spot_center[1], spot_center[2]])
+                spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1], spot_center[2]])
             gc.collect()
 
 

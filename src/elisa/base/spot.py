@@ -1,7 +1,6 @@
-from copy import copy
-
 import numpy as np
 
+from copy import copy
 from elisa import utils, logger, umpy as up
 from elisa.base.transform import SpotProperties
 from elisa.conf import config
