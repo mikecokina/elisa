@@ -221,7 +221,7 @@ def build_surface_with_spots(system_container, components_distance, component="a
         points, vertices_map = start_container.get_flatten_points_map()
 
         surface_fn = get_surface_builder_fn(system_container.morphology)
-        faces = surface_fn(component=component, points=points, components_distance=components_distance)
+        faces = surface_fn(system_container, component=component, points=points, components_distance=components_distance)
         model, spot_candidates = initialize_model_container(vertices_map)
         model = split_spots_and_component_faces(start_container, points, faces, model,
                                                 spot_candidates, vertices_map, component_com[component])

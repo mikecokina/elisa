@@ -370,7 +370,7 @@ class ComputeLightCurveWithSpots(ElisaTestCase):
         config.ATM_ATLAS = "ck04"
         config._update_atlas_to_base_dir()
 
-    def test_test_circular_synchronous_detached_system_w_spots(self):
+    def test_circular_synchronous_detached_system_w_spots(self):
         s = prepare_binary_system(self.params["detached"],
                                   spots_primary=self.spots_metadata["primary"],
                                   spots_secondary=self.spots_metadata["secondary"])
