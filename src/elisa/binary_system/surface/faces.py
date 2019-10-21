@@ -182,7 +182,7 @@ def build_surface_with_no_spots(system_container, components_distance, component
             triangles = detached_system_surface(system_container, components_distance, points_to_triangulate, component)
         else:
             neck = np.max(star_container.points[:, 0]) \
-                if component[0] == 'primary' else np.min(star_container.points[:, 0])
+                if component == 'primary' else np.min(star_container.points[:, 0])
             points_to_triangulate = \
                 np.append(star_container.points[:star_container.base_symmetry_points_number, :],
                           np.array([[neck, 0, 0]]), axis=0)
@@ -312,7 +312,7 @@ def over_contact_system_surface(system_container, points=None, component="all", 
     if component == 'secondary':
         projected_points[:, 0] += 1
 
-    # condition to select outward facing points
+    # condition to select inward facing points
     inside_points_test = (points[:, 0] > 0)[:-1] if component == 'primary' else (points[:, 0] < 1)[:-1]
     # if auxiliary point was used than  it is not appended to list of inner points to be transformed
     # (it would cause division by zero error)
