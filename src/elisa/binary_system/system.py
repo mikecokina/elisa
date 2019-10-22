@@ -642,14 +642,15 @@ class BinarySystem(System):
         component(s)
         :return: dict: Dict[str, numpy.array]
         """
-
         components = bsutils.component_to_list(components)
         forward_rad = dict()
         for component in components:
+            surface_potential = getattr(self, component).surface_potential \
+                if surface_potential is None else surface_potential
             forward_rad[component] = np.zeros(distances.shape)
             for ii, distance in enumerate(distances):
-                forward_rad[component][ii] = self.calculate_forward_radius(component, components_distance=distance,
-                                                                           surface_potential=surface_potential)
+                args = (getattr(self, component).synchronicity, self.mass_ratio, distance, surface_potential, component)
+                forward_rad[component][ii] = bsradius.calculate_forward_radius(*args)
         return forward_rad
 
     def get_surface_points_multiproc(self, *args):

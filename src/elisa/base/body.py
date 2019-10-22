@@ -1,4 +1,3 @@
-import gc
 import numpy as np
 
 from abc import ABCMeta, abstractmethod
@@ -170,7 +169,6 @@ class Body(metaclass=ABCMeta):
             spot_instance.discretization_factor = spot_instance.angular_radius * units.ARC_UNIT
 
         return spot_instance
-
 
 
 
@@ -394,79 +392,25 @@ class Body(metaclass=ABCMeta):
 
         return ret_points, ret_faces
 
+    # TODO: remove
     def setup_body_points(self, points):
         spot.setup_body_points(self, points)
 
+    # TODO: remove
     def remove_overlaped_spots_by_vertex_map(self, vertices_map):
-        """
-        Remove spots of Start object that are totally overlapped by another spot.
+        spot.remove_overlaped_spots_by_vertex_map(self, vertices_map)
 
-        :param vertices_map: List or numpy.array
-        :return:
-        """
-        # remove spots that are totaly overlaped
-        spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
-                                           if vertices_map[ix]["enum"] >= 0]))
-        for spot_index, _ in list(self.spots.items()):
-            if spot_index not in spots_instance_indices:
-                self._logger.warning(f"spot with index {spot_index} doesn't contain Any face "
-                                     f"and will be removed from component {self.name} spot list")
-                self.remove_spot(spot_index=spot_index)
-        gc.collect()
-
+    # TODO: remove
     def remap_surface_elements(self, model, points_to_remap):
-        """
-        Function remaps all surface points (`points_to_remap`) and faces (star and spots) according to the `model`.
+        spot.remap_surface_elements(self, model, points_to_remap)
 
-        :param model: dict - list of indices of points in `points_to_remap` divided into star and spots sublists
-        :param points_to_remap: array of all surface points (star + points used in `_split_spots_and_component_faces`)
-        :return:
-        """
-        # remapping points and faces of star
-        self._logger.debug(f"changing value of parameter points of component {self.name}")
-        indices = np.unique(model["object"])
-        self.points = points_to_remap[indices]
-
-        self._logger.debug(f"changing value of parameter faces of component {self.name}")
-
-        points_length = np.shape(points_to_remap)[0]
-        remap_list = np.empty(points_length, dtype=int)
-        remap_list[indices] = np.arange(np.shape(indices)[0])
-        self.faces = remap_list[model["object"]]
-
-        # remapping points and faces of spots
-        for spot_index, _ in list(self.spots.items()):
-            self._logger.debug(f"changing value of parameter points of spot {spot_index} / component {self.name}")
-            # get points currently belong to the given spot
-            indices = np.unique(model["spots"][spot_index])
-            self.spots[spot_index].points = points_to_remap[indices]
-
-            self._logger.debug(f"changing value of parameter faces of spot {spot_index} / component {self.name}")
-
-            remap_list = np.empty(points_length, dtype=int)
-            remap_list[indices] = np.arange(np.shape(indices)[0])
-            self.spots[spot_index].faces = remap_list[model["spots"][spot_index]]
-        gc.collect()
-
-    def incorporate_spots_mesh(self, component_com=None):
-        spot.incorporate_spots_mesh(self, component_com)
-
+    # TODO: remove
     def split_points_of_spots_and_component(self, points, vertices_map):
         return spot.split_points_of_spots_and_component(self, points, vertices_map)
 
+    # TODO: remove
     def remove_overlaped_spots_by_spot_index(self, keep_spot_indices):
-        """
-        Remove definition and instance of those spots that are overlaped
-        by another one and basically has no face to work with.
-
-        :param keep_spot_indices: List[int]; list of spot indices to keep
-        :return:
-        """
-        all_spot_indices = set([int(val) for val in self.spots.keys()])
-        spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
-
-        for spot_index in spot_indices_to_remove:
-            self.remove_spot(spot_index)
+        spot.remove_overlaped_spots_by_spot_index(self, keep_spot_indices)
 
     def get_flatten_points_map(self):
         """

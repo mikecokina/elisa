@@ -5,8 +5,6 @@ from copy import deepcopy, copy
 
 from elisa import logger, umpy as up, utils
 from elisa.conf import config
-from elisa.base import spot
-from elisa.utils import is_empty
 
 config.set_up_logging()
 __logger__ = logger.getLogger("base-container-module")
@@ -119,6 +117,17 @@ class StarContainer(object):
         self.spots = dict()
         self.pulsations = dict()
 
+    @staticmethod
+    def from_properties_container(properties_container):
+        """
+        Create StarContainer from properties container.
+        :param properties_container:
+        :return: StarContainer
+        """
+        container = StarContainer()
+        container.__dict__.update(properties_container.__dict__)
+        return container
+
     def has_spots(self):
         return len(self.spots) > 0
 
@@ -126,19 +135,14 @@ class StarContainer(object):
         return len(self.pulsations) > 0
 
     def copy(self):
+        """
+        Return deepcopy of StarContainer instance.
+        :return: StarContainer;
+        """
         return deepcopy(self)
-
-    @staticmethod
-    def from_properties_container(properties_container):
-        container = StarContainer()
-        container.__dict__.update(properties_container.__dict__)
-        return container
 
     def flatten(self):
         pass
-
-    def incorporate_spots_mesh(self, component_com):
-        spot.incorporate_spots_mesh(to_container=self, component_com=component_com)
 
     def remove_spot(self, spot_index: int):
         """
@@ -147,23 +151,6 @@ class StarContainer(object):
         :return:
         """
         del (self.spots[spot_index])
-
-    def remove_overlaped_spots_by_spot_index(self, keep_spot_indices, _raise=True):
-        """
-        Remove definition and instance of those spots that are overlaped
-        by another one and basically has no face to work with.
-        :param keep_spot_indices: List[int]; list of spot indices to keep
-        :return:
-        """
-        all_spot_indices = set([int(val) for val in self.spots.keys()])
-        spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
-        spots_meta = [self.spots[idx].kwargs_serializer() for idx in self.spots if idx in spot_indices_to_remove]
-        spots_meta = '\n'.join([str(meta) for meta in spots_meta])
-        if _raise and not is_empty(spot_indices_to_remove):
-            raise ValueError(f"Spots {spots_meta} have no pointns to continue.\n"
-                             f"Please, specify spots wisely.")
-        for spot_index in spot_indices_to_remove:
-            self.remove_spot(spot_index)
 
     def get_flatten_points_map(self):
         """
@@ -182,20 +169,9 @@ class StarContainer(object):
             )
         return points, vertices_map
 
-    def calculate_all_areas(self):
-        """
-        Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
-
-        :return:
-        """
-        self.areas = self.calculate_areas()
-        if self.has_spots():
-            for spot_index, spot_isntance in self.spots.items():
-                spot.areas = spot_isntance.calculate_areas()
-
     def calculate_areas(self):
         """
-        Returns areas of each face of the star surface.
+        Returns areas of each face of the star surface. (spots not included)
         :return: numpy.array:
 
         ::
@@ -211,3 +187,13 @@ class StarContainer(object):
             return base_areas[self.face_symmetry_vector]
         else:
             return utils.triangle_areas(self.faces, self.points)
+
+    def calculate_all_areas(self):
+        """
+        Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
+        :return:
+        """
+        self.areas = self.calculate_areas()
+        if self.has_spots():
+            for spot_index, spot_instance in self.spots.items():
+                spot_instance.areas = spot_instance.calculate_areas()

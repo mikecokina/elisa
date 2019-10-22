@@ -3,6 +3,7 @@ import numpy as np
 
 from elisa import umpy as up, utils, opt, logger, const
 from elisa.base.error import MaxIterationError
+from elisa.base.spot import incorporate_spots_mesh
 from elisa.conf import config
 from elisa.binary_system import utils as bsutils, model
 from elisa.opt.fsolver import fsolver
@@ -818,4 +819,4 @@ def add_spots_to_mesh(system_container, components_distance, component="all"):
     for component in components:
         star_container = getattr(system_container, component)
         mesh_spots(system_container, components_distance=components_distance, component=component)
-        star_container.incorporate_spots_mesh(component_com=component_com[component])
+        incorporate_spots_mesh(star_container, component_com=component_com[component])

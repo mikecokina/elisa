@@ -1,11 +1,13 @@
+from unittest import skip
+
 import numpy as np
 from numpy.testing import assert_array_equal
 
+from elisa import umpy as up
 from elisa.base.container import StarContainer
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import BINARY_POSITION_PLACEHOLDER
-from elisa import umpy as up
-from elisa.utils import is_empty
+from elisa.utils import is_empty, find_nearest_dist_3d
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
 
@@ -38,6 +40,35 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
     def test_build_mesh_semi_detached(self):
         self.generator_test_mesh(key="semi-detached", d=up.radians(10), length=[426, 426])
 
+    @skip
+    def test_mesh_for_duplicate_points(self):
+        for params in testutils.BINARY_SYSTEM_PARAMS.values():
+            s = testutils.prepare_binary_system(params)
+            components_distance = s.orbit.orbital_motion(phase=0.0)[0][0]
+
+            orbital_position_container = OrbitalPositionContainer(
+                primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
+                secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+                position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+                **s.properties_serializer()
+            )
+            orbital_position_container.build_mesh(components_distance=components_distance)
+
+            distance1 = round(find_nearest_dist_3d(list(orbital_position_container.primary.points)), 10)
+            distance2 = round(find_nearest_dist_3d(list(orbital_position_container.secondary.points)), 10)
+
+            if distance1 < 1e-10:
+                bad_points = []
+                for i, point in enumerate(orbital_position_container.primary.points):
+                    for j, xx in enumerate(orbital_position_container.primary.points[i + 1:]):
+                        dist = np.linalg.norm(point - xx)
+                        if dist <= 1e-10:
+                            print(f'Match: {point}, {i}, {j}')
+                            bad_points.append(point)
+
+            self.assertFalse(distance1 < 1e-10)
+            self.assertFalse(distance2 < 1e-10)
+
 
 class BuildSpottyMeshTestCase(ElisaTestCase):
     def generator_test_mesh(self, key, d):
@@ -54,6 +85,8 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         )
         orbital_position_container.build_mesh(components_distance=1.0)
 
+        self.assertTrue(len(orbital_position_container.primary.spots) == 1
+                        and len(orbital_position_container.secondary.spots) == 1)
         self.assertTrue(not is_empty(orbital_position_container.primary.spots[0].points))
         self.assertTrue(not is_empty(orbital_position_container.secondary.spots[0].points))
 
@@ -94,3 +127,24 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
             **s.properties_serializer()
         )
         orbital_position_container.build_mesh(components_distance=1.0)
+
+    def test_make_sure_spots_are_not_overwriten_in_star_instance(self):
+        s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS["detached"],
+                                            spots_primary=testutils.SPOTS_META["primary"],
+                                            spots_secondary=testutils.SPOTS_META["secondary"]
+                                            )
+        s.primary.discretization_factor = up.radians(10)
+        s.secondary.discretization_factor = up.radians(10)
+
+        orbital_position_container = OrbitalPositionContainer(
+            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
+            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            **s.properties_serializer()
+        )
+        orbital_position_container.build_mesh(components_distance=1.0)
+        self.assertTrue(is_empty(s.primary.spots[0].points))
+        self.assertTrue(is_empty(s.secondary.spots[0].points))
+
+        self.assertTrue(is_empty(s.primary.spots[0].faces))
+        self.assertTrue(is_empty(s.secondary.spots[0].faces))

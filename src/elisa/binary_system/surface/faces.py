@@ -4,6 +4,7 @@ import numpy as np
 from copy import copy
 from scipy.spatial.qhull import Delaunay
 from elisa import logger, umpy as up
+from elisa.base import spot
 from elisa.conf import config
 from elisa.pulse import pulsations
 from elisa.utils import is_empty
@@ -157,8 +158,8 @@ def build_faces(system_container, components_distance, component="all"):
 
     components = bsutils.component_to_list(component)
     for component in components:
-        component_instance = getattr(system_container, component)
-        if component_instance.has_spots():
+        star_container = getattr(system_container, component)
+        if star_container.has_spots():
             build_surface_with_spots(system_container, components_distance, component)
         else:
             build_surface_with_no_spots(system_container, components_distance, component)
@@ -191,11 +192,11 @@ def build_surface_with_no_spots(system_container, components_distance, component
             triangles = triangles[np.array(triangles < star_container.base_symmetry_points_number).all(1)]
 
         # filtering out faces on xy an xz planes
-        y0_test = ~np.isclose(triangulate[triangles][:, :, 1], 0).all(1)
-        z0_test = ~np.isclose(triangulate[triangles][:, :, 2], 0).all(1)
+        y0_test = np.bitwise_not(np.isclose(triangulate[triangles][:, :, 1], 0).all(1))
+        z0_test = np.bitwise_not(np.isclose(triangulate[triangles][:, :, 2], 0).all(1))
         triangles = triangles[up.logical_and(y0_test, z0_test)]
 
-        star_container.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
+        setattr(star_container, "base_symmetry_faces_number", np.int(np.shape(triangles)[0]))
         # lets exploit axial symmetry and fill the rest of the surface of the star
         all_triangles = [inv[triangles] for inv in star_container.inverse_point_symmetry_matrix]
         star_container.base_symmetry_faces = triangles
@@ -221,12 +222,13 @@ def build_surface_with_spots(system_container, components_distance, component="a
         points, vertices_map = start_container.get_flatten_points_map()
 
         surface_fn = get_surface_builder_fn(system_container.morphology)
-        faces = surface_fn(system_container, component=component, points=points, components_distance=components_distance)
+        surface_fn_kwargs = dict(component=component, points=points, components_distance=components_distance)
+        faces = surface_fn(system_container, **surface_fn_kwargs)
         model, spot_candidates = initialize_model_container(vertices_map)
         model = split_spots_and_component_faces(start_container, points, faces, model,
                                                 spot_candidates, vertices_map, component_com[component])
-        start_container.remove_overlaped_spots_by_vertex_map(vertices_map)
-        start_container.remap_surface_elements(model, points)
+        spot.remove_overlaped_spots_by_vertex_map(start_container, vertices_map)
+        spot.remap_surface_elements(start_container, model, points)
 
 
 def detached_system_surface(system_container, components_distance, points=None, component="all"):
@@ -280,12 +282,12 @@ def over_contact_system_surface(system_container, points=None, component="all", 
     # in this case, components distance is sinked in kwargs and not used
     """
     Calculates surface faces from the given component's points in case of over-contact system.
-
     :param system_container:
     :param points: numpy.array - points to triangulate
     :param component: str; `primary` or `secondary`
     :return: numpy.array; N x 3 array of vertice indices
     """
+    del kwargs
 
     component_instance = getattr(system_container, component)
     if points is None:
@@ -343,7 +345,6 @@ def over_contact_system_surface(system_container, points=None, component="all", 
 def compute_all_surface_areas(system_container, component):
     """
     Compute surface are of all faces (spots included).
-
     :param system_container: BinaryStar instance
     :param component: str `primary` or `secondary`
     :return:
@@ -365,7 +366,6 @@ def build_faces_orientation(system_container, components_distance, component="al
     Compute face orientation (normals) for each face.
     If pulsations are present, than calculate renormalized associated
     Legendree polynomials (rALS) for each pulsation mode.
-
     :param system_container: BinarySystem instance
     :param component: str; `primary` or `secondary`
     :param components_distance: float

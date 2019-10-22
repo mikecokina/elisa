@@ -35,6 +35,7 @@ logical_xor = np.logical_xor
 logical_and = np.logical_and
 mod = np.mod
 equal = np.equal
+less = np.less
 
 # scipy
 sph_harm = special.sph_harm
