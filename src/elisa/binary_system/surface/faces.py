@@ -312,7 +312,7 @@ def over_contact_system_surface(system_container, points=None, component="all", 
     if component == 'secondary':
         projected_points[:, 0] += 1
 
-    # condition to select outward facing points
+    # condition to select inward facing points
     inside_points_test = (points[:, 0] > 0)[:-1] if component == 'primary' else (points[:, 0] < 1)[:-1]
     # if auxiliary point was used than  it is not appended to list of inner points to be transformed
     # (it would cause division by zero error)
