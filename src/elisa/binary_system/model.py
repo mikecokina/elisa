@@ -345,3 +345,29 @@ def pre_calculate_for_potential_value_secondary_cylindrical(*args, return_as_tup
         dd = d * np.ones(np.shape(phi))
         ff = f * np.ones(np.shape(phi))
         return (a, b, c, dd, e, ff) if return_as_tuple else np.column_stack((a, b, c, dd, e, ff))
+
+
+def primary_potential_derivative_x(x, *args):
+    """
+    Dderivative of potential function perspective of primary component along the x axis.
+    :param x: (numpy.)float
+    :param args: tuple (float, float, float); (synchronicity of primary component, mass ratio, components distance)
+    :return: (numpy.)float
+    """
+    synchronicity, mass_ratio, d = args
+    r_sqr, rw_sqr = x ** 2, (d - x) ** 2
+    return - (x / r_sqr ** (3.0 / 2.0)) + ((mass_ratio * (d - x)) / rw_sqr ** (
+            3.0 / 2.0)) + synchronicity ** 2 * (mass_ratio + 1) * x - mass_ratio / d ** 2
+
+
+def secondary_potential_derivative_x(x, *args):
+    """
+    Dderivative of potential function perspective of secondary component along the x axis.
+    :param x: (numpy.)float
+    :param args: tuple (float, float, float); (synchronicity of secondary component, mass ratio, components distance)
+    :return: (numpy.)float
+    """
+    synchronicity, mass_ratio, d = args
+    r_sqr, rw_sqr = x ** 2, (d - x) ** 2
+    return - (x / r_sqr ** (3.0 / 2.0)) + ((mass_ratio * (d - x)) / rw_sqr ** (
+            3.0 / 2.0)) - synchronicity ** 2 * (mass_ratio + 1) * (d - x) + (1.0 / d ** 2)

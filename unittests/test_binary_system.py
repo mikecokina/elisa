@@ -1,8 +1,8 @@
 import os.path as op
-import numpy as np
-
-from unittest import skip
 from copy import copy
+from unittest import skip
+
+import numpy as np
 from astropy import units as u
 from mpl_toolkits.mplot3d import Axes3D
 from numpy.testing import assert_array_equal
@@ -105,18 +105,18 @@ class BinarySystemInitTestCase(ElisaTestCase):
              }  # over-contact system
         ]
 
-    def _prepare_systems(self):
+    def prepare_systems(self):
         return [prepare_binary_system(combo) for combo in self.params_combination]
 
     def test_calculate_semi_major_axis(self):
         expected = [6702758048.0, 8783097736.0, 4222472978.0, 4222472978.0, 4222472978.0, 4222472978.0, 4222472978.0]
         obtained = list()
 
-        for bs in self._prepare_systems():
+        for bs in self.prepare_systems():
             obtained.append(np.round(bs.semi_major_axis, 0))
         assert_array_equal(expected, obtained)
 
-    def test__setup_periastron_critical_potential(self):
+    def test_setup_periastron_components_radii(self):
         expected_potentials = np.round(np.array([
             [2.875844632141054, 2.875844632141054],
             [93.717106763853593, 73.862399105365014],
@@ -127,17 +127,14 @@ class BinarySystemInitTestCase(ElisaTestCase):
             [2.875844632141054, 2.875844632141054]
         ]), 5)
         obtained_potentials = list()
-        for bs in self._prepare_systems():
+        for bs in self.prepare_systems():
             obtained_potentials.append([bs.primary.critical_surface_potential, bs.secondary.critical_surface_potential])
         obtained_potentials = np.round(np.array(obtained_potentials), 5)
         assert_array_equal(expected_potentials, obtained_potentials)
 
-    def test__setup_morphology(self):
+    def test_compute_morphology(self):
         expected = ['detached', 'detached', 'detached', 'detached', 'semi-detached', 'double-contact', 'over-contact']
-        obtained = list()
-
-        for bs in self._prepare_systems():
-            obtained.append(bs.morphology)
+        obtained = [bs.morphology for bs in self.prepare_systems()]
         assert_array_equal(expected, obtained)
 
     def test_setup_components_radii(self):
@@ -165,7 +162,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
             obtained[component] = dict()
             for radius in radii:
                 obtained[component][radius] = list()
-                for i, bs in enumerate(self._prepare_systems()):
+                for i, bs in enumerate(self.prepare_systems()):
                     value = np.round(getattr(getattr(bs, component), radius), 5) \
                         if hasattr(getattr(bs, component), radius) else np.nan
                     assert_array_equal([value], [expected[component][radius][i]])
@@ -183,11 +180,17 @@ class BinarySystemInitTestCase(ElisaTestCase):
         ]), 5)
 
         obtained_points = []
-        for bs in self._prepare_systems():
+        for bs in self.prepare_systems():
             obtained_points.append(bs.lagrangian_points())
 
         obtained_points = np.round(np.array(obtained_points), 5)
         assert_array_equal(expected_points, obtained_points)
+
+    def test_components(self):
+        bs = self.prepare_systems()[0]
+        self.assertTrue(hasattr(bs, "components"))
+        self.assertTrue(bs.components["primary"])
+        self.assertTrue(bs.components["secondary"])
 
 
 class ValidityTestCase(ElisaTestCase):
@@ -289,12 +292,7 @@ class ValidityTestCase(ElisaTestCase):
             self.assertTrue(f'Missing argument(s): `{kw}`' in str(context.exception))
 
 
-class EvaluateMethodsTestCase(ElisaTestCase):
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron',
-                        'primary_minimum_time', 'phase_shift']
-    OPTIONAL_KWARGS = []
-    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
-
+class BinaryModelTestCase(ElisaTestCase):
     def setUp(self):
         self.params_combination = [
             {"primary_mass": 2.0, "secondary_mass": 1.0,
@@ -321,9 +319,9 @@ class EvaluateMethodsTestCase(ElisaTestCase):
              }  # close tidally deformed components with asynchronous rotation on eccentric orbit
         ]
 
-        self._binaries = self._prepare_systems()
+        self._binaries = self.prepare_systems()
 
-    def _prepare_systems(self):
+    def prepare_systems(self):
         return [prepare_binary_system(combo) for combo in self.params_combination]
 
     def test_kwargs_serializer(self):
@@ -350,25 +348,32 @@ class EvaluateMethodsTestCase(ElisaTestCase):
 
         assert_array_equal(expectedd_array, obtained_array)
 
+    def test_properties_serializer(self):
+        bs = self._binaries[-1]
+        obtained = bs.properties_serializer()
+        expected = ["semi_major_axis", "morphology", "mass_ratio"]
+        for e in expected:
+            self.assertTrue(e in obtained)
+
     def test_primary_potential_derivative_x(self):
-        d = 1.1,
-        x = 0.13
+        d, x = 1.1, 0.13
         expected = np.round(np.array([-58.8584146731, -58.6146646731]), 4)
         obtained = list()
 
         for bs in self._binaries:
-            obtained.append(bs.primary_potential_derivative_x(x, *d))
+            args = (bs.primary.synchronicity, bs.mass_ratio, d)
+            obtained.append(model.primary_potential_derivative_x(x, *args))
         obtained = np.round(obtained, 4)
         assert_array_equal(expected, obtained)
 
     def test_secondary_potential_derivative_x(self):
-        d = 1.1,
-        x = 0.13
+        d, x = 1.1, 0.13
         expected = np.round(np.array([-59.268745, -59.908945]), 4)
         obtained = list()
 
         for bs in self._binaries:
-            obtained.append(bs.secondary_potential_derivative_x(x, *d))
+            args = (bs.secondary.synchronicity, bs.mass_ratio, d)
+            obtained.append(model.secondary_potential_derivative_x(x, *args))
         obtained = np.round(obtained, 4)
         assert_array_equal(expected, obtained)
 
@@ -388,9 +393,23 @@ class EvaluateMethodsTestCase(ElisaTestCase):
         obtained = np.round(obtained, 4)
         assert_array_equal(expected, obtained)
 
-    def test_potential_value_primary(self):
-        # tested by critical_potential test
-        pass
+    def test_pre_calculate_for_potential_value_secondary(self):
+        # single
+        distance, phi, theta = 1.1, c.HALF_PI, c.HALF_PI / 2.0
+        args = (distance, phi, theta)
+
+        obtained = list()
+        expected = [[1.21, 0., 0., 0.375, 0.25],
+                    [1.21, 0., 0., 0.8438, 0.25]]
+
+        for bs in self._binaries:
+            argss = (bs.primary.synchronicity, bs.mass_ratio) + args
+            obtained.append(model.pre_calculate_for_potential_value_secondary(*argss))
+
+        obtained = np.round(obtained, 4)
+        assert_array_equal(expected, obtained)
+
+
 
     def test_calculate_potential_gradient_primary(self):
         points = np.array([[0.1, 0.1, 0.1], [-0.1, 0.0, 0.3]])
@@ -455,14 +474,6 @@ class EvaluateMethodsTestCase(ElisaTestCase):
         print(distance)
 
         raise Exception("Unfinished test")
-
-    def test_angular_velocity(self):
-        expected = np.round([7.27220521664e-05, 4.64936429032e-05], 8)
-        obtained = list()
-        for bs in self._binaries:
-            avcs = bs.angular_velocity(components_distance=bs.orbit.orbital_motion([0.35])[0][0])
-            obtained.append(round(avcs, 8))
-        assert_array_equal(expected, obtained)
 
 
 class IntegrationTestNoSpots(ElisaTestCase):
@@ -704,9 +715,9 @@ class TestIntegrationWithSpots(ElisaTestCase):
 
     def test_raise_valueerror_due_to_limb_darkening(self):
         s = prepare_binary_system(self.params["over-contact"], spots_secondary=self.spots_to_rasie)
-        # with self.assertRaises(ValueError) as context:
-        s.build(components_distance=1.0)
-        # self.assertTrue('interpolation lead to np.nan' in str(context.exception))
+        with self.assertRaises(ValueError) as context:
+            s.build(components_distance=1.0)
+        self.assertTrue('interpolation lead to np.nan' in str(context.exception))
 
     @skip
     def test_mesh_for_duplicate_points(self):
@@ -722,8 +733,8 @@ class TestIntegrationWithSpots(ElisaTestCase):
             if distance1 < 1e-10:
                 bad_points = []
                 for i, point in enumerate(bs.primary.points):
-                    for j, xx in enumerate(bs.primary.points[i+1:]):
-                        dist = np.linalg.norm(point-xx)
+                    for j, xx in enumerate(bs.primary.points[i + 1:]):
+                        dist = np.linalg.norm(point - xx)
                         if dist <= 1e-10:
                             print(f'Match: {point}, {i}, {j}')
                             bad_points.append(point)

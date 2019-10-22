@@ -8,32 +8,6 @@ from elisa.base import spot
 from elisa.utils import is_empty
 from elisa.base.spot import Spot
 
-"""
-    :param points: numpy.array;
-
-    ::
-
-        Numpy array of points that form surface of Body.
-        Input dictionary has to be in shape::
-            points = numpy.array([[x1 y1 z1],
-                                  [x2 y2 z2],
-                                   ...
-                                  [xN yN zN]])
-        where xi, yi, zi are cartesian coordinates of vertice i.
-
-    :param faces: numpy.array;
-
-    ::
-
-        Numpy array of triangles that will create surface of body.
-        Triangles are stored as list of indices of points.
-            numpy.array(
-            [[vertice_index_k, vertice_index_l, vertice_index_m]),
-             [...]),
-              ...
-             [...]])
-"""
-
 
 class Body(metaclass=ABCMeta):
     """
@@ -103,6 +77,17 @@ class Body(metaclass=ABCMeta):
         # those are used only if case of spots are used
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
+
+    def serialize_symmetries(self):
+        return {
+            "point_symmetry_vector": self._point_symmetry_vector,
+            "inverse_point_symmetry_matrix": self.inverse_point_symmetry_matrix,
+            "base_symmetry_points_number": self.base_symmetry_points_number,
+            "face_symmetry_vector": self._face_symmetry_vector,
+            "base_symmetry_faces_number": self.base_symmetry_faces_number,
+            "base_symmetry_points": self.base_symmetry_points,
+            "base_symmetry_faces": self.base_symmetry_faces
+        }
 
     @abstractmethod
     def transform_input(self, *args, **kwargs):

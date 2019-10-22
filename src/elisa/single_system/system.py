@@ -601,7 +601,7 @@ class SingleSystem(System):
         triangles_indices = triangulation.convex_hull
         return triangles_indices
 
-    def _evaluate_spots_mesh(self):
+    def mesh_spots(self):
         """
         compute points of each spots and assigns values to spot container instance
 

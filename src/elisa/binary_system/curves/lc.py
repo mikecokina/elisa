@@ -266,6 +266,8 @@ def compute_circular_synchronous_lightcurve(system, **kwargs):
             * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array]
     """
+    ecl_boundaries = geo.get_eclipse_boundaries(system, 1.0)
+
     orbital_position_container = OrbitalPositionContainer(
         primary=StarContainer.from_properties_container(system.primary.to_properties_container()),
         secondary=StarContainer.from_properties_container(system.secondary.to_properties_container()),
@@ -273,12 +275,7 @@ def compute_circular_synchronous_lightcurve(system, **kwargs):
         **system.properties_serializer()
 
     )
-    orbital_position_container.build_mesh(components_distance=1.0)
-
-
-    system.build(components_distance=1.0, suppress_parallelism=False)
-    ecl_boundaries = geo.get_eclipse_boundaries(system, 1.0)
-
+    system.build(components_distance=1.0)
     # in case of LC for spotless surface without pulsations unique phase interval is only (0, 0.5)
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = _phase_crv_symmetry(system, phases)

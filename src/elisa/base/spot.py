@@ -79,12 +79,12 @@ class Spot(object):
         return {kwarg: getattr(self, kwarg) for kwarg in self.MANDATORY_KWARGS if not is_empty(getattr(self, kwarg))}
 
 
-def split_points_of_spots_and_component(on, points, vertices_map):
+def split_points_of_spots_and_component(on_container, points, vertices_map):
     """
     Based on vertices map, separates points to points which belong to Star object
     and points which belong to each defined Spot object.
     During the process remove overlapped spots.
-    :param on: instance of object to split spots on
+    :param on_container: instance of object to split spots on
     :param points: numpy.array; all points of object (spot points and component points together)
     :param vertices_map: List or numpy.array; map which define refrences of index in
                          given Iterable to object (Spot or Star).
@@ -99,20 +99,20 @@ def split_points_of_spots_and_component(on, points, vertices_map):
     """
     points = np.array(points)
     component_points = {"object": points[up.where(np.array(vertices_map) == {'enum': -1})[0]]}
-    on.remove_overlaped_spots_by_spot_index(set([int(val["enum"]) for val in vertices_map if val["enum"] > -1]))
+    indices = set([int(val["enum"]) for val in vertices_map if val["enum"] > -1])
+    on_container.remove_overlaped_spots_by_spot_index(indices)
     spots_points = {
-        f"{i}": points[up.where(np.array(vertices_map) == {'enum': i})[0]] for i in range(len(on.spots))
+        f"{i}": points[up.where(np.array(vertices_map) == {'enum': i})[0]] for i in range(len(on_container.spots))
         if len(up.where(np.array(vertices_map) == {'enum': i})[0]) > 0
     }
     return {**component_points, **spots_points}
 
 
-def setup_body_points(on, points):
+def setup_body_points(on_container, points):
     """
     Setup points for Star instance and spots based on input `points` Dict object.
     Such `points` map looks like following
-
-    :param on: instance to setup spot points and body points on
+    :param on_container: instance to setup spot points and body points on
     :param points: Dict[str, numpy.array]
     ::
 
@@ -125,12 +125,12 @@ def setup_body_points(on, points):
 
     :return:
     """
-    on.points = points.pop("object")
+    on_container.points = points.pop("object")
     for spot_index, spot_points in points.items():
-        on.spots[int(spot_index)].points = points[spot_index]
+        on_container.spots[int(spot_index)].points = points[spot_index]
 
 
-def incorporate_spots_mesh(to, component_com):
+def incorporate_spots_mesh(to_container, component_com):
     """
     Based on spots definitions, evaluate spot points on Star surface and remove those points of Star itself
     which are inside of any spots. Do the same operation with spot to each other.
@@ -148,21 +148,22 @@ def incorporate_spots_mesh(to, component_com):
     index position of vertices_map belongs to Star point.
     Enum indices >= 0 means the same, but for Spot.
 
-    :param to: isntnace to incorporate spots into
+    :param to_container: isntnace to incorporate spots into
     :param component_com: center of mass of component
     :return:
     """
-    if not to.spots:
-        __logger__.debug(f"not spots found, skipping incorporating spots to mesh on component {to.name}")
+    if not to_container.spots:
+        __logger__.debug(f"not spots found, skipping incorporating spots "
+                         f"to_container mesh on component {to_container.name}")
         return
-    __logger__.debug(f"incorporating spot points to component {to.name} mesh")
+    __logger__.debug(f"incorporating spot points to_container component {to_container.name} mesh")
 
-    vertices_map = [{"enum": -1} for _ in to.points]
+    vertices_map = [{"enum": -1} for _ in to_container.points]
     # `all_component_points` do not contain points of Any spot
-    all_component_points = copy(to.points)
-    neck = np.min(all_component_points[:to.base_symmetry_points_number, 0])
+    all_component_points = copy(to_container.points)
+    neck = np.min(all_component_points[:to_container.base_symmetry_points_number, 0])
 
-    for spot_index, spot in to.spots.items():
+    for spot_index, spot in to_container.spots.items():
         # average spacing in spot points
         vertices_to_remove, vertices_test = [], []
         cos_max_angle_point = up.cos(spot.angular_radius + 0.30 * spot.discretization_factor)
@@ -194,7 +195,7 @@ def incorporate_spots_mesh(to, component_com):
                 # skip point if is marked for removal
                 continue
 
-            # append only points of currrent object that do not intervent to spot
+            # append only points of currrent object that do not intervent to_container spot
             # [current, since there should be already spot from previous iteration step]
             _points.append(vertex)
             _vertices_map.append({"enum": vertices_map[ix]["enum"]})
@@ -206,5 +207,5 @@ def incorporate_spots_mesh(to, component_com):
         all_component_points = copy(_points)
         vertices_map = copy(_vertices_map)
 
-    separated_points = split_points_of_spots_and_component(to, all_component_points, vertices_map)
-    setup_body_points(to, separated_points)
+    separated_points = split_points_of_spots_and_component(to_container, all_component_points, vertices_map)
+    setup_body_points(to_container, separated_points)

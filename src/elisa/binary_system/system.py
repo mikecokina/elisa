@@ -1,17 +1,14 @@
 import numpy as np
 import scipy
 
-from copy import copy
 from multiprocessing.pool import Pool
 from astropy import units as u
 from scipy import optimize
-from scipy.spatial.qhull import Delaunay
 
-from elisa import umpy as up
-from elisa import utils, const, ld, units
+from elisa import umpy as up, utils, const, ld, units
 from elisa.base.container import SystemPropertiesContainer
 from elisa.base.system import System
-from elisa.binary_system import static, build, mp, geo, utils as bsutils, model
+from elisa.binary_system import static, build, mp, geo, utils as bsutils, model, radius as bsradius
 from elisa.binary_system.curves import lc, rv
 from elisa.binary_system.animation import Animation
 from elisa.binary_system.plot import Plot
@@ -19,7 +16,6 @@ from elisa.binary_system.surface import mesh, faces
 from elisa.binary_system.transform import BinarySystemProperties
 from elisa.conf import config
 from elisa.orbit import orbit
-from elisa.orbit.orbit import Orbit
 
 
 class BinarySystem(System):
@@ -97,7 +93,7 @@ class BinarySystem(System):
         self._logger.debug("setting up morphological classification of binary system")
         self.morphology = self.compute_morphology()
 
-        self.setup_components_radii(components_distance=self.orbit.periastron_distance)
+        self.setup_periastron_components_radii(components_distance=self.orbit.periastron_distance)
 
         # adjust and setup discretization factor if necessary
         self.setup_discretisation_factor()
@@ -150,8 +146,8 @@ class BinarySystem(System):
         :return:
         """
         self._logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
-        orbit_kwargs = {key: getattr(self, key) for key in Orbit.ALL_KWARGS}
-        self.orbit = Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
+        orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
+        self.orbit = orbit.Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
 
     def is_synchronous(self):
         """
@@ -268,11 +264,12 @@ class BinarySystem(System):
         :param components_distance: numpy.float
         :return: numpy.float
         """
-        args = components_distance,
         if component == "primary":
-            solution = optimize.newton(self.primary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
+            args = self.primary.synchronicity, self.mass_ratio, components_distance
+            solution = optimize.newton(model.primary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
         elif component == "secondary":
-            solution = optimize.newton(self.secondary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
+            args = self.secondary.synchronicity, self.mass_ratio, components_distance
+            solution = optimize.newton(model.secondary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
         else:
             raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
 
@@ -289,30 +286,6 @@ class BinarySystem(System):
         else:
             raise ValueError("Iteration process to solve critical potential seems "
                              "to lead nowhere (critical potential solver has failed).")
-
-    def primary_potential_derivative_x(self, x, *args):
-        """
-        Dderivative of potential function perspective of primary component along the x axis.
-        :param x: (numpy.)float
-        :param args: tuple ((numpy.)float, (numpy.)float); (components distance, synchronicity of primary component)
-        :return: (numpy.)float
-        """
-        d, = args
-        r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-        return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                3.0 / 2.0)) + self.primary.synchronicity ** 2 * (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
-
-    def secondary_potential_derivative_x(self, x, *args):
-        """
-        Derivative of potential function perspective of secondary component along the x axis.
-        :param x: (numpy.)float
-        :param args: tuple ((numpy.)float, (numpy.)float); (components distance, synchronicity of secondary component)
-        :return: (numpy.)float
-        """
-        d, = args
-        r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-        return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                3.0 / 2.0)) - self.secondary.synchronicity ** 2 * (self.mass_ratio + 1) * (d - x) + (1.0 / d ** 2)
 
     def libration_potentials(self):
         """
@@ -494,6 +467,35 @@ class BinarySystem(System):
             return positions
         else:
             return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
+
+    def setup_periastron_components_radii(self, components_distance):
+        """
+        Setup component radii.
+        Use methods to calculate polar, side, backward and if not W UMa also
+        forward radius and assign to component instance.
+        :param components_distance: float
+        :return:
+        """
+        fns = [bsradius.calculate_polar_radius, bsradius.calculate_side_radius, bsradius.calculate_backward_radius]
+        components = ['primary', 'secondary']
+
+        for component in components:
+            component_instance = getattr(self, component)
+            for fn in fns:
+                self._logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
+                                   f'for {component} component')
+
+                param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
+                kwargs = dict(synchronicity=component_instance.synchronicity,
+                              mass_ratio=self.mass_ratio,
+                              components_distance=components_distance,
+                              surface_potential=component_instance.surface_potential,
+                              component=component)
+                r = fn(**kwargs)
+                setattr(component_instance, param, r)
+                if self.morphology != 'over-contact':
+                    r = bsradius.calculate_forward_radius(**kwargs)
+                    setattr(component_instance, 'forward_radius', r)
 # ######################################################################################################################
 
 
@@ -512,131 +514,11 @@ class BinarySystem(System):
 
 
 
-    def setup_components_radii(self, components_distance):
-        """
-        Setup component radii.
-        Use methods to calculate polar, side, backward and if not W UMa also
-        forward radius and assign to component instance.
-        :param components_distance: float
-        :return:
-        """
-        fns = [self.calculate_polar_radius, self.calculate_side_radius, self.calculate_backward_radius]
-        components = ['primary', 'secondary']
 
-        for component in components:
-            component_instance = getattr(self, component)
-            for fn in fns:
-                self._logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
-                                   f'for {component} component')
 
-                param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
-                radius = fn(component, components_distance)
-                setattr(component_instance, param, radius)
-                if self.morphology != 'over-contact':
-                    radius = self.calculate_forward_radius(component, components_distance)
-                    setattr(component_instance, 'forward_radius', radius)
 
-    def calculate_radius(self, *args, surface_potential=None):
-        """
-        Function calculates radius of the star in given direction of arbitrary direction vector (in spherical
-        coordinates) starting from the centre of the star.
-
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :param args: Tuple;
-
-        ::
-
-            (
-                component: str - `primary` or `secondary`,
-                components_distance: float - distance between components in SMA units,
-                phi: float - longitudonal angle of direction vector measured from point under L_1 in
-                             positive direction (in radians)
-                omega: float - latitudonal angle of direction vector measured from north pole (in radians)
-             )
-        :return: float; radius
-        """
-        if args[0] == 'primary':
-            fn = model.potential_primary_fn
-            precalc = model.pre_calculate_for_potential_value_primary
-            precalc_args = (self.primary.synchronicity, self.mass_ratio) + args[1:]
-            component_instance = getattr(self, 'primary')
-        elif args[0] == 'secondary':
-            fn = model.potential_secondary_fn
-            precalc = model.pre_calculate_for_potential_value_secondary
-            precalc_args = (self.secondary.synchronicity, self.mass_ratio) + args[1:]
-            component_instance = getattr(self, 'secondary')
-        else:
-            raise ValueError(f'Invalid value of `component` argument {args[0]}. \nExpecting `primary` or `secondary`.')
-
-        surface_potential = component_instance.surface_potential if surface_potential is None else surface_potential
-
-        scipy_solver_init_value = np.array([args[1] / 1e4])
-        argss = ((self.mass_ratio, ) + precalc(*precalc_args), surface_potential)
-        solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value,
-                                                    full_output=True, args=argss, xtol=1e-10)
-
-        # check for regular solution
-        if ier == 1 and not up.isnan(solution[0]) and 30 >= solution[0] >= 0:
-            return solution[0]
-        else:
-            if 0 < solution[0] < 1.0:
-                return solution[0]
-            else:
-                raise ValueError(f'Invalid value of radius {solution} was calculated.')
-
-    def calculate_polar_radius(self, component, components_distance, surface_potential=None):
-        """
-        Calculates polar radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
-
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float
-        :return: float; polar radius
-        """
-        args = (component, components_distance, 0.0, 0.0)
-        return self.calculate_radius(*args, surface_potential=surface_potential)
-
-    def calculate_side_radius(self, component, components_distance, surface_potential=None):
-        """
-        Calculates side radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
-
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float
-        :return: float; side radius
-        """
-        args = (component, components_distance, const.HALF_PI, const.HALF_PI)
-        return self.calculate_radius(*args, surface_potential=surface_potential)
-
-    def calculate_backward_radius(self, component, components_distance, surface_potential=None):
-        """
-        Calculates backward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
-
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :return: float; polar radius
-        """
-
-        args = (component, components_distance, const.PI, const.HALF_PI)
-        return self.calculate_radius(*args, surface_potential=surface_potential)
-
-    def calculate_forward_radius(self, component, components_distance, surface_potential=None):
-        """
-        Calculates forward radius in the similar manner as in BinarySystem.compute_equipotential_boundary method.
-        :warning: Do not use in case of over-contact systems.
-
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :return: float
-        """
-
-        args = (component, components_distance, 0.0, const.HALF_PI)
-        return self.calculate_radius(*args, surface_potential=surface_potential)
-
-    def _evaluate_spots_mesh(self, *args, **kwargs):
-        return mesh.evaluate_spots_mesh(self, *args, **kwargs)
+    def mesh_spots(self, *args, **kwargs):
+        return mesh.mesh_spots(self, *args, **kwargs)
 
     def calculate_potential_gradient(self, component, components_distance, points=None):
         """
@@ -863,14 +745,6 @@ class BinarySystem(System):
 
     def over_contact_system_surface(self, component="all", points=None, **kwargs):
         return faces.over_contact_system_surface(self, points, component, **kwargs)
-
-    def _get_surface_builder_fn(self):
-        """
-        Returns suitable triangulation function depending on morphology.
-
-        :return: method; method that performs generation surface faces
-        """
-        return self.over_contact_system_surface if self.morphology == "over-contact" else self.detached_system_surface
 
     def faces_visibility_x_limits(self, components_distance):
         # this section calculates the visibility of each surface face
@@ -1173,9 +1047,6 @@ class BinarySystem(System):
                     spot.temperatures = temperatures[_component][counter: counter + len(spot.temperatures)]
                     counter += len(spot.temperatures)
 
-    def angular_velocity(self, components_distance=None):
-        return orbit.angular_velocity(self.period, self.eccentricity, components_distance)
-
     # light curves
     def compute_lightcurve(self, **kwargs):
         """
@@ -1236,21 +1107,18 @@ class BinarySystem(System):
 
     # ### build methods
     def build_surface_gravity(self, component="all", components_distance=None):
-        return build.build_surface_gravity(self, component, components_distance)
+        return build.build_surface_gravity(self, components_distance, component)
 
     def build_faces_orientation(self, component="all", components_distance=None):
-        return build.build_faces_orientation(self, component, components_distance)
+        return build.build_faces_orientation(self, components_distance, component)
 
     def build_temperature_distribution(self, component="all", components_distance=None, do_pulsations=False,
                                        phase=None):
-        return build.build_temperature_distribution(self, component, components_distance, do_pulsations=do_pulsations,
+        return build.build_temperature_distribution(self, components_distance, component, do_pulsations=do_pulsations,
                                                     phase=phase)
 
-    def build_surface_map(self, colormap=None, component="all", components_distance=None, return_map=False, phase=None):
-        return build.build_surface_map(self, colormap, component, components_distance, return_map, phase=phase)
-
-    def build_mesh(self, component="all", components_distance=None, **kwargs):
-        return build.build_mesh(self, component, components_distance, **kwargs)
+    def build_mesh(self, component="all", components_distance=None):
+        return build.build_mesh(self, component, components_distance)
 
     def build_faces(self, component="all", components_distance=None):
         return build.build_faces(self, component, components_distance)

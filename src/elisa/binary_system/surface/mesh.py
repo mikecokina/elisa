@@ -12,6 +12,32 @@ config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-mesh-module")
 
 
+def build_mesh(system_container, components_distance, component="all"):
+    """
+   Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
+   :param system_container: BinarySystem; instance
+   :param component: str or empty
+   :param components_distance: float
+   :return:
+   """
+    components = bsutils.component_to_list(component)
+
+    for component in components:
+        start_container = getattr(system_container, component)
+        # in case of spoted surface, symmetry is not used
+        if getattr(system_container, 'morphology') == 'over-contact':
+            a, b, c, d = mesh_over_contact(system_container, component, symmetry_output=True)
+        else:
+            a, b, c, d = mesh_detached(system_container, components_distance, component, symmetry_output=True)
+
+        start_container.points = a
+        start_container.point_symmetry_vector = b
+        start_container.base_symmetry_points_number = c
+        start_container.inverse_point_symmetry_matrix = d
+
+    add_spots_to_mesh(system_container, components_distance, component="all")
+
+
 def pre_calc_azimuths_for_detached_points(deiscretization):
     """
     Returns azimuths for the whole quarter surface in specific order::
@@ -214,7 +240,7 @@ def get_surface_points(*args):
                 components_distance: float,
                 precalc_fn: method,
                 potential_fn: method,
-                potential_derivative_fn: method,
+                fprime: method,
                 surface_potential: float,
                 mass_ratio: float
                 symchronicity: float
@@ -222,13 +248,11 @@ def get_surface_points(*args):
 
     :return: numpy.array
     """
-    phi, theta, x0, components_distance, precalc_fn, potential_fn = args[:6]
-    potential_derivative_fn, surface_potential, mass_ratio, synchronicity = args[6:]
-
-    precalc_vals = precalc_fn(*(synchronicity, mass_ratio, components_distance, phi, theta), return_as_tuple=True)
+    phi, theta, x0, components_distance, precalc_fn, potential_fn, fprime, potential, q, synchronicity = args
+    max_iter = config.MAX_SOLVER_ITERS
+    precalc_vals = precalc_fn(*(synchronicity, q, components_distance, phi, theta), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
-    radius_kwargs = dict(fprime=potential_derivative_fn, maxiter=config.MAX_SOLVER_ITERS,
-                         args=((mass_ratio, ) + precalc_vals, surface_potential), rtol=1e-10)
+    radius_kwargs = dict(fprime=fprime, maxiter=max_iter, args=((q, ) + precalc_vals, potential), rtol=1e-10)
     radius = opt.newton.newton(potential_fn, x0, **radius_kwargs)
     return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
@@ -236,7 +260,6 @@ def get_surface_points(*args):
 def get_surface_points_cylindrical(*args):
     """
     Function solves radius for given azimuths that are passed in *args.
-
     :param args: Tuple;
 
     ::
@@ -248,7 +271,7 @@ def get_surface_points_cylindrical(*args):
                 x0: float,
                 precalc_fn: method,
                 potential_fn: method,
-                potential_derivative_fn: method (fprime),
+                fprime: method (fprime),
                 surface_potential: float,
                 mass_ratio: float,
                 synchronicity: float
@@ -256,13 +279,11 @@ def get_surface_points_cylindrical(*args):
 
     :return: numpy.array
     """
-    phi, z, components_distance, x0, precalc_fn, potential_fn = args[:6]
-    potential_derivative_fn, surface_potential, mass_ratio, synchronicity = args[6:]
-
-    precalc_vals = precalc_fn(*(synchronicity, mass_ratio, phi, z, components_distance), return_as_tuple=True)
+    phi, z, components_distance, x0, precalc_fn, potential_fn, fprime, potential, q, synchronicity = args
+    max_iter = config.MAX_SOLVER_ITERS
+    precalc_vals = precalc_fn(*(synchronicity, q, phi, z, components_distance), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
-    radius_kwargs = dict(fprime=potential_derivative_fn, maxiter=config.MAX_SOLVER_ITERS, rtol=1e-10,
-                         args=((mass_ratio,) + precalc_vals, surface_potential))
+    radius_kwargs = dict(fprime=fprime, maxiter=max_iter, rtol=1e-10, args=((q,) + precalc_vals, potential))
     radius = opt.newton.newton(potential_fn, x0, **radius_kwargs)
     return utils.cylindrical_to_cartesian(np.column_stack((up.abs(radius), phi, z)))
 
@@ -303,41 +324,24 @@ def mesh_detached(system_container, components_distance, component, symmetry_out
     star_container = getattr(system_container, component)
     discretization_factor = star_container.discretization_factor
     synchronicity = star_container.synchronicity
+    mass_ratio = system_container.mass_ratio
+    potential = star_container.surface_potential
 
-    if component == 'primary':
-        potential_fn = model.potential_primary_fn
-        precalc_fn = model.pre_calculate_for_potential_value_primary
-        potential_derivative_fn = model.radial_primary_potential_derivative
-    elif component == 'secondary':
-        potential_fn = model.potential_secondary_fn
-        precalc_fn = model.pre_calculate_for_potential_value_secondary
-        potential_derivative_fn = model.radial_secondary_potential_derivative
-    else:
-        raise ValueError('Invalid value of `component` argument: `{}`. Expecting '
-                         '`primary` or `secondary`.'.format(component))
+    potential_fn = getattr(model, f"potential_{component}_fn")
+    precalc_fn = getattr(model, f"pre_calculate_for_potential_value_{component}")
+    fprime = getattr(model, f"radial_{component}_potential_derivative")
 
     # pre calculating azimuths for surface points on quarter of the star surface
     phi, theta, separator = pre_calc_azimuths_for_detached_points(discretization_factor)
 
-    if config.NUMBER_OF_THREADS == 1:
-        # calculating mesh in cartesian coordinates for quarter of the star
-        # args = phi, theta, components_distance, precalc_fn, potential_fn
-        args = phi, theta, star_container.side_radius, components_distance, \
-               precalc_fn, potential_fn, potential_derivative_fn, \
-               star_container.surface_potential, system_container.mass_ratio, synchronicity
-        __logger__.debug(f'calculating surface points of {component} component in mesh_detached '
-                         f'function using single process method')
-        points_q = get_surface_points(*args)
-    else:
-        raise NotImplemented("not implemented")
-        # todo: reimplement when containers will be ready (!!! will require adjust args for fns from `model` module)
-        # # todo: consider to remove following multiproc line if "parallel" solver implemented
-        # # calculating mesh in cartesian coordinates for quarter of the star
-        # args = phi, theta, components_distance, precalc_fn, potential_fn
-        #
-        # __logger__.debug(f'calculating surface points of {component} component in mesh_detached '
-        #                  f'function using multi process method')
-        # points_q = system_container.get_surface_points_multiproc(*args)
+    # calculating mesh in cartesian coordinates for quarter of the star
+    # args = phi, theta, components_distance, precalc_fn, potential_fn
+    args = phi, theta, star_container.side_radius, components_distance, precalc_fn, \
+        potential_fn, fprime, potential, mass_ratio, synchronicity
+
+    __logger__.debug(f'calculating surface points of {component} component in mesh_detached '
+                     f'function using single process method')
+    points_q = get_surface_points(*args)
 
     equator = points_q[:separator[0], :]
     # assigning equator points and nearside and farside points A and B
@@ -444,27 +448,19 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
     star_container = getattr(system, component)
     discretization_factor = star_container.discretization_factor
     synchronicity = star_container.synchronicity
+    q = system.mass_ratio
+    potential = star_container.surface_potential
+    r_polar = star_container.polar_radius
 
     # calculating distance between components
     components_distance = 1.0  # system.orbit.orbital_motion(phase=0)[0][0]
 
-    if component == 'primary':
-        fn = model.potential_primary_fn
-        fn_cylindrical = model.potential_primary_cylindrical_fn
-        precalc = model.pre_calculate_for_potential_value_primary
-        precal_cylindrical = model.pre_calculate_for_potential_value_primary_cylindrical
-        potential_derivative_fn = model.radial_primary_potential_derivative
-        cylindrical_potential_derivative_fn = model.radial_primary_potential_derivative_cylindrical
-    elif component == 'secondary':
-        fn = model.potential_secondary_fn
-        fn_cylindrical = model.potential_secondary_cylindrical_fn
-        precalc = model.pre_calculate_for_potential_value_secondary
-        precal_cylindrical = model.pre_calculate_for_potential_value_secondary_cylindrical
-        potential_derivative_fn = model.radial_secondary_potential_derivative
-        cylindrical_potential_derivative_fn = model.radial_secondary_potential_derivative_cylindrical
-    else:
-        raise ValueError(f'Invalid value of `component` argument: `{component}`.\n'
-                         f'Expecting `primary` or `secondary`.')
+    fn = getattr(model, f"potential_{component}_fn")
+    fn_cylindrical = getattr(model, f"potential_{component}_cylindrical_fn")
+    precalc = getattr(model, f"pre_calculate_for_potential_value_{component}")
+    precal_cylindrical = getattr(model, f"pre_calculate_for_potential_value_{component}_cylindrical")
+    fprime = getattr(model, f"radial_{component}_potential_derivative")
+    cylindrical_fprime = getattr(model, f"radial_{component}_potential_derivative_cylindrical")
 
     # precalculating azimuths for farside points
     phi_farside, theta_farside, separator_farside = \
@@ -479,18 +475,10 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
 
     # solving points on farside
     # here implement multiprocessing
-    if config.NUMBER_OF_THREADS == 1:
-        args = phi_farside, theta_farside, star_container.polar_radius, \
-               components_distance, precalc, fn, potential_derivative_fn, \
-               star_container.surface_potential, system.mass_ratio, synchronicity
-        __logger__.debug(f'calculating farside points of {component} component in mesh_overcontact '
-                         f'function using single process method')
-        points_farside = get_surface_points(*args)
-    else:
-        args = phi_farside, theta_farside, components_distance, precalc, fn
-        __logger__.debug(f'calculating farside points of {component} component in mesh_overcontact '
-                         f'function using multi process method')
-        points_farside = system.get_surface_points_multiproc(*args)
+    args = phi_farside, theta_farside, r_polar, components_distance, precalc, fn, fprime, potential, q, synchronicity
+    __logger__.debug(f'calculating farside points of {component} component in mesh_overcontact '
+                     f'function using single process method')
+    points_farside = get_surface_points(*args)
 
     # assigning equator points and point A (the point on the tip of the farside equator)
     equator_farside = points_farside[:separator_farside[0], :]
@@ -511,18 +499,12 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
     x_q1, y_q1, z_q1 = quarter[:, 0], quarter[:, 1], quarter[:, 2]
 
     # solving points on neck
-    if config.NUMBER_OF_THREADS:
-        args = phi_neck, z_neck, components_distance, star_container.polar_radius, \
-               precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn, \
-               star_container.surface_potential, system.mass_ratio, synchronicity
-        __logger__.debug(f'calculating neck points of {component} component in mesh_overcontact '
-                         f'function using single process method')
-        points_neck = get_surface_points_cylindrical(*args)
-    else:
-        args = phi_neck, z_neck, components_distance, precal_cylindrical, fn_cylindrical
-        __logger__.debug(f'calculating neck points of {component} component in mesh_overcontact '
-                         f'function using multi process method')
-        points_neck = system.get_surface_points_multiproc_cylindrical(*args)
+    args = phi_neck, z_neck, components_distance, star_container.polar_radius, \
+        precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
+        star_container.surface_potential, system.mass_ratio, synchronicity
+    __logger__.debug(f'calculating neck points of {component} component in mesh_overcontact '
+                     f'function using single process method')
+    points_neck = get_surface_points_cylindrical(*args)
 
     # assigning equator points on neck
     r_eqn = points_neck[:separator_neck[0], :]
@@ -594,7 +576,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
         return points
 
 
-def evaluate_spots_mesh(system_container, components_distance, component="all"):
+def mesh_spots(system_container, components_distance, component="all"):
     """
     Compute points of each spots and assigns values to spot container instance.
     If any of any spot point cannot be obtained, entire spot will be omitted.
@@ -632,7 +614,7 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
 
     for component, functions in fns.items():
         __logger__.debug(f"evaluating spots for {component} component")
-        potential_fn, precalc_fn, potential_derivative_fn = functions
+        potential_fn, precalc_fn, fprime = functions
         component_instance = getattr(system_container, component)
 
         if not component_instance.spots:
@@ -646,13 +628,15 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
 
             alpha = spot_instance.discretization_factor
             spot_radius = spot_instance.angular_radius
+            synchronicity = component_instance.synchronicity
+            mass_ratio = system_container.mass_ratio
+            potential = component_instance.surface_potential
 
             # initial radial vector
             radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
             center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
-            args1, use = (component_instance.synchronicity, system_container.mass_ratio,
-                          components_distance, radial_vector[1], radial_vector[2]), False
-            args2 = ((system_container.mass_ratio,) + precalc_fn(*args1), component_instance.surface_potential)
+            args1, use = (synchronicity, mass_ratio, components_distance, radial_vector[1], radial_vector[2]), False
+            args2 = ((system_container.mass_ratio,) + precalc_fn(*args1), potential)
             kwargs = {'original_kwargs': args1}
             solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
 
@@ -660,7 +644,7 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
                 __logger__.warning(f"center of spot {spot_instance.kwargs_serializer()} "
-                                     f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                                   f"doesn't satisfy reasonable conditions and entire spot will be omitted")
 
                 component_instance.remove_spot(spot_index=spot_index)
                 continue
@@ -670,9 +654,8 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
 
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st inner ring of spot
-            args1, use = (component_instance.synchronicity, system_container.mass_ratio,
-                          components_distance, lon, lat + alpha), False
-            args2 = ((system_container.mass_ratio,) + precalc_fn(*args1), component_instance.surface_potential)
+            args1, use = (synchronicity, mass_ratio, components_distance, lon, lat + alpha), False
+            args2 = ((system_container.mass_ratio,) + precalc_fn(*args1), potential)
             kwargs = {'original_kwargs': args1}
             solution, use = fsolver(potential_fn, solver_condition, *args2, **kwargs)
 
@@ -693,7 +676,7 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
             __logger__.debug(f'number of rings in spot {spot_instance.kwargs_serializer()} is {num_radial}')
             thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
 
-            num_azimuthal = [1 if i == 0 else int(i * 2.0 * up.pi * x0 // x0) for i in range(0, len(thetas))]
+            num_azimuthal = [1 if i == 0 else int(i * 2.0 * const.PI * x0 // x0) for i in range(0, len(thetas))]
             deltas = [np.linspace(0., const.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
 
             spot_phi, spot_theta = [], []
@@ -717,8 +700,7 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
 
             spot_phi, spot_theta = np.array(spot_phi), np.array(spot_theta)
             args = spot_phi, spot_theta, spot_center_r, components_distance, precalc_fn, \
-                potential_fn, potential_derivative_fn, component_instance.surface_potential, \
-                system_container.mass_ratio, component_instance.synchronicity
+                potential_fn, fprime, potential, mass_ratio, synchronicity
             try:
                 spot_points = get_surface_points(*args)
             except MaxIterationError:
@@ -747,7 +729,6 @@ def evaluate_spots_mesh(system_container, components_distance, component="all"):
 def calculate_neck_position(system_container, return_polynomial=False):
     """
     Function calculates x-coordinate of the `neck` (the narrowest place) of an over-contact system_container.
-
     :return: Tuple (if return_polynomial is True) or float;
 
     If return_polynomial is set to True::
@@ -763,23 +744,22 @@ def calculate_neck_position(system_container, return_polynomial=False):
     components = ['primary', 'secondary']
     points_primary, points_secondary = [], []
 
-    fn_map = {
-        'primary': (model.potential_primary_fn, model.pre_calculate_for_potential_value_primary),
-        'secondary': (model.potential_secondary_fn, model.pre_calculate_for_potential_value_secondary)
-    }
-
     # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
     angles = np.linspace(0., const.HALF_PI, 100, endpoint=True)
     for component in components:
         for angle in angles:
             component_instance = getattr(system_container, component)
-            args, use = (components_distance, angle, const.HALF_PI), False
+            synchronicity = component_instance.synchronicity
+            q = system_container.mass_ratio
+            potential = component_instance.surface_potential
 
+            fn = getattr(model, f"potential_{component}_fn")
+            precalc_fn = getattr(model, f"pre_calculate_for_potential_value_{component}")
+
+            args, use = (components_distance, angle, const.HALF_PI), False
             scipy_solver_init_value = np.array([components_distance / 10000.0])
-            args = ((system_container.mass_ratio,) +
-                    fn_map[component][1](*((component_instance.synchronicity, system_container.mass_ratio) + args)),
-                    component_instance.surface_potential)
-            solution, _, ier, _ = up.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
+            args = ((system_container.mass_ratio,) + precalc_fn(*((synchronicity, q) + args)), potential)
+            solution, _, ier, _ = up.optimize.fsolve(fn, scipy_solver_init_value,
                                                      full_output=True, args=args, xtol=1e-12)
 
             # check for regular solution
@@ -837,5 +817,5 @@ def add_spots_to_mesh(system_container, components_distance, component="all"):
     component_com = {'primary': 0.0, 'secondary': components_distance}
     for component in components:
         star_container = getattr(system_container, component)
-        evaluate_spots_mesh(system_container, components_distance=components_distance, component=component)
+        mesh_spots(system_container, components_distance=components_distance, component=component)
         star_container.incorporate_spots_mesh(component_com=component_com[component])

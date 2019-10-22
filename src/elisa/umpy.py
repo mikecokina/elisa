@@ -16,6 +16,7 @@ arccos = np.arccos
 arctan2 = np.arctan2
 pi = np.pi
 zeros = np.zeros
+log10 = np.log10
 
 isnan = np.isnan
 power = np.power

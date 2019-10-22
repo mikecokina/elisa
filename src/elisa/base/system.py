@@ -52,10 +52,6 @@ class System(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def build_surface_map(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
     def transform_input(self, *args, **kwargs):
         pass
 

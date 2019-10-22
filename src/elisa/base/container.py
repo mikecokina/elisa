@@ -3,7 +3,7 @@ import numpy as np
 from abc import abstractmethod
 from copy import deepcopy, copy
 
-from elisa import logger, umpy as up
+from elisa import logger, umpy as up, utils
 from elisa.conf import config
 from elisa.base import spot
 from elisa.utils import is_empty
@@ -48,11 +48,33 @@ class PositionContainer(object):
 
 class StarContainer(object):
     """
+    :param points: numpy.array;
+
+    ::
+
+        Numpy array of points that form surface of Body.
+        Input dictionary has to be in shape::
+            points = numpy.array([[x1 y1 z1],
+                                  [x2 y2 z2],
+                                   ...
+                                  [xN yN zN]])
+        where xi, yi, zi are cartesian coordinates of vertice i.
+
+    :param faces: numpy.array;
+
+    ::
+
+        Numpy array of triangles that will create surface of body.
+        Triangles are stored as list of indices of points.
+            numpy.array(
+            [[vertice_index_k, vertice_index_l, vertice_index_m]),
+             [...]),
+              ...
+             [...]])
+
     Container carrying non-static properties of Star objecet (properties which vary from phase to phase).
 
-    :param points: numpy.array;
     :param normals: numpy.array;
-    :param faces: numpy.array;
     :param temperatures: numpy.array;
     :param log_g: numpy.array;
     :param indices: numpy.array;
@@ -72,7 +94,8 @@ class StarContainer(object):
                  coverage=None,
                  rals=None,
                  face_centres=None,
-                 metallicity=None):
+                 metallicity=None,
+                 areas=None):
 
         self.points = points
         self.normals = normals
@@ -84,10 +107,14 @@ class StarContainer(object):
         self.rals = rals
         self.face_centres = face_centres
         self.metallicity = metallicity
+        self.areas = areas
 
         self.point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])
         self.base_symmetry_points_number = 0
+
+        self.face_symmetry_vector = np.array([])
+        self.base_symmetry_faces_number = 0
 
         self.spots = dict()
         self.pulsations = dict()
@@ -111,7 +138,7 @@ class StarContainer(object):
         pass
 
     def incorporate_spots_mesh(self, component_com):
-        spot.incorporate_spots_mesh(to=self, component_com=component_com)
+        spot.incorporate_spots_mesh(to_container=self, component_com=component_com)
 
     def remove_spot(self, spot_index: int):
         """
@@ -131,7 +158,7 @@ class StarContainer(object):
         all_spot_indices = set([int(val) for val in self.spots.keys()])
         spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
         spots_meta = [self.spots[idx].kwargs_serializer() for idx in self.spots if idx in spot_indices_to_remove]
-        spots_meta = '\n'.join(spots_meta)
+        spots_meta = '\n'.join([str(meta) for meta in spots_meta])
         if _raise and not is_empty(spot_indices_to_remove):
             raise ValueError(f"Spots {spots_meta} have no pointns to continue.\n"
                              f"Please, specify spots wisely.")
@@ -154,3 +181,33 @@ class StarContainer(object):
                 [vertices_map, [{"type": "spot", "enum": spot_index}] * len(spot_instance.points)]
             )
         return points, vertices_map
+
+    def calculate_all_areas(self):
+        """
+        Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
+
+        :return:
+        """
+        self.areas = self.calculate_areas()
+        if self.has_spots():
+            for spot_index, spot_isntance in self.spots.items():
+                spot.areas = spot_isntance.calculate_areas()
+
+    def calculate_areas(self):
+        """
+        Returns areas of each face of the star surface.
+        :return: numpy.array:
+
+        ::
+
+            numpy.array([area_1, ..., area_n])
+        """
+        if len(self.faces) == 0 or len(self.points) == 0:
+            raise ValueError('Faces or/and points of object {self.name} have not been set yet.\n'
+                             'Run build method first.')
+        if not self.has_spots():  # temporary
+            base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
+                                              self.points[:self.base_symmetry_points_number])
+            return base_areas[self.face_symmetry_vector]
+        else:
+            return utils.triangle_areas(self.faces, self.points)

@@ -1,18 +1,19 @@
+import json
 import logging
 import os.path as op
-import numpy as np
-import json
 import unittest
 
+import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from elisa import const
+from elisa import const, units
+from elisa import umpy as up
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
+from elisa.conf import config
 from elisa.orbit import orbit
 from elisa.utils import is_empty
-from elisa.conf import config
 
 ax3 = Axes3D
 
@@ -26,7 +27,7 @@ def plot_points(points_1, points_2, label):
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
 
-    var = np.concatenate([points_1, points_2]) if not is_empty(points_2) else points_1
+    var = up.concatenate([points_1, points_2]) if not is_empty(points_2) else points_1
 
     xx = np.array(list(zip(*var))[0])
     yy = np.array(list(zip(*var))[1])
@@ -151,3 +152,92 @@ class ElisaTestCase(unittest.TestCase):
         reset_config()
         logging.disable(logging.CRITICAL)
         # logging.disable(logging.NOTSET)
+
+
+BINARY_SYSTEM_PARAMS = {
+    "detached": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
+    },  # compact spherical components on circular orbit
+
+    "detached.ecc": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
+        "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.3, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6
+    },  # close tidally deformed components with asynchronous rotation on eccentric orbit
+
+    "over-contact": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 2.7,
+        "secondary_surface_potential": 2.7,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": 90 * units.deg, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6
+    },  # over-contact system
+
+    "semi-detached": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 2.875844632141054,
+        "secondary_surface_potential": 2.875844632141054,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6
+    }
+}
+
+SPOTS_META = {
+    "primary":
+        [
+            {"longitude": 90,
+             "latitude": 58,
+             "angular_radius": 35,
+             "temperature_factor": 0.95},
+        ],
+
+    "secondary":
+        [
+            {"longitude": 60,
+             "latitude": 45,
+             "angular_radius": 28,
+             "temperature_factor": 0.9},
+        ]
+}
+
+SPOTS_OVERLAPPED = [
+    {"longitude": 90,
+     "latitude": 58,
+     "angular_radius": 15,
+     "temperature_factor": 0.95},
+    {"longitude": 90,
+     "latitude": 58,
+     "angular_radius": 25,
+     "temperature_factor": 0.95},
+]
+
+SPOT_TO_RAISE = [
+    {"longitude": 60,
+     "latitude": 45,
+     "angular_radius": 28,
+     "temperature_factor": 0.1},
+]

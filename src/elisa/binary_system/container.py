@@ -38,29 +38,8 @@ class OrbitalPositionContainer(PositionContainer):
         """
         pass
 
-    def build_mesh(self, components_distance, component="all", **kwargs):
-        """
-        Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
-        :param self: BinarySystem; instance
-        :param component: str or empty
-        :param components_distance: float
-        :return:
-        """
-        components = bsutils.component_to_list(component)
-
-        for component in components:
-            start_container = getattr(self, component)
-            # in case of spoted surface, symmetry is not used
-            a, b, c, d = mesh.mesh_over_contact(self, component=component, symmetry_output=True) \
-                if getattr(self, 'morphology') == 'over-contact' \
-                else mesh.mesh_detached(self, components_distance, component, symmetry_output=True)
-
-            start_container.points = a
-            start_container.point_symmetry_vector = b
-            start_container.base_symmetry_points_number = c
-            start_container.inverse_point_symmetry_matrix = d
-
-        mesh.add_spots_to_mesh(self, components_distance, component="all")
+    def build_mesh(self, components_distance, component="all"):
+        return mesh.build_mesh(self, components_distance, component)
 
     def build_from_points(self, component="all", components_distance=None, do_pulsations=False, phase=None):
         pass

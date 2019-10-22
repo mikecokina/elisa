@@ -5,6 +5,7 @@ from copy import copy
 from scipy.spatial.qhull import Delaunay
 from elisa import logger, umpy as up
 from elisa.conf import config
+from elisa.pulse import pulsations
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
 
@@ -178,21 +179,20 @@ def build_surface_with_no_spots(system_container, components_distance, component
         # triangulating only one quarter of the star
 
         if system_container.morphology != 'over-contact':
-            points_to_triangulate = star_container.points[:star_container.base_symmetry_points_number, :]
-            triangles = detached_system_surface(system_container, components_distance, points_to_triangulate, component)
+            triangulate = star_container.points[:star_container.base_symmetry_points_number, :]
+            triangles = detached_system_surface(system_container, components_distance, triangulate, component)
         else:
-            neck = np.max(star_container.points[:, 0]) \
-                if component[0] == 'primary' else np.min(star_container.points[:, 0])
-            points_to_triangulate = \
-                np.append(star_container.points[:star_container.base_symmetry_points_number, :],
-                          np.array([[neck, 0, 0]]), axis=0)
-            triangles = over_contact_system_surface(system_container, points_to_triangulate, component)
+            points = star_container.points
+            neck = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
+            triangulate = \
+                np.append(points[:star_container.base_symmetry_points_number, :], np.array([[neck, 0, 0]]), axis=0)
+            triangles = over_contact_system_surface(system_container, triangulate, component)
             # filtering out triangles containing last point in `points_to_triangulate`
             triangles = triangles[np.array(triangles < star_container.base_symmetry_points_number).all(1)]
 
         # filtering out faces on xy an xz planes
-        y0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 1], 0).all(1)
-        z0_test = ~np.isclose(points_to_triangulate[triangles][:, :, 2], 0).all(1)
+        y0_test = ~np.isclose(triangulate[triangles][:, :, 1], 0).all(1)
+        z0_test = ~np.isclose(triangulate[triangles][:, :, 2], 0).all(1)
         triangles = triangles[up.logical_and(y0_test, z0_test)]
 
         star_container.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
@@ -338,3 +338,53 @@ def over_contact_system_surface(system_container, points=None, component="all", 
     new_triangles_indices = triangles_indices[neck_test]
 
     return new_triangles_indices
+
+
+def compute_all_surface_areas(system_container, component):
+    """
+    Compute surface are of all faces (spots included).
+
+    :param system_container: BinaryStar instance
+    :param component: str `primary` or `secondary`
+    :return:
+    """
+    if is_empty(component):
+        __logger__.debug("no component set to build surface areas")
+        return
+
+    components = bsutils.component_to_list(component)
+    for component in components:
+        star_container = getattr(system_container, component)
+        __logger__.debug(f'computing surface areas of component: '
+                         f'{star_container} / name: {star_container.name}')
+        star_container.calculate_all_areas()
+
+
+def build_faces_orientation(system_container, components_distance, component="all"):
+    """
+    Compute face orientation (normals) for each face.
+    If pulsations are present, than calculate renormalized associated
+    Legendree polynomials (rALS) for each pulsation mode.
+
+    :param system_container: BinarySystem instance
+    :param component: str; `primary` or `secondary`
+    :param components_distance: float
+    orbit with misaligned pulsations, where pulsation axis drifts with star
+    :return:
+    """
+    if is_empty(component):
+        __logger__.debug("no component set to build face orientation")
+        return
+
+    component = bsutils.component_to_list(component)
+    com_x = {'primary': 0.0, 'secondary': components_distance}
+
+    for _component in component:
+        star_container = getattr(system_container, _component)
+        star_container.set_all_surface_centres()
+        star_container.set_all_normals(com=com_x[_component])
+
+        # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
+        # pulsation mode
+        if star_container.has_pulsations():
+            pulsations.set_ralp(star_container, com_x=com_x[_component])
