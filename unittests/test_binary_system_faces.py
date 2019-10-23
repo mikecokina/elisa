@@ -2,9 +2,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from elisa import umpy as up
-from elisa.base.container import StarContainer
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.const import BINARY_POSITION_PLACEHOLDER
 from elisa.utils import is_empty
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
@@ -17,12 +15,7 @@ class BuildFacesSpotsFreeTestCase(ElisaTestCase):
         s.primary.discretization_factor = d
         s.secondary.discretization_factor = d
 
-        orbital_position_container = OrbitalPositionContainer(
-            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
-            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
-            **s.properties_serializer()
-        )
+        orbital_position_container = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
         orbital_position_container.build_faces(component_distance=1.0)
 
@@ -47,12 +40,7 @@ class BuildSpottyFacesTestCase(ElisaTestCase):
                                             spots_secondary=testutils.SPOTS_META["secondary"])
         s.primary.discretization_factor = d
         s.secondary.discretization_factor = d
-        orbital_position_container = OrbitalPositionContainer(
-            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
-            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
-            **s.properties_serializer()
-        )
+        orbital_position_container = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
         orbital_position_container.build_faces(component_distance=1.0)
 
@@ -78,12 +66,7 @@ class BuildSurfaceAreasTestCase(ElisaTestCase):
                                             spots_secondary=testutils.SPOTS_META["secondary"])
         s.primary.discretization_factor = d
         s.secondary.discretization_factor = d
-        orbital_position_container = OrbitalPositionContainer(
-            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
-            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
-            **s.properties_serializer()
-        )
+        orbital_position_container = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
         orbital_position_container.build_faces(component_distance=1.0)
         orbital_position_container.build_surface_areas()
@@ -119,3 +102,49 @@ class BuildSurfaceAreasTestCase(ElisaTestCase):
 
     def test_build_surface_areas_semi_detached_size(self):
         self.generator_test_surface_areas('semi-detached', up.radians(10), kind="size", less=[6e-3, 3e-3, 3e-4, 2e-4])
+
+
+class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
+    def generator_test_face_orientaion(self, key, kind):
+        s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key],
+                                            spots_primary=testutils.SPOTS_META["primary"],
+                                            spots_secondary=testutils.SPOTS_META["secondary"])
+        s.primary.discretization_factor = up.radians(10)
+        s.secondary.discretization_factor = up.radians(10)
+        orbital_position_container: OrbitalPositionContainer = testutils.prepare_orbital_position_container(s)
+        orbital_position_container.build_mesh(components_distance=1.0)
+        orbital_position_container.build_faces(component_distance=1.0)
+        orbital_position_container.build_surface_areas()
+        orbital_position_container.build_faces_orientation(components_distance=1.0)
+
+        if kind == 'presented':
+            self.assertTrue(not is_empty(orbital_position_container.primary.normals))
+            self.assertTrue(not is_empty(orbital_position_container.secondary.normals))
+
+            self.assertTrue(not is_empty(orbital_position_container.primary.spots[0].normals))
+            self.assertTrue(not is_empty(orbital_position_container.secondary.spots[0].normals))
+
+        if kind == 'direction':
+            o = orbital_position_container
+            t = 1e-5
+            _assert = self.assertTrue
+            _assert(np.all(o.primary.normals[o.primary.points[o.primary.faces][:, 0][:, 0] > t][:, 0] > 0))
+            _assert(np.all(o.secondary.normals[o.secondary.points[o.secondary.faces][:, 0][:, 0] < t][:, 0] < 0))
+
+    def test_build_face_orientation_detached(self):
+        self.generator_test_face_orientaion('detached', 'presented')
+
+    def test_build_face_orientation_semi_detached(self):
+        self.generator_test_face_orientaion('semi-detached', 'presented')
+
+    def test_build_face_orientation_overcontact(self):
+        self.generator_test_face_orientaion('over-contact', 'presented')
+
+    def test_build_face_orientation_detached_direction(self):
+        self.generator_test_face_orientaion('detached', 'direction')
+
+    def test_build_face_orientation_semi_detached_direction(self):
+        self.generator_test_face_orientaion('semi-detached', 'direction')
+
+    def test_build_face_orientation_overcontact_direction(self):
+        self.generator_test_face_orientaion('over-contact', 'direction')

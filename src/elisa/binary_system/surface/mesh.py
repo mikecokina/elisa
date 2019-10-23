@@ -16,6 +16,7 @@ __logger__ = logger.getLogger("binary-system-mesh-module")
 def build_mesh(system_container, components_distance, component="all"):
     """
    Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
+
    :param system_container: BinarySystem; instance
    :param component: str or empty
    :param components_distance: float
@@ -46,6 +47,7 @@ def pre_calc_azimuths_for_detached_points(deiscretization):
         (near point, equator, far point and the rest)
 
     separator gives you information about position of these sections.
+
     :param deiscretization: float; discretization factor
     :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: numpy.array)
     """
@@ -88,6 +90,7 @@ def pre_calc_azimuths_for_detached_points(deiscretization):
 def pre_calc_azimuths_for_overcontact_farside_points(discretization):
     """
     Calculates azimuths (directions) to the surface points of over-contact component on its far-side (convex part).
+
     :param discretization: float; discretization factor
     :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: numpy.array)
     """
@@ -135,6 +138,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(
         discretization, neck_position, neck_polynomial, polar_radius, component):
     """
     Calculates azimuths (directions) to the surface points of over-contact component on neck.
+
     :param discretization: float; doscretiozation factor
     :param neck_position: float; x position of neck of over-contact binary
     :param neck_polynomial: scipy.Polynome; polynome that define neck profile in plane `xz`
@@ -261,6 +265,7 @@ def get_surface_points(*args):
 def get_surface_points_cylindrical(*args):
     """
     Function solves radius for given azimuths that are passed in *args.
+
     :param args: Tuple;
 
     ::
@@ -730,6 +735,7 @@ def mesh_spots(system_container, components_distance, component="all"):
 def calculate_neck_position(system_container, return_polynomial=False):
     """
     Function calculates x-coordinate of the `neck` (the narrowest place) of an over-contact system_container.
+
     :return: Tuple (if return_polynomial is True) or float;
 
     If return_polynomial is set to True::
@@ -802,6 +808,7 @@ def add_spots_to_mesh(system_container, components_distance, component="all"):
     """
     Function implements surface points into clean mesh and removes stellar
     points and other spot points under the given spot if such overlapped spots exists.
+
     :param system_container: BinarySystem instance
     :param components_distance: float
     :param component: str or empty

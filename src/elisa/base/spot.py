@@ -59,6 +59,7 @@ class Spot(object):
     def calculate_areas(self):
         """
         Returns areas of each face of the spot build_surface.
+
         :return: ndarray:
 
         ::
@@ -75,6 +76,7 @@ class Spot(object):
     def kwargs_serializer(self):
         """
         Serializer and return mandatory kwargs of sefl (Spot) instance to dict.
+
         :return: Dict; { kwarg: value }
         """
         return {kwarg: getattr(self, kwarg) for kwarg in self.MANDATORY_KWARGS if not is_empty(getattr(self, kwarg))}
@@ -85,6 +87,7 @@ def split_points_of_spots_and_component(on_container, points, vertices_map):
     Based on vertices map, separates points to points which belong to Star object
     and points which belong to each defined Spot object.
     During the process remove overlapped spots.
+
     :param on_container: instance of object to split spots on
     :param points: numpy.array; all points of object (spot points and component points together)
     :param vertices_map: List or numpy.array; map which define refrences of index in
@@ -113,6 +116,7 @@ def setup_body_points(on_container, points):
     """
     Setup points for Star instance and spots based on input `points` Dict object.
     Such `points` map looks like following
+
     :param on_container: instance to setup spot points and body points on
     :param points: Dict[str, numpy.array]
     ::
@@ -215,6 +219,7 @@ def incorporate_spots_mesh(to_container, component_com):
 def remap_surface_elements(on_container, mapper, points_to_remap):
     """
     Function remaps all surface points (`points_to_remap`) and faces (star and spots) according to the `model`.
+
     :param on_container:
     :param mapper: dict - list of indices of points in `points_to_remap` divided into star and spots sublists
     :param points_to_remap: array of all surface points (star + points used in `_split_spots_and_component_faces`)
@@ -251,6 +256,7 @@ def remove_overlaped_spots_by_spot_index(from_container, keep_spot_indices, _rai
     """
     Remove definition and instance of those spots that are overlaped
     by another one and basically has no face to work with.
+
     :param _raise: bool;
     :param from_container:
     :param keep_spot_indices: List[int]; list of spot indices to keep
@@ -270,6 +276,7 @@ def remove_overlaped_spots_by_spot_index(from_container, keep_spot_indices, _rai
 def remove_overlaped_spots_by_vertex_map(from_container, vertices_map):
     """
     Remove spots of Start object that are totally overlapped by another spot.
+
     :param from_container:
     :param vertices_map: List or numpy.array
     :return:

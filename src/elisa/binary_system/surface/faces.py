@@ -24,6 +24,7 @@ def initialize_model_container(vertices_map):
     ::
 
         (<class 'dict'>: {'object': [], 'spots': {0: []}}, <class 'dict'>: {'com': [], 'ix': []})
+
     :param vertices_map: List or ndarray; map which define refrences of index in
                          given Iterable to object (spot or Star).
                          For more info, see docstring for `incorporate_spots_mesh` method.
@@ -42,6 +43,7 @@ def initialize_model_container(vertices_map):
 def get_surface_builder_fn(morphology):
     """
     Returns suitable triangulation function depending on morphology.
+
     :return: method; method that performs generation surface faces
     """
     return over_contact_system_surface if morphology == "over-contact" else detached_system_surface
@@ -50,6 +52,7 @@ def get_surface_builder_fn(morphology):
 def split_spots_and_component_faces(star_container, points, faces, model, spot_candidates, vmap, component_com):
     """
     Function that sorts faces to model data structure by distinguishing if it belongs to star or spots.
+
     :param star_container:
     :param component_com: float; center of mass of component
     :param points: numpy.array; (N_points * 3) - all points of surface
@@ -72,6 +75,7 @@ def resolve_obvious_spots(points, faces, model, spot_candidates, vmap):
     """
     Resolve those Spots/Star faces, where all tree vertices belongs to given object.
     If there are mixed vertices of any face, append it to spot candidate List.
+
     :param points: numpy.array; array of all points
     :param faces: numpy.array; array of all faces
     :param model: Dict; dictionary which describe object with spots as one entity
@@ -99,6 +103,7 @@ def resolve_spot_candidates(star_container, model, spot_candidates, faces, compo
     """
     Resolves spot face candidates by comparing angular distances of face cantres and spot centres.
     In case of multiple layered spots, face is assigned to the top layer.
+
     :param star_container:
     :param model: Dict; initialised dictionary with placeholders which will describe object with spots as one entity
     :param spot_candidates: Dict; contain indices and center of mass of each
@@ -144,6 +149,7 @@ def build_faces(system_container, components_distance, component="all"):
     """
     Function creates faces of the star surface for given components. Faces are evaluated upon points that
     have to be in this time already calculated.
+
     :param system_container: BinarySystem; instance
     :type components_distance: float
     :param component: `primary` or `secondary` if not supplied both component are calculated
@@ -168,6 +174,7 @@ def build_faces(system_container, components_distance, component="all"):
 def build_surface_with_no_spots(system_container, components_distance, component="all"):
     """
     Function for building binary star component surfaces without spots.
+
     :param system_container: BinarySystem; instance
     :param components_distance: float
     :param component: str; `primary` or `secondary` if not supplied both component are calculated
@@ -210,6 +217,7 @@ def build_surface_with_spots(system_container, components_distance, component="a
     """
     Function capable of triangulation of spotty stellar surfaces.
     It merges all surface points, triangulates them and then sorts the resulting surface faces under star or spot.
+
     :param system_container: BinarySystem instance
     :param components_distance: float
     :param component: str `primary` or `secondary`
@@ -234,6 +242,7 @@ def build_surface_with_spots(system_container, components_distance, component="a
 def detached_system_surface(system_container, components_distance, points=None, component="all"):
     """
     Calculates surface faces from the given component's points in case of detached or semi-contact system.
+
     :param system_container:
     :param components_distance: float
     :param points: numpy.array
@@ -282,6 +291,7 @@ def over_contact_system_surface(system_container, points=None, component="all", 
     # in this case, components distance is sinked in kwargs and not used
     """
     Calculates surface faces from the given component's points in case of over-contact system.
+
     :param system_container:
     :param points: numpy.array - points to triangulate
     :param component: str; `primary` or `secondary`
@@ -345,6 +355,7 @@ def over_contact_system_surface(system_container, points=None, component="all", 
 def compute_all_surface_areas(system_container, component):
     """
     Compute surface are of all faces (spots included).
+
     :param system_container: BinaryStar instance
     :param component: str `primary` or `secondary`
     :return:
@@ -366,6 +377,7 @@ def build_faces_orientation(system_container, components_distance, component="al
     Compute face orientation (normals) for each face.
     If pulsations are present, than calculate renormalized associated
     Legendree polynomials (rALS) for each pulsation mode.
+
     :param system_container: BinarySystem instance
     :param component: str; `primary` or `secondary`
     :param components_distance: float
@@ -381,10 +393,84 @@ def build_faces_orientation(system_container, components_distance, component="al
 
     for _component in component:
         star_container = getattr(system_container, _component)
-        star_container.set_all_surface_centres()
-        star_container.set_all_normals(com=com_x[_component])
+        set_all_surface_centres(star_container)
+        set_all_normals(star_container, com=com_x[_component])
 
+        # todo: move it to separate method
         # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
         # pulsation mode
         if star_container.has_pulsations():
             pulsations.set_ralp(star_container, com_x=com_x[_component])
+
+
+def set_all_surface_centres(star_container):
+    """
+    Calculates all surface centres for given body(including spots) and assign to object as `face_centers` property
+
+    :return:
+    """
+    star_container.face_centres = calculate_surface_centres(star_container.points, star_container.faces)
+    if star_container.has_spots():
+        for spot_index, spot_instance in star_container.spots.items():
+            spot_instance.face_centres = calculate_surface_centres(spot_instance.points, spot_instance.faces)
+
+
+def set_all_normals(for_container, com):
+    """
+    Function calculates normals for each face of given body (including spots) and assign it to object.
+
+    :param for_container:
+    :param com: numpy.array
+    :return:
+    """
+    points, faces, cntrs = for_container.points, for_container.faces, for_container.face_centres
+    for_container.normals = calculate_normals(points, faces, cntrs, com)
+
+    if for_container.has_spots():
+        for spot_index in for_container.spots:
+            for_container.spots[spot_index].normals = calculate_normals(for_container.spots[spot_index].points,
+                                                                        for_container.spots[spot_index].faces,
+                                                                        for_container.spots[spot_index].face_centres,
+                                                                        com)
+
+
+def calculate_normals(points, faces, centres, com):
+    """
+    Returns outward facing normal unit vector for each face of stellar surface.
+
+    :param points:
+    :param faces:
+    :param centres:
+    :param com:
+    :return: numpy.array:
+
+    ::
+
+        numpy.array([[normal_x1, normal_y1, normal_z1],
+                     [normal_x2, normal_y2, normal_z2],
+                      ...
+                     [normal_xn, normal_yn, normal_zn]])
+    """
+    normals = np.array([np.cross(points[xx[1]] - points[xx[0]], points[xx[2]] - points[xx[0]]) for xx in faces])
+    normals /= np.linalg.norm(normals, axis=1)[:, None]
+    corr_centres = copy(centres) - np.array([com, 0, 0])[None, :]
+
+    # making sure that normals are properly oriented near the axial planes
+    sgn = up.sign(np.sum(up.multiply(normals, corr_centres), axis=1))
+    return normals * sgn[:, None]
+
+
+def calculate_surface_centres(points, faces):
+    """
+    Returns centers of every surface face.
+
+    :return: numpy.array:
+
+    ::
+
+        numpy.array([[center_x1, center_y1, center_z1],
+                     [center_x2, center_y2, center_z2],
+                      ...
+                     [center_xn, center_yn, center_zn]])
+    """
+    return np.average(points[faces], axis=1)

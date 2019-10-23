@@ -58,6 +58,7 @@ class System(metaclass=ABCMeta):
     def init_properties(self, **kwargs):
         """
         Setup system properties from input.
+
         :param kwargs: Dict; all supplied input properties
         :return:
         """
@@ -97,6 +98,7 @@ class System(metaclass=ABCMeta):
     def has_pulsations(self):
         """
         Resolve whether any of components has pulsation
+
         :return: bool
         """
         retval = False

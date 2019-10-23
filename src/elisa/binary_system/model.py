@@ -7,6 +7,7 @@ def static_potential_primary_fn(radius, *args):
     """
     Pontetial function which defines surface of primary component of binary system in spherical coordinates.
     It is exposed for multiprocessing to avoid pickleing of classes, loggers, etc.
+
     :param radius: float
     :param args: Tuple; (mass_ratio, surface_potential, b, c, d, e)
 
@@ -26,6 +27,7 @@ def static_potential_secondary_fn(radius, *args):
     """
     Pontetial function which defines surface of primary component of binary system in spherical coordinates.
     It is exposed for multiprocessing to avoid pickleing of classes, loggers, etc.
+
     :param radius: float
     :param args: Tuple; (mass_ratio, surface_potential, b, c, d, e, f)
 
@@ -45,6 +47,7 @@ def static_potential_primary_cylindrical_fn(radius, *args):
     """
     Pontetial function which defines surface of primary component of binary system in cylindrical coordinates.
     Usefull for W UMa systems.
+
     :param radius: float
     :param args: Tuple; (mass_ratio, surface_potential, a, b, c, d, e, f)
 
@@ -63,6 +66,7 @@ def static_potential_secondary_cylindrical_fn(radius, *args):
     """
     Pontetial function which defines surface of primary component of binary system in cylindrical coordinates.
     Usefull for W UMa systems.
+
     :param radius: float
     :param args: Tuple; (mass_ratio, surface_potential, a, b, c, d, e, f)
 
@@ -80,6 +84,7 @@ def static_potential_secondary_cylindrical_fn(radius, *args):
 def potential_value_primary(radius, *args):
     """
     Calculates modified Kopal's potential from point of view of primary component.
+
     :param radius: (numpy.)float; spherical variable
     :param args: tuple: (mass_ratio, B, C, D, E) such that: Psi1 = 1/r + q/sqrt(B+r^2+Cr) - D*r + E*x^2
     :return: (numpy.)float
@@ -104,6 +109,7 @@ def potential_value_secondary(radius, *args):
 def potential_primary_fn(radius, *args):
     """
     Implicit potential function from perspective of primary component.
+
     :param radius: numpy.float; spherical variable
     :param args: tuple; pre calculated values for potential function and desired value of potential
     :return:
@@ -114,6 +120,7 @@ def potential_primary_fn(radius, *args):
 def potential_secondary_fn(radius, *args):
     """
     Implicit potential function from perspective of secondary component.
+
     :param radius: numpy.float; spherical variable
     :param args: pre calculated values for potential function and desired value of potential
     :return: numpy.float
@@ -144,6 +151,7 @@ def potential_value_secondary_cylindrical(radius, *args):
     """
     Calculates modified kopal potential from point of view of secondary
     component in cylindrical coordinates r_n, phi_n, z_n, where z_n = x and heads along z axis.
+
     :param radius: up.float
     :param args: tuple: (a, b, c, d, e, f) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(a+e*r^2)
     :return:
@@ -157,6 +165,7 @@ def potential_value_secondary_cylindrical(radius, *args):
 def potential_primary_cylindrical_fn(radius, *args):
     """
     Implicit potential function from perspective of primary component given in cylindrical coordinates.
+
     :param radius: numpy.float
     :param args: tuple; pre calculated values for potential function and desired value of potential
     :return:
@@ -167,6 +176,7 @@ def potential_primary_cylindrical_fn(radius, *args):
 def potential_secondary_cylindrical_fn(radius, *args):
     """
     Implicit potential function from perspective of secondary component given in cylindrical coordinates.
+
     :param radius: numpy.float
     :param args: tuple: pre calculated values for potential function and desired value of potential
     :return: numpy.float
@@ -177,7 +187,8 @@ def potential_secondary_cylindrical_fn(radius, *args):
 
 def radial_primary_potential_derivative(radius, *args):
     """
-    Function calculate radial derivative of primary potential function in spherical coordinates
+    Function calculate radial derivative of primary potential function in spherical coordinates.
+
     :param radius: radius of given point(s) in spherical coordinates
     :type radius: float or numpy array
     :param args: b, c, d, e - such that: dPsi1/dr = -1/r^2 + 0.5*q*(c-2r)/(b-cr+r^2)^(3/2) - d +2er
@@ -196,6 +207,7 @@ def radial_primary_potential_derivative(radius, *args):
 def radial_secondary_potential_derivative(radius, *args):
     """
     Function calculate radial derivative of secondary potential function in spherical coordinates
+
     :param radius: radius of given point(s) in spherical coordinates
     :type radius: float or numpy array
     :param args: b, c, d, e, f - such that: dPsi2/dr = -q/r^2 + (0.5c - x)/(b - cx + r^2)^(3/2) - d + 2er
@@ -214,6 +226,7 @@ def pre_calculate_for_potential_value_primary(*args, return_as_tuple=False):
     """
     Function calculates auxiliary values for calculation of primary component potential,
     and therefore they don't need to be wastefully recalculated every iteration in solver.
+
     :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
     :type return_as_tuple: bool
     :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
@@ -240,6 +253,7 @@ def pre_calculate_for_potential_value_secondary(*args, return_as_tuple=False):
     """
     Function calculates auxiliary values for calculation of secondary component potential,
     and therefore they don't need to be wastefully recalculated every iteration in solver.
+
     :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
     :type return_as_tuple: bool
     :param args: (component distance, azimut angle (0, 2pi), latitude angle (0, pi)
@@ -266,7 +280,8 @@ def pre_calculate_for_potential_value_secondary(*args, return_as_tuple=False):
 
 def radial_primary_potential_derivative_cylindrical(radius, *args):
     """
-    Function calculate radial derivative of primary potential function in cylindrical coordinates
+    Function calculate radial derivative of primary potential function in cylindrical coordinates.
+
     :param radius: radius of given point(s) in cylindrical coordinates
     :type radius: float or numpy array
     :param args: a, b, c, d, e such that: dPsi1/dr = - r/(a+r^2)^(3/2) - rq/(b+r^2)^(3/2) + 2der
@@ -282,7 +297,8 @@ def radial_primary_potential_derivative_cylindrical(radius, *args):
 
 def radial_secondary_potential_derivative_cylindrical(radius, *args):
     """
-    Function calculate radial derivative of secondary potential function in cylindrical coordinates
+    Function calculate radial derivative of secondary potential function in cylindrical coordinates.
+
     :param radius: radius of given point(s) in cylindrical coordinates
     :type radius: float or numpy array
     :param args: a, b, c, d, e, f such that: dPsi2/dr = - qr/(a+r^2)^(3/2) - r/(b+r^2)^(3/2) + 2cer
@@ -300,6 +316,7 @@ def pre_calculate_for_potential_value_primary_cylindrical(*args, return_as_tuple
     """
     Function calculates auxiliary values for calculation of primary component potential
     in cylindrical symmetry. Therefore they don't need to be wastefully recalculated every iteration in solver.
+
     :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
     :type return_as_tuple: bool
     :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x)), components distance
@@ -325,6 +342,7 @@ def pre_calculate_for_potential_value_secondary_cylindrical(*args, return_as_tup
     Function calculates auxiliary values for calculation of secondary
     component potential in cylindrical symmetry, and therefore they don't need
     to be wastefully recalculated every iteration in solver.
+
     :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
     :type return_as_tuple: bool
     :param args: (azimut angle (0, 2pi), z_n (cylindrical, identical with cartesian x)), components distance
@@ -350,6 +368,7 @@ def pre_calculate_for_potential_value_secondary_cylindrical(*args, return_as_tup
 def primary_potential_derivative_x(x, *args):
     """
     Dderivative of potential function perspective of primary component along the x axis.
+
     :param x: (numpy.)float
     :param args: tuple (float, float, float); (synchronicity of primary component, mass ratio, components distance)
     :return: (numpy.)float
@@ -363,6 +382,7 @@ def primary_potential_derivative_x(x, *args):
 def secondary_potential_derivative_x(x, *args):
     """
     Dderivative of potential function perspective of secondary component along the x axis.
+
     :param x: (numpy.)float
     :param args: tuple (float, float, float); (synchronicity of secondary component, mass ratio, components distance)
     :return: (numpy.)float

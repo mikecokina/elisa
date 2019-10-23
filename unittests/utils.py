@@ -2,16 +2,19 @@ import json
 import logging
 import os.path as op
 import unittest
-
 import numpy as np
+
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 from elisa import const, units
 from elisa import umpy as up
+from elisa.base.container import StarContainer
 from elisa.base.star import Star
+from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
+from elisa.const import BINARY_POSITION_PLACEHOLDER
 from elisa.orbit import orbit
 from elisa.utils import is_empty
 
@@ -123,6 +126,16 @@ def prepare_binary_system(params, spots_primary=None, spots_secondary=None):
                         inclination=params["inclination"],
                         primary_minimum_time=params["primary_minimum_time"],
                         phase_shift=params["phase_shift"])
+
+
+def prepare_orbital_position_container(system):
+    orbital_position_container = OrbitalPositionContainer(
+        primary=StarContainer.from_properties_container(system.primary.to_properties_container()),
+        secondary=StarContainer.from_properties_container(system.secondary.to_properties_container()),
+        position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+        **system.properties_serializer()
+    )
+    return orbital_position_container
 
 
 def prepare_single_system(params, spots=None, pulsations=None):

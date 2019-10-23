@@ -121,6 +121,7 @@ class StarContainer(object):
     def from_properties_container(properties_container):
         """
         Create StarContainer from properties container.
+
         :param properties_container:
         :return: StarContainer
         """
@@ -137,6 +138,7 @@ class StarContainer(object):
     def copy(self):
         """
         Return deepcopy of StarContainer instance.
+
         :return: StarContainer;
         """
         return deepcopy(self)
@@ -147,6 +149,7 @@ class StarContainer(object):
     def remove_spot(self, spot_index: int):
         """
         Remove n-th spot index of object.
+
         :param spot_index: int
         :return:
         """
@@ -155,6 +158,7 @@ class StarContainer(object):
     def get_flatten_points_map(self):
         """
         Function returns all surface point and faces optionally with corresponding map of vertices.
+
         :param self: Star instance
         :return: Tuple[numpy.array, Any]: [all surface points including star and surface points, vertices map or None]
         """
@@ -172,6 +176,7 @@ class StarContainer(object):
     def calculate_areas(self):
         """
         Returns areas of each face of the star surface. (spots not included)
+
         :return: numpy.array:
 
         ::
@@ -191,6 +196,7 @@ class StarContainer(object):
     def calculate_all_areas(self):
         """
         Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
+
         :return:
         """
         self.areas = self.calculate_areas()

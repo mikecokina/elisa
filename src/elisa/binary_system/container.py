@@ -47,5 +47,8 @@ class OrbitalPositionContainer(PositionContainer):
     def build_surface_areas(self, component="all"):
         return faces.compute_all_surface_areas(self, component)
 
+    def build_faces_orientation(self, components_distance, component="all"):
+        return faces.build_faces_orientation(self, components_distance, component)
+
     def build_from_points(self, component="all", components_distance=None, do_pulsations=False, phase=None):
         pass

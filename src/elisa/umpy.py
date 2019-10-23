@@ -30,6 +30,7 @@ where = np.where
 invert = np.invert
 concatenate = np.concatenate
 sqrt = np.sqrt
+sign = np.sign
 
 logical_xor = np.logical_xor
 logical_and = np.logical_and

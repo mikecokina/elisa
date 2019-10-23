@@ -73,6 +73,7 @@ class Star(Body):
     def transform_input(self, **kwargs):
         """
         Transform and validate input kwargs.
+
         :param kwargs: Dict
         :return: Dict
         """
@@ -81,6 +82,7 @@ class Star(Body):
     def init_parameters(self, **kwargs):
         """
         Initialise instance paramters
+
         :param kwargs: Dict; initial parameters
         :return:
         """
@@ -92,6 +94,7 @@ class Star(Body):
     def has_pulsations(self):
         """
         Determine whether Star has defined pulsations.
+
         :return: bool
         """
         return len(self._pulsations) > 0
@@ -100,6 +103,7 @@ class Star(Body):
     def pulsations(self):
         """
         Return pulsation modes for given Star instance.
+
         :return: Dict:
 
         ::
@@ -112,6 +116,7 @@ class Star(Body):
     def pulsations(self, pulsations):
         """
         Set pulsation mode for given Star instance defined by dict.
+
         :param pulsations: Dict:
 
         ::
