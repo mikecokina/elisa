@@ -171,20 +171,14 @@ def build_surface_gravity(system_container, components_distance=None, component=
         logg = up.log10(gravity_scalling_factor * star_container.potential_gradient_magnitudes)
         setattr(star_container, "log_g", logg)
 
+        if star_container.has_spots():
+            for spot_index, spot in star_container.spots.items():
+                __logger__.debug(f'calculating surface SI unit gravity of {component} component / {spot_index} spot')
+                __logger__.debug(f'calculating distribution of potential gradient '
+                                 f'magnitudes of spot index: {spot_index} / {component} component')
 
-
-
-
-
-
-        # if star_container.has_spots():
-        #     for spot_index, spot in star_container.spots.items():
-        #         __logger__.debug(f'calculating surface SI unit gravity of {component} component / {spot_index} spot')
-        #         __logger__.debug(f'calculating distribution of potential gradient '
-        #                          f'magnitudes of spot index: {spot_index} / {component} component')
-        #         spot.potential_gradient_magnitudes = system_container.calculate_face_magnitude_gradient(
-        #             component=component,
-        #             components_distance=components_distance,
-        #             points=spot.points, faces=spot.faces)
-        #
-        #         spot.log_g = up.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
+                spot_pgms = calculate_face_magnitude_gradient(components_distance, component, spot.points, spot.faces,
+                                                              synchronicity, mass_ratio, face_symmetry_vector=None)
+                setattr(spot, "potential_gradient_magnitudes", spot_pgms)
+                spot_logg = up.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
+                setattr(spot, "log_g", spot_logg)

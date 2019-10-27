@@ -1,6 +1,6 @@
 from elisa import logger
 from elisa.base.container import StarContainer, PositionContainer
-from elisa.binary_system.surface import mesh, faces
+from elisa.binary_system.surface import mesh, faces, gravity
 from elisa.conf import config
 from elisa.binary_system import utils as bsutils
 
@@ -51,7 +51,7 @@ class OrbitalPositionContainer(PositionContainer):
         return faces.build_faces_orientation(self, components_distance, component)
 
     def build_surface_gravity(self, components_distance, component="all"):
-        pass
+        return gravity.build_surface_gravity(self, components_distance, component)
 
     def build_from_points(self, component="all", components_distance=None, do_pulsations=False, phase=None):
         pass

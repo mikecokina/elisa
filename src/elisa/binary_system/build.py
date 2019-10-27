@@ -1,9 +1,4 @@
-import numpy as np
-
-from copy import copy
-
 from elisa.binary_system.surface import mesh, faces, gravity
-from elisa.binary_system.surface.mesh import add_spots_to_mesh
 from elisa.conf import config
 from elisa.binary_system import utils as bsutils
 from elisa.utils import is_empty
