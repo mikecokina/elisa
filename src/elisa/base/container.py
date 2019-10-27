@@ -93,7 +93,8 @@ class StarContainer(object):
                  rals=None,
                  face_centres=None,
                  metallicity=None,
-                 areas=None):
+                 areas=None,
+                 potential_gradient_magnitudes=None):
 
         self.points = points
         self.normals = normals
@@ -106,6 +107,7 @@ class StarContainer(object):
         self.face_centres = face_centres
         self.metallicity = metallicity
         self.areas = areas
+        self.potential_gradient_magnitudes = potential_gradient_magnitudes
 
         self.point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])

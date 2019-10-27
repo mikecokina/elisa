@@ -12,7 +12,7 @@ from elisa.binary_system import static, build, mp, geo, utils as bsutils, model,
 from elisa.binary_system.curves import lc, rv
 from elisa.binary_system.animation import Animation
 from elisa.binary_system.plot import Plot
-from elisa.binary_system.surface import mesh, faces
+from elisa.binary_system.surface import mesh, faces, gravity
 from elisa.binary_system.transform import BinarySystemProperties
 from elisa.conf import config
 from elisa.orbit import orbit
@@ -520,117 +520,14 @@ class BinarySystem(System):
     def mesh_spots(self, *args, **kwargs):
         return mesh.mesh_spots(self, *args, **kwargs)
 
-    def calculate_potential_gradient(self, component, components_distance, points=None):
-        """
-        Return outter gradients in each point of star surface or defined points.
-        If points are not supplied, component instance points are used.
+    # TODO: remove
+    def calculate_polar_potential_gradient_magnitude(self, component, components_distance=None):
+        p = getattr(self, component).polar_radius
+        return gravity.calculate_polar_potential_gradient_magnitude(components_distance, self.mass_ratio, p, component)
 
-        :param component: str; define target component to compute critical potential; `primary` or `secondary`
-        :param components_distance: float, in SMA distance
-        :param points: List or numpy.array
-        :return: ndarray
-        """
-        component_instance = getattr(self, component)
-        points = component_instance.points if points is None else points
-
-        r3 = np.power(np.linalg.norm(points, axis=1), 3)
-        r_hat3 = np.power(np.linalg.norm(points - np.array([components_distance, 0., 0]), axis=1), 3)
-        if component == 'primary':
-            f2 = np.power(self.primary.synchronicity, 2)
-            domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                    components_distance - points[:, 0]) / r_hat3 + f2 * (
-                                self.mass_ratio + 1) * points[:, 0] - self.mass_ratio / np.power(components_distance, 2)
-        elif component == 'secondary':
-            f2 = np.power(self.secondary.synchronicity, 2)
-            domega_dx = - points[:, 0] / r3 + self.mass_ratio * (
-                    components_distance - points[:, 0]) / r_hat3 - f2 * (
-                                self.mass_ratio + 1) * (
-                                components_distance - points[:, 0]) * points[:, 0] + 1 / np.power(
-                components_distance, 2)
-        else:
-            raise ValueError(f'Invalid value `{component}` of argument `component`.\n Use `primary` or `secondary`.')
-
-        domega_dy = - points[:, 1] * (1 / r3 + self.mass_ratio / r_hat3 - f2 * (self.mass_ratio + 1))
-        domega_dz = - points[:, 2] * (1 / r3 + self.mass_ratio / r_hat3)
-        return -np.column_stack((domega_dx, domega_dy, domega_dz))
-
-    def calculate_face_magnitude_gradient(self, component, components_distance, points=None, faces=None):
-        """
-        Return array of face magnitude gradients calculated as a mean of magnitude gradients on vertices.
-        If neither points nor faces are supplied, method runs over component instance points and faces.
-
-        :param component: str; define target component to compute critical potential; `primary` or `secondary`
-        :param components_distance: float; distance of componetns in SMA units
-        :param points: points in which to calculate magnitude of gradient, if False/None take star points
-        :param faces: faces corresponding to given points
-        :return: numpy.array
-        """
-        if points is not None and faces is None:
-            raise TypeError('Specify faces corresponding to given points')
-
-        component_instance = getattr(self, component)
-        if component_instance.spots:
-            faces = component_instance.faces if faces is None else faces
-            points = component_instance.points if points is None else points
-        else:
-            faces = component_instance.faces[:component_instance.base_symmetry_faces_number] if faces is None \
-                else faces
-            points = component_instance.points[:component_instance.base_symmetry_points_number] if points is None \
-                else points
-
-        gradients = self.calculate_potential_gradient(component, components_distance, points=points)
-        domega_dx, domega_dy, domega_dz = gradients[:, 0], gradients[:, 1], gradients[:, 2]
-        points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
-
-        return np.mean(points_gradients[faces], axis=1) if component_instance.spots \
-            else np.mean(points_gradients[faces], axis=1)[component_instance.face_symmetry_vector]
-
-    def calculate_polar_potential_gradient_magnitude(self, component="all", components_distance=None):
-        """
-        Returns magnitude of polar potential gradient.
-
-        :param component: str, `primary` or `secondary`
-        :param components_distance: float, in SMA distance
-        :return: float
-        """
-        component_instance = getattr(self, component)
-        points = np.array([0., 0., component_instance.polar_radius]) if component == 'primary' \
-            else np.array([components_distance, 0., component_instance.polar_radius])
-        r3 = np.power(np.linalg.norm(points), 3)
-        r_hat3 = np.power(np.linalg.norm(points - np.array([components_distance, 0., 0.])), 3)
-        if component == 'primary':
-            domega_dx = self.mass_ratio * components_distance / r_hat3 \
-                        - self.mass_ratio / np.power(components_distance, 2)
-        elif component == 'secondary':
-            domega_dx = - points[0] / r3 + self.mass_ratio * (components_distance - points[0]) / r_hat3 \
-                        + 1. / np.power(components_distance, 2)
-        else:
-            raise ValueError(f'Invalid value `{component}` of argument `component`. \nUse `primary` or `secondary`.')
-        domega_dz = - points[2] * (1. / r3 + self.mass_ratio / r_hat3)
-        return np.power(np.power(domega_dx, 2) + np.power(domega_dz, 2), 0.5)
-
+    # TODO: remove
     def calculate_polar_gravity_acceleration(self, component, components_distance, logg=False):
-        """
-        Calculates polar gravity acceleration for component of binary system.
-        Calculated from gradient of Roche potential::
-
-            d_Omega/dr using transformation g = d_Psi/dr = (GM_component/semi_major_axis**2) * d_Omega/dr
-            ( * 1/q in case of secondary component )
-
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float; (in SMA units)
-        :param logg: bool; if True log g is returned, otherwise values are not in log10
-        :return: numpy.array; surface gravity or log10 of surface gravity
-        """
-        component_instance = getattr(self, component)
-        component_instance.polar_potential_gradient_magnitude = \
-            self.calculate_polar_potential_gradient_magnitude(component=component,
-                                                              components_distance=components_distance)
-        gradient = \
-            const.G * component_instance.mass * component_instance.polar_potential_gradient_magnitude / \
-            np.power(self.semi_major_axis, 2)
-        gradient = gradient / self.mass_ratio if component == 'secondary' else gradient
-        return np.log10(gradient) if logg else gradient
+        pass
 
     def calculate_all_forward_radii(self, distances, components='all', surface_potential=None):
         """
