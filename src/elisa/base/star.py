@@ -173,37 +173,6 @@ class Star(Body):
 
             spot_instance.log_g = np.array([])
 
-    def calculate_polar_effective_temperature(self):
-        """
-        Returns polar effective temperature.
-        :return: float
-        """
-        return self.t_eff * up.power(np.sum(self.areas) /
-                                     np.sum(self.areas * up.power(self.potential_gradient_magnitudes /
-                                                                  self.polar_potential_gradient_magnitude,
-                                                                  self.gravity_darkening)),
-                                     0.25)
-
-    def calculate_effective_temperatures(self, gradient_magnitudes=None):
-        """
-        Calculates effective temperatures for given gradient magnitudes.
-        If None is given, star surface t_effs are calculated.
-        :param gradient_magnitudes:
-        :return:
-        """
-        if self.has_spots():  # temporary
-            if is_empty(gradient_magnitudes):
-                gradient_magnitudes = self.potential_gradient_magnitudes
-        else:
-            if is_empty(gradient_magnitudes):
-                gradient_magnitudes = self.potential_gradient_magnitudes[:self.base_symmetry_faces_number]
-
-        t_eff_polar = self.calculate_polar_effective_temperature()
-        t_eff = t_eff_polar * up.power(gradient_magnitudes / self.polar_potential_gradient_magnitude,
-                                       0.25 * self.gravity_darkening)
-
-        return t_eff if self.spots else t_eff[self.face_symmetry_vector]
-
     def add_pulsations(self, points=None, faces=None, temperatures=None):
         """
         soon deprecated
@@ -280,28 +249,3 @@ class Star(Body):
             temperatures += pulsation.amplitude * spherical_harmonics
 
         return temperatures
-
-    def renormalize_temperatures(self):
-        """
-        In case of spot presence, renormalize temperatures to fit effective temperature again,
-        since spots disrupt effective temperature of Star as entity.
-        :return:
-        """
-        # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
-        total_surface = np.sum(self.areas)
-        if self.spots:
-            for spot_index, spot in self.spots.items():
-                total_surface += np.sum(spot.areas)
-        desired_flux_value = total_surface * self.t_eff
-
-        current_flux = np.sum(self.areas * self.temperatures)
-        if self.spots:
-            for spot_index, spot in self.spots.items():
-                current_flux += np.sum(spot.areas * spot.temperatures)
-
-        coefficient = up.power(desired_flux_value / current_flux, 0.25)
-        self._logger.debug(f'surface temperature map renormalized by a factor {coefficient}')
-        self.temperatures *= coefficient
-        if self.spots:
-            for spot_index, spot in self.spots.items():
-                spot.temperatures *= coefficient

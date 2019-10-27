@@ -5,7 +5,6 @@ from elisa.base.transform import TransformProperties, WHEN_FLOAT64, quantity_tra
 
 
 class OrbitProperties(TransformProperties):
-    #
     @staticmethod
     def eccentricity(value):
         """
@@ -25,6 +24,7 @@ class OrbitProperties(TransformProperties):
         """
         Transform and validate orbital period of binary star system.
         If unit is not specified, default period unit is assumed.
+
         :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return: float
         """
@@ -34,6 +34,7 @@ class OrbitProperties(TransformProperties):
     def argument_of_periastron(value):
         """
         If unit is not supplied, value in radians is assumed.
+
         :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return:
         """
@@ -43,6 +44,7 @@ class OrbitProperties(TransformProperties):
     def inclination(value):
         """
         If unitless values is supplied, default units suppose to be radians.
+
         :param value: float or astropy.units.Quantity
         :return: float
         """

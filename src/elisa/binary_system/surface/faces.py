@@ -14,6 +14,69 @@ config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-faces-module")
 
 
+def visibility_test(centres, xlim, component):
+    """
+    Tests if given faces are visible from the other star.
+
+    :param component: str
+    :param centres: numpy.array
+    :param xlim: visibility threshold in x axis for given component
+    :return: numpy.array[bool]
+    """
+    return centres[:, 0] >= xlim if component == 'primary' else centres[:, 0] <= xlim
+
+
+def get_visibility_tests(centres, q_test, xlim, component, morphology):
+    """
+    Method calculates tests for visibilities of faces from other component.
+    Used in reflection effect.
+
+    :param centres: np.array of face centres
+    :param q_test: use_quarter_star_test
+    :param xlim: visibility threshold in x axis for given component
+    :param component: `primary` or `secondary`
+    :param morphology: str;
+    :return: visual tests for normal and symmetrical star
+    """
+    if q_test:
+        y_test, z_test = centres[:, 1] > 0, centres[:, 2] > 0
+        # this branch is activated in case of clean surface where symmetries can be used
+        # excluding quadrants that can be mirrored using symmetries
+        quadrant_exclusion = up.logical_or(y_test, z_test) if morphology == 'over-contfact' \
+            else np.array([True] * len(centres))
+
+        single_quadrant = up.logical_and(y_test, z_test)
+        # excluding faces on far sides of components
+        test1 = visibility_test(centres, xlim, component)
+        # this variable contains faces that can seen from base symmetry part of the other star
+        vis_test = up.logical_and(test1, quadrant_exclusion)
+        vis_test_symmetry = up.logical_and(test1, single_quadrant)
+
+    else:
+        vis_test = centres[:, 0] >= xlim if component == 'primary' else centres[:, 0] <= xlim
+        vis_test_symmetry = None
+
+    return vis_test, vis_test_symmetry
+
+
+def faces_visibility_x_limits(primary_polar_radius, secondary_polar_radius, components_distance):
+    # this section calculates the visibility of each surface face
+    # don't forget to treat system_container visibility of faces on the same star in over-contact system
+
+    # if stars are too close and with too different radii, you can see more (less) than a half of the stellare
+    # surface, calculating excess angle
+
+    primary_polar_r, secondary_polar_r = primary_polar_radius, secondary_polar_radius
+    sin_theta = up.abs(primary_polar_r - secondary_polar_r) / components_distance
+    x_corr_primary, x_corr_secondary = primary_polar_r * sin_theta, secondary_polar_r * sin_theta
+
+    # visibility of faces is given by their x position
+    xlim = {}
+    (xlim['primary'], xlim['secondary']) = (x_corr_primary, components_distance + x_corr_secondary) \
+        if primary_polar_r > secondary_polar_r else (-x_corr_primary, components_distance - x_corr_secondary)
+    return xlim
+
+
 def initialize_model_container(vertices_map):
     """
     Initializes basic data structure `model` objects that will contain faces divided by its origin (star or spots)

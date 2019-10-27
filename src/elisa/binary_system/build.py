@@ -1,8 +1,4 @@
 from elisa.binary_system.surface import mesh, faces, gravity
-from elisa.conf import config
-from elisa.binary_system import utils as bsutils
-from elisa.utils import is_empty
-from elisa.pulse import pulsations
 
 
 # TODO: remove
@@ -18,61 +14,6 @@ def build_surface_gravity(self, components_distance=None, component="all"):
 # TODO: remove
 def build_faces_orientation(self, components_distance, component="all"):
     faces.build_faces_orientation(self, components_distance, component)
-
-
-def build_temperature_distribution(self, components_distance=None, component="all", do_pulsations=False, phase=None):
-    """
-    Function calculates temperature distribution on across all faces.
-    Value assigned to face is mean of values calculated in corners of given face.
-
-    :param phase:
-    :param do_pulsations:
-    :param self: BinarySystem; instance
-    :param components_distance: str
-    :param component: `primary` or `secondary`
-    :return:
-    """
-    if is_empty(component):
-        self._logger.debug("no component set to build temperature distribution")
-        return
-
-    phase = 0 if phase is None else phase
-    component = bsutils.component_to_list(component)
-
-    for _component in component:
-        component_instance = getattr(self, _component)
-
-        self._logger.debug(f'computing effective temperature distibution '
-                           f'on {_component} component name: {component_instance.name}')
-        component_instance.temperatures = component_instance.calculate_effective_temperatures()
-
-        if component_instance.has_spots():
-            for spot_index, spot in component_instance.spots.items():
-                self._logger.debug(f'computing temperature distribution of spot {spot_index} / {_component} component')
-                spot.temperatures = spot.temperature_factor * component_instance.calculate_effective_temperatures(
-                    gradient_magnitudes=spot.potential_gradient_magnitudes)
-
-        self._logger.debug(f'renormalizing temperature map of components due to '
-                           f'presence of spots in case of component {component}')
-        component_instance.renormalize_temperatures()
-
-        if component_instance.has_pulsations() and do_pulsations:
-            self._logger.debug(f'adding pulsations to surface temperature distribution '
-                               f'of the component instance: {_component}  / name: {component_instance.name}')
-
-            com_x = 0 if _component == 'primary' else components_distance
-            pulsations.set_misaligned_ralp(component_instance, phase, com_x=com_x)
-            temp_pert, temp_pert_spot = pulsations.calc_temp_pert(component_instance, phase, self.period)
-            component_instance.temperatures += temp_pert
-            if component_instance.has_spots():
-                for spot_idx, spot in component_instance.spots.items():
-                    spot.temperatures += temp_pert_spot[spot_idx]
-
-    if 'primary' in component and 'secondary' in component:
-        self._logger.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
-                           f'iterations.')
-        self.reflection_effect(iterations=config.REFLECTION_EFFECT_ITERATIONS,
-                               components_distance=components_distance)
 
 
 # def build_surface_map(self, colormap=None, component="all", components_distance=None, return_map=False, phase=None):

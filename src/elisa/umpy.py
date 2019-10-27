@@ -17,6 +17,7 @@ arctan2 = np.arctan2
 pi = np.pi
 zeros = np.zeros
 log10 = np.log10
+divide = np.divide
 
 isnan = np.isnan
 power = np.power
@@ -34,6 +35,7 @@ sign = np.sign
 
 logical_xor = np.logical_xor
 logical_and = np.logical_and
+logical_or = np.logical_or
 mod = np.mod
 equal = np.equal
 less = np.less
