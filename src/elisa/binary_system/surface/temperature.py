@@ -120,7 +120,7 @@ def reflection_effect(system_container, components_distance, iterations):
 
     if use_quarter_star_test:
         # calculating distances and distance vectors between, join vector is already normalized
-        shp, shp_reduced = system_container.get_distance_matrix_shape(vis_test)
+        shp, shp_reduced = get_distance_matrix_shape(system_container, vis_test)
 
         distance, join_vector = get_symmetrical_distance_matrix(shp, shp_reduced, centres, vis_test, vis_test_symmetry)
 
@@ -351,20 +351,20 @@ def build_temperature_distribution(system_container, components_distance, compon
         reflection_effect(system_container, components_distance, config.REFLECTION_EFFECT_ITERATIONS)
 
 
-def init_surface_variables(component_instance):
+def init_surface_variables(star_container):
     """
     Function copies basic parameters of the stellar surface (points, faces, normals, temperatures, areas and log_g) of
     given star instance into new arrays during calculation of reflection effect.
 
-    :param component_instance: Star instance
+    :param star_container: Star instance
     :return: Tuple; (points, faces, centres, normals, temperatures, areas)
     """
-    points, faces = component_instance.return_whole_surface()
-    centres = copy(component_instance.face_centres)
-    normals = copy(component_instance.normals)
-    temperatures = copy(component_instance.temperatures)
-    log_g = copy(component_instance.log_g)
-    areas = copy(component_instance.areas)
+    points, faces = star_container.surface_serializer()
+    centres = copy(star_container.face_centres)
+    normals = copy(star_container.normals)
+    temperatures = copy(star_container.temperatures)
+    log_g = copy(star_container.log_g)
+    areas = copy(star_container.areas)
     return points, faces, centres, normals, temperatures, areas, log_g
 
 
@@ -551,3 +551,18 @@ def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
                               gamma['secondary'][:shape_reduced[0], shape_reduced[1]:]),
                   up.power(distance[:shape_reduced[0], shape_reduced[1]:], 2))
     return q_ab
+
+
+def get_distance_matrix_shape(system_container, vis_test):
+    """
+    Calculates shapes of distance and join vector matrices along with shapes
+    of symetrical parts of those matrices used in reflection effect.
+
+    :param system_container:
+    :param vis_test: numpy.array
+    :return: Tuple
+    """
+    shape = (np.sum(vis_test['primary']), np.sum(vis_test['secondary']), 3)
+    shape_reduced = (np.sum(vis_test['primary'][:system_container.primary.base_symmetry_faces_number]),
+                     np.sum(vis_test['secondary'][:system_container.secondary.base_symmetry_faces_number]))
+    return shape, shape_reduced

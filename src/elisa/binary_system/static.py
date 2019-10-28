@@ -1,6 +1,4 @@
 import numpy as np
-
-from copy import deepcopy
 from elisa import utils, umpy as up
 
 
@@ -38,22 +36,3 @@ def darkside_filter(line_of_sight, normals):
         cosines = utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
     # recovering indices of points on near-side (from the point of view of observer)
     return up.arange(np.shape(normals)[0])[cosines > 0]
-
-
-def plane_projection(points, plane, keep_3d=False):
-    """
-    Function projects 3D points into given plane.
-
-    :param keep_3d: bool; if True, the dimensions of the array is kept the same, with given column equal to zero
-    :param points: numpy.array
-    :param plane: str; ('xy', 'yz', 'zx')
-    :return: numpy.array
-    """
-    rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
-    if not keep_3d:
-        indices_to_keep = [0, 1, 2]
-        del indices_to_keep[rm_index]
-        return points[:, indices_to_keep]
-    in_plane = deepcopy(points)
-    in_plane[:, rm_index] = 0.0
-    return in_plane

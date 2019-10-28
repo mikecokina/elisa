@@ -1,6 +1,6 @@
 from elisa import logger
 from elisa.base.container import StarContainer, PositionContainer
-from elisa.binary_system.surface import mesh, faces, gravity
+from elisa.binary_system.surface import mesh, faces, gravity, temperature
 from elisa.conf import config
 
 config.set_up_logging()
@@ -18,6 +18,9 @@ class OrbitalPositionContainer(PositionContainer):
 
     def has_spots(self):
         return self.primary.has_spots() and self.secondary.has_spots()
+
+    def has_pulsations(self):
+        return self.primary.has_pulsations() and self.secondary.has_pulsations()
 
     def build(self, components_distance, component="all", do_pulsations=False, phase=None, **kwargs):
         """
@@ -56,7 +59,7 @@ class OrbitalPositionContainer(PositionContainer):
         return gravity.build_surface_gravity(self, components_distance, component)
 
     def build_temperature_distribution(self, components_distance, component="all", do_pulsations=False, phase=None):
-        pass
+        return temperature.build_temperature_distribution(self, components_distance, component, do_pulsations, phase)
 
     def build_from_points(self, component="all", components_distance=None, do_pulsations=False, phase=None):
         pass

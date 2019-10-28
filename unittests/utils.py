@@ -180,6 +180,18 @@ BINARY_SYSTEM_PARAMS = {
         "primary_albedo": 0.6, "secondary_albedo": 0.6,
     },  # compact spherical components on circular orbit
 
+    "detached-physical": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 15.0, "secondary_surface_potential": 15.0,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 5.0,
+        "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
+    },  # compact spherical components on circular orbit
+
     "detached.ecc": {
         "primary_mass": 2.0, "secondary_mass": 1.0,
         "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,

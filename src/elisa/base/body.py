@@ -305,22 +305,6 @@ class Body(metaclass=ABCMeta):
             for spot_index, spot in self.spots.items():
                 spot.areas = spot.calculate_areas()
 
-    def return_whole_surface(self):
-        """
-        Returns all points and faces of the whole star.
-
-        :return: Tuple[numpy.array, numpy.array]
-        """
-        ret_points = copy(self.points)
-        ret_faces = copy(self.faces)
-        if self.has_spots():
-            for spot_index, spot in self.spots.items():
-                n_points = np.shape(ret_points)[0]
-                ret_points = np.append(ret_points, spot.points, axis=0)
-                ret_faces = np.append(ret_faces, spot.faces + n_points, axis=0)
-
-        return ret_points, ret_faces
-
     # TODO: remove
     def setup_body_points(self, points):
         spot.setup_body_points(self, points)

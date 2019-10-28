@@ -118,6 +118,7 @@ class StarContainer(object):
 
         self.spots = dict()
         self.pulsations = dict()
+        self.polar_potential_gradient_magnitude = np.nan
 
     @staticmethod
     def from_properties_container(properties_container):
@@ -205,3 +206,19 @@ class StarContainer(object):
         if self.has_spots():
             for spot_index, spot_instance in self.spots.items():
                 spot_instance.areas = spot_instance.calculate_areas()
+
+    def surface_serializer(self):
+        """
+        Returns all points and faces of the whole star.
+
+        :return: Tuple[numpy.array, numpy.array]
+        """
+        ret_points = copy(self.points)
+        ret_faces = copy(self.faces)
+        if self.has_spots():
+            for spot_index, spot in self.spots.items():
+                n_points = np.shape(ret_points)[0]
+                ret_points = np.append(ret_points, spot.points, axis=0)
+                ret_faces = np.append(ret_faces, spot.faces + n_points, axis=0)
+
+        return ret_points, ret_faces

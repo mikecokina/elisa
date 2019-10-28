@@ -4,7 +4,7 @@ import scipy as sp
 import re
 
 from queue import Empty
-from copy import copy
+from copy import copy, deepcopy
 
 from numpy.linalg import norm
 from pandas import DataFrame
@@ -796,3 +796,22 @@ def calculate_volume_ellipse_approx(equator_points=None, meridian_points=None):
     """
     areas = up.abs(const.PI * equator_points[:, 1] * meridian_points[:, 0])
     return up.abs(np.trapz(areas, equator_points[:, 2]))
+
+
+def plane_projection(points, plane, keep_3d=False):
+    """
+    Function projects 3D points into given plane.
+
+    :param keep_3d: bool; if True, the dimensions of the array is kept the same, with given column equal to zero
+    :param points: numpy.array
+    :param plane: str; ('xy', 'yz', 'zx')
+    :return: numpy.array
+    """
+    rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
+    if not keep_3d:
+        indices_to_keep = [0, 1, 2]
+        del indices_to_keep[rm_index]
+        return points[:, indices_to_keep]
+    in_plane = deepcopy(points)
+    in_plane[:, rm_index] = 0.0
+    return in_plane

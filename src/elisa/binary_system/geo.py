@@ -9,7 +9,7 @@ from elisa.utils import is_empty
 from copy import deepcopy
 
 
-from elisa.binary_system.static import darkside_filter, plane_projection
+from elisa.binary_system.static import darkside_filter
 
 
 # def get_critical_inclination(binary, components_distance):

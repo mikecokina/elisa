@@ -7,6 +7,7 @@ from elisa.conf import config
 from elisa import utils, const
 from elisa.utils import is_empty
 from elisa import logger
+from elisa import umpy as up
 
 config.set_up_logging()
 __logger__ = logger.getLogger("limb-darkening-module")
@@ -122,7 +123,7 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
         result_df = pd.DataFrame({"temperature": temperature, "log_g": log_g})
 
         for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
-            if np.any(np.isnan(vals)):
+            if np.any(up.isnan(vals)):
                 raise ValueError("Limb darkening interpolation lead to np.nan/None value.\n"
                                  "It might be caused by definition of unphysical object on input.")
             result_df[col] = vals

@@ -550,65 +550,65 @@ class BinarySystem(System):
                 forward_rad[component][ii] = bsradius.calculate_forward_radius(*args)
         return forward_rad
 
-    def get_surface_points_multiproc(self, *args):
-        """
-        Function solves radius for given azimuths that are passed in *argss via multithreading approach.
+    # def get_surface_points_multiproc(self, *args):
+    #     """
+    #     Function solves radius for given azimuths that are passed in *argss via multithreading approach.
+    #
+    #     :param args: Tuple; (phi, theta, components_distance, precalc_fn, potential_fn)
+    #     :return: numpy.array
+    #     """
+    #
+    #     phi, theta, components_distance, precalc_fn, potential_fn = args
+    #     precalc_vals = precalc_fn(*(components_distance, phi, theta))
+    #     preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
+    #
+    #     if potential_fn == self.potential_primary_fn:
+    #         potential_fn_str_repr = "static_potential_primary_fn"
+    #         surface_potential = self.primary.surface_potential
+    #     else:
+    #         potential_fn_str_repr = "static_potential_secondary_fn"
+    #         surface_potential = self.secondary.surface_potential
+    #
+    #     pool = Pool(processes=config.NUMBER_OF_THREADS)
+    #     res = [pool.apply_async(mp.get_surface_points_worker,
+    #                             (potential_fn_str_repr, args))
+    #            for args in mp.prepare_get_surface_points_args(preacalc_vals_args, self.mass_ratio, surface_potential)]
+    #
+    #     pool.close()
+    #     pool.join()
+    #     result_list = [np.array(r.get()) for r in res]
+    #     r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
+    #     return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
-        :param args: Tuple; (phi, theta, components_distance, precalc_fn, potential_fn)
-        :return: numpy.array
-        """
-
-        phi, theta, components_distance, precalc_fn, potential_fn = args
-        precalc_vals = precalc_fn(*(components_distance, phi, theta))
-        preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
-
-        if potential_fn == self.potential_primary_fn:
-            potential_fn_str_repr = "static_potential_primary_fn"
-            surface_potential = self.primary.surface_potential
-        else:
-            potential_fn_str_repr = "static_potential_secondary_fn"
-            surface_potential = self.secondary.surface_potential
-
-        pool = Pool(processes=config.NUMBER_OF_THREADS)
-        res = [pool.apply_async(mp.get_surface_points_worker,
-                                (potential_fn_str_repr, args))
-               for args in mp.prepare_get_surface_points_args(preacalc_vals_args, self.mass_ratio, surface_potential)]
-
-        pool.close()
-        pool.join()
-        result_list = [np.array(r.get()) for r in res]
-        r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
-        return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
-
-    def get_surface_points_multiproc_cylindrical(self, *args):
-        """
-        Function solves radius for given azimuths that are passed in *argss via multithreading approach.
-
-        :param args: Tuple; (phi, z, precalc_fn, potential_fn)
-        :return: numpy.array
-        """
-
-        phi, z, components_distance, precalc_fn, potential_fn = args
-        precalc_vals = precalc_fn(*(phi, z, components_distance))
-        preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
-
-        if potential_fn == self.potential_primary_cylindrical_fn:
-            potential_fn_str_repr = "static_potential_primary_cylindrical_fn"
-            surface_potential = self.primary.surface_potential
-        else:
-            potential_fn_str_repr = "static_potential_secondary_cylindrical_fn"
-            surface_potential = self.secondary.surface_potential
-
-        pool = Pool(processes=config.NUMBER_OF_THREADS)
-        res = [pool.apply_async(mp.get_surface_points_worker,
-                                (potential_fn_str_repr, args))
-               for args in mp.prepare_get_surface_points_args(preacalc_vals_args, self.mass_ratio, surface_potential)]
-
-        pool.close()
-        pool.join()
-        result_list = [np.array(r.get()) for r in res]
-        r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
-        return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))
+    # def get_surface_points_multiproc_cylindrical(self, *args):
+    #     """
+    #     Function solves radius for given azimuths that are passed in *argss via multithreading approach.
+    #
+    #     :param args: Tuple; (phi, z, precalc_fn, potential_fn)
+    #     :return: numpy.array
+    #     """
+    #
+    #     phi, z, components_distance, precalc_fn, potential_fn = args
+    #     precalc_vals = precalc_fn(*(phi, z, components_distance))
+    #     preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
+    #
+    #     if potential_fn == self.potential_primary_cylindrical_fn:
+    #         potential_fn_str_repr = "static_potential_primary_cylindrical_fn"
+    #         surface_potential = self.primary.surface_potential
+    #     else:
+    #         potential_fn_str_repr = "static_potential_secondary_cylindrical_fn"
+    #         surface_potential = self.secondary.surface_potential
+    #
+    #     pool = Pool(processes=config.NUMBER_OF_THREADS)
+    #     res = [pool.apply_async(mp.get_surface_points_worker,
+    #                             (potential_fn_str_repr, args))
+    #            for args in mp.prepare_get_surface_points_args(preacalc_vals_args, self.mass_ratio, surface_potential)]
+    #
+    #     pool.close()
+    #     pool.join()
+    #     result_list = [np.array(r.get()) for r in res]
+    #     r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
+    #     return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))
 
     def get_surface_points_cylindrical_parallel(self, component, *args):
         """
@@ -643,19 +643,6 @@ class BinarySystem(System):
 
     def over_contact_system_surface(self, component="all", points=None, **kwargs):
         return faces.over_contact_system_surface(self, points, component, **kwargs)
-
-    def get_distance_matrix_shape(self, vis_test):
-        """
-        Calculates shapes of distance and join vector matrices along with shapes
-        of symetrical parts of those matrices used in reflection effect.
-
-        :param vis_test: numpy.array
-        :return: Tuple
-        """
-        shape = (np.sum(vis_test['primary']), np.sum(vis_test['secondary']), 3)
-        shape_reduced = (np.sum(vis_test['primary'][:self.primary.base_symmetry_faces_number]),
-                         np.sum(vis_test['secondary'][:self.secondary.base_symmetry_faces_number]))
-        return shape, shape_reduced
 
     # light curves
     def compute_lightcurve(self, **kwargs):

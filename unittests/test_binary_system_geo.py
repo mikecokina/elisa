@@ -29,23 +29,6 @@ class SupportMethodsTestCase(ElisaTestCase):
         expected = np.array([0, 1], dtype=int)
         self.assertTrue(np.all(obtained == expected))
 
-    def _test_plane_projection(self, expected, plane):
-        points = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])
-        obtained = geo.plane_projection(points, plane, keep_3d=False)
-        self.assertTrue(np.all(obtained == expected))
-
-    def test_plane_projection_xy(self):
-        expeceted = np.array([[1, 1], [0.3, 0.1], [-2, -3]])
-        self._test_plane_projection(expected=expeceted, plane="xy")
-
-    def test_plane_projection_yz(self):
-        expeceted = np.array([[1, 1], [0.1, -5], [-3, -4.1]])
-        self._test_plane_projection(expected=expeceted, plane="yz")
-
-    def test_plane_projection_zz(self):
-        expeceted = np.array([[1, 1], [0.3, -5], [-2, -4.1]])
-        self._test_plane_projection(expected=expeceted, plane="zx")
-
     def test_calculate_spot_longitudes(self):
         class MockSpot(object):
             def __init__(self):

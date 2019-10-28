@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
-from elisa import utils, const, atm, ld
+from elisa import const, atm, ld
 from elisa.base.container import StarContainer
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.orbit.container import OrbitalSupplements
@@ -13,6 +13,7 @@ from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.const import BINARY_POSITION_PLACEHOLDER
 from scipy.interpolate import Akima1DInterpolator
 from copy import copy, deepcopy
+from elisa import utils
 
 from elisa import logger
 from elisa.utils import is_empty
@@ -54,7 +55,7 @@ def get_visible_projection(obj):
     :param obj:
     :return:
     """
-    return geo.plane_projection(
+    return utils.plane_projection(
         obj.points[
             np.unique(obj.faces[obj.indices])
         ], "yz"
@@ -116,7 +117,7 @@ def compute_surface_coverage(container: geo.SingleOrbitalPositionContainer, semi
     # process partial and full visible faces (get surface area of 3d polygon) of undercover object
     partial_visible_faces = undercover_object.faces[partial_visible]
     partial_visible_normals = undercover_object.normals[partial_visible]
-    undercover_object_pts_projection = geo.plane_projection(undercover_object.points, "yz", keep_3d=False)
+    undercover_object_pts_projection = utils.plane_projection(undercover_object.points, "yz", keep_3d=False)
     if in_eclipse:
         partial_coverage = partial_visible_faces_surface_coverage(
             points=undercover_object_pts_projection,
