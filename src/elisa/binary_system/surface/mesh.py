@@ -25,17 +25,17 @@ def build_mesh(system_container, components_distance, component="all"):
     components = bsutils.component_to_list(component)
 
     for component in components:
-        start_container = getattr(system_container, component)
+        star_container = getattr(system_container, component)
         # in case of spoted surface, symmetry is not used
         if getattr(system_container, 'morphology') == 'over-contact':
             a, b, c, d = mesh_over_contact(system_container, component, symmetry_output=True)
         else:
             a, b, c, d = mesh_detached(system_container, components_distance, component, symmetry_output=True)
 
-        start_container.points = a
-        start_container.point_symmetry_vector = b
-        start_container.base_symmetry_points_number = c
-        start_container.inverse_point_symmetry_matrix = d
+        star_container.points = a
+        star_container.point_symmetry_vector = b
+        star_container.base_symmetry_points_number = c
+        star_container.inverse_point_symmetry_matrix = d
 
     add_spots_to_mesh(system_container, components_distance, component="all")
 

@@ -41,6 +41,7 @@ class OrbitalPositionContainer(PositionContainer):
         :param components_distance: float; distance of components is SMA units
         :return:
         """
+        # TODO: finish me
         pass
 
     def build_mesh(self, components_distance, component="all"):

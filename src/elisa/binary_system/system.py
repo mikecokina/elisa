@@ -392,7 +392,8 @@ class BinarySystem(System):
                     raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
 
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
-                args = (fn_map[component][1](*args), component_instance.surface_potential)
+                aux_args = (self.mass_ratio,) + fn_map[component][1](*args)
+                args = (aux_args, component_instance.surface_potential)
                 solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
                                                             full_output=True, args=args, xtol=1e-12)
 

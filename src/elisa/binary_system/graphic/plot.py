@@ -2,6 +2,10 @@ import numpy as np
 from astropy import units as u
 from elisa.binary_system import geo
 
+from elisa.base.container import StarContainer
+from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.const import BINARY_POSITION_PLACEHOLDER
+
 from elisa import utils, const, graphics, units
 
 
@@ -68,6 +72,13 @@ class Plot(object):
         graphics.orbit(**kwargs)
 
     def equipotential(self, **kwargs):
+        """
+        Function for quick 2D plot of equipotential cross-section.
+        :param kwargs:
+        :**kwargs options**:
+            * **plane** * -- string; (`xy`, `yz` or `xz`) specifying what plane cross-section to display default is `xy`
+            * **phase** * -- float; phase at which to plot cross-section
+        """
         all_kwargs = ['plane', 'phase']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.equipotential)
 
@@ -113,15 +124,18 @@ class Plot(object):
         components_distance, azim = self._self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
         kwargs['azimuth'] = kwargs.get('azimuth', np.degrees(azim) - 90)
 
+        orbital_position_container = OrbitalPositionContainer(
+            primary=StarContainer.from_properties_container(self._self.primary.to_properties_container()),
+            secondary=StarContainer.from_properties_container(self._self.secondary.to_properties_container()),
+            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            **self._self.properties_serializer()
+        )
+        orbital_position_container.build_mesh(components_distance=components_distance)
         if kwargs['components_to_plot'] in ['primary', 'both']:
-            points, _ = self._self.build_surface(component='primary', components_distance=components_distance,
-                                                 return_surface=True)
-            kwargs['points_primary'] = points['primary']
+            kwargs['points_primary'] = orbital_position_container.primary.points
 
         if kwargs['components_to_plot'] in ['secondary', 'both']:
-            points, _ = self._self.build_surface(component='secondary', components_distance=components_distance,
-                                                 return_surface=True)
-            kwargs['points_secondary'] = points['secondary']
+            kwargs['points_secondary'] = orbital_position_container.secondary.points
 
         graphics.binary_mesh(**kwargs)
 
