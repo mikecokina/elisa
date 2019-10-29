@@ -39,6 +39,12 @@ def deg_transform(value, unit, when_float64):
 class TransformProperties(object):
     @classmethod
     def transform_input(cls, **kwargs):
+        """
+        function transforms input dictionary of keyword arguments of the System to internally usable state
+        (conversion and stripping of units)
+        :param kwargs:
+        :return:
+        """
         return {key: getattr(cls, key)(val) if hasattr(cls, key) else val for key, val in kwargs.items()}
 
 
