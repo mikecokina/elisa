@@ -9,7 +9,8 @@ WHEN_FLOAT64 = (int, np.int, float, np.float)
 
 def quantity_transform(value, unit, when_float64):
     """
-    General transform function for quantities which fit such interface
+    General transform function for quantities which fit such interface.
+
     :param value: Any
     :param unit: astropy.units.Quantity
     :param when_float64: Tuple(Types)
@@ -40,10 +41,11 @@ class TransformProperties(object):
     @classmethod
     def transform_input(cls, **kwargs):
         """
-        function transforms input dictionary of keyword arguments of the System to internally usable state
+        Function transforms input dictionary of keyword arguments of the System to internally usable state
         (conversion and stripping of units)
-        :param kwargs:
-        :return:
+
+        :param kwargs: Dict
+        :return: Dict
         """
         return {key: getattr(cls, key)(val) if hasattr(cls, key) else val for key, val in kwargs.items()}
 
@@ -55,6 +57,7 @@ class SystemProperties(TransformProperties):
         """
         Transform and validity check for inclination of the system.
         If unit is not supplied, value in degrees is assumed.
+
         :param value:
         :return: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         """
@@ -96,6 +99,7 @@ class SystemProperties(TransformProperties):
     def additional_light(value):
         """
         Validate and transform for additional light - light that does not originate from any member of system.
+
         :param value: float (0, 1)
         :return:
         """
@@ -110,6 +114,7 @@ class BodyProperties(TransformProperties):
         """
         Object synchronicity (F = omega_rot/omega_orb) validator.
         Expects number input convertible to numpy float64 / float.
+
         :param value: float
         """
         if value <= 0:
@@ -142,6 +147,7 @@ class BodyProperties(TransformProperties):
         """
         Validate and transform bolometric albedo (reradiated energy/ irradiance energy).
         Accepts value of albedo in range (0, 1).
+
         :param value: float
         :return: float
         """
@@ -177,6 +183,7 @@ class BodyProperties(TransformProperties):
         """
         Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
         If quantity is not specified, default distance unit is assumed.
+
         :param value: float
         :return:
         """
@@ -188,6 +195,7 @@ class StarProperties(BodyProperties):
     def surface_potential(value):
         """
         Returns surface potential of Star.
+
         :param value: float
         :return: float
         """
@@ -206,6 +214,7 @@ class StarProperties(BodyProperties):
         """
         Setter for polar surface gravity.
         If unit is not specified in astropy.units format, value in cgs unit is assumed (it means log(g) in cgs).
+
         :param value: float or astropy.unit.quantity.Quantity
         :return: float
         """
@@ -215,6 +224,7 @@ class StarProperties(BodyProperties):
     def gravity_darkening(value):
         """
         Gravity darkening validator.
+
         :param value: float;
         :return: float
         """
@@ -228,6 +238,7 @@ class SpotProperties(BodyProperties):
     def latitude(value):
         """
         Expecting value in degrees or as astropy units instance.
+
         :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return: float
         """
@@ -237,6 +248,7 @@ class SpotProperties(BodyProperties):
     def longitude(value):
         """
         Expecting value in degrees or as astropy units instance.
+
         :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return: float
         """
@@ -246,6 +258,7 @@ class SpotProperties(BodyProperties):
     def angular_radius(value):
         """
         Expecting value in degrees or as astropy units instance.
+
         :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
         :return:
         """
@@ -254,6 +267,8 @@ class SpotProperties(BodyProperties):
     @staticmethod
     def temperature_factor(value):
         """
+        Validate and transform temperature factor.
+
         :param value: flaot
         :return: float
         """
