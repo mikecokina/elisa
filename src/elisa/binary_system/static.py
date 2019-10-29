@@ -2,23 +2,6 @@ import numpy as np
 from elisa import utils, umpy as up
 
 
-def compute_filling_factor(surface_potential, lagrangian_points):
-    """
-    Compute filling factor of given BinaryStar system.
-    Filling factor is computed as::
-
-        (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter}),
-
-    where Omega_X denote potential value and `Omega` is potential of given Star.
-    Inner and outter are critical inner and outter potentials for given binary star system.
-
-    :param surface_potential:
-    :param lagrangian_points: list; lagrangian points in `order` (in order to ensure that L2)
-    :return:
-    """
-    return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
-
-
 def darkside_filter(line_of_sight, normals):
     """
     Return indices for visible faces defined by given normals.

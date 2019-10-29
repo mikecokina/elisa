@@ -1,8 +1,7 @@
 # noinspection PyTypeChecker
-from copy import copy
-
 import numpy as np
 
+from copy import copy
 from elisa import logger, ld, utils
 from elisa import umpy as up
 from elisa.binary_system import utils as bsutils

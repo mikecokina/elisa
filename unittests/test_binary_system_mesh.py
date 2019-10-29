@@ -3,13 +3,14 @@ from unittest import skip
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from elisa import umpy as up
+from elisa import umpy as up, const, units
 from elisa.base.container import StarContainer
+from elisa.binary_system import model
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import BINARY_POSITION_PLACEHOLDER
 from elisa.utils import is_empty, find_nearest_dist_3d
 from unittests import utils as testutils
-from unittests.utils import ElisaTestCase
+from unittests.utils import ElisaTestCase, prepare_binary_system
 
 
 class BuildMeshSpotsFreeTestCase(ElisaTestCase):
@@ -148,3 +149,90 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
 
         self.assertTrue(is_empty(s.primary.spots[0].faces))
         self.assertTrue(is_empty(s.secondary.spots[0].faces))
+
+
+class MeshUtilsTestCase(ElisaTestCase):
+    def setUp(self):
+        self.params_combination = [
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
+             "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+             "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6,
+             },
+            # compact spherical components on circular orbit
+
+            {"primary_mass": 2.0, "secondary_mass": 1.0,
+             "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
+             "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+             "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.3, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+             "phase_shift": 0.0,
+             "primary_t_eff": 5000, "secondary_t_eff": 5000,
+             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+             "primary_albedo": 0.6, "secondary_albedo": 0.6
+             }  # close tidally deformed components with asynchronous rotation on eccentric orbit
+        ]
+
+        self._binaries = self.prepare_systems()
+
+    def prepare_systems(self):
+        return [prepare_binary_system(combo) for combo in self.params_combination]
+    
+    def test_primary_potential_derivative_x(self):
+        d, x = 1.1, 0.13
+        expected = np.round(np.array([-58.8584146731, -58.6146646731]), 4)
+        obtained = list()
+
+        for bs in self._binaries:
+            args = (bs.primary.synchronicity, bs.mass_ratio, d)
+            obtained.append(model.primary_potential_derivative_x(x, *args))
+        obtained = np.round(obtained, 4)
+        assert_array_equal(expected, obtained)
+
+    def test_secondary_potential_derivative_x(self):
+        d, x = 1.1, 0.13
+        expected = np.round(np.array([-59.268745, -59.908945]), 4)
+        obtained = list()
+
+        for bs in self._binaries:
+            args = (bs.secondary.synchronicity, bs.mass_ratio, d)
+            obtained.append(model.secondary_potential_derivative_x(x, *args))
+        obtained = np.round(obtained, 4)
+        assert_array_equal(expected, obtained)
+
+    def test_pre_calculate_for_potential_value_primary(self):
+        # single
+        distance, phi, theta = 1.1, const.HALF_PI, const.HALF_PI / 2.0
+        args = (distance, phi, theta)
+
+        obtained = list()
+        expected = [[1.21, 0., 0., 0.375],
+                    [1.21, 0., 0., 0.8438]]
+
+        for bs in self._binaries:
+            argss = (bs.primary.synchronicity, bs.mass_ratio) + args
+            obtained.append(model.pre_calculate_for_potential_value_primary(*argss))
+
+        obtained = np.round(obtained, 4)
+        assert_array_equal(expected, obtained)
+
+    def test_pre_calculate_for_potential_value_secondary(self):
+        # single
+        distance, phi, theta = 1.1, const.HALF_PI, const.HALF_PI / 2.0
+        args = (distance, phi, theta)
+
+        obtained = list()
+        expected = [[1.21, 0., 0., 0.375, 0.25],
+                    [1.21, 0., 0., 0.8438, 0.25]]
+
+        for bs in self._binaries:
+            argss = (bs.primary.synchronicity, bs.mass_ratio) + args
+            obtained.append(model.pre_calculate_for_potential_value_secondary(*argss))
+
+        obtained = np.round(obtained, 4)
+        assert_array_equal(expected, obtained)

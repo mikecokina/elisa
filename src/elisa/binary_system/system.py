@@ -1,18 +1,16 @@
 import numpy as np
 import scipy
 
-from multiprocessing.pool import Pool
 from astropy import units as u
 from scipy import optimize
 
-from elisa import umpy as up, utils, const, ld, units
+from elisa import umpy as up, utils, const, units
 from elisa.base.container import SystemPropertiesContainer
 from elisa.base.system import System
-from elisa.binary_system import static, build, mp, geo, utils as bsutils, model, radius as bsradius
+from elisa.binary_system import geo, utils as bsutils, model, radius as bsradius
 from elisa.binary_system.curves import lc, rv
-from elisa.binary_system.animation import Animation
-from elisa.binary_system.plot import Plot
-from elisa.binary_system.surface import mesh, faces, gravity, temperature
+from elisa.binary_system import graphic
+from elisa.binary_system.surface import mesh
 from elisa.binary_system.transform import BinarySystemProperties
 from elisa.conf import config
 from elisa.orbit import orbit
@@ -21,21 +19,6 @@ from elisa.orbit import orbit
 class BinarySystem(System):
     """
     Compute and initialise minmal necessary attributes to be used in light curves computation.
-
-    :param primary: elisa.base.Star; Primary (Star) component into binary system.
-    :param secondary: elisa.base.Star; Secondary (Star) component into binary system.
-    :param morlphology: str; Morphology of binary star system. Do not modify manually.
-    :param orbit: elisa.orbit.Orbit; Instance of Orbit.
-    :param mass_ratio: float; Returns mass ratio m2/m1 of binary system components.
-    :param semi_major_axis: float; Returns semi major axis of the system in default distance unit.
-    :param period: float; Period of binary star system.
-    :param eccentricity: float; Eccentricity of binary system.
-    :param argument_of_periastron: float; Argument of periastron of binary sytem
-    :param primary_minimum_time: float;
-    :param phase_shift: float; Returns phase shift of the primary eclipse minimum with respect to ephemeris
-    true_phase is used during calculations, where: true_phase = phase + phase_shift.
-
-
     """
 
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'phase_shift']
@@ -59,8 +42,8 @@ class BinarySystem(System):
         self._logger.info(f"initialising object {self.__class__.__name__}")
         self._logger.debug(f"setting properties of components of class instance {self.__class__.__name__}")
 
-        self.plot = Plot(self)
-        self.animation = Animation(self)
+        self.plot = graphic.plot.Plot(self)
+        self.animation = graphic.animation.Animation(self)
 
         self.primary = primary
         self.secondary = secondary
@@ -98,14 +81,6 @@ class BinarySystem(System):
         # adjust and setup discretization factor if necessary
         self.setup_discretisation_factor()
 
-    @property
-    def components(self):
-        """
-        Return components object in Dict.
-        :return: Dict[str, elisa.base.Star]
-        """
-        return self._components
-
     def init(self):
         """
         Function to reinitialize BinarySystem class instance after changing parameter(s) of binary system.
@@ -114,10 +89,20 @@ class BinarySystem(System):
         """
         self.__init__(primary=self.primary, secondary=self.secondary, **self.kwargs_serializer())
 
+    @property
+    def components(self):
+        """
+        Return components object in Dict.
+
+        :return: Dict[str, elisa.base.Star]
+        """
+        return self._components
+
     def kwargs_serializer(self):
         """
         Creating dictionary of keyword arguments of BinarySystem class in order to be able to reinitialize the class
         instance in init().
+
         :return: Dict
         """
         serialized_kwargs = dict()
@@ -177,8 +162,8 @@ class BinarySystem(System):
         if (self.primary.synchronicity == 1 and self.secondary.synchronicity == 1) and self.eccentricity == 0.0:
             lp = self.libration_potentials()
 
-            self.primary.filling_factor = static.compute_filling_factor(self.primary.surface_potential, lp)
-            self.secondary.filling_factor = static.compute_filling_factor(self.secondary.surface_potential, lp)
+            self.primary.filling_factor = self.compute_filling_factor(self.primary.surface_potential, lp)
+            self.secondary.filling_factor = self.compute_filling_factor(self.secondary.surface_potential, lp)
 
             if ((1 > self.secondary.filling_factor > 0) or (1 > self.primary.filling_factor > 0)) and \
                     (abs(self.primary.filling_factor - self.secondary.filling_factor) > __PRECISSION__):
@@ -496,153 +481,23 @@ class BinarySystem(System):
                 if self.morphology != 'over-contact':
                     r = bsradius.calculate_forward_radius(**kwargs)
                     setattr(component_instance, 'forward_radius', r)
-# ######################################################################################################################
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def mesh_spots(self, *args, **kwargs):
-        return mesh.mesh_spots(self, *args, **kwargs)
-
-    # TODO: remove
-    def calculate_polar_potential_gradient_magnitude(self, component, components_distance=None):
-        p = getattr(self, component).polar_radius
-        return gravity.calculate_polar_potential_gradient_magnitude(components_distance, self.mass_ratio, p, component)
-
-    # TODO: remove
-    def calculate_polar_gravity_acceleration(self, component, components_distance, logg=False):
-        pass
-
-    def calculate_all_forward_radii(self, distances, components='all', surface_potential=None):
+    @staticmethod
+    def compute_filling_factor(surface_potential, lagrangian_points):
         """
-        Calculates forward radii for given object for given array of distances.
+        Compute filling factor of given BinaryStar system.
+        Filling factor is computed as::
 
-        :param surface_potential: None or float; if None compoent surface potential is assumed
-        :param components: str
-        :param distances: np.array: array of component distances at which to calculate the forward radii of given
-        component(s)
-        :return: dict: Dict[str, numpy.array]
+            (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter}),
+
+        where Omega_X denote potential value and `Omega` is potential of given Star.
+        Inner and outter are critical inner and outter potentials for given binary star system.
+
+        :param surface_potential:
+        :param lagrangian_points: list; lagrangian points in `order` (in order to ensure that L2)
+        :return:
         """
-        components = bsutils.component_to_list(components)
-        forward_rad = dict()
-        for component in components:
-            surface_potential = getattr(self, component).surface_potential \
-                if surface_potential is None else surface_potential
-            forward_rad[component] = np.zeros(distances.shape)
-            for ii, distance in enumerate(distances):
-                args = (getattr(self, component).synchronicity, self.mass_ratio, distance, surface_potential, component)
-                forward_rad[component][ii] = bsradius.calculate_forward_radius(*args)
-        return forward_rad
-
-    # def get_surface_points_multiproc(self, *args):
-    #     """
-    #     Function solves radius for given azimuths that are passed in *argss via multithreading approach.
-    #
-    #     :param args: Tuple; (phi, theta, components_distance, precalc_fn, potential_fn)
-    #     :return: numpy.array
-    #     """
-    #
-    #     phi, theta, components_distance, precalc_fn, potential_fn = args
-    #     precalc_vals = precalc_fn(*(components_distance, phi, theta))
-    #     preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
-    #
-    #     if potential_fn == self.potential_primary_fn:
-    #         potential_fn_str_repr = "static_potential_primary_fn"
-    #         surface_potential = self.primary.surface_potential
-    #     else:
-    #         potential_fn_str_repr = "static_potential_secondary_fn"
-    #         surface_potential = self.secondary.surface_potential
-    #
-    #     pool = Pool(processes=config.NUMBER_OF_THREADS)
-    #     res = [pool.apply_async(mp.get_surface_points_worker,
-    #                             (potential_fn_str_repr, args))
-    #            for args in mp.prepare_get_surface_points_args(preacalc_vals_args, self.mass_ratio, surface_potential)]
-    #
-    #     pool.close()
-    #     pool.join()
-    #     result_list = [np.array(r.get()) for r in res]
-    #     r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
-    #     return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
-
-    # def get_surface_points_multiproc_cylindrical(self, *args):
-    #     """
-    #     Function solves radius for given azimuths that are passed in *argss via multithreading approach.
-    #
-    #     :param args: Tuple; (phi, z, precalc_fn, potential_fn)
-    #     :return: numpy.array
-    #     """
-    #
-    #     phi, z, components_distance, precalc_fn, potential_fn = args
-    #     precalc_vals = precalc_fn(*(phi, z, components_distance))
-    #     preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
-    #
-    #     if potential_fn == self.potential_primary_cylindrical_fn:
-    #         potential_fn_str_repr = "static_potential_primary_cylindrical_fn"
-    #         surface_potential = self.primary.surface_potential
-    #     else:
-    #         potential_fn_str_repr = "static_potential_secondary_cylindrical_fn"
-    #         surface_potential = self.secondary.surface_potential
-    #
-    #     pool = Pool(processes=config.NUMBER_OF_THREADS)
-    #     res = [pool.apply_async(mp.get_surface_points_worker,
-    #                             (potential_fn_str_repr, args))
-    #            for args in mp.prepare_get_surface_points_args(preacalc_vals_args, self.mass_ratio, surface_potential)]
-    #
-    #     pool.close()
-    #     pool.join()
-    #     result_list = [np.array(r.get()) for r in res]
-    #     r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
-    #     return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))
-
-    def get_surface_points_cylindrical_parallel(self, component, *args):
-        """
-        function calculates surface points on neck of over-contact system, using parallel Newton solver
-
-        :param component: `primary` or `secondary`
-        :param args: azimuth angles, polar angles, auxiliary function for pre-calculation of coefficients in potential
-        functions, potential function, function for radial derivative of potential function
-        :param args: tuple
-        :return: surface points in cartesian coordinates
-        """
-        phi, z, precalc_fn, potential_fn, potential_derivative_fn = args
-        precalc_vals = precalc_fn(*(phi, z), return_as_tuple=True)
-
-        components_instance = getattr(self, component)
-        initial_guess = components_instance.polar_radius
-
-        # setting side radius as a initial guess for points
-        radius = initial_guess * np.ones(phi.shape)
-        tol = 1e-10  # RELATIVE precision of calculated points
-        while True:
-            difference = potential_fn(radius, *precalc_vals) / potential_derivative_fn(radius, *precalc_vals)
-            radius -= difference
-            if np.max(np.abs(difference) / radius) <= tol:
-                break
-
-        radius = np.abs(radius)
-        return utils.cylindrical_to_cartesian(np.column_stack((radius, phi, z)))
-
-    def detached_system_surface(self, component="all", points=None, components_distance=None):
-        return faces.detached_system_surface(self, components_distance, points, component)
-
-    def over_contact_system_surface(self, component="all", points=None, **kwargs):
-        return faces.over_contact_system_surface(self, points, component, **kwargs)
+        return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
 
     # light curves
     def compute_lightcurve(self, **kwargs):
@@ -701,72 +556,6 @@ class BinarySystem(System):
     # radial velocity curves
     def compute_rv(self, **kwargs):
         return rv.radial_velocity(self, **kwargs)
-
-    # ### build methods
-    def build_surface_gravity(self, component="all", components_distance=None):
-        return build.build_surface_gravity(self, components_distance, component)
-
-    def build_faces_orientation(self, component="all", components_distance=None):
-        return build.build_faces_orientation(self, components_distance, component)
-
-    def build_temperature_distribution(self, component="all", components_distance=None, do_pulsations=False,
-                                       phase=None):
-        return temperature.build_temperature_distribution(self, components_distance, component,
-                                                          do_pulsations=do_pulsations, phase=phase)
-
-    def build_mesh(self, component="all", components_distance=None):
-        return build.build_mesh(self, component, components_distance)
-
-    def build_faces(self, component="all", components_distance=None):
-        return build.build_faces(self, component, components_distance)
-
-    def build_surface_with_no_spots(self, component="all", components_distance=None):
-        return build.build_surface_with_no_spots(self, component, components_distance)
-
-    def build_surface_with_spots(self, component="all", components_distance=None):
-        return build.build_surface_with_spots(self, component, components_distance)
-
-    # this makes no sence but don't have a time to make it better
-    def build_surface_areas(self, component="all"):
-        return build.compute_all_surface_areas(self, component=component)
-
-    def build(self, component="all", components_distance=None, do_pulsations=False, phase=None, **kwargs):
-        """
-        Main method to build binary star system from parameters given on init of BinaryStar.
-
-        called following methods::
-
-            - build_mesh
-            - build_faces
-            - build_surface_areas
-            - build_faces_orientation
-            - build_surface_gravity
-            - build_temperature_distribution
-
-        :param phase: float; phase to build system on
-        :param do_pulsations: bool; switch to incorporate pulsations
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float; distance of components is SMA units
-        :return:
-        """
-        self.build_mesh(component, components_distance, **kwargs)
-        self.build_from_points(component, components_distance, do_pulsations, phase)
-
-    def build_from_points(self, component="all", components_distance=None, do_pulsations=False, phase=None):
-        """
-        Build binary system from preset surface points
-
-        :param component: str; `primary` or `secondary`
-        :param components_distance: float; distance of components is SMA units
-        :param do_pulsations: bool; switch to incorporate pulsations
-        :param phase: float; phase to build system on
-        :return:
-        """
-        self.build_faces(component, components_distance)
-        self.build_surface_areas(component)
-        self.build_faces_orientation(component, components_distance)
-        self.build_surface_gravity(component, components_distance)
-        self.build_temperature_distribution(component, components_distance, do_pulsations=do_pulsations, phase=phase)
 
     def prepare_system_positions_container(self, orbital_motion, ecl_boundaries=None):
         return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion, ecl_boundaries)
@@ -850,17 +639,17 @@ class BinarySystem(System):
 
         # generating equidistant angles
         num = int(const.PI // discretization_factor)
-        N = 5
-        theta = np.linspace(discretization_factor / N, const.PI - discretization_factor / N, num=num + 1, endpoint=True)
+        n = 5
+        theta = np.linspace(discretization_factor / n, const.PI - discretization_factor / n, num=num + 1, endpoint=True)
 
         backward_radius = self.calculate_backward_radius(component, components_distance=components_distance,
                                                          surface_potential=surface_potential)
         forward_radius = self.calculate_forward_radius(component, components_distance=components_distance,
                                                        surface_potential=surface_potential)
         # generating x coordinates for both meridian and equator
-        A = 0.5 * (forward_radius + backward_radius)
-        C = forward_radius - A
-        x = A * np.cos(theta) + C
+        a = 0.5 * (forward_radius + backward_radius)
+        c = forward_radius - a
+        x = a * up.cos(theta) + c
 
         if component == 'primary':
             fn_cylindrical = model.potential_primary_cylindrical_fn
@@ -875,13 +664,73 @@ class BinarySystem(System):
                              f'Expecting `primary` or `secondary`.')
 
         phi1 = const.HALF_PI * np.ones(x.shape)
-        phi2 = np.zeros(x.shape)
-        phi = np.concatenate((phi1, phi2))
-        z = np.concatenate((x, x))
+        phi2 = up.zeros(x.shape)
+        phi = up.concatenate((phi1, phi2))
+        z = up.concatenate((x, x))
 
-        args = phi, z, components_distance, A / 2, \
+        args = phi, z, components_distance, a / 2, \
             precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn, \
             surface_potential, self.mass_ratio, component_instance.synchronicity
         points = mesh.get_surface_points_cylindrical(*args)
 
         return points[:points.shape[0] // 2, :], points[points.shape[0] // 2:, :]
+
+    # def get_surface_points_multiproc(self, *args):
+    #     """
+    #     Function solves radius for given azimuths that are passed in *argss via multithreading approach.
+    #
+    #     :param args: Tuple; (phi, theta, components_distance, precalc_fn, potential_fn)
+    #     :return: numpy.array
+    #     """
+    #
+    #     phi, theta, components_distance, precalc_fn, potential_fn = args
+    #     precalc_vals = precalc_fn(*(components_distance, phi, theta))
+    #     preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
+    #
+    #     if potential_fn == self.potential_primary_fn:
+    #         potential_fn_str_repr = "static_potential_primary_fn"
+    #         surface_potential = self.primary.surface_potential
+    #     else:
+    #         potential_fn_str_repr = "static_potential_secondary_fn"
+    #         surface_potential = self.secondary.surface_potential
+    #
+    #     pool = Pool(processes=config.NUMBER_OF_THREADS)
+    #     res = [pool.apply_async(mp.get_surface_points_worker,
+    #                             (potential_fn_str_repr, args))
+    #            for args in mp.prepare_get_surface_points_args(preacalc_vals_args, self.mass_ratio, surface_potential)]
+    #
+    #     pool.close()
+    #     pool.join()
+    #     result_list = [np.array(r.get()) for r in res]
+    #     r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
+    #     return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
+
+    # def get_surface_points_multiproc_cylindrical(self, *args):
+    #     """
+    #     Function solves radius for given azimuths that are passed in *argss via multithreading approach.
+    #
+    #     :param args: Tuple; (phi, z, precalc_fn, potential_fn)
+    #     :return: numpy.array
+    #     """
+    #
+    #     phi, z, components_distance, precalc_fn, potential_fn = args
+    #     precalc_vals = precalc_fn(*(phi, z, components_distance))
+    #     preacalc_vals_args = [tuple(precalc_vals[i, :]) for i in range(np.shape(precalc_vals)[0])]
+    #
+    #     if potential_fn == self.potential_primary_cylindrical_fn:
+    #         potential_fn_str_repr = "static_potential_primary_cylindrical_fn"
+    #         surface_potential = self.primary.surface_potential
+    #     else:
+    #         potential_fn_str_repr = "static_potential_secondary_cylindrical_fn"
+    #         surface_potential = self.secondary.surface_potential
+    #
+    #     pool = Pool(processes=config.NUMBER_OF_THREADS)
+    #     res = [pool.apply_async(mp.get_surface_points_worker,
+    #                             (potential_fn_str_repr, args))
+    #            for args in mp.prepare_get_surface_points_args(preacalc_vals_args, self.mass_ratio, surface_potential)]
+    #
+    #     pool.close()
+    #     pool.join()
+    #     result_list = [np.array(r.get()) for r in res]
+    #     r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
+    #     return utils.cylindrical_to_cartesian(np.column_stack((r, phi, z)))

@@ -9,11 +9,6 @@ from elisa.base.body import Body
 class System(metaclass=ABCMeta):
     """
     Abstract class defining System
-
-    :param inclination: float or astropy.quantity.Quantity; Inclination of binary system.
-    :param period: float or astropy.quantity.Quantity; Period of binary system.
-    :param gamma: float or astropy.quantity.Quantity; Center of mass velocity of binary system.
-    :param additional_light: float;
     """
 
     ID = 1
@@ -39,16 +34,17 @@ class System(metaclass=ABCMeta):
         else:
             self.name = str(name)
 
+    @property
+    @abstractmethod
+    def components(self):
+        pass
+
     @abstractmethod
     def compute_lightcurve(self, *args, **kwargs):
         pass
 
     @abstractmethod
     def init(self):
-        pass
-
-    @abstractmethod
-    def build_faces(self, *args, **kwargs):
         pass
 
     @abstractmethod
@@ -65,6 +61,28 @@ class System(metaclass=ABCMeta):
         self._logger.debug(f"initialising properties of system {self.name}, values: {kwargs}")
         for kwarg in kwargs:
             setattr(self, kwarg, kwargs[kwarg])
+
+    def has_pulsations(self):
+        """
+        Resolve whether any of components has pulsation
+
+        :return: bool
+        """
+        retval = False
+        for component_instance in self.components.values():
+            retval = retval | component_instance.has_pulsations()
+        return retval
+
+    def has_spots(self):
+        """
+        Resolve whether any of components has spots
+
+        :return: bool
+        """
+        retval = False
+        for component_instance in self.components.values():
+            retval = retval | component_instance.has_spots()
+        return retval
 
     @staticmethod
     def object_params_validity_check(components, mandatory_kwargs):
@@ -89,30 +107,3 @@ class System(metaclass=ABCMeta):
             if len(missing_kwargs) != 0:
                 raise ValueError(f'Mising argument(s): {", ".join(missing_kwargs)} '
                                  f'in {component} component Star class')
-
-    @property
-    @abstractmethod
-    def components(self):
-        pass
-
-    def has_pulsations(self):
-        """
-        Resolve whether any of components has pulsation
-
-        :return: bool
-        """
-        retval = False
-        for component_instance in self.components.values():
-            retval = retval | component_instance.has_pulsations()
-        return retval
-
-    def has_spots(self):
-        """
-        Resolve whether any of components has spots
-
-        :return: bool
-        """
-        retval = False
-        for component_instance in self.components.values():
-            retval = retval | component_instance.has_spots()
-        return retval

@@ -7,7 +7,7 @@ from elisa.base.container import StarContainer
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.orbit.container import OrbitalSupplements
 from elisa.pulse import pulsations
-from elisa.binary_system import geo, build, utils as bsutils
+from elisa.binary_system import geo, utils as bsutils
 from elisa.conf import config
 from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.const import BINARY_POSITION_PLACEHOLDER

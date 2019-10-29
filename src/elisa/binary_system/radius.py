@@ -5,7 +5,7 @@ from scipy import optimize
 
 from elisa import umpy as up
 from elisa import const
-from elisa.binary_system import model
+from elisa.binary_system import model, utils as bsutils
 
 
 def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args):
@@ -73,3 +73,18 @@ def calculate_backward_radius(synchronicity, mass_ratio, components_distance, su
 def calculate_forward_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):
     args = (components_distance, 0.0, const.HALF_PI)
     return calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args)
+
+
+def calculate_forward_radii(distances, surface_potential, mass_ratio, synchronicity, component):
+    """
+    Calculates forward radii for given object for given array of distances.
+
+    :param distances: np.array: array of component distances at which to calculate the forward radii of given
+    component(s)
+    :param surface_potential: None or float; if None compoent surface potential is assumed
+    :param mass_ratio:
+    :param synchronicity:
+    :param component: str
+    :return: dict: Dict[str, numpy.array]
+    """
+    return [calculate_forward_radius(synchronicity, mass_ratio, d, surface_potential, component) for d in distances]

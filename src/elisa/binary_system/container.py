@@ -62,4 +62,17 @@ class OrbitalPositionContainer(PositionContainer):
         return temperature.build_temperature_distribution(self, components_distance, component, do_pulsations, phase)
 
     def build_from_points(self, component="all", components_distance=None, do_pulsations=False, phase=None):
-        pass
+        """
+        Build binary system from preset surface points
+
+        :param component: str; `primary` or `secondary`
+        :param components_distance: float; distance of components is SMA units
+        :param do_pulsations: bool; switch to incorporate pulsations
+        :param phase: float; phase to build system on
+        :return:
+        """
+        self.build_faces(components_distance, component)
+        self.build_surface_areas(component)
+        self.build_faces_orientation(components_distance, component)
+        self.build_surface_gravity(components_distance, component)
+        self.build_temperature_distribution(components_distance, component, do_pulsations=do_pulsations, phase=phase)
