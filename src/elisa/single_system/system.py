@@ -7,12 +7,16 @@ from elisa import logger, utils, const as c, units as eunits
 from elisa.base.system import System
 from elisa.single_system import build
 from elisa.single_system import static
-from elisa.single_system.plot import Plot
-from elisa.single_system.animation import Animation
 from elisa.opt.fsolver import fsolver
+from elisa.single_system.transform import SingleSystemProperties
+from elisa.single_system import graphic
 
 
 class SingleSystem(System):
+    """
+    Compute and initialise minmal necessary attributes to be used in light curves computation.
+    """
+
     MANDATORY_KWARGS = ['gamma', 'inclination', 'rotation_period']
     OPTIONAL_KWARGS = ['reference_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
@@ -24,31 +28,31 @@ class SingleSystem(System):
     def __init__(self, star, name=None, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, SingleSystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(SingleSystem.MANDATORY_KWARGS, kwargs, instance_of=SingleSystem)
-        self.stars = dict(star=star)
-        self.object_params_validity_check(self.stars, self.STAR_MANDATORY_KWARGS)
+        self.object_params_validity_check(dict(star=star), self.STAR_MANDATORY_KWARGS)
+        kwargs = self.transform_input(**kwargs)
 
         super(SingleSystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
 
         self._logger.info(f"initialising object {self.__class__.__name__}")
         self._logger.debug(f"setting properties of a star in class instance {self.__class__.__name__}")
 
-        self.plot = Plot(self)
-        self.animation = Animation(self)
+        self.plot = graphic.plot.Plot(self)
+        self.animation = graphic.animation.Animation(self)
 
         self.star = star
 
         # default values of properties
-        self._rotation_period = None
-        self._reference_time = 0
-        self._angular_velocity = None
-        self._period = self.rotation_period
+        self.rotation_period = None
+        self.reference_time = 0
+        self.angular_velocity = None
+        self.period = self.rotation_period
 
         # set attributes and test whether all parameters were initialized
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
         self.init_properties(**kwargs)
 
         # calculation of dependent parameters
-        self._angular_velocity = static.angular_velocity(self.rotation_period)
+        self.angular_velocity = static.angular_velocity(self.rotation_period)
 
         # this is also check if star surface is closed
         self.init_radii()
@@ -74,59 +78,6 @@ class SingleSystem(System):
         self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
         self._logger.debug('calculating equatorial radius')
         self.star._equatorial_radius = self.calculate_equatorial_radius()
-
-    @property
-    def rotation_period(self):
-        """
-        returns rotation period of single system star in default period unit
-        :return: float
-        """
-        return self._rotation_period
-
-    @rotation_period.setter
-    def rotation_period(self, rotation_period):
-        """
-        setter for rotational period of star in single star system, if unit is not specified, default period unit is
-        assumed
-        :param rotation_period:
-        :return:
-        """
-        if isinstance(rotation_period, u.quantity.Quantity):
-            self._rotation_period = np.float64(rotation_period.to(eunits.PERIOD_UNIT))
-        elif isinstance(rotation_period, (int, np.int, float, np.float)):
-            self._rotation_period = np.float64(rotation_period)
-        else:
-            raise TypeError('input of variable `rotation_period` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        if self._rotation_period <= 0:
-            raise ValueError(f'period of rotation must be non-zero positive value. Your value: {rotation_period}')
-
-    @property
-    def reference_time(self):
-        """
-        Returns reference time in default period unit. Time corresponding for rotation phase 0.
-
-        :return: float
-        """
-        return self._reference_time
-
-    @reference_time.setter
-    def reference_time(self, reference_time):
-        """
-        Setter for reference time.
-
-        :param reference_time: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(reference_time, u.quantity.Quantity):
-            self._reference_time = np.float64(reference_time.to(eunits.PERIOD_UNIT))
-        elif isinstance(reference_time, (int, np.int, float, np.float)):
-            self._reference_time = np.float64(reference_time)
-        else:
-            raise TypeError('Input of variable `reference_time` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug(f"setting property `reference_time` of class instance "
-                           f"{self.__class__.__name__} to {self._reference_time}")
 
     def _evaluate_spots(self):
         """
@@ -301,6 +252,14 @@ class SingleSystem(System):
 
         return solution
 
+    def transform_input(self, **kwargs):
+        """
+        Transform and validate input kwargs.
+        :param kwargs: Dict
+        :return: Dict
+        """
+        return SingleSystemProperties.transform_input(**kwargs)
+
     def surface_potential(self, radius, *args):
         """
         function calculates potential on the given point of the star
@@ -311,7 +270,7 @@ class SingleSystem(System):
         """
         theta, = args  # latitude angle (0,180)
 
-        return - c.G * self.star.mass / radius - 0.5 * np.power(self._angular_velocity * radius * np.sin(theta), 2.0)
+        return - c.G * self.star.mass / radius - 0.5 * np.power(self.angular_velocity * radius * np.sin(theta), 2.0)
 
     def calculate_face_magnitude_gradient(self, points=None, faces=None):
         """
@@ -330,9 +289,9 @@ class SingleSystem(System):
 
         r3 = np.power(np.linalg.norm(point, axis=1), 3)
         domega_dx = c.G * self.star.mass * point[:, 0] / r3 \
-                    - np.power(self._angular_velocity, 2) * point[:, 0]
+                    - np.power(self.angular_velocity, 2) * point[:, 0]
         domega_dy = c.G * self.star.mass * point[:, 1] / r3 \
-                    - np.power(self._angular_velocity, 2) * point[:, 1]
+                    - np.power(self.angular_velocity, 2) * point[:, 1]
         domega_dz = c.G * self.star.mass * point[:, 2] / r3
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
 
@@ -389,7 +348,7 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self.star.mass / np.power(self._angular_velocity, 2), 1.0 / 3.0)
+        return np.power(c.G * self.star.mass / np.power(self.angular_velocity, 2), 1.0 / 3.0)
 
     def critical_break_up_velocity(self):
         """
@@ -397,7 +356,7 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
+        return np.power(c.G * self.star.mass * self.angular_velocity, 1.0 / 3.0)
 
     def mesh(self, symmetry_output=False):
         """
