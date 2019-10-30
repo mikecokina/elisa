@@ -1,10 +1,17 @@
 import numpy as np
 
-from abc import ABCMeta, abstractmethod
 from copy import copy
-from elisa import logger, units, umpy as up
+from abc import (
+    ABCMeta,
+    abstractmethod
+)
 from elisa.utils import is_empty
 from elisa.base.spot import Spot
+from elisa import (
+    logger,
+    units,
+    umpy as up
+)
 
 
 class Body(metaclass=ABCMeta):

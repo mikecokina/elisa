@@ -29,38 +29,6 @@ from elisa.binary_system.static import darkside_filter
 #         return np.degrees(np.arccos(cos_i_critical))
 
 
-def get_eclipse_boundaries(binary, components_distance):
-    """
-    Calculates the ranges in orbital azimuths (for phase=0 -> azimuth=pi/2)!!!  where eclipses occur.
-
-    :param binary: elisa.binary_system.system.BinarySystem
-    :param components_distance: float
-    :return: numpy.array;
-
-    shape::
-
-        [primary ecl_start, primary_ecl_stop, sec_ecl_start, sec_ecl_stop]
-    """
-    # check whether the inclination is high enough to enable eclipses
-    if binary.morphology != 'over-contact':
-        radius1 = np.mean([binary.primary.side_radius, binary.primary.forward_radius, binary.primary.backward_radius,
-                           binary.primary.polar_radius])
-        radius2 = np.mean([binary.secondary.side_radius, binary.secondary.forward_radius,
-                           binary.secondary.backward_radius, binary.secondary.polar_radius])
-        sin_i_critical = (radius1 + radius2) / components_distance
-        sin_i = np.sin(binary.inclination)
-        if sin_i < sin_i_critical:
-            return np.array([const.HALF_PI, const.HALF_PI, const.PI, const.PI])
-        radius1 = binary.primary.forward_radius
-        radius2 = binary.secondary.forward_radius
-        sin_i_critical = 1.01 * (radius1 + radius2) / components_distance
-        azimuth = np.arcsin(np.sqrt(np.power(sin_i_critical, 2) - np.power(np.cos(binary.inclination), 2)))
-        azimuths = np.array([const.HALF_PI - azimuth, const.HALF_PI + azimuth, 1.5 * const.PI - azimuth,
-                             1.5 * const.PI + azimuth]) % const.FULL_ARC
-        return azimuths
-    else:
-        return np.array([0, const.PI, const.PI, const.FULL_ARC])
-
 
 def calculate_spot_longitudes(binary_instance, phases, component="all"):
     """
@@ -406,26 +374,6 @@ class SingleOrbitalPositionContainer(object):
         """
         attr = getattr(self, component)
         setattr(attr, 'coverage', coverage)
-
-    def rotate(self):
-        """
-        Rotate quantities defined in cls.__PROPERTIES__ in case of components defined in cls.__PROPERTIES__.
-        Rotation is made in orbital plane and inclination direction in respective order.
-        Angle are defined in self.position and self.inclination.
-
-        :return:
-        """
-        for component in self.__COMPONENTS__:
-            easyobject_instance = getattr(self, component)
-            for prop in self.__PROPERTIES__:
-                prop_value = getattr(easyobject_instance, prop)
-
-                args = (self.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
-                prop_value = utils.around_axis_rotation(*args)
-
-                args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
-                prop_value = utils.around_axis_rotation(*args)
-                setattr(easyobject_instance, prop, prop_value)
 
     def darkside_filter(self):
         """

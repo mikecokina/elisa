@@ -2,10 +2,11 @@ import numpy as np
 import scipy
 
 from scipy import optimize
-
-from elisa import umpy as up
-from elisa import const
-from elisa.binary_system import model, utils as bsutils
+from elisa.binary_system import model
+from elisa import (
+    const,
+    umpy as up
+)
 
 
 def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args):

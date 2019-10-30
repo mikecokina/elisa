@@ -4,10 +4,12 @@ import pandas as pd
 
 from scipy import interpolate
 from elisa.conf import config
-from elisa import utils, const
-from elisa.utils import is_empty
-from elisa import logger
-from elisa import umpy as up
+from elisa import (
+    logger,
+    utils,
+    const,
+    umpy as up
+)
 
 config.set_up_logging()
 __logger__ = logger.getLogger("limb-darkening-module")
@@ -34,7 +36,7 @@ def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
     :param law: str; limb darkening law (`linear`, `cosine`, `logarithmic`, `square_root`)
     :return: str
     """
-    law = law if not is_empty(law) else config.LIMB_DARKENING_LAW
+    law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
     return f"{config.LD_LAW_TO_FILE_PREFIX[law]}.{passband}.{utils.numeric_metallicity_to_string(metallicity)}.csv"
 
 
@@ -47,7 +49,7 @@ def get_van_hamme_ld_table(passband, metallicity, law=None):
     :param law: str; in not specified, default law specified in `elisa.conf.config` is used
     :return: pandas.DataFrame
     """
-    law = law if not is_empty(law) else config.LIMB_DARKENING_LAW
+    law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
     filename = get_van_hamme_ld_table_filename(passband, metallicity, law=law)
     path = os.path.join(config.VAN_HAMME_LD_TABLES, filename)
     if not os.path.isfile(path):
@@ -180,11 +182,11 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
         cos_theta[negative_cos_theta_test] = 0.0
         cos_theta_for_log[negative_cos_theta_test] = 1.0
         retval = \
-            1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta_for_log)
+            1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * up.log(cos_theta_for_log)
         retval[negative_cos_theta_test] = 0.0
     elif limb_darkening_law == 'square_root':
         cos_theta[negative_cos_theta_test] = 0.0
-        retval = 1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
+        retval = 1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - up.sqrt(cos_theta))
         retval[negative_cos_theta_test] = 0.0
     else:
         raise ValueError("Invalid limb darkening")

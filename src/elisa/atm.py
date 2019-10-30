@@ -5,17 +5,21 @@ import warnings
 
 from queue import Queue
 from threading import Thread
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
 from copy import deepcopy
-from scipy import integrate, interpolate
-from pandas import DataFrame
-
+from scipy import (
+    integrate,
+    interpolate
+)
 from elisa.conf import config
-from elisa import logger
-from elisa import utils, const
-from typing import Iterable
+from elisa import (
+    logger,
+    utils,
+    const
+)
 
 
 config.set_up_logging()
@@ -287,7 +291,7 @@ class NaiveInterpolatedAtm(object):
         m = utils.find_nearest_value_as_matrix(m_array, metallicity)[0][0]
         t = utils.find_surrounded_as_matrix(t_array, temperature)
 
-        domain_df = DataFrame({
+        domain_df = pd.DataFrame({
             # "temp": list(t[0]) + list(t[1]),
             "temp": t.flatten('F'),
             "log_g": np.tile(g, 2),
@@ -326,7 +330,7 @@ def arange_atm_to_same_wavelength(atm_containers):
     for atm in atm_containers:
         i = interpolate.Akima1DInterpolator(atm.model[config.ATM_MODEL_DATAFRAME_WAVE],
                                             atm.model[config.ATM_MODEL_DATAFRAME_FLUX])
-        df = DataFrame({
+        df = pd.DataFrame({
             config.ATM_MODEL_DATAFRAME_WAVE: wavelengths,
             config.ATM_MODEL_DATAFRAME_FLUX: i(wavelengths),
         })
@@ -458,7 +462,7 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
     on_border_flux = interpolator([left_bandwidth, right_bandwidth])
     if np.isin(np.nan, on_border_flux):
         raise ValueError('Interpolation on bandwidth boundaries led to NaN value.')
-    df: DataFrame = atm_container.model
+    df: pd.DataFrame = atm_container.model
 
     df.values[[0, -1], :] = np.array([[on_border_flux[0], left_bandwidth], [on_border_flux[1], right_bandwidth]])
     df.values[:, 1] = np.round(df.values[:, 1], 10)
@@ -490,7 +494,7 @@ def apply_passband(atm_containers, passband, **kwargs):
                 inplace=False
             )
             # found passband throughput on atm defined wavelength
-            passband_df = DataFrame(
+            passband_df = pd.DataFrame(
                 {
                     config.PASSBAND_DATAFRAME_THROUGHPUT:
                         band_container.akima(atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]),

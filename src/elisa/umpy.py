@@ -18,6 +18,7 @@ pi = np.pi
 zeros = np.zeros
 log10 = np.log10
 divide = np.divide
+log = np.log
 
 isnan = np.isnan
 power = np.power

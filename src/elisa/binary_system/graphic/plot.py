@@ -1,6 +1,5 @@
 import numpy as np
 from astropy import units as u
-from elisa.binary_system import geo
 
 from elisa.base.container import StarContainer
 from elisa.binary_system.container import OrbitalPositionContainer

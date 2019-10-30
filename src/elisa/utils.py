@@ -1,19 +1,23 @@
+import re
 import numpy as np
 import pandas as pd
 import scipy as sp
-import re
 
-from queue import Empty
-from copy import copy, deepcopy
-
-from numpy.linalg import norm
-from pandas import DataFrame
-from scipy.spatial import distance_matrix as dstm
-from elisa import const as c, const
 from typing import Sized
+from queue import Empty
+from numpy.linalg import norm
+from scipy.spatial import distance_matrix as dstm
 from scipy.optimize import brute, fmin
 from matplotlib.cbook import flatten
-from elisa import umpy as up
+
+from copy import (
+    copy,
+    deepcopy
+)
+from elisa import (
+    const,
+    umpy as up
+)
 
 # auxiliary variable
 CUMULATIVE_TIME = 0.0
@@ -591,7 +595,7 @@ def get_line_of_sight_single_system(phase, inclination):
     """
     line_of_sight_spherical = np.empty((len(phase), 3), dtype=np.float)
     line_of_sight_spherical[:, 0] = 1
-    line_of_sight_spherical[:, 1] = c.FULL_ARC * phase
+    line_of_sight_spherical[:, 1] = const.FULL_ARC * phase
     line_of_sight_spherical[:, 2] = inclination
     return spherical_to_cartesian(line_of_sight_spherical)
 
@@ -649,7 +653,7 @@ def is_empty(value):
     if isinstance(value, Sized):
         # this cover also strings
         return len(value) == 0 or len(list(flatten(value))) == 0
-    if isinstance(value, DataFrame):
+    if isinstance(value, pd.DataFrame):
         return value.empty
     if isinstance(value, type(pd.NaT)):
         return True
@@ -683,7 +687,7 @@ def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     """
     # TODO: write unit test to test_utils
     # rotation around Z axis
-    phi_rot = (phi - phi_rotation) % c.FULL_ARC
+    phi_rot = (phi - phi_rotation) % const.FULL_ARC
 
     # rotation around Y axis by `theta_rotation` angle
     cos_phi = up.cos(phi_rot)

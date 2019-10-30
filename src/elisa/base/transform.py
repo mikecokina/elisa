@@ -1,7 +1,11 @@
 import numpy as np
 
 from astropy import units as au
-from elisa import units, const, umpy as up
+from elisa import (
+    units,
+    const,
+    umpy as up
+)
 
 
 WHEN_FLOAT64 = (int, np.int, float, np.float)

@@ -1,9 +1,11 @@
 import numpy as np
 
 from abc import ABCMeta, abstractmethod
-from elisa import logger, utils
-from elisa.utils import is_empty
 from elisa.base.body import Body
+from elisa import (
+    logger,
+    utils
+)
 
 
 class System(metaclass=ABCMeta):
@@ -27,7 +29,7 @@ class System(metaclass=ABCMeta):
         self.gamma = np.nan
         self.additional_light = 0.0
 
-        if is_empty(name):
+        if utils.is_empty(name):
             self.name = str(System.ID)
             self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
             self.__class__.ID += 1
