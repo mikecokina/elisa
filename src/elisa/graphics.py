@@ -97,7 +97,7 @@ def equipotential_single_star(**kwargs):
     x, y = kwargs['points'][:, 0], kwargs['points'][:, 1]
 
     unit = str(kwargs['axis_unit'])
-    x_label, y_label = r'x/' + unit, r'y/' + unit
+    x_label, y_label = r'x/' + unit, r'z/' + unit
 
     f = plt.figure()
     ax = f.add_subplot(111)

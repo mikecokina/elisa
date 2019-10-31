@@ -1,7 +1,7 @@
 import numpy as np
 from astropy import units as u
-from elisa.binary_system import utils as butils
 
+from elisa.binary_system import utils as butils
 from elisa.base.container import StarContainer
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import BINARY_POSITION_PLACEHOLDER
@@ -199,7 +199,7 @@ class Plot(object):
             azimuth: camera azimuth
             units: str - units of gravity acceleration colormap  `SI` or `cgs`
             scale: str; `linear` or `log`
-            axis_units: astropy.unit or dimensionless - axis units
+            axis_unit: astropy.unit or dimensionless - axis units
             colorbar_orientation: str - `horizontal` or `vertical`(default)
             colorbar: bool - colorabar on/off switchic
         :return:

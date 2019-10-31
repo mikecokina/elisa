@@ -123,7 +123,7 @@ class StarContainer(object):
         self.face_symmetry_vector = np.array([])
         self.base_symmetry_faces_number = 0
 
-        # those are used only if case of spots are used
+        # those are used only if case of spots are NOT used
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
 

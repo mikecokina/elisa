@@ -138,22 +138,6 @@ def build_surface_map(self, colormap=None, return_map=False):
         return ret_list
     return
 
-
-def build_mesh(self):
-    """
-    build points of surface for including spots
-    """
-    _a, _b, _c, _d = self.mesh(symmetry_output=True)
-
-    self.star.points = _a
-    self.star.point_symmetry_vector = _b
-    self.star.base_symmetry_points_number = _c
-    self.star.inverse_point_symmetry_matrix = _d
-
-    self.mesh_spots()
-    self.star.incorporate_spots_mesh(component_com=0)
-
-
 def build_surface_gravity(self):
     """
     function calculates gravity potential gradient magnitude (surface gravity) for each face

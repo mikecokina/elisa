@@ -14,6 +14,8 @@ config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-faces-module")
 
 
+# TODO: a lot of these functions are not BinarySystem specific and are needed elsewhere, relocate them to suitable
+# place in base directory
 def visibility_test(centres, xlim, component):
     """
     Tests if given faces are visible from the other star.
@@ -514,7 +516,10 @@ def calculate_normals(points, faces, centres, com):
                       ...
                      [normal_xn, normal_yn, normal_zn]])
     """
-    normals = np.array([np.cross(points[xx[1]] - points[xx[0]], points[xx[2]] - points[xx[0]]) for xx in faces])
+    # vectors defining triangle ABC, a = B - A, b = C - A
+    a = points[faces[:, 1]] - points[faces[:, 0]]
+    b = points[faces[:, 2]] - points[faces[:, 0]]
+    normals = np.cross(a, b)
     normals /= np.linalg.norm(normals, axis=1)[:, None]
     corr_centres = copy(centres) - np.array([com, 0, 0])[None, :]
 
