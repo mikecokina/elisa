@@ -1,6 +1,6 @@
 import numpy as np
 from astropy import units as u
-from elisa.binary_system import geo, utils as butils
+from elisa.binary_system import utils as butils
 
 from elisa.base.container import StarContainer
 from elisa.binary_system.container import OrbitalPositionContainer
@@ -230,8 +230,9 @@ class Plot(object):
         kwg = {'suppress_parallelism': False}
 
         # recalculating spot latitudes
-        spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phase'], component="all")
-        geo.assign_spot_longitudes(self._self, spots_longitudes, index=None, component="all")
+        # TODO: implement latitude recalculation once the functions will be relocated
+        # spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phase'], component="all")
+        # geo.assign_spot_longitudes(self._self, spots_longitudes, index=None, component="all")
 
         orbital_position_container = OrbitalPositionContainer(
             primary=StarContainer.from_properties_container(self._self.primary.to_properties_container()),
@@ -272,84 +273,5 @@ class Plot(object):
                 if kwargs['normals']:
                     kwargs[component+'_centres'] *= sma
                     kwargs[component+'_centres'] *= sma
-        # if kwargs['colormap'] == 'temperature':
-        #     points, faces = self._self.build_surface(components_distance=components_distance,
-        #                                              return_surface=True, **kwg)
-        #     kwargs['points_primary'] = points['primary']
-        #     kwargs['primary_triangles'] = faces['primary']
-        #     kwargs['points_secondary'] = points['secondary']
-        #     kwargs['secondary_triangles'] = faces['secondary']
-        #
-        #     cmap = self._self.build_surface_map(colormap=kwargs['colormap'],
-        #                                         components_distance=components_distance,
-        #                                         return_map=True,
-        #                                         phase=kwargs['phase'])
-        #     kwargs['primary_cmap'] = cmap['primary']
-        #     kwargs['secondary_cmap'] = cmap['secondary']
-        #
-        #     if kwargs['face_mask_primary'] is not None:
-        #         kwargs['primary_triangles'] = kwargs['primary_triangles'][kwargs['face_mask_primary']]
-        #         kwargs['primary_cmap'] = kwargs['primary_cmap'][kwargs['face_mask_primary']]
-        #     if kwargs['face_mask_secondary'] is not None:
-        #         kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
-        #         kwargs['secondary_cmap'] = kwargs['secondary_cmap'][kwargs['face_mask_secondary']]
-        #
-        #     if kwargs['normals']:
-        #         kwargs['primary_centres'] = self._self.primary.calculate_surface_centres(
-        #             kwargs['points_primary'], kwargs['primary_triangles'])
-        #         kwargs['primary_arrows'] = self._self.primary.calculate_normals(
-        #             kwargs['points_primary'], kwargs['primary_triangles'], com=0)
-        #         kwargs['secondary_centres'] = self._self.secondary.calculate_surface_centres(
-        #             kwargs['points_secondary'], kwargs['secondary_triangles'])
-        #         kwargs['secondary_arrows'] = self._self.secondary.calculate_normals(
-        #             kwargs['points_secondary'], kwargs['secondary_triangles'], com=components_distance)
-        # else:
-        #     if kwargs['components_to_plot'] in ['primary', 'both']:
-        #         points, faces = self._self.build_surface(component='primary', components_distance=components_distance,
-        #                                                  return_surface=True, **kwg)
-        #         kwargs['points_primary'] = points['primary']
-        #         kwargs['primary_triangles'] = faces['primary']
-        #
-        #         if kwargs['colormap']:
-        #             cmap = self._self.build_surface_map(colormap=kwargs['colormap'], component='primary',
-        #                                                 components_distance=components_distance, return_map=True)
-        #             kwargs['primary_cmap'] = cmap['primary']
-        #             if kwargs['colormap'] == 'gravity_acceleration':
-        #                 kwargs['primary_cmap'] = \
-        #                     utils.convert_gravity_acceleration_array(kwargs['primary_cmap'], kwargs['units'])
-        #
-        #         if kwargs['normals']:
-        #             kwargs['primary_centres'] = self._self.primary.calculate_surface_centres(
-        #                 kwargs['points_primary'], kwargs['primary_triangles'])
-        #             kwargs['primary_arrows'] = self._self.primary.calculate_normals(
-        #                 kwargs['points_primary'], kwargs['primary_triangles'], com=0)
-        #
-        #         if kwargs['face_mask_primary'] is not None:
-        #             kwargs['primary_triangles'] = kwargs['primary_triangles'][kwargs['face_mask_primary']]
-        #             kwargs['primary_cmap'] = kwargs['primary_cmap'][kwargs['face_mask_primary']]
-        #
-        #     if kwargs['components_to_plot'] in ['secondary', 'both']:
-        #         points, faces = self._self.build_surface(component='secondary', components_distance=components_distance,
-        #                                                  return_surface=True, **kwg)
-        #         kwargs['points_secondary'] = points['secondary']
-        #         kwargs['secondary_triangles'] = faces['secondary']
-        #
-        #         if kwargs['colormap']:
-        #             cmap = self._self.build_surface_map(colormap=kwargs['colormap'], component='secondary',
-        #                                                 components_distance=components_distance, return_map=True)
-        #             kwargs['secondary_cmap'] = cmap['secondary']
-        #             if kwargs['colormap'] == 'gravity_acceleration':
-        #                 kwargs['secondary_cmap'] = \
-        #                     utils.convert_gravity_acceleration_array(kwargs['secondary_cmap'], kwargs['units'])
-        #
-        #         if kwargs['normals']:
-        #             kwargs['secondary_centres'] = self._self.secondary.calculate_surface_centres(
-        #                 kwargs['points_secondary'], kwargs['secondary_triangles'])
-        #             kwargs['secondary_arrows'] = self._self.secondary.calculate_normals(
-        #                 kwargs['points_secondary'], kwargs['secondary_triangles'], com=components_distance)
-        #
-        #         if kwargs['face_mask_secondary'] is not None:
-        #             kwargs['secondary_triangles'] = kwargs['secondary_triangles'][kwargs['face_mask_secondary']]
-        #             kwargs['secondary_cmap'] = kwargs['secondary_cmap'][kwargs['face_mask_secondary']]
 
         graphics.binary_surface(**kwargs)

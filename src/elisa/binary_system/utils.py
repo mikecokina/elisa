@@ -100,7 +100,7 @@ def pypex_poly_surface_area(pypex_polys_gen):
 
 def hull_to_pypex_poly(hull):
     """
-    Convert convex polygon defined by points in List or numpy.array to pypex.poly2d.polygon.Plygon.
+    Convert convex polygon defined by points in List or numpy.array to pypex.poly2d.polygon.Polygon.
     :param hull: List or numpy.array
     :return: pypex.poly2d.polygon.Plygon
     """
