@@ -22,27 +22,6 @@ class SupportMethodsTestCase(ElisaTestCase):
         obtained = np.round(lc._compute_rel_d_radii(MockSelf, mock_supplements), 4)
         self.assertTrue(np.all(expected == obtained))
 
-    def test_get_visible_projection(self):
-        obj = MockSelf()
-        obj.faces = np.array([[0, 1, 2], [2, 3, 0]])
-        obj.indices = np.array([0, 1])
-        obj.points = np.array([[-1, -1, -2], [0., 1, 1], [1, 1, 2], [2, 3, 4]])
-
-        obtained = lc.get_visible_projection(obj)
-        expected = np.vstack((obj.points[:, 1], obj.points[:, 2])).T
-        self.assertTrue(np.all(expected == obtained))
-
-    def test_partial_visible_faces_surface_coverage(self):
-        points = np.array([[-1, 0.5], [1, 0.5], [0, 1.5]])
-        faces = np.array([[0, 1, 2]])
-        normals = np.array([[1, -1, 0]]) / np.linalg.norm(np.array([-1, 1, 0]))
-        hull = np.array([[0, 0], [2, 0], [2, 2], [0, 2]])
-
-        obtained = np.round(lc.partial_visible_faces_surface_coverage(points, faces, normals, hull), 10)
-        expected = np.round(0.5 / np.cos(np.pi / 4.0), 10)
-
-        self.assertTrue(np.all(obtained == expected))
-
 
 class ComputeLightCurvesTestCase(ElisaTestCase):
     params = {
@@ -95,57 +74,6 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
     def tearDown(self):
         config.LIMB_DARKENING_LAW = self.law
-
-    def test_light_curve_pass_on_all_ld_law(self):
-        """
-        no assert here, it just has to pass without error
-        """
-        bs = prepare_binary_system(self.params["detached"])
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
-
-        laws = config.LD_LAW_TO_FILE_PREFIX.keys()
-        for law in laws:
-            config.LIMB_DARKENING_LAW = law
-            o = Observer(passband=['Generic.Bessell.V'], system=bs)
-            o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-
-    def test_circular_synchronous_detached_system(self):
-        config.LIMB_DARKENING_LAW = "linear"
-
-        bs = prepare_binary_system(self.params["detached"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.01
-
-        expected = load_light_curve("detached.circ.sync.generic.bessel.v.json")
-        expected_phases = expected[0]
-        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-
-        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
-
-    def test_circular_synchronous_overcontact_system(self):
-        config.LIMB_DARKENING_LAW = "linear"
-
-        bs = prepare_binary_system(self.params["over-contact"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.01
-
-        expected = load_light_curve("overcontact.circ.sync.generic.bessel.v.json")
-        expected_phases = expected[0]
-        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-
-        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        self.assertTrue(np.all(np.round(obtained_flux, 4) - np.round(expected_flux, 4) <= 1e-3))
 
     @skip("Better volume approximation broke the test")
     def test_eccentric_synchronous_detached_system_no_approximation(self):

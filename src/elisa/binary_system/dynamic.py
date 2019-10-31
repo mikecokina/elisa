@@ -211,3 +211,32 @@ def phase_crv_symmetry(self, phase):
         return res_phases, reverse_idx
     else:
         return phase, up.arange(phase.shape[0])
+
+
+def in_eclipse_test(azimuths, ecl_boundaries):
+    """
+    Test whether in given phases eclipse occurs or not.
+    !It works only for circular oribts!
+
+    :param azimuths: Union[List, numpy.array]
+    :param ecl_boundaries: Union[List, numpy.array]
+    :return: numpy.array[bool]
+    """
+
+    if utils.is_empty(ecl_boundaries):
+        return np.ones(len(azimuths), dtype=bool)
+
+    if ecl_boundaries[0] < 1.5 * const.PI:
+        primary_ecl_test = up.logical_and((azimuths >= ecl_boundaries[0]), (azimuths <= ecl_boundaries[1]))
+    else:
+        primary_ecl_test = up.logical_or((azimuths >= ecl_boundaries[0]), (azimuths < ecl_boundaries[1]))
+
+    if ecl_boundaries[2] > const.HALF_PI:
+        if ecl_boundaries[3] > const.HALF_PI:
+            secondary_ecl_test = up.logical_and((azimuths >= ecl_boundaries[2]), (azimuths <= ecl_boundaries[3]))
+        else:
+            secondary_ecl_test = up.logical_or((azimuths >= ecl_boundaries[2]), (azimuths <= ecl_boundaries[3]))
+    else:
+        secondary_ecl_test = up.logical_and((azimuths >= ecl_boundaries[2]), (azimuths <= ecl_boundaries[3]))
+
+    return up.logical_or(primary_ecl_test, secondary_ecl_test)

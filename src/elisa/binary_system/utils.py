@@ -1,39 +1,12 @@
+import numpy as np
 from pypex.poly2d.polygon import Polygon
-from elisa import umpy as up
+
 from elisa.binary_system import model
 from elisa.utils import is_empty
-
-
-def get_flaten_properties(component):
-    """
-    Return flatten ndarrays of points, faces, etc. from object instance and spot instances for given object.
-    :param component: Star instance
-    :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, ndarray]
-
-    ::
-
-        Tuple(points, normals, faces, temperatures, log_g, rals, face_centres)
-    """
-    points = component.points
-    normals = component.normals
-    faces = component.faces
-    temperatures = component.temperatures
-    log_g = component.log_g
-    rals = {mode_idx: mode.rals[0] for mode_idx, mode in component.pulsations.items()}
-    centres = component.face_centres
-
-    if isinstance(component.spots, (dict,)):
-        for idx, spot in component.spots.items():
-            faces = up.concatenate((faces, spot.faces + len(points)), axis=0)
-            points = up.concatenate((points, spot.points), axis=0)
-            normals = up.concatenate((normals, spot.normals), axis=0)
-            temperatures = up.concatenate((temperatures, spot.temperatures), axis=0)
-            log_g = up.concatenate((log_g, spot.log_g), axis=0)
-            for mode_idx, mode in component.pulsations.items():
-                rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
-            centres = up.concatenate((centres, spot.face_centres), axis=0)
-
-    return points, normals, faces, temperatures, log_g, rals, centres
+from elisa import (
+    umpy as up,
+    utils
+)
 
 
 def potential_from_radius(component, radius, phi, theta, component_distance, mass_ratio, synchronicity):
@@ -123,3 +96,17 @@ def component_to_list(component):
     else:
         raise ValueError('Invalid name of the component. Use `primary`, `secondary`, `all` or `both`')
     return component
+
+
+def get_visible_projection(obj):
+    """
+    Returns yz projection of nearside points.
+
+    :param obj:
+    :return:
+    """
+    return utils.plane_projection(
+        obj.points[
+            np.unique(obj.faces[obj.indices])
+        ], "yz"
+    )

@@ -161,9 +161,6 @@ class StarContainer(object):
         """
         return deepcopy(self)
 
-    def flatten(self):
-        pass
-
     def remove_spot(self, spot_index: int):
         """
         Remove n-th spot index of object.
@@ -228,15 +225,15 @@ class StarContainer(object):
 
         :return: Tuple[numpy.array, numpy.array]
         """
-        ret_points = copy(self.points)
-        ret_faces = copy(self.faces)
+        points = copy(self.points)
+        faces = copy(self.faces)
         if self.has_spots():
             for spot_index, spot in self.spots.items():
-                n_points = np.shape(ret_points)[0]
-                ret_points = np.append(ret_points, spot.points, axis=0)
-                ret_faces = np.append(ret_faces, spot.faces + n_points, axis=0)
+                n_points = np.shape(points)[0]
+                points = np.append(points, spot.points, axis=0)
+                faces = np.append(faces, spot.faces + n_points, axis=0)
 
-        return ret_points, ret_faces
+        return points, faces
 
     def reset_spots_properties(self):
         """
@@ -257,3 +254,47 @@ class StarContainer(object):
             spot_instance.temperatures = np.array([])
 
             spot_instance.log_g = np.array([])
+
+    def get_flatten_properties(self):
+        """
+        Return flatten ndarrays of points, faces, etc. from object instance and spot instances for given object.
+        :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, ndarray]
+
+        ::
+
+            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres)
+        """
+        points = self.points
+        normals = self.normals
+        faces = self.faces
+        temperatures = self.temperatures
+        log_g = self.log_g
+        rals = {mode_idx: mode.rals[0] for mode_idx, mode in self.pulsations.items()}
+        centres = self.face_centres
+
+        if isinstance(self.spots, (dict,)):
+            for idx, spot in self.spots.items():
+                faces = up.concatenate((faces, spot.faces + len(points)), axis=0)
+                points = up.concatenate((points, spot.points), axis=0)
+                normals = up.concatenate((normals, spot.normals), axis=0)
+                temperatures = up.concatenate((temperatures, spot.temperatures), axis=0)
+                log_g = up.concatenate((log_g, spot.log_g), axis=0)
+                for mode_idx, mode in self.pulsations.items():
+                    rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
+                centres = up.concatenate((centres, spot.face_centres), axis=0)
+
+        return points, normals, faces, temperatures, log_g, rals, centres
+
+    def flatt_it(self):
+        """
+        Make properties "points", "normals", "faces", "temperatures", "log_g", "rals", "centers"
+        of container flatt. It means all properties of start and spots are put together.
+
+        :return: self
+        """
+        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers"]
+        flat_props = self.get_flatten_properties()
+        for prop, value in zip(props_list, flat_props):
+            setattr(self, prop, value)
+
+        return self

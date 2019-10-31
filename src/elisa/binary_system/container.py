@@ -1,5 +1,6 @@
 import numpy as np
 
+from copy import deepcopy
 from elisa.binary_system import dynamic
 from elisa.conf import config
 from elisa import (
@@ -40,6 +41,9 @@ class OrbitalPositionContainer(PositionContainer):
         primary = StarContainer.from_star_instance(binary_system.primary)
         secondary = StarContainer.from_star_instance(binary_system.secondary)
         return cls(primary, secondary, position, **binary_system.properties_serializer())
+
+    def copy(self):
+        return deepcopy(self)
 
     def has_spots(self):
         return self.primary.has_spots() and self.secondary.has_spots()
@@ -119,7 +123,7 @@ class OrbitalPositionContainer(PositionContainer):
 
         :return:
         """
-        __COMPONENTS__ = ["_primary", "_secondary"]
+        __COMPONENTS__ = ["primary", "secondary"]
         __PROPERTIES__ = ["points", "normals"]
 
         for component in __COMPONENTS__:
@@ -141,7 +145,7 @@ class OrbitalPositionContainer(PositionContainer):
 
         :return: self
         """
-        __COMPONENTS__ = ["_primary", "_secondary"]
+        __COMPONENTS__ = ["primary", "secondary"]
         __PROPERTIES__ = ["points", "normals"]
 
         for component in __COMPONENTS__:
@@ -149,4 +153,12 @@ class OrbitalPositionContainer(PositionContainer):
             normals = getattr(star_container, "normals")
             valid_indices = dynamic.darkside_filter(line_of_sight=const.LINE_OF_SIGHT, normals=normals)
             setattr(star_container, "indices", valid_indices)
+        return self
+
+    def flatt_it(self):
+        components = ["primary", "secondary"]
+        for component in components:
+            star_container = getattr(self, component)
+            if self.primary.has_spots() or self.primary.has_pulsations():
+                star_container.flatt_it()
         return self
