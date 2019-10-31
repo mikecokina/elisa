@@ -14,15 +14,7 @@ class SingleSystemProperties(SystemProperties):
         :param value: quantity or float; rotation period
         :return:
         """
-        if isinstance(value, au.quantity.Quantity):
-            value = np.float64(value.to(units.PERIOD_UNIT))
-        elif isinstance(value, (int, np.int, float, np.float)):
-            value = np.float64(value)
-        else:
-            raise TypeError('input of variable `value` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        if value <= 0:
-            raise ValueError(f'period of rotation must be non-zero positive value. Your value: {value}')
+        return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def reference_time(value):

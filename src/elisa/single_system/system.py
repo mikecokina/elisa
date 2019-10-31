@@ -40,6 +40,7 @@ class SingleSystem(System):
         self.animation = graphic.animation.Animation(self)
 
         self.star = star
+        self._components = dict(star=self.star)
 
         # default values of properties
         self.rotation_period = None
@@ -57,27 +58,18 @@ class SingleSystem(System):
         # this is also check if star surface is closed
         self.init_radii()
 
-    def init(self):
-        """
-        function to reinitialize SingleSystem class instance after changing parameter(s) of binary system using setters
-
-        :return:
-        """
-        self._logger.info(f're/initialising class instance {SingleSystem.__name__}')
-        self.__init__(star=self.star, **self.kwargs_serializer())
-
     def init_radii(self):
         """
         auxiliary function for calculation of important radii
         :return:
         """
         self._logger.debug('calculating polar radius')
-        self.star._polar_radius = self.calculate_polar_radius()
+        self.star.polar_radius = self.calculate_polar_radius()
         self._logger.debug('calculating surface potential')
         args = 0,
-        self.star._surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
+        self.star.surface_potential = self.surface_potential(self.star.polar_radius, args)[0]
         self._logger.debug('calculating equatorial radius')
-        self.star._equatorial_radius = self.calculate_equatorial_radius()
+        self.star.equatorial_radius = self.calculate_equatorial_radius()
 
     def _evaluate_spots(self):
         """
@@ -757,3 +749,40 @@ class SingleSystem(System):
 
     def build(self, *args, **kwargs):
         pass
+
+    # _________________________AFTER_REFACTOR___________________________________
+
+    def init(self):
+        """
+        function to reinitialize SingleSystem class instance after changing parameter(s) of binary system using setters
+
+        :return:
+        """
+        self._logger.info(f're/initialising class instance {SingleSystem.__name__}')
+        self.__init__(star=self.star, **self.kwargs_serializer())
+
+    @property
+    def components(self):
+        """
+        Return components object in Dict.
+
+        :return: Dict[str, elisa.base.Star]
+        """
+        return self._components
+
+    def compute_lightcurve(self, **kwargs):
+        """
+        This function decides which light curve generator function is used.
+        Depending on the basic properties of the binary system.
+
+        :param kwargs: Dict; arguments to be passed into light curve generator functions
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+            * ** phases ** * - numpy.array
+            * ** position_method ** * - method
+        :return: Dict
+        """
+        pass
+
