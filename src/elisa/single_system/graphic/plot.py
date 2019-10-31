@@ -1,7 +1,9 @@
 from copy import copy
-
 import numpy as np
 from astropy import units as u
+
+from elisa.base.container import StarContainer
+from elisa.single_system.container import SystemContainer
 
 from elisa import utils, graphics, units
 
@@ -12,7 +14,7 @@ class Plot(object):
     available in graphics library
 
                         `orbit` - plots orbit in orbital plane
-                        `equipotential` - plots crossections of surface Hill planes in xy,yz,zx planes
+                        `equipotential` - plots crossection of surface Hill planes in xz plane
                         `mesh` - plot surface points
                         `surface` - plot stellar surfaces
     :return:
@@ -22,30 +24,52 @@ class Plot(object):
         self._self = instance
 
     def equipotential(self, **kwargs):
-        if 'axis_unit' not in kwargs:
-            kwargs['axis_unit'] = u.solRad
-
+        """
+        Function for quick 2D plot of equipotential cross-section in xz plane
+        :param kwargs:
+        :**kwargs options**:
+            * **axis_unit** * -- astropy.unit or dimensionless - axis units, solar radius is default
+        :return:
+        """
         all_kwargs = ['axis_unit']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.equipotential)
+        kwargs['axis_unit'] = kwargs.get('axis_unit', u.solRad)
+
         points = self._self.calculate_equipotential_boundary()
         kwargs['points'] = (points * units.DISTANCE_UNIT).to(kwargs['axis_unit'])
         graphics.equipotential_single_star(**kwargs)
 
     def mesh(self, **kwargs):
-        if 'axis_unit' not in kwargs:
-            kwargs['axis_unit'] = u.solRad
+        """
+        Function plots 3D scatter plot of the surface points
 
+        :param kwargs:
+        :**kwargs options**:
+            * **plot_axis** * -- bool; switch the plot axis on/off
+            * **inclination** * -- float; elevation of the camera (in degrees)
+            * **azimuth** * -- float; azimuth of the camera (in degrees)
+            * **axis_unit** * -- astropy.unit or dimensionless - axis units, solar radius is default
+        :return:
+        """
         all_kwargs = ['axis_unit', 'plot_axis', 'inclination', 'azimuth']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.mesh)
 
+        kwargs['inclination'] = kwargs.get('inclination', np.degrees(self._self.inclination))
+        kwargs['axis_unit'] = kwargs.get('axis_unit', u.solRad)
         kwargs['plot_axis'] = kwargs.get('plot_axis', True)
         kwargs['inclination'] = np.degrees(kwargs.get('inclination', self._self.inclination))
+        kwargs['azimuth'] = kwargs.get('azimuth', 0)
+
+        position_container = SystemContainer(
+            star=StarContainer.from_properties_container(self._self.star.to_properties_container()),
+            **self._self.properties_serializer()
+        )
 
         kwargs['mesh'], _ = self._self.build_surface(return_surface=True)  # potom tu daj ked bude vediet skvrny
         denominator = (1 * kwargs['axis_unit'].to(units.DISTANCE_UNIT))
         kwargs['mesh'] /= denominator
         kwargs['equatorial_radius'] = self._self.star.equatorial_radius * units.DISTANCE_UNIT.to(kwargs['axis_unit'])
-        kwargs['azimuth'] = kwargs.get('azimuth', 0)
+
         graphics.single_star_mesh(**kwargs)
 
     def wireframe(self, **kwargs):

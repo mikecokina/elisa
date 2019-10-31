@@ -123,7 +123,7 @@ class StarContainer(object):
         self.face_symmetry_vector = np.array([])
         self.base_symmetry_faces_number = 0
 
-        # those are used only if case of spots are used
+        # those are used only if case of spots are NOT used
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
 
@@ -160,6 +160,20 @@ class StarContainer(object):
         :return: StarContainer;
         """
         return deepcopy(self)
+
+    def get_flatten_parameter(self, parameter):
+        """
+        returns flatten parameter
+        :param parameter: str; name of the parameter to flatten (do not use for faces)
+        :return:
+        """
+        if parameter in ['faces']:
+            raise ValueError(f'Function is not applicable to flatten `{parameter}` attribute.')
+        retval = getattr(self, parameter)
+        if self.has_spots():
+            for spot in self.spots.values():
+                retval = up.concatenate((retval, getattr(spot, parameter)), axis=0)
+        return retval
 
     def remove_spot(self, spot_index: int):
         """

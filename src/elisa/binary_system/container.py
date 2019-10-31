@@ -46,10 +46,10 @@ class OrbitalPositionContainer(PositionContainer):
         return deepcopy(self)
 
     def has_spots(self):
-        return self.primary.has_spots() and self.secondary.has_spots()
+        return self.primary.has_spots() or self.secondary.has_spots()
 
     def has_pulsations(self):
-        return self.primary.has_pulsations() and self.secondary.has_pulsations()
+        return self.primary.has_pulsations() or self.secondary.has_pulsations()
 
     def build(self, components_distance, component="all", do_pulsations=False, phase=None, **kwargs):
         """
@@ -76,8 +76,8 @@ class OrbitalPositionContainer(PositionContainer):
     def build_mesh(self, components_distance, component="all"):
         return mesh.build_mesh(self, components_distance, component)
 
-    def build_faces(self, component_distance, component="all"):
-        return faces.build_faces(self, component_distance, component)
+    def build_faces(self, components_distance, component="all"):
+        return faces.build_faces(self, components_distance, component)
 
     def build_surface_areas(self, component="all"):
         return faces.compute_all_surface_areas(self, component)

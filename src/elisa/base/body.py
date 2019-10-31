@@ -128,6 +128,6 @@ class Body(metaclass=ABCMeta):
             self._logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
                                f'component was larger than its angular radius. Therefore value of angular density was '
                                f'set to be equal to 0.5 * angular diameter')
-            spot_instance.discretization_factor = spot_instance.angular_radius * units.ARC_UNIT
+            spot_instance.discretization_factor = spot_instance.angular_radius
 
         return spot_instance

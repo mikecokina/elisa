@@ -97,7 +97,7 @@ def equipotential_single_star(**kwargs):
     x, y = kwargs['points'][:, 0], kwargs['points'][:, 1]
 
     unit = str(kwargs['axis_unit'])
-    x_label, y_label = r'x/' + unit, r'y/' + unit
+    x_label, y_label = r'x/' + unit, r'z/' + unit
 
     f = plt.figure()
     ax = f.add_subplot(111)
@@ -343,27 +343,27 @@ def binary_surface(**kwargs):
                 plot.set_array(kwargs['primary_cmap'])
                 if kwargs['colorbar']:
                     colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
-                    set_T_colorbar_label(colorbar, extra='primary')
+                    set_T_colorbar_label(colorbar, kwargs['scale'], extra='primary')
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'])
                 if kwargs['colorbar']:
                     colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
-                    set_T_colorbar_label(colorbar, extra='secondary')
+                    set_T_colorbar_label(colorbar, kwargs['scale'], extra='secondary')
             elif kwargs['components_to_plot'] == 'both':
                 if kwargs['morphology'] == 'over-contact':
                     both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                     plot.set_array(both_cmaps)
                     if kwargs['colorbar']:
                         colorbar = fig.colorbar(plot, shrink=0.7)
-                        set_T_colorbar_label(colorbar)
+                        set_T_colorbar_label(colorbar, kwargs['scale'])
                 else:
                     plot1.set_array(kwargs['primary_cmap'])
                     plot2.set_array(kwargs['secondary_cmap'])
                     if kwargs['colorbar']:
                         colorbar1 = fig.colorbar(plot1, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
-                        set_T_colorbar_label(colorbar1, extra='primary')
+                        set_T_colorbar_label(colorbar1, kwargs['scale'], extra='primary')
                         colorbar2 = fig.colorbar(plot2, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
-                        set_T_colorbar_label(colorbar2, extra='secondary')
+                        set_T_colorbar_label(colorbar2, kwargs['scale'], extra='secondary')
         elif kwargs['colormap'] == 'gravity_acceleration':
             try:
                 plot1.set_cmap(cmap=cm.jet_r)
@@ -378,27 +378,27 @@ def binary_surface(**kwargs):
                 plot.set_array(kwargs['primary_cmap'])
                 if kwargs['colorbar']:
                     colorbar1 = fig.colorbar(plot, shrink=0.7)
-                    set_g_colorbar_label(colorbar1, kwargs['units'])
+                    set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'])
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'])
                 if kwargs['colorbar']:
                     colorbar1 = fig.colorbar(plot, shrink=0.7)
-                    set_g_colorbar_label(colorbar1, kwargs['units'])
+                    set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'])
             elif kwargs['components_to_plot'] == 'both':
                 if kwargs['morphology'] == 'over-contact':
                     both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                     plot.set_array(both_cmaps)
                     if kwargs['colorbar']:
                         colorbar = fig.colorbar(plot, shrink=0.7)
-                        set_g_colorbar_label(colorbar, kwargs['units'])
+                        set_g_colorbar_label(colorbar, kwargs['units'], kwargs['scale'])
                 else:
                     plot1.set_array(kwargs['primary_cmap'])
                     plot2.set_array(kwargs['secondary_cmap'])
                     if kwargs['colorbar']:
                         colorbar1 = fig.colorbar(plot1, shrink=0.7)
-                        set_g_colorbar_label(colorbar1, kwargs['units'], extra='primary')
+                        set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'], extra='primary')
                         colorbar2 = fig.colorbar(plot2, shrink=0.7)
-                        set_g_colorbar_label(colorbar2, kwargs['units'], extra='secondary')
+                        set_g_colorbar_label(colorbar2, kwargs['units'], kwargs['scale'], extra='secondary')
 
     x_min, x_max = 0, 0
     if kwargs['components_to_plot'] == 'both':
@@ -432,7 +432,7 @@ def binary_surface(**kwargs):
     plt.show()
 
 
-def set_g_colorbar_label(colorbar, kwarg, extra=''):
+def set_g_colorbar_label(colorbar, unit, scale, extra=''):
     """
     function sets label of the colorbar for gravity acceleration surface function
 
@@ -440,17 +440,19 @@ def set_g_colorbar_label(colorbar, kwarg, extra=''):
     :param kwarg:
     :return:
     """
-    if kwarg == 'log_cgs':
-        colorbar.set_label(extra + ' log(g/[cgs])')
-    elif kwarg == 'log_SI':
-        colorbar.set_label(extra + ' log(g/[SI])')
-    elif kwarg == 'SI':
-        colorbar.set_label(extra + r' $g/[m s^{-2}]$')
-    elif kwarg == 'cgs':
-        colorbar.set_label(extra + r' $g/[cm s^{-2}]$')
+    if unit == 'cgs':
+        if scale == 'linear':
+            colorbar.set_label(extra + r' $g/[cm s^{-2}]$')
+        elif scale == 'log':
+            colorbar.set_label(extra + ' log(g/[cgs])')
+    elif unit == 'SI':
+        if scale == 'linear':
+            colorbar.set_label(extra + r' $g/[m s^{-2}]$')
+        elif scale == 'log':
+            colorbar.set_label(extra + ' log(g/[SI])')
 
 
-def set_T_colorbar_label(colorbar, extra=''):
+def set_T_colorbar_label(colorbar, scale, extra=''):
     """
     function sets label of the colorbar for effective temperature surface function
 
@@ -458,7 +460,10 @@ def set_T_colorbar_label(colorbar, extra=''):
     :param kwarg:
     :return:
     """
-    colorbar.set_label(extra + r' $T_{eff}/[K]$')
+    if scale == 'linear':
+        colorbar.set_label(extra + r' $T_{eff}/[K]$')
+    elif scale == 'log':
+        colorbar.set_label(extra + r' $log(T_{eff})$')
 
 
 def single_star_wireframe(**kwargs):
