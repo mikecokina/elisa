@@ -3,7 +3,6 @@ import numpy as np
 from copy import copy
 
 from elisa import utils, logger, graphics, const
-from elisa.binary_system import geo
 
 
 class Animation(object):

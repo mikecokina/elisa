@@ -2,10 +2,14 @@ import gc
 import numpy as np
 
 from copy import copy
-from elisa import utils, logger, umpy as up
 from elisa.base.transform import SpotProperties
 from elisa.conf import config
 from elisa.utils import is_empty
+from elisa import (
+    utils,
+    logger,
+    umpy as up
+)
 
 
 config.set_up_logging()

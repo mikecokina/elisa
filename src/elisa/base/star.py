@@ -1,14 +1,15 @@
 import numpy as np
 
-from elisa import utils, const as c, umpy as up
+from elisa import utils
 from elisa.base.body import Body
 from elisa.base.container import StarPropertiesContainer
-from elisa.pulse.mode import PulsationMode
 from elisa.base.transform import StarProperties
-from elisa.utils import is_empty
+from elisa.pulse.mode import PulsationMode
 
-from copy import copy, deepcopy
-from scipy.optimize import brute, fmin
+from copy import (
+    copy,
+    deepcopy
+)
 
 
 class Star(Body):

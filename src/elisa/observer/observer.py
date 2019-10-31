@@ -6,11 +6,15 @@ import pandas as pd
 from scipy import interpolate
 from astropy import units as u
 
-from elisa import logger
 from elisa.binary_system.system import BinarySystem
 from elisa.observer.plot import Plot
 from elisa.conf import config
 from elisa.utils import is_empty
+from elisa import (
+    logger,
+    units,
+    umpy as up
+)
 
 
 class PassbandContainer(object):
@@ -215,7 +219,7 @@ class Observer(object):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
-            phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
+            phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
 
         phases = np.array(phases)
 
@@ -269,7 +273,7 @@ class Observer(object):
             self.fluxes_unit = u.dimensionless_unscaled
         else:
             self.fluxes = curves
-            self.fluxes_unit = u.W / u.m**2
+            self.fluxes_unit = units.W / units.m**2
         self._logger.info("observation finished")
         return phases, curves
 
@@ -280,7 +284,7 @@ class Observer(object):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
-            phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
+            phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
         phases = np.array(phases)
 
         return self._system.compute_rv(
@@ -311,14 +315,10 @@ class Observer(object):
             assynchronous_spotty_test = test1 | test2
 
             if has_pulsation_test | assynchronous_spotty_test:
-                return phases, np.arange(phases.shape[0])
+                return phases, up.arange(phases.shape[0])
             else:
                 base_interval = np.round(phases % 1, 9)
                 return np.unique(base_interval, return_inverse=True)
         else:
             # implement for single system
             pass
-
-
-if __name__ == "__main__":
-    pass

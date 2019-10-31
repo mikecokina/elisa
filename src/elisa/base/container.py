@@ -1,10 +1,17 @@
 import numpy as np
 
 from abc import abstractmethod
-from copy import deepcopy, copy
-
-from elisa import logger, umpy as up, utils
+from copy import (
+    deepcopy,
+    copy
+)
 from elisa.conf import config
+from elisa import (
+    logger,
+    utils,
+    umpy as up
+)
+
 
 config.set_up_logging()
 __logger__ = logger.getLogger("base-container-module")
@@ -116,19 +123,27 @@ class StarContainer(object):
         self.face_symmetry_vector = np.array([])
         self.base_symmetry_faces_number = 0
 
+        # those are used only if case of spots are used
+        self.base_symmetry_points = np.array([])
+        self.base_symmetry_faces = np.array([])
+
         self.spots = dict()
         self.pulsations = dict()
         self.polar_potential_gradient_magnitude = np.nan
 
-    @staticmethod
-    def from_properties_container(properties_container):
+    @classmethod
+    def from_star_instance(cls, star):
+        return cls.from_properties_container(star.to_properties_container())
+
+    @classmethod
+    def from_properties_container(cls, properties_container):
         """
         Create StarContainer from properties container.
 
         :param properties_container:
         :return: StarContainer
         """
-        container = StarContainer()
+        container = cls()
         container.__dict__.update(properties_container.__dict__)
         return container
 

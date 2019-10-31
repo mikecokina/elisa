@@ -1,19 +1,28 @@
 import numpy as np
 import scipy
 
-from astropy import units as u
 from scipy import optimize
 
-from elisa import umpy as up, utils, const, units
+from elisa.binary_system.curves import lc, rv
 from elisa.base.container import SystemPropertiesContainer
 from elisa.base.system import System
-from elisa.binary_system import geo, utils as bsutils, model, radius as bsradius
-from elisa.binary_system.curves import lc, rv
 from elisa.binary_system import graphic
 from elisa.binary_system.surface import mesh
 from elisa.binary_system.transform import BinarySystemProperties
+
 from elisa.conf import config
 from elisa.orbit import orbit
+from elisa import (
+    umpy as up,
+    utils,
+    const,
+    units
+)
+from elisa.binary_system import (
+    utils as bsutils,
+    radius as bsradius,
+    model
+)
 
 
 class BinarySystem(System):
@@ -147,7 +156,7 @@ class BinarySystem(System):
         Calculates length semi major axis using 3rd kepler law.
         :return: float
         """
-        period = np.float64((self.period * units.PERIOD_UNIT).to(u.s))
+        period = np.float64((self.period * units.PERIOD_UNIT).to(units.s))
         return (const.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * const.PI ** 2)) ** (1.0 / 3)
 
     def compute_morphology(self):
@@ -216,7 +225,7 @@ class BinarySystem(System):
         """
         if not self.secondary.kwargs.get('discretization_factor'):
             self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
-                                                    / self.secondary.polar_radius * u.rad).value
+                                                    / self.secondary.polar_radius * units.rad).value
             self._logger.info(f"setting discretization factor of secondary component to "
                               f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
                               f"according to discretization factor of the primary component ")
@@ -557,9 +566,6 @@ class BinarySystem(System):
     # radial velocity curves
     def compute_rv(self, **kwargs):
         return rv.radial_velocity(self, **kwargs)
-
-    def prepare_system_positions_container(self, orbital_motion, ecl_boundaries=None):
-        return geo.SystemOrbitalPosition(self.primary, self.secondary, self.inclination, orbital_motion, ecl_boundaries)
 
     def correct_potentials(self, phases, component="all", iterations=2):
         """
