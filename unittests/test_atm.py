@@ -6,9 +6,12 @@ from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from elisa.conf import config
-from elisa import atm
 from elisa.observer.observer import PassbandContainer
 from unittests.utils import ElisaTestCase
+from elisa import (
+    umpy as up,
+    atm
+)
 
 
 class TestMapDict(ElisaTestCase):
@@ -84,8 +87,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
     def test_strip_atm_container_by_bandwidth(self):
         c = atm.AtmDataContainer(pd.DataFrame({
-            config.ATM_MODEL_DATAFRAME_FLUX: np.arange(0, 100, 10, dtype=np.float),
-            config.ATM_MODEL_DATAFRAME_WAVE: np.arange(10, dtype=np.float)
+            config.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=np.float),
+            config.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=np.float)
         }), 10, 10, 10)
 
         l_band, r_band = 3.1, 7.8
@@ -128,8 +131,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
     def test_extend_atm_container_on_bandwidth_boundary(self):
         c = atm.AtmDataContainer(pd.DataFrame({
-            config.ATM_MODEL_DATAFRAME_FLUX: np.arange(0, 100, 10, dtype=np.float),
-            config.ATM_MODEL_DATAFRAME_WAVE: np.arange(10, dtype=np.float)
+            config.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=np.float),
+            config.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=np.float)
         }), 10, 10, 10)
 
         l_band, r_band = 0.4, 8.8
@@ -266,8 +269,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
     def test_apply_passband(self):
         atmc = atm.AtmDataContainer(pd.DataFrame({
-            config.ATM_MODEL_DATAFRAME_FLUX: np.arange(10, dtype=np.float),
-            config.ATM_MODEL_DATAFRAME_WAVE: np.arange(0, 100, 10, dtype=np.float)
+            config.ATM_MODEL_DATAFRAME_FLUX: up.arange(10, dtype=np.float),
+            config.ATM_MODEL_DATAFRAME_WAVE: up.arange(0, 100, 10, dtype=np.float)
         }), 0, 0, 0)
 
         bandc = PassbandContainer(

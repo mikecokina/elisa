@@ -3,7 +3,6 @@ import numpy as np
 
 from scipy.spatial.qhull import ConvexHull
 from elisa.conf import config
-from elisa.pulse import pulsations
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa import (
     umpy as up,
@@ -21,6 +20,59 @@ from elisa.binary_system import (
 
 config.set_up_logging()
 __logger__ = logger.getLogger(__name__)
+
+
+def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
+    """
+    Calculates point on the light curve for given band.
+
+    :param band: str; name of the photometric band
+    :param ld_cfs: Dict[str, Dict[str, pandas.DataFrame]]
+    :param normal_radiance: Dict[str, Dict[str, numpy.array]]
+    :param coverage: Dict[str, Dict[str, numpy.array]]
+    :param cosines: Dict[str, Dict[str, numpy.array]]
+    :return: float
+    """
+    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+    ld_cors = {
+        component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values,
+                                            limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                            cos_theta=cosines[component])
+        for component in config.BINARY_COUNTERPARTS
+    }
+    flux = {
+        component:
+            np.sum(normal_radiance[component][band] * cosines[component] * coverage[component] * ld_cors[component])
+        for component in config.BINARY_COUNTERPARTS
+    }
+    flux = flux['primary'] + flux['secondary']
+    return flux
+
+
+def calculate_coverage_with_cosines(system, semi_major_axis, in_eclipse=True):
+    """
+    Function prepares surface-related parameters such as coverage(area of visibility
+    of the triangles) and directional cosines towards line-of-sight vector.
+
+    :param semi_major_axis: float
+    :param system: SingleOrbitalPositionContainer
+    :param in_eclipse: bool; indicate if eclipse occur for given position container.
+    If you are not sure leave it to True
+    :return: Tuple;
+
+    shape::
+
+        (numpy.array, Dict[str, numpy.array])
+
+    - coverage - numpy.array - visible area of triangles
+    - p_cosines, s_cosines - Dict[str, numpy.array] - directional cosines for each face with respect
+    to line-of-sight vector
+    """
+    coverage = compute_surface_coverage(system, semi_major_axis=semi_major_axis, in_eclipse=in_eclipse)
+    p_cosines = utils.calculate_cos_theta_los_x(system.primary.normals)
+    s_cosines = utils.calculate_cos_theta_los_x(system.secondary.normals)
+    cosines = {'primary': p_cosines, 'secondary': s_cosines}
+    return coverage, cosines
 
 
 def surface_area_coverage(size, visible, visible_coverage, partial=None, partial_coverage=None):
@@ -229,12 +281,11 @@ def get_normal_radiance(system, component="all", **kwargs):
                          'Available parameters are `primary`, `secondary` or `all`.')
 
 
-def prep_surface_params(system, pulsations_test, **kwargs):
+def prep_surface_params(system, **kwargs):
     """
     Prepares normal radiances and limb darkening coefficients variables.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer
-    :param pulsations_test: Dict; {component: bool - has_pulsations, ...}
     :param kwargs: Dict;
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
@@ -242,20 +293,20 @@ def prep_surface_params(system, pulsations_test, **kwargs):
             * ** atlas ** * - str
     :return:
     """
-    has_pulsations = pulsations_test['primary'] or pulsations_test['secondary']
-    if not has_pulsations:
+
+    if not system.has_pulsations():
         # compute normal radiance for each face and each component
         normal_radiance = get_normal_radiance(system, **kwargs)
         # obtain limb darkening factor for each face
         ld_cfs = get_limbdarkening_cfs(system, **kwargs)
-    elif not pulsations_test['primary']:
+    elif not system.primary.has_pulsations():
         normal_radiance = {'primary': get_normal_radiance(system, 'primary', **kwargs)}
         ld_cfs = {'primary': get_limbdarkening_cfs(system, 'primary', **kwargs)}
-    elif not pulsations_test['secondary']:
+    elif not system.secondary.has_pulsations():
         normal_radiance = {'secondary': get_normal_radiance(system, 'secondary', **kwargs)}
         ld_cfs = {'secondary': get_limbdarkening_cfs(system, 'secondary', **kwargs)}
     else:
-        normal_radiance, ld_cfs = dict(), dict()
+        raise NotImplemented("Pulsations are not fully implemented")
     return normal_radiance, ld_cfs
 
 
@@ -290,9 +341,7 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     azimuths = [position.azimuth for position in orbital_motion]
     in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
 
-    pulsations_test = {'primary': binary.primary.has_pulsations(), 'secondary': binary.secondary.has_pulsations()}
-
-    normal_radiance, ld_cfs = prep_surface_params(initial_system, pulsations_test, **kwargs)
+    normal_radiance, ld_cfs = prep_surface_params(initial_system, **kwargs)
     band_curves = {key: up.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
 
     for pos_idx, position in enumerate(orbital_motion):
@@ -314,6 +363,8 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
             visibility_test[component] = cosines[component] > 0
             cosines[component] = cosines[component][visibility_test[component]]
 
+            # todo: pulsations adjustment should come here
+
         # integrating resulting flux
         for band in kwargs["passband"].keys():
             flux, ld_cors = np.empty(2), dict()
@@ -332,4 +383,171 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
             band_curves[band][pos_idx] = np.sum(flux)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
+    return band_curves
+
+
+def _look_for_approximation(phases_span_test, not_pulsations_test):
+    """
+    This condition checks if even to attempt to utilize apsidal line symmetry approximations.
+
+    :param not_pulsations_test: bool
+    :param phases_span_test: bool
+    :return: bool
+    """
+    return config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None \
+        and phases_span_test and not_pulsations_test
+
+
+def _split_orbit_by_apse_line(orbital_motion, orbital_mask):
+    """
+    Split orbital positions represented by `orbital_motion` array on two groups separated by line of apsides.
+    Separation is defined by `orbital_mask`
+
+    :param orbital_motion: numpy.array; arraywhcih represents orbital positions
+    :param orbital_mask: numpy.array[bool]; mask which defines separation (True is one side and False is other side)
+    :return: Tuple[numpy.array, numpy.array]
+    """
+    reduced_orbit_arr = orbital_motion[orbital_mask]
+    supplement_to_reduced_arr = orbital_motion[~orbital_mask]
+    return reduced_orbit_arr, supplement_to_reduced_arr
+
+
+def _prepare_geosymmetric_orbit(binary, azimuths, phases):
+    """
+    Prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
+    mirrored via apsidal line in order to reduce time for generating the light curve.
+
+    :param binary: elisa.binary_star.system.BinarySystem
+    :param azimuths: numpy.array; orbital azimuths of positions in which LC will be calculated
+    :param phases: numpy.array; orbital phase of positions in which LC will be calculated
+    :return: Tuple;
+
+
+    shape ::
+
+        (numpy.array, list, numpy.array)
+
+    - unique_phase_indices - numpy.array : indices that points to the orbital positions from one half of the
+    orbital motion divided by apsidal line
+    - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by
+    indices `unique_phase_indices`
+    - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
+    """
+    azimuth_boundaries = [binary.argument_of_periastron, (binary.argument_of_periastron + const.PI) % const.FULL_ARC]
+    unique_geometry = up.logical_and(azimuths > azimuth_boundaries[0],
+                                     azimuths < azimuth_boundaries[1]) \
+        if azimuth_boundaries[0] < azimuth_boundaries[1] else up.logical_xor(azimuths < azimuth_boundaries[0],
+                                                                             azimuths > azimuth_boundaries[1])
+    unique_phase_indices = up.arange(phases.shape[0])[unique_geometry]
+    unique_geometry_azimuths = azimuths[unique_geometry]
+    unique_geometry_counterazimuths = (2 * binary.argument_of_periastron - unique_geometry_azimuths) % const.FULL_ARC
+
+    orbital_motion_array_counterpart = \
+        binary.calculate_orbital_motion(input_argument=unique_geometry_counterazimuths,
+                                        return_nparray=True,
+                                        calculate_from='azimuth')
+
+    return unique_phase_indices, orbital_motion_array_counterpart, unique_geometry
+
+
+def _resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx, **kwargs):
+    """
+    Resolve and return approximation method to compute lightcurve in case of eccentric orbit.
+    Return value is lambda function with already prepared params.
+
+    :param binary: elisa.binary_system.system.BinarySystem
+    :param phases: numpy.array
+    :param position_method: function
+    :param try_to_find_appx: bool
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+    :return: lambda
+    """
+    params = dict(input_argument=phases, return_nparray=True, calculate_from='phase')
+    all_orbital_pos_arr = position_method(**params)
+    all_orbital_pos = utils.convert_binary_orbital_motion_arr_to_positions(all_orbital_pos_arr)
+
+    azimuths = all_orbital_pos_arr[:, 2]
+    reduced_phase_ids, counterpart_postion_arr, reduced_phase_mask = \
+        _prepare_geosymmetric_orbit(binary, azimuths, phases)
+
+    # spliting orbital motion into two separate groups on different sides of apsidal line
+    reduced_orbit_arr, reduced_orbit_supplement_arr = _split_orbit_by_apse_line(all_orbital_pos_arr, reduced_phase_mask)
+
+    # APPX ZERO ********************************************************************************************************
+    if not try_to_find_appx:
+        return 'zero', \
+               lambda: _integrate_eccentric_lc_exactly(binary, all_orbital_pos, phases, **kwargs)
+
+
+def compute_eccentric_lightcurve(binary, **kwargs):
+    """
+    Top-level helper method to compute eccentric lightcurve.
+
+    :param binary: elisa.binary_star.system.BinarySystem
+    :param kwargs: Dict;
+
+    :return: Dict[str, numpy.array]
+    """
+    phases = kwargs.pop("phases")
+    phases_span_test = np.max(phases) - np.min(phases) >= 0.8
+    position_method = kwargs.pop("position_method")
+
+    # this condition checks if even to attempt to utilize apsidal line symmetry approximations
+    # curve has to have enough point on orbit and have to span at least in 0.8 phase
+
+    try_to_find_appx = _look_for_approximation(phases_span_test, not binary.has_pulsations())
+    appx_uid, run = _resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx, **kwargs)
+
+    logger_messages = {
+        'zero': 'lc will be calculated in a rigorous `phase to phase manner` without approximations',
+        'one': 'one half of the points on LC on the one side of the apsidal line will be interpolated',
+        'two': 'geometry of the stellar surface on one half of the apsidal '
+               'line will be copied from their symmetrical counterparts'
+    }
+
+    __logger__.info(logger_messages.get(appx_uid))
+    return run()
+
+
+def _integrate_eccentric_lc_exactly(binary, orbital_motion, phases, **kwargs):
+    """
+    Function calculates LC for eccentric orbit for selected filters.
+    LC is calculated exactly for each OrbitalPosition.
+    It is very slow and it should be used only as a benchmark.
+
+    :param binary: elisa.binary_system.system.BinarySystem; instance
+    :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
+    :param phases: phases in which the phase curve will be calculated
+    :param kwargs: kwargs taken from `compute_eccentric_lightcurve` function
+    :return: dictionary of fluxes for each filter
+    """
+    # surface potentials with constant volume of components
+    potentials = binary.correct_potentials(phases, component="all", iterations=2)
+
+    band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"]}
+
+    for pos_idx, position in enumerate(orbital_motion):
+        from_this = dict(binary_system=binary, position=position)
+        on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
+        on_pos.primary.surface_potential = potentials['primary'][pos_idx]
+        on_pos.secondary.surface_potential = potentials['secondary'][pos_idx]
+        on_pos.build(components_distance=position.distance)
+
+        # todo: pulsations adjustment should come here
+        normal_radiance, ld_cfs = prep_surface_params(on_pos, **kwargs)
+
+        on_pos.position = position
+        on_pos.flatt_it()
+        on_pos.apply_rotation()
+        on_pos.apply_darkside_filter()
+
+        coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
+
+        for band in kwargs["passband"]:
+            band_curves[band][int(position.idx)] = calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
+
     return band_curves

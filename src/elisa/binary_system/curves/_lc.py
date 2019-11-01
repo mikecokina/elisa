@@ -152,20 +152,6 @@ def _eval_approximation_two(self, rel_d):
     return False
 
 
-def _split_orbit_by_apse_line(orbital_motion, orbital_mask):
-    """
-    Split orbital positions represented by `orbital_motion` array on two groups separated by line of apsides.
-    Separation is defined by `orbital_mask`
-
-    :param orbital_motion: numpy.array; arraywhcih represents orbital positions
-    :param orbital_mask: numpy.array[bool]; mask which defines separation (True is one side and False is other side)
-    :return: Tuple[numpy.array, numpy.array]
-    """
-    reduced_orbit_arr = orbital_motion[orbital_mask]
-    supplement_to_reduced_arr = orbital_motion[~orbital_mask]
-    return reduced_orbit_arr, supplement_to_reduced_arr
-
-
 def _compute_rel_d_radii(self, orbital_supplements):
     """
     Requires `orbital_supplements` sorted by distance.
@@ -212,6 +198,13 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
     if not try_to_find_appx:
         return 'zero', \
                lambda: _integrate_eccentric_lc_exactly(self, all_orbital_pos, phases, None, **kwargs)
+
+
+
+
+
+
+
 
     # APPX ONE *********************************************************************************************************
     appx_one = _eval_approximation_one(self, phases)
@@ -280,43 +273,6 @@ def compute_eccentric_lightcurve(self, **kwargs):
 
 
 # todo: unittest this method
-def _prepare_geosymmetric_orbit(self, azimuths, phases):
-    """
-    Prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
-    mirrored via apsidal line in order to reduce time for generating the light curve.
-
-    :param self: elisa.binary_star.system.BinarySystem
-    :param azimuths: numpy.array; orbital azimuths of positions in which LC will be calculated
-    :param phases: numpy.array; orbital phase of positions in which LC will be calculated
-    :return: Tuple;
-
-
-    shape ::
-        
-        (numpy.array, list, numpy.array)
-        
-    - unique_phase_indices - numpy.array : indices that points to the orbital positions from one half of the 
-    orbital motion divided by apsidal line
-    - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by 
-    indices `unique_phase_indices`
-    - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
-    """
-    azimuth_boundaries = [self.argument_of_periastron, (self.argument_of_periastron + const.PI) % const.FULL_ARC]
-    unique_geometry = np.logical_and(azimuths > azimuth_boundaries[0],
-                                     azimuths < azimuth_boundaries[1]) \
-        if azimuth_boundaries[0] < azimuth_boundaries[1] else np.logical_xor(azimuths < azimuth_boundaries[0],
-                                                                             azimuths > azimuth_boundaries[1])
-    unique_phase_indices = np.arange(phases.shape[0])[unique_geometry]
-    unique_geometry_azimuths = azimuths[unique_geometry]
-    unique_geometry_counterazimuths = (2 * self.argument_of_periastron - unique_geometry_azimuths) % const.FULL_ARC
-
-    orbital_motion_array_counterpart = \
-        self.calculate_orbital_motion(input_argument=unique_geometry_counterazimuths,
-                                      return_nparray=True,
-                                      calculate_from='azimuth')
-
-    return unique_phase_indices, orbital_motion_array_counterpart, unique_geometry
-
 
 def get_onpos_container(self, orbital_position, ecl_boundaries):
     """
@@ -337,60 +293,6 @@ def get_onpos_container(self, orbital_position, ecl_boundaries):
     setattr(container.primary, 'metallicity', self.primary.metallicity)
     setattr(container.secondary, 'metallicity', self.secondary.metallicity)
     return container
-
-
-def calculate_surface_parameters(container, semi_major_axis, in_eclipse=True):
-    """
-    Function prepares surface-related parameters such as coverage(area of visibility
-    of the triangles) and directional cosines towards line-of-sight vector.
-
-    :param semi_major_axis: float
-    :param container: SingleOrbitalPositionContainer
-    :param in_eclipse: bool; indicate if eclipse occur for given position container.
-    If you are not sure leave it to True
-    :return: Tuple;
-
-    shape::
-
-        (numpy.array, Dict[str, numpy.array])
-
-    - coverage - numpy.array - visible area of triangles
-    - p_cosines, s_cosines - Dict[str, numpy.array] - directional cosines for each face with respect
-    to line-of-sight vector
-    """
-    coverage = compute_surface_coverage(container, semi_major_axis=semi_major_axis, in_eclipse=in_eclipse)
-    p_cosines = utils.calculate_cos_theta_los_x(container.primary.normals)
-    s_cosines = utils.calculate_cos_theta_los_x(container.secondary.normals)
-    cosines = {'primary': p_cosines, 'secondary': s_cosines}
-    return coverage, cosines
-
-
-def calculate_lc_point(container, band, ld_cfs, normal_radiance):
-    """
-    Calculates point on the light curve for given band.
-
-    :param container: SingleOrbitalPositionContainer
-    :param band: str; name of the photometric band
-    :param ld_cfs: Dict[str, Dict[str, pandas.DataFrame]]
-    :param normal_radiance: Dict[str, Dict[str, numpy.array]]
-    :return: float
-    """
-    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-    ld_cors = {
-        component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values,
-                                            limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                            cos_theta=container.cosines[component])
-        for component in config.BINARY_COUNTERPARTS
-    }
-    # fixme: add all missing multiplicators (at least is missing semi_major_axis^2 in physical units)
-    flux = {
-        component:
-            np.sum(normal_radiance[component][band] * container.cosines[component] *
-                   container.coverage[component] * ld_cors[component])
-        for component in config.BINARY_COUNTERPARTS.keys()
-    }
-    flux = flux['primary'] + flux['secondary']
-    return flux
 
 
 def _integrate_eccentric_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs):

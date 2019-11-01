@@ -75,26 +75,6 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def tearDown(self):
         config.LIMB_DARKENING_LAW = self.law
 
-    @skip("Better volume approximation broke the test")
-    def test_eccentric_synchronous_detached_system_no_approximation(self):
-        config.POINTS_ON_ECC_ORBIT = int(1e6)
-        config.MAX_RELATIVE_D_R_POINT = 0.0
-
-        bs = prepare_binary_system(self.params["eccentric"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
-
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-
-        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
-        expected_phases = expected[0]
-        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-
-        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
 
     def test_eccentric_synchronous_detached_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5

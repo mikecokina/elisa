@@ -113,7 +113,7 @@ class OrbitalPositionContainer(PositionContainer):
 
         :return: self
         """
-        pass
+        raise NotImplemented("This is not implemented")
 
     def apply_rotation(self):
         """

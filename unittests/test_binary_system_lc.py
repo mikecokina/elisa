@@ -1,4 +1,6 @@
 import os.path as op
+from importlib import reload
+
 import numpy as np
 
 from numpy.testing import assert_array_equal
@@ -254,3 +256,25 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
         self.assertTrue(np.all(np.round(obtained_flux, 4) - np.round(expected_flux, 4) <= 1e-3))
+
+    def test_eccentric_synchronous_detached_system_no_approximation(self):
+        config.POINTS_ON_ECC_ORBIT = -1
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(lc)
+
+        bs = prepare_binary_system(self.params["eccentric"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+
+        start_phs, stop_phs, step = -0.2, 1.2, 0.1
+
+        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+
+        obtained_phases = obtained[0]
+        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+
+        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
+        expected_phases = expected[0]
+        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
+        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))

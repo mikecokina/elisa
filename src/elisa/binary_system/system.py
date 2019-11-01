@@ -583,101 +583,81 @@ class BinarySystem(System):
         retval = {}
         components = bsutils.component_to_list(component)
         for component in components:
-            component_instance = getattr(self, component)
-            new_potentials = component_instance.surface_potential * np.ones(phases.shape)
+            star = getattr(self, component)
+            new_potentials = star.surface_potential * np.ones(phases.shape)
 
             points_equator, points_meridian = \
                 self.generate_equator_and_meridian_points_in_detached_sys(
-                    component=component,
                     components_distance=1.0,
-                    surface_potential=component_instance.surface_potential,
-                    discretization_factor=None,
+                    component=component,
+                    surface_potential=star.surface_potential
                 )
             volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
-
             equiv_r_mean = utils.calculate_equiv_radius(volume)
 
             side_radii = np.empty(phases.shape)
             volume = np.empty(phases.shape)
             for _ in range(iterations):
-                for ii, pot in enumerate(new_potentials):
-                    side_radii[ii] = self.calculate_side_radius(component, distances[ii],
-                                                                surface_potential=new_potentials[ii])
+                for idx, pot in enumerate(new_potentials):
+                    radii_args = (star.synchronicity, self.mass_ratio, distances[idx], new_potentials[idx], component)
+                    side_radii[idx] = bsradius.calculate_side_radius(*radii_args)
 
                     points_equator, points_meridian = \
                         self.generate_equator_and_meridian_points_in_detached_sys(
+                            components_distance=distances[idx],
                             component=component,
-                            components_distance=distances[ii],
-                            surface_potential=new_potentials[ii],
-                            discretization_factor=None,
+                            surface_potential=new_potentials[idx]
                         )
-                    volume[ii] = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
+                    volume[idx] = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
 
                 equiv_r = utils.calculate_equiv_radius(volume)
-
                 coeff = equiv_r_mean / equiv_r
-
                 corrected_side_radii = coeff * side_radii
 
                 new_potentials = np.array(
-                    [bsutils.potential_from_radius(component, corrected_side_radii[ii], const.HALF_PI,
+                    [bsutils.potential_from_radius(component, corrected_side_radii[idx], const.HALF_PI,
                                                    const.HALF_PI, distance, self.mass_ratio,
-                                                   component_instance.synchronicity)
-                     for ii, distance in enumerate(distances)])
+                                                   star.synchronicity) for idx, distance in enumerate(distances)])
 
             retval[component] = new_potentials
         return retval
 
-    def generate_equator_and_meridian_points_in_detached_sys(self, component, components_distance, surface_potential,
-                                                             discretization_factor=None):
+    def generate_equator_and_meridian_points_in_detached_sys(self, components_distance, component, surface_potential):
         """
-        function calculates a two arrays of points contouring equator and meridian calculating for the same x-values
+        Function calculates a two arrays of points contouring equator and meridian calculating for the same x-values.
 
         :param surface_potential: float;
         :param component: string; `primary` or `secondary`
         :param components_distance: float;
-        :param discretization_factor: None or float; if None it stays the same as the discretization factor of the
-        component
-        :return: tuple; (points on equator, points on meridian)
+        :return: Tuple; (points on equator, points on meridian)
         """
-        component_instance = getattr(self, component)
-        discretization_factor = component_instance.discretization_factor if discretization_factor is None else \
-            discretization_factor
+        star = getattr(self, component)
+        discretization_factor = star.discretization_factor
 
         # generating equidistant angles
-        num = int(const.PI // discretization_factor)
-        n = 5
+        num, n = int(const.PI // discretization_factor), 5
         theta = np.linspace(discretization_factor / n, const.PI - discretization_factor / n, num=num + 1, endpoint=True)
 
-        backward_radius = self.calculate_backward_radius(component, components_distance=components_distance,
-                                                         surface_potential=surface_potential)
-        forward_radius = self.calculate_forward_radius(component, components_distance=components_distance,
-                                                       surface_potential=surface_potential)
+        rad_args = (star.synchronicity, self.mass_ratio, components_distance, surface_potential, component)
+        backward_radius = bsradius.calculate_backward_radius(*rad_args)
+        forward_radius = bsradius.calculate_forward_radius(*rad_args)
+
         # generating x coordinates for both meridian and equator
         a = 0.5 * (forward_radius + backward_radius)
         c = forward_radius - a
         x = a * up.cos(theta) + c
 
-        if component == 'primary':
-            fn_cylindrical = model.potential_primary_cylindrical_fn
-            precal_cylindrical = model.pre_calculate_for_potential_value_primary_cylindrical
-            cylindrical_potential_derivative_fn = model.radial_primary_potential_derivative_cylindrical
-        elif component == 'secondary':
-            fn_cylindrical = model.potential_secondary_cylindrical_fn
-            precal_cylindrical = model.pre_calculate_for_potential_value_secondary_cylindrical
-            cylindrical_potential_derivative_fn = model.radial_secondary_potential_derivative_cylindrical
-        else:
-            raise ValueError(f'Invalid value of `component` argument: `{component}`.\n'
-                             f'Expecting `primary` or `secondary`.')
+        fn_cylindrical = getattr(model, f"potential_{component}_cylindrical_fn")
+        precal_cylindrical = getattr(model, f"pre_calculate_for_potential_value_{component}_cylindrical")
+        cylindrical_potential_derivative_fn = getattr(model, f"radial_{component}_potential_derivative_cylindrical")
 
         phi1 = const.HALF_PI * np.ones(x.shape)
         phi2 = up.zeros(x.shape)
         phi = up.concatenate((phi1, phi2))
         z = up.concatenate((x, x))
 
-        args = phi, z, components_distance, a / 2, \
-            precal_cylindrical, fn_cylindrical, cylindrical_potential_derivative_fn, \
-            surface_potential, self.mass_ratio, component_instance.synchronicity
+        args = (phi, z, components_distance, a / 2, precal_cylindrical, fn_cylindrical,
+                cylindrical_potential_derivative_fn, surface_potential, self.mass_ratio, star.synchronicity)
         points = mesh.get_surface_points_cylindrical(*args)
 
         return points[:points.shape[0] // 2, :], points[points.shape[0] // 2:, :]
