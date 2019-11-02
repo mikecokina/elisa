@@ -8,7 +8,6 @@ from elisa.binary_system.curves import lc
 from elisa.conf import config
 from elisa.observer.observer import Observer
 from elisa.orbit.container import OrbitalSupplements
-from unittests import utils as testutils
 
 from elisa.binary_system import (
     utils as bsutils,
@@ -303,23 +302,38 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
         obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        print()
-        # obtained_phases = obtained[0]
-        # obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-        #
-        # expected_exact = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
-        # expected_phases_exact = expected_exact[0]
-        # expected_flux_exact = normalize_lc_for_unittests(expected_exact[1]["Generic.Bessell.V"])
-        #
-        # # todo: for now, it is OK if phase are equal but fixme
-        # # fixme: alter approximation one/all methods to be computet with enforced significant phases like (minima, etc.)
-        # self.assertTrue(np.all(abs(np.round(expected_phases_exact, 4) == np.round(obtained_phases, 4))))
+        obtained_phases = obtained[0]
+        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
-    def test_eccentric_synchronous_spotty_detached_system_approximation_one(self):
-        config.POINTS_ON_ECC_ORBIT = 5
-        config.MAX_RELATIVE_D_R_POINT = 0.0
+        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.appx_one.json")
+        expected_phases = expected[0]
+        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(abs(np.round(expected_phases, 4) == np.round(obtained_phases, 4))))
+        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
+
+    def test_eccentric_synchronous_detached_system_approximation_two(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.05
+        config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
         reload(lc)
 
-        bs = prepare_binary_system(self.params["eccentric"], spots_primary=testutils.SPOTS_META["primary"])
+        bs = prepare_binary_system(self.params["eccentric"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
-        print()
+
+        start_phs, stop_phs, step = -0.2, 1.2, 0.1
+
+        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained_phases = obtained[0]
+        # obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+        #
+        # expected = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
+        # expected_phases_exact = expected[0]
+        # expected_flux_exact = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+        #
+        # self.assertTrue(np.all(np.round(expected_phases_exact, 4) == np.round(obtained_phases, 4)))
+        # self.assertTrue(np.all(abs(obtained_flux - expected_flux_exact) < 1e5))
+
+        # from matplotlib import pyplot as plt
+        # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
+        # plt.show()

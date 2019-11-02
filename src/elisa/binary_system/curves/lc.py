@@ -7,6 +7,8 @@ from scipy.spatial.qhull import ConvexHull
 from elisa.conf import config
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system import radius as bsradius
+from elisa.orbit.container import OrbitalSupplements
+
 from elisa import (
     umpy as up,
     const,
@@ -19,7 +21,6 @@ from elisa.binary_system import (
     utils as bsutils,
     dynamic
 )
-from elisa.orbit.container import OrbitalSupplements
 
 config.set_up_logging()
 __logger__ = logger.getLogger(__name__)
@@ -567,6 +568,28 @@ def _resolve_ecc_approximation_method(binary, phases, position_method, try_to_fi
         return 'one', lambda: _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements,
                                                                new_geometry_mask, **kwargs)
 
+    # APPX TWO *********************************************************************************************************
+
+    # create object of separated objects and supplements to bodies
+    orbital_supplements = dynamic.find_apsidally_corresponding_positions(reduced_orbit_arr[:, 1],
+                                                                         reduced_orbit_arr,
+                                                                         reduced_orbit_supplement_arr[:, 1],
+                                                                         reduced_orbit_supplement_arr,
+                                                                         tol=config.MAX_SUPPLEMENTAR_D_DISTANCE)
+
+    orbital_supplements.sort(by='distance')
+    rel_d_radii = _compute_rel_d_radii(binary, orbital_supplements)
+    appx_two = _eval_approximation_two(binary, rel_d_radii)
+    new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(),
+                                                               orbital_supplements.size(), rel_d_radii)
+    if appx_two:
+        return 'two', lambda: _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements,
+                                                               new_geometry_mask, **kwargs)
+
+    # APPX ZERO once again *********************************************************************************************
+    return 'zero', lambda: _integrate_eccentric_lc_exactly(binary, all_orbital_pos, phases, **kwargs)
+
+
 def compute_eccentric_lightcurve(binary, **kwargs):
     """
     Top-level helper method to compute eccentric lightcurve.
@@ -623,12 +646,7 @@ def _integrate_eccentric_lc_exactly(binary, orbital_motion, phases, **kwargs):
 
         # todo: pulsations adjustment should come here
         normal_radiance, ld_cfs = prep_surface_params(on_pos, **kwargs)
-
-        on_pos.position = position
-        on_pos.flatt_it()
-        on_pos.apply_rotation()
-        on_pos.apply_darkside_filter()
-
+        on_pos = get_onpos_system(on_pos, position, on_copy=False)
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"]:
@@ -708,28 +726,109 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
     return band_curves
 
 
+def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_geometry_mask, **kwargs):
+    """
+    Function calculates light curve for eccentric orbit for selected filters using
+    approximation where to each OrbitalPosition on one side of the apsidal line,
+    the closest counterpart OrbitalPosition is assigned and the same surface geometry is
+    assumed for both of them.
+
+    :param binary: elisa.binary_system.system.BinarySystem
+    :param phases: numpy.array
+    :param orbital_supplements: elisa.binary_system.geo.OrbitalSupplements
+    :param new_geometry_mask: numpy.array
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+    :return: Dict[str, numpy.array]
+    """
+
+    def _onpos_params(on_pos):
+        """
+        Helper function
+
+        :param on_pos: elisa.binary_system.container.OrbitalPositionContainer
+        :return: Tuple
+        """
+        _normal_radiance = get_normal_radiance(on_pos, **kwargs)
+        _ld_cfs = get_limbdarkening_cfs(on_pos, **kwargs)
+        _coverage, _cosines = calculate_coverage_with_cosines(on_pos, on_pos.semi_major_axis, in_eclipse=True)
+        return _normal_radiance, _ld_cfs, _coverage, _cosines
+
+    def _incont_lc_point(orbital_position, n_radiance, ldc, cvrg, csns):
+        """
+        Helper function
+
+        :param orbital_position: collections.tamedtuple; elisa.const.BINARY_POSITION_PLACEHOLDER
+        :param ldc: Dict[str, Dict[str, pandas.DataFrame]]
+        :param n_radiance: Dict[str, Dict[str, pandas.DataFrame]]
+        :param cvrg: numpy.array;
+        :param csns: numpy.array;
+        :return:
+        """
+        for band in kwargs["passband"]:
+            band_curves[band][int(orbital_position.idx)] = calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
+
+    # this array `used_phases` is used to check, whether flux on given phase was already computed
+    # it is necessary to do it due to orbital supplementes tolarance what can leads
+    # to several same phases in bodies but still different phases in mirrors
+    used_phases = []
+    band_curves = {key: up.zeros(phases.shape) for key in kwargs["passband"]}
+
+    # surface potentials with constant volume of components
+    # todo: compute only correction on orbital_supplements.body[:, 4][new_geometry_mask] and repopulate array
+    phases_to_correct = orbital_supplements.body[:, 4]
+    potentials = binary.correct_potentials(phases_to_correct, component="all", iterations=2)
+
+    # prepare initial orbital position container
+    from_this = dict(binary_system=binary, position=const.BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
+
+    for idx, position_pair in enumerate(orbital_supplements):
+        body, mirror = position_pair
+        body_orb_pos, mirror_orb_pos = utils.convert_binary_orbital_motion_arr_to_positions([body, mirror])
+        require_geometry_rebuild = new_geometry_mask[idx]
+
+        initial_system.set_on_position_params(body_orb_pos, potentials['primary'][idx], potentials['secondary'][idx])
+        initial_system = _update_surface_in_ecc_orbits(initial_system, body_orb_pos, require_geometry_rebuild)
+
+        if body_orb_pos.phase not in used_phases:
+            on_pos_body = get_onpos_system(initial_system, body_orb_pos, on_copy=True)
+            _args = _onpos_params(on_pos_body)
+            _incont_lc_point(body_orb_pos, *_args)
+            used_phases += [body_orb_pos.phase]
+
+        if (not OrbitalSupplements.is_empty(mirror)) and (mirror_orb_pos.phase not in used_phases):
+            on_pos_mirror = get_onpos_system(initial_system, mirror_orb_pos, on_copy=True)
+            _args = _onpos_params(on_pos_mirror)
+            _incont_lc_point(mirror_orb_pos, *_args)
+            used_phases += [mirror_orb_pos.phase]
+
+    return band_curves
 
 
-
-
-
-def get_onpos_system(system, orbital_position):
+def get_onpos_system(system, orbital_position, on_copy=True):
     """
     Prepares a postion container for given orbital position.
-    Supplied `system` is not affected. All is set on copy of it.
+    Supplied `system` is not affected if `on_copy` is set to True.
 
     Following methods are applied::
 
-        syste.set_on_position_params()
-        syste.flatt_it()
-        syste.apply_rotation()
-        syste.apply_darkside_filter()
+        system.set_on_position_params()
+        system.flatt_it()
+        system.apply_rotation()
+        system.apply_darkside_filter()
 
-    :param system: elisa.binary_system.system.BinarySystem
+    :param system: elisa.binary_system.container.OrbitalPositionContainer
     :param orbital_position: collections.namedtuple; elisa.const.Position
     :return: container; elisa.binary_system.container.OrbitalPositionContainer
+    :param on_copy: bool;
     """
-    system = system.copy().set_on_position_params(orbital_position)
+    if on_copy:
+        system = system.copy()
+    system.set_on_position_params(orbital_position)
     system.flatt_it()
     system.apply_rotation()
     system.apply_darkside_filter()

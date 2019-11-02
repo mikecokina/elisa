@@ -19,109 +19,6 @@ __logger__ = logger.getLogger(__name__)
 
 
 
-def compute_circular_synchronous_lightcurve(system, **kwargs):
-    """
-    Compute light curve, exactly, from position to position, for synchronous circular
-    binary system.
-
-    :param system: elisa.binary_system.system.BinarySystem
-    :param kwargs: Dict;
-    * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
-            * ** position_method** * - function definition; to evaluate orbital positions
-    :return: Dict[str, numpy.array]
-    """
-    ecl_boundaries = geo.get_eclipse_boundaries(system, 1.0)
-
-    orbital_position_container = OrbitalPositionContainer(
-        primary=StarContainer.from_properties_container(system.primary.to_properties_container()),
-        secondary=StarContainer.from_properties_container(system.secondary.to_properties_container()),
-        position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
-        **system.properties_serializer()
-
-    )
-    system.build(components_distance=1.0)
-    # in case of LC for spotless surface without pulsations unique phase interval is only (0, 0.5)
-    phases = kwargs.pop("phases")
-    unique_phase_interval, reverse_phase_map = _phase_crv_symmetry(system, phases)
-
-    position_method = kwargs.pop("position_method")
-    orbital_motion = position_method(input_argument=unique_phase_interval, return_nparray=False, calculate_from='phase')
-
-    initial_props_container = geo.SingleOrbitalPositionContainer(system.primary, system.secondary)
-    initial_props_container.setup_position(BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)), system.inclination)
-
-    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-
-    params = dict(orbital_motion=orbital_motion, ecl_boundaries=ecl_boundaries)
-    system_positions_container = system.prepare_system_positions_container(**params)
-    system_positions_container = system_positions_container.darkside_filter()
-
-    pulsations_test = {'primary': system.primary.has_pulsations(), 'secondary': system.secondary.has_pulsations()}
-    normal_radiance, ld_cfs = prep_surface_params(initial_props_container, pulsations_test, **kwargs)
-
-    band_curves = {key: np.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
-    for idx, container in enumerate(system_positions_container):
-        # dict of components
-        star_containers = {component: getattr(container, component) for component in BINARY_COUNTERPARTS}
-
-        coverage = compute_surface_coverage(container, system.semi_major_axis, in_eclipse=system_positions_container.in_eclipse[idx])
-
-        # calculating cosines between face normals and line of sight
-        cosines, visibility_test = dict(), dict()
-        for component, star_container_instance in star_containers.items():
-            cosines[component] = utils.calculate_cos_theta_los_x(star_container_instance.normals)
-            visibility_test[component] = cosines[component] > 0
-            cosines[component] = cosines[component][visibility_test[component]]
-
-            # calculating temperature perturbation due to pulsations
-            if pulsations_test[component]:
-                com_x = None if component == 'primary' else 1.0
-                component_instance = getattr(system, component)
-                star_container_instance.temperatures += \
-                    pulsations.calc_temp_pert_on_container(component_instance,
-                                                           star_container_instance,
-                                                           orbital_motion[idx].phase,
-                                                           system.period,
-                                                           com_x=com_x)
-                normal_radiance[component] = get_normal_radiance(container, component=component, **kwargs)
-                ld_cfs[component] = get_limbdarkening_cfs(container, component=component, **kwargs)
-
-        # integrating resulting flux
-        for band in kwargs["passband"].keys():
-            flux, ld_cors = np.empty(2), {}
-            for ii, component in enumerate(config.BINARY_COUNTERPARTS.keys()):
-                ld_cors[component] = \
-                    ld.limb_darkening_factor(
-                        coefficients=ld_cfs[component][band][ld_law_cfs_columns].values[visibility_test[component]],
-                        limb_darkening_law=config.LIMB_DARKENING_LAW,
-                        cos_theta=cosines[component])
-
-                flux[ii] = np.sum(normal_radiance[component][band][visibility_test[component]] *
-                                  cosines[component] *
-                                  coverage[component][visibility_test[component]] *
-                                  ld_cors[component])
-            band_curves[band][idx] = np.sum(flux)
-
-    band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
-
-    return band_curves
-
-
-def _look_for_approximation(phases_span_test, not_pulsations_test):
-    """
-    This condition checks if even to attempt to utilize apsidal line symmetry approximations.
-
-    :param not_pulsations_test: bool
-    :param phases_span_test: bool
-    :return: bool
-    """
-    return config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None \
-           and phases_span_test and not_pulsations_test
-
-
 def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find_appx, **kwargs):
     """
     Resolve and return approximation method to compute lightcurve in case of eccentric orbit.
@@ -152,13 +49,6 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
     if not try_to_find_appx:
         return 'zero', \
                lambda: _integrate_eccentric_lc_exactly(self, all_orbital_pos, phases, None, **kwargs)
-
-
-
-
-
-
-
 
     # APPX ONE *********************************************************************************************************
     appx_one = _eval_approximation_one(self, phases)
@@ -194,40 +84,6 @@ def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find
         return 'zero', \
                lambda: _integrate_eccentric_lc_exactly(self, all_orbital_pos, phases, ecl_boundaries=None, **kwargs)
 
-
-def compute_eccentric_lightcurve(self, **kwargs):
-    """
-    Top-level helper method to compute eccentric lightcurve.
-
-    :param self: elisa.binary_star.system.BinarySystem
-    :param kwargs: Dict;
-
-    :return: Dict[str, numpy.array]
-    """
-    phases = kwargs.pop("phases")
-    phases_span_test = np.max(phases) - np.min(phases) >= 0.8
-
-    position_method = kwargs.pop("position_method")
-
-    # this condition checks if even to attempt to utilize apsidal line symmetry approximations
-    # curve has to have enough point on orbit and have to span at least in 0.8 phase
-
-    try_to_find_appx = _look_for_approximation(phases_span_test, not self.has_pulsations())
-    appx_uid, run = _resolve_ecc_approximation_method(self, phases, position_method, try_to_find_appx, **kwargs)
-
-    logger_messages = {
-        'zero': 'lc will be calculated in a rigorous `phase to phase manner` without approximations',
-        'one': 'one half of the points on LC on the one side of the apsidal line will be interpolated',
-        'two': 'geometry of the stellar surface on one half of the apsidal '
-               'line will be copied from their symmetrical counterparts'
-    }
-
-    self._logger.info(logger_messages.get(appx_uid))
-    return run()
-
-
-# todo: unittest this method
-
 def get_onpos_container(self, orbital_position, ecl_boundaries):
     """
     Prepares a postion container for given orbital position
@@ -247,78 +103,6 @@ def get_onpos_container(self, orbital_position, ecl_boundaries):
     setattr(container.primary, 'metallicity', self.primary.metallicity)
     setattr(container.secondary, 'metallicity', self.secondary.metallicity)
     return container
-
-
-def _integrate_eccentric_lc_appx_one(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
-    """
-    Function calculates light curves for eccentric orbits for selected filters using approximation
-    where light curve points on the one side of the apsidal line are calculated exactly and the second
-    half of the light curve points are calculated by mirroring the surface geometries of the first
-    half of the points to the other side of the apsidal line. Since those mirrored
-    points are no alligned with desired phases, the fluxes for each phase is interpolated if missing.
-
-    :param self: elisa.binary_system.system.BinarySystem
-    :param phases: numpy.array
-    :param orbital_supplements: elisa.binary_system.geo.OrbitalSupplements
-    :param new_geometry_mask: numpy.array
-    :param kwargs: Dict;
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
-    :return: Dict[str, numpy.array]
-    """
-    band_curves = {key: list() for key in kwargs["passband"]}
-    band_curves_body, band_curves_mirror = deepcopy(band_curves), deepcopy(band_curves)
-
-    # surface potentials with constant volume of components
-    potentials = self.correct_potentials(orbital_supplements.body[:, 4], component="all", iterations=2)
-
-    # both, body and mirror should be defined in this approximation (those points are created in way to be mirrored
-    # one to another), if it is not defined, there is most likely issue with method `_prepare_geosymmetric_orbit`
-    for idx, position_pair in enumerate(orbital_supplements):
-        body, mirror = position_pair
-        body_orb_pos, mirror_orb_pos = utils.convert_binary_orbital_motion_arr_to_positions([body, mirror])
-
-        require_geometry_rebuild = new_geometry_mask[idx]
-
-        self.primary.surface_potential = potentials['primary'][idx]
-        self.secondary.surface_potential = potentials['secondary'][idx]
-
-        self = _update_surface_in_ecc_orbits(self, body_orb_pos, require_geometry_rebuild)
-
-        container_body = get_onpos_container(self, body_orb_pos, ecl_boundaries=None)
-        container_mirror = get_onpos_container(self, mirror_orb_pos, ecl_boundaries=None)
-
-        normal_radiance = get_normal_radiance(container_body, **kwargs)
-        ld_cfs = get_limbdarkening_cfs(container_body, **kwargs)
-
-        container_body.coverage, \
-            container_body.cosines = calculate_surface_parameters(container_body, self.semi_major_axis, in_eclipse=True)
-        container_mirror.coverage, \
-            container_mirror.cosines = calculate_surface_parameters(container_mirror, self.semi_major_axis,
-                                                                    in_eclipse=True)
-
-        for band in kwargs["passband"].keys():
-            band_curves_body[band].append(calculate_lc_point(container_body, band, ld_cfs, normal_radiance))
-            band_curves_mirror[band].append(calculate_lc_point(container_mirror, band, ld_cfs, normal_radiance))
-
-    # interpolation of the points in the second half of the light curves using splines
-    x = np.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4] % 1))
-    sort_idx = np.argsort(x)
-    x = x[sort_idx]
-    x = np.concatenate(([x[-1] - 1], x, [x[0] + 1]))
-
-    for band in kwargs["passband"]:
-        y = np.concatenate((band_curves_body[band], band_curves_mirror[band]))
-        y = y[sort_idx]
-        y = np.concatenate(([y[-1]], y, [y[0]]))
-
-        i = Akima1DInterpolator(x, y)
-        f = i(phases)
-        band_curves[band] = f
-
-    return band_curves
 
 
 def _integrate_eccentric_lc_appx_two(self, phases, orbital_supplements, new_geometry_mask, **kwargs):
