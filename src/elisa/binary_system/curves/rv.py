@@ -1,7 +1,8 @@
 import numpy as np
-
-from astropy import units as u
-from elisa import units
+from elisa import (
+    umpy as up,
+    units
+)
 
 
 def distance_to_center_of_mass(primary_mass, secondary_mass, positions):
@@ -28,7 +29,7 @@ def orbital_semi_major_axes(r, eccentricity, true_anomaly):
     :param true_anomaly: float or numpy.array; true anomaly of orbital motion
     :return: float or numpy.array
     """
-    return r * (1.0 + eccentricity * np.cos(true_anomaly)) / (1.0 - np.power(eccentricity, 2))
+    return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
 
 
 def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_periastron, period, true_anomaly):
@@ -43,30 +44,30 @@ def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_per
     :param period: float
     :return: float or numpy.array
     """
-    a = 2.0 * np.pi * semi_major_axis * np.sin(inclination)
-    b = period * np.sqrt(1.0 - np.power(eccentricity, 2))
-    c = np.cos(true_anomaly + argument_of_periastron) + (eccentricity * np.cos(argument_of_periastron))
+    a = 2.0 * up.pi * semi_major_axis * up.sin(inclination)
+    b = period * up.sqrt(1.0 - up.power(eccentricity, 2))
+    c = up.cos(true_anomaly + argument_of_periastron) + (eccentricity * up.cos(argument_of_periastron))
     return a * c / b
 
 
-def radial_velocity(self, **kwargs):
+def radial_velocity(binary, **kwargs):
     position_method = kwargs.pop("position_method")
     phases = kwargs.pop("phases")
     orbital_motion = position_method(input_argument=phases, return_nparray=True, calculate_from='phase')
-    r1, r2 = distance_to_center_of_mass(self.primary.mass, self.secondary.mass, orbital_motion)
+    r1, r2 = distance_to_center_of_mass(binary.primary.mass, binary.secondary.mass, orbital_motion)
 
-    sma_primary = orbital_semi_major_axes(r1[-1], self.orbit.eccentricity, orbital_motion[:, 3][-1])
-    sma_secondary = orbital_semi_major_axes(r2[-1], self.orbit.eccentricity, orbital_motion[:, 3][-1])
+    sma_primary = orbital_semi_major_axes(r1[-1], binary.orbit.eccentricity, orbital_motion[:, 3][-1])
+    sma_secondary = orbital_semi_major_axes(r2[-1], binary.orbit.eccentricity, orbital_motion[:, 3][-1])
 
     # in base SI units
-    sma_primary *= self.semi_major_axis
-    sma_secondary *= self.semi_major_axis
-    period = np.float64((self._period * units.PERIOD_UNIT).to(u.s))
+    sma_primary *= binary.semi_major_axis
+    sma_secondary *= binary.semi_major_axis
+    period = np.float64((binary.period * units.PERIOD_UNIT).to(units.s))
 
-    rv_primary = _radial_velocity(sma_primary, self.inclination, self.eccentricity,
-                                  self.argument_of_periastron, period, orbital_motion[:, 3]) * -1.0
+    rv_primary = _radial_velocity(sma_primary, binary.inclination, binary.eccentricity,
+                                  binary.argument_of_periastron, period, orbital_motion[:, 3]) * -1.0
 
-    rv_secondary = _radial_velocity(sma_secondary, self.inclination, self.eccentricity,
-                                    self.argument_of_periastron, period, orbital_motion[:, 3])
+    rv_secondary = _radial_velocity(sma_secondary, binary.inclination, binary.eccentricity,
+                                    binary.argument_of_periastron, period, orbital_motion[:, 3])
 
     return orbital_motion[:, 4], rv_primary, rv_secondary

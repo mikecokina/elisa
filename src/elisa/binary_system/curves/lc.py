@@ -555,7 +555,7 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     band_curves = {key: up.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
 
     for pos_idx, position in enumerate(orbital_motion):
-        on_pos = get_onpos_system(initial_system, position)
+        on_pos = move_sys_onpos(initial_system, position)
         # dict of components
         stars = {component: getattr(on_pos, component) for component in config.BINARY_COUNTERPARTS}
 
@@ -647,7 +647,7 @@ def _integrate_eccentric_lc_exactly(binary, orbital_motion, phases, **kwargs):
 
         # todo: pulsations adjustment should come here
         normal_radiance, ld_cfs = prep_surface_params(on_pos, **kwargs)
-        on_pos = get_onpos_system(on_pos, position, on_copy=False)
+        on_pos = move_sys_onpos(on_pos, position, on_copy=False)
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"]:
@@ -696,8 +696,8 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
         initial_system.set_on_position_params(body_orb_pos, potentials['primary'][idx], potentials['secondary'][idx])
         initial_system = _update_surface_in_ecc_orbits(initial_system, body_orb_pos, require_geometry_rebuild)
 
-        on_pos_body = get_onpos_system(initial_system, body_orb_pos)
-        on_pos_mirror = get_onpos_system(initial_system, mirror_orb_pos)
+        on_pos_body = move_sys_onpos(initial_system, body_orb_pos)
+        on_pos_mirror = move_sys_onpos(initial_system, mirror_orb_pos)
 
         normal_radiance = get_normal_radiance(on_pos_body, **kwargs)
         ld_cfs = get_limbdarkening_cfs(on_pos_body, **kwargs)
@@ -796,13 +796,13 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         initial_system = _update_surface_in_ecc_orbits(initial_system, body_orb_pos, require_geometry_rebuild)
 
         if body_orb_pos.phase not in used_phases:
-            on_pos_body = get_onpos_system(initial_system, body_orb_pos, on_copy=True)
+            on_pos_body = move_sys_onpos(initial_system, body_orb_pos, on_copy=True)
             _args = _onpos_params(on_pos_body)
             _incont_lc_point(body_orb_pos, *_args)
             used_phases += [body_orb_pos.phase]
 
         if (not OrbitalSupplements.is_empty(mirror)) and (mirror_orb_pos.phase not in used_phases):
-            on_pos_mirror = get_onpos_system(initial_system, mirror_orb_pos, on_copy=True)
+            on_pos_mirror = move_sys_onpos(initial_system, mirror_orb_pos, on_copy=True)
             _args = _onpos_params(on_pos_mirror)
             _incont_lc_point(mirror_orb_pos, *_args)
             used_phases += [mirror_orb_pos.phase]
@@ -878,7 +878,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
         initial_system.build_from_points(components_distance=orbital_position.distance, do_pulsations=True,
                                          phase=orbital_position.phase, component=require_build)
 
-        on_pos = get_onpos_system(initial_system, orbital_position, on_copy=True)
+        on_pos = move_sys_onpos(initial_system, orbital_position, on_copy=True)
 
         # if None of components has to be rebuilded, use previously compyted radiances and limbdarkening when available
         if utils.is_empty(normal_radiance) or not utils.is_empty(require_build):
@@ -895,7 +895,47 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     return band_curves
 
 
-def get_onpos_system(system, orbital_position, on_copy=True):
+def compute_eccentric_spotty_asynchronous_lightcurve(binary, **kwargs):
+    """
+    Function returns light curve of assynchronous systems with eccentric orbits and spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem
+    :param kwargs: kwargs taken from BinarySystem `compute_lightcurve` function
+    :return: Dict; dictionary of fluxes for each filter
+    """
+    phases = kwargs.pop("phases")
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
+
+    # pre-calculate the longitudes of each spot for each phase
+    spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all")
+
+    # calculating lc with spots gradually shifting their positions in each phase
+    band_curves = {key: up.zeros(phases.shape) for key in kwargs["passband"]}
+
+    # surface potentials with constant volume of components
+    potentials = binary.correct_potentials(phases, component="all", iterations=2)
+
+    for pos_index, position in enumerate(orbital_motion):
+        from_this = dict(binary_system=binary, position=position)
+        on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
+        # assigning new longitudes for each spot
+        dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_index, component="all")
+        on_pos.build(components_distance=position.distance)
+        on_pos = move_sys_onpos(on_pos, position, potentials["primary"][pos_index],
+                                potentials["secondary"][pos_index], on_copy=False)
+        normal_radiance = get_normal_radiance(on_pos, **kwargs)
+        ld_cfs = get_limbdarkening_cfs(on_pos, **kwargs)
+
+        coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
+
+        for band in kwargs["passband"]:
+            band_curves[band][int(position.idx)] = calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
+
+    return band_curves
+
+
+def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_potential=None, on_copy=True):
     """
     Prepares a postion container for given orbital position.
     Supplied `system` is not affected if `on_copy` is set to True.
@@ -907,14 +947,16 @@ def get_onpos_system(system, orbital_position, on_copy=True):
         system.apply_rotation()
         system.apply_darkside_filter()
 
-    :param system: elisa.binary_system.container.OrbitalPositionContainer
-    :param orbital_position: collections.namedtuple; elisa.const.Position
-    :return: container; elisa.binary_system.container.OrbitalPositionContainer
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param orbital_position: collections.namedtuple; elisa.const.Position;
+    :return: container; elisa.binary_system.container.OrbitalPositionContainer;
+    :param primary_potential: float;
+    :param secondary_potential: float;
     :param on_copy: bool;
     """
     if on_copy:
         system = system.copy()
-    system.set_on_position_params(orbital_position)
+    system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
     system.flatt_it()
     system.apply_rotation()
     system.apply_darkside_filter()
