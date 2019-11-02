@@ -32,6 +32,7 @@ class OrbitalPositionContainer(PositionContainer):
 
         # placeholder (set in loop below)
         self.inclination = np.nan
+        self._flatten = False
 
         for key, val in properties.items():
             setattr(self, key, val)
@@ -164,9 +165,15 @@ class OrbitalPositionContainer(PositionContainer):
         return self
 
     def flatt_it(self):
+        # naive implementation of idempotence
+        if self._flatten:
+            return self
+
         components = ["primary", "secondary"]
         for component in components:
             star_container = getattr(self, component)
             if self.primary.has_spots() or self.primary.has_pulsations():
                 star_container.flatt_it()
+
+        self._flatten = True
         return self

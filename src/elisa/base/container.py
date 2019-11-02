@@ -131,6 +131,8 @@ class StarContainer(object):
         self.pulsations = dict()
         self.polar_potential_gradient_magnitude = np.nan
 
+        self._flatten = False
+
     @classmethod
     def from_star_instance(cls, star):
         return cls.from_properties_container(star.to_properties_container())
@@ -306,9 +308,14 @@ class StarContainer(object):
 
         :return: self
         """
+        # naive implementation of idempotence
+        if self._flatten:
+            return self
+
         props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers"]
         flat_props = self.get_flatten_properties()
         for prop, value in zip(props_list, flat_props):
             setattr(self, prop, value)
 
+        self._flatten = True
         return self

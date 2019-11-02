@@ -40,7 +40,7 @@ class OrbitalPositionContainerSerDeTestCase(ElisaTestCase):
     props = ["semi_major_axis", "morphology", "mass_ratio"] + BinarySystem.ALL_KWARGS
 
     def setUp(self):
-        self.s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['detached'])
+        self.s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['detached-physical'])
         self.s.primary.discretization_factor = up.radians(10)
         self.s.secondary.discretization_factor = up.radians(10)
 
@@ -59,3 +59,26 @@ class OrbitalPositionContainerSerDeTestCase(ElisaTestCase):
 
         has_attr = [hasattr(system, atr) for atr in self.props]
         self.assertTrue(all(has_attr))
+
+
+class IndempotenceTestCase(ElisaTestCase):
+    def setUp(self):
+        self.s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['detached-physical'],
+                                                 testutils.SPOTS_META["primary"])
+        self.s.primary.discretization_factor = up.radians(10)
+
+    def test_star_container_is_indempotence(self):
+        system = OrbitalPositionContainer.from_binary_system(self.s, BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+        system.build(components_distance=1.0)
+        star = system.primary
+
+        flatt_1 = star.flatt_it()
+        flatt_2 = star.flatt_it()
+        self.assertTrue(len(flatt_1.points) == len(flatt_2.points))
+
+    def test_orbital_position_container_is_indempotence(self):
+        system = OrbitalPositionContainer.from_binary_system(self.s, BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+        system.build(components_distance=1.0)
+        flatt_1 = system.flatt_it()
+        flatt_2 = system.flatt_it()
+        self.assertTrue(len(flatt_1.primary.points) == len(flatt_2.primary.points))
