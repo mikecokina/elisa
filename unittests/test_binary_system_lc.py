@@ -325,14 +325,18 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
-        # obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-        #
-        # expected = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
-        # expected_phases_exact = expected[0]
-        # expected_flux_exact = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-        #
-        # self.assertTrue(np.all(np.round(expected_phases_exact, 4) == np.round(obtained_phases, 4)))
-        # self.assertTrue(np.all(abs(obtained_flux - expected_flux_exact) < 1e5))
+        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+
+        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.appx_two.json")
+        expected_phases = expected[0]
+        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(np.round(expected_phases, 4) == np.round(obtained_phases, 4)))
+        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
+
+        expected_exact = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
+        expected_flux_exact = normalize_lc_for_unittests(expected_exact[1]["Generic.Bessell.V"])
+        self.assertTrue(np.all(abs(obtained_flux - expected_flux_exact) < 1e5))
 
         # from matplotlib import pyplot as plt
         # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
