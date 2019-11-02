@@ -373,10 +373,9 @@ class TestElisaEngineUtils(ElisaTestCase):
         array = np.array([0.951, 0.851])
         values = np.array([0.81, 0.85, 0.95])
 
-        expected = [2, 1]
+        expected = [1, 1, 0]
         obtained = utils.find_idx_of_nearest(array, values)
-
-        raise Exception("unfinished test")
+        assert_array_equal(expected, obtained)
 
     def _test_plane_projection(self, expected, plane):
         points = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])

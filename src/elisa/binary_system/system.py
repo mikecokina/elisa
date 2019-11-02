@@ -509,64 +509,6 @@ class BinarySystem(System):
         """
         return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
 
-    # light curves
-    def compute_lightcurve(self, **kwargs):
-        """
-        This function decides which light curve generator function is used.
-        Depending on the basic properties of the binary system.
-
-        :param kwargs: Dict; arguments to be passed into light curve generator functions
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
-            * ** phases ** * - numpy.array
-            * ** position_method ** * - method
-        :return: Dict
-        """
-        is_circular = self.eccentricity == 0
-        is_eccentric = 1 > self.eccentricity > 0
-        assynchronous_spotty_p = self.primary.synchronicity != 1 and self.primary.has_spots()
-        assynchronous_spotty_s = self.secondary.synchronicity != 1 and self.secondary.has_spots()
-        assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
-
-        if is_circular:
-            if assynchronous_spotty_test:
-                self._logger.info('applying light curve generator function for asynchronous binary system with '
-                                  'circular orbit and spots.')
-                return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
-            else:
-                self._logger.info('applying light curve generator function for synchronous binary system with '
-                                  'circular orbit or circular assynchronous systems without spots.')
-                return self._compute_circular_synchronous_lightcurve(**kwargs)
-        elif is_eccentric:
-            if assynchronous_spotty_test:
-                self._logger.info('applying light curve generator function for asynchronous binary system with '
-                                  'eccentric orbit and spots.')
-                return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
-            else:
-                self._logger.info('applying light curve generator function for eccentric orbit with synchronous '
-                                  'rotation of the components or assynchronous rotation without spots.')
-                return self._compute_eccentric_lightcurve(**kwargs)
-
-        raise NotImplementedError("Orbit type not implemented or invalid")
-
-    def _compute_circular_synchronous_lightcurve(self, **kwargs):
-        return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
-
-    def _compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
-        return lc.compute_circular_spotty_asynchronous_lightcurve(self, **kwargs)
-
-    def _compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs):
-        return lc.compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs)
-
-    def _compute_eccentric_lightcurve(self, **kwargs):
-        return lc.compute_eccentric_lightcurve(self, **kwargs)
-
-    # radial velocity curves
-    def compute_rv(self, **kwargs):
-        return rv.radial_velocity(self, **kwargs)
-
     def correct_potentials(self, phases, component="all", iterations=2):
         """
         Function calculates potential for each phase in phases in such way that conserves
@@ -661,3 +603,61 @@ class BinarySystem(System):
         points = mesh.get_surface_points_cylindrical(*args)
 
         return points[:points.shape[0] // 2, :], points[points.shape[0] // 2:, :]
+
+    # light curves *****************************************************************************************************
+    def compute_lightcurve(self, **kwargs):
+        """
+        This function decides which light curve generator function is used.
+        Depending on the basic properties of the binary system.
+
+        :param kwargs: Dict; arguments to be passed into light curve generator functions
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+            * ** phases ** * - numpy.array
+            * ** position_method ** * - method
+        :return: Dict
+        """
+        is_circular = self.eccentricity == 0
+        is_eccentric = 1 > self.eccentricity > 0
+        assynchronous_spotty_p = self.primary.synchronicity != 1 and self.primary.has_spots()
+        assynchronous_spotty_s = self.secondary.synchronicity != 1 and self.secondary.has_spots()
+        assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
+
+        if is_circular:
+            if assynchronous_spotty_test:
+                self._logger.info('applying light curve generator function for asynchronous binary system with '
+                                  'circular orbit and spots.')
+                return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
+            else:
+                self._logger.info('applying light curve generator function for synchronous binary system with '
+                                  'circular orbit or circular assynchronous systems without spots.')
+                return self._compute_circular_synchronous_lightcurve(**kwargs)
+        elif is_eccentric:
+            if assynchronous_spotty_test:
+                self._logger.info('applying light curve generator function for asynchronous binary system with '
+                                  'eccentric orbit and spots.')
+                return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
+            else:
+                self._logger.info('applying light curve generator function for eccentric orbit with synchronous '
+                                  'rotation of the components or assynchronous rotation without spots.')
+                return self._compute_eccentric_lightcurve(**kwargs)
+
+        raise NotImplementedError("Orbit type not implemented or invalid")
+
+    def _compute_circular_synchronous_lightcurve(self, **kwargs):
+        return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
+
+    def _compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
+        return lc.compute_circular_spotty_asynchronous_lightcurve(self, **kwargs)
+
+    def _compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs):
+        return lc.compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs)
+
+    def _compute_eccentric_lightcurve(self, **kwargs):
+        return lc.compute_eccentric_lightcurve(self, **kwargs)
+
+    # radial velocity curves *******************************************************************************************
+    def compute_rv(self, **kwargs):
+        return rv.radial_velocity(self, **kwargs)

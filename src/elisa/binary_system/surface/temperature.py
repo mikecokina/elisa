@@ -22,20 +22,20 @@ def redistribute_temperatures(in_system, temperatures):
     :return:
     """
     for component in ['primary', 'secondary']:
-        star_container = getattr(in_system, component)
-        counter = len(star_container.temperatures)
-        star_container.temperatures = temperatures[component][:counter]
-        if star_container.has_spots():
-            for spot_index, spot in star_container.spots.items():
+        star = getattr(in_system, component)
+        counter = len(star.temperatures)
+        star.temperatures = temperatures[component][:counter]
+        if star.has_spots():
+            for spot_index, spot in star.spots.items():
                 spot.temperatures = temperatures[component][counter: counter + len(spot.temperatures)]
                 counter += len(spot.temperatures)
 
 
-def reflection_effect(system_container, components_distance, iterations):
+def reflection_effect(system, components_distance, iterations):
     """
     Alter temperatures of components to involve reflection effect.
 
-    :param system_container:
+    :param system:
     :param iterations: int; iterations of reflection effect counts
     :param components_distance: float; components distance in SMA units
     :return:
@@ -51,13 +51,13 @@ def reflection_effect(system_container, components_distance, iterations):
 
     components = bsutils.component_to_list(component='all')
 
-    xlim = bsfaces.faces_visibility_x_limits(system_container.primary.polar_radius,
-                                             system_container.secondary.polar_radius,
+    xlim = bsfaces.faces_visibility_x_limits(system.primary.polar_radius,
+                                             system.secondary.polar_radius,
                                              components_distance)
 
     # this tests if you can use surface symmetries
-    not_pulsation_test = not system_container.has_pulsations()
-    not_spot_test = not system_container.has_spots()
+    not_pulsation_test = not system.has_pulsations()
+    not_spot_test = not system.has_spots()
     use_quarter_star_test = not_pulsation_test and not_spot_test
     vis_test_symmetry = {}
 
@@ -71,20 +71,20 @@ def reflection_effect(system_container, components_distance, iterations):
 
     # selecting faces that have a chance to be visible from other component
     for component in components:
-        star_container = getattr(system_container, component)
+        star = getattr(system, component)
 
         points[component], faces[component], centres[component], normals[component], temperatures[component], \
-            areas[component], log_g[component] = init_surface_variables(star_container)
+            areas[component], log_g[component] = init_surface_variables(star)
 
         # test for visibility of star faces
         vis_test[component], vis_test_symmetry[component] = bsfaces.get_visibility_tests(centres[component],
                                                                                          use_quarter_star_test,
                                                                                          xlim[component],
                                                                                          component,
-                                                                                         system_container.morphology)
-        if star_container.has_spots():
+                                                                                         system.morphology)
+        if star.has_spots():
             # including spots into overall surface
-            for spot_index, spot in star_container.spots.items():
+            for spot_index, spot in star.spots.items():
                 vis_test_spot = bsfaces.visibility_test(spot.face_centres, xlim[component], component)
 
                 # merge surface and spot face parameters into one variable
@@ -98,15 +98,15 @@ def reflection_effect(system_container, components_distance, iterations):
 
     # limb darkening coefficients for each face of each component
     ldc = {cmp: ld.get_bolometric_ld_coefficients(temperatures[cmp], log_g[cmp],
-                                                  getattr(system_container, cmp).metallicity) for cmp in components}
+                                                  getattr(system, cmp).metallicity) for cmp in components}
 
     # calculating C_A = (albedo_A / D_intB) - scalar
     # D_intB - bolometric limb darkening factor
     d_int = {cmp: ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc[cmp])
              for cmp in components}
     _c = {
-        'primary': (system_container.primary.albedo / d_int['primary']),
-        'secondary': (system_container.secondary.albedo / d_int['secondary'])
+        'primary': (system.primary.albedo / d_int['primary']),
+        'secondary': (system.secondary.albedo / d_int['secondary'])
     }
 
     # setting reflection factor R = 1 + F_irradiated / F_original, initially equal to one everywhere - vector
@@ -114,12 +114,12 @@ def reflection_effect(system_container, components_distance, iterations):
     counterpart = config.BINARY_COUNTERPARTS
 
     # for faster convergence, reflection effect is calculated first on cooler component
-    components = ['primary', 'secondary'] if system_container.primary.t_eff <= system_container.secondary.t_eff else \
+    components = ['primary', 'secondary'] if system.primary.t_eff <= system.secondary.t_eff else \
         ['secondary', 'primary']
 
     if use_quarter_star_test:
         # calculating distances and distance vectors between, join vector is already normalized
-        shp, shp_reduced = get_distance_matrix_shape(system_container, vis_test)
+        shp, shp_reduced = get_distance_matrix_shape(system, vis_test)
 
         distance, join_vector = get_symmetrical_distance_matrix(shp, shp_reduced, centres, vis_test, vis_test_symmetry)
 
@@ -146,7 +146,7 @@ def reflection_effect(system_container, components_distance, iterations):
         symmetry_to_use = {'primary': shp_reduced[0], 'secondary': shp_reduced[1]}
         for _ in range(iterations):
             for component in components:
-                star_container = getattr(system_container, component)
+                star = getattr(system, component)
                 counterpart = 'primary' if component == 'secondary' else 'secondary'
 
                 # calculation of reflection effect correction as
@@ -163,17 +163,17 @@ def reflection_effect(system_container, components_distance, iterations):
                 # using symmetry to redistribute reflection factor R
                 refl_fact_aux = np.empty(shape=np.shape(temperatures[component]))
                 refl_fact_aux[vis_test_symmetry[component]] = reflection_factor[component][:symmetry_to_use[component]]
-                refl_fact_aux = refl_fact_aux[star_container.face_symmetry_vector]
+                refl_fact_aux = refl_fact_aux[star.face_symmetry_vector]
                 reflection_factor[component] = refl_fact_aux[vis_test[component]]
 
         for component in components:
-            star_container = getattr(system_container, component)
+            star = getattr(system, component)
             # assigning new temperatures according to last iteration as
             # teff_new = teff_old * reflection_factor^0.25
             temperatures[component][vis_test_symmetry[component]] = \
                 temperatures[component][vis_test_symmetry[component]] * \
                 up.power(reflection_factor[component][:symmetry_to_use[component]], 0.25)
-            temperatures[component] = temperatures[component][star_container.face_symmetry_vector]
+            temperatures[component] = temperatures[component][star.face_symmetry_vector]
 
     else:
         # calculating distances and distance vectors between, join vector is already normalized
@@ -232,72 +232,72 @@ def reflection_effect(system_container, components_distance, iterations):
                 temperatures[component][vis_test[component]] * up.power(reflection_factor[component], 0.25)
 
     # redistributing temperatures back to the parent objects
-    redistribute_temperatures(system_container, temperatures)
+    redistribute_temperatures(system, temperatures)
 
 
-def renormalize_temperatures(star_container):
+def renormalize_temperatures(star):
     """
     In case of spot presence, renormalize temperatures to fit effective temperature again,
     since spots disrupt effective temperature of Star as entity.
     :return:
     """
     # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
-    total_surface = np.sum(star_container.areas)
-    if star_container.has_spots():
-        for spot_index, spot in star_container.spots.items():
+    total_surface = np.sum(star.areas)
+    if star.has_spots():
+        for spot_index, spot in star.spots.items():
             total_surface += np.sum(spot.areas)
-    desired_flux_value = total_surface * star_container.t_eff
+    desired_flux_value = total_surface * star.t_eff
 
-    current_flux = np.sum(star_container.areas * star_container.temperatures)
-    if star_container.spots:
-        for spot_index, spot in star_container.spots.items():
+    current_flux = np.sum(star.areas * star.temperatures)
+    if star.spots:
+        for spot_index, spot in star.spots.items():
             current_flux += np.sum(spot.areas * spot.temperatures)
 
     coefficient = up.power(desired_flux_value / current_flux, 0.25)
     __logger__.debug(f'surface temperature map renormalized by a factor {coefficient}')
-    star_container.temperatures *= coefficient
-    if star_container.spots:
-        for spot_index, spot in star_container.spots.items():
+    star.temperatures *= coefficient
+    if star.spots:
+        for spot_index, spot in star.spots.items():
             spot.temperatures *= coefficient
 
 
-def calculate_polar_effective_temperature(star_container):
+def calculate_polar_effective_temperature(star):
     """
     Returns polar effective temperature.
 
     :return: float
     """
-    return star_container.t_eff * up.power(np.sum(star_container.areas) /
-                                           np.sum(star_container.areas * up.power(
-                                               star_container.potential_gradient_magnitudes /
-                                               star_container.polar_potential_gradient_magnitude,
-                                               star_container.gravity_darkening)),
+    return star.t_eff * up.power(np.sum(star.areas) /
+                                           np.sum(star.areas * up.power(
+                                               star.potential_gradient_magnitudes /
+                                               star.polar_potential_gradient_magnitude,
+                                               star.gravity_darkening)),
                                            0.25)
 
 
-def calculate_effective_temperatures(star_container, gradient_magnitudes):
+def calculate_effective_temperatures(star, gradient_magnitudes):
     """
     Calculates effective temperatures for given gradient magnitudes.
     If None is given, star surface t_effs are calculated.
 
-    :param star_container:
+    :param star:
     :param gradient_magnitudes: numpy.array
     :return:
     """
 
-    t_eff_polar = calculate_polar_effective_temperature(star_container)
-    t_eff = t_eff_polar * up.power(gradient_magnitudes / star_container.polar_potential_gradient_magnitude,
-                                   0.25 * star_container.gravity_darkening)
-    return t_eff if star_container.spots else t_eff[star_container.face_symmetry_vector]
+    t_eff_polar = calculate_polar_effective_temperature(star)
+    t_eff = t_eff_polar * up.power(gradient_magnitudes / star.polar_potential_gradient_magnitude,
+                                   0.25 * star.gravity_darkening)
+    return t_eff if star.spots else t_eff[star.face_symmetry_vector]
 
 
-def build_temperature_distribution(system_container, components_distance, component="all",
+def build_temperature_distribution(system, components_distance, component="all",
                                    do_pulsations=False, phase=None):
     """
     Function calculates temperature distribution on across all faces.
     Value assigned to face is mean of values calculated in corners of given face.
 
-    :param system_container: BinarySystem; instance
+    :param system: BinarySystem; instance
     :param components_distance: str
     :param component: `primary` or `secondary`
     :param do_pulsations:
@@ -312,58 +312,58 @@ def build_temperature_distribution(system_container, components_distance, compon
     components = bsutils.component_to_list(component)
 
     for component in components:
-        star_container = getattr(system_container, component)
+        star = getattr(system, component)
 
         __logger__.debug(f'computing effective temperature distibution '
-                         f'on {component} component name: {star_container.name}')
+                         f'on {component} component name: {star.name}')
 
-        temperatures = calculate_effective_temperatures(star_container, star_container.potential_gradient_magnitudes)
-        setattr(star_container, "temperatures", temperatures)
+        temperatures = calculate_effective_temperatures(star, star.potential_gradient_magnitudes)
+        setattr(star, "temperatures", temperatures)
 
-        if star_container.has_spots():
-            for spot_index, spot in star_container.spots.items():
+        if star.has_spots():
+            for spot_index, spot in star.spots.items():
                 __logger__.debug(f'computing temperature distribution of spot {spot_index} / {component} component')
 
                 pgms = spot.potential_gradient_magnitudes
-                spot_temperatures = spot.temperature_factor * calculate_effective_temperatures(star_container, pgms)
+                spot_temperatures = spot.temperature_factor * calculate_effective_temperatures(star, pgms)
                 setattr(spot, "temperatures", spot_temperatures)
 
         __logger__.debug(f'renormalizing temperature of components due to '
                          f'presence of spots in case of component {component}')
-        renormalize_temperatures(star_container)
+        renormalize_temperatures(star)
 
-    #     if star_container.has_pulsations() and do_pulsations:
+    #     if star.has_pulsations() and do_pulsations:
     #         __logger__.debug(f'adding pulsations to surface temperature distribution '
-    #                          f'of the component instance: {component}  / name: {star_container.name}')
+    #                          f'of the component instance: {component}  / name: {star.name}')
     #
     #         com_x = 0 if component == 'primary' else components_distance
-    #         pulsations.set_misaligned_ralp(star_container, phase, com_x=com_x)
-    #         temp_pert, temp_pert_spot = pulsations.calc_temp_pert(star_container, phase, system_container.period)
-    #         star_container.temperatures += temp_pert
-    #         if star_container.has_spots():
-    #             for spot_idx, spot in star_container.spots.items():
+    #         pulsations.set_misaligned_ralp(star, phase, com_x=com_x)
+    #         temp_pert, temp_pert_spot = pulsations.calc_temp_pert(star, phase, system.period)
+    #         star.temperatures += temp_pert
+    #         if star.has_spots():
+    #             for spot_idx, spot in star.spots.items():
     #                 spot.temperatures += temp_pert_spot[spot_idx]
 
     if 'primary' in components and 'secondary' in components:
         __logger__.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
                          f'iterations.')
-        reflection_effect(system_container, components_distance, config.REFLECTION_EFFECT_ITERATIONS)
+        reflection_effect(system, components_distance, config.REFLECTION_EFFECT_ITERATIONS)
 
 
-def init_surface_variables(star_container):
+def init_surface_variables(star):
     """
     Function copies basic parameters of the stellar surface (points, faces, normals, temperatures, areas and log_g) of
     given star instance into new arrays during calculation of reflection effect.
 
-    :param star_container: Star instance
+    :param star: Star instance
     :return: Tuple; (points, faces, centres, normals, temperatures, areas)
     """
-    points, faces = star_container.surface_serializer()
-    centres = copy(star_container.face_centres)
-    normals = copy(star_container.normals)
-    temperatures = copy(star_container.temperatures)
-    log_g = copy(star_container.log_g)
-    areas = copy(star_container.areas)
+    points, faces = star.surface_serializer()
+    centres = copy(star.face_centres)
+    normals = copy(star.normals)
+    temperatures = copy(star.temperatures)
+    log_g = copy(star.log_g)
+    areas = copy(star.areas)
     return points, faces, centres, normals, temperatures, areas, log_g
 
 
@@ -552,16 +552,16 @@ def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
     return q_ab
 
 
-def get_distance_matrix_shape(system_container, vis_test):
+def get_distance_matrix_shape(system, vis_test):
     """
     Calculates shapes of distance and join vector matrices along with shapes
     of symetrical parts of those matrices used in reflection effect.
 
-    :param system_container:
+    :param system:
     :param vis_test: numpy.array
     :return: Tuple
     """
     shape = (np.sum(vis_test['primary']), np.sum(vis_test['secondary']), 3)
-    shape_reduced = (np.sum(vis_test['primary'][:system_container.primary.base_symmetry_faces_number]),
-                     np.sum(vis_test['secondary'][:system_container.secondary.base_symmetry_faces_number]))
+    shape_reduced = (np.sum(vis_test['primary'][:system.primary.base_symmetry_faces_number]),
+                     np.sum(vis_test['secondary'][:system.secondary.base_symmetry_faces_number]))
     return shape, shape_reduced

@@ -17,7 +17,7 @@ class BuildFacesSpotsFreeTestCase(ElisaTestCase):
 
         orbital_position_container = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
-        orbital_position_container.build_faces(component_distance=1.0)
+        orbital_position_container.build_faces(components_distance=1.0)
 
         assert_array_equal([len(orbital_position_container.primary.faces),
                             len(orbital_position_container.secondary.faces)], length)
@@ -42,7 +42,7 @@ class BuildSpottyFacesTestCase(ElisaTestCase):
         s.secondary.discretization_factor = d
         orbital_position_container = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
-        orbital_position_container.build_faces(component_distance=1.0)
+        orbital_position_container.build_faces(components_distance=1.0)
 
         assert_array_equal([len(orbital_position_container.primary.faces),
                             len(orbital_position_container.secondary.faces),
@@ -68,7 +68,7 @@ class BuildSurfaceAreasTestCase(ElisaTestCase):
         s.secondary.discretization_factor = d
         orbital_position_container = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
-        orbital_position_container.build_faces(component_distance=1.0)
+        orbital_position_container.build_faces(components_distance=1.0)
         orbital_position_container.build_surface_areas()
 
         if kind == "contain":
@@ -113,7 +113,7 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
         s.secondary.discretization_factor = up.radians(10)
         orbital_position_container: OrbitalPositionContainer = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
-        orbital_position_container.build_faces(component_distance=1.0)
+        orbital_position_container.build_faces(components_distance=1.0)
         orbital_position_container.build_surface_areas()
         orbital_position_container.build_faces_orientation(components_distance=1.0)
 

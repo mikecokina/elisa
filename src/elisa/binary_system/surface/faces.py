@@ -63,7 +63,7 @@ def get_visibility_tests(centres, q_test, xlim, component, morphology):
 
 def faces_visibility_x_limits(primary_polar_radius, secondary_polar_radius, components_distance):
     # this section calculates the visibility of each surface face
-    # don't forget to treat system_container visibility of faces on the same star in over-contact system
+    # don't forget to treat system visibility of faces on the same star in over-contact system
 
     # if stars are too close and with too different radii, you can see more (less) than a half of the stellare
     # surface, calculating excess angle
@@ -114,11 +114,11 @@ def get_surface_builder_fn(morphology):
     return over_contact_system_surface if morphology == "over-contact" else detached_system_surface
 
 
-def split_spots_and_component_faces(star_container, points, faces, model, spot_candidates, vmap, component_com):
+def split_spots_and_component_faces(star, points, faces, model, spot_candidates, vmap, component_com):
     """
     Function that sorts faces to model data structure by distinguishing if it belongs to star or spots.
 
-    :param star_container:
+    :param star:
     :param component_com: float; center of mass of component
     :param points: numpy.array; (N_points * 3) - all points of surface
     :param faces: numpy.array; (N_faces * 3) - all faces of the surface
@@ -128,10 +128,10 @@ def split_spots_and_component_faces(star_container, points, faces, model, spot_c
     :return: Dict; same as param `model`
     """
     model, spot_candidates = resolve_obvious_spots(points, faces, model, spot_candidates, vmap)
-    model = resolve_spot_candidates(star_container, model, spot_candidates, faces, component_com=component_com)
+    model = resolve_spot_candidates(star, model, spot_candidates, faces, component_com=component_com)
     # converting lists in model to numpy arrays
     model['object'] = np.array(model['object'])
-    for spot_ix in star_container.spots:
+    for spot_ix in star.spots:
         model['spots'][spot_ix] = np.array(model['spots'][spot_ix])
     return model
 
@@ -164,12 +164,12 @@ def resolve_obvious_spots(points, faces, model, spot_candidates, vmap):
     return model, spot_candidates
 
 
-def resolve_spot_candidates(star_container, model, spot_candidates, faces, component_com):
+def resolve_spot_candidates(star, model, spot_candidates, faces, component_com):
     """
     Resolves spot face candidates by comparing angular distances of face cantres and spot centres.
     In case of multiple layered spots, face is assigned to the top layer.
 
-    :param star_container:
+    :param star:
     :param model: Dict; initialised dictionary with placeholders which will describe object with spots as one entity
     :param spot_candidates: Dict; contain indices and center of mass of each
                                   face that is candodate to be a face of spot
@@ -189,13 +189,13 @@ def resolve_spot_candidates(star_container, model, spot_candidates, faces, compo
     """
     # checking each candidate one at a time trough all spots
     com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
-    cos_max_angle = {idx: up.cos(spot.angular_radius) for idx, spot in star_container.spots.items()}
+    cos_max_angle = {idx: up.cos(spot.angular_radius) for idx, spot in star.spots.items()}
     center = {idx: spot.center - np.array([component_com, 0.0, 0.0])
-              for idx, spot in star_container.spots.items()}
+              for idx, spot in star.spots.items()}
     for idx, _ in enumerate(spot_candidates["com"]):
         spot_idx_to_assign = -1
         simplex_ix = spot_candidates["ix"][idx]
-        for spot_ix in star_container.spots:
+        for spot_ix in star.spots:
             cos_angle_com = up.inner(center[spot_ix], com[idx]) / \
                             (np.linalg.norm(center[spot_ix]) * np.linalg.norm(com[idx]))
             if cos_angle_com > cos_max_angle[spot_ix]:
@@ -210,12 +210,12 @@ def resolve_spot_candidates(star_container, model, spot_candidates, faces, compo
     return model
 
 
-def build_faces(system_container, components_distance, component="all"):
+def build_faces(system, components_distance, component="all"):
     """
     Function creates faces of the star surface for given components. Faces are evaluated upon points that
     have to be in this time already calculated.
 
-    :param system_container: BinarySystem; instance
+    :param system: BinarySystem; instance
     :type components_distance: float
     :param component: `primary` or `secondary` if not supplied both component are calculated
     :return:
@@ -229,18 +229,18 @@ def build_faces(system_container, components_distance, component="all"):
 
     components = bsutils.component_to_list(component)
     for component in components:
-        star_container = getattr(system_container, component)
-        if star_container.has_spots():
-            build_surface_with_spots(system_container, components_distance, component)
+        star = getattr(system, component)
+        if star.has_spots():
+            build_surface_with_spots(system, components_distance, component)
         else:
-            build_surface_with_no_spots(system_container, components_distance, component)
+            build_surface_with_no_spots(system, components_distance, component)
 
 
-def build_surface_with_no_spots(system_container, components_distance, component="all"):
+def build_surface_with_no_spots(system, components_distance, component="all"):
     """
     Function for building binary star component surfaces without spots.
 
-    :param system_container: BinarySystem; instance
+    :param system: BinarySystem; instance
     :param components_distance: float
     :param component: str; `primary` or `secondary` if not supplied both component are calculated
     :return:
@@ -248,42 +248,42 @@ def build_surface_with_no_spots(system_container, components_distance, component
     components = bsutils.component_to_list(component)
 
     for component in components:
-        star_container = getattr(system_container, component)
+        star = getattr(system, component)
         # triangulating only one quarter of the star
 
-        if system_container.morphology != 'over-contact':
-            triangulate = star_container.points[:star_container.base_symmetry_points_number, :]
-            triangles = detached_system_surface(system_container, components_distance, triangulate, component)
+        if system.morphology != 'over-contact':
+            triangulate = star.points[:star.base_symmetry_points_number, :]
+            triangles = detached_system_surface(system, components_distance, triangulate, component)
         else:
-            points = star_container.points
+            points = star.points
             neck = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
             triangulate = \
-                np.append(points[:star_container.base_symmetry_points_number, :], np.array([[neck, 0, 0]]), axis=0)
-            triangles = over_contact_system_surface(system_container, triangulate, component)
+                np.append(points[:star.base_symmetry_points_number, :], np.array([[neck, 0, 0]]), axis=0)
+            triangles = over_contact_system_surface(system, triangulate, component)
             # filtering out triangles containing last point in `points_to_triangulate`
-            triangles = triangles[np.array(triangles < star_container.base_symmetry_points_number).all(1)]
+            triangles = triangles[np.array(triangles < star.base_symmetry_points_number).all(1)]
 
         # filtering out faces on xy an xz planes
         y0_test = np.bitwise_not(np.isclose(triangulate[triangles][:, :, 1], 0).all(1))
         z0_test = np.bitwise_not(np.isclose(triangulate[triangles][:, :, 2], 0).all(1))
         triangles = triangles[up.logical_and(y0_test, z0_test)]
 
-        setattr(star_container, "base_symmetry_faces_number", np.int(np.shape(triangles)[0]))
+        setattr(star, "base_symmetry_faces_number", np.int(np.shape(triangles)[0]))
         # lets exploit axial symmetry and fill the rest of the surface of the star
-        all_triangles = [inv[triangles] for inv in star_container.inverse_point_symmetry_matrix]
-        star_container.base_symmetry_faces = triangles
-        star_container.faces = up.concatenate(all_triangles, axis=0)
+        all_triangles = [inv[triangles] for inv in star.inverse_point_symmetry_matrix]
+        star.base_symmetry_faces = triangles
+        star.faces = up.concatenate(all_triangles, axis=0)
 
-        base_face_symmetry_vector = up.arange(star_container.base_symmetry_faces_number)
-        star_container.face_symmetry_vector = up.concatenate([base_face_symmetry_vector for _ in range(4)])
+        base_face_symmetry_vector = up.arange(star.base_symmetry_faces_number)
+        star.face_symmetry_vector = up.concatenate([base_face_symmetry_vector for _ in range(4)])
 
 
-def build_surface_with_spots(system_container, components_distance, component="all"):
+def build_surface_with_spots(system, components_distance, component="all"):
     """
     Function capable of triangulation of spotty stellar surfaces.
     It merges all surface points, triangulates them and then sorts the resulting surface faces under star or spot.
 
-    :param system_container: BinarySystem instance
+    :param system: BinarySystem instance
     :param components_distance: float
     :param component: str `primary` or `secondary`
     :return:
@@ -291,12 +291,12 @@ def build_surface_with_spots(system_container, components_distance, component="a
     components = bsutils.component_to_list(component)
     component_com = {'primary': 0.0, 'secondary': components_distance}
     for component in components:
-        start_container = getattr(system_container, component)
+        start_container = getattr(system, component)
         points, vertices_map = start_container.get_flatten_points_map()
 
-        surface_fn = get_surface_builder_fn(system_container.morphology)
+        surface_fn = get_surface_builder_fn(system.morphology)
         surface_fn_kwargs = dict(component=component, points=points, components_distance=components_distance)
-        faces = surface_fn(system_container, **surface_fn_kwargs)
+        faces = surface_fn(system, **surface_fn_kwargs)
         model, spot_candidates = initialize_model_container(vertices_map)
         model = split_spots_and_component_faces(start_container, points, faces, model,
                                                 spot_candidates, vertices_map, component_com[component])
@@ -304,17 +304,17 @@ def build_surface_with_spots(system_container, components_distance, component="a
         spot.remap_surface_elements(start_container, model, points)
 
 
-def detached_system_surface(system_container, components_distance, points=None, component="all"):
+def detached_system_surface(system, components_distance, points=None, component="all"):
     """
     Calculates surface faces from the given component's points in case of detached or semi-contact system.
 
-    :param system_container:
+    :param system:
     :param components_distance: float
     :param points: numpy.array
     :param component: str
     :return: numpy.array; N x 3 array of vertices indices
     """
-    component_instance = getattr(system_container, component)
+    component_instance = getattr(system, component)
     if points is None:
         points = component_instance.points
 
@@ -322,10 +322,10 @@ def detached_system_surface(system_container, components_distance, points=None, 
         raise ValueError(f"{component} component, with class instance name {component_instance.name} do not "
                          "contain any valid surface point to triangulate")
     # there is a problem with triangulation of near over-contact system, delaunay is not good with pointy surfaces
-    critical_pot = system_container.primary.critical_surface_potential if component == 'primary' \
-        else system_container.secondary.critical_surface_potential
-    potential = system_container.primary.surface_potential if component == 'primary' \
-        else system_container.secondary.surface_potential
+    critical_pot = system.primary.critical_surface_potential if component == 'primary' \
+        else system.secondary.critical_surface_potential
+    potential = system.primary.surface_potential if component == 'primary' \
+        else system.secondary.surface_potential
     if potential - critical_pot > 0.01:
         __logger__.debug(f'triangulating surface of {component} component using standard method')
         triangulation = Delaunay(points)
@@ -351,20 +351,20 @@ def detached_system_surface(system_container, components_distance, points=None, 
     return triangles_indices
 
 
-def over_contact_system_surface(system_container, points=None, component="all", **kwargs):
+def over_contact_system_surface(system, points=None, component="all", **kwargs):
     # do not remove kwargs, keep compatible interface w/ detached where components distance has to be provided
     # in this case, components distance is sinked in kwargs and not used
     """
     Calculates surface faces from the given component's points in case of over-contact system.
 
-    :param system_container:
+    :param system:
     :param points: numpy.array - points to triangulate
     :param component: str; `primary` or `secondary`
     :return: numpy.array; N x 3 array of vertice indices
     """
     del kwargs
 
-    component_instance = getattr(system_container, component)
+    component_instance = getattr(system, component)
     if points is None:
         points = component_instance.points
     if up.isnan(points).any():
@@ -417,11 +417,11 @@ def over_contact_system_surface(system_container, points=None, component="all", 
     return new_triangles_indices
 
 
-def compute_all_surface_areas(system_container, component):
+def compute_all_surface_areas(system, component):
     """
     Compute surface are of all faces (spots included).
 
-    :param system_container: BinaryStar instance
+    :param system: BinaryStar instance
     :param component: str `primary` or `secondary`
     :return:
     """
@@ -431,19 +431,19 @@ def compute_all_surface_areas(system_container, component):
 
     components = bsutils.component_to_list(component)
     for component in components:
-        star_container = getattr(system_container, component)
+        star = getattr(system, component)
         __logger__.debug(f'computing surface areas of component: '
-                         f'{star_container} / name: {star_container.name}')
-        star_container.calculate_all_areas()
+                         f'{star} / name: {star.name}')
+        star.calculate_all_areas()
 
 
-def build_faces_orientation(system_container, components_distance, component="all"):
+def build_faces_orientation(system, components_distance, component="all"):
     """
     Compute face orientation (normals) for each face.
     If pulsations are present, than calculate renormalized associated
     Legendree polynomials (rALS) for each pulsation mode.
 
-    :param system_container: BinarySystem instance
+    :param system: BinarySystem instance
     :param component: str; `primary` or `secondary`
     :param components_distance: float
     orbit with misaligned pulsations, where pulsation axis drifts with star
@@ -457,26 +457,26 @@ def build_faces_orientation(system_container, components_distance, component="al
     com_x = {'primary': 0.0, 'secondary': components_distance}
 
     for _component in component:
-        star_container = getattr(system_container, _component)
-        set_all_surface_centres(star_container)
-        set_all_normals(star_container, com=com_x[_component])
+        star = getattr(system, _component)
+        set_all_surface_centres(star)
+        set_all_normals(star, com=com_x[_component])
 
         # todo: move it to separate method
         # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
         # pulsation mode
-        if star_container.has_pulsations():
-            pulsations.set_ralp(star_container, com_x=com_x[_component])
+        if star.has_pulsations():
+            pulsations.set_ralp(star, com_x=com_x[_component])
 
 
-def set_all_surface_centres(star_container):
+def set_all_surface_centres(star):
     """
     Calculates all surface centres for given body(including spots) and assign to object as `face_centers` property
 
     :return:
     """
-    star_container.face_centres = calculate_surface_centres(star_container.points, star_container.faces)
-    if star_container.has_spots():
-        for spot_index, spot_instance in star_container.spots.items():
+    star.face_centres = calculate_surface_centres(star.points, star.faces)
+    if star.has_spots():
+        for spot_index, spot_instance in star.spots.items():
             spot_instance.face_centres = calculate_surface_centres(spot_instance.points, spot_instance.faces)
 
 

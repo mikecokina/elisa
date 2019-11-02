@@ -16,7 +16,7 @@ class BuildSpotlessGravityTestCase(ElisaTestCase):
 
         orbital_position_container = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
-        orbital_position_container.build_faces(component_distance=1.0)
+        orbital_position_container.build_faces(components_distance=1.0)
         orbital_position_container.build_surface_areas()
         orbital_position_container.build_faces_orientation(components_distance=1.0)
         orbital_position_container.build_surface_gravity(components_distance=1.0)
@@ -43,7 +43,7 @@ class BuildSpotGravityTestCase(ElisaTestCase):
         s.secondary.discretization_factor = up.radians(10)
         orbital_position_container = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
-        orbital_position_container.build_faces(component_distance=1.0)
+        orbital_position_container.build_faces(components_distance=1.0)
         orbital_position_container.build_surface_areas()
         orbital_position_container.build_faces_orientation(components_distance=1.0)
         orbital_position_container.build_surface_gravity(components_distance=1.0)

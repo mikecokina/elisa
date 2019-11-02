@@ -2,6 +2,7 @@ import numpy as np
 
 from elisa.orbit.container import OrbitalSupplements
 from elisa.conf import config
+from elisa.binary_system import utils as bsutils
 from elisa import (
     utils,
     const,
@@ -240,3 +241,45 @@ def in_eclipse_test(azimuths, ecl_boundaries):
         secondary_ecl_test = up.logical_and((azimuths >= ecl_boundaries[2]), (azimuths <= ecl_boundaries[3]))
 
     return up.logical_or(primary_ecl_test, secondary_ecl_test)
+
+
+def calculate_spot_longitudes(system, phases, component="all"):
+    """
+    function calculates the latitudes of every spot on given component(s) for every phase
+
+    :param system: Union[elisa.binary_system.system.BinarySystem,
+    elisa.binary_system.container.OrbitalPositionContainer]
+    :param phases: numpy.array
+    :param component: str; 'primary' or 'secondary', if None both will be calculated
+    :return: Dict; {component: {spot_idx: np.array([....]), ...}, ...}
+    """
+    components = bsutils.component_to_list(component)
+    components = {comp: getattr(system, comp) for comp in components}
+    spots_longitudes = {
+        comp: {
+            spot_index: (instance.synchronicity - 1.0) * phases * const.FULL_ARC + spot.longitude
+            for spot_index, spot in instance.spots.items()}
+        for comp, instance in components.items()
+    }
+    return spots_longitudes
+
+
+def assign_spot_longitudes(system, spots_longitudes, index=None, component="all"):
+    """
+    function assigns spot latitudes for each spot according to values in `spots_longitudes` in index `index`
+
+    :param system: Union[elisa.binary_system.system.BinarySystem,
+    elisa.binary_system.container.OrbitalPositionContainer]
+    :param spots_longitudes: dict {component: {spot_idx: np.array([....]), ...}, ...}, takes output of function
+    `calculate_spot_latitudes`
+    :param index: index of spot longitude values to be used, if none is given, scalar values are expected in
+    `spots_longitudes`
+    :param component: 'primary' or 'secondary', if None both will be calculated
+    :return:
+    """
+    components = bsutils.component_to_list(component)
+    components = {comp: getattr(system, comp) for comp in components}
+    for comp, instance in components.items():
+        for spot_index, spot in instance.spots.items():
+            spot._longitude = spots_longitudes[comp][spot_index] if index is None else \
+                spots_longitudes[comp][spot_index][index]

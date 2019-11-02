@@ -10,12 +10,12 @@ config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-gravity-module")
 
 
-def eval_args_for_magnitude_gradient(star_container):
-    if star_container.spots:
-        points, faces = star_container.points, star_container.faces
+def eval_args_for_magnitude_gradient(star):
+    if star.spots:
+        points, faces = star.points, star.faces
     else:
-        points = star_container.points[:star_container.base_symmetry_points_number]
-        faces = star_container.faces[:star_container.base_symmetry_faces_number]
+        points = star.points[:star.base_symmetry_points_number]
+        faces = star.faces[:star.base_symmetry_faces_number]
     return points, faces
 
 
@@ -104,7 +104,7 @@ def calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio
     return up.power(up.power(domega_dx, 2) + up.power(domega_dz, 2), 0.5)
 
 
-def calculate_polar_gravity_acceleration(star_container, components_distance, mass_ratio, component,
+def calculate_polar_gravity_acceleration(star, components_distance, mass_ratio, component,
                                          semi_major_axis, logg=False):
     """
     Calculates polar gravity acceleration for component of binary system.
@@ -113,7 +113,7 @@ def calculate_polar_gravity_acceleration(star_container, components_distance, ma
         d_Omega/dr using transformation g = d_Psi/dr = (GM_component/semi_major_axis**2) * d_Omega/dr
         ( * 1/q in case of secondary component )
 
-    :param star_container:
+    :param star:
     :param components_distance: float; (in SMA units)
     :param mass_ratio: float;
     :param component: str;
@@ -122,18 +122,18 @@ def calculate_polar_gravity_acceleration(star_container, components_distance, ma
     :return: numpy.array; surface gravity or log10 of surface gravity
     """
     pgm = calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio,
-                                                       star_container.polar_radius, component)
-    gradient = const.G * star_container.mass * pgm / up.power(semi_major_axis, 2)
+                                                       star.polar_radius, component)
+    gradient = const.G * star.mass * pgm / up.power(semi_major_axis, 2)
     gradient = gradient / mass_ratio if component == 'secondary' else gradient
     return up.log10(gradient) if logg else gradient
 
 
-def build_surface_gravity(system_container, components_distance=None, component="all"):
+def build_surface_gravity(system, components_distance=None, component="all"):
     """
     Function calculates gravity potential gradient magnitude (surface gravity) for each face.
     Value assigned to face is mean of values calculated in corners of given face.
 
-    :param system_container: BinarySystem instance
+    :param system: BinarySystem instance
     :param component: str; `primary` or `secondary`
     :param components_distance: float
     :return:
@@ -146,33 +146,33 @@ def build_surface_gravity(system_container, components_distance=None, component=
         raise ValueError('Component distance value was not supplied or is invalid.')
 
     components = bsutils.component_to_list(component)
-    mass_ratio = system_container.mass_ratio
-    semi_major_axis = system_container.semi_major_axis
+    mass_ratio = system.mass_ratio
+    semi_major_axis = system.semi_major_axis
 
     for component in components:
-        star_container = getattr(system_container, component)
-        synchronicity = star_container.synchronicity
-        polar_gravity = calculate_polar_gravity_acceleration(star_container, components_distance, mass_ratio,
+        star = getattr(system, component)
+        synchronicity = star.synchronicity
+        polar_gravity = calculate_polar_gravity_acceleration(star, components_distance, mass_ratio,
                                                              component, semi_major_axis, logg=False)
 
         pgm = calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio,
-                                                           star_container.polar_radius, component)
-        setattr(star_container, "polar_potential_gradient_magnitude", pgm)
+                                                           star.polar_radius, component)
+        setattr(star, "polar_potential_gradient_magnitude", pgm)
         gravity_scalling_factor = polar_gravity / pgm
 
         __logger__.debug(f'computing potential gradient magnitudes distribution of {component} component')
 
-        pgms_args = eval_args_for_magnitude_gradient(star_container) + (synchronicity, mass_ratio)
+        pgms_args = eval_args_for_magnitude_gradient(star) + (synchronicity, mass_ratio)
         pgms_kwargs = dict(
-            **{"face_symmetry_vector": star_container.face_symmetry_vector} if not star_container.has_spots() else {})
+            **{"face_symmetry_vector": star.face_symmetry_vector} if not star.has_spots() else {})
         pgms = calculate_face_magnitude_gradient(components_distance, component, *pgms_args, **pgms_kwargs)
-        setattr(star_container, "potential_gradient_magnitudes", pgms)
+        setattr(star, "potential_gradient_magnitudes", pgms)
 
-        logg = up.log10(gravity_scalling_factor * star_container.potential_gradient_magnitudes)
-        setattr(star_container, "log_g", logg)
+        logg = up.log10(gravity_scalling_factor * star.potential_gradient_magnitudes)
+        setattr(star, "log_g", logg)
 
-        if star_container.has_spots():
-            for spot_index, spot in star_container.spots.items():
+        if star.has_spots():
+            for spot_index, spot in star.spots.items():
                 __logger__.debug(f'calculating surface SI unit gravity of {component} component / {spot_index} spot')
                 __logger__.debug(f'calculating distribution of potential gradient '
                                  f'magnitudes of spot index: {spot_index} / {component} component')
