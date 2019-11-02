@@ -1,9 +1,12 @@
 import matplotlib.path as mpltpath
 import numpy as np
 
+from copy import deepcopy
+from scipy.interpolate import Akima1DInterpolator
 from scipy.spatial.qhull import ConvexHull
 from elisa.conf import config
 from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.binary_system import radius as bsradius
 from elisa import (
     umpy as up,
     const,
@@ -16,10 +19,55 @@ from elisa.binary_system import (
     utils as bsutils,
     dynamic
 )
-
+from elisa.orbit.container import OrbitalSupplements
 
 config.set_up_logging()
 __logger__ = logger.getLogger(__name__)
+
+
+def _update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
+    """
+    Function decides how to update surface properties with respect to the degree of change
+    in surface geometry given by new_geometry test.
+    If true, only points and normals are recalculated, otherwise surface is calculated from scratch.
+
+    :param system: elisa.binary_system.container.OrbitalPositionContainer
+    :param orbital_position:  OrbitalPosition list
+    :param new_geometry_test: bool; test that will decide, how the following phase will be calculated
+    :return: elisa.binary_system.system.BinarySystem; instance with updated geometry
+    """
+    if new_geometry_test:
+        system.build(components_distance=orbital_position.distance)
+    else:
+        system.build_mesh(component="all", components_distance=orbital_position.distance)
+        system.build_surface_areas(component="all")
+        system.build_faces_orientation(component="all", components_distance=orbital_position.distance)
+
+    return system
+
+
+def _compute_rel_d_radii(binary, orbital_supplements):
+    """
+    Requires `orbital_supplements` sorted by distance.
+
+    :param binary: elisa.binary_system.system.BinarySystem
+    :param orbital_supplements:
+    :return: numpy.array
+    """
+    # note: defined bodies/objects/templates in orbital supplements instance are sorted by distance (line above),
+    # what means that also radii computed from such values have to be already sorted by their own size (radius changes
+    # based on components distance and it is, on the half of orbit defined by apsidal line, monotonic function)
+
+    q, d = binary.mass_ratio, orbital_supplements.body[:, 1]
+    pargs = (d, binary.primary.surface_potential, q, binary.primary.synchronicity, "primary")
+    sargs = (d, binary.secondary.surface_potential, q, binary.secondary.synchronicity, "secondary")
+
+    fwd_radii = {
+        "prmiary": bsradius.calculate_forward_radii(*pargs),
+        "secondary": bsradius.calculate_forward_radii(*sargs)
+    }
+    fwd_radii = np.array(list(fwd_radii.values()))
+    return up.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii[:, 1:]
 
 
 def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
@@ -345,12 +393,7 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     band_curves = {key: up.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
 
     for pos_idx, position in enumerate(orbital_motion):
-        on_pos = initial_system.copy()
-        on_pos.position = position
-        on_pos.flatt_it()
-        on_pos.apply_rotation()
-        on_pos.apply_darkside_filter()
-
+        on_pos = get_onpos_system(initial_system, position)
         # dict of components
         stars = {component: getattr(on_pos, component) for component in config.BINARY_COUNTERPARTS}
 
@@ -396,6 +439,36 @@ def _look_for_approximation(phases_span_test, not_pulsations_test):
     """
     return config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None \
         and phases_span_test and not_pulsations_test
+
+
+def _eval_approximation_one(binary, phases):
+    """
+    Test if it is appropriate to compute eccentric binary system with approximation approax one.
+
+    :param binary: elisa.binary_system.system.BinaryStar
+    :param phases: numpy.array
+    :return: bool
+    """
+    if len(phases) > config.POINTS_ON_ECC_ORBIT and binary.is_synchronous():
+        return True
+    return False
+
+
+def _eval_approximation_two(binary, rel_d):
+    """
+    Test if it is appropriate to compute eccentric binary system with approximation approax two.
+
+    :param binary: elisa.binary_system.system.BinaryStar
+    :param rel_d: numpy.array
+    :return: bool
+    """
+    # defined bodies/objects/tempaltes in orbital supplements instance are sorted by distance,
+    # what means that also radii `rel_d` computed from such values have to be already sorted by
+    # their own size (radius changes based on components distance and it is monotonic function)
+
+    if np.max(rel_d[:, 1:]) < config.MAX_RELATIVE_D_R_POINT and binary.is_synchronous():
+        return True
+    return False
 
 
 def _split_orbit_by_apse_line(orbital_motion, orbital_mask):
@@ -479,9 +552,20 @@ def _resolve_ecc_approximation_method(binary, phases, position_method, try_to_fi
 
     # APPX ZERO ********************************************************************************************************
     if not try_to_find_appx:
-        return 'zero', \
-               lambda: _integrate_eccentric_lc_exactly(binary, all_orbital_pos, phases, **kwargs)
+        return 'zero', lambda: _integrate_eccentric_lc_exactly(binary, all_orbital_pos, phases, **kwargs)
 
+    # APPX ONE *********************************************************************************************************
+    appx_one = _eval_approximation_one(binary, phases)
+
+    if appx_one:
+        orbital_supplements = OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
+        orbital_supplements.sort(by='distance')
+        rel_d_radii = _compute_rel_d_radii(binary, orbital_supplements)
+        new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(),
+                                                                   orbital_supplements.size(), rel_d_radii)
+
+        return 'one', lambda: _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements,
+                                                               new_geometry_mask, **kwargs)
 
 def compute_eccentric_lightcurve(binary, **kwargs):
     """
@@ -551,3 +635,102 @@ def _integrate_eccentric_lc_exactly(binary, orbital_motion, phases, **kwargs):
             band_curves[band][int(position.idx)] = calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
 
     return band_curves
+
+
+def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_geometry_mask, **kwargs):
+    """
+    Function calculates light curves for eccentric orbits for selected filters using approximation
+    where light curve points on the one side of the apsidal line are calculated exactly and the second
+    half of the light curve points are calculated by mirroring the surface geometries of the first
+    half of the points to the other side of the apsidal line. Since those mirrored
+    points are no alligned with desired phases, the fluxes for each phase is interpolated if missing.
+
+    :param binary: elisa.binary_system.system.BinarySystem
+    :param phases: numpy.array
+    :param orbital_supplements: elisa.binary_system.geo.OrbitalSupplements
+    :param new_geometry_mask: numpy.array
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+    :return: Dict[str, numpy.array]
+    """
+
+    band_curves = {key: list() for key in kwargs["passband"]}
+    band_curves_body, band_curves_mirror = deepcopy(band_curves), deepcopy(band_curves)
+
+    # surface potentials with constant volume of components
+    potentials = binary.correct_potentials(orbital_supplements.body[:, 4], component="all", iterations=2)
+
+    # prepare initial orbital position container
+    from_this = dict(binary_system=binary, position=const.BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
+
+    # both, body and mirror should be defined in this approximation (those points are created in way to be mirrored
+    # one to another), if it is not defined, there is most likely issue with method `_prepare_geosymmetric_orbit`
+    for idx, position_pair in enumerate(orbital_supplements):
+        body, mirror = position_pair
+        body_orb_pos, mirror_orb_pos = utils.convert_binary_orbital_motion_arr_to_positions([body, mirror])
+        require_geometry_rebuild = new_geometry_mask[idx]
+
+        initial_system.set_on_position_params(body_orb_pos, potentials['primary'][idx], potentials['secondary'][idx])
+        initial_system = _update_surface_in_ecc_orbits(initial_system, body_orb_pos, require_geometry_rebuild)
+
+        on_pos_body = get_onpos_system(initial_system, body_orb_pos)
+        on_pos_mirror = get_onpos_system(initial_system, mirror_orb_pos)
+
+        normal_radiance = get_normal_radiance(on_pos_body, **kwargs)
+        ld_cfs = get_limbdarkening_cfs(on_pos_body, **kwargs)
+
+        coverage_b, cosines_b = calculate_coverage_with_cosines(on_pos_body, binary.semi_major_axis, in_eclipse=True)
+        coverage_m, cosines_m = calculate_coverage_with_cosines(on_pos_mirror, binary.semi_major_axis, in_eclipse=True)
+
+        for band in kwargs["passband"].keys():
+            band_curves_body[band].append(calculate_lc_point(band, ld_cfs, normal_radiance, coverage_b, cosines_b))
+            band_curves_mirror[band].append(calculate_lc_point(band, ld_cfs, normal_radiance, coverage_m, cosines_m))
+
+    # interpolation of the points in the second half of the light curves using splines
+    x = up.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4] % 1))
+    sort_idx = np.argsort(x)
+    x = x[sort_idx]
+    x = up.concatenate(([x[-1] - 1], x, [x[0] + 1]))
+
+    for band in kwargs["passband"]:
+        y = up.concatenate((band_curves_body[band], band_curves_mirror[band]))
+        y = y[sort_idx]
+        y = up.concatenate(([y[-1]], y, [y[0]]))
+
+        i = Akima1DInterpolator(x, y)
+        f = i(phases)
+        band_curves[band] = f
+
+    return band_curves
+
+
+
+
+
+
+
+def get_onpos_system(system, orbital_position):
+    """
+    Prepares a postion container for given orbital position.
+    Supplied `system` is not affected. All is set on copy of it.
+
+    Following methods are applied::
+
+        syste.set_on_position_params()
+        syste.flatt_it()
+        syste.apply_rotation()
+        syste.apply_darkside_filter()
+
+    :param system: elisa.binary_system.system.BinarySystem
+    :param orbital_position: collections.namedtuple; elisa.const.Position
+    :return: container; elisa.binary_system.container.OrbitalPositionContainer
+    """
+    system = system.copy().set_on_position_params(orbital_position)
+    system.flatt_it()
+    system.apply_rotation()
+    system.apply_darkside_filter()
+    return system

@@ -1,14 +1,14 @@
 import os.path as op
-from importlib import reload
-
 import numpy as np
 
+from importlib import reload
+from unittest import mock
 from numpy.testing import assert_array_equal
-
 from elisa.binary_system.curves import lc
 from elisa.conf import config
 from elisa.observer.observer import Observer
 from elisa.orbit.container import OrbitalSupplements
+from unittests import utils as testutils
 
 from elisa.binary_system import (
     utils as bsutils,
@@ -28,6 +28,14 @@ from elisa import (
 
 
 class MockSelf(object):
+    class StarMock(object):
+        synchronicity = 1.0
+        surface_potential = 10.0
+
+    primary = StarMock()
+    secondary = StarMock()
+    mass_ratio = 0.5
+
     @staticmethod
     def has_spots():
         return False
@@ -37,14 +45,19 @@ class MockSelf(object):
         return False
 
     @staticmethod
-    def calculate_all_forward_radii(*args, **kwargs):
-        return {
-            "primary": np.array([0.4, 0.45, 0.48, 0.34, 0.6]),
-            "secondary": np.array([0.2, 0.22, 0.19, 0.4, 0.33])
-        }
+    def calculate_forward_radii(*args, **kwargs):
+        c = args[-1]
+        return np.array([0.4, 0.45, 0.48, 0.34, 0.6]) if c == "primary" else np.array([0.2, 0.22, 0.19, 0.4, 0.33])
 
 
 class SupportMethodsTestCase(ElisaTestCase):
+    def test__compute_rel_d_radii(self):
+        mock_supplements = OrbitalSupplements([[1., 10.]], [[1., 10.]])
+        expected = np.array([[0.1111, 0.0625, 0.4118, 0.4333], [0.0909, 0.1579, 0.525, 0.2121]])
+        with mock.patch('elisa.binary_system.radius.calculate_forward_radii', MockSelf.calculate_forward_radii):
+            obtained = np.round(lc._compute_rel_d_radii(MockSelf, mock_supplements), 4)
+        self.assertTrue(np.all(expected == obtained))
+
     def _test_find_apsidally_corresponding_positions(self, arr1, arr2, expected, tol=1e-10):
         obtained = dynamic.find_apsidally_corresponding_positions(arr1[:, 0], arr1, arr2[:, 0], arr2, tol, [np.nan] * 2)
         self.assertTrue(expected == obtained)
@@ -278,3 +291,35 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
         assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
+
+    def test_eccentric_synchronous_detached_system_approximation_one(self):
+        config.POINTS_ON_ECC_ORBIT = 5
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(lc)
+
+        bs = prepare_binary_system(self.params["eccentric"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+
+        start_phs, stop_phs, step = -0.2, 1.2, 0.1
+
+        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        print()
+        # obtained_phases = obtained[0]
+        # obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+        #
+        # expected_exact = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
+        # expected_phases_exact = expected_exact[0]
+        # expected_flux_exact = normalize_lc_for_unittests(expected_exact[1]["Generic.Bessell.V"])
+        #
+        # # todo: for now, it is OK if phase are equal but fixme
+        # # fixme: alter approximation one/all methods to be computet with enforced significant phases like (minima, etc.)
+        # self.assertTrue(np.all(abs(np.round(expected_phases_exact, 4) == np.round(obtained_phases, 4))))
+
+    def test_eccentric_synchronous_spotty_detached_system_approximation_one(self):
+        config.POINTS_ON_ECC_ORBIT = 5
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(lc)
+
+        bs = prepare_binary_system(self.params["eccentric"], spots_primary=testutils.SPOTS_META["primary"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+        print()

@@ -36,6 +36,14 @@ class OrbitalPositionContainer(PositionContainer):
         for key, val in properties.items():
             setattr(self, key, val)
 
+    def set_on_position_params(self, position, primary_potential=None, secondary_potential=None):
+        setattr(self, "position", position)
+        if not utils.is_empty(primary_potential):
+            setattr(self.primary, "surface_potential", primary_potential)
+        if not utils.is_empty(secondary_potential):
+            setattr(self.secondary, "surface_potential", secondary_potential)
+        return self
+
     @classmethod
     def from_binary_system(cls, binary_system, position):
         primary = StarContainer.from_star_instance(binary_system.primary)

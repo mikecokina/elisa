@@ -89,3 +89,4 @@ def calculate_forward_radii(distances, surface_potential, mass_ratio, synchronic
     :return: dict: Dict[str, numpy.array]
     """
     return [calculate_forward_radius(synchronicity, mass_ratio, d, surface_potential, component) for d in distances]
+

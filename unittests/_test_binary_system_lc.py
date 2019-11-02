@@ -16,11 +16,7 @@ from unittests.utils import prepare_binary_system, load_light_curve, normalize_l
 
 class SupportMethodsTestCase(ElisaTestCase):
 
-    def test__compute_rel_d_radii(self):
-        mock_supplements = OrbitalSupplements([[1., 10.]], [[1., 10.]])
-        expected = np.array([[0.1111, 0.0625, 0.4118, 0.4333], [0.0909, 0.1579, 0.525, 0.2121]])
-        obtained = np.round(lc._compute_rel_d_radii(MockSelf, mock_supplements), 4)
-        self.assertTrue(np.all(expected == obtained))
+
 
 
 class ComputeLightCurvesTestCase(ElisaTestCase):
@@ -75,27 +71,6 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def tearDown(self):
         config.LIMB_DARKENING_LAW = self.law
 
-
-    def test_eccentric_synchronous_detached_system_approximation_one(self):
-        config.POINTS_ON_ECC_ORBIT = 5
-        config.MAX_RELATIVE_D_R_POINT = 0.0
-
-        bs = prepare_binary_system(self.params["eccentric"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
-
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-
-        expected_exact = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
-        expected_phases_exact = expected_exact[0]
-        expected_flux_exact = normalize_lc_for_unittests(expected_exact[1]["Generic.Bessell.V"])
-
-        # todo: for now, it is OK if phase are equal but fixme
-        # fixme: alter approximation one/all methods to be computet with enforced significant phases like (minima, etc.)
-        self.assertTrue(np.all(abs(np.round(expected_phases_exact, 4) == np.round(obtained_phases, 4))))
 
     def test_eccentric_synchronous_detached_system_approximation_two(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)

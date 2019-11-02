@@ -122,52 +122,6 @@ def _look_for_approximation(phases_span_test, not_pulsations_test):
            and phases_span_test and not_pulsations_test
 
 
-def _eval_approximation_one(self, phases):
-    """
-    Test if it is appropriate to compute eccentric binary system with approximation approax one.
-
-    :param self: elisa.binary_system.system.BinaryStar
-    :param phases: numpy.array
-    :return: bool
-    """
-    if len(phases) > config.POINTS_ON_ECC_ORBIT and self.is_synchronous():
-        return True
-    return False
-
-
-def _eval_approximation_two(self, rel_d):
-    """
-    Test if it is appropriate to compute eccentric binary system with approximation approax two.
-
-    :param self: elisa.binary_system.system.BinaryStar
-    :param rel_d: numpy.array
-    :return: bool
-    """
-    # defined bodies/objects/tempaltes in orbital supplements instance are sorted by distance,
-    # what means that also radii `rel_d` computed from such values have to be already sorted by
-    # their own size (radius changes based on components distance and it is monotonic function)
-
-    if np.max(rel_d[:, 1:]) < config.MAX_RELATIVE_D_R_POINT and self.is_synchronous():
-        return True
-    return False
-
-
-def _compute_rel_d_radii(self, orbital_supplements):
-    """
-    Requires `orbital_supplements` sorted by distance.
-
-    :param self: elisa.binary_system.system.BinarySystem
-    :param orbital_supplements:
-    :return: numpy.array
-    """
-    # note: defined bodies/objects/templates in orbital supplements instance are sorted by distance (line above),
-    # what means that also radii computed from such values have to be already sorted by their own size (radius changes
-    # based on components distance and it is, on the half of orbit defined by apsidal line, monotonic function)
-    fwd_radii = self.calculate_all_forward_radii(orbital_supplements.body[:, 1], components='all')
-    fwd_radii = np.array(list(fwd_radii.values()))
-    return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii[:, 1:]
-
-
 def _resolve_ecc_approximation_method(self, phases, position_method, try_to_find_appx, **kwargs):
     """
     Resolve and return approximation method to compute lightcurve in case of eccentric orbit.
@@ -447,78 +401,6 @@ def _integrate_eccentric_lc_appx_two(self, phases, orbital_supplements, new_geom
     return band_curves
 
 
-def _integrate_eccentric_lc_exactly(self, orbital_motion, phases, ecl_boundaries, **kwargs):
-    """
-    Function calculates LC for eccentric orbit for selected filters.
-    LC is calculated exactly for each OrbitalPosition.
-    It is very slow and it should be used only as a benchmark.
-
-    :param self: elisa.binary_system.system.BinarySystem; instance
-    :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
-    :param ecl_boundaries: list of phase boundaries of eclipses
-    :param phases: phases in which the phase curve will be calculated
-    :param kwargs: kwargs taken from `compute_eccentric_lightcurve` function
-    :return: dictionary of fluxes for each filter
-    """
-    # surface potentials with constant volume of components
-    potentials = self.correct_potentials(phases, component="all", iterations=2)
-
-    band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"]}
-    for idx, orbital_position in enumerate(orbital_motion):
-        self.primary.surface_potential = potentials['primary'][idx]
-        self.secondary.surface_potential = potentials['secondary'][idx]
-
-        self.build(components_distance=orbital_position.distance)
-        container = get_onpos_container(self, orbital_position, ecl_boundaries)
-
-        pulsations_test = {'primary': self.primary.has_pulsations(), 'secondary': self.secondary.has_pulsations()}
-        if pulsations_test['primary'] or pulsations_test['secondary']:
-            star_containers = {component: getattr(container, component) for component in config.BINARY_COUNTERPARTS}
-            for component, star_container_instance in star_containers.items():
-                if pulsations_test[component]:
-                    com_x = None if component == 'primary' else orbital_position.distance
-                    component_instance = getattr(self, component)
-                    star_container_instance.temperatures += \
-                        pulsations.calc_temp_pert_on_container(component_instance,
-                                                               star_container_instance,
-                                                               orbital_motion[idx].phase,
-                                                               self.period,
-                                                               com_x=com_x)
-        normal_radiance = get_normal_radiance(container, **kwargs)
-        ld_cfs = get_limbdarkening_cfs(container, **kwargs)
-
-        container.coverage, container.cosines = calculate_surface_parameters(container, self.semi_major_axis,
-                                                                             in_eclipse=True)
-
-        for band in kwargs["passband"]:
-            band_curves[band][int(orbital_position.idx)] = \
-                calculate_lc_point(container, band, ld_cfs, normal_radiance)
-
-    return band_curves
-
-
-def _update_surface_in_ecc_orbits(self, orbital_position, new_geometry_test):
-    """
-    Function decides how to update surface properties with respect to the degree of change
-    in surface geometry given by new_geometry test.
-    If true, only points and normals are recalculated, otherwise surface is calculated from scratch.
-
-    :param self: elisa.binary_system.system.BinarySystem
-    :param orbital_position:  OrbitalPosition list
-    :param new_geometry_test: bool; test that will decide, how the following phase will be calculated
-    :return: elisa.binary_system.system.BinarySystem; instance with updated geometry
-    # fixme: we don't need to return self, since values have been already updated and it has been reflected everywhere
-    """
-    if new_geometry_test:
-        self.build(components_distance=orbital_position.distance)
-    else:
-        self.build_mesh(component="all", components_distance=orbital_position.distance)
-        self.build_surface_areas(component="all")
-        self.build_faces_orientation(component="all", components_distance=orbital_position.distance)
-
-    return self
-
-
 def compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
     """
     Function returns light curve of assynchronous systems with circular orbits and spots.
@@ -639,7 +521,3 @@ def compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs):
                 calculate_lc_point(container, band, ld_cfs, normal_radiance)
 
     return band_curves
-
-
-if __name__ == "__main__":
-    pass
