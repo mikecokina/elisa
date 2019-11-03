@@ -19,16 +19,35 @@ def angular_velocity(period, eccentricity, distance):
     where a, b are respectively semi major and semi minor axis, P is period and e is eccentricity.
 
 
-    :param period:
-    :param eccentricity:
-    :param distance: float
-    :return: float
+    :param period: float;
+    :param eccentricity: float;
+    :param distance: float;
+    :return: float;
     """
     return ((2.0 * up.pi) / (period * 86400.0 * (distance ** 2))) * up.sqrt(
         (1.0 - eccentricity) * (1.0 + eccentricity))  # $\rad.sec^{-1}$
 
 
 class Orbit(object):
+    """
+    Model which represents orbit of binary system.
+
+    Input parameters:
+
+    :param period: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; Orbital period of binary
+    star system. If unit is not specified, default period unit is assumed (days).
+    :param inclination: ; Union[float, astropy.units.Quantity]; If unitless values is supplied, default unit
+    suppose to be radians.
+    :param eccentricity: Union[(numpy.)int, (numpy.)float];
+    :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; If unit is
+    not supplied, value in radians is assumed.
+    :param phase_shift: float;
+
+    Output parameters:
+
+    :periastron_distance: float; Distance in periastron (in unit of semi major axis (a = a1 + a2) of relative motion)
+    :periastron_phase: float; true (not photometric but computed from mean anomaly) phase of periastron.
+    """
 
     MANDATORY_KWARGS = ['period', 'inclination', 'eccentricity', 'argument_of_periastron']
     OPTIONAL_KWARGS = ['phase_shift']
@@ -64,9 +83,9 @@ class Orbit(object):
         """
         Returns shifted phase of the orbit by the amount phase_shift.
 
-        :param phase: ndarray
-        :param phase_shift: float
-        :return: ndarray
+        :param phase: Union[numpy.array, float];
+        :param phase_shift: float;
+        :return: Union[numpy.array, float];
         """
         return phase + phase_shift
 
@@ -75,9 +94,9 @@ class Orbit(object):
         """
         reverts the phase shift introduced in function true phase
 
-        :param true_phase: numpy.array
-        :param phase_shift: numpy.float
-        :return:
+        :param true_phase: Union[numpy.array, float];
+        :param phase_shift: numpy.float;
+        :return: Union[numpy.array, float];
         """
         return true_phase - phase_shift
 
@@ -86,8 +105,8 @@ class Orbit(object):
         """
         returns mean anomaly of points on orbit as a function of phase
 
-        :param phase: ndarray
-        :return: ndarray
+        :param phase: Union[numpy.array, float];
+        :return: Union[numpy.array, float];
         """
         return const.FULL_ARC * phase
 
@@ -96,8 +115,8 @@ class Orbit(object):
         """
         returns phase of points on orbit as a function of mean anomaly
 
-        :param mean_anomaly: numpy.array
-        :return:
+        :param mean_anomaly: Union[numpy.array, float];
+        :return:  Union[numpy.array, float];
         """
         return mean_anomaly / const.FULL_ARC
 
@@ -105,9 +124,9 @@ class Orbit(object):
         """
         Definition of Kepler equation for scipy _solver in Orbit.eccentric_anomaly.
 
-        :param eccentric_anomaly: float
+        :param eccentric_anomaly: float;
         :param args: Tuple; (mean_anomaly, )
-        :return: float
+        :return: float;
         """
         mean_anomaly, = args
         return eccentric_anomaly - self.eccentricity * up.sin(eccentric_anomaly) - mean_anomaly
@@ -116,8 +135,8 @@ class Orbit(object):
         """
         Solves Kepler equation for eccentric anomaly via mean anomaly.
 
-        :param mean_anomaly: float
-        :return: float
+        :param mean_anomaly: float;
+        :return: float;
         """
         import scipy.optimize
         try:
@@ -137,8 +156,8 @@ class Orbit(object):
         """
         returns mean anomaly as a function of eccentric anomaly calculated using Kepler equation
 
-        :param eccentric_anomaly: numpy.array
-        :return:
+        :param eccentric_anomaly: numpy.array;
+        :return: numpy.array
         """
         return (eccentric_anomaly - self.eccentricity * up.sin(eccentric_anomaly)) % const.FULL_ARC
 
@@ -146,8 +165,8 @@ class Orbit(object):
         """
         Returns true anomaly as a function of eccentric anomaly and eccentricity.
 
-        :param eccentric_anomaly: ndarray
-        :return: ndarray
+        :param eccentric_anomaly: Union[numpy.array, float]
+        :return: Union[numpy.array, float]
         """
         true_anomaly = 2.0 * up.arctan(
             up.sqrt((1.0 + self.eccentricity) / (1.0 - self.eccentricity)) * up.tan(eccentric_anomaly / 2.0))
@@ -158,8 +177,8 @@ class Orbit(object):
         """
         returns eccentric anomaly as a function of true anomaly and eccentricity
 
-        :param true_anomaly: numpy.array
-        :return:
+        :param true_anomaly: Union[numpy.array, float]
+        :return: Union[numpy.array, float]
         """
         eccentric_anomaly = \
             2.0 * up.arctan(up.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) * up.tan(true_anomaly / 2.0))
@@ -170,8 +189,8 @@ class Orbit(object):
         """
         calculates the length of radius vector of elipse where a=1
 
-        :param true_anomaly: numpy.array
-        :return: numpy.array
+        :param true_anomaly: Union[numpy.array, float]
+        :return: Union[numpy.array, float]
         """
         return (1.0 - self.eccentricity ** 2) / (1.0 + self.eccentricity * up.cos(true_anomaly))
 
@@ -188,8 +207,8 @@ class Orbit(object):
                  |
                  | 0
 
-        :param true_anomaly: ndarray or float
-        :return: ndarray or float
+        :param true_anomaly: numpy.array or float
+        :return: numpy.array or float
         """
         return (true_anomaly + self.argument_of_periastron) % const.FULL_ARC
 
@@ -197,8 +216,8 @@ class Orbit(object):
         """
         Calculates the azimuth form given true anomaly
 
-        :param azimuth: numpy.array
-        :return:
+        :param azimuth: Union[numpy.array, float]
+        :return: Union[numpy.array, float]
         """
         return (azimuth - self.argument_of_periastron) % const.FULL_ARC
 
@@ -207,12 +226,12 @@ class Orbit(object):
         Function takes photometric phase of the binary system as input and calculates positions of the secondary
         component in the frame of reference of primary component.
 
-        :param phase: ndarray or float
-        :return: ndarray; matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
+        :param phase: Union[numpy.array, float];
+        :return: numpy.array; matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
 
         ::
 
-            ndarray((r1, az1, ni1, phs1),
+            numpy.array((r1, az1, ni1, phs1),
                     (r2, az2, ni2, phs2),
                      ...
                     (rN, azN, niN, phsN))
@@ -238,7 +257,7 @@ class Orbit(object):
         function takes azimuths of the binary system (angle between ascending node (-y) as input and calculates
         positions of the secondary component in the frame of reference of primary component
 
-        :param azimuth: numpy.array or numpy.float
+        :param azimuth: Union[numpy.array, float];
         :return: numpy.array: matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
                            numpy.array((r1, az1, ni1, phs1),
                                        (r2, az2, ni2, phs2),
@@ -270,7 +289,7 @@ class Orbit(object):
                 ...
             }
 
-        :return: Dict
+        :return: Dict;
         """
         # determining order of eclipses
         conjuction_arc_list = []
@@ -312,7 +331,7 @@ class Orbit(object):
         """
         Calculates relative periastron distance in SMA units.
 
-        :return: float
+        :return: float;
         """
         periastron_distance = self.relative_radius(true_anomaly=np.array([0])[0])
         self._logger.debug(f"setting property periastron_distance "

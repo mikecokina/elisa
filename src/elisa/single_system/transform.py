@@ -21,7 +21,7 @@ class SingleSystemProperties(SystemProperties):
         """
         Transform and validity check for reference time.
 
-        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
         return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)

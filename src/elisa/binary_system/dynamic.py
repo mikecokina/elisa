@@ -15,9 +15,9 @@ def darkside_filter(line_of_sight, normals):
     Return indices for visible faces defined by given normals.
     Function assumes that `line_of_sight` ([1, 0, 0]) and `normals` are already normalized to one.
 
-    :param line_of_sight: numpy.array
-    :param normals: numpy.array
-    :return: numpy.array
+    :param line_of_sight: numpy.array;
+    :param normals: numpy.array;
+    :return: numpy.array;
     """
     # todo: require to resolve self shadowing in case of W UMa
     # calculating normals utilizing the fact that normals and line of sight vector [1, 0, 0] are already normalized
@@ -33,8 +33,8 @@ def get_eclipse_boundaries(binary, components_distance):
     """
     Calculates the ranges in orbital azimuths (for phase=0 -> azimuth=pi/2)!!!  where eclipses occur.
 
-    :param binary: elisa.binary_system.system.BinarySystem
-    :param components_distance: float
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param components_distance: float;
     :return: numpy.array;
 
     shape::
@@ -70,13 +70,13 @@ def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr, supp
     on constraints from input arguments, usually it is current separation of
     primary and secondary component on orbit.
 
-    :param reduced_constraint: numpy.array
-    :param reduced_arr: numpy.array
-    :param supplement_constraint: numpy.array
-    :param supplement_arr: numpy.array
-    :param tol: float
+    :param reduced_constraint: numpy.array;
+    :param reduced_arr: numpy.array;
+    :param supplement_constraint: numpy.array;
+    :param supplement_arr: numpy.array;
+    :param tol: float;
     :param as_empty: numpy.array; e.g. [np.nan, np.nan] depends on shape of reduced_arr item
-    :return: elisa.binary_system.container.OrbitalSupplements
+    :return: elisa.binary_system.container.OrbitalSupplements;
     """
     if as_empty is None:
         as_empty = [np.nan] * 5
@@ -158,13 +158,13 @@ def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, res
     """
     Evaluate where on orbital position is necessary to fully update geometry.
 
-    :param max_allowed_difference: float
+    :param max_allowed_difference: float;
     :param has_spots: bool; define if system has spots
-    :param size: int
+    :param size: int;
     :param rel_d: numpy.array; array, based on geometry change is going to be evaluated
     :param resolve: str; decision parameter whether resolved object on eccentric orbit or spots movement,
     "object" or "spots"
-    :return: numpy.array[bool]
+    :return: numpy.array[bool];
     """
     if resolve not in ["object", "spot"]:
         raise ValueError("Invalid option for `resolve`, use `object` or `spot`")
@@ -198,9 +198,9 @@ def phase_crv_symmetry(self, phase):
     of the phases. Function finds such redundant phases and returns only unique phases.
     Expects phases from 0 to 1.0.
 
-    :param self: elisa.binary_system.system.BinarySystem
-    :param phase: numpy.array
-    :return: Tuple[numpy.array, numpy.array]
+    :param self: elisa.binary_system.system.BinarySystem;
+    :param phase: numpy.array;
+    :return: Tuple[numpy.array, numpy.array];
     """
     # keep those fucking methods imutable
     phase = phase.copy()
@@ -219,9 +219,9 @@ def in_eclipse_test(azimuths, ecl_boundaries):
     Test whether in given phases eclipse occurs or not.
     !It works only for circular oribts!
 
-    :param azimuths: Union[List, numpy.array]
-    :param ecl_boundaries: Union[List, numpy.array]
-    :return: numpy.array[bool]
+    :param azimuths: Union[List, numpy.array];
+    :param ecl_boundaries: Union[List, numpy.array];
+    :return: numpy.array[bool];
     """
 
     if utils.is_empty(ecl_boundaries):
@@ -248,8 +248,8 @@ def calculate_spot_longitudes(system, phases, component="all"):
     function calculates the latitudes of every spot on given component(s) for every phase
 
     :param system: Union[elisa.binary_system.system.BinarySystem,
-    elisa.binary_system.container.OrbitalPositionContainer]
-    :param phases: numpy.array
+    elisa.binary_system.container.OrbitalPositionContainer];
+    :param phases: numpy.array;
     :param component: str; 'primary' or 'secondary', if None both will be calculated
     :return: Dict; {component: {spot_idx: np.array([....]), ...}, ...}
     """
@@ -270,12 +270,11 @@ def assign_spot_longitudes(system, spots_longitudes, index=None, component="all"
 
     :param system: Union[elisa.binary_system.system.BinarySystem,
     elisa.binary_system.container.OrbitalPositionContainer]
-    :param spots_longitudes: dict {component: {spot_idx: np.array([....]), ...}, ...}, takes output of function
+    :param spots_longitudes: Dict; {component: {spot_idx: np.array([....]), ...}, ...}, takes output of function
     `calculate_spot_latitudes`
-    :param index: index of spot longitude values to be used, if none is given, scalar values are expected in
+    :param index: int; index of spot longitude values to be used, if none is given, scalar values are expected in
     `spots_longitudes`
-    :param component: 'primary' or 'secondary', if None both will be calculated
-    :return:
+    :param component: str; 'primary' or 'secondary', if None both will be calculated
     """
     components = bsutils.component_to_list(component)
     components = {comp: getattr(system, comp) for comp in components}

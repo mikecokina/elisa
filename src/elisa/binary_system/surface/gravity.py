@@ -26,10 +26,10 @@ def calculate_potential_gradient(components_distance, component, points, synchro
 
     :param component: str; define target component to compute critical potential; `primary` or `secondary`
     :param components_distance: float, in SMA distance
-    :param points: List or numpy.array
-    :param synchronicity:
-    :param mass_ratio:
-    :return: numpy.array
+    :param points: numpy.array;
+    :param synchronicity: float;
+    :param mass_ratio: float;
+    :return: numpy.array;
     """
     r3 = up.power(np.linalg.norm(points, axis=1), 3)
     r_hat3 = up.power(np.linalg.norm(points - np.array([components_distance, 0., 0]), axis=1), 3)
@@ -62,12 +62,12 @@ def calculate_face_magnitude_gradient(components_distance, component, points, fa
 
     :param component: str; define target component to compute critical potential; `primary` or `secondary`
     :param components_distance: float; distance of componetns in SMA units
-    :param points: points in which to calculate magnitude of gradient, if False/None take star points
-    :param faces: faces corresponding to given points
-    :param synchronicity:
-    :param mass_ratio:
-    :param face_symmetry_vector: Union[numpy.array, None]
-    :return: numpy.array
+    :param points: numpy.array; points in which to calculate magnitude of gradient, if False/None take star points
+    :param faces: numpy.array; faces corresponding to given points
+    :param synchronicity: float;
+    :param mass_ratio: float;
+    :param face_symmetry_vector: Union[numpy.array, None];
+    :return: numpy.array;
     """
 
     gradients = calculate_potential_gradient(components_distance, component, points, synchronicity, mass_ratio)
@@ -86,7 +86,7 @@ def calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio
     :param polar_radius: float;
     :param mass_ratio: float;
     :param component: str;
-    :return: float
+    :return: float;
     """
     points = [0., 0., polar_radius] if component == 'primary' else [components_distance, 0., polar_radius]
     points = np.array(points)
@@ -113,7 +113,7 @@ def calculate_polar_gravity_acceleration(star, components_distance, mass_ratio, 
         d_Omega/dr using transformation g = d_Psi/dr = (GM_component/semi_major_axis**2) * d_Omega/dr
         ( * 1/q in case of secondary component )
 
-    :param star:
+    :param star: elisa.base.container.StarContainer;
     :param components_distance: float; (in SMA units)
     :param mass_ratio: float;
     :param component: str;
@@ -133,10 +133,9 @@ def build_surface_gravity(system, components_distance=None, component="all"):
     Function calculates gravity potential gradient magnitude (surface gravity) for each face.
     Value assigned to face is mean of values calculated in corners of given face.
 
-    :param system: BinarySystem instance
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`
-    :param components_distance: float
-    :return:
+    :param components_distance: float;
     """
     if is_empty(component):
         __logger__.debug("no component set to build surface gravity")

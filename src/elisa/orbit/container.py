@@ -13,8 +13,6 @@ __logger__ = logger.getLogger("orbit-container-module")
 class OrbitalSupplements(Sequence):
     """
     !!! BEWARE, THIS IS MUTABLE !!!
-
-
     """
 
     def __getitem__(self, index):
@@ -58,8 +56,8 @@ class OrbitalSupplements(Sequence):
         """
         Return values where supplied array is not empty.
 
-        :param arr: numpy.array
-        :return: numpy.array
+        :param arr: numpy.array;
+        :return: numpy.array;
         """
         return arr[list(map(lambda x: not cls.is_empty(x), arr))]
 
@@ -69,8 +67,8 @@ class OrbitalSupplements(Sequence):
         This method sorts bodies and mirrors based on quantity chosen on input.
         Sorting of mirrors is based on sorting of bodies.
 
-        :param by: str
-        :return: self
+        :param by: str;
+        :return: self;
         """
 
         if by == 'index':

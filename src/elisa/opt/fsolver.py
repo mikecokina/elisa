@@ -13,12 +13,12 @@ def fsolver(fn, condition, *args, **kwargs):
     Will solve `fn` implicit function taking args by using scipy.optimize.fsolve method and return
     solution if satisfy conditional function.
 
-    :param fn: function
-    :param condition: function
-    :param args: Tuple
-    :param kwargs: Dict
+    :param fn: function;
+    :param condition: function;
+    :param args: Tuple;
+    :param kwargs: Dict;
         * **original_kwargs** *
-    :return: Tuple
+    :return: Tuple;
     """
     # precalculation of auxiliary values
     solution, use = np.nan, False

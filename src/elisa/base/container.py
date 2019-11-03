@@ -50,10 +50,65 @@ class PositionContainer(object):
     def build_mesh(self, *args, **kwargs):
         pass
 
+    @abstractmethod
+    def build_faces(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def build_surface_areas(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def build_faces_orientation(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def build_surface_gravity(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def build_temperature_distribution(self, *args, **kwargs):
+        pass
+
 
 class StarContainer(object):
     """
-    :param points: numpy.array;
+    Container carrying non-static properties of Star objecet (properties which vary from phase to phase) and also
+    all properties set on create.
+    Method `from_properties_container` or `from_star_instance` has to be used to create container properly.
+    Following parameters are gathered from Star object
+
+    'mass', 't_eff', 'synchronicity', 'albedo', 'discretization_factor', 'name', 'spots'
+    'polar_radius', 'equatorial_radius', 'gravity_darkening', 'surface_potential',
+    'pulsations', 'metallicity', 'polar_log_g', 'critical_surface_potential', 'side_radius'
+
+    If you are experienced used, you can create instance directly by calling
+
+    >>>> from elisa.base.container import StarContainer
+    >>>> kwargs = {}
+    >>>> inst = StarContainer(**kwargs)
+
+    and setup static parameter latter of not at all if not necessary for further use.
+    Bellow are optional imput parameters of StarContainer.
+    kwargs:
+        :**kwargs options**:
+                * **points** * -- numpy.array;
+                * **normals** * -- numpy.array;
+                * **indices** * -- numpy.array;
+                * **faces** * -- numpy.array;
+                * **temperatures** * -- numpy.array;
+                * **log_g** * -- numpy.array;
+                * **coverage** * -- numpy.array;
+                * **rals** * -- numpy.array;
+                * **face_centres** * -- numpy.array;
+                * **metallicity** * -- float;
+                * **areas** * -- numpy.array;
+                * **potential_gradient_magnitudes** * -- numpy.array;
+
+
+    Output parameters (obtained by applying given methods upon container).
+
+    :points: numpy.array;
 
     ::
 
@@ -65,28 +120,55 @@ class StarContainer(object):
                                   [xN yN zN]])
         where xi, yi, zi are cartesian coordinates of vertice i.
 
-    :param faces: numpy.array;
+    :normals: numpy.array; Array containing normalised outward facing normals
+    of corresponding faces with same index
+
+    ::
+            normals = numpy_array([[normal_x1, normal_y1, normal_z1],
+                                   [normal_x2, normal_y2, normal_z2],
+                                    ...
+                                   [normal_xn, normal_yn, normal_zn]]
+
+    :faces: numpy.array;
 
     ::
 
         Numpy array of triangles that will create surface of body.
         Triangles are stored as list of indices of points.
-            numpy.array(
-            [[vertice_index_k, vertice_index_l, vertice_index_m]),
-             [...]),
-              ...
-             [...]])
 
-    Container carrying non-static properties of Star objecet (properties which vary from phase to phase).
+            numpy.array([[vertice_index_k, vertice_index_l, vertice_index_m]),
+                         [...]),
+                          ...
+                         [...]])
 
-    :param normals: numpy.array;
-    :param temperatures: numpy.array;
-    :param log_g: numpy.array;
-    :param indices: numpy.array;
-    :param face_centres: numpy.array; Get renormalized associated Legendre polynomials (rALS). Array of complex
+    :temperatures: numpy.array; Array of temeratures of corresponding faces.
+
+    ::
+            numpy.array([t_eff1, ..., t_effn])
+
+    :log_g: numpy.array; Array of log_g (gravity) of corresponding faces.
+
+        ::
+            numpy.array([log_g1, ..., log_gn])
+
+    :coverage: numpy.array;
+    :indices: numpy.array; Indices of visible faces when darkside_filter is applied.
+    :rals: numpy.array; Renormalized associated Legendre polynomials (rALS). Array of complex
     arrays for each face.
-    :param metallicity: float;
-    :param: properties Dict;
+    :face_centres: numpy.array;
+    :metallicity: float;
+    :areas: numpy.array;
+    :potential_gradient_magnitudes: numpy.array;
+
+    :point_symmetry_vector: numpy.array;
+    :inverse_point_symmetry_matrix: numpy.array;
+    :base_symmetry_points_number: float;
+    :face_symmetry_vector: numpy.array;
+    :base_symmetry_faces_number: float;
+    :base_symmetry_points: numpy.array;
+    :base_symmetry_points: numpy.array;
+    :base_symmetry_faces: numpy.array;
+    :polar_potential_gradient_magnitude: numpy.array;
     """
 
     def __init__(self,
@@ -143,7 +225,7 @@ class StarContainer(object):
         Create StarContainer from properties container.
 
         :param properties_container:
-        :return: StarContainer
+        :return: elisa.base.container.StarContainer
         """
         container = cls()
         container.__dict__.update(properties_container.__dict__)
@@ -159,7 +241,7 @@ class StarContainer(object):
         """
         Return deepcopy of StarContainer instance.
 
-        :return: StarContainer;
+        :return: elisa.base.container.StarContainer;
         """
         return deepcopy(self)
 
@@ -167,7 +249,6 @@ class StarContainer(object):
         """
         returns flatten parameter
         :param parameter: str; name of the parameter to flatten (do not use for faces)
-        :return:
         """
         if parameter in ['faces']:
             raise ValueError(f'Function is not applicable to flatten `{parameter}` attribute.')
@@ -182,7 +263,6 @@ class StarContainer(object):
         Remove n-th spot index of object.
 
         :param spot_index: int
-        :return:
         """
         del (self.spots[spot_index])
 
@@ -227,8 +307,6 @@ class StarContainer(object):
     def calculate_all_areas(self):
         """
         Calculates areas for all faces on the surface including spots and assigns values to its corresponding variables.
-
-        :return:
         """
         self.areas = self.calculate_areas()
         if self.has_spots():

@@ -20,10 +20,10 @@ def visibility_test(centres, xlim, component):
     """
     Tests if given faces are visible from the other star.
 
-    :param component: str
-    :param centres: numpy.array
+    :param component: str;
+    :param centres: numpy.array;
     :param xlim: visibility threshold in x axis for given component
-    :return: numpy.array[bool]
+    :return: numpy.array[bool];
     """
     return centres[:, 0] >= xlim if component == 'primary' else centres[:, 0] <= xlim
 
@@ -33,7 +33,7 @@ def get_visibility_tests(centres, q_test, xlim, component, morphology):
     Method calculates tests for visibilities of faces from other component.
     Used in reflection effect.
 
-    :param centres: np.array of face centres
+    :param centres: np.array; of face centres
     :param q_test: use_quarter_star_test
     :param xlim: visibility threshold in x axis for given component
     :param component: `primary` or `secondary`
@@ -93,7 +93,7 @@ def initialize_model_container(vertices_map):
     :param vertices_map: List or ndarray; map which define refrences of index in
                          given Iterable to object (spot or Star).
                          For more info, see docstring for `incorporate_spots_mesh` method.
-    :return: Tuple[Dict, Dict]
+    :return: Tuple[Dict, Dict];
     """
     model = {"object": list(), "spots": dict()}
     spot_candidates = {"com": list(), "ix": list()}
@@ -118,7 +118,7 @@ def split_spots_and_component_faces(star, points, faces, model, spot_candidates,
     """
     Function that sorts faces to model data structure by distinguishing if it belongs to star or spots.
 
-    :param star:
+    :param star: elisa.base.container.StarContainer;
     :param component_com: float; center of mass of component
     :param points: numpy.array; (N_points * 3) - all points of surface
     :param faces: numpy.array; (N_faces * 3) - all faces of the surface
@@ -169,7 +169,7 @@ def resolve_spot_candidates(star, model, spot_candidates, faces, component_com):
     Resolves spot face candidates by comparing angular distances of face cantres and spot centres.
     In case of multiple layered spots, face is assigned to the top layer.
 
-    :param star:
+    :param star: elisa.base.container.StarContainer;
     :param model: Dict; initialised dictionary with placeholders which will describe object with spots as one entity
     :param spot_candidates: Dict; contain indices and center of mass of each
                                   face that is candodate to be a face of spot
@@ -189,9 +189,8 @@ def resolve_spot_candidates(star, model, spot_candidates, faces, component_com):
     """
     # checking each candidate one at a time trough all spots
     com = np.array(spot_candidates["com"]) - np.array([component_com, 0.0, 0.0])
-    cos_max_angle = {idx: up.cos(spot.angular_radius) for idx, spot in star.spots.items()}
-    center = {idx: spot.center - np.array([component_com, 0.0, 0.0])
-              for idx, spot in star.spots.items()}
+    cos_max_angle = {idx: up.cos(_spot.angular_radius) for idx, _spot in star.spots.items()}
+    center = {idx: _spot.center - np.array([component_com, 0.0, 0.0]) for idx, _spot in star.spots.items()}
     for idx, _ in enumerate(spot_candidates["com"]):
         spot_idx_to_assign = -1
         simplex_ix = spot_candidates["ix"][idx]
@@ -215,10 +214,9 @@ def build_faces(system, components_distance, component="all"):
     Function creates faces of the star surface for given components. Faces are evaluated upon points that
     have to be in this time already calculated.
 
-    :param system: BinarySystem; instance
-    :type components_distance: float
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;; instance
+    :type components_distance: float;
     :param component: `primary` or `secondary` if not supplied both component are calculated
-    :return:
     """
     if is_empty(component):
         __logger__.debug("no component set to build faces")
@@ -240,10 +238,9 @@ def build_surface_with_no_spots(system, components_distance, component="all"):
     """
     Function for building binary star component surfaces without spots.
 
-    :param system: BinarySystem; instance
-    :param components_distance: float
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param components_distance: float;
     :param component: str; `primary` or `secondary` if not supplied both component are calculated
-    :return:
     """
     components = bsutils.component_to_list(component)
 
@@ -283,10 +280,9 @@ def build_surface_with_spots(system, components_distance, component="all"):
     Function capable of triangulation of spotty stellar surfaces.
     It merges all surface points, triangulates them and then sorts the resulting surface faces under star or spot.
 
-    :param system: BinarySystem instance
-    :param components_distance: float
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param components_distance: float;
     :param component: str `primary` or `secondary`
-    :return:
     """
     components = bsutils.component_to_list(component)
     component_com = {'primary': 0.0, 'secondary': components_distance}
@@ -308,10 +304,10 @@ def detached_system_surface(system, components_distance, points=None, component=
     """
     Calculates surface faces from the given component's points in case of detached or semi-contact system.
 
-    :param system:
-    :param components_distance: float
-    :param points: numpy.array
-    :param component: str
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param components_distance: float;
+    :param points: numpy.array;
+    :param component: str;
     :return: numpy.array; N x 3 array of vertices indices
     """
     component_instance = getattr(system, component)
@@ -357,8 +353,8 @@ def over_contact_system_surface(system, points=None, component="all", **kwargs):
     """
     Calculates surface faces from the given component's points in case of over-contact system.
 
-    :param system:
-    :param points: numpy.array - points to triangulate
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param points: numpy.array; - points to triangulate
     :param component: str; `primary` or `secondary`
     :return: numpy.array; N x 3 array of vertice indices
     """
@@ -421,9 +417,8 @@ def compute_all_surface_areas(system, component):
     """
     Compute surface are of all faces (spots included).
 
-    :param system: BinaryStar instance
-    :param component: str `primary` or `secondary`
-    :return:
+    :param system: elisa.binary_system.container.OrbitalPositionContainer; instance
+    :param component: str; `primary` or `secondary`
     """
     if is_empty(component):
         __logger__.debug("no component set to build surface areas")
@@ -443,11 +438,10 @@ def build_faces_orientation(system, components_distance, component="all"):
     If pulsations are present, than calculate renormalized associated
     Legendree polynomials (rALS) for each pulsation mode.
 
-    :param system: BinarySystem instance
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`
-    :param components_distance: float
+    :param components_distance: float;
     orbit with misaligned pulsations, where pulsation axis drifts with star
-    :return:
     """
     if is_empty(component):
         __logger__.debug("no component set to build face orientation")
@@ -471,8 +465,6 @@ def build_faces_orientation(system, components_distance, component="all"):
 def set_all_surface_centres(star):
     """
     Calculates all surface centres for given body(including spots) and assign to object as `face_centers` property
-
-    :return:
     """
     star.face_centres = calculate_surface_centres(star.points, star.faces)
     if star.has_spots():
@@ -484,9 +476,8 @@ def set_all_normals(for_container, com):
     """
     Function calculates normals for each face of given body (including spots) and assign it to object.
 
-    :param for_container:
-    :param com: numpy.array
-    :return:
+    :param for_container: instance of container to set normals on;
+    :param com: numpy.array;
     """
     points, faces, cntrs = for_container.points, for_container.faces, for_container.face_centres
     for_container.normals = calculate_normals(points, faces, cntrs, com)
@@ -503,11 +494,11 @@ def calculate_normals(points, faces, centres, com):
     """
     Returns outward facing normal unit vector for each face of stellar surface.
 
-    :param points:
-    :param faces:
-    :param centres:
-    :param com:
-    :return: numpy.array:
+    :param points: numpy.array;
+    :param faces: numpy.array;
+    :param centres: numpy.array;
+    :param com: numpy.array;
+    :return: numpy.array;
 
     ::
 
@@ -532,7 +523,7 @@ def calculate_surface_centres(points, faces):
     """
     Returns centers of every surface face.
 
-    :return: numpy.array:
+    :return: numpy.array;
 
     ::
 

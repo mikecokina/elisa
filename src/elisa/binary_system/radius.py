@@ -80,13 +80,14 @@ def calculate_forward_radii(distances, surface_potential, mass_ratio, synchronic
     """
     Calculates forward radii for given object for given array of distances.
 
-    :param distances: np.array: array of component distances at which to calculate the forward radii of given
+    :param distances: Union[numpy.array, List]: array of component distances at which to calculate
+    the forward radii of given
     component(s)
-    :param surface_potential: None or float; if None compoent surface potential is assumed
-    :param mass_ratio:
-    :param synchronicity:
-    :param component: str
-    :return: dict: Dict[str, numpy.array]
+    :param surface_potential: float;
+    :param mass_ratio: float;
+    :param synchronicity: float;
+    :param component: str;
+    :return: dict: Dict[str, numpy.array];
     """
     return [calculate_forward_radius(synchronicity, mass_ratio, d, surface_potential, component) for d in distances]
 

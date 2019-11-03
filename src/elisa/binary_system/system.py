@@ -27,7 +27,28 @@ from elisa.binary_system import (
 
 class BinarySystem(System):
     """
-    Compute and initialise minmal necessary attributes to be used in light curves computation.
+    Compute and initialise minimal necessary attributes to be used in light curves computation.
+    Child class of elisa.base.system.System representing BinarySystem.
+    Class intherit parameters from elisa.base.system.System and add following
+
+    Input parameters:
+
+    :param primary: elisa.base.star.Star; instance of primary component
+    :param secondary: elisa.base.star.Star; instance of secondary component
+    :param eccentricity: Union[(numpy.)int, (numpy.)float];
+    :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
+    :param phase_shift: float; Phase shift of the primary eclipse minimum with respect to ephemeris
+        true_phase is used during calculations, where: true_phase = phase + phase_shift.;
+    :param primary_minimum_time: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
+
+    Output parameters (computed on init):
+
+    :mass_ratio: float; secondary mass / primary mass
+    :orbit: elisa.orbit.orbit.Orbit; instance of orbit
+    :plot: elisa.binary_system.graphic.plot.Plot;
+    :animation: elisa.binary_system.graphic.animation.Animation;
+    :semi_major_axis: float; semi major axis of system in physical units
+    :morphology: str; morphology of current system
     """
 
     MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'phase_shift']
@@ -103,7 +124,7 @@ class BinarySystem(System):
         """
         Return components object in Dict.
 
-        :return: Dict[str, elisa.base.Star]
+        :return: Dict[str, elisa.base.Star];
         """
         return self._components
 
@@ -112,7 +133,7 @@ class BinarySystem(System):
         Creating dictionary of keyword arguments of BinarySystem class in order to be able to reinitialize the class
         instance in init().
 
-        :return: Dict
+        :return: Dict;
         """
         serialized_kwargs = dict()
         for kwarg in self.ALL_KWARGS:
@@ -137,7 +158,6 @@ class BinarySystem(System):
     def init_orbit(self):
         """
         Orbit class in binary system.
-        :return:
         """
         self._logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
@@ -154,7 +174,8 @@ class BinarySystem(System):
     def calculate_semi_major_axis(self):
         """
         Calculates length semi major axis using 3rd kepler law.
-        :return: float
+
+        :return: float;
         """
         period = np.float64((self.period * units.PERIOD_UNIT).to(units.s))
         return (const.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * const.PI ** 2)) ** (1.0 / 3)
@@ -164,7 +185,8 @@ class BinarySystem(System):
         Setup binary star class property `morphology`.
         It find out morphology based on current system parameters
         and setup `morphology` parameter of `self `system instance.
-        :return: str
+
+        :return: str;
         """
         __PRECISSION__ = 1e-8
         __MORPHOLOGY__ = None
@@ -233,8 +255,9 @@ class BinarySystem(System):
     def transform_input(self, **kwargs):
         """
         Transform and validate input kwargs.
-        :param kwargs: Dict
-        :return: Dict
+
+        :param kwargs: Dict;
+        :return: Dict;
         """
         return BinarySystemProperties.transform_input(**kwargs)
 
@@ -242,8 +265,6 @@ class BinarySystem(System):
         """
         Compute and set critical surface potential for both components.
         Critical surface potential is for componetn defined as potential when component fill its Roche lobe.
-
-        :return:
         """
         for component in config.BINARY_COUNTERPARTS:
             setattr(
@@ -254,9 +275,10 @@ class BinarySystem(System):
     def critical_potential(self, component, components_distance):
         """
         Return a critical potential for target component.
+
         :param component: str; define target component to compute critical potential; `primary` or `secondary`
-        :param components_distance: numpy.float
-        :return: numpy.float
+        :param components_distance: numpy.float;
+        :return: numpy.float;
         """
         if component == "primary":
             args = self.primary.synchronicity, self.mass_ratio, components_distance
@@ -284,7 +306,8 @@ class BinarySystem(System):
     def libration_potentials(self):
         """
         Return potentials in L3, L1, L2 respectively.
-        :return: List; [Omega(L3), Omega(L1), Omega(L2)]
+
+        :return: List; [Omega(L3), Omega(L1), Omega(L2)];
         """
 
         def potential(radius):
@@ -314,7 +337,8 @@ class BinarySystem(System):
     def lagrangian_points(self):
         """
         Compute Lagrangian points for current system parameters.
-        :return: list; x-valeus of libration points [L3, L1, L2] respectively
+
+        :return: List; x-valeus of libration points [L3, L1, L2] respectively
         """
 
         def potential_dx(x, *args):
@@ -375,7 +399,7 @@ class BinarySystem(System):
     def compute_equipotential_boundary(self, components_distance, plane):
         """
         Compute a equipotential boundary of components (crossection of Hill plane).
-        :param components_distance: (numpy.)float
+        :param components_distance: (numpy.)float;
         :param plane: str; xy, yz, zx
         :return: Tuple; (numpy.array, numpy.array)
         """
@@ -438,7 +462,8 @@ class BinarySystem(System):
     def get_positions_method(self):
         """
         Return method to use for orbital motion computation.
-        :return: method
+
+        :return: method;
         """
         return self.calculate_orbital_motion
 
@@ -468,8 +493,8 @@ class BinarySystem(System):
         Setup component radii.
         Use methods to calculate polar, side, backward and if not W UMa also
         forward radius and assign to component instance.
-        :param components_distance: float
-        :return:
+
+        :param components_distance: float;
         """
         fns = [bsradius.calculate_polar_radius, bsradius.calculate_side_radius, bsradius.calculate_backward_radius]
         components = ['primary', 'secondary']
@@ -503,9 +528,9 @@ class BinarySystem(System):
         where Omega_X denote potential value and `Omega` is potential of given Star.
         Inner and outter are critical inner and outter potentials for given binary star system.
 
-        :param surface_potential:
-        :param lagrangian_points: list; lagrangian points in `order` (in order to ensure that L2)
-        :return:
+        :param surface_potential: float;
+        :param lagrangian_points: List; lagrangian points in `order` (in order to ensure that L2)
+        :return: float;
         """
         return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
 
@@ -514,10 +539,10 @@ class BinarySystem(System):
         Function calculates potential for each phase in phases in such way that conserves
         volume of the component. Volume is approximated by two half elipsoids.
 
-        :param phases: numpy.array
+        :param phases: numpy.array;
         :param component: str; `primary`, `secondary` or None (=both)
-        :param iterations: int
-        :return: numpy.array
+        :param iterations: int;
+        :return: numpy.array;
         """
         data = self.orbit.orbital_motion(phases)
         distances = data[:, 0]
@@ -611,12 +636,13 @@ class BinarySystem(System):
         Depending on the basic properties of the binary system.
 
         :param kwargs: Dict; arguments to be passed into light curve generator functions
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
-            * ** phases ** * - numpy.array
-            * ** position_method ** * - method
+            :**kwargs options**:
+                * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+                * ** left_bandwidth ** * - float
+                * ** right_bandwidth ** * - float
+                * ** atlas ** * - str
+                * ** phases ** * - numpy.array
+                * ** position_method ** * - method
         :return: Dict
         """
         is_circular = self.eccentricity == 0

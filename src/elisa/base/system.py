@@ -10,7 +10,18 @@ from elisa import (
 
 class System(metaclass=ABCMeta):
     """
-    Abstract class defining System
+    Abstract class defining System.
+    It implements following input arguments (system properties) which can be set on input of child instance.
+
+    :param name: str; arbitrary name of instance
+    :param suppress_logger: bool;
+    :param inclination: Union[float, astropy.unit.quantity.Quantity]; Inclination of the system.
+    If unit is not supplied, value in degrees is assumed.
+    :param period: Union[float, astropy.unit.quantity.Quantity];
+    :param gamma: Union[float, astropy.unit.quantity.Quantity]; Center of mass velocity.
+    Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
+    If unit is not specified, default velocity unit is assumed.
+    :param additional_light: float; Light that does not originate from any member of system.
     """
 
     ID = 1
@@ -58,7 +69,6 @@ class System(metaclass=ABCMeta):
         Setup system properties from input.
 
         :param kwargs: Dict; all supplied input properties
-        :return:
         """
         self._logger.debug(f"initialising properties of system {self.name}, values: {kwargs}")
         for kwarg in kwargs:
@@ -68,7 +78,7 @@ class System(metaclass=ABCMeta):
         """
         Resolve whether any of components has pulsation
 
-        :return: bool
+        :return: bool;
         """
         retval = False
         for component_instance in self.components.values():
@@ -79,7 +89,7 @@ class System(metaclass=ABCMeta):
         """
         Resolve whether any of components has spots
 
-        :return: bool
+        :return: bool;
         """
         retval = False
         for component_instance in self.components.values():
@@ -91,9 +101,8 @@ class System(metaclass=ABCMeta):
         """
         Checking if star instances have all additional atributes set properly.
 
-        :param components: str
-        :param mandatory_kwargs: List
-        :return:
+        :param components: str;
+        :param mandatory_kwargs: List;
         """
         for component, component_instance in components.items():
             if not isinstance(component_instance, Body):

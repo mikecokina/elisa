@@ -19,8 +19,8 @@ def get_metallicity_from_ld_table_filename(filename):
     """
     Get metallicity as number from filename typicaly used in van hame ld tables.
 
-    :param filename: str
-    :return: float
+    :param filename: str;
+    :return: float;
     """
     filename = os.path.basename(filename)
     m = str(filename).split(".")[-2]
@@ -44,10 +44,10 @@ def get_van_hamme_ld_table(passband, metallicity, law=None):
     """
     Get content of van hamme table (read csv file).
 
-    :param passband: str
-    :param metallicity: str
+    :param passband: str;
+    :param metallicity: str;
     :param law: str; in not specified, default law specified in `elisa.conf.config` is used
-    :return: pandas.DataFrame
+    :return: pandas.DataFrame;
     """
     law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
     filename = get_van_hamme_ld_table_filename(passband, metallicity, law=law)
@@ -61,8 +61,8 @@ def get_van_hamme_ld_table_by_name(fname):
     """
     Get content of van hamme table defined by filename (assume it is stored in configured directory).
 
-    :param fname: str
-    :return: pandas.DataFrame
+    :param fname: str;
+    :return: pandas.DataFrame;
     """
     __logger__.debug(f"accessing limb darkening file {fname}")
     path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
@@ -76,9 +76,9 @@ def get_relevant_ld_tables(passband, metallicity, law=None):
     Get filename of van hamme tables for surrounded metallicities and given passband.
 
     :param law: str; limb darkening law (`linear`, `cosine`, `logarithmic`, `square_root`)
-    :param passband: str
-    :param metallicity: str
-    :return: list
+    :param passband: str;
+    :param metallicity: str;
+    :return: List;
     """
     # todo: make better decision which values should be used
     surrounded = utils.find_surrounded(const.VAN_HAMME_METALLICITY_LIST_LD, metallicity)
@@ -90,12 +90,12 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
     """
     Get limb darkening coefficients based on van hamme tables for given temperatures, log_gs and metallicity.
 
-    :param passband: Dict
-    :param temperature: Iterable float
-    :param log_g: Iterable float; values expected in log_SI units
-    :param metallicity: float
+    :param passband: Dict;
+    :param temperature: Iterable[float];
+    :param log_g: Iterable[float]; values expected in log_SI units
+    :param metallicity: float;
     :param author: str; (not implemented)
-    :return: pandas.DataFrame
+    :return: pandas.DataFrame;
     """
     if isinstance(passband, dict):
         passband = passband.keys()
@@ -199,8 +199,8 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
     D(int) = integral over hemisphere (D(theta)cos(theta)
 
     :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
-    :param coefficients: numpy.array
-    :return: np.array - bolometric_limb_darkening_factor (scalar for the whole star)
+    :param coefficients: numpy.array;
+    :return: np.array; - bolometric_limb_darkening_factor (scalar for the whole star)
     """
     if coefficients is None:
         raise ValueError('Limb darkening coefficients were not supplied.')

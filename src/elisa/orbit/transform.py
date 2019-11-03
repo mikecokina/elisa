@@ -1,7 +1,11 @@
 import numpy as np
 
 from elisa import units
-from elisa.base.transform import TransformProperties, WHEN_FLOAT64, quantity_transform
+from elisa.base.transform import (
+    TransformProperties,
+    quantity_transform,
+    WHEN_FLOAT64
+)
 
 
 class OrbitProperties(TransformProperties):
@@ -10,8 +14,8 @@ class OrbitProperties(TransformProperties):
         """
         Transform and validate eccentricity.
 
-        :param value: (numpy.)int, (numpy.)float
-        :return:
+        :param value: Union[(numpy.)int, (numpy.)float]
+        :return: float
         """
         if not isinstance(value, (int, np.int, float, np.float)):
             raise TypeError('Input of variable `eccentricity` is not (numpy.)int or (numpy.)float.')
@@ -25,7 +29,7 @@ class OrbitProperties(TransformProperties):
         Transform and validate orbital period of binary star system.
         If unit is not specified, default period unit is assumed.
 
-        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
         return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)
@@ -35,8 +39,8 @@ class OrbitProperties(TransformProperties):
         """
         If unit is not supplied, value in radians is assumed.
 
-        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
+        :return: float
         """
         return quantity_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
 
@@ -45,7 +49,7 @@ class OrbitProperties(TransformProperties):
         """
         If unitless values is supplied, default units suppose to be radians.
 
-        :param value: float or astropy.units.Quantity
+        :param value: Union[float, astropy.units.Quantity]
         :return: float
         """
         return quantity_transform(value, units.ARC_UNIT, WHEN_FLOAT64)

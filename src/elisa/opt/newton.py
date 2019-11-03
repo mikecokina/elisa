@@ -21,7 +21,7 @@ def newton(func, x0, fprime, args=(), maxiter=50, rtol=0.0):
     :param args: Tuple; extra arguments to be used in the function call
     :param maxiter: int; maximum number of iterations
     :param rtol: tolerance (relative) for termination
-    :return: float or numpy.array; depends on the `x0` shape
+    :return: Union[numpy.array, float]; depends on the `x0` shape
     """
     x_n = np.copy(x0) if isinstance(x0, np.ndarray) else x0
     for _ in range(maxiter):

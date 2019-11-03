@@ -20,6 +20,41 @@ class Body(metaclass=ABCMeta):
     Units are imported from astropy.units module::
 
         see documentation http://docs.astropy.org/en/stable/units/
+
+    It implements following input arguments (body properties) which can be set on input of child instance.
+
+    :param name: str; arbitrary name of instance
+    :param suppress_logger: bool;
+    :param synchronicity: float; Object synchronicity (F = omega_rot/omega_orb) setter.
+    Expects number input convertible to numpy float64 / float.
+    :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
+    If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
+    :param albeo: float; Bolometric albedo (reradiated energy/ irradiance energy).
+    Accepts value of albedo in range (0, 1).
+    :param discretization_factor: float;
+    :param t_eff: float; Accepts value in Any temperature unit. If your input is without unit,
+    function assumes that supplied value is in Kelvins.
+    :param polar_radius: Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int
+    othervise TypeError will be raised. If quantity is not specified, default distance unit is assumed.
+    :param spots: List[Dict[str, float]]; Spots definitions. Example of defined spots
+
+        ::
+
+            [
+                 {"longitude": 90,
+                  "latitude": 58,
+                  "angular_radius": 15,
+                  "temperature_factor": 0.9},
+                 {"longitude": 85,
+                  "latitude": 80,
+                  "angular_radius": 30,
+                  "temperature_factor": 1.05},
+                 {"longitude": 45,
+                  "latitude": 90,
+                  "angular_radius": 30,
+                  "temperature_factor": 0.95},
+             ]
+    :param equatorial_radius: float
     """
 
     ID = 1
@@ -85,7 +120,6 @@ class Body(metaclass=ABCMeta):
              ]
 
         :param spots: Iterable[Dict]; definition of spots for given object
-        :return:
         """
         self._spots = {idx: Spot(**spot_meta) for idx, spot_meta in enumerate(spots)} if not is_empty(spots) else dict()
         for spot_idx, spot_instance in self.spots.items():
@@ -104,7 +138,6 @@ class Body(metaclass=ABCMeta):
         Remove n-th spot index of object.
 
         :param spot_index: int
-        :return:
         """
         del (self._spots[spot_index])
 
@@ -115,11 +148,11 @@ class Body(metaclass=ABCMeta):
             - used Star discretization factor if not specified in spot
             - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
               0.5 * spot_instance.angular_diameter
+
         :param spot_instance: Spot
         :param spot_index: int; spot index (has no affect on process, used for logging)
-        :return:
+        :return: elisa.base.spot.Spot;
         """
-        # component_instance = getattr(self, component)
         if is_empty(spot_instance.discretization_factor):
             self._logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
                                f'and discretization factor of star {self.discretization_factor} was used.')

@@ -63,7 +63,7 @@ class SystemProperties(TransformProperties):
         If unit is not supplied, value in degrees is assumed.
 
         :param value:
-        :return: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :return: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         """
         if isinstance(value, au.quantity.Quantity):
             value = np.float64(value.to(units.ARC_UNIT))
@@ -82,7 +82,7 @@ class SystemProperties(TransformProperties):
         """
         Transform and validate orbital period of binary star system.
         If unit is not specified, default period unit is assumed.
-        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
         return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)
@@ -94,7 +94,7 @@ class SystemProperties(TransformProperties):
         Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
         If unit is not specified, default velocity unit is assumed.
 
-        :param value: (numpy.)float, (numpy.)int, astropy.units.quantity.Quantity
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
         return quantity_transform(value, units.VELOCITY_UNIT, WHEN_FLOAT64)
@@ -132,7 +132,7 @@ class BodyProperties(TransformProperties):
        If mass astropy.unit.quantity.Quantity instance, program converts it to default units and stores it's value in
        attribute _mass.
 
-       :param value: int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity
+       :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
        :return: float
        """
         if isinstance(value, au.quantity.Quantity):
@@ -164,7 +164,7 @@ class BodyProperties(TransformProperties):
         """
         Discretization factor. Degrees is considered as default value.
 
-        :param value: float or astropy.quantity.Quantity
+        :param value: Union[float, astropy.quantity.Quantity]
         :return: float
         """
         value = deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
@@ -177,7 +177,8 @@ class BodyProperties(TransformProperties):
         """
         This function accepts value in Any temperature unit.
         If your input is without unit, function assumes that supplied value is in Kelvins.
-        :param value: int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity
+        
+        :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
         :return: float
         """
         return quantity_transform(value, units.TEMPERATURE_UNIT, WHEN_FLOAT64)
@@ -243,7 +244,7 @@ class SpotProperties(BodyProperties):
         """
         Expecting value in degrees or as astropy units instance.
 
-        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
         return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
@@ -253,7 +254,7 @@ class SpotProperties(BodyProperties):
         """
         Expecting value in degrees or as astropy units instance.
 
-        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
         return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
@@ -263,7 +264,7 @@ class SpotProperties(BodyProperties):
         """
         Expecting value in degrees or as astropy units instance.
 
-        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
         return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)

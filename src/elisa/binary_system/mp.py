@@ -11,7 +11,7 @@ def prepare_get_surface_points_args(preacalc_vals_args, mass_ratio, surface_pote
 
 def get_surface_points_worker(*args):
     """
-    function solves radius for given azimuths that are passed in *args
+    Function solves radius for given azimuths that are passed in *args.
     """
 
     potential_fn, xargs = args

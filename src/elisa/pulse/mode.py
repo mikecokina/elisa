@@ -208,7 +208,7 @@ class PulsationMode(object):
         Setter for latitude of pulsation mode axis. 
         If unit is not supplied, degrees are assumed.
 
-        :param mode_axis_theta: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param mode_axis_theta: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
         if isinstance(mode_axis_theta, u.quantity.Quantity):
@@ -236,7 +236,7 @@ class PulsationMode(object):
         Setter for longitude of pulsation mode axis. 
         If unit is not supplied, degrees are assumed.
 
-        :param mode_axis_phi: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
+        :param mode_axis_phi: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
         if isinstance(mode_axis_phi, u.quantity.Quantity):

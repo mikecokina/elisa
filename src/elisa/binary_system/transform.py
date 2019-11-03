@@ -11,8 +11,8 @@ class BinarySystemProperties(SystemProperties):
         """
         Transform and validate eccentricity.
 
-        :param value: (numpy.)int, (numpy.)float
-        :return:
+        :param value: Union[(numpy.)int, (numpy.)float]
+        :return: float;
         """
         if not isinstance(value, (int, np.int, float, np.float)):
             raise TypeError('Input of variable `eccentricity` is not (numpy.)int or (numpy.)float.')
@@ -25,8 +25,8 @@ class BinarySystemProperties(SystemProperties):
         """
         Transform and validate argument of periastron, if unit is not supplied, value in degrees is assumed.
 
-        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
+        :return: float;
         """
         if isinstance(value, au.quantity.Quantity):
             value = np.float64(value.to(units.ARC_UNIT))
@@ -45,8 +45,8 @@ class BinarySystemProperties(SystemProperties):
         Returns phase shift of the primary eclipse minimum with respect to ephemeris
         true_phase is used during calculations, where: true_phase = phase + phase_shift.
 
-        :param value: float
-        :return: float
+        :param value: float;
+        :return: float;
         """
         return np.float64(value)
 
@@ -55,7 +55,7 @@ class BinarySystemProperties(SystemProperties):
         """
         Transform and validity check for time of primary minima.
 
-        :param value: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return: float
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
+        :return: float;
         """
         return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)

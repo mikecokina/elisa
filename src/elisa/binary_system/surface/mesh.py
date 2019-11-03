@@ -16,11 +16,11 @@ __logger__ = logger.getLogger("binary-system-mesh-module")
 def build_mesh(system, components_distance, component="all"):
     """
    Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
+   Points are assigned to system.
 
-   :param system: BinarySystem; instance
-   :param component: str or empty
-   :param components_distance: float
-   :return:
+   :param system: elisa.binary_system.contaienr.OrbitalPositionContainer; instance
+   :param component: Union[str, None];
+   :param components_distance: float;
    """
     components = bsutils.component_to_list(component)
 
@@ -142,7 +142,7 @@ def pre_calc_azimuths_for_overcontact_neck_points(
     :param discretization: float; doscretiozation factor
     :param neck_position: float; x position of neck of over-contact binary
     :param neck_polynomial: scipy.Polynome; polynome that define neck profile in plane `xz`
-    :param polar_radius: float
+    :param polar_radius: float;
     :param component: str; `primary` or `secondary`
     :return: Tuple; (phi: numpy.array, z: numpy.array, separator: numpy.array)
     """
@@ -298,12 +298,12 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
     """
     Creates surface mesh of given binary star component in case of detached or semi-detached system.
 
-    :param system:
+    :param system: elisa.binary_system.contaienr.OrbitalPositionContainer;
     :param symmetry_output: bool; if True, besides surface points are returned also `symmetry_vector`,
                                   `base_symmetry_points_number`, `inverse_symmetry_matrix`
     :param component: str; `primary` or `secondary`
     :param components_distance: numpy.float
-    :return: Tuple or numpy.array (if `symmetry_output` is False)
+    :return: Union[Tuple, numpy.array]; (if `symmetry_output` is False)
 
     Array of surface points if symmetry_output = False::
 
@@ -426,11 +426,11 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
     """
     Creates surface mesh of given binary star component in case of over-contact system.
 
-    :param system:
+    :param system: elisa.binary_system.contaienr.OrbitalPositionContainer;
     :param symmetry_output: bool; if true, besides surface points are returned also `symmetry_vector`,
     `base_symmetry_points_number`, `inverse_symmetry_matrix`
     :param component: str; `primary` or `secondary`
-    :return: Tuple or numpy.array (if symmetry_output is False)
+    :return: Union[Tuple, numpy.array]; (if symmetry_output is False)
 
     Array of surface points if symmetry_output = False::
 
@@ -587,10 +587,10 @@ def mesh_spots(system, components_distance, component="all"):
     Compute points of each spots and assigns values to spot container instance.
     If any of any spot point cannot be obtained, entire spot will be omitted.
 
-    :param system:
+    :param system: elisa.binary_system.contaienr.OrbitalPositionContainer;
     :param component: str;
     :param components_distance: float;
-    :return:
+    :return: bool;
     """
 
     def solver_condition(x, *_args):
@@ -736,7 +736,7 @@ def calculate_neck_position(system, return_polynomial=False):
     """
     Function calculates x-coordinate of the `neck` (the narrowest place) of an over-contact system.
 
-    :return: Tuple (if return_polynomial is True) or float;
+    :return: Union[Tuple (if return_polynomial is True), float];
 
     If return_polynomial is set to True::
 
@@ -809,10 +809,9 @@ def add_spots_to_mesh(system, components_distance, component="all"):
     Function implements surface points into clean mesh and removes stellar
     points and other spot points under the given spot if such overlapped spots exists.
 
-    :param system: BinarySystem instance
-    :param components_distance: float
-    :param component: str or empty
-    :return:
+    :param system: elisa.binary_system.contaienr.OrbitalPositionContainer;
+    :param components_distance: float;
+    :param component: Union[str, None]
     """
     if components_distance is None:
         raise ValueError('Argument `component_distance` was not supplied.')

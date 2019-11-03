@@ -17,9 +17,8 @@ def redistribute_temperatures(in_system, temperatures):
     """
     In this function array of `temperatures` is parsed into chunks that belong to stellar surface and spots.
 
-    :param in_system:
+    :param in_system: instance to redistribute temperatures
     :param temperatures: numpy.array; temperatures from the whole surface, ordered: surface, spot1, spot2...
-    :return:
     """
     for component in ['primary', 'secondary']:
         star = getattr(in_system, component)
@@ -35,10 +34,9 @@ def reflection_effect(system, components_distance, iterations):
     """
     Alter temperatures of components to involve reflection effect.
 
-    :param system:
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param iterations: int; iterations of reflection effect counts
     :param components_distance: float; components distance in SMA units
-    :return:
     """
 
     if not config.REFLECTION_EFFECT:
@@ -239,7 +237,6 @@ def renormalize_temperatures(star):
     """
     In case of spot presence, renormalize temperatures to fit effective temperature again,
     since spots disrupt effective temperature of Star as entity.
-    :return:
     """
     # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
     total_surface = np.sum(star.areas)
@@ -265,7 +262,7 @@ def calculate_polar_effective_temperature(star):
     """
     Returns polar effective temperature.
 
-    :return: float
+    :return: float;
     """
     return star.t_eff * up.power(np.sum(star.areas) /
                                            np.sum(star.areas * up.power(
@@ -280,9 +277,9 @@ def calculate_effective_temperatures(star, gradient_magnitudes):
     Calculates effective temperatures for given gradient magnitudes.
     If None is given, star surface t_effs are calculated.
 
-    :param star:
-    :param gradient_magnitudes: numpy.array
-    :return:
+    :param star: elisa.base.container.StarContainer;
+    :param gradient_magnitudes: numpy.array;
+    :return: numpy.array;
     """
 
     t_eff_polar = calculate_polar_effective_temperature(star)
@@ -291,18 +288,16 @@ def calculate_effective_temperatures(star, gradient_magnitudes):
     return t_eff if star.spots else t_eff[star.face_symmetry_vector]
 
 
-def build_temperature_distribution(system, components_distance, component="all",
-                                   do_pulsations=False, phase=None):
+def build_temperature_distribution(system, components_distance, component="all", do_pulsations=False, phase=None):
     """
     Function calculates temperature distribution on across all faces.
     Value assigned to face is mean of values calculated in corners of given face.
 
-    :param system: BinarySystem; instance
-    :param components_distance: str
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param components_distance: str;
     :param component: `primary` or `secondary`
     :param do_pulsations:
-    :param phase:
-    :return:
+    :param phase: float;
     """
     if is_empty(component):
         __logger__.debug("no component set to build temperature distribution")
@@ -355,7 +350,7 @@ def init_surface_variables(star):
     Function copies basic parameters of the stellar surface (points, faces, normals, temperatures, areas and log_g) of
     given star instance into new arrays during calculation of reflection effect.
 
-    :param star: Star instance
+    :param star: elisa.base.container.StarContainer;
     :return: Tuple; (points, faces, centres, normals, temperatures, areas)
     """
     points, faces = star.surface_serializer()
@@ -373,9 +368,9 @@ def include_spot_to_surface_variables(centres, spot_centres, normals, spot_norma
     Function includes surface parameters of spot faces into global arrays containing parameters from whole surface
     used in reflection effect.
 
-    :param spot_log_g: 
-    :param log_g: 
-    :param centres: numpy.array
+    :param spot_log_g: numpy.array;
+    :param log_g: numpy.array;
+    :param centres: numpy.array;
     :param spot_centres: numpy.array; spot centres to append to `centres`
     :param normals: numpy.array;
     :param spot_normals: numpy.array; spot normals to append to `normals`
@@ -404,9 +399,9 @@ def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis
     :param shape: Tuple[int]; desired shape of join vector matrix
     :param shape_reduced: Tuple[int]; shape of the surface symmetries,
                          (faces above those indices are symmetrical to the ones below)
-    :param centres: Dict
-    :param vis_test: Dict[str, numpy.array]
-    :param vis_test_symmetry: Dict[str, numpy.array]
+    :param centres: Dict;
+    :param vis_test: Dict[str, numpy.array];
+    :param vis_test_symmetry: Dict[str, numpy.array];
     :return: Tuple; (distance, join vector)
 
     ::
@@ -440,10 +435,10 @@ def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test,
     :param shape: Tuple[int]; desired shape of gamma
     :param shape_reduced: Tuple[int]; shape of the surface symmetries, (faces above those
                                       indices are symmetrical to the ones below)
-    :param normals: Dict[str, numpy.array]
-    :param join_vector: Dict[str, numpy.array]
-    :param vis_test: Dict[str, numpy.array]
-    :param vis_test_symmetry: Dict[str, numpy.array]
+    :param normals: Dict[str, numpy.array];
+    :param join_vector: Dict[str, numpy.array];
+    :param vis_test: Dict[str, numpy.array];
+    :param vis_test_symmetry: Dict[str, numpy.array];
     :return: gamma: Dict[str, numpy.array]; cos(angle(normal, join_vector))
     """
     gamma = {'primary': np.empty(shape=shape, dtype=np.float),
@@ -470,9 +465,8 @@ def check_symmetric_gamma_for_negative_num(gamma, shape_reduced):
     """
     If cos < 0 it will be redefined as 0 are inplaced.
 
-    :param gamma: Dict[str, numpy.array]
-    :param shape_reduced: Tuple[int]
-    :return:
+    :param gamma: Dict[str, numpy.array];
+    :param shape_reduced: Tuple[int];
     """
     gamma['primary'][:, :shape_reduced[1]][gamma['primary'][:, :shape_reduced[1]] < 0] = 0.
     gamma['primary'][:shape_reduced[0], shape_reduced[1]:][gamma['primary'][:shape_reduced[0],
@@ -487,7 +481,7 @@ def get_symmetrical_d_gamma(shape, shape_reduced, ldc, gamma):
     Function uses surface symmetries to calculate limb darkening factor matrices
     for each components that are used in reflection effect.
 
-    :param ldc: dict - arrays of limb darkening coefficients for each face of each component
+    :param ldc: Dict; - arrays of limb darkening coefficients for each face of each component
     :param shape: desired shape of limb darkening matrices d_gamma
     :param shape_reduced: shape of the surface symmetries, (faces above those indices are symmetrical to the ones
     below)
@@ -536,9 +530,9 @@ def get_symmetrical_q_ab(shape, shape_reduced, gamma, distance):
     :param shape: Tuple[int]; desired shape of q_ab
     :param shape_reduced: Tuple[int]; shape of the surface symmetries,
                                      (faces above those indices are symmetrical to the ones below)
-    :param gamma: Dict[str, numpy.array]
-    :param distance: numpy.array
-    :return: numpy.array
+    :param gamma: Dict[str, numpy.array];
+    :param distance: numpy.array;
+    :return: numpy.array;
     """
     q_ab = np.empty(shape=shape, dtype=np.float)
     q_ab[:, :shape_reduced[1]] = \
@@ -557,9 +551,9 @@ def get_distance_matrix_shape(system, vis_test):
     Calculates shapes of distance and join vector matrices along with shapes
     of symetrical parts of those matrices used in reflection effect.
 
-    :param system:
-    :param vis_test: numpy.array
-    :return: Tuple
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param vis_test: numpy.array;
+    :return: Tuple;
     """
     shape = (np.sum(vis_test['primary']), np.sum(vis_test['secondary']), 3)
     shape_reduced = (np.sum(vis_test['primary'][:system.primary.base_symmetry_faces_number]),

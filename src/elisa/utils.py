@@ -42,7 +42,6 @@ def invalid_kwarg_checker(kwargs, kwarglist, instance):
     :param kwargs: Dict; kwargs to evaluate if are in kwarg list
     :param kwarglist: Dict;
     :param instance: Any class
-    :return:
     """
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
@@ -55,9 +54,9 @@ def is_plane(given, expected):
     """
     Find out whether `given` plane definition of 2d plane is `expected` one. E.g. if `yx` is `yx` or `xy`
 
-    :param given: str
-    :param expected: str
-    :return: bool
+    :param given: str;
+    :param expected: str;
+    :return: bool;
     """
     pattern = r'^({0})|({1})$'.format(expected, expected[::-1])
     return re.search(pattern, given)
@@ -67,7 +66,7 @@ def find_nearest_dist_3d(data):
     """
     Function finds the smallest distance between given set of 3D points.
 
-    :param data: Iterable
+    :param data: Iterable;
     :return: float; minimal distance of points in dataset
     """
     if isinstance(data, np.ndarray):
@@ -89,12 +88,12 @@ def cartesian_to_spherical(points, degrees=False):
     Convert cartesian to spherical coordinates.
     If only 1 point is given input an output is only 1D vector
 
-    :param points: numpy_array([[x1, y1, z1],
+    :param points: numpy.array([[x1, y1, z1],
                                 [x2, y2, z2],
                                  ...
                                 [xn, yn, zn]])
     :param degrees: bool; whether return spherical angular coordinates in degrees
-    :return: ndarray;
+    :return: numpy.array;
 
     ::
 
@@ -129,16 +128,16 @@ def spherical_to_cartesian(spherical_points):
     If input is one point, output is 1D vector.
     Function assumes that supplied spherical angular coordinates are in radians.
 
-    :param spherical_points: ndarray;
+    :param spherical_points: numpy.array;
 
     shape::
 
-        ndarray([[r1, phi1, theta1],
-                 [r2, phi2, theta2],
-                 ...
-                 [rn, phin, thetan]])
+        numpy.array([[r1, phi1, theta1],
+                     [r2, phi2, theta2],
+                      ...
+                     [rn, phin, thetan]])
 
-    :return: ndarray
+    :return: numpy.array;
 
     shape::
 
@@ -163,16 +162,16 @@ def cylindrical_to_cartesian(cylindrical_points):
     If input is one point, output is 1D vector.
     Function assumes that supplied spherical angular coordinates are in radians.
 
-    :param cylindrical_points: ndarray;
+    :param cylindrical_points: numpy.array;
 
     shape ::
 
-        ndarray([[r1, phi1, z1],
-                 [r2, phi2, z2],
-                 ...
-                 [rn, phin, zn]])
+        numpy.array([[r1, phi1, z1],
+                     [r2, phi2, z2],
+                      ...
+                     [rn, phin, zn]])
 
-    :return: ndarray
+    :return: numpy.array;
 
     shape::
 
@@ -196,11 +195,11 @@ def arbitrary_rotation(theta, omega, vector, degrees=False, omega_normalized=Fal
     Function rotates `vector` around axis defined by `omega` vector by amount `theta`.
 
     :param theta: float; radial vector of point of interest to rotate
-    :param omega: 3d list of floats; arbitrary vector to rotate around
-    :param vector: 3d list of floats;
+    :param omega: Union[List, numpy.array]; 3d list of floats; arbitrary vector to rotate around
+    :param vector: Union[List, numpy.array]; 3d list of floats;
     :param degrees: bool; if True, theta supplied on intput is in degrees otherwise in radians
-    :param omega_normalized: if True, then in-function normalization of omega is not performed
-    :return: ndarray;
+    :param omega_normalized: bool; if True, then in-function normalization of omega is not performed
+    :return: numpy.array;
     """
     # this action normalizes the same vector over and over again during spot calculation, which is unnecessary
     if not omega_normalized:
@@ -227,14 +226,14 @@ def arbitrary_rotation(theta, omega, vector, degrees=False, omega_normalized=Fal
 
 def around_axis_rotation(theta, vector, axis, inverse=False, degrees=False):
     """
-    Rotation of `vector` around 'axis' by an amount `theta
+    Rotation of `vector` around 'axis' by an amount `theta.
 
     :param theta: float, degree of rotation
-    :param vector: dnarray; vector to rotate around
+    :param vector: numpy.array; vector to rotate around
     :param axis: str; axis of rotation `x`, `y`, or `z`
-    :param inverse: boold; rotate to inverse direction than is math positive
+    :param inverse: bool; rotate to inverse direction than is math positive
     :param degrees: bool; if True value theta is assumed to be in degrees
-    :return: ndarray; rotated vector(s)
+    :return: numpy.array; rotated vector(s)
     """
     matrix = up.arange(9, dtype=np.float).reshape((3, 3))
     theta = theta if not degrees else up.radians(theta)
@@ -269,7 +268,7 @@ def average_spacing_cgal(data, neighbours=6):
 
     :param data: List; 3-dimensinal dataset
     :param neighbours: int; nearest neighbours to average
-    :return: float
+    :return: float;
     """
     if not isinstance(data, type(np.array)):
         data = np.array(data)
@@ -284,7 +283,7 @@ def average_spacing_cgal(data, neighbours=6):
 def average_spacing(data, mean_angular_distance):
     """
     Calculates mean distance between points using mean radius of data points and mean angular distance between them
-    :param data: dnarray;
+    :param data: numpy.array;
 
     :: shape
 
@@ -314,8 +313,8 @@ def remap(x, mapper):
     Value 3 from `x` was replaced by 3rd (in index meaning) value from `mapper`,
     value 6 from `x` is replaced by 6th value from mapper, etc.
 
-    :param x: ndarray; faces-like matrix
-    :param mapper: ndarray; transformation map - numpy.array(): new_index_of_point = mapper[old_index_of_point]
+    :param x: numpy.array; faces-like matrix
+    :param mapper: numpy.array; transformation map - numpy.array(): new_index_of_point = mapper[old_index_of_point]
     :return: List; faces-like matrix
     """
     return list(map(lambda val: [mapper[val[0]], mapper[val[1]], mapper[val[2]]], x))
@@ -325,8 +324,8 @@ def poly_areas(polygons):
     """
     Calculates surface areas of triangles, where `triangles` coordinates of points are in `polygons` variable.
 
-    :param polygons: ndarray; 3d points
-    :return: ndarray
+    :param polygons: numpy.array; 3d points
+    :return: numpy.array
     """
     polygons = np.array(polygons)
     return 0.5 * np.linalg.norm(np.cross(polygons[:, 1] - polygons[:, 0],
@@ -337,9 +336,9 @@ def triangle_areas(triangles, points):
     """
     Calculates areas of triangles, where `triangles` indexes of vertices which coordinates are stored in `points`.
 
-    :param triangles: ndarray; indices of triangulation
-    :param points: ndarray; 3d points
-    :return: ndarray
+    :param triangles: numpy.array; indices of triangulation
+    :param points: numpy.array; 3d points
+    :return: numpy.array;
     """
     return 0.5 * np.linalg.norm(np.cross(points[triangles[:, 1]] - points[triangles[:, 0]],
                                          points[triangles[:, 2]] - points[triangles[:, 0]]), axis=1)
@@ -359,11 +358,11 @@ def calculate_distance_matrix(points1, points2, return_join_vector_matrix=False)
     If join vector set to True, normalized join vecetors are defined as vectors in between points
     and positions in matrix are related to their distance in matrix above.
 
-    :param points1: ndarray;
-    :param points2: ndarray;
+    :param points1: numpy.array;
+    :param points2: numpy.array;
     :param return_join_vector_matrix: bool; if True, function also returns normalized distance
                                             vectors useful for dot product during calculation of cos
-    :return: Tuple[ndarray, ndarray or None]
+    :return: Tuple[numpy.array, Union[numpy.array, None]]
     """
     # pairwise distance vector matrix
     distance_vector_matrix = points2[None, :, :] - points1[:, None, :]
@@ -383,7 +382,7 @@ def find_face_centres(faces):
 
     where X_j is coordinate if j - th corner of face.
 
-    :param faces: ndarray;
+    :param faces: numpy.array;
 
     shape::
 
@@ -395,7 +394,7 @@ def find_face_centres(faces):
                       [x22,y22,z22]]
                       ...
                       ])
-    :return: ndarray
+    :return: numpy.array
     """
     return np.mean(faces, axis=1)
 
@@ -420,8 +419,8 @@ def numeric_logg_to_string(logg):
     Convert numeric form of cgs logg to string used in castelli-kurucz 04,
     kurucz 93 and van-hamme limb darkening table names.
 
-    :param logg: float
-    :return: str
+    :param logg: float;
+    :return: str;
     """
     return "g%02d" % (logg * 10)
 
@@ -443,8 +442,8 @@ def numeric_metallicity_from_string(n_metallicity):
     """
     Return numeric metallicity from string used in van-hamme tables.
 
-    :param n_metallicity: str
-    :return: float
+    :param n_metallicity: str;
+    :return: float;
     """
     m = n_metallicity
     sign = 1 if str(m).startswith("p") else -1
@@ -456,9 +455,9 @@ def find_nearest_value_as_matrix(look_in, look_for):
     """
     Finds values and indices of elements in `look_in` that are the closest to the each value in `values`.
 
-    :param look_in: ndarray; elemnts we are looking closest point in
-    :param look_for: ndarray; elements according to which the closest element in `look_in` is searched for
-    :return: Tuple[ndarray, ndarray]
+    :param look_in: numpy.array; elemnts we are looking closest point in
+    :param look_for: numpy.array; elements according to which the closest element in `look_in` is searched for
+    :return: Tuple[numpy.array, numpy.array]
     """
     val = np.array([look_for]) if np.isscalar(look_for) else look_for
     dif = up.abs(val[:, np.newaxis] - look_in)
@@ -471,9 +470,9 @@ def find_nearest_value(look_in, look_for):
     """
     Find nearest value in `look_in` array to value `look_for`.
 
-    :param look_in: ndarray
-    :param look_for: float
-    :return: List[look_for: float, int (index from look_for)]
+    :param look_in: numpy.array;
+    :param look_for: float;
+    :return: List[look_for: float, int (index from look_for)];
     """
     look_in = np.array(look_in)
     look_for = look_in[(up.abs(look_in - look_for)).argmin()]
@@ -486,9 +485,9 @@ def find_surrounded_as_matrix(look_in, look_for):
     Find values from `look_in` which souround values from `look_for`. If any value of `look_in` array is exact same
     as value in `look_for` surounded value is same value from left and right side.
 
-    :param look_in: ndarray;
-    :param look_for: ndarray;
-    :return: ndarray;
+    :param look_in: numpy.array;
+    :param look_for: numpy.array;
+    :return: numpy.array;
     """
     if not (np.array(look_in.min() <= look_for).all() and np.array(look_for <= look_in.max()).all()):
         raise ValueError("At least one value in `look_for` is out of bound of `look_in`")
@@ -518,9 +517,9 @@ def find_surrounded(look_in, look_for):
     If exact `look_for` value is supplied as exists in `look_for` just this one value is returned
     in array as left and right border.
 
-    :param look_in: ndarray
-    :param look_for: float
-    :return: List [float, float]
+    :param look_in: numpy.array;
+    :param look_for: float;
+    :return: List [float, float];
     """
     if look_for > max(look_in) or look_for < min(look_in):
         raise ValueError("Any value in `look_for` is out of bound of `look_in`")
@@ -565,9 +564,9 @@ def calculate_cos_theta(normals, line_of_sight_vector):
     Combinations are made like normals[0] with all of line_of_sight_vector,
     normals[1] with all from line_of_sight_vector, and so on, and so forth.
 
-    :param normals: ndarray
-    :param line_of_sight_vector: ndarray
-    :return: ndarray
+    :param normals: numpy.array;
+    :param line_of_sight_vector: numpy.array;
+    :return: numpy.array;
     """
     return np.sum(up.multiply(normals, line_of_sight_vector[None, :]), axis=1) \
         if np.ndim(line_of_sight_vector) == 1 \
@@ -578,8 +577,8 @@ def calculate_cos_theta_los_x(normals):
     """
     Calculates cosine of an angle between normalized vectors and line of sight vector [1, 0, 0]
 
-    :param normals: ndarray
-    :return: ndarray
+    :param normals: numpy.array
+    :return: numpy.array
     """
     return normals[:, 0]
 
@@ -589,9 +588,9 @@ def get_line_of_sight_single_system(phase, inclination):
     Returns line of sight vector for given phase, inclination of the system
     and period of the rotation of given system.
 
-    :param phase: ndarray
-    :param inclination: float
-    :return: ndarray
+    :param phase: numpy.array;
+    :param inclination: float;
+    :return: numpy.array;
     """
     line_of_sight_spherical = np.empty((len(phase), 3), dtype=np.float)
     line_of_sight_spherical[:, 0] = 1
@@ -604,9 +603,9 @@ def convert_gravity_acceleration_array(colormap, units):
     """
     Function converts gravity acceleration array from log_g(SI) units to other units such as `log_cgs`, `SI`, `cgs`.
 
-    :param colormap: ndarray
+    :param colormap: numpy.array;
     :param units: str; - `log_cgs`, `SI`, `cgs`, `log_SI`
-    :return: ndarray
+    :return: numpy.array;
     """
     if units == 'log_cgs':
         # keep it in this way to avoid mutable rewrite of origin colormap array
@@ -628,9 +627,9 @@ def cosine_similarity(a, b):
     :note: Use only in case that a, and b are not normalized, otherwise
     use function calculate_cos_theta; it is way faster since it doesn't normalize vectors on fly.
 
-    :param a: ndarray
-    :param b: ndarray
-    :return: float
+    :param a: numpy.array;
+    :param b: numpy.array;
+    :return: float;
     """
     return up.inner(a, b) / (norm(a) * norm(b))
 
@@ -679,10 +678,10 @@ def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     """
     transformation of phi, theta spherical coordinates into new spherical coordinates produced by rotation around old
     z_axis by `phi_rotation` and second rotation around new y axis by value `theta rotation`
-    :param phi: np.array - in radians
-    :param theta: np.array - in radians
-    :param phi_rotation: float - rotation of old spherical system around z axis, in radians
-    :param theta_rotation: float - rotation of z axis along new y axis by this value, in radians
+    :param phi: numpy.array; - in radians
+    :param theta: numpy.array; - in radians
+    :param phi_rotation: float; - rotation of old spherical system around z axis, in radians
+    :param theta_rotation: float; - rotation of z axis along new y axis by this value, in radians
     :return:
     """
     # TODO: write unit test to test_utils
@@ -707,9 +706,9 @@ def spherical_harmonics_renormalization_constant(l, m):
     Spherical harmonic functions are by default normalized using orthogonality of ALS where integral(Y(l,m)**2) over the
     spherical surface is one. However in our case, it is more useful to renormalise them in such way that maximum of
     the real part of the spherical harmonics is one. This function returns such renormalization constant.
-    :param l: angular degree of the mode
-    :param m: azimuthal order of the mode
-    :return: float
+    :param l: float; angular degree of the mode
+    :param m: float; azimuthal order of the mode
+    :return: float;
     """
 
     def alp(xx: float, *args) -> float:
@@ -717,8 +716,8 @@ def spherical_harmonics_renormalization_constant(l, m):
         Returns negative value from imaginary part of associated Legendre polynomial (ALP),
         used in minimizer to find global maximum of real part of spherical harmonics.
 
-        :param xx: float - argument of function
-        :param args: Tuple
+        :param xx: float; - argument of function
+        :param args: Tuple;
 
         ::
 
@@ -748,10 +747,10 @@ def calculate_equiv_radius(volume):
 def calculate_ellipsoid_volume(_a, _b, _c):
     """
     Calculates volume of ellipsoid with semi-axis _a, _b and _c.
-    :param _a: float or numpy array
-    :param _b: float or numpy array
-    :param _c: float or numpy array
-    :return: float or numpy array
+    :param _a: Union[float, numpy.array];
+    :param _b: Union[float, numpy.array];
+    :param _c: Union[float, numpy.array];
+    :return: Union[float, numpy.array];
     """
     return 4.0 * const.PI * _a * _b * _c / 3.0
 
@@ -791,12 +790,12 @@ def nested_dict_values(dictionary):
 
 def calculate_volume_ellipse_approx(equator_points=None, meridian_points=None):
     """
-    function calculates volume of the object where only equator and meridian points where provided usin elipsoidal
-    approximation for the points with the same x-cordinates
+    Function calculates volume of the object where only equator and meridian points where provided usin elipsoidal
+    approximation for the points with the same x-cordinates.
 
-    :param equator_points: numpy array
-    :param meridian_points: numpy array
-    :return: float
+    :param equator_points: numpy array;
+    :param meridian_points: numpy array;
+    :return: float;
     """
     areas = up.abs(const.PI * equator_points[:, 1] * meridian_points[:, 0])
     return up.abs(np.trapz(areas, equator_points[:, 2]))
@@ -807,9 +806,9 @@ def plane_projection(points, plane, keep_3d=False):
     Function projects 3D points into given plane.
 
     :param keep_3d: bool; if True, the dimensions of the array is kept the same, with given column equal to zero
-    :param points: numpy.array
-    :param plane: str; ('xy', 'yz', 'zx')
-    :return: numpy.array
+    :param points: numpy.array;
+    :param plane: str; one of 'xy', 'yz' or 'zx'
+    :return: numpy.array;
     """
     rm_index = {"xy": 2, "yz": 0, "zx": 1}[plane]
     if not keep_3d:

@@ -13,6 +13,29 @@ from copy import (
 
 
 class Star(Body):
+    """
+    Child class of elisa.base.body.Body representing Star.
+    Class intherit parameters from elisa.base.body.Body and add following
+
+    Input parameters:
+
+    :param surface_potential: float;
+    :param synchronicity: float;
+    :param pulsations: List;
+    :param metallicity: float;
+    :param polar_log_g: float;
+    :param gravity_darkening: float;
+
+    Output parameters:
+
+    :filling_factor: float;
+    :critical_surface_potential: float;
+    :pulsations: Dict[int, PulsationMode];
+    :side_radius: float; Computed in periastron
+    :forward_radius: float; Computed in periastron
+    :backward_radius: float; Computed in periastron
+    """
+
     MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening']
     OPTIONAL_KWARGS = ['surface_potential', 'synchronicity', 'albedo', 'pulsations',
                        'discretization_factor', 'spots', 'metallicity', 'polar_log_g']
@@ -42,8 +65,8 @@ class Star(Body):
         """
         Transform and validate input kwargs.
 
-        :param kwargs: Dict
-        :return: Dict
+        :param kwargs: Dict;
+        :return: Dict;
         """
         return StarProperties.transform_input(**kwargs)
 
@@ -63,7 +86,7 @@ class Star(Body):
         """
         Determine whether Star has defined pulsations.
 
-        :return: bool
+        :return: bool;
         """
         return len(self._pulsations) > 0
 
@@ -72,7 +95,7 @@ class Star(Body):
         """
         Return pulsation modes for given Star instance.
 
-        :return: Dict:
+        :return: Dict;
 
         ::
 
@@ -85,7 +108,7 @@ class Star(Body):
         """
         Set pulsation mode for given Star instance defined by dict.
 
-        :param pulsations: Dict:
+        :param pulsations: Dict;
 
         ::
 
@@ -110,6 +133,11 @@ class Star(Body):
         return props
 
     def to_properties_container(self):
+        """
+        Serialize instance of elisa.base.star.Star to elisa.base.container.StarPropertiesContainer.
+
+        :return: elisa.base.container.StarPropertiesContainer
+        """
         return StarPropertiesContainer(**self.properties_serializer())
 
     # todo: move it to star container
@@ -164,7 +192,8 @@ class Star(Body):
     #     centres = utils.cartesian_to_spherical(surface_centers)
     #
     #     for pulsation_index, pulsation in self.pulsations.items():
-    #         # generating spherical coordinate system in case of mode axis not identical with axis of rotation, new axis
+    #         # generating spherical coordinate system in case
+    #         # of mode axis not identical with axis of rotation, new axis
     #         # is created by rotation of polar coordinates around z in positive direction by `mode_axis_phi' and than
     #         # rotating this coordinate system around y axis to tilt z axis by amount of `mode_axis_theta`
     #         if pulsation.mode_axis_phi == 0 and pulsation.mode_axis_theta == 0:

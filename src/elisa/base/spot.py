@@ -20,7 +20,33 @@ class Spot(object):
     """
     Spot data container.
 
-    :param log_g: numpy.array
+    Input parameters:
+
+    :param longitude: Union[(numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity];
+    Expecting value in degrees or as astropy units instance.
+    :param latitude: Union[(numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity];
+    Expecting value in degrees or as astropy units instance.
+    :param angular_radius: Union[(numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity];
+    Expecting value in degrees or as astropy units instance.
+    :param temperature_factor: Union[(numpy.)int, (numpy.)float];
+    :param discretization_factor: Union[(numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity];
+    Spot discretization_factor (mean angular size of spot face).
+    Expecting value in degrees or as astropy units instance.
+
+
+    Output parameters (parameters set on call of related methods):
+    
+    :boundary: numpy.array;
+    :boundary_center: float;
+    :center: float;
+    :points: numpy.array;
+    :normals: numpy.array;
+    :faces: numpy.array;
+    :face_centres: numpy.array;
+    :areas: numpy.array;
+    :potential_gradient_magnitudes: numpy.array;
+    :temperatures: numpy.array;
+    :log_g: numpy.array;
 
     """
     MANDATORY_KWARGS = ["longitude", "latitude", "angular_radius", "temperature_factor"]
@@ -41,8 +67,8 @@ class Spot(object):
 
         # container parameters
         self.boundary = np.array([])
-        self.boundary_center = np.array([])
-        self.center = np.array([])
+        self.boundary_center = np.nan
+        self.center = np.nan
 
         self.points = np.array([])
         self.normals = np.array([])
@@ -64,7 +90,7 @@ class Spot(object):
         """
         Returns areas of each face of the spot build_surface.
 
-        :return: ndarray:
+        :return: numpy.array:
 
         ::
 
@@ -92,9 +118,9 @@ def split_points_of_spots_and_component(on_container, points, vertices_map):
     and points which belong to each defined Spot object.
     During the process remove overlapped spots.
 
-    :param on_container: instance of object to split spots on
+    :param on_container: Union; instance of object to split spots on
     :param points: numpy.array; all points of object (spot points and component points together)
-    :param vertices_map: List or numpy.array; map which define refrences of index in
+    :param vertices_map: Union[List, numpy.array]; map which define refrences of index in
                          given Iterable to object (Spot or Star).
     :return: Dict;
 
@@ -121,7 +147,7 @@ def setup_body_points(on_container, points):
     Setup points for Star instance and spots based on input `points` Dict object.
     Such `points` map looks like following
 
-    :param on_container: instance to setup spot points and body points on
+    :param on_container: Union;  instance to setup spot points and body points on
     :param points: Dict[str, numpy.array]
     ::
 
@@ -131,8 +157,6 @@ def setup_body_points(on_container, points):
             "1": [<points>]...
         },
         where `object` contain numpy.array of object points and indices points for given spot.
-
-    :return:
     """
     on_container.points = points.pop("object")
     for spot_index, spot_points in points.items():
@@ -157,9 +181,8 @@ def incorporate_spots_mesh(to_container, component_com):
     index position of vertices_map belongs to Star point.
     Enum indices >= 0 means the same, but for Spot.
 
-    :param to_container: isntnace to incorporate spots into
-    :param component_com: center of mass of component
-    :return:
+    :param to_container: Union; instace to incorporate spots into
+    :param component_com: float; center of mass of component
     """
     if not to_container.spots:
         __logger__.debug(f"not spots found, skipping incorporating spots "
@@ -224,10 +247,10 @@ def remap_surface_elements(on_container, mapper, points_to_remap):
     """
     Function remaps all surface points (`points_to_remap`) and faces (star and spots) according to the `model`.
 
-    :param on_container:
-    :param mapper: dict - list of indices of points in `points_to_remap` divided into star and spots sublists
-    :param points_to_remap: array of all surface points (star + points used in `_split_spots_and_component_faces`)
-    :return:
+    :param on_container: Union; container object with spots
+    :param mapper: List; list of indices of points in `points_to_remap` divided into star and spots sublists
+    :param points_to_remap: numpy.array; array of all surface points (star + points used in
+    `_split_spots_and_component_faces`)
     """
     # remapping points and faces of star
     __logger__.debug(f"changing value of parameter points of component {on_container.name}")
@@ -261,9 +284,9 @@ def remove_overlaped_spots_by_spot_index(from_container, keep_spot_indices, _rai
     Remove definition and instance of those spots that are overlaped
     by another one and basically has no face to work with.
 
-    :param _raise: bool;
-    :param from_container:
+    :param from_container: Union; container object with spots
     :param keep_spot_indices: List[int]; list of spot indices to keep
+    :param _raise: bool;
     :return:
     """
     all_spot_indices = set([int(val) for val in from_container.spots.keys()])
@@ -271,8 +294,7 @@ def remove_overlaped_spots_by_spot_index(from_container, keep_spot_indices, _rai
     spots_meta = [from_container.spots[idx].kwargs_serializer() for idx in from_container.spots if idx in spot_indices_to_remove]
     spots_meta = '\n'.join([str(meta) for meta in spots_meta])
     if _raise and not is_empty(spot_indices_to_remove):
-        raise ValueError(f"Spots {spots_meta} have no pointns to continue.\n"
-                         f"Please, specify spots wisely.")
+        raise ValueError(f"Spots {spots_meta} have no pointns to continue.\nPlease, specify spots wisely.")
     for spot_index in spot_indices_to_remove:
         from_container.remove_spot(spot_index)
 
@@ -281,9 +303,8 @@ def remove_overlaped_spots_by_vertex_map(from_container, vertices_map):
     """
     Remove spots of Start object that are totally overlapped by another spot.
 
-    :param from_container:
-    :param vertices_map: List or numpy.array
-    :return:
+    :param from_container: Union; container object with spots
+    :param vertices_map: Union[List, numpy.array]
     """
     # remove spots that are totaly overlaped
     spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)
