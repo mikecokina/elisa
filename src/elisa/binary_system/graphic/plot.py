@@ -16,7 +16,6 @@ from elisa import (
 )
 
 
-
 class Plot(object):
     """
     Universal plot interface for binary system class, more detailed documentation for each value of descriptor is
@@ -122,8 +121,7 @@ class Plot(object):
         binary_mesh_kwargs = dict()
         inclination = up.degrees(self.binary.inclination) if is_empty(inclination) else inclination
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
-        azimuth = azimuth or up.degrees(azim) - 90.0
-
+        azimuth = up.degrees(azim) - 90.0 if is_empty(azimuth) else azimuth
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
 
@@ -146,47 +144,45 @@ class Plot(object):
         })
         graphics.binary_mesh(**binary_mesh_kwargs)
 
-    def wireframe(self, **kwargs):
+    def wireframe(self, phase=0.0, components_to_plot='both', plot_axis=True, inclination=None, azimuth=None):
         """
         Function displays wireframe model of the stellar surface.
 
-        :param kwargs: Dict;
-            :**kwargs options**:
-                * **phase** * -- float; phase at which to construct plot
-                * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
-                * **plot_axis** * -- bool; switch the plot axis on/off
-                * **inclination** * -- float; elevation of the camera (in degrees)
-                * **azimuth** * -- float; azimuth of the camera (in degrees)
+        :param phase: float; phase at which to construct plot
+        :param components_to_plot: str; component to plot `primary`, `secondary` or `both`(default)
+        :param plot_axis: bool; switch the plot axis on/off
+        :param inclination: float; elevation of the camera (in degrees)
+        :param azimuth: float; azimuth of the camera (in degrees)
         """
-        all_kwargs = ['phase', 'components_to_plot', 'plot_axis', 'inclination', 'azimuth']
-        utils.invalid_kwarg_checker(kwargs, all_kwargs, self.wireframe)
 
-        kwargs['phase'] = kwargs.get('phase', 0)
-        kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
-        kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-        kwargs['inclination'] = kwargs.get('inclination', up.degrees(self.binary.inclination))
-
-        components_distance, azim = self.binary.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
-        kwargs['azimuth'] = kwargs.get('azimuth', up.degrees(azim) - 90)
-
-        orbital_position_container = OrbitalPositionContainer(
-            primary=StarContainer.from_properties_container(self.binary.primary.to_properties_container()),
-            secondary=StarContainer.from_properties_container(self.binary.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
-            **self.binary.properties_serializer()
-        )
-
+        binary_wireframe_kwargs = dict()
+        inclination = up.degrees(self.binary.inclination) if is_empty(inclination) else inclination
+        components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
+        azimuth = up.degrees(azim) - 90.0 if is_empty(azimuth) else azimuth
+        orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
         orbital_position_container.build_faces(components_distance=components_distance)
-        if kwargs['components_to_plot'] in ['primary', 'both']:
-            kwargs['points_primary'], kwargs['primary_triangles'] = \
-                orbital_position_container.primary.surface_serializer()
 
-        if kwargs['components_to_plot'] in ['secondary', 'both']:
-            kwargs['points_secondary'], kwargs['secondary_triangles'] = \
-                orbital_position_container.secondary.surface_serializer()
-
-        graphics.binary_wireframe(**kwargs)
+        if components_to_plot in ['primary', 'both']:
+            points, faces = orbital_position_container.primary.surface_serializer()
+            binary_wireframe_kwargs.update({
+                "points_primary": points,
+                "primary_triangles": faces
+            })
+        if components_to_plot in ['secondary', 'both']:
+            points, faces = orbital_position_container.secondary.surface_serializer()
+            binary_wireframe_kwargs.update({
+                "points_secondary": points,
+                "secondary_triangles": faces
+            })
+        binary_wireframe_kwargs.update({
+            "phase": phase,
+            "components_to_plot": components_to_plot,
+            "plot_axis": plot_axis,
+            "inclination": inclination,
+            "azimuth": azimuth
+        })
+        graphics.binary_wireframe(**binary_wireframe_kwargs)
 
     def surface(self, **kwargs):
         """
