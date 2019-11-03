@@ -1,30 +1,33 @@
-from elisa import utils
-from matplotlib import cm
-from astropy import units as u
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as axes3d
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import matplotlib
+
+from matplotlib import cm
+from astropy import units as au
+from elisa import (
+    umpy as up,
+    utils,
+    units
+)
 
 
 def orbit(**kwargs):
     """
-        Graphics part of the function for quick 2D plot of the orbital motion in the orbital plane.
+    Graphics part of the function for quick 2D plot of the orbital motion in the orbital plane.
 
-        :param kwargs:
+    :param kwargs: Dict;
         :**kwargs options**:
             * **start_phase** * -- float; starting phase for the plot
             * **stop_phase** * -- float; finishing phase for the plot
             * **number_of_points** * -- int; number of points in the plot
-            * **axis_units** * -- astropy.unit or 'str'; specifying axis unit, use astropy units or `dimensionless` or
-            `SMA` (semi-major axis) units for axis scale
+            * **axis_units** * -- astropy.unit or 'str'; specifying axis unit, use astropy units or `dimensionless`
+            or `SMA` (semi-major axis) units for axis scale
             * **frame_of_reference** * -- str; `barycentric` or `primary`
-        :return:
     """
     unit = str(kwargs['axis_units'])
-    if kwargs['axis_units'] == u.dimensionless_unscaled:
+    if kwargs['axis_units'] == au.dimensionless_unscaled:
         x_label, y_label = 'x/[SMA]', 'y/[SMA]'
     else:
         x_label, y_label = r'x/' + unit, r'y/' + unit
@@ -177,10 +180,10 @@ def binary_mesh(**kwargs):
         x_min = np.min(kwargs['points_secondary'][:, 0])
         x_max = np.max(kwargs['points_secondary'][:, 0])
 
-    D = (x_max - x_min) / 2
+    d = (x_max - x_min) / 2
     ax.set_xlim3d(x_min, x_max)
-    ax.set_ylim3d(-D, D)
-    ax.set_zlim3d(-D, D)
+    ax.set_ylim3d(-d, d)
+    ax.set_zlim3d(-d, d)
 
     if kwargs['plot_axis']:
         ax.set_xlabel('x')
@@ -241,31 +244,34 @@ def single_star_surface(**kwargs):
         ax.set_ylabel(y_label)
         ax.set_zlabel(z_label)
     else:
-         ax.set_axis_off()
+        ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     plt.show()
 
 
 def binary_surface(**kwargs):
     """
-        function creates plot of binary system components
-        :param kwargs:
-            phase: float - phase at which plot the system, important for eccentric orbits
-            components_to_plot: str - `primary`, `secondary` or `both`(default),
-            normals: bool - plot normals of the surface phases as arrows
-            edges: bool - highlight edges of surface faces
-            colormap: str - 'gravity_acceleration`, `temperature` or None(default)
-            plot_axis: bool - if False, axis will be hidden
-            face_mask_primary - bool array: mask to select which faces to display
-            face_mask_secondary - bool array: mask to select which faces to display
-            inclination: float in degree - elevation of camera
-            azimuth: camera azimuth
-            units: str - units of gravity acceleration colormap  `log_cgs`, `SI`, `cgs`, `log_SI`
-            axis_units: astropy.unit or dimensionless - axis units
-            colorbar_orientation: str - `horizontal` or `vertical`(default)
-            colorbar: bool - colorabar on/off switch
-        :return:
-        """
+    Function creates plot of binary system components.
+
+    :param kwargs: Dict;
+        :**kwargs options**:
+            * **phase** *: float -- phase at which plot the system, important for eccentric orbits
+            * **components_to_plot** * -- str; `primary`, `secondary` or `both`(default),
+            * **normals** * -- bool; plot normals of the surface phases as arrows
+            * **edges** * -- bool; highlight edges of surface faces
+            * **colormap** * -- str; 'gravity_acceleration`, `temperature` or None(default)
+            * **plot_axis** * -- bool; if False, axis will be hidden
+            * **face_mask_primary** * -- array[bool]; mask to select which faces to display
+            * **face_mask_secondary** * -- array[bool]: mask to select which faces to display
+            * **inclination** * -- float; in degree - elevation of camera
+            * **azimuth** * -- float; camera azimuth
+            * **units** * -- str; units of gravity acceleration colormap  `SI` or `cgs`
+            * **scale** * -- str; `linear` or `log`
+            * **axis_unit** * -- Union[astropy.unit, dimensionless]; - axis units
+            * **colorbar_orientation** * -- str; `horizontal` or `vertical`(default)
+            * **colorbar** * -- bool; colorabar on/off switchic
+    """
+
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
@@ -300,8 +306,8 @@ def binary_surface(**kwargs):
 
     elif kwargs['components_to_plot'] == 'both':
         if kwargs['morphology'] == 'over-contact':
-            points = np.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
-            triangles = np.concatenate((kwargs['primary_triangles'],
+            points = up.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
+            triangles = up.concatenate((kwargs['primary_triangles'],
                                     kwargs['secondary_triangles'] + np.shape(kwargs['points_primary'])[0]), axis=0)
 
             plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
@@ -314,8 +320,8 @@ def binary_surface(**kwargs):
                                     kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
                                     antialiased=True, shade=False, color=clr[1])
         if kwargs.get('normals', False):
-            centres = np.concatenate((kwargs['primary_centres'], kwargs['secondary_centres']), axis=0)
-            arrows = np.concatenate((kwargs['primary_arrows'], kwargs['secondary_arrows']), axis=0)
+            centres = up.concatenate((kwargs['primary_centres'], kwargs['secondary_centres']), axis=0)
+            arrows = up.concatenate((kwargs['primary_arrows'], kwargs['secondary_arrows']), axis=0)
 
             ax.quiver(centres[:, 0], centres[:, 1], centres[:, 2],
                       arrows[:, 0], arrows[:, 1], arrows[:, 2],
@@ -343,27 +349,27 @@ def binary_surface(**kwargs):
                 plot.set_array(kwargs['primary_cmap'])
                 if kwargs['colorbar']:
                     colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
-                    set_T_colorbar_label(colorbar, kwargs['scale'], extra='primary')
+                    set_t_colorbar_label(colorbar, kwargs['scale'], extra='primary')
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'])
                 if kwargs['colorbar']:
                     colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
-                    set_T_colorbar_label(colorbar, kwargs['scale'], extra='secondary')
+                    set_t_colorbar_label(colorbar, kwargs['scale'], extra='secondary')
             elif kwargs['components_to_plot'] == 'both':
                 if kwargs['morphology'] == 'over-contact':
-                    both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
+                    both_cmaps = up.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                     plot.set_array(both_cmaps)
                     if kwargs['colorbar']:
                         colorbar = fig.colorbar(plot, shrink=0.7)
-                        set_T_colorbar_label(colorbar, kwargs['scale'])
+                        set_t_colorbar_label(colorbar, kwargs['scale'])
                 else:
                     plot1.set_array(kwargs['primary_cmap'])
                     plot2.set_array(kwargs['secondary_cmap'])
                     if kwargs['colorbar']:
                         colorbar1 = fig.colorbar(plot1, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
-                        set_T_colorbar_label(colorbar1, kwargs['scale'], extra='primary')
+                        set_t_colorbar_label(colorbar1, kwargs['scale'], extra='primary')
                         colorbar2 = fig.colorbar(plot2, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
-                        set_T_colorbar_label(colorbar2, kwargs['scale'], extra='secondary')
+                        set_t_colorbar_label(colorbar2, kwargs['scale'], extra='secondary')
         elif kwargs['colormap'] == 'gravity_acceleration':
             try:
                 plot1.set_cmap(cmap=cm.jet_r)
@@ -386,7 +392,7 @@ def binary_surface(**kwargs):
                     set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'])
             elif kwargs['components_to_plot'] == 'both':
                 if kwargs['morphology'] == 'over-contact':
-                    both_cmaps = np.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
+                    both_cmaps = up.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                     plot.set_array(both_cmaps)
                     if kwargs['colorbar']:
                         colorbar = fig.colorbar(plot, shrink=0.7)
@@ -411,14 +417,14 @@ def binary_surface(**kwargs):
         x_min = np.min(kwargs['points_secondary'][:, 0])
         x_max = np.max(kwargs['points_secondary'][:, 0])
 
-    D = (x_max - x_min) / 2
+    d = (x_max - x_min) / 2
     ax.set_xlim3d(x_min, x_max)
-    ax.set_ylim3d(-D, D)
-    ax.set_zlim3d(-D, D)
+    ax.set_ylim3d(-d, d)
+    ax.set_zlim3d(-d, d)
 
     if kwargs['plot_axis']:
         unit = str(kwargs['axis_unit'])
-        if kwargs['axis_unit'] == u.dimensionless_unscaled:
+        if kwargs['axis_unit'] == au.dimensionless_unscaled:
             x_label, y_label, z_label = 'x', 'y', 'z'
         else:
             x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
@@ -436,9 +442,10 @@ def set_g_colorbar_label(colorbar, unit, scale, extra=''):
     """
     function sets label of the colorbar for gravity acceleration surface function
 
+    :param extra:
+    :param scale:
+    :param unit:
     :param colorbar:
-    :param kwarg:
-    :return:
     """
     if unit == 'cgs':
         if scale == 'linear':
@@ -452,12 +459,13 @@ def set_g_colorbar_label(colorbar, unit, scale, extra=''):
             colorbar.set_label(extra + ' log(g/[SI])')
 
 
-def set_T_colorbar_label(colorbar, scale, extra=''):
+def set_t_colorbar_label(colorbar, scale, extra=''):
     """
     function sets label of the colorbar for effective temperature surface function
 
+    :param extra:
+    :param scale:
     :param colorbar:
-    :param kwarg:
     :return:
     """
     if scale == 'linear':
@@ -531,8 +539,8 @@ def binary_wireframe(**kwargs):
                                antialiased=True, shade=False, color='none')
 
     elif kwargs['components_to_plot'] == 'both':
-        points = np.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
-        triangles = np.concatenate((kwargs['primary_triangles'],
+        points = up.concatenate((kwargs['points_primary'], kwargs['points_secondary']), axis=0)
+        triangles = up.concatenate((kwargs['primary_triangles'],
                                     kwargs['secondary_triangles'] + np.shape(kwargs['points_primary'])[0]), axis=0)
 
         plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
@@ -555,10 +563,10 @@ def binary_wireframe(**kwargs):
         x_min = np.min(kwargs['points_secondary'][:, 0])
         x_max = np.max(kwargs['points_secondary'][:, 0])
 
-    D = (x_max - x_min) / 2
+    d = (x_max - x_min) / 2
     ax.set_xlim3d(x_min, x_max)
-    ax.set_ylim3d(-D, D)
-    ax.set_zlim3d(-D, D)
+    ax.set_ylim3d(-d, d)
+    ax.set_zlim3d(-d, d)
     if kwargs['plot_axis']:
         ax.set_xlabel('x')
         ax.set_ylabel('y')
@@ -582,10 +590,10 @@ def binary_surface_anim(**kwargs):
         'savepath' - string or None, animation will be stored to `savepath`
     :return:
     """
-    def update_plot(frame_number, points, faces, clr, cmaps, plot):
-        for ii, p in enumerate(plot):
+    def update_plot(frame_number, _points, _faces, _clr, _cmaps, _plot):
+        for _, _ in enumerate(_plot):
             p = ax.clear()
-        for ii, p in enumerate(plot):
+        for ii, p in enumerate(_plot):
             ax.set_xlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
             ax.set_ylim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
             ax.set_zlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
@@ -593,14 +601,14 @@ def binary_surface_anim(**kwargs):
             ax.set_ylabel('y')
             ax.set_zlabel('z')
 
-            p = ax.plot_trisurf(points[ii][frame_number][:, 0],
-                                points[ii][frame_number][:, 1],
-                                points[ii][frame_number][:, 2],
-                                triangles=faces[ii][frame_number],
-                                antialiased=True, shade=False, color=clr[ii])
+            p = ax.plot_trisurf(_points[ii][frame_number][:, 0],
+                                _points[ii][frame_number][:, 1],
+                                _points[ii][frame_number][:, 2],
+                                triangles=_faces[ii][frame_number],
+                                antialiased=True, shade=False, color=_clr[ii])
             if kwargs.get('colormap', False):
                 p.set_cmap(cmap=cm.jet_r)
-                p.set_array(cmaps[ii][frame_number])
+                p.set_array(_cmaps[ii][frame_number])
 
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
@@ -613,9 +621,9 @@ def binary_surface_anim(**kwargs):
     clr = ['g', 'r']
 
     if kwargs['morphology'] == 'over-contact':
-        points = [[np.concatenate((kwargs['points_primary'][ii], kwargs['points_secondary'][ii]), axis=0)
+        points = [[up.concatenate((kwargs['points_primary'][ii], kwargs['points_secondary'][ii]), axis=0)
                   for ii in range(kwargs['Nframes'])]]
-        faces = [[np.concatenate((kwargs['faces_primary'][ii],
+        faces = [[up.concatenate((kwargs['faces_primary'][ii],
                                       kwargs['faces_secondary'][ii] + np.shape(kwargs['points_primary'][ii])[0]),
                                       axis=0)
                      for ii in range(kwargs['Nframes'])]]
@@ -625,7 +633,7 @@ def binary_surface_anim(**kwargs):
                                 shade=False, color=clr[0])]
         if kwargs.get('colormap', False):
             plot[0].set_cmap(cmap=cm.jet_r)
-            cmaps = [[np.concatenate((kwargs['primary_cmap'][ii], kwargs['secondary_cmap'][ii]), axis=0)
+            cmaps = [[up.concatenate((kwargs['primary_cmap'][ii], kwargs['secondary_cmap'][ii]), axis=0)
                     for ii in range(kwargs['Nframes'])]]
             plot[0].set_array(cmaps[0][0])
     else:
@@ -656,7 +664,7 @@ def phase_curve(**kwargs):
         plt.legend()
 
     plt.xlabel('Phase')
-    if kwargs['flux_unit'] == u.W / u.m**2:
+    if kwargs['flux_unit'] == units.W / units.m**2:
         plt.ylabel(r'Flux/($W/m^{2}$)')
     else:
         plt.ylabel('Flux')

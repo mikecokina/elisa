@@ -29,54 +29,57 @@ class Plot(object):
     """
 
     def __init__(self, instance):
-        self._self = instance
+        self.binary = instance
 
-    def orbit(self, **kwargs):
+    def orbit(self, start_phase=0.0, stop_phase=1.0, number_of_points=300,
+              axis_units=units.solRad, frame_of_reference='primary'):
         """
         Function for quick 2D plot of the orbital motion in the orbital plane.
 
-        :param kwargs: Dict;
-            :**kwargs options**:
-                * **start_phase** * -- float; starting phase for the plot
-                * **stop_phase** * -- float; finishing phase for the plot
-                * **number_of_points** * -- int; number of points in the plot
-                * **axis_units** * -- astropy.unit or 'str'; specifying axis unit, use astropy 
-                units or `dimensionless` or `SMA` (semi-major axis) units for axis scale
-                * **frame_of_reference** * -- str; `barycentric` or `primary`
-        :return:
+        :param start_phase: float; starting phase for the plot
+        :param stop_phase: float; finishing phase for the plot
+        :param number_of_points: int; number of points in the plot
+        :param axis_units: Union[astropy.unit, str]; specifying axis unit, use astropy
+        units or `dimensionless` or `SMA` (semi-major axis) units for axis scale
+        :param frame_of_reference: str; `barycentric` or `primary`
         """
-        all_kwargs = ['start_phase', 'stop_phase', 'number_of_points', 'axis_units', 'frame_of_reference']
-        utils.invalid_kwarg_checker(kwargs, all_kwargs, self._self)
-
-        start_phase = kwargs.get('start_phase', 0.0)
-        stop_phase = kwargs.get('stop_phase', 1.0)
-        number_of_points = kwargs.get('number_of_points', 300)
-
-        kwargs['axis_units'] = kwargs.get('axis_units', au.solRad)
-        kwargs['frame_of_reference'] = kwargs.get('frame_of_reference', 'primary')
-
-        if kwargs['axis_units'] == 'dimensionless' or 'SMA':
-            kwargs['axis_units'] = au.dimensionless_unscaled
+        orbit_kwargs = dict()
+        if axis_units == 'dimensionless' or 'SMA':
+            axis_units = units.dimensionless_unscaled
 
         # orbit calculation for given phases
         phases = np.linspace(start_phase, stop_phase, number_of_points)
-        ellipse = self._self.orbit.orbital_motion(phase=phases)
+        ellipse = self.binary.orbit.orbital_motion(phase=phases)
+
         # if axis are without unit a = 1
-        if kwargs['axis_units'] != au.dimensionless_unscaled:
-            a = self._self.semi_major_axis * units.DISTANCE_UNIT.to(kwargs['axis_units'])
+        if axis_units != au.dimensionless_unscaled:
+            a = self.binary.semi_major_axis * units.DISTANCE_UNIT.to(axis_units)
             radius = a * ellipse[:, 0]
         else:
             radius = ellipse[:, 0]
         azimuth = ellipse[:, 1]
         x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth - const.PI / 2.0)
-        if kwargs['frame_of_reference'] == 'barycentric':
-            kwargs['x1_data'] = - self._self.mass_ratio * x / (1 + self._self.mass_ratio)
-            kwargs['y1_data'] = - self._self.mass_ratio * y / (1 + self._self.mass_ratio)
-            kwargs['x2_data'] = x / (1 + self._self.mass_ratio)
-            kwargs['y2_data'] = y / (1 + self._self.mass_ratio)
-        elif kwargs['frame_of_reference'] == 'primary':
-            kwargs['x_data'], kwargs['y_data'] = x, y
-        graphics.orbit(**kwargs)
+
+        if frame_of_reference == 'barycentric':
+            orbit_kwargs.update({
+                'x1_data': - self.binary.mass_ratio * x / (1 + self.binary.mass_ratio),
+                'y1_data': - self.binary.mass_ratio * y / (1 + self.binary.mass_ratio),
+                'x2_data': x / (1 + self.binary.mass_ratio),
+                'y2_data': y / (1 + self.binary.mass_ratio)
+            })
+        elif frame_of_reference == 'primary':
+            orbit_kwargs.update({
+                'x_data': x,
+                'y_data': y
+            })
+        orbit_kwargs.update({
+            "axis_units": axis_units,
+            "start_phase": start_phase,
+            "stop_phase": stop_phase,
+            "number_of_points": number_of_points,
+            "frame_of_reference": frame_of_reference
+        })
+        graphics.orbit(**orbit_kwargs)
 
     def equipotential(self, **kwargs):
         """
@@ -95,10 +98,10 @@ class Plot(object):
         # relative distance between components (a = 1)
         if utils.is_plane(kwargs['plane'], 'xy') or utils.is_plane(
                 kwargs['plane'], 'yz') or utils.is_plane(kwargs['plane'], 'zx'):
-            components_distance = self._self.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
+            components_distance = self.binary.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
             points_primary, points_secondary = \
-                self._self.compute_equipotential_boundary(components_distance=components_distance,
-                                                          plane=kwargs['plane'])
+                self.binary.compute_equipotential_boundary(components_distance=components_distance,
+                                                           plane=kwargs['plane'])
         else:
             raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
 
@@ -125,17 +128,15 @@ class Plot(object):
         kwargs['phase'] = kwargs.get('phase', 0)
         kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
         kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-        kwargs['inclination'] = kwargs.get('inclination', up.degrees(self._self.inclination))
+        kwargs['inclination'] = kwargs.get('inclination', up.degrees(self.binary.inclination))
 
-        components_distance, azim = self._self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
+        components_distance, azim = self.binary.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
         kwargs['azimuth'] = kwargs.get('azimuth', up.degrees(azim) - 90)
 
-        orbital_position_container = OrbitalPositionContainer(
-            primary=StarContainer.from_properties_container(self._self.primary.to_properties_container()),
-            secondary=StarContainer.from_properties_container(self._self.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
-            **self._self.properties_serializer()
+        orbital_position_container = OrbitalPositionContainer.from_binary_system(
+            self, BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0))
         )
+
         orbital_position_container.build_mesh(components_distance=components_distance)
         if kwargs['components_to_plot'] in ['primary', 'both']:
             kwargs['points_primary'], _ = orbital_position_container.primary.get_flatten_points_map()
@@ -163,16 +164,16 @@ class Plot(object):
         kwargs['phase'] = kwargs.get('phase', 0)
         kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
         kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-        kwargs['inclination'] = kwargs.get('inclination', up.degrees(self._self.inclination))
+        kwargs['inclination'] = kwargs.get('inclination', up.degrees(self.binary.inclination))
 
-        components_distance, azim = self._self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
+        components_distance, azim = self.binary.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
         kwargs['azimuth'] = kwargs.get('azimuth', up.degrees(azim) - 90)
 
         orbital_position_container = OrbitalPositionContainer(
-            primary=StarContainer.from_properties_container(self._self.primary.to_properties_container()),
-            secondary=StarContainer.from_properties_container(self._self.secondary.to_properties_container()),
+            primary=StarContainer.from_properties_container(self.binary.primary.to_properties_container()),
+            secondary=StarContainer.from_properties_container(self.binary.secondary.to_properties_container()),
             position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
-            **self._self.properties_serializer()
+            **self.binary.properties_serializer()
         )
 
         orbital_position_container.build_mesh(components_distance=components_distance)
@@ -208,7 +209,6 @@ class Plot(object):
                 * **axis_unit** * -- Union[astropy.unit, dimensionless]; - axis units
                 * **colorbar_orientation** * -- str; `horizontal` or `vertical`(default)
                 * **colorbar** * -- bool; colorabar on/off switchic
-        :return:
         """
         all_kwargs = ['phase', 'components_to_plot', 'normals', 'edges', 'colormap', 'plot_axis', 'face_mask_primary',
                       'face_mask_secondary', 'inclination', 'azimuth', 'units', 'axis_unit', 'colorbar_orientation',
@@ -223,28 +223,28 @@ class Plot(object):
         kwargs['plot_axis'] = kwargs.get('plot_axis', True)
         kwargs['face_mask_primary'] = kwargs.get('face_mask_primary', None)
         kwargs['face_mask_secondary'] = kwargs.get('face_mask_secondary', None)
-        kwargs['inclination'] = kwargs.get('inclination', up.degrees(self._self.inclination))
+        kwargs['inclination'] = kwargs.get('inclination', up.degrees(self.binary.inclination))
         kwargs['units'] = kwargs.get('units', 'cgs')
         kwargs['scale'] = kwargs.get('scale', 'linear')
         kwargs['axis_unit'] = kwargs.get('axis_unit', au.dimensionless_unscaled)
         kwargs['colorbar_orientation'] = kwargs.get('colorbar_orientation', 'vertical')
         kwargs['colorbar'] = kwargs.get('colorbar', 'True')
 
-        components_distance, azim = self._self.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
+        components_distance, azim = self.binary.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
         kwargs['azimuth'] = kwargs.get('azimuth', up.degrees(azim) - 90)
-        kwargs['morphology'] = self._self.morphology
+        kwargs['morphology'] = self.binary.morphology
         kwg = {'suppress_parallelism': False}
 
         # recalculating spot latitudes
         # TODO: implement latitude recalculation once the functions will be relocated
-        # spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phase'], component="all")
-        # geo.assign_spot_longitudes(self._self, spots_longitudes, index=None, component="all")
+        # spots_longitudes = geo.calculate_spot_longitudes(self.binary, kwargs['phase'], component="all")
+        # geo.assign_spot_longitudes(self.binary, spots_longitudes, index=None, component="all")
 
         orbital_position_container = OrbitalPositionContainer(
-            primary=StarContainer.from_properties_container(self._self.primary.to_properties_container()),
-            secondary=StarContainer.from_properties_container(self._self.secondary.to_properties_container()),
+            primary=StarContainer.from_properties_container(self.binary.primary.to_properties_container()),
+            secondary=StarContainer.from_properties_container(self.binary.secondary.to_properties_container()),
             position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
-            **self._self.properties_serializer()
+            **self.binary.properties_serializer()
         )
 
         orbital_position_container.build(components_distance=components_distance,
@@ -273,7 +273,7 @@ class Plot(object):
                 kwargs[component+'_arrows'] = star_container.normals
 
             if kwargs['axis_unit'] != au.dimensionless_unscaled and kwargs['axis_unit'] != 'SMA':
-                sma = (self._self.semi_major_axis*units.DISTANCE_UNIT).to(kwargs['axis_unit']).value
+                sma = (self.binary.semi_major_axis * units.DISTANCE_UNIT).to(kwargs['axis_unit']).value
                 kwargs['points_'+component] *= sma
                 kwargs['points_'+component] *= sma
                 if kwargs['normals']:
