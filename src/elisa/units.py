@@ -22,3 +22,4 @@ m = u.m
 d = u.d
 s = u.s
 W = u.W
+solRad = u.solRad
