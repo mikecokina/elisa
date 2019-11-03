@@ -245,7 +245,7 @@ def in_eclipse_test(azimuths, ecl_boundaries):
 
 def calculate_spot_longitudes(system, phases, component="all"):
     """
-    function calculates the latitudes of every spot on given component(s) for every phase
+    Function calculates the latitudes of every spot on given component(s) for every phase.
 
     :param system: Union[elisa.binary_system.system.BinarySystem,
     elisa.binary_system.container.OrbitalPositionContainer];

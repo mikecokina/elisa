@@ -3,7 +3,7 @@ import numpy as np
 from astropy import units as au
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import BINARY_POSITION_PLACEHOLDER
-from elisa.binary_system import utils as butils
+from elisa.binary_system import utils as butils, dynamic
 from elisa.utils import is_empty
 
 from elisa import (
@@ -211,12 +211,10 @@ class Plot(object):
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
         azimuth = up.degrees(azim) - 90.0 if is_empty(azimuth) else azimuth
 
-        # recalculating spot latitudes
-        # TODO: implement latitude recalculation once the functions will be relocated
-        # spots_longitudes = geo.calculate_spot_longitudes(self.binary, kwargs['phase'], component="all")
-        # geo.assign_spot_longitudes(self.binary, spots_longitudes, index=None, component="all")
-
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
+        # recalculating spot latitudes
+        spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phase, component="all")
+        dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=None, component="all")
 
         orbital_position_container.build(components_distance=components_distance, components=components_to_plot)
         # this part decides if both components need to be calculated at once (due to reflection effect)
