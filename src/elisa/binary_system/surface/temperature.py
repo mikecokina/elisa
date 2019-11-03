@@ -2,12 +2,17 @@
 import numpy as np
 
 from copy import copy
-from elisa import logger, ld, utils
-from elisa import umpy as up
-from elisa.binary_system import utils as bsutils
 from elisa.binary_system.surface import faces as bsfaces
+from elisa.binary_system import utils as bsutils
 from elisa.conf import config
 from elisa.utils import is_empty
+from elisa import (
+    umpy as up,
+    logger,
+    ld,
+    utils
+)
+
 
 config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-temperature-module")

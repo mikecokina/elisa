@@ -1,13 +1,23 @@
 import gc
 import numpy as np
 
-from elisa import umpy as up, utils, opt, logger, const
 from elisa.base.error import MaxIterationError
 from elisa.base.spot import incorporate_spots_mesh
 from elisa.conf import config
-from elisa.binary_system import utils as bsutils, model
 from elisa.opt.fsolver import fsolver
 from elisa.utils import is_empty
+
+from elisa.binary_system import (
+    utils as bsutils,
+    model
+)
+from elisa import (
+    umpy as up,
+    utils,
+    opt,
+    logger,
+    const
+)
 
 config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-mesh-module")

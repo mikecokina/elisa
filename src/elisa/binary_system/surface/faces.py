@@ -3,12 +3,15 @@ import numpy as np
 
 from copy import copy
 from scipy.spatial.qhull import Delaunay
-from elisa import logger, umpy as up
 from elisa.base import spot
 from elisa.conf import config
 from elisa.pulse import pulsations
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
+from elisa import (
+    umpy as up,
+    logger
+)
 
 config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-faces-module")

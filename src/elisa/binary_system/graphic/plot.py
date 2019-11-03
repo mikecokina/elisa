@@ -11,7 +11,7 @@ from elisa import (
     utils,
     const,
     graphics,
-    units as eunits
+    units as eu
 )
 
 
@@ -34,7 +34,7 @@ class Plot(object):
         self.binary = instance
 
     def orbit(self, start_phase=0.0, stop_phase=1.0, number_of_points=300,
-              axis_units=eunits.solRad, frame_of_reference='primary'):
+              axis_units=eu.solRad, frame_of_reference='primary'):
         """
         Function for quick 2D plot of the orbital motion in the orbital plane.
 
@@ -47,7 +47,7 @@ class Plot(object):
         """
         orbit_kwargs = dict()
         if axis_units == 'dimensionless' or 'SMA':
-            axis_units = eunits.dimensionless_unscaled
+            axis_units = eu.dimensionless_unscaled
 
         # orbit calculation for given phases
         phases = np.linspace(start_phase, stop_phase, number_of_points)
@@ -55,7 +55,7 @@ class Plot(object):
 
         # if axis are without unit a = 1
         if axis_units != au.dimensionless_unscaled:
-            a = self.binary.semi_major_axis * eunits.DISTANCE_UNIT.to(axis_units)
+            a = self.binary.semi_major_axis * eu.DISTANCE_UNIT.to(axis_units)
             radius = a * ellipse[:, 0]
         else:
             radius = ellipse[:, 0]
@@ -185,7 +185,7 @@ class Plot(object):
 
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
                 face_mask_primary=None, face_mask_secondary=None, inclination=None, azimuth=None, units='cgs',
-                axis_unit=eunits.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear'):
+                axis_unit=eu.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear'):
         """
         function creates plot of binary system components
 
@@ -254,7 +254,7 @@ class Plot(object):
                 })
 
             if axis_unit != au.dimensionless_unscaled and axis_unit != 'SMA':
-                sma = (self.binary.semi_major_axis * eunits.DISTANCE_UNIT).to(axis_unit).value
+                sma = (self.binary.semi_major_axis * eu.DISTANCE_UNIT).to(axis_unit).value
                 surface_kwargs[f'points_{component}'] *= sma
 
                 if surface_kwargs['normals']:

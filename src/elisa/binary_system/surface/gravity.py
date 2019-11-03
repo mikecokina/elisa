@@ -1,10 +1,14 @@
 import numpy as np
 
-from elisa import logger, const
 from elisa.conf import config
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
-from elisa import umpy as up
+
+from elisa import (
+    umpy as up,
+    logger,
+    const
+)
 
 config.set_up_logging()
 __logger__ = logger.getLogger("binary-system-gravity-module")
