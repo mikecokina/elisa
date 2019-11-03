@@ -81,34 +81,28 @@ class Plot(object):
         })
         graphics.orbit(**orbit_kwargs)
 
-    def equipotential(self, **kwargs):
+    def equipotential(self, plane='xy', phase=0.0):
         """
         Function for quick 2D plot of equipotential cross-section.
-        :param kwargs:
-        :**kwargs options**:
-            * **plane** * -- string; (`xy`, `yz` or `xz`) specifying what plane cross-section to display default is `xy`
-            * **phase** * -- float; phase at which to plot cross-section
+
+        :param plane: str; (`xy`, `yz` or `xz`) specifying what plane cross-section to display default is `xy`
+        :param phase: float; phase at which to plot cross-section
         """
-        all_kwargs = ['plane', 'phase']
-        utils.invalid_kwarg_checker(kwargs, all_kwargs, self.equipotential)
-
-        kwargs['phase'] = kwargs.get('phase', 0.0)
-        kwargs['plane'] = kwargs.get('plane', 'xy')
-
+        equipotential_kwargs = dict()
         # relative distance between components (a = 1)
-        if utils.is_plane(kwargs['plane'], 'xy') or utils.is_plane(
-                kwargs['plane'], 'yz') or utils.is_plane(kwargs['plane'], 'zx'):
-            components_distance = self.binary.orbit.orbital_motion(phase=kwargs['phase'])[0][0]
-            points_primary, points_secondary = \
-                self.binary.compute_equipotential_boundary(components_distance=components_distance,
-                                                           plane=kwargs['plane'])
+        if utils.is_plane(plane, 'xy') or utils.is_plane(plane, 'yz') or utils.is_plane(plane, 'zx'):
+            components_distance = self.binary.orbit.orbital_motion(phase=phase)[0][0]
+            points_primary, points_secondary = self.binary.compute_equipotential_boundary(components_distance, plane)
         else:
             raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
 
-        kwargs['points_primary'] = points_primary
-        kwargs['points_secondary'] = points_secondary
-
-        graphics.equipotential(**kwargs)
+        equipotential_kwargs.update({
+            'plane': plane,
+            'phase': phase,
+            'points_primary': points_primary,
+            'points_secondary': points_secondary
+        })
+        graphics.equipotential(**equipotential_kwargs)
 
     def mesh(self, **kwargs):
         """
