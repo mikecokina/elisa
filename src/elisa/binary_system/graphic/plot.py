@@ -5,6 +5,7 @@ from elisa.base.container import StarContainer
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import BINARY_POSITION_PLACEHOLDER
 from elisa.binary_system import utils as butils
+from elisa.utils import is_empty
 
 from elisa import (
     umpy as up,
@@ -13,6 +14,7 @@ from elisa import (
     graphics,
     units
 )
+
 
 
 class Plot(object):
@@ -27,6 +29,8 @@ class Plot(object):
         `mesh` - plot surface points
         `surface` - plot stellar surfaces
     """
+
+    defpos = BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0))
 
     def __init__(self, instance):
         self.binary = instance
@@ -104,41 +108,43 @@ class Plot(object):
         })
         graphics.equipotential(**equipotential_kwargs)
 
-    def mesh(self, **kwargs):
+    def mesh(self, phase=0.0, components_to_plot='both', plot_axis=True, inclination=None, azimuth=None):
         """
         Function plots 3D scatter plot of the surface points.
 
-        :param kwargs: Dict;
-            :**kwargs options**:
-                * **phase** * -- float; phase at which to construct plot
-                * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
-                * **plot_axis** * -- bool; switch the plot axis on/off
-                * **inclination** * -- float; elevation of the camera (in degrees)
-                * **azimuth** * -- float; azimuth of the camera (in degrees)
+        :param phase: float; phase at which to construct plot
+        :param components_to_plot: str; component to plot `primary`, `secondary` or `both`(default)
+        :param plot_axis: bool; switch the plot axis on/off
+        :param inclination: float; elevation of the camera (in degrees)
+        :param azimuth: float; azimuth of the camera (in degrees)
         """
-        all_kwargs = ['phase', 'components_to_plot', 'plot_axis', 'inclination', 'azimuth']
-        utils.invalid_kwarg_checker(kwargs, all_kwargs, self.mesh)
 
-        kwargs['phase'] = kwargs.get('phase', 0)
-        kwargs['components_to_plot'] = kwargs.get('components_to_plot', 'both')
-        kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-        kwargs['inclination'] = kwargs.get('inclination', up.degrees(self.binary.inclination))
+        binary_mesh_kwargs = dict()
+        inclination = up.degrees(self.binary.inclination) if is_empty(inclination) else inclination
+        components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
+        azimuth = azimuth or up.degrees(azim) - 90.0
 
-        components_distance, azim = self.binary.orbit.orbital_motion(phase=kwargs['phase'])[0][:2]
-        kwargs['azimuth'] = kwargs.get('azimuth', up.degrees(azim) - 90)
-
-        orbital_position_container = OrbitalPositionContainer.from_binary_system(
-            self, BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0))
-        )
-
+        orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
-        if kwargs['components_to_plot'] in ['primary', 'both']:
-            kwargs['points_primary'], _ = orbital_position_container.primary.get_flatten_points_map()
 
-        if kwargs['components_to_plot'] in ['secondary', 'both']:
-            kwargs['points_secondary'], _ = orbital_position_container.secondary.get_flatten_points_map()
+        if components_to_plot in ['primary', 'both']:
+            binary_mesh_kwargs.update({
+                'points_primary': orbital_position_container.primary.flatt_it().points
+            })
 
-        graphics.binary_mesh(**kwargs)
+        if components_to_plot in ['secondary', 'both']:
+            binary_mesh_kwargs.update({
+                'points_secondary': orbital_position_container.secondary.flatt_it().points
+            })
+
+        binary_mesh_kwargs.update({
+            "phase": phase,
+            "components_to_plot": components_to_plot,
+            "plot_axis": plot_axis,
+            "inclination": inclination,
+            "azimuth": azimuth
+        })
+        graphics.binary_mesh(**binary_mesh_kwargs)
 
     def wireframe(self, **kwargs):
         """
