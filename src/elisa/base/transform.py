@@ -34,7 +34,7 @@ def deg_transform(value, unit, when_float64):
     if isinstance(value, au.quantity.Quantity):
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
-        value = up.radians(np.float64(value))
+        value = np.float64(value)*au.deg.to(unit)
     else:
         raise TypeError('Input of variable `longitude` is not (numpy.)int or (numpy.)float '
                         'nor astropy.unit.quantity.Quantity instance.')

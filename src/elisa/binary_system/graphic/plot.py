@@ -5,6 +5,7 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import BINARY_POSITION_PLACEHOLDER
 from elisa.binary_system import utils as butils, dynamic
 from elisa.utils import is_empty
+from elisa.base import transform
 
 from elisa import (
     umpy as up,
@@ -46,7 +47,7 @@ class Plot(object):
         :param frame_of_reference: str; `barycentric` or `primary`
         """
         orbit_kwargs = dict()
-        if axis_units == 'dimensionless' or 'SMA':
+        if axis_units in ['dimensionless', 'SMA']:
             axis_units = eu.dimensionless_unscaled
 
         # orbit calculation for given phases
@@ -113,25 +114,29 @@ class Plot(object):
         :param phase: float; phase at which to construct plot
         :param components_to_plot: str; component to plot `primary`, `secondary` or `both`(default)
         :param plot_axis: bool; switch the plot axis on/off
-        :param inclination: float; elevation of the camera (in degrees)
-        :param azimuth: float; azimuth of the camera (in degrees)
+        :param inclination: float or astropy.Quantity; elevation of the camera (in degrees if float)
+        :param azimuth: float or astropy.Quantity; azimuth of the camera (in degrees if float)
         """
 
         binary_mesh_kwargs = dict()
-        inclination = up.degrees(self.binary.inclination) if is_empty(inclination) else inclination
+        inclination = transform.deg_transform(inclination, au.deg, when_float64=(int, np.int, float, np.float)) \
+            if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
-        azimuth = up.degrees(azim) - 90.0 if is_empty(azimuth) else azimuth
+
+        azimuth = transform.deg_transform(azimuth, au.deg, when_float64=(int, np.int, float, np.float)) \
+            if azimuth is not None else 0.0
+
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
 
         if components_to_plot in ['primary', 'both']:
             binary_mesh_kwargs.update({
-                'points_primary': orbital_position_container.primary.flatt_it().points
+                'points_primary': orbital_position_container.primary.get_flatten_parameter('points')
             })
 
         if components_to_plot in ['secondary', 'both']:
             binary_mesh_kwargs.update({
-                'points_secondary': orbital_position_container.secondary.flatt_it().points
+                'points_secondary': orbital_position_container.secondary.get_flatten_parameter('points')
             })
 
         binary_mesh_kwargs.update({
@@ -150,14 +155,17 @@ class Plot(object):
         :param phase: float; phase at which to construct plot
         :param components_to_plot: str; component to plot `primary`, `secondary` or `both`(default)
         :param plot_axis: bool; switch the plot axis on/off
-        :param inclination: float; elevation of the camera (in degrees)
-        :param azimuth: float; azimuth of the camera (in degrees)
+        :param inclination: float or astropy.Quantity; elevation of the camera (in degrees if float)
+        :param azimuth: float or astropy.Quantity; azimuth of the camera (in degrees if float)
         """
 
         binary_wireframe_kwargs = dict()
-        inclination = up.degrees(self.binary.inclination) if is_empty(inclination) else inclination
+        inclination = transform.deg_transform(inclination, au.deg, when_float64=(int, np.int, float, np.float)) \
+            if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
-        azimuth = up.degrees(azim) - 90.0 if is_empty(azimuth) else azimuth
+        azimuth = transform.deg_transform(azimuth, au.deg, when_float64=(int, np.int, float, np.float)) \
+            if azimuth is not None else 0.0
+
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
         orbital_position_container.build_faces(components_distance=components_distance)
@@ -207,9 +215,11 @@ class Plot(object):
         """
         surface_kwargs = dict()
 
-        inclination = up.degrees(self.binary.inclination) if is_empty(inclination) else inclination
+        inclination = transform.deg_transform(inclination, au.deg, when_float64=(int, np.int, float, np.float)) \
+            if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
-        azimuth = up.degrees(azim) - 90.0 if is_empty(azimuth) else azimuth
+        azimuth = transform.deg_transform(azimuth, au.deg, when_float64=(int, np.int, float, np.float)) \
+            if azimuth is not None else 0.0
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         # recalculating spot latitudes
@@ -229,14 +239,14 @@ class Plot(object):
             })
 
             if colormap == 'gravity_acceleration':
-                log_g = star.flatten_parameter('log_g')
+                log_g = star.get_flatten_parameter('log_g')
                 value = log_g if 'units' == 'SI' else log_g + 2
                 surface_kwargs.update({
                     f'{component}_cmap': value if scale == 'log' else up.power(10, value)
                 })
 
             elif colormap == 'temperature':
-                temperatures = star.flatten_parameter('temperatures')
+                temperatures = star.get_flatten_parameter('temperatures')
                 surface_kwargs.update({
                     f'{component}_cmap': temperatures if scale == 'linear' else up.log10(temperatures)
                 })
