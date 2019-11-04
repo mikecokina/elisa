@@ -280,5 +280,5 @@ def assign_spot_longitudes(system, spots_longitudes, index=None, component="all"
     components = {comp: getattr(system, comp) for comp in components}
     for comp, instance in components.items():
         for spot_index, spot in instance.spots.items():
-            spot._longitude = spots_longitudes[comp][spot_index] if index is None else \
+            spot.longitude = spots_longitudes[comp][spot_index] if index is None else \
                 spots_longitudes[comp][spot_index][index]

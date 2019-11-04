@@ -1,105 +1,96 @@
 import numpy as np
 
-from copy import copy
-
 from elisa import utils, logger, graphics, const
+from elisa.binary_system import dynamic, utils as butils
+from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.const import BINARY_POSITION_PLACEHOLDER
 
 
 class Animation(object):
+    defpos = BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0))
+
     def __init__(self, instance):
         self._logger = logger.getLogger(name=self.__class__.__name__)
-        self._self = instance
+        self.binary = instance
 
-    def orbital_motion(self, **kwargs):
+    def orbital_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, units='cgs', scale='linear',
+                       colormap=None, savepath=None):
         """
         function creates animation of the orbital motion
-        :param kwargs: dict
-            'start_phase' - float,
-            'stop_phase' - float,
-            'phase_step' - sloat,
-            'units' - units for gravity acceleration colormap,
-            'plot_axis' - bool - if False, axis will not be displayed,
-            'colormap' - `temperature`, `gravity_acceleration` or None,
-            'savepath' - string or None, animation will be stored to `savepath`
+        :param start_phase: float; starting phase of the animation
+        :param stop_phase: float; end phase of the animation
+        :param phase_step: float; phase step between animation frames
+        :param units: str; unit type of surface colormap `SI` or `cgs`
+        :param scale: str; `linear` or `log`, scale of the colormap
+        :param colormap: str; `temperature`, `gravity_acceleration` or None
+        :param savepath: str; animation will be stored to `savepath`
         :return:
         """
-        all_kwargs = ['start_phase', 'stop_phase', 'phase_step', 'inclination', 'units', 'plot_axis', 'colormap',
-                      'savepath']
-        utils.invalid_kwarg_checker(kwargs, all_kwargs, self.orbital_motion)
+        anim_kwargs = dict()
 
-        kwargs['start_phase'] = kwargs.get('start_phase', -0.5)
-        kwargs['stop_phase'] = kwargs.get('stop_phase', 0.5)
-        kwargs['phase_step'] = kwargs.get('phase_step', 0.01)
-        kwargs['inclination'] = kwargs.get('inclination', np.degrees(self._self.inclination))
-        kwargs['units'] = kwargs.get('units', 'logg_cgs')
-        kwargs['plot_axis'] = kwargs.get('plot_axis', True)
-        kwargs['colormap'] = kwargs.get('colormap', None)
-        kwargs['savepath'] = kwargs.get('savepath', None)
+        if stop_phase < start_phase:
+            raise ValueError(f'Starting phase {start_phase} is greater than stop phase {stop_phase}')
 
-        kwargs['morphology'] = self._self.morphology
+        components = butils.component_to_list('both')
 
-        if kwargs['stop_phase'] < kwargs['start_phase']:
-            raise ValueError('Starting phase {0} is greater than stop phase {1}'.format(kwargs['start_phase'],
-                                                                                        kwargs['stop_phase']))
-        kwargs['Nframes'] = int((kwargs['stop_phase'] - kwargs['start_phase'])/kwargs['phase_step'])
-        kwargs['phases'] = np.linspace(kwargs['start_phase'], kwargs['stop_phase'], num=kwargs['Nframes'])
-        kwargs['points_primary'] = [None for _ in range(kwargs['Nframes'])]
-        kwargs['points_secondary'] = [None for _ in range(kwargs['Nframes'])]
-        kwargs['faces_primary'] = [None for _ in range(kwargs['Nframes'])]
-        kwargs['faces_secondary'] = [None for _ in range(kwargs['Nframes'])]
-        kwargs['primary_cmap'] = [None for _ in range(kwargs['Nframes'])]
-        kwargs['secondary_cmap'] = [None for _ in range(kwargs['Nframes'])]
+        Nframes = int((stop_phase - start_phase) / phase_step)
+        phases = np.linspace(start_phase, stop_phase, num=Nframes)
+        points = {component: [None for _ in range(Nframes)] for component in components}
+        faces = {component: [None for _ in range(Nframes)] for component in components}
+        cmap = {component: [None for _ in range(Nframes)] for component in components}
 
-        kwargs['axis_lim'] = 0.7
-
-        result = self._self.orbit.orbital_motion(phase=kwargs['phases'])[:, :2]
+        result = self.binary.orbit.orbital_motion(phase=phases)[:, :2]
         components_distance, azimuth = result[:, 0], result[:, 1]
-        com = components_distance * self._self.mass_ratio / (1 + self._self.mass_ratio)
+        com = components_distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio)
 
         # in case of assynchronous component rotation and spots, the positions of spots are recalculated
-        spots_longitudes = geo.calculate_spot_longitudes(self._self, kwargs['phases'], component="all")
-
+        spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phases, component="all")
+        orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         self._logger.info('Calculating surface parameters (points, faces, colormap)')
-        for idx, phase in enumerate(kwargs['phases']):
+        for idx, phase in enumerate(phases):
             # assigning new longitudes for each spot
-            geo.assign_spot_longitudes(self._self, spots_longitudes, index=idx, component="all")
+            dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=idx, component="both")
+            orbital_position_container.build(components_distance=components_distance[idx], components='both')
 
-            points, faces = self._self.build_surface(component="all",
-                                                     components_distance=components_distance[idx],
-                                                     return_surface=True)
-            if kwargs['colormap']:
-                cmap = self._self.build_surface_map(colormap=kwargs['colormap'], component="all",
-                                                    components_distance=components_distance[idx], return_map=True,
-                                                    phase=phase)
+            for component in components:
+                star = getattr(orbital_position_container, component)
+                points[component][idx], faces[component][idx] = star.surface_serializer()
 
-            kwargs['points_primary'][idx] = copy(points['primary'])
-            kwargs['points_secondary'][idx] = copy(points['secondary'])
-            kwargs['faces_primary'][idx] = copy(faces['primary'])
-            kwargs['faces_secondary'][idx] = copy(faces['secondary'])
-            if kwargs['colormap']:
-                kwargs['primary_cmap'][idx] = copy(cmap['primary'])
-                kwargs['secondary_cmap'][idx] = copy(cmap['secondary'])
+                if colormap == 'gravity_acceleration':
+                    log_g = star.get_flatten_parameter('log_g')
+                    value = log_g if units == 'SI' else log_g + 2
+                    cmap[component][idx] = value if scale == 'log' else np.power(10, value)
 
-            # correcting to barycentre reference frame
-            kwargs['points_primary'][idx][:, 0] -= com[idx]
-            kwargs['points_secondary'][idx][:, 0] -= com[idx]
+                elif colormap == 'temperature':
+                    temperatures = star.get_flatten_parameter('temperatures')
+                    cmap[component][idx] = temperatures if scale == 'linear' else np.log10(temperatures)
 
-            # rotating pints to correct place
-            # rotation by azimuth
-            kwargs['points_primary'][idx] = utils.around_axis_rotation(azimuth[idx] - const.HALF_PI,
-                                                                       kwargs['points_primary'][idx],
-                                                                       "z", False, False)
-            kwargs['points_secondary'][idx] = utils.around_axis_rotation(azimuth[idx] - const.HALF_PI,
-                                                                         kwargs['points_secondary'][idx],
-                                                                         "z", False, False)
-            # tilting the orbit due to inclination
-            kwargs['points_primary'][idx] = utils.around_axis_rotation(const.HALF_PI - self._self.inclination,
-                                                                       kwargs['points_primary'][idx],
-                                                                       "y", False, False)
-            kwargs['points_secondary'][idx] = utils.around_axis_rotation(const.HALF_PI - self._self.inclination,
-                                                                         kwargs['points_secondary'][idx],
-                                                                         "y", False, False)
+                # rotating pints to correct place
+                # rotation by azimuth
+                points[component][idx] = utils.around_axis_rotation(azimuth[idx] - const.HALF_PI,
+                                                                    points[component][idx],
+                                                                    "z", False, False)
+                # tilting the orbit due to inclination
+                points[component][idx] = utils.around_axis_rotation(const.HALF_PI - self.binary.inclination,
+                                                                    points[component][idx],
+                                                                    "y", False, False)
 
+        anim_kwargs.update({
+            'morphology': self.binary.morphology,
+            'start_phase': start_phase,
+            'stop_phase': stop_phase,
+            'Nframes': Nframes,
+            'phases': phases,
+            'points_primary': points['primary'],
+            'points_secondary': points['secondary'],
+            'faces_primary': faces['primary'],
+            'faces_secondary': faces['secondary'],
+            'primary_cmap': cmap['primary'],
+            'secondary_cmap': cmap['secondary'],
+            'axis_lim': 0.7,
+            'savepath': savepath,
+            'colormap': colormap,
+        })
         self._logger.debug('Passing parameters to graphics module')
-        graphics.binary_surface_anim(**kwargs)
+        graphics.binary_surface_anim(**anim_kwargs)
 

@@ -619,6 +619,7 @@ def binary_surface_anim(**kwargs):
     ax.set_zlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
 
     clr = ['g', 'r']
+    cmaps = []
 
     if kwargs['morphology'] == 'over-contact':
         points = [[up.concatenate((kwargs['points_primary'][ii], kwargs['points_secondary'][ii]), axis=0)
