@@ -22,7 +22,7 @@ def orbit(**kwargs):
             * **start_phase** * -- float; starting phase for the plot
             * **stop_phase** * -- float; finishing phase for the plot
             * **number_of_points** * -- int; number of points in the plot
-            * **axis_units** * -- astropy.unit or 'str'; specifying axis unit, use astropy units or `dimensionless`
+            * **axis_units** * -- Union[astropy.unit, 'str']; specifying axis unit, use astropy units or `dimensionless`
             or `SMA` (semi-major axis) units for axis scale
             * **frame_of_reference** * -- str; `barycentric` or `primary`
     """
@@ -623,11 +623,11 @@ def binary_surface_anim(**kwargs):
 
     if kwargs['morphology'] == 'over-contact':
         points = [[up.concatenate((kwargs['points_primary'][ii], kwargs['points_secondary'][ii]), axis=0)
-                  for ii in range(kwargs['Nframes'])]]
+                  for ii in range(kwargs['n_frames'])]]
         faces = [[up.concatenate((kwargs['faces_primary'][ii],
                                       kwargs['faces_secondary'][ii] + np.shape(kwargs['points_primary'][ii])[0]),
                                       axis=0)
-                     for ii in range(kwargs['Nframes'])]]
+                     for ii in range(kwargs['n_frames'])]]
 
         plot = [ax.plot_trisurf(points[0][0][:, 0], points[0][0][:, 1], points[0][0][:, 2],
                                 triangles=faces[0][0], antialiased=True,
@@ -635,7 +635,7 @@ def binary_surface_anim(**kwargs):
         if kwargs.get('colormap', False):
             plot[0].set_cmap(cmap=cm.jet_r)
             cmaps = [[up.concatenate((kwargs['primary_cmap'][ii], kwargs['secondary_cmap'][ii]), axis=0)
-                    for ii in range(kwargs['Nframes'])]]
+                    for ii in range(kwargs['n_frames'])]]
             plot[0].set_array(cmaps[0][0])
     else:
         points = [kwargs['points_primary'], kwargs['points_secondary']]
@@ -654,7 +654,7 @@ def binary_surface_anim(**kwargs):
             plot[1].set_array(cmaps[1][0])
 
     args = (points, faces, clr, cmaps, plot)
-    ani = animation.FuncAnimation(fig, update_plot, kwargs['Nframes'], fargs=args, interval=20)
+    ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
     plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='imagemagick', fps=20)
 
 

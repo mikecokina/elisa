@@ -1,9 +1,20 @@
 import numpy as np
 
-from elisa import utils, logger, graphics, const
-from elisa.binary_system import dynamic, utils as butils
+from copy import copy
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import BINARY_POSITION_PLACEHOLDER
+
+from elisa.binary_system import (
+    utils as butils,
+    dynamic
+)
+from elisa import (
+    umpy as up,
+    utils,
+    logger,
+    graphics,
+    const
+)
 
 
 class Animation(object):
@@ -16,7 +27,8 @@ class Animation(object):
     def orbital_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, units='cgs', scale='linear',
                        colormap=None, savepath=None):
         """
-        function creates animation of the orbital motion
+        Function creates animation of the orbital motion.
+
         :param start_phase: float; starting phase of the animation
         :param stop_phase: float; end phase of the animation
         :param phase_step: float; phase step between animation frames
@@ -24,7 +36,6 @@ class Animation(object):
         :param scale: str; `linear` or `log`, scale of the colormap
         :param colormap: str; `temperature`, `gravity_acceleration` or None
         :param savepath: str; animation will be stored to `savepath`
-        :return:
         """
         anim_kwargs = dict()
 
@@ -33,20 +44,20 @@ class Animation(object):
 
         components = butils.component_to_list('both')
 
-        Nframes = int((stop_phase - start_phase) / phase_step)
-        phases = np.linspace(start_phase, stop_phase, num=Nframes)
-        points = {component: [None for _ in range(Nframes)] for component in components}
-        faces = {component: [None for _ in range(Nframes)] for component in components}
-        cmap = {component: [None for _ in range(Nframes)] for component in components}
+        n_frames = int((stop_phase - start_phase) / phase_step)
+        phases = np.linspace(start_phase, stop_phase, num=n_frames)
+        none = [None for _ in range(n_frames)]
+        points = {component: copy(none) for component in components}
+        faces = {component: copy(none) for component in components}
+        cmap = {component: copy(none) for component in components}
 
         result = self.binary.orbit.orbital_motion(phase=phases)[:, :2]
         components_distance, azimuth = result[:, 0], result[:, 1]
-        com = components_distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio)
 
         # in case of assynchronous component rotation and spots, the positions of spots are recalculated
         spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phases, component="all")
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
-        self._logger.info('Calculating surface parameters (points, faces, colormap)')
+        self._logger.info('calculating surface parameters (points, faces, colormap)')
         for idx, phase in enumerate(phases):
             # assigning new longitudes for each spot
             dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=idx, component="both")
@@ -59,11 +70,11 @@ class Animation(object):
                 if colormap == 'gravity_acceleration':
                     log_g = star.get_flatten_parameter('log_g')
                     value = log_g if units == 'SI' else log_g + 2
-                    cmap[component][idx] = value if scale == 'log' else np.power(10, value)
+                    cmap[component][idx] = value if scale == 'log' else up.power(10, value)
 
                 elif colormap == 'temperature':
                     temperatures = star.get_flatten_parameter('temperatures')
-                    cmap[component][idx] = temperatures if scale == 'linear' else np.log10(temperatures)
+                    cmap[component][idx] = temperatures if scale == 'linear' else up.log10(temperatures)
 
                 # rotating pints to correct place
                 # rotation by azimuth
@@ -79,7 +90,7 @@ class Animation(object):
             'morphology': self.binary.morphology,
             'start_phase': start_phase,
             'stop_phase': stop_phase,
-            'Nframes': Nframes,
+            'n_frames': n_frames,
             'phases': phases,
             'points_primary': points['primary'],
             'points_secondary': points['secondary'],
