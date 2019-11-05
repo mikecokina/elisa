@@ -184,7 +184,7 @@ def incorporate_spots_mesh(to_container, component_com):
 
     :param to_container: Union; instace to incorporate spots into
     :param component_com: float; center of mass of component
-    :return to_container: Union; instace to incorporate spots into
+    :return: to_container: Union; instace to incorporate spots into
     """
     if not to_container.spots:
         __logger__.debug(f"not spots found, skipping incorporating spots "
@@ -254,7 +254,7 @@ def remap_surface_elements(on_container, mapper, points_to_remap):
     :param mapper: List; list of indices of points in `points_to_remap` divided into star and spots sublists
     :param points_to_remap: numpy.array; array of all surface points (star + points used in
                             `_split_spots_and_component_faces`)
-    :return on_container: Union; container object with spots
+    :return: on_container: Union; container object with spots
     """
 
     # remapping points and faces of star
@@ -293,7 +293,7 @@ def remove_overlaped_spots_by_spot_index(from_container, keep_spot_indices, _rai
     :param from_container: Union; container object with spots
     :param keep_spot_indices: List[int]; list of spot indices to keep
     :param _raise: bool;
-    :return from_container: Union; container object with spots
+    :return: from_container: Union; container object with spots
     """
     all_spot_indices = set([int(val) for val in from_container.spots.keys()])
     spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
@@ -312,7 +312,7 @@ def remove_overlaped_spots_by_vertex_map(from_container, vertices_map):
 
     :param from_container: Union; container object with spots
     :param vertices_map: Union[List, numpy.array]
-    :return from_container: Union; container object with spots
+    :return: from_container: Union; container object with spots
     """
     # remove spots that are totaly overlaped
     spots_instance_indices = list(set([vertices_map[ix]["enum"] for ix, _ in enumerate(vertices_map)

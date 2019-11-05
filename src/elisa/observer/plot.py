@@ -19,8 +19,13 @@ class Plot(object):
         """
         Function plots phase curves calculated in Observer class.
 
-        :param kwargs: Dict; `phases` (array), `fluxes` (dict), `flux_unit` - unit of flux measurements,
-                             `legend` (bool) onn/off, `legend_location` (int)
+        :param kwargs: Dict;
+        :**kwargs options**:
+            * **phases** * -- numpy.array;
+            * **fluxes** * -- Dict;
+            * **flux_unit** * -- astropy.units.quantity.Quantity; unit of flux measurements,
+            * **legend** * -- bool; on/off,
+            * **legend_location** * -- int;
         """
         kwargs['phases'] = kwargs.get('phases', self._self.phases)
         kwargs['fluxes'] = kwargs.get('fluxes', self._self.fluxes)

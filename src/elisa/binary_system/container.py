@@ -77,7 +77,7 @@ class OrbitalPositionContainer(PositionContainer):
         :param do_pulsations: bool; switch to incorporate pulsations
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
-        :return self;
+        :return: self;
         """
 
         components_distance = self._components_distance(components_distance)
@@ -116,7 +116,7 @@ class OrbitalPositionContainer(PositionContainer):
         :param components_distance: float; distance of components is SMA units
         :param do_pulsations: bool; switch to incorporate pulsations
         :param phase: float; phase to build system on
-        :return self;
+        :return: self;
         """
         components_distance = self._components_distance(components_distance)
         self.build_faces(components_distance, component)

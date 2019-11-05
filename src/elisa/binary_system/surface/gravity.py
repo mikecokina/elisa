@@ -140,7 +140,7 @@ def build_surface_gravity(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`
     :param components_distance: float;
-    :return system: elisa.binary_system.container.OrbitalPositionContainer;;
+    :return: system: elisa.binary_system.container.OrbitalPositionContainer;;
     """
     if is_empty(component):
         __logger__.debug("no component set to build surface gravity")
