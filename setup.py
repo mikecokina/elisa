@@ -61,7 +61,7 @@ setup(
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=find_packages(where='src'),
+    packages=find_packages(where='src', exclude=["single_system"]),
 
     # Alternatively, if you want to distribute just a my_module.py, uncomment
     # this:
@@ -75,7 +75,7 @@ setup(
         'astropy==2.0.2',
         'cycler==0.10.0',
         'matplotlib==2.1.0',
-        'numpy==1.13.3',
+        'numpy==1.14.0',
         'pandas==0.23.0',
         'py==1.4.34',
         'pyparsing==2.2.0',
