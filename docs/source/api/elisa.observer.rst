@@ -1,0 +1,38 @@
+elisa.observer package
+======================
+
+Submodules
+----------
+
+elisa.observer.mp module
+------------------------
+
+.. automodule:: elisa.observer.mp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+elisa.observer.observer module
+------------------------------
+
+.. automodule:: elisa.observer.observer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+elisa.observer.plot module
+--------------------------
+
+.. automodule:: elisa.observer.plot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: elisa.observer
+   :members:
+   :undoc-members:
+   :show-inheritance:
