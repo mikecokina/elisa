@@ -44,7 +44,7 @@ def reflection_effect(system, components_distance, iterations):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param iterations: int; iterations of reflection effect counts
     :param components_distance: float; components distance in SMA units
-    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
 
     if not config.REFLECTION_EFFECT:
@@ -307,7 +307,7 @@ def build_temperature_distribution(system, components_distance, component="all",
     :param component: `primary` or `secondary`
     :param do_pulsations:
     :param phase: float;
-    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :return: system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
         __logger__.debug("no component set to build temperature distribution")

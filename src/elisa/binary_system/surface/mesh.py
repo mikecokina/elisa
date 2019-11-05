@@ -31,7 +31,7 @@ def build_mesh(system, components_distance, component="all"):
    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
    :param component: Union[str, None];
    :param components_distance: float;
-   :return: system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+   :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
    """
     components = bsutils.component_to_list(component)
 

@@ -220,7 +220,7 @@ def build_faces(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;; instance
     :type components_distance: float;
     :param component: `primary` or `secondary` if not supplied both component are calculated
-    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
         __logger__.debug("no component set to build faces")
@@ -246,7 +246,7 @@ def build_surface_with_no_spots(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param components_distance: float;
     :param component: str; `primary` or `secondary` if not supplied both component are calculated
-    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     components = bsutils.component_to_list(component)
 
@@ -290,7 +290,7 @@ def build_surface_with_spots(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param components_distance: float;
     :param component: str `primary` or `secondary`
-    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     components = bsutils.component_to_list(component)
     component_com = {'primary': 0.0, 'secondary': components_distance}
@@ -428,7 +428,7 @@ def compute_all_surface_areas(system, component):
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer; instance
     :param component: str; `primary` or `secondary`
-    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
         __logger__.debug("no component set to build surface areas")
@@ -452,7 +452,7 @@ def build_faces_orientation(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`
     :param components_distance: float; orbit with misaligned pulsations, where pulsation axis drifts with star
-    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
         __logger__.debug("no component set to build face orientation")
