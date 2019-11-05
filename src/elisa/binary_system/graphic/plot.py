@@ -124,7 +124,7 @@ class Plot(object):
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
 
         azimuth = transform.deg_transform(azimuth, au.deg, when_float64=transform.WHEN_FLOAT64) \
-            if azimuth is not None else azim
+            if azimuth is not None else up.degrees(azim)
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
@@ -164,7 +164,7 @@ class Plot(object):
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
         azimuth = transform.deg_transform(azimuth, au.deg, when_float64=transform.WHEN_FLOAT64) \
-            if azimuth is not None else azim
+            if azimuth is not None else up.degrees(azim)
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
@@ -219,7 +219,7 @@ class Plot(object):
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
         azimuth = transform.deg_transform(azimuth, au.deg, when_float64=transform.WHEN_FLOAT64) \
-            if azimuth is not None else azim
+            if azimuth is not None else up.degrees(azim)
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         # recalculating spot latitudes
