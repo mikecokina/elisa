@@ -65,6 +65,17 @@ class PassbandContainer(object):
         self.right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
 
 
+class Observables(object):
+    def __init__(self, observer):
+        self.observer = observer
+
+    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
+        return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize_lc)
+
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
+        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize_lc)
+
+
 class Observer(object):
     def __init__(self, passband, system, suppress_logger=False):
         """
@@ -80,8 +91,6 @@ class Observer(object):
         self._system = system
         self._system_cls = type(self._system)
 
-        # self._system._suppress_logger = True
-
         self.left_bandwidth = sys.float_info.max
         self.right_bandwidth = 0.0
         self.passband = dict()
@@ -95,34 +104,7 @@ class Observer(object):
         self.radial_velocities = None
 
         self.plot = Plot(self)
-
-    @property
-    def observables(self):
-        """
-        Returns list of observables that will be calculated during Observer.observe()
-
-        :return: List; list of observables
-        """
-        return self._observables
-
-    @observables.setter
-    def observables(self, observables):
-        valid_observables = [
-            'lc',  # light/phase curve
-            'rv',  # radial velocity
-        ]
-        if isinstance(observables, str):
-            if observables not in valid_observables:
-                raise ValueError(f'Observables should be string or list containing: `{valid_observables}`')
-            else:
-                observables = [observables]
-        elif isinstance(observables, list):
-            for observable in observables:
-                if observable not in valid_observables:
-                    raise ValueError(f'Observables should be string or list containing only: `{valid_observables}`')
-
-        self._logger.info(f"Setting observables in Observer class to: {observables}.")
-        self._observables = observables
+        self.observe = Observables(self)
 
     @staticmethod
     def bolometric(x):
@@ -198,7 +180,7 @@ class Observer(object):
         df[config.PASSBAND_DATAFRAME_WAVE] = df[config.PASSBAND_DATAFRAME_WAVE] * 10.0
         return df
 
-    def observe(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
+    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
         """
         Method for observation simulation. Based on input parmeters and supplied Ob server system on initialization
         will compute lightcurve.

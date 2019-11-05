@@ -347,7 +347,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         for law in laws:
             config.LIMB_DARKENING_LAW = law
             o = Observer(passband=['Generic.Bessell.V'], system=bs)
-            o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+            o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
 
     def test_circular_synchronous_detached_system(self):
         config.LIMB_DARKENING_LAW = "linear"
@@ -362,7 +362,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
@@ -382,7 +382,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
@@ -399,7 +399,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
 
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
@@ -421,7 +421,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
@@ -443,7 +443,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
@@ -471,7 +471,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
@@ -490,7 +490,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.01
 
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
@@ -509,7 +509,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.01
 
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
@@ -528,7 +528,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
                                    spots_primary=SPOTS_META["primary"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
         start_phs, stop_phs, step = -0.2, 1.2, 0.05
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
@@ -544,7 +544,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
                                    spots_primary=SPOTS_META["primary"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
-        obtained = o.observe(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
