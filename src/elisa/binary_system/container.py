@@ -77,32 +77,38 @@ class OrbitalPositionContainer(PositionContainer):
         :param do_pulsations: bool; switch to incorporate pulsations
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
-        :return:
+        :return self;
         """
-        if components_distance is None:
-            components_distance = self.position.distance
+
+        components_distance = self._components_distance(components_distance)
         self.build_mesh(components_distance, component)
         self.build_from_points(components_distance, component, do_pulsations=do_pulsations, phase=phase)
+        return self
 
-    def build_mesh(self, components_distance, component="all"):
+    def build_mesh(self, components_distance=None, component="all"):
+        components_distance = self._components_distance(components_distance)
         return mesh.build_mesh(self, components_distance, component)
 
-    def build_faces(self, components_distance, component="all"):
+    def build_faces(self, components_distance=None, component="all"):
+        components_distance = self._components_distance(components_distance)
         return faces.build_faces(self, components_distance, component)
 
     def build_surface_areas(self, component="all"):
         return faces.compute_all_surface_areas(self, component)
 
-    def build_faces_orientation(self, components_distance, component="all"):
+    def build_faces_orientation(self, components_distance=None, component="all"):
+        components_distance = self._components_distance(components_distance)
         return faces.build_faces_orientation(self, components_distance, component)
 
-    def build_surface_gravity(self, components_distance, component="all"):
+    def build_surface_gravity(self, components_distance=None, component="all"):
+        components_distance = self._components_distance(components_distance)
         return gravity.build_surface_gravity(self, components_distance, component)
 
-    def build_temperature_distribution(self, components_distance, component="all", do_pulsations=False, phase=None):
+    def build_temperature_distribution(self, components_distance=None, component="all", do_pulsations=False, phase=None):
+        components_distance = self._components_distance(components_distance)
         return temperature.build_temperature_distribution(self, components_distance, component, do_pulsations, phase)
 
-    def build_from_points(self, components_distance, component="all", do_pulsations=False, phase=None):
+    def build_from_points(self, components_distance=None, component="all", do_pulsations=False, phase=None):
         """
         Build binary system from preset surface points
 
@@ -110,19 +116,21 @@ class OrbitalPositionContainer(PositionContainer):
         :param components_distance: float; distance of components is SMA units
         :param do_pulsations: bool; switch to incorporate pulsations
         :param phase: float; phase to build system on
-        :return:
+        :return self;
         """
+        components_distance = self._components_distance(components_distance)
         self.build_faces(components_distance, component)
         self.build_surface_areas(component)
         self.build_faces_orientation(components_distance, component)
         self.build_surface_gravity(components_distance, component)
         self.build_temperature_distribution(components_distance, component, do_pulsations=do_pulsations, phase=phase)
+        return self
 
     def apply_eclipse_filter(self):
         """
         Just placeholder. Maybe will be used in future.
 
-        :return: self
+        :return: self;
         """
         raise NotImplemented("This is not implemented")
 
@@ -148,13 +156,14 @@ class OrbitalPositionContainer(PositionContainer):
                 args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
                 prop_value = utils.around_axis_rotation(*args)
                 setattr(star_container, prop, prop_value)
+        return self
 
     def apply_darkside_filter(self):
         """
         Apply darkside filter on current position defined in container.
         Function iterates over components and assigns indices of visible points to EasyObject instance.
 
-        :return: self
+        :return: self;
         """
         __COMPONENTS__ = ["primary", "secondary"]
         __PROPERTIES__ = ["points", "normals"]
@@ -179,3 +188,6 @@ class OrbitalPositionContainer(PositionContainer):
 
         self._flatten = True
         return self
+
+    def _components_distance(self, components_distance):
+        return components_distance if components_distance is not None else self.position.distance

@@ -28,9 +28,10 @@ def build_mesh(system, components_distance, component="all"):
    Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
    Points are assigned to system.
 
-   :param system: elisa.binary_system.contaienr.OrbitalPositionContainer; instance
+   :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
    :param component: Union[str, None];
    :param components_distance: float;
+   :return system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
    """
     components = bsutils.component_to_list(component)
 
@@ -48,6 +49,7 @@ def build_mesh(system, components_distance, component="all"):
         star.inverse_point_symmetry_matrix = d
 
     add_spots_to_mesh(system, components_distance, component="all")
+    return system
 
 
 def pre_calc_azimuths_for_detached_points(deiscretization):
@@ -822,10 +824,9 @@ def add_spots_to_mesh(system, components_distance, component="all"):
 
     :param system: elisa.binary_system.contaienr.OrbitalPositionContainer;
     :param components_distance: float;
-    :param component: Union[str, None]
+    :param component: Union[str, None];
     """
-    if components_distance is None:
-        raise ValueError('Argument `component_distance` was not supplied.')
+
     components = bsutils.component_to_list(component)
 
     if is_empty(components):

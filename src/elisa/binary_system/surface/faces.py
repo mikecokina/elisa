@@ -220,10 +220,11 @@ def build_faces(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;; instance
     :type components_distance: float;
     :param component: `primary` or `secondary` if not supplied both component are calculated
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
         __logger__.debug("no component set to build faces")
-        return
+        return system
 
     if is_empty(components_distance):
         raise ValueError('Value of `components_distance` was not provided.')
@@ -235,6 +236,7 @@ def build_faces(system, components_distance, component="all"):
             build_surface_with_spots(system, components_distance, component)
         else:
             build_surface_with_no_spots(system, components_distance, component)
+    return system
 
 
 def build_surface_with_no_spots(system, components_distance, component="all"):
@@ -244,6 +246,7 @@ def build_surface_with_no_spots(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param components_distance: float;
     :param component: str; `primary` or `secondary` if not supplied both component are calculated
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     components = bsutils.component_to_list(component)
 
@@ -276,6 +279,7 @@ def build_surface_with_no_spots(system, components_distance, component="all"):
 
         base_face_symmetry_vector = up.arange(star.base_symmetry_faces_number)
         star.face_symmetry_vector = up.concatenate([base_face_symmetry_vector for _ in range(4)])
+    return system
 
 
 def build_surface_with_spots(system, components_distance, component="all"):
@@ -286,6 +290,7 @@ def build_surface_with_spots(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param components_distance: float;
     :param component: str `primary` or `secondary`
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     components = bsutils.component_to_list(component)
     component_com = {'primary': 0.0, 'secondary': components_distance}
@@ -301,6 +306,7 @@ def build_surface_with_spots(system, components_distance, component="all"):
                                                 spot_candidates, vertices_map, component_com[component])
         spot.remove_overlaped_spots_by_vertex_map(start_container, vertices_map)
         spot.remap_surface_elements(start_container, model, points)
+    return system
 
 
 def detached_system_surface(system, components_distance, points=None, component="all"):
@@ -422,6 +428,7 @@ def compute_all_surface_areas(system, component):
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer; instance
     :param component: str; `primary` or `secondary`
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
         __logger__.debug("no component set to build surface areas")
@@ -433,6 +440,7 @@ def compute_all_surface_areas(system, component):
         __logger__.debug(f'computing surface areas of component: '
                          f'{star} / name: {star.name}')
         star.calculate_all_areas()
+    return system
 
 
 def build_faces_orientation(system, components_distance, component="all"):
@@ -444,10 +452,11 @@ def build_faces_orientation(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`
     :param components_distance: float; orbit with misaligned pulsations, where pulsation axis drifts with star
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
         __logger__.debug("no component set to build face orientation")
-        return
+        return system
 
     component = bsutils.component_to_list(component)
     com_x = {'primary': 0.0, 'secondary': components_distance}
@@ -462,6 +471,7 @@ def build_faces_orientation(system, components_distance, component="all"):
         # pulsation mode
         if star.has_pulsations():
             pulsations.set_ralp(star, com_x=com_x[_component])
+    return system
 
 
 def set_all_surface_centres(star):
@@ -472,6 +482,7 @@ def set_all_surface_centres(star):
     if star.has_spots():
         for spot_index, spot_instance in star.spots.items():
             spot_instance.face_centres = calculate_surface_centres(spot_instance.points, spot_instance.faces)
+    return star
 
 
 def set_all_normals(for_container, com):
@@ -480,6 +491,7 @@ def set_all_normals(for_container, com):
 
     :param for_container: instance of container to set normals on;
     :param com: numpy.array;
+    :param for_container: instance of container to set normals on;
     """
     points, faces, cntrs = for_container.points, for_container.faces, for_container.face_centres
     for_container.normals = calculate_normals(points, faces, cntrs, com)
@@ -490,6 +502,7 @@ def set_all_normals(for_container, com):
                                                                         for_container.spots[spot_index].faces,
                                                                         for_container.spots[spot_index].face_centres,
                                                                         com)
+    return for_container
 
 
 def calculate_normals(points, faces, centres, com):

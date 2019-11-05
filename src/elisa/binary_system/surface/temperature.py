@@ -24,6 +24,7 @@ def redistribute_temperatures(in_system, temperatures):
 
     :param in_system: instance to redistribute temperatures
     :param temperatures: numpy.array; temperatures from the whole surface, ordered: surface, spot1, spot2...
+    :param in_system: instance to redistribute temperatures
     """
     for component in ['primary', 'secondary']:
         star = getattr(in_system, component)
@@ -33,6 +34,7 @@ def redistribute_temperatures(in_system, temperatures):
             for spot_index, spot in star.spots.items():
                 spot.temperatures = temperatures[component][counter: counter + len(spot.temperatures)]
                 counter += len(spot.temperatures)
+    return in_system
 
 
 def reflection_effect(system, components_distance, iterations):
@@ -42,15 +44,16 @@ def reflection_effect(system, components_distance, iterations):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param iterations: int; iterations of reflection effect counts
     :param components_distance: float; components distance in SMA units
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
 
     if not config.REFLECTION_EFFECT:
         __logger__.debug('reflection effect is switched off')
-        return
+        return system
     if iterations <= 0:
         __logger__.debug('number of reflections in reflection effect was set to zero or negative; '
                          'reflection effect will not be calculated')
-        return
+        return system
 
     components = bsutils.component_to_list(component='all')
 
@@ -236,6 +239,7 @@ def reflection_effect(system, components_distance, iterations):
 
     # redistributing temperatures back to the parent objects
     redistribute_temperatures(system, temperatures)
+    return system
 
 
 def renormalize_temperatures(star):
@@ -303,10 +307,11 @@ def build_temperature_distribution(system, components_distance, component="all",
     :param component: `primary` or `secondary`
     :param do_pulsations:
     :param phase: float;
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
         __logger__.debug("no component set to build temperature distribution")
-        return
+        return system
 
     phase = 0 if phase is None else phase
     components = bsutils.component_to_list(component)
@@ -348,6 +353,7 @@ def build_temperature_distribution(system, components_distance, component="all",
         __logger__.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
                          f'iterations.')
         reflection_effect(system, components_distance, config.REFLECTION_EFFECT_ITERATIONS)
+    return system
 
 
 def init_surface_variables(star):

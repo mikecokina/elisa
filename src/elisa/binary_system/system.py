@@ -114,8 +114,6 @@ class BinarySystem(System):
     def init(self):
         """
         Function to reinitialize BinarySystem class instance after changing parameter(s) of binary system.
-
-        :return:
         """
         self.__init__(primary=self.primary, secondary=self.secondary, **self.kwargs_serializer())
 

@@ -132,7 +132,7 @@ def calculate_polar_gravity_acceleration(star, components_distance, mass_ratio, 
     return up.log10(gradient) if logg else gradient
 
 
-def build_surface_gravity(system, components_distance=None, component="all"):
+def build_surface_gravity(system, components_distance, component="all"):
     """
     Function calculates gravity potential gradient magnitude (surface gravity) for each face.
     Value assigned to face is mean of values calculated in corners of given face.
@@ -140,6 +140,7 @@ def build_surface_gravity(system, components_distance=None, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`
     :param components_distance: float;
+    :return system: elisa.binary_system.container.OrbitalPositionContainer;;
     """
     if is_empty(component):
         __logger__.debug("no component set to build surface gravity")
@@ -185,3 +186,5 @@ def build_surface_gravity(system, components_distance=None, component="all"):
                 setattr(spot, "potential_gradient_magnitudes", spot_pgms)
                 spot_logg = up.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
                 setattr(spot, "log_g", spot_logg)
+
+    return system
