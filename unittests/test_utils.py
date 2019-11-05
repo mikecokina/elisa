@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 from numpy.testing import assert_array_equal
-from elisa import utils
+from elisa import utils, umpy as up
+from elisa import const
 from queue import Queue
 
 from unittests.utils import ElisaTestCase
@@ -11,7 +12,7 @@ from unittests.utils import ElisaTestCase
 class TestElisaEngineUtils(ElisaTestCase):
     def test_polar_to_cartesian(self):
         radius = np.array([0.5, 0.3, 6.1])
-        phi = np.array([0.0, np.pi, np.pi / 2.0])
+        phi = np.array([0.0, const.PI, const.PI / 2.0])
 
         xs, ys = utils.polar_to_cartesian(radius, phi)
         xs, ys = np.round(xs, 4), np.round(ys, 4)
@@ -21,7 +22,7 @@ class TestElisaEngineUtils(ElisaTestCase):
         assert_array_equal(expected_ys, ys)
 
         radius = 0.33
-        phi = np.pi / 2.0
+        phi = const.PI / 2.0
         x, y = utils.polar_to_cartesian(radius, phi)
         assert_array_equal([round(x, 4), round(y, 4)], [0.0, 0.33])
 
@@ -55,8 +56,8 @@ class TestElisaEngineUtils(ElisaTestCase):
         input1 = np.array([[1., 0., 0.], [0., 0., 1.]])
         input2 = [1, 0, 0]
 
-        expected_output1 = np.array([[1, 0, np.pi/2], [1, 0, 0]])
-        expected_output2 = np.array([1, 0, np.pi/2])
+        expected_output1 = np.array([[1, 0, const.PI/2], [1, 0, 0]])
+        expected_output2 = np.array([1, 0, const.PI/2])
         expected_output3 = np.array([1, 0, 90])
 
         output1 = utils.cartesian_to_spherical(input1)
@@ -68,8 +69,8 @@ class TestElisaEngineUtils(ElisaTestCase):
         assert_array_equal(output3, expected_output3)
 
     def test_spherical_to_cartesian(self):
-        input1 = np.array([[1, 0, np.pi / 2], [1, 0, 0]])
-        input2 = np.array([1, 0, np.pi / 2])
+        input1 = np.array([[1, 0, const.PI / 2], [1, 0, 0]])
+        input2 = np.array([1, 0, const.PI / 2])
 
         expected_output1 = np.array([[1., 0., 0.], [0., 0., 1.]])
         expected_output2 = [1, 0, 0]
@@ -95,10 +96,10 @@ class TestElisaEngineUtils(ElisaTestCase):
     def test_arbitrary_rotation(self):
         to_rotate = np.array([[1.0, 0.0, 0.0], [1.0, 1.0, 1.0], [-1.0, 1.3, -2.1]])
         expected = np.array([[0.3333, 0.244, -0.9107], [-0.3333, 1.488, -0.8214], [-2.0297, -1.7231, -0.1065]])
-        self.subtest_arbitrary_rotation(np.pi / 2.0, to_rotate, False, expected)
+        self.subtest_arbitrary_rotation(const.PI / 2.0, to_rotate, False, expected)
         self.subtest_arbitrary_rotation(90, to_rotate, True, expected)
         self.subtest_arbitrary_rotation(-270, to_rotate, True, expected)
-        self.subtest_arbitrary_rotation(-3. * np.pi / 2.0, to_rotate, False, expected)
+        self.subtest_arbitrary_rotation(-3. * const.PI / 2.0, to_rotate, False, expected)
 
     @staticmethod
     def subtest_around_axis_rotation(angle, vectors, axis, degree, expected):
@@ -110,19 +111,19 @@ class TestElisaEngineUtils(ElisaTestCase):
 
         # z axis
         expected = [[0.0, 1.0, 0.0], [-1.0, 1.0, 1.0], [-1.3, -1.0, -2.1]]
-        self.subtest_around_axis_rotation(np.pi / 2.0, to_rotate, "z", False, expected)
+        self.subtest_around_axis_rotation(const.PI / 2.0, to_rotate, "z", False, expected)
         self.subtest_around_axis_rotation(90, to_rotate, "z", True, expected)
         self.subtest_around_axis_rotation(-270, to_rotate, "z", True, expected)
 
         # x axis
         expected = [[1., 0., 0.], [1., -1., 1.], [-1., 2.1, 1.3]]
-        self.subtest_around_axis_rotation(np.pi / 2.0, to_rotate, "x", False, expected)
+        self.subtest_around_axis_rotation(const.PI / 2.0, to_rotate, "x", False, expected)
         self.subtest_around_axis_rotation(90, to_rotate, "x", True, expected)
         self.subtest_around_axis_rotation(-270, to_rotate, "x", True, expected)
 
         # y axis
         expected = [[0., 0., -1.], [1.,  1., -1.], [-2.1, 1.3, 1.]]
-        self.subtest_around_axis_rotation(np.pi / 2.0, to_rotate, "y", False, expected)
+        self.subtest_around_axis_rotation(const.PI / 2.0, to_rotate, "y", False, expected)
         self.subtest_around_axis_rotation(90, to_rotate, "y", True, expected)
         self.subtest_around_axis_rotation(-270, to_rotate, "y", True, expected)
 
@@ -286,8 +287,8 @@ class TestElisaEngineUtils(ElisaTestCase):
     def test_convert_gravity_acceleration_array(self):
         log_g_si = np.array([2.2, 1.3, 2.22])
         log_cgs = log_g_si + 2
-        si = np.power(10, log_g_si)
-        cgs = np.power(10, log_g_si + 2)
+        si = up.power(10, log_g_si)
+        cgs = up.power(10, log_g_si + 2)
 
         obtained = utils.convert_gravity_acceleration_array(log_g_si, "log_cgs")
         assert_array_equal(log_cgs, obtained)
@@ -320,7 +321,7 @@ class TestElisaEngineUtils(ElisaTestCase):
         not_empty = [0, 1, -1, dict(x=1), [1], [0, 0], np.array([0])]
         result = np.array([utils.is_empty(val) for val in not_empty])
 
-        self.assertTrue(np.all(np.invert(result)))
+        self.assertTrue(np.all(up.invert(result)))
 
     def test_IterableQueue(self):
         q = Queue()
@@ -345,52 +346,6 @@ class TestElisaEngineUtils(ElisaTestCase):
 #                 return False
 #
 #     return True
-    def test_convert_gravity_acceleration_array(self):
-        log_g_si = np.array([2.2, 1.3, 2.22])
-        log_cgs = log_g_si + 2
-        si = np.power(10, log_g_si)
-        cgs = np.power(10, log_g_si + 2)
-
-        obtained = utils.convert_gravity_acceleration_array(log_g_si, "log_cgs")
-        assert_array_equal(log_cgs, obtained)
-        obtained = utils.convert_gravity_acceleration_array(log_g_si, "SI")
-        assert_array_equal(si, obtained)
-        obtained = utils.convert_gravity_acceleration_array(log_g_si, "cgs")
-        assert_array_equal(cgs, obtained)
-        obtained = utils.convert_gravity_acceleration_array(log_g_si, "log_SI")
-        assert_array_equal(log_g_si, obtained)
-
-    def test_cosine_similarity(self):
-        vs_2d_1 = np.array([[0.0, 1.0], [1.0, 0.0]])
-        vs_2d_2 = np.array([[0.0, 10.0], [15.0, 0.0]])
-        r_1 = utils.cosine_similarity(vs_2d_1[0], vs_2d_1[1])
-        r_2 = utils.cosine_similarity(vs_2d_2[0], vs_2d_2[1])
-
-        self.assertEqual(round(r_1, 4), 0)
-        self.assertEqual(round(r_2, 4), 0)
-
-        vs_3d = np.array([[1.0, 1.0, 1.33], [-1, 0.0, -3.1]])
-        r_3 = utils.cosine_similarity(vs_3d[0], vs_3d[1])
-
-        self.assertEqual(round(r_3, 4), -0.8101)
-
-    def test_is_empty(self):
-        empty = [None, dict(), list(), np.array([]), np.nan, pd.NaT]
-        result = np.array([utils.is_empty(val) for val in empty])
-        self.assertTrue(np.all(result))
-
-        not_empty = [0, 1, -1, dict(x=1), [1], [0, 0], np.array([0])]
-        result = np.array([utils.is_empty(val) for val in not_empty])
-
-        self.assertTrue(np.all(np.invert(result)))
-
-    def test_IterableQueue(self):
-        q = Queue()
-        for i in range(10):
-            q.put(i)
-        expected = [i for i in range(10)]
-        obtained = [val for val in utils.IterableQueue(q)]
-        assert_array_equal(expected, obtained)
 
     def test_find_surrounded(self):
         look_in = [-1.5, -0.1, 0.0, 0.1, 1.1, 10]
@@ -418,7 +373,23 @@ class TestElisaEngineUtils(ElisaTestCase):
         array = np.array([0.951, 0.851])
         values = np.array([0.81, 0.85, 0.95])
 
-        expected = [2, 1]
+        expected = [1, 1, 0]
         obtained = utils.find_idx_of_nearest(array, values)
+        assert_array_equal(expected, obtained)
 
-        print(obtained)
+    def _test_plane_projection(self, expected, plane):
+        points = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])
+        obtained = utils.plane_projection(points, plane, keep_3d=False)
+        self.assertTrue(np.all(obtained == expected))
+
+    def test_plane_projection_xy(self):
+        expeceted = np.array([[1, 1], [0.3, 0.1], [-2, -3]])
+        self._test_plane_projection(expected=expeceted, plane="xy")
+
+    def test_plane_projection_yz(self):
+        expeceted = np.array([[1, 1], [0.1, -5], [-3, -4.1]])
+        self._test_plane_projection(expected=expeceted, plane="yz")
+
+    def test_plane_projection_zz(self):
+        expeceted = np.array([[1, 1], [0.3, -5], [-2, -4.1]])
+        self._test_plane_projection(expected=expeceted, plane="zx")

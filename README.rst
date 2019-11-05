@@ -22,12 +22,12 @@ surface features. Current capabilities include:
     - ``BinarySystem:`` class for modelling surfaces of detached, semi-detached and over-contact binaries
     - ``Observer:`` class for generating light curves (and in future other observables)
     - ``Spots:`` class for generating stellar spot with given longitude, latitude, radius and temperature factor
-    - ``Pulsations:`` class for modelling low amplitude pulsations based on spherical harmonics
 
 **ELISa** is currently under development. Following features are in progress:
 
     - ``SingleSystem:`` class for modelling surfaces of single star light curves with full implementation of spots and
       pulsations
+    - ``Pulsations:`` class for modelling low amplitude pulsations based on spherical harmonics
 
 We also plan to implement following features:
 
@@ -43,7 +43,7 @@ Requirements
     astropy==2.0.2
     cycler==0.10.0
     matplotlib==2.1.0
-    numpy==1.13.3
+    numpy==1.14.0
     pandas==0.23.0
     pyparsing==2.2.0
     pypex==0.1.0

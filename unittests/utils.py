@@ -1,17 +1,22 @@
+import json
 import logging
 import os.path as op
-import numpy as np
-import json
 import unittest
+import numpy as np
 
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from elisa import const
+from elisa import const, units
+from elisa import umpy as up
+from elisa.base.container import StarContainer
 from elisa.base.star import Star
+from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
-from elisa.utils import is_empty
 from elisa.conf import config
+from elisa.const import BINARY_POSITION_PLACEHOLDER
+from elisa.orbit import orbit
+from elisa.utils import is_empty
 
 ax3 = Axes3D
 
@@ -25,7 +30,7 @@ def plot_points(points_1, points_2, label):
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
 
-    var = np.concatenate([points_1, points_2]) if not is_empty(points_2) else points_1
+    var = up.concatenate([points_1, points_2]) if not is_empty(points_2) else points_1
 
     xx = np.array(list(zip(*var))[0])
     yy = np.array(list(zip(*var))[1])
@@ -89,7 +94,7 @@ def polar_gravity_acceleration(bs, component=None, components_distance=None):
         centrifugal_distance = np.array([x_com * semi_major_axis, 0.0, 0.0])
         actual_distance = np.array([components_distance * semi_major_axis, 0., 0.])
         h_vector = r_vector - actual_distance
-        angular_velocity = bs.angular_velocity(components_distance=components_distance)
+        angular_velocity = orbit.angular_velocity(bs.period, bs.eccentricity, components_distance)
 
         block_a = - ((const.G * primary_mass) / np.linalg.norm(r_vector) ** 3) * r_vector
         block_b = - ((const.G * secondary_mass) / np.linalg.norm(h_vector) ** 3) * h_vector
@@ -123,6 +128,16 @@ def prepare_binary_system(params, spots_primary=None, spots_secondary=None):
                         phase_shift=params["phase_shift"])
 
 
+def prepare_orbital_position_container(system):
+    orbital_position_container = OrbitalPositionContainer(
+        primary=StarContainer.from_properties_container(system.primary.to_properties_container()),
+        secondary=StarContainer.from_properties_container(system.secondary.to_properties_container()),
+        position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+        **system.properties_serializer()
+    )
+    return orbital_position_container
+
+
 def prepare_single_system(params, spots=None, pulsations=None):
     star = Star(mass=params['mass'], t_eff=params['t_eff'],
                 gravity_darkening=params['gravity_darkening'],
@@ -138,8 +153,22 @@ def normalize_lc_for_unittests(flux_arr):
     return np.array(flux_arr) / max(flux_arr)
 
 
+def normalize_lv_for_unittests(primary, secondary):
+    _max = np.max([primary, secondary])
+    primary /= _max
+    secondary /= _max
+    return primary, secondary
+
+
 def load_light_curve(filename):
     path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "curves", filename)
+    with open(path, "r") as f:
+        content = f.read()
+        return json.loads(content)
+
+
+def load_radial_curve(filename):
+    path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves", "curves", filename)
     with open(path, "r") as f:
         content = f.read()
         return json.loads(content)
@@ -150,3 +179,104 @@ class ElisaTestCase(unittest.TestCase):
         reset_config()
         logging.disable(logging.CRITICAL)
         # logging.disable(logging.NOTSET)
+
+
+BINARY_SYSTEM_PARAMS = {
+    "detached": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
+    },  # compact spherical components on circular orbit
+
+    "detached-physical": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 15.0, "secondary_surface_potential": 15.0,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 5.0,
+        "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
+    },  # compact spherical components on circular orbit
+
+    "detached.ecc": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
+        "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.3, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6
+    },  # close tidally deformed components with asynchronous rotation on eccentric orbit
+
+    "over-contact": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 2.7,
+        "secondary_surface_potential": 2.7,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": 90 * units.deg, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6
+    },  # over-contact system
+
+    "semi-detached": {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 2.875844632141054,
+        "secondary_surface_potential": 2.875844632141054,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 0.6, "secondary_albedo": 0.6
+    }
+}
+
+SPOTS_META = {
+    "primary":
+        [
+            {"longitude": 90,
+             "latitude": 58,
+             "angular_radius": 35,
+             "temperature_factor": 0.95},
+        ],
+
+    "secondary":
+        [
+            {"longitude": 60,
+             "latitude": 45,
+             "angular_radius": 28,
+             "temperature_factor": 0.9},
+        ]
+}
+
+SPOTS_OVERLAPPED = [
+    {"longitude": 90,
+     "latitude": 58,
+     "angular_radius": 15,
+     "temperature_factor": 0.95},
+    {"longitude": 90,
+     "latitude": 58,
+     "angular_radius": 25,
+     "temperature_factor": 0.95},
+]
+
+SPOT_TO_RAISE = [
+    {"longitude": 60,
+     "latitude": 45,
+     "angular_radius": 28,
+     "temperature_factor": 0.1},
+]

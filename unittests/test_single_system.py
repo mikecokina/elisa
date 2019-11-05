@@ -1,23 +1,17 @@
-import os.path as op
-import numpy as np
-
 from unittest import skip
-from copy import copy
 from astropy import units as u
 from mpl_toolkits.mplot3d import Axes3D
 from numpy.testing import assert_array_equal
 
-from elisa import const as c
 from elisa.base.star import Star
 from elisa.single_system.system import SingleSystem
-from elisa.conf import config
-from elisa.utils import is_empty, find_nearest_dist_3d
 from unittests.utils import ElisaTestCase
-from unittests.utils import plot_points, plot_faces, polar_gravity_acceleration, prepare_single_system
+from unittests.utils import prepare_single_system
 
 ax3 = Axes3D
 
 
+@skip("reimplement unittest after refactor")
 class TestSingleSystemSetters(ElisaTestCase):
     MANDATORY_KWARGS = ['gamma', 'inclination', 'rotation_period']
 

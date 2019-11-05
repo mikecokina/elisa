@@ -32,15 +32,16 @@ def build_surface_with_spots(self):
 
     :return:
     """
-    points, vertices_map = self.star.return_all_points(return_vertices_map=True)
+    points, vertices_map = self._return_all_points(self.star, return_vertices_map=True)
     faces = self.single_surface(points=points)
-    model, spot_candidates = self.star.initialize_model_container(vertices_map)
-    model = self.star.split_spots_and_component_faces(
-        points, faces, model, spot_candidates, vertices_map, component_com=0
+    model, spot_candidates = self._initialize_model_container(vertices_map)
+    model = self._split_spots_and_component_faces(
+        points, faces, model, spot_candidates, vertices_map, self.star,
+        component_com=0
     )
 
-    self.star.remove_overlaped_spots_by_vertex_map(vertices_map)
-    self.star.remap_surface_elements(model, points)
+    self._remove_overlaped_spots(vertices_map, self.star)
+    self._remap_surface_elements(model, self.star, points)
 
 
 def build_faces(self):
@@ -50,7 +51,10 @@ def build_faces(self):
     :return:
     """
     # build surface if there is no spot specified
-    build_surface_with_spots(self) if self.star.has_spots() else build_surface_with_no_spots(self)
+    if not self.star.spots:
+        build_surface_with_no_spots(self)
+    else:
+        build_surface_with_spots(self)
 
 
 def build_surface(self, return_surface=False):
@@ -134,22 +138,6 @@ def build_surface_map(self, colormap=None, return_map=False):
         return ret_list
     return
 
-
-def build_mesh(self, **kwargs):
-    """
-    build points of surface for including spots
-    """
-    _a, _b, _c, _d = self.mesh(symmetry_output=True, **kwargs)
-
-    self.star.points = _a
-    self.star.point_symmetry_vector = _b
-    self.star.base_symmetry_points_number = _c
-    self.star.inverse_point_symmetry_matrix = _d
-
-    self._evaluate_spots_mesh()
-    self.star.incorporate_spots_mesh(component_com=0)
-
-
 def build_surface_gravity(self):
     """
     function calculates gravity potential gradient magnitude (surface gravity) for each face
@@ -167,7 +155,7 @@ def build_surface_gravity(self):
     self._logger.debug('computing magnitude of polar potential gradient')
     self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
     gravity_scalling_factor = np.power(10, self.star.polar_log_g) / self.star.polar_potential_gradient_magnitude
-    self.star._log_g = np.log10(gravity_scalling_factor * self.star.potential_gradient_magnitudes)
+    self.star.log_g = np.log10(gravity_scalling_factor * self.star.potential_gradient_magnitudes)
 
     if self.star.spots:
         for spot_index, spot in self.star.spots.items():

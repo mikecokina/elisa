@@ -6,11 +6,15 @@ import pandas as pd
 from scipy import interpolate
 from astropy import units as u
 
-from elisa import logger
 from elisa.binary_system.system import BinarySystem
 from elisa.observer.plot import Plot
 from elisa.conf import config
 from elisa.utils import is_empty
+from elisa import (
+    logger,
+    units,
+    umpy as up
+)
 
 
 class PassbandContainer(object):
@@ -18,8 +22,8 @@ class PassbandContainer(object):
         """
         Setup PassbandContainier object. It carres dependedncies of throughputs on wavelengths for given passband.
 
-        :param table: pandads.DataFrame
-        :param passband: str
+        :param table: pandads.DataFrame;
+        :param passband: str;
         """
         self.left_bandwidth = np.nan
         self.right_bandwidth = np.nan
@@ -37,7 +41,7 @@ class PassbandContainer(object):
         """
         Return pandas dataframe which represent pasband table as dependecy of throughput on wavelength.
 
-        :return: pandas.DataFrame
+        :return: pandas.DataFrame;
         """
         return self._table
 
@@ -51,8 +55,7 @@ class PassbandContainer(object):
             lambda x: 1.0
 
 
-        :param df: pandas.DataFrame
-        :return:
+        :param df: pandas.DataFrame;
         """
         self._table = df
         self.akima = Observer.bolometric if (self.passband.lower() in ['bolometric']) else \
@@ -60,6 +63,17 @@ class PassbandContainer(object):
                                             df[config.PASSBAND_DATAFRAME_THROUGHPUT])
         self.left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
         self.right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
+
+
+class Observables(object):
+    def __init__(self, observer):
+        self.observer = observer
+
+    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+        return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize)
+
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize)
 
 
 class Observer(object):
@@ -77,8 +91,6 @@ class Observer(object):
         self._system = system
         self._system_cls = type(self._system)
 
-        # self._system._suppress_logger = True
-
         self.left_bandwidth = sys.float_info.max
         self.right_bandwidth = 0.0
         self.passband = dict()
@@ -90,36 +102,10 @@ class Observer(object):
         self.fluxes = None
         self.fluxes_unit = None
         self.radial_velocities = None
+        self.rv_unit = None
 
         self.plot = Plot(self)
-
-    @property
-    def observables(self):
-        """
-        Returns list of observables that will be calculated during Observer.observe()
-
-        :return: list; list of observables
-        """
-        return self._observables
-
-    @observables.setter
-    def observables(self, observables):
-        valid_observables = [
-            'lc',  # light/phase curve
-            'rv',  # radial velocity
-        ]
-        if isinstance(observables, str):
-            if observables not in valid_observables:
-                raise ValueError(f'Observables should be string or list containing: `{valid_observables}`')
-            else:
-                observables = [observables]
-        elif isinstance(observables, list):
-            for observable in observables:
-                if observable not in valid_observables:
-                    raise ValueError(f'Observables should be string or list containing only: `{valid_observables}`')
-
-        self._logger.info(f"Setting observables in Observer class to: {observables}.")
-        self._observables = observables
+        self.observe = Observables(self)
 
     @staticmethod
     def bolometric(x):
@@ -147,9 +133,7 @@ class Observer(object):
         If there is several passband defined on different intervals, e.g. ([350, 650], [450, 750]) then global limits
         are total boarder values, in example case as [350, 750].
 
-
-        :param passband: str or Iterable str
-        :return:
+        :param passband: Union[str; Iterable[str]]
         """
         passband = [passband] if isinstance(passband, str) else passband
         for band in passband:
@@ -174,9 +158,8 @@ class Observer(object):
         or lower (`left_bandwidth`).
 
 
-        :param left_bandwidth: float
-        :param right_bandwidth: float
-        :return:
+        :param left_bandwidth: float;
+        :param right_bandwidth: float;
         """
         if left_bandwidth < self.left_bandwidth:
             self.left_bandwidth = left_bandwidth
@@ -188,8 +171,8 @@ class Observer(object):
         """
         Read content o passband table (csv file) based on passband name.
 
-        :param passband: str
-        :return: pandas.DataFrame
+        :param passband: str;
+        :return: pandas.DataFrame;
         """
         if passband not in config.PASSBANDS:
             raise ValueError('Invalid or unsupported passband function')
@@ -198,39 +181,31 @@ class Observer(object):
         df[config.PASSBAND_DATAFRAME_WAVE] = df[config.PASSBAND_DATAFRAME_WAVE] * 10.0
         return df
 
-    def observe(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
+    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
         """
         Method for observation simulation. Based on input parmeters and supplied Ob server system on initialization
         will compute lightcurve.
 
-        :param normalize_lc: bool
-        :param from_phase: float
-        :param to_phase: float
-        :param phase_step: float
-        :param phases: Iterable float
-        :return: Dict
+        :param normalize: bool;
+        :param from_phase: float;
+        :param to_phase: float;
+        :param phase_step: float;
+        :param phases: Iterable float;
+        :return: Dict;
         """
 
         if not phases and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
-            phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
+            phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
 
         phases = np.array(phases)
 
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
 
-        self._logger.info("observation start w/ following configuration {<add>}")
-        # self._logger.warning("logger will be suppressed due multiprocessing incompatibility")
-        """
-        distance, azimut angle, true anomaly and phase
-                           np.array((r1, az1, ni1, phs1),
-                                    (r2, az2, ni2, phs2),
-                                    ...
-                                    (rN, azN, niN, phsN))
-        """
+        self._logger.info(f"observation is running")
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
 
@@ -265,30 +240,47 @@ class Observer(object):
             curves[items] += correction
 
         self.phases = phases
-        if normalize_lc:
+        if normalize:
             self.fluxes_unit = u.dimensionless_unscaled
         else:
             self.fluxes = curves
-            self.fluxes_unit = u.W / u.m**2
+            self.fluxes_unit = units.W / units.m**2
         self._logger.info("observation finished")
         return phases, curves
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+        """
+        Method for simulation of observation radial velocity curves.
 
-        # todo: put together with lc
+        :param normalize: bool;
+        :param from_phase: float;
+        :param to_phase: float;
+        :param phase_step: float;
+        :param phases: Iterable float;
+        :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
+        """
+
         if not phases and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
-            phases = np.arange(start=from_phase, stop=to_phase, step=phase_step)
+            phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
         phases = np.array(phases)
-
-        return self._system.compute_rv(
+        phases, primary_rv, secondary_rv = self._system.compute_rv(
             **dict(
                 phases=phases,
                 position_method=self._system.get_positions_method()
             )
         )
+
+        self.rv_unit = units.m / units.s
+        if normalize:
+            self.rv_unit = u.dimensionless_unscaled
+            _max = np.max([primary_rv, secondary_rv])
+            primary_rv /= _max
+            secondary_rv /= _max
+
+        return phases, primary_rv, secondary_rv
 
     def phase_interval_reduce(self, phases):
         """
@@ -311,14 +303,10 @@ class Observer(object):
             assynchronous_spotty_test = test1 | test2
 
             if has_pulsation_test | assynchronous_spotty_test:
-                return phases, np.arange(phases.shape[0])
+                return phases, up.arange(phases.shape[0])
             else:
                 base_interval = np.round(phases % 1, 9)
                 return np.unique(base_interval, return_inverse=True)
         else:
             # implement for single system
             pass
-
-
-if __name__ == "__main__":
-    pass

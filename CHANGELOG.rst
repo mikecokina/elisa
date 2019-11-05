@@ -19,6 +19,7 @@ v0.1.dev0_
     - surface spots
     - temperature pulsations effect
     - light curves modeling for circular synchronous/asynchronous orbits with spotty/no-spotty components
+    - radial velocity curves based on movement of center of mass
 
 * **binary system visualization**
 
@@ -30,7 +31,6 @@ v0.1.dev0_
 
 * **in progress/pending**
 
-    - rc curves
     - LC normalization
 
 
@@ -48,4 +48,4 @@ v0.2
 v0.3
 ----
 
-    - pulsation geometric effects
+    - pulsations

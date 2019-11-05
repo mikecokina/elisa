@@ -4,9 +4,12 @@ import pandas as pd
 
 from scipy import interpolate
 from elisa.conf import config
-from elisa import utils, const
-from elisa.utils import is_empty
-from elisa import logger
+from elisa import (
+    logger,
+    utils,
+    const,
+    umpy as up
+)
 
 config.set_up_logging()
 __logger__ = logger.getLogger("limb-darkening-module")
@@ -16,8 +19,8 @@ def get_metallicity_from_ld_table_filename(filename):
     """
     Get metallicity as number from filename typicaly used in van hame ld tables.
 
-    :param filename: str
-    :return: float
+    :param filename: str;
+    :return: float;
     """
     filename = os.path.basename(filename)
     m = str(filename).split(".")[-2]
@@ -33,7 +36,7 @@ def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
     :param law: str; limb darkening law (`linear`, `cosine`, `logarithmic`, `square_root`)
     :return: str
     """
-    law = law if not is_empty(law) else config.LIMB_DARKENING_LAW
+    law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
     return f"{config.LD_LAW_TO_FILE_PREFIX[law]}.{passband}.{utils.numeric_metallicity_to_string(metallicity)}.csv"
 
 
@@ -41,12 +44,12 @@ def get_van_hamme_ld_table(passband, metallicity, law=None):
     """
     Get content of van hamme table (read csv file).
 
-    :param passband: str
-    :param metallicity: str
+    :param passband: str;
+    :param metallicity: str;
     :param law: str; in not specified, default law specified in `elisa.conf.config` is used
-    :return: pandas.DataFrame
+    :return: pandas.DataFrame;
     """
-    law = law if not is_empty(law) else config.LIMB_DARKENING_LAW
+    law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
     filename = get_van_hamme_ld_table_filename(passband, metallicity, law=law)
     path = os.path.join(config.VAN_HAMME_LD_TABLES, filename)
     if not os.path.isfile(path):
@@ -58,8 +61,8 @@ def get_van_hamme_ld_table_by_name(fname):
     """
     Get content of van hamme table defined by filename (assume it is stored in configured directory).
 
-    :param fname: str
-    :return: pandas.DataFrame
+    :param fname: str;
+    :return: pandas.DataFrame;
     """
     __logger__.debug(f"accessing limb darkening file {fname}")
     path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
@@ -73,9 +76,9 @@ def get_relevant_ld_tables(passband, metallicity, law=None):
     Get filename of van hamme tables for surrounded metallicities and given passband.
 
     :param law: str; limb darkening law (`linear`, `cosine`, `logarithmic`, `square_root`)
-    :param passband: str
-    :param metallicity: str
-    :return: list
+    :param passband: str;
+    :param metallicity: str;
+    :return: List;
     """
     # todo: make better decision which values should be used
     surrounded = utils.find_surrounded(const.VAN_HAMME_METALLICITY_LIST_LD, metallicity)
@@ -87,12 +90,12 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
     """
     Get limb darkening coefficients based on van hamme tables for given temperatures, log_gs and metallicity.
 
-    :param passband: Dict
-    :param temperature: Iterable float
-    :param log_g: Iterable float; values expected in log_SI units
-    :param metallicity: float
+    :param passband: Dict;
+    :param temperature: Iterable[float];
+    :param log_g: Iterable[float]; values expected in log_SI units
+    :param metallicity: float;
     :param author: str; (not implemented)
-    :return: pandas.DataFrame
+    :return: pandas.DataFrame;
     """
     if isinstance(passband, dict):
         passband = passband.keys()
@@ -122,7 +125,7 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
         result_df = pd.DataFrame({"temperature": temperature, "log_g": log_g})
 
         for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
-            if np.any(np.isnan(vals)):
+            if np.any(up.isnan(vals)):
                 raise ValueError("Limb darkening interpolation lead to np.nan/None value.\n"
                                  "It might be caused by definition of unphysical object on input.")
             result_df[col] = vals
@@ -149,7 +152,7 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
 
     :param limb_darkening_law: str;  `linear` or `cosine`, `logarithmic`, `square_root`
     :param cos_theta: numpy.array; if supplied, function will skip calculation of its own cos theta and will disregard
-    `normal_vector` and `line_of_sight`
+                                   `normal_vector` and `line_of_sight`
     :return: numpy.array; gravity darkening factors, the same type/shape as cos_theta
     """
     if normal_vector is None and cos_theta is None:
@@ -179,23 +182,25 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
         cos_theta[negative_cos_theta_test] = 0.0
         cos_theta_for_log[negative_cos_theta_test] = 1.0
         retval = \
-            1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * np.log(cos_theta_for_log)
+            1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * cos_theta * up.log(cos_theta_for_log)
         retval[negative_cos_theta_test] = 0.0
     elif limb_darkening_law == 'square_root':
         cos_theta[negative_cos_theta_test] = 0.0
-        retval = 1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - np.sqrt(cos_theta))
+        retval = 1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - up.sqrt(cos_theta))
         retval[negative_cos_theta_test] = 0.0
+    else:
+        raise ValueError("Invalid limb darkening")
     return retval[:, 0] if retval.shape[1] == 1 else retval
 
 
-def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, coefficients=None):
+def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coefficients=None):
     """
     Calculates limb darkening factor D(int) used when calculating flux from given intensity on surface.
     D(int) = integral over hemisphere (D(theta)cos(theta)
 
     :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
-    :param coefficients: numpy.array
-    :return: np.array - bolometric_limb_darkening_factor (scalar for the whole star)
+    :param coefficients: numpy.array;
+    :return: np.array; - bolometric_limb_darkening_factor (scalar for the whole star)
     """
     if coefficients is None:
         raise ValueError('Limb darkening coefficients were not supplied.')
@@ -204,8 +209,14 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law: str = None, c
                          '`linear` or `cosine`, `logarithmic`, `square_root`.')
 
     if limb_darkening_law in ['linear', 'cosine']:
-        return np.pi * (1 - coefficients[0, :] / 3)
+        return const.PI * (1 - coefficients[0, :] / 3)
     elif limb_darkening_law == 'logarithmic':
-        return np.pi * (1 - coefficients[0, :] / 3 + 2 * coefficients[1, :] / 9)
+        return const.PI * (1 - coefficients[0, :] / 3 + 2 * coefficients[1, :] / 9)
     elif limb_darkening_law == 'square_root':
-        return np.pi * (1 - coefficients[0, :] / 3 - coefficients[1, :] / 5)
+        return const.PI * (1 - coefficients[0, :] / 3 - coefficients[1, :] / 5)
+
+
+def get_bolometric_ld_coefficients(temperature, log_g, metallicity):
+    columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+    coeffs = interpolate_on_ld_grid(temperature, log_g, metallicity, passband=["bolometric"])["bolometric"][columns]
+    return np.array(coeffs).T

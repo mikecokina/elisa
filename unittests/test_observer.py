@@ -1,17 +1,18 @@
 import random
 import sys
 import os
+import numpy as np
+import pandas as pd
 
 from os.path import dirname
 from os.path import join as pjoin
 
-import numpy as np
-import pandas as pd
 from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
+from elisa import umpy as up
 from elisa.observer.observer import PassbandContainer, Observer
 from unittests.utils import ElisaTestCase
 
@@ -157,7 +158,7 @@ class TestObserver(ElisaTestCase):
         obtained_ph, obtained_ri = o.phase_interval_reduce(phases)
 
         expected_ph = phases
-        expected_ri = np.arange(0, 14, 1)
+        expected_ri = up.arange(0, 14, 1)
 
         assert_array_equal(np.round(expected_ph, 2), np.round(obtained_ph, 2))
         assert_array_equal(expected_ri, obtained_ri)
@@ -177,7 +178,8 @@ class BinarySystemMock(object):
         def has_pulsations(self):
             return self.p
 
-        def has_spots(self):
+        @staticmethod
+        def has_spots():
             return False
 
         @property

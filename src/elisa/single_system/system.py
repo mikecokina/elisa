@@ -5,14 +5,19 @@ from scipy.spatial.qhull import Delaunay
 
 from elisa import logger, utils, const as c, units as eunits
 from elisa.base.system import System
-from elisa.single_system import build, lc
+from elisa.single_system import build
 from elisa.single_system import static
-from elisa.single_system.plot import Plot
-from elisa.single_system.animation import Animation
+from elisa.opt.fsolver import fsolver
+from elisa.single_system.transform import SingleSystemProperties
+from elisa.single_system import graphic
 from elisa.base import error
 
 
 class SingleSystem(System):
+    """
+    Compute and initialise minmal necessary attributes to be used in light curves computation.
+    """
+
     MANDATORY_KWARGS = ['gamma', 'inclination', 'rotation_period']
     OPTIONAL_KWARGS = ['reference_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
@@ -24,43 +29,35 @@ class SingleSystem(System):
     def __init__(self, star, name=None, suppress_logger=False, **kwargs):
         utils.invalid_kwarg_checker(kwargs, SingleSystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(SingleSystem.MANDATORY_KWARGS, kwargs, instance_of=SingleSystem)
-        self.stars = dict(star=star)
-        self._object_params_validity_check(self.stars, self.STAR_MANDATORY_KWARGS)
+        self.object_params_validity_check(dict(star=star), self.STAR_MANDATORY_KWARGS)
+        kwargs = self.transform_input(**kwargs)
 
         super(SingleSystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
 
         self._logger.info(f"initialising object {self.__class__.__name__}")
         self._logger.debug(f"setting properties of a star in class instance {self.__class__.__name__}")
 
-        self.plot = Plot(self)
-        self.animation = Animation(self)
+        self.plot = graphic.plot.Plot(self)
+        self.animation = graphic.animation.Animation(self)
 
         self.star = star
+        self._components = dict(star=self.star)
 
         # default values of properties
-        self._rotation_period = None
-        self._reference_time = 0
-        self._angular_velocity = None
-        self._period = self.rotation_period
+        self.rotation_period = None
+        self.reference_time = 0
+        self.angular_velocity = None
+        self.period = self.rotation_period
 
         # set attributes and test whether all parameters were initialized
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
         self.init_properties(**kwargs)
 
         # calculation of dependent parameters
-        self._angular_velocity = static.angular_velocity(self.rotation_period)
+        self.angular_velocity = static.angular_velocity(self.rotation_period)
 
         # this is also check if star surface is closed
         self.init_radii()
-
-    def init(self):
-        """
-        function to reinitialize SingleSystem class instance after changing parameter(s) of binary system using setters
-
-        :return:
-        """
-        self._logger.info(f're/initialising class instance {SingleSystem.__name__}')
-        self.__init__(star=self.star, **self.kwargs_serializer())
 
     def init_radii(self):
         """
@@ -68,66 +65,13 @@ class SingleSystem(System):
         :return:
         """
         self._logger.debug('calculating polar radius')
-        self.star._polar_radius = self.calculate_polar_radius()
+        self.star.polar_radius = self.calculate_polar_radius()
         self._logger.debug('calculating surface potential')
         args = 0,
         p_args = self.pre_calculate_for_potential_value(*args)
         self.star._surface_potential = static.potential(self.star.polar_radius, *p_args)
         self._logger.debug('calculating equatorial radius')
-        self.star._equatorial_radius = self.calculate_equatorial_radius()
-
-    @property
-    def rotation_period(self):
-        """
-        returns rotation period of single system star in default period unit
-        :return: float
-        """
-        return self._rotation_period
-
-    @rotation_period.setter
-    def rotation_period(self, rotation_period):
-        """
-        setter for rotational period of star in single star system, if unit is not specified, default period unit is
-        assumed
-        :param rotation_period:
-        :return:
-        """
-        if isinstance(rotation_period, u.quantity.Quantity):
-            self._rotation_period = np.float64(rotation_period.to(eunits.PERIOD_UNIT))
-        elif isinstance(rotation_period, (int, np.int, float, np.float)):
-            self._rotation_period = np.float64(rotation_period)
-        else:
-            raise TypeError('input of variable `rotation_period` is not (np.)int or (np.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        if self._rotation_period <= 0:
-            raise ValueError(f'period of rotation must be non-zero positive value. Your value: {rotation_period}')
-
-    @property
-    def reference_time(self):
-        """
-        Returns reference time in default period unit. Time corresponding for rotation phase 0.
-
-        :return: float
-        """
-        return self._reference_time
-
-    @reference_time.setter
-    def reference_time(self, reference_time):
-        """
-        Setter for reference time.
-
-        :param reference_time: (numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity
-        :return:
-        """
-        if isinstance(reference_time, u.quantity.Quantity):
-            self._reference_time = np.float64(reference_time.to(eunits.PERIOD_UNIT))
-        elif isinstance(reference_time, (int, np.int, float, np.float)):
-            self._reference_time = np.float64(reference_time)
-        else:
-            raise TypeError('Input of variable `reference_time` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        self._logger.debug(f"setting property `reference_time` of class instance "
-                           f"{self.__class__.__name__} to {self._reference_time}")
+        self.star.equatorial_radius = self.calculate_equatorial_radius()
 
     def _evaluate_spots(self):
         """
@@ -165,7 +109,7 @@ class SingleSystem(System):
 
             args, use = (radial_vector[2],), False
 
-            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+            solution, use = fsolver(self.potential_fn, solver_condition, *args)
 
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
@@ -182,7 +126,7 @@ class SingleSystem(System):
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st ring of spot
             args, use = (lat + alpha,), False
-            solution, use = self._solver(self.potential_fn, solver_condition, *args)
+            solution, use = fsolver(self.potential_fn, solver_condition, *args)
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
@@ -217,7 +161,7 @@ class SingleSystem(System):
                         spherical_delta_vector = utils.cartesian_to_spherical(delta_vector)
 
                         args = (spherical_delta_vector[2],)
-                        solution, use = self._solver(self.potential_fn, solver_condition, *args)
+                        solution, use = fsolver(self.potential_fn, solver_condition, *args)
 
                         if not use:
                             self.star.remove_spot(spot_index=spot_index)
@@ -237,7 +181,7 @@ class SingleSystem(System):
 
             boundary_com = np.sum(np.array(boundary_points), axis=0) / len(boundary_points)
             boundary_com = utils.cartesian_to_spherical(boundary_com)
-            solution, _ = self._solver(self.potential_fn, solver_condition, *(boundary_com[2],))
+            solution, _ = fsolver(self.potential_fn, solver_condition, *(boundary_com[2],))
             boundary_center = utils.spherical_to_cartesian([solution, boundary_com[1], boundary_com[2]])
 
             # first point will be always barycenter of boundary
@@ -260,18 +204,6 @@ class SingleSystem(System):
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
 
-    def kwargs_serializer(self):
-        """
-        creating dictionary of keyword arguments of SingleSystem class in order to be able to reinitialize the class
-        instance in init()
-
-        :return: dict
-        """
-        serialized_kwargs = {}
-        for kwarg in self.ALL_KWARGS:
-            serialized_kwargs[kwarg] = getattr(self, kwarg)
-        return serialized_kwargs
-
     def calculate_polar_radius(self):
         """
         returns polar radius of the star in default units
@@ -287,7 +219,7 @@ class SingleSystem(System):
 
         :return: float
         """
-        args, use = (c.HALF_PI, ), False
+        args, use = (c.HALF_PI,), False
         p_args = (self.pre_calculate_for_potential_value(*args), self.star.surface_potential)
         scipy_solver_init_value = np.array([1 / 1000.0])
         solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
@@ -302,6 +234,14 @@ class SingleSystem(System):
             raise ValueError('Surface of the star is not closed. Check values of polar gravity an rotation period.')
 
         return solution
+
+    def transform_input(self, **kwargs):
+        """
+        Transform and validate input kwargs.
+        :param kwargs: Dict
+        :return: Dict
+        """
+        return SingleSystemProperties.transform_input(**kwargs)
 
     def calculate_face_magnitude_gradient(self, points=None, faces=None):
         """
@@ -320,9 +260,9 @@ class SingleSystem(System):
 
         r3 = np.power(np.linalg.norm(point, axis=1), 3)
         domega_dx = c.G * self.star.mass * point[:, 0] / r3 \
-                    - np.power(self._angular_velocity, 2) * point[:, 0]
+                    - np.power(self.angular_velocity, 2) * point[:, 0]
         domega_dy = c.G * self.star.mass * point[:, 1] / r3 \
-                    - np.power(self._angular_velocity, 2) * point[:, 1]
+                    - np.power(self.angular_velocity, 2) * point[:, 1]
         domega_dz = c.G * self.star.mass * point[:, 2] / r3
         points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
 
@@ -340,68 +280,13 @@ class SingleSystem(System):
         domega_dz = c.G * self.star.mass * points_z / r3
         return domega_dz
 
-    def pre_calculate_for_potential_value(self, *args, return_as_tuple=False):
-        """
-        Function calculates auxiliary values for calculation of primary component potential,
-        and therefore they don't need to be wastefully recalculated every iteration in solver.
-
-        :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
-        :type return_as_tuple: bool
-        :param args: tuple; (latitude angle (0, pi))
-        :return: tuple: (a, b) such that: Psi = -a/r - b*r**2
-        """
-        theta, = args
-
-        a = c.G * self.star.mass
-        b = 0.5 * np.power(self._angular_velocity * np.sin(theta), 2)
-
-        if np.isscalar(theta):
-            return a, b
-        else:
-            aa = a * np.ones(np.shape(theta))
-            return (aa, b) if return_as_tuple else np.column_stack((aa, b))
-
-    def potential_fn(self, radius, *args):
-        """
-        implicit potential function
-
-        :param radius: (np.)float; spherical variable
-        :param args: ((np.)float, (np.)float, (np.)float); (component distance, azimutal angle, polar angle)
-        :return:
-        """
-        target_potential = args[1]
-        return static.potential(radius, *args[0]) - target_potential
-
-    def calculate_equipotential_boundary(self):
-        """
-        calculates a equipotential boundary of star in zx(yz) plane
-
-        :return: tuple (np.array, np.array)
-        """
-        points = []
-        angles = np.linspace(0, c.FULL_ARC, 300, endpoint=True)
-        for angle in angles:
-            args, use = angle, False
-            scipy_solver_init_value = np.array([1 / 1000.0])
-            solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
-                                                        full_output=True, args=args)
-            if ier == 1 and not np.isnan(solution[0]):
-                solution = solution[0]
-                if 30 >= solution >= 0:
-                    use = True
-            else:
-                continue
-
-            points.append([solution * np.sin(angle), solution * np.cos(angle)])
-        return np.array(points)
-
     def critical_break_up_radius(self):
         """
         returns critical, break-up equatorial radius for given mass and rotational period
 
         :return: float
         """
-        return np.power(c.G * self.star.mass / np.power(self._angular_velocity, 2), 1.0 / 3.0)
+        return np.power(c.G * self.star.mass / np.power(self.angular_velocity, 2), 1.0 / 3.0)
 
     def critical_break_up_velocity(self):
         """
@@ -409,169 +294,7 @@ class SingleSystem(System):
 
         :return: float
         """
-        return np.power(c.G * self.star.mass * self._angular_velocity, 1.0 / 3.0)
-
-    def mesh(self, symmetry_output=False, **kwargs):
-        """
-        function for creating surface mesh of single star system
-
-        :return:
-
-        ::
-
-                numpy.array([[x1 y1 z1],
-                              [x2 y2 z2],
-                                ...
-                              [xN yN zN]]) - array of surface points if symmetry_output = False, else:
-                 numpy.array([[x1 y1 z1],
-                              [x2 y2 z2],
-                                ...
-                              [xN yN zN]]) - array of surface points,
-                 numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
-                                                                eighth of surface,
-                 numpy.float - number of points included in symmetrical one eighth of surface,
-                 numpy.array([octants[indexes_of_remapped_points_in_octants]) - matrix of eight sub matrices that mapped
-                                                                                basic symmetry quadrant to all others
-                                                                                octants
-
-        """
-        if self.star.discretization_factor > c.HALF_PI:
-            raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
-
-        alpha = self.star.discretization_factor
-
-        potential_fn = self.potential_fn
-        precalc_fn = self.pre_calculate_for_potential_value
-        potential_derivative_fn = static.radial_potential_derivative
-
-        N = int(c.HALF_PI // alpha)
-        characterictic_angle = c.HALF_PI / N
-        characterictic_distance = self.star.equatorial_radius * characterictic_angle
-
-        # calculating equatorial part
-        x_eq, y_eq, z_eq = self.calculate_equator_points(N)
-
-        # axial symmetry, therefore calculating latitudes
-        thetas = static.pre_calc_latitudes(characterictic_angle)
-
-        x0 = 0.5 * (self.star.equatorial_radius + self.star.polar_radius)
-        args = thetas, x0, precalc_fn, potential_fn, potential_derivative_fn, self.star.surface_potential
-        radius = static.get_surface_points_radii(*args)
-
-        # converting this eighth of surface to cartesian coordinates
-        x_q, y_q, z_q = static.calculate_points_on_quarter_surface(radius, thetas, characterictic_distance)
-        x_mer, y_mer, z_mer = static.calculate_points_on_meridian(radius, thetas)
-
-        # stitching together equator and 8 sectors of stellar surface
-        # in order: north hemisphere: north pole, x_meridian, xy_equator, xy_quarter, y_meridian, y-x_equator,
-        #                             y-x_quarter, -x_meridian, -x-y_equator, -x-y_quarter, -y_meridian, -yx_equator,
-        #                             -yx_quarter
-        #           south hemisphere: south_pole, x_meridian, xy_quarter, y_meridian, y-x_quarter, -x_meridian,
-        #                             -x-y_quarter, -y_meridian, -yx_quarter
-
-        x = np.concatenate((np.array([0]), x_mer, x_eq, x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq, -x_q, y_mer, y_eq,
-                            y_q, np.array([0]), x_mer, x_q, -y_mer, -y_q, -x_mer, -x_q, y_mer, y_q))
-        y = np.concatenate((np.array([0]), y_mer, y_eq, y_q, x_mer, x_eq, x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq,
-                            -x_q, np.array([0]), y_mer, y_q, x_mer, x_q, -y_mer, -y_q, -x_mer, -x_q))
-        z = np.concatenate((np.array([self.star.polar_radius]), z_mer, z_eq, z_q, z_mer, z_eq, z_q, z_mer, z_eq,
-                            z_q, z_mer, z_eq, z_q, np.array([-self.star.polar_radius]), -z_mer, -z_q, -z_mer, -z_q,
-                            -z_mer, -z_q, -z_mer, -z_q))
-
-        if symmetry_output:
-            quarter_equator_length = len(x_eq)
-            meridian_length = len(x_mer)
-            quarter_length = len(x_q)
-            base_symmetry_points_number = 1 + meridian_length + quarter_equator_length + quarter_length + \
-                                          meridian_length
-            symmetry_vector = np.concatenate((np.arange(base_symmetry_points_number),  # 1st quadrant
-                                              # stray point on equator
-                                              [base_symmetry_points_number],
-                                              # 2nd quadrant
-                                              np.arange(2 + meridian_length, base_symmetry_points_number),
-                                              # 3rd quadrant
-                                              np.arange(1 + meridian_length, base_symmetry_points_number),
-                                              # 4rd quadrant
-                                              np.arange(1 + meridian_length, base_symmetry_points_number -
-                                                        meridian_length),
-                                              # south hemisphere
-                                              np.arange(1 + meridian_length),
-                                              np.arange(1 + meridian_length + quarter_equator_length,
-                                                        base_symmetry_points_number),  # 1st quadrant
-                                              np.arange(1 + meridian_length + quarter_equator_length,
-                                                        base_symmetry_points_number),  # 2nd quadrant
-                                              np.arange(1 + meridian_length + quarter_equator_length,
-                                                        base_symmetry_points_number),  # 3nd quadrant
-                                              np.arange(1 + meridian_length + quarter_equator_length,
-                                                        base_symmetry_points_number - meridian_length)))
-
-            south_pole_index = 4 * (base_symmetry_points_number - meridian_length) - 3
-            reduced_bspn = base_symmetry_points_number - meridian_length  # auxiliary variable1
-            reduced_bspn2 = base_symmetry_points_number - quarter_equator_length
-            inverse_symmetry_matrix = \
-                np.array([
-                    np.arange(base_symmetry_points_number + 1),  # 1st quadrant (north hem)
-                    # 2nd quadrant (north hem)
-                    np.concatenate(([0], np.arange(reduced_bspn, 2 * base_symmetry_points_number - meridian_length))),
-                    # 3rd quadrant (north hem)
-                    np.concatenate(([0], np.arange(2 * reduced_bspn - 1, 3 * reduced_bspn + meridian_length - 1))),
-                    # 4th quadrant (north hem)
-                    np.concatenate(([0], np.arange(3 * reduced_bspn - 2, 4 * reduced_bspn - 3),
-                                    np.arange(1, meridian_length + 2))),
-                    # 1st quadrant (south hemisphere)
-                    np.concatenate((np.arange(south_pole_index, meridian_length + 1 + south_pole_index),
-                                    np.arange(1 + meridian_length, 1 + meridian_length + quarter_equator_length),
-                                    np.arange(meridian_length + 1 + south_pole_index,
-                                              base_symmetry_points_number - quarter_equator_length + south_pole_index),
-                                    [base_symmetry_points_number])),
-                    # 2nd quadrant (south hem)
-                    np.concatenate(([south_pole_index],
-                                    np.arange(reduced_bspn2 - meridian_length + south_pole_index,
-                                              reduced_bspn2 + south_pole_index),
-                                    np.arange(base_symmetry_points_number,
-                                              base_symmetry_points_number + quarter_equator_length),
-                                    np.arange(reduced_bspn2 + south_pole_index,
-                                              2 * reduced_bspn2 - meridian_length - 1 +
-                                              south_pole_index),
-                                    [2 * base_symmetry_points_number - meridian_length - 1])),
-                    # 3rd quadrant (south hem)
-                    np.concatenate(([south_pole_index],
-                                    np.arange(2 * reduced_bspn2 - 2 * meridian_length - 1 + south_pole_index,
-                                              2 * reduced_bspn2 - meridian_length - 1 + south_pole_index),
-                                    np.arange(2 * base_symmetry_points_number - meridian_length - 1,
-                                              2 * base_symmetry_points_number - meridian_length + quarter_equator_length
-                                              - 1),
-                                    np.arange(2 * reduced_bspn2 - meridian_length - 1 + south_pole_index,
-                                              3 * reduced_bspn2 - 2 * meridian_length - 2 + south_pole_index),
-                                    [3 * reduced_bspn + meridian_length - 2])),
-                    # 4th quadrant (south hem)
-                    np.concatenate(([south_pole_index],
-                                    np.arange(3 * reduced_bspn2 - 3 * meridian_length - 2 + south_pole_index,
-                                              3 * reduced_bspn2 - 2 * meridian_length - 2 + south_pole_index),
-                                    np.arange(3 * reduced_bspn + meridian_length - 2,
-                                              3 * reduced_bspn + meridian_length - 2 +
-                                              quarter_equator_length),
-                                    np.arange(3 * reduced_bspn2 - 2 * meridian_length - 2 + south_pole_index, len(x)),
-                                    np.arange(1 + south_pole_index, meridian_length + south_pole_index + 1),
-                                    [1 + meridian_length]
-                                    ))
-                ])
-
-            return np.column_stack((x, y, z)), symmetry_vector, base_symmetry_points_number + 1, inverse_symmetry_matrix
-        else:
-            return np.column_stack((x, y, z))
-
-    def calculate_equator_points(self, n):
-        """
-        function calculates points on equator of rotating single star
-        :param n: int; number of points on one quarter of equator
-        :return: tuple; x, y, z cartesian coordinates of equator points
-        """
-        r_eq = self.star.equatorial_radius * np.ones(n)
-        phi_eq = np.linspace(0, c.HALF_PI, num=n, endpoint=False)
-        theta_eq = c.HALF_PI * np.ones(n)
-        # converting quarter of equator to cartesian
-        equator = utils.spherical_to_cartesian(np.column_stack((r_eq, phi_eq, theta_eq)))
-        return equator[:, 0], equator[:, 1], equator[:, 2]
+        return np.power(c.G * self.star.mass * self.angular_velocity, 1.0 / 3.0)
 
     def single_surface(self, points=None):
         """
@@ -602,7 +325,7 @@ class SingleSystem(System):
         triangles_indices = triangulation.convex_hull
         return triangles_indices
 
-    def _evaluate_spots_mesh(self):
+    def mesh_spots(self):
         """
         compute points of each spots and assigns values to spot container instance
 
@@ -626,7 +349,7 @@ class SingleSystem(System):
         for spot_index, spot_instance in list(self.star.spots.items()):
             # lon -> phi, lat -> theta
             lon, lat = spot_instance.longitude, spot_instance.latitude
-            self.star.setup_spot_instance_discretization_factor(spot_instance, spot_index)
+            self.star.setup_spot_instance_discretization_factor(spot_instance, spot_index, self.star)
 
             alpha, spot_radius = spot_instance.discretization_factor, spot_instance.angular_radius
 
@@ -637,10 +360,9 @@ class SingleSystem(System):
             radial_vector = np.array([1.0, lon, lat])  # unit radial vector to the center of current spot
             center_vector = utils.spherical_to_cartesian([1.0, lon, lat])
 
-            args = (radial_vector[2],)
-            p_args = (self.pre_calculate_for_potential_value(args, return_as_tuple=True), self.star.surface_potential)
+            args, use = (radial_vector[2],), False
 
-            solution, use = self._solver(self.potential_fn, solver_condition, *p_args)
+            solution, use = fsolver(self.potential_fn, solver_condition, *args)
 
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
@@ -657,9 +379,7 @@ class SingleSystem(System):
             # compute euclidean distance of two points on spot (x0)
             # we have to obtain distance between center and 1st point in 1st ring of spot
             args, use = (lat + alpha,), False
-            p_args = (self.pre_calculate_for_potential_value(args, return_as_tuple=True), self.star.surface_potential)
-
-            solution, use = self._solver(self.potential_fn, solver_condition, *p_args)
+            solution, use = fsolver(self.potential_fn, solver_condition, *args)
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
@@ -735,6 +455,12 @@ class SingleSystem(System):
                     spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                  temperatures=spot.temperatures)
 
+    def compute_lightcurve(self, **kwargs):
+        # calculating line of sights vector from time vector
+        # defining
+        positions = kwargs['positions'][2]
+        # print(line_of_sight)
+
     def get_info(self):
         pass
 
@@ -767,12 +493,6 @@ class SingleSystem(System):
         """
         return build.build_surface_map(self, colormap=colormap, return_map=return_map)
 
-    def build_mesh(self, **kwargs):
-        """
-        build points of surface for including spots
-        """
-        build.build_mesh(self, **kwargs)
-
     def get_positions_method(self):
         return self.calculate_lines_of_sight
 
@@ -792,10 +512,45 @@ class SingleSystem(System):
         line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
         return np.hstack((idx[:, np.newaxis], line_of_sight))
 
+    def build(self, *args, **kwargs):
+        pass
+
+    # _________________________AFTER_REFACTOR___________________________________
+
+    def init(self):
+        """
+        function to reinitialize SingleSystem class instance after changing parameter(s) of binary system using setters
+
+        :return:
+        """
+        self._logger.info(f're/initialising class instance {SingleSystem.__name__}')
+        self.__init__(star=self.star, **self.kwargs_serializer())
+
+    @property
+    def components(self):
+        """
+        Return components object in Dict.
+
+        :return: Dict[str, elisa.base.Star]
+        """
+        return self._components
+
+    def kwargs_serializer(self):
+        """
+        creating dictionary of keyword arguments of SingleSystem class in order to be able to reinitialize the class
+        instance in init()
+
+        :return: dict
+        """
+        serialized_kwargs = {}
+        for kwarg in self.ALL_KWARGS:
+            serialized_kwargs[kwarg] = getattr(self, kwarg)
+        return serialized_kwargs
+
     def compute_lightcurve(self, **kwargs):
         """
         This function decides which light curve generator function is used.
-        Depending on the basic properties of the single system.
+        Depending on the basic properties of the binary system.
 
         :param kwargs: Dict; arguments to be passed into light curve generator functions
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
@@ -806,36 +561,34 @@ class SingleSystem(System):
             * ** position_method ** * - method
         :return: Dict
         """
-        self._logger.info('Applying light curve generator function for single system.')
-        return self._compute_general_lightcurve(**kwargs)
+        pass
 
-    def _compute_general_lightcurve(self, **kwargs):
-        return lc.compute_general_lightcurve(self, **kwargs)
-
-    def build(self, do_pulsations=False, phase=False, **kwargs):
+    def calculate_equipotential_boundary(self):
         """
-        Main method to build single star system from parameters given on init of SingleStar.
+        calculates a equipotential boundary of star in zx(yz) plane
 
-        called following methods::
-
-            - build_mesh
-            - build_faces
-            - build_surface_areas
-            - build_faces_orientation
-            - build_surface_gravity
-            - build_temperature_distribution
-
-        :param phase: float; phase to build system on
-        :param do_pulsations: bool; switch to incorporate pulsations
-        :return:
+        :return: tuple (np.array, np.array)
         """
-        self.build_mesh(**kwargs)
-        self.build_from_points(do_pulsations, phase)
+        points = []
+        angles = np.linspace(0, c.FULL_ARC, 300, endpoint=True)
+        for angle in angles:
+            args, use = angle, False
+            scipy_solver_init_value = np.array([1 / 1000.0])
+            solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
+                                                        full_output=True, args=args)
+            if ier == 1 and not np.isnan(solution[0]):
+                solution = solution[0]
+                if 30 >= solution >= 0:
+                    use = True
+            else:
+                continue
 
-    def build_from_points(self, do_pulsations=False, phase=False):
-        # TODO: not properly implemented
-        self.build_faces()
-        self.build_surface_areas()
-        self.build_faces_orientation()
-        self.build_surface_gravity()
-        self.build_temperature_distribution(do_pulsations=do_pulsations, phase=phase)
+            points.append([solution * np.sin(angle), solution * np.cos(angle)])
+        return np.array(points)
+
+    def properties_serializer(self):
+        props = SingleSystemProperties.transform_input(**self.kwargs_serializer())
+        props.update({
+            "angular_velocity": self.angular_velocity,
+        })
+        return props

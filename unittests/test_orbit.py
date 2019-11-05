@@ -1,13 +1,13 @@
 import numpy as np
+import elisa.const as c
+
 from astropy import units as u
 from numpy.testing import assert_array_equal
-
-import elisa.const as c
-from elisa.orbit import Orbit
+from elisa.orbit import orbit
 from unittests.utils import ElisaTestCase
 
 
-class TestOrbit(ElisaTestCase):
+class OrbitTestCase(ElisaTestCase):
 
     def setUp(self):
         self.params_combination = np.array(
@@ -38,7 +38,7 @@ class TestOrbit(ElisaTestCase):
         expected_distances = [1.0, 0.2, 0.2, 0.2, 0.7, 0.4, 0.8]
         obtained_distances = []
         for i, combo in enumerate(self.params_combination):
-            o = Orbit(**combo)
+            o = orbit.Orbit(**combo)
             obtained_distances.append(round(o.periastron_distance, 10))
         self.assertEqual(expected_distances, obtained_distances)
 
@@ -47,7 +47,7 @@ class TestOrbit(ElisaTestCase):
         expected_hardcoded = [1., .2, 0.2, 0.2, 0.7, 0.4, 0.8]
 
         for i, combo in enumerate(self.params_combination):
-            o = Orbit(**combo)
+            o = orbit.Orbit(**combo)
 
             expected_distances.append(round(o.periastron_distance, 6))
             obtained_distances.append(round(o.orbital_motion(phase=o.periastron_phase)[0][0], 6))
@@ -67,7 +67,7 @@ class TestOrbit(ElisaTestCase):
                     [0.261799, 1.047198]]
         obtained = []
         for i, combo in enumerate(self.params_combination):
-            o = Orbit(**combo)
+            o = orbit.Orbit(**combo)
             obtained.append(np.round(o.true_anomaly_to_azimuth(true_anomalies), 6))
         assert_array_equal(obtained, expected)
 
@@ -83,7 +83,7 @@ class TestOrbit(ElisaTestCase):
         obtained = []
 
         for i, combo in enumerate(self.params_combination):
-            o = Orbit(**combo)
+            o = orbit.Orbit(**combo)
             obtained.append(np.round(o.relative_radius(true_anomalies), 6))
         assert_array_equal(expected, obtained)
 
@@ -123,7 +123,7 @@ class TestOrbit(ElisaTestCase):
         obtained = list()
 
         for i, combo in enumerate(self.params_combination[np.array([0, 1, -1])]):
-            o = Orbit(**combo)
+            o = orbit.Orbit(**combo)
             con = o.get_conjuction()
             obtained.append({
                 eclipse: {q: round(con[eclipse][q], 4) for q in ['true_anomaly', 'true_phase']}
@@ -155,48 +155,22 @@ class TestOrbit(ElisaTestCase):
                                        [0.9128, 1.5708, 1.309, 1.],
                                        [1.0384, 2.2197, 1.9579, 1.1]])])
         for i, combo in enumerate(self.params_combination[np.array([0, 1, -1])]):
-            o = Orbit(**combo)
+            o = orbit.Orbit(**combo)
             obtained.append(np.round(o.orbital_motion(phases), 4))
         assert_array_equal(expected, obtained)
 
-    def test_period_setter(self):
-        o = Orbit(**self.params_combination[0])
-        periods = [0.25 * u.d, 0.65, 86400 * u.s]
-        expected = [0.25, 0.65, 1.0]
-        obtained = list()
-
-        for period in periods:
-            o.period = period
-            obtained.append(round(o.period, 2))
-        assert_array_equal(obtained, expected)
-
-    def test_inclination_setter(self):
-        o = Orbit(**self.params_combination[0])
-        inclinations = [135 * u.deg, 0.65, 1.56 * u.rad]
-        expected = [2.356, 0.65, 1.56]
-        obtained = list()
-
-        for inclination in inclinations:
-            o.inclination = inclination
-            obtained.append(round(o.inclination, 3))
-        assert_array_equal(obtained, expected)
-
-    def test_argument_of_periastron_setter(self):
-        o = Orbit(**self.params_combination[0])
-        periastrons = [135 * u.deg, 0.65, 1.56 * u.rad]
-        expected = [2.356, 0.65, 1.56]
-        obtained = list()
-
-        for periastron in periastrons:
-            o.argument_of_periastron = periastron
-            obtained.append(round(o.argument_of_periastron, 3))
-        assert_array_equal(obtained, expected)
-
     def test_azimuth_to_true_anomaly(self):
-        o = Orbit(**self.params_combination[0])
-        o.argument_of_periastron = 139 * u.deg
+        o = orbit.Orbit(**self.params_combination[0])
+        o.argument_of_periastron = (139 * u.deg).to(u.rad).value
 
-        azimuths = [1.56, 0.25, 3.14, 6.0, 156]
+        azimuths = np.array([1.56, 0.25, 3.14, 6.0, 156])
         expected = [5.4172, 4.1072, 0.714, 3.574, 2.7775]
         obtained = np.round(o.azimuth_to_true_anomaly(azimuths), 4)
         assert_array_equal(obtained, expected)
+
+
+class OrbitStaticMethodTestCase(ElisaTestCase):
+    def test_angular_velocity(self):
+        expected = 7.349e-05
+        obtained = round(orbit.angular_velocity(1.25, 0.3, 0.869), 8)
+        self.assertEqual(expected, obtained)
