@@ -458,7 +458,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         expected_exact = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
         expected_flux_exact = normalize_lc_for_unittests(expected_exact[1]["Generic.Bessell.V"])
-        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux_exact, 3)) < TOL))
+        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux_exact, 3)) < 5e-3))
 
         # from matplotlib import pyplot as plt
         # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
