@@ -28,6 +28,7 @@ def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *a
                          positive direction (in radians)
             omega: float - latitudonal angle of direction vector measured from north pole (in radians)
          )
+
     :return: float; radius
     """
     if component == 'primary':
@@ -81,8 +82,7 @@ def calculate_forward_radii(distances, surface_potential, mass_ratio, synchronic
     Calculates forward radii for given object for given array of distances.
 
     :param distances: Union[numpy.array, List]: array of component distances at which to calculate
-    the forward radii of given
-    component(s)
+                      the forward radii of given component(s)
     :param surface_potential: float;
     :param mass_ratio: float;
     :param synchronicity: float;

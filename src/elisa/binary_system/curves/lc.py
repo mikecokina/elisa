@@ -110,16 +110,16 @@ def calculate_coverage_with_cosines(system, semi_major_axis, in_eclipse=True):
     :param semi_major_axis: float;
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param in_eclipse: bool; indicate if eclipse occur for given position container.
-    If you are not sure leave it to True
+                             If you are not sure leave it to True
     :return: Tuple;
 
     shape::
 
         (numpy.array, Dict[str, numpy.array])
 
-    - coverage - numpy.array - visible area of triangles
-    - p_cosines, s_cosines - Dict[str, numpy.array] - directional cosines for each face with respect
-    to line-of-sight vector
+    coverage -- numpy.array; visible area of triangles
+    p_cosines, s_cosines -- Dict[str, numpy.array]; directional cosines for each face with
+    respect to line-of-sight vector
     """
     coverage = compute_surface_coverage(system, semi_major_axis=semi_major_axis, in_eclipse=in_eclipse)
     p_cosines = utils.calculate_cos_theta_los_x(system.primary.normals)
@@ -155,7 +155,7 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     :param faces: numpy.array;
     :param normals: numpy.array;
     :param hull: numpy.array; sorted clockwise to create
-    matplotlib.path.Path; path of points boundary of infront component projection
+                              matplotlib.path.Path; path of points boundary of infront component projection
     :return: numpy.array;
     """
     pypex_hull = bsutils.hull_to_pypex_poly(hull)
@@ -267,11 +267,11 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str;
     :param kwargs: Dict;
-        :**kwargs options**:
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
     :return: Dict[str, numpy.array];
     """
     if component in ["all", "both"]:
@@ -303,11 +303,11 @@ def get_normal_radiance(system, component="all", **kwargs):
     :param component: str;
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param kwargs: Dict; arguments to be passed into light curve generator functions
-        :**kwargs options**:
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
     :return: Dict[String, numpy.array]
     """
     if component in ["all", "both"]:
@@ -342,11 +342,11 @@ def prep_surface_params(system, **kwargs):
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param kwargs: Dict;
-        :**kwargs options**:
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
     :return:
     """
 
@@ -674,11 +674,11 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
     :param orbital_supplements: elisa.orbit.container.OrbitalSupplements;
     :param new_geometry_mask: numpy.array;
     :param kwargs: Dict;
-        :**kwargs options**:
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
     :return: Dict[str, numpy.array];
     """
 
@@ -822,11 +822,11 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param kwargs: Dict;
-        :**kwargs options**:
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
     :return: Dict; fluxes for each filter
     """
     phases = kwargs.pop("phases")

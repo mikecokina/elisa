@@ -28,3 +28,4 @@ sandbox.py
 build/*
 dist/*
 elisa.egg-info
+docs/build/*

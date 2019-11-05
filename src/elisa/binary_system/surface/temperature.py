@@ -486,14 +486,12 @@ def get_symmetrical_d_gamma(shape, shape_reduced, ldc, gamma):
     Function uses surface symmetries to calculate limb darkening factor matrices
     for each components that are used in reflection effect.
 
-    :param ldc: Dict; - arrays of limb darkening coefficients for each face of each component
-    :param shape: desired shape of limb darkening matrices d_gamma
-    :param shape_reduced: shape of the surface symmetries, (faces above those indices are symmetrical to the ones
-    below)
-    :param gamma:
-    :return:
+    :param ldc: Dict; arrays of limb darkening coefficients for each face of each component
+    :param shape: Tuple; desired shape of limb darkening matrices d_gamma
+    :param shape_reduced: Tuple; shape of the surface symmetries, (faces above those
+                                 indices are symmetrical to the ones below)
+    :param gamma: fixme;
     """
-    # todo: important -fix LD COEFF to real
     d_gamma = {'primary': np.empty(shape=shape, dtype=np.float),
                'secondary': np.empty(shape=shape, dtype=np.float)}
 

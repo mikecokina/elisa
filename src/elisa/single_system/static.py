@@ -50,8 +50,8 @@ def pre_calc_latitudes(alpha):
 
 def get_surface_points_radii(*args):
     """
-    Function solves radius for given latitudes that are passed in *args.
-    Function to solve is specified as last parameter in *args Tuple.
+    Function solves radius for given latitudes that are passed in `args`.
+    Function to solve is specified as last parameter in `args` Tuple.
 
     :param args: Tuple;
 

@@ -126,10 +126,10 @@ class NaiveInterpolatedAtm(object):
         :param metallicity: float;
         :param atlas: str;
         :param kwargs:
-            :**kwargs options**:
-                * **left_bandwidth** * -- float; maximal allowed wavelength from left
-                * **right_bandwidth** * -- float; maximal allowed wavelength from right
-                * **passband** * -- Dict[str, elisa.observer.observer.PassbandContainer]
+        :**kwargs options**:
+            * **left_bandwidth** * -- float; maximal allowed wavelength from left
+            * **right_bandwidth** * -- float; maximal allowed wavelength from right
+            * **passband** * -- Dict[str, elisa.observer.observer.PassbandContainer]
         :return: List;
         """
         # fixme: uncomment following line
@@ -310,9 +310,10 @@ def arange_atm_to_same_wavelength(atm_containers):
     Function aligns all atmosphere profiles to the same wavelengths.
 
     :param atm_containers: Iterable[elisa.atm.AtmDataContainer]; atmosphere containers which
-    wavelengths should be aligned
+                           wavelengths should be aligned
     :return: Iterable[elisa.atm.AtmDataContainer]; wavelength aligned atmospheric containers
     """
+
     wavelengths = np.unique(np.array([atm.model[config.ATM_MODEL_DATAFRAME_WAVE] for atm in atm_containers]).flatten())
     wavelengths.sort()
     result = list()
@@ -347,9 +348,9 @@ def strip_atm_containers_by_bandwidth(atm_containers, left_bandwidth, right_band
     :param left_bandwidth: float;
     :param right_bandwidth: float;
     :param kwargs:
-        :**kwargs options**:
-            * **global_left** * -- float; global wavelength from left where flux for all supllied atmposhperes exist
-            * **global_right** * -- float; global wavelength from right where flux for all supllied atmposhperes exist
+    :**kwargs options**:
+        * **global_left** * -- float; global wavelength from left where flux for all supllied atmposhperes exist
+        * **global_right** * -- float; global wavelength from right where flux for all supllied atmposhperes exist
     :return: List[elisa.atm.AtmDataContainer]
     """
     return [strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwidth, **kwargs)
@@ -370,11 +371,11 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
     :param left_bandwidth: float;
     :param right_bandwidth: float;
     :param kwargs:
-        :**kwargs options**:
-            * **global_left** * -- float; global wavelength from left where flux for all supllied atmposhperes exist
-            * **global_right** * -- float; global wavelength from right where flux for all supllied atmposhperes exist
-            * **inplace** * -- bool; if set to True; instead of creation of new DataFrames in
-                                     elisa.atm.AtmDataContainers, just existing is inplaced (changed)
+    :**kwargs options**:
+        * **global_left** * -- float; global wavelength from left where flux for all supllied atmposhperes exist
+        * **global_right** * -- float; global wavelength from right where flux for all supllied atmposhperes exist
+        * **inplace** * -- bool; if set to True; instead of creation of new DataFrames in
+                                 elisa.atm.AtmDataContainers, just existing is inplaced (changed)
 
     :return: elisa.atm.AtmDataContainer;
     """
@@ -412,7 +413,7 @@ def strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=F
     :param atm_container: elisa.atm.AtmDataContainer; atm container to strip
     :param left_bandwidth: float;
     :param right_bandwidth: float;
-    :param inplace: if True `atm_container' is overwritten by striped atmosphere container
+    :param inplace: if True `atm_container` is overwritten by striped atmosphere container
     :return: elisa.atm.AtmDataContainer;
     """
     # indices in bandwidth
@@ -906,7 +907,7 @@ def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers):
 
     :param atm_data_containers: Iterable[elisa.atm.AtmDataContainer];
     :return: List[elisa.atm.AtmDataContainer]; integrated `flux` from each elisa.atm.AtmDataContainer
-    on `wave` in given container
+                                               on `wave` in given container
     """
     return [
         IntensityContainer(
@@ -954,8 +955,8 @@ def remap_unique_atm_container_to_origin(models, fpaths_map):
     """
     Remap atm container in supplied order by `fpaths_map`.
 
-    :warnign: assigned containers are mutable, if you will change content of any container, changes will affect
-    any other container with same reference
+    :warning: assigned containers are mutable, if you will change content of any container, changes will affect
+              any other container with same reference
 
     :param models: List[AtmDatContainer];
     :param fpaths_map: :param fpaths_map: Dict[str, List[int]]; map

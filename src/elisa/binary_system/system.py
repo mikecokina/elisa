@@ -38,7 +38,7 @@ class BinarySystem(System):
     :param eccentricity: Union[(numpy.)int, (numpy.)float];
     :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
     :param phase_shift: float; Phase shift of the primary eclipse minimum with respect to ephemeris
-        true_phase is used during calculations, where: true_phase = phase + phase_shift.;
+                               true_phase is used during calculations, where: true_phase = phase + phase_shift.;
     :param primary_minimum_time: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
 
     Output parameters (computed on init):
@@ -167,7 +167,8 @@ class BinarySystem(System):
         """
         Resolve whether system is synchronous (consider synchronous system
         if sychnronicity of both components is equal to 1).
-        :return: bool
+
+        :return: bool;
         """
         return (self.primary.synchronicity == 1) & (self.secondary.synchronicity == 1)
 
@@ -184,7 +185,7 @@ class BinarySystem(System):
         """
         Setup binary star class property `morphology`.
         It find out morphology based on current system parameters
-        and setup `morphology` parameter of `self `system instance.
+        and setup `morphology` parameter of `self` system instance.
 
         :return: str;
         """
@@ -475,7 +476,7 @@ class BinarySystem(System):
         :param return_nparray: bool; if True positions in form of numpy arrays will be also returned
         :param input_argument: numpy.array;
         :return: Tuple[List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER], List[Integer]] or
-        List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER]
+                 List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER]
         """
         input_argument = np.array([input_argument]) if np.isscalar(input_argument) else input_argument
         orbital_motion = self.orbit.orbital_motion(phase=input_argument) if calculate_from == 'phase' \
@@ -636,13 +637,13 @@ class BinarySystem(System):
         Depending on the basic properties of the binary system.
 
         :param kwargs: Dict; arguments to be passed into light curve generator functions
-            :**kwargs options**:
-                * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-                * ** left_bandwidth ** * - float
-                * ** right_bandwidth ** * - float
-                * ** atlas ** * - str
-                * ** phases ** * - numpy.array
-                * ** position_method ** * - method
+        :**kwargs options**:
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+            * ** phases ** * - numpy.array
+            * ** position_method ** * - method
         :return: Dict
         """
         is_circular = self.eccentricity == 0

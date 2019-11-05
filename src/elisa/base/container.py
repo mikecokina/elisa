@@ -84,26 +84,27 @@ class StarContainer(object):
 
     If you are experienced used, you can create instance directly by calling
 
-    >>>> from elisa.base.container import StarContainer
-    >>>> kwargs = {}
-    >>>> inst = StarContainer(**kwargs)
+    >>> from elisa.base.container import StarContainer
+    >>> kwargs = {}
+    >>> inst = StarContainer(**kwargs)
 
     and setup static parameter latter of not at all if not necessary for further use.
     Bellow are optional imput parameters of StarContainer.
-    kwargs:
-        :**kwargs options**:
-                * **points** * -- numpy.array;
-                * **normals** * -- numpy.array;
-                * **indices** * -- numpy.array;
-                * **faces** * -- numpy.array;
-                * **temperatures** * -- numpy.array;
-                * **log_g** * -- numpy.array;
-                * **coverage** * -- numpy.array;
-                * **rals** * -- numpy.array;
-                * **face_centres** * -- numpy.array;
-                * **metallicity** * -- float;
-                * **areas** * -- numpy.array;
-                * **potential_gradient_magnitudes** * -- numpy.array;
+    kwargs: Dict;
+    :**kwargs options**:
+
+        * **points** * -- numpy.array;
+        * **normals** * -- numpy.array;
+        * **indices** * -- numpy.array;
+        * **faces** * -- numpy.array;
+        * **temperatures** * -- numpy.array;
+        * **log_g** * -- numpy.array;
+        * **coverage** * -- numpy.array;
+        * **rals** * -- numpy.array;
+        * **face_centres** * -- numpy.array;
+        * **metallicity** * -- float;
+        * **areas** * -- numpy.array;
+        * **potential_gradient_magnitudes** * -- numpy.array;
 
 
     Output parameters (obtained by applying given methods upon container).
@@ -118,12 +119,14 @@ class StarContainer(object):
                                   [x2 y2 z2],
                                    ...
                                   [xN yN zN]])
+
         where xi, yi, zi are cartesian coordinates of vertice i.
 
     :normals: numpy.array; Array containing normalised outward facing normals
-    of corresponding faces with same index
+              of corresponding faces with same index
 
     ::
+
             normals = numpy_array([[normal_x1, normal_y1, normal_z1],
                                    [normal_x2, normal_y2, normal_z2],
                                     ...
@@ -148,18 +151,18 @@ class StarContainer(object):
 
     :log_g: numpy.array; Array of log_g (gravity) of corresponding faces.
 
-        ::
-            numpy.array([log_g1, ..., log_gn])
+    ::
+
+        numpy.array([log_g1, ..., log_gn])
 
     :coverage: numpy.array;
     :indices: numpy.array; Indices of visible faces when darkside_filter is applied.
     :rals: numpy.array; Renormalized associated Legendre polynomials (rALS). Array of complex
-    arrays for each face.
+                        arrays for each face.
     :face_centres: numpy.array;
     :metallicity: float;
     :areas: numpy.array;
     :potential_gradient_magnitudes: numpy.array;
-
     :point_symmetry_vector: numpy.array;
     :inverse_point_symmetry_matrix: numpy.array;
     :base_symmetry_points_number: float;

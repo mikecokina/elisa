@@ -16,11 +16,12 @@ class System(metaclass=ABCMeta):
     :param name: str; arbitrary name of instance
     :param suppress_logger: bool;
     :param inclination: Union[float, astropy.unit.quantity.Quantity]; Inclination of the system.
-    If unit is not supplied, value in degrees is assumed.
+                        If unit is not supplied, value in degrees is assumed.
     :param period: Union[float, astropy.unit.quantity.Quantity];
     :param gamma: Union[float, astropy.unit.quantity.Quantity]; Center of mass velocity.
-    Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise TypeError will be raised.
-    If unit is not specified, default velocity unit is assumed.
+                  Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int
+                  othervise TypeError will be raised.
+                  If unit is not specified, default velocity unit is assumed.
     :param additional_light: float; Light that does not originate from any member of system.
     """
 

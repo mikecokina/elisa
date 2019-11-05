@@ -26,16 +26,16 @@ class Body(metaclass=ABCMeta):
     :param name: str; arbitrary name of instance
     :param suppress_logger: bool;
     :param synchronicity: float; Object synchronicity (F = omega_rot/omega_orb) setter.
-    Expects number input convertible to numpy float64 / float.
+                                 Expects number input convertible to numpy float64 / float.
     :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
-    If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
+                        If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
     :param albeo: float; Bolometric albedo (reradiated energy/ irradiance energy).
-    Accepts value of albedo in range (0, 1).
+                         Accepts value of albedo in range (0, 1).
     :param discretization_factor: float;
     :param t_eff: float; Accepts value in Any temperature unit. If your input is without unit,
-    function assumes that supplied value is in Kelvins.
-    :param polar_radius: Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int
-    othervise TypeError will be raised. If quantity is not specified, default distance unit is assumed.
+                         function assumes that supplied value is in Kelvins.
+    :param polar_radius: Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise
+                         TypeError will be raised. If quantity is not specified, default distance unit is assumed.
     :param spots: List[Dict[str, float]]; Spots definitions. Example of defined spots
 
         ::

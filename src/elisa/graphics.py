@@ -18,13 +18,13 @@ def orbit(**kwargs):
     Graphics part of the function for quick 2D plot of the orbital motion in the orbital plane.
 
     :param kwargs: Dict;
-        :**kwargs options**:
-            * **start_phase** * -- float; starting phase for the plot
-            * **stop_phase** * -- float; finishing phase for the plot
-            * **number_of_points** * -- int; number of points in the plot
-            * **axis_units** * -- Union[astropy.unit, 'str']; specifying axis unit, use astropy units or `dimensionless`
-            or `SMA` (semi-major axis) units for axis scale
-            * **frame_of_reference** * -- str; `barycentric` or `primary`
+    :**kwargs options**:
+        * **start_phase** * -- float; starting phase for the plot
+        * **stop_phase** * -- float; finishing phase for the plot
+        * **number_of_points** * -- int; number of points in the plot
+        * **axis_units** * -- Union[astropy.unit, 'str']; specifying axis unit, use astropy units or `dimensionless`
+                              or `SMA` (semi-major axis) units for axis scale
+        * **frame_of_reference** * -- str; `barycentric` or `primary`
     """
     unit = str(kwargs['axis_units'])
     if kwargs['axis_units'] == au.dimensionless_unscaled:
@@ -59,10 +59,10 @@ def equipotential(**kwargs):
     Plot function for descriptor = `equipotential` in function BinarySystem.plot(). This function plots crossections of
     surface Hill planes in xy, yz or zx plane
 
-    :param kwargs: dict
-                   keywords: plane = 'xy' - plane in which surface Hill plane is calculated, planes: 'xy', 'yz', 'zx'
-                             phase = 0 - photometric phase in which surface Hill plane is calculated
-    :return:
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **plane** * -- str; 'xy' - plane in which surface Hill plane is calculated, planes: 'xy', 'yz', 'zx'
+        * **phase** * float; photometric phase in which surface Hill plane is calculated
     """
     x_label, y_label = 'x', 'y'
     if utils.is_plane(kwargs['plane'], 'yz'):
@@ -92,11 +92,12 @@ def equipotential_single_star(**kwargs):
     Plot function for descriptor = `equipotential` in function SingleSystem.plot(). Calculates zx plane crossection of
     equipotential surface.
 
-    :param kwargs: dict:
-                   keywords: `axis_unit` = astropy.units.solRad - unit in which axis will be displayed, please use
-                                                               astropy.units format, default unit is solar radius
-    :return:
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **axis_unit** * -- astropy.units.solRad - unit in which axis will be displayed, please use
+                             astropy.units format, default unit is solar radius
     """
+
     x, y = kwargs['points'][:, 0], kwargs['points'][:, 1]
 
     unit = str(kwargs['axis_unit'])
@@ -116,10 +117,10 @@ def single_star_mesh(**kwargs):
     """
     Plot function for descriptor `mesh`, plots surface mesh of star in SingleStar system
 
-    :param kwargs: dict
-                   keywords:`axis_unit` = astropy.units.solRad - unit in which axis will be displayed, please use
-                                                                 astropy.units format, default unit is solar radius
-    :return:
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **axis_unit** * -- astropy.units.solRad - unit in which axis will be displayed, please use
+                            astropy.units format, default unit is solar radius
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -145,17 +146,17 @@ def single_star_mesh(**kwargs):
 
 def binary_mesh(**kwargs):
     """
-        Function plots 3D scatter plot of the surface points
+    Function plots 3D scatter plot of the surface points
 
-        :param kwargs:
-        :**kwargs options**:
-            * **phase** * -- float; phase at which to construct plot
-            * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
-            * **plot_axis** * -- bool; switch the plot axis on/off
-            * **inclination** * -- float; elevation of the camera (in degrees)
-            * **azimuth** * -- float; azimuth of the camera (in degrees)
-        :return:
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **phase** * -- float; phase at which to construct plot
+        * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both` (default)
+        * **plot_axis** * -- bool; switch the plot axis on/off
+        * **inclination** * -- float; elevation of the camera (in degrees)
+        * **azimuth** * -- float; azimuth of the camera (in degrees)
     """
+
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_aspect('equal')
@@ -199,15 +200,16 @@ def single_star_surface(**kwargs):
     """
     Plot function for descriptor `surface` in SingleSystem plot function, plots surface of star in SingleStar system
 
-    :param kwargs: `axis_unit` - astropy.units.solRad : unit in which axis will be displayed, please use
-                                                        astropy.units format, default unit is solar radius
-                   `edges` - bool: if True edges of surface faces are visible
-                   `normals` - bool: if True surface faces outward facing normals are visible
-                   `colormap` - string: `temperature` - displays temperature surface colormap
-                                        `gravity_acceleration` - displays gravity acceleration colormap
-
-    :return:
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **axis_unit** * -- astropy.units.solRad; unit in which axis will be displayed, please use
+                                                astropy.units format, default unit is solar radius
+        * **edges** * -- bool; if True edges of surface faces are visible
+        * **normals** * -- bool; if True surface faces outward facing normals are visible
+        * **colormap** * -- str; `temperature` - displays temperature surface colormap
+        * **gravity_acceleration** * -- bool; displays gravity acceleration colormap
     """
+
     fig = plt.figure(figsize=(7, 7))
     ax = axes3d.Axes3D(fig)
     ax.set_aspect('equal')
@@ -254,22 +256,22 @@ def binary_surface(**kwargs):
     Function creates plot of binary system components.
 
     :param kwargs: Dict;
-        :**kwargs options**:
-            * **phase** *: float -- phase at which plot the system, important for eccentric orbits
-            * **components_to_plot** * -- str; `primary`, `secondary` or `both`(default),
-            * **normals** * -- bool; plot normals of the surface phases as arrows
-            * **edges** * -- bool; highlight edges of surface faces
-            * **colormap** * -- str; 'gravity_acceleration`, `temperature` or None(default)
-            * **plot_axis** * -- bool; if False, axis will be hidden
-            * **face_mask_primary** * -- array[bool]; mask to select which faces to display
-            * **face_mask_secondary** * -- array[bool]: mask to select which faces to display
-            * **inclination** * -- float; in degree - elevation of camera
-            * **azimuth** * -- float; camera azimuth
-            * **units** * -- str; units of gravity acceleration colormap  `SI` or `cgs`
-            * **scale** * -- str; `linear` or `log`
-            * **axis_unit** * -- Union[astropy.unit, dimensionless]; - axis units
-            * **colorbar_orientation** * -- str; `horizontal` or `vertical`(default)
-            * **colorbar** * -- bool; colorabar on/off switchic
+    :**kwargs options**:
+        * **phase** * float -- phase at which plot the system, important for eccentric orbits
+        * **components_to_plot** * -- str; `primary`, `secondary` or `both` (default),
+        * **normals** * -- bool; plot normals of the surface phases as arrows
+        * **edges** * -- bool; highlight edges of surface faces
+        * **colormap** * -- str; `gravity_acceleration`, `temperature` or None(default)
+        * **plot_axis** * -- bool; if False, axis will be hidden
+        * **face_mask_primary** * -- array[bool]; mask to select which faces to display
+        * **face_mask_secondary** * -- array[bool]: mask to select which faces to display
+        * **inclination** * -- float; in degree - elevation of camera
+        * **azimuth** * -- float; camera azimuth
+        * **units** * -- str; units of gravity acceleration colormap  `SI` or `cgs`
+        * **scale** * -- str; `linear` or `log`
+        * **axis_unit** * -- Union[astropy.unit, dimensionless]; - axis units
+        * **colorbar_orientation** * -- str; `horizontal` or `vertical` (default)
+        * **colorbar** * -- bool; colorabar on/off switchic
     """
 
     fig = plt.figure(figsize=(7, 7))
@@ -440,13 +442,9 @@ def binary_surface(**kwargs):
 
 def set_g_colorbar_label(colorbar, unit, scale, extra=''):
     """
-    function sets label of the colorbar for gravity acceleration surface function
-
-    :param extra:
-    :param scale:
-    :param unit:
-    :param colorbar:
+    Function sets label of the colorbar for gravity acceleration surface function.
     """
+
     if unit == 'cgs':
         if scale == 'linear':
             colorbar.set_label(extra + r' $g/[cm s^{-2}]$')
@@ -461,12 +459,7 @@ def set_g_colorbar_label(colorbar, unit, scale, extra=''):
 
 def set_t_colorbar_label(colorbar, scale, extra=''):
     """
-    function sets label of the colorbar for effective temperature surface function
-
-    :param extra:
-    :param scale:
-    :param colorbar:
-    :return:
+    Function sets label of the colorbar for effective temperature surface function.
     """
     if scale == 'linear':
         colorbar.set_label(extra + r' $T_{eff}/[K]$')
@@ -478,10 +471,10 @@ def single_star_wireframe(**kwargs):
     """
     Plot function for descriptor `wireframe` in SingleSystem, plots wireframe model of single system star
 
-    :param kwargs: `axis_unit` = astropy.units.solRad - unit in which axis will be displayed, please use
-                                                                 astropy.units format, default unit is solar radius
-
-    :return:
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **axis_unit** * -- astropy.units.solRad - unit in which axis will be displayed, please use
+                                                    astropy.units format, default unit is solar radius
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -515,7 +508,7 @@ def binary_wireframe(**kwargs):
     :param kwargs:
     :**kwargs options**:
         * **phase** * -- float; phase at which to construct plot
-        * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both`(default)
+        * **components_to_plot** * -- str; component to plot `primary`, `secondary` or `both` (default)
         * **plot_axis** * -- bool; switch the plot axis on/off
         * **inclination** * -- float; elevation of the camera (in degrees)
         * **azimuth** * -- float; azimuth of the camera (in degrees)
@@ -579,16 +572,17 @@ def binary_wireframe(**kwargs):
 
 def binary_surface_anim(**kwargs):
     """
-    function creates animation of the orbital motion
-    :param kwargs: dict
-        'start_phase' - float,
-        'stop_phase' - float,
-        'phase_step' - sloat,
-        'units' - units for gravity acceleration colormap,
-        'plot_axis' - bool - if False, axis will not be displayed,
-        'colormap' - `temperature`, `gravity_acceleration` or None,
-        'savepath' - string or None, animation will be stored to `savepath`
-    :return:
+    Function creates animation of the orbital motion.
+
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **start_phase** * -- float;
+        * **stop_phase** * -- float;
+        * **phase_step** * -- float;
+        * **units** * -- units for gravity acceleration colormap
+        * **plot_axis** * -- bool, if False, axis will not be displayed
+        * **colormap** * -- `temperature`, `gravity_acceleration` or None,
+        * **savepath** * -- string or None, animation will be stored to `savepath`
     """
     def update_plot(frame_number, _points, _faces, _clr, _cmaps, _plot):
         for _, _ in enumerate(_plot):
@@ -635,7 +629,7 @@ def binary_surface_anim(**kwargs):
         if kwargs.get('colormap', False):
             plot[0].set_cmap(cmap=cm.jet_r)
             cmaps = [[up.concatenate((kwargs['primary_cmap'][ii], kwargs['secondary_cmap'][ii]), axis=0)
-                    for ii in range(kwargs['n_frames'])]]
+                      for ii in range(kwargs['n_frames'])]]
             plot[0].set_array(cmaps[0][0])
     else:
         points = [kwargs['points_primary'], kwargs['points_secondary']]

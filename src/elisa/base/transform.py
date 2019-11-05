@@ -82,6 +82,7 @@ class SystemProperties(TransformProperties):
         """
         Transform and validate orbital period of binary star system.
         If unit is not specified, default period unit is assumed.
+
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """

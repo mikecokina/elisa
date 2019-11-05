@@ -242,8 +242,8 @@ def pre_calc_azimuths_for_overcontact_neck_points(
 
 def get_surface_points(*args):
     """
-    Function solves radius for given azimuths that are passed in *args.
-    It use `scipy.optimize.fsolve` method. Function to solve is specified as last parameter in *args Tuple.
+    Function solves radius for given azimuths that are passed in `args`.
+    It use `scipy.optimize.fsolve` method. Function to solve is specified as last parameter in `args` Tuple.
     :param args: Tuple;
 
     ::
@@ -274,7 +274,7 @@ def get_surface_points(*args):
 
 def get_surface_points_cylindrical(*args):
     """
-    Function solves radius for given azimuths that are passed in *args.
+    Function solves radius for given azimuths that are passed in `args`.
 
     :param args: Tuple;
 
@@ -293,7 +293,7 @@ def get_surface_points_cylindrical(*args):
                 synchronicity: float
               ]
 
-    :return: numpy.array
+    :return: numpy.array;
     """
     phi, z, components_distance, x0, precalc_fn, potential_fn, fprime, potential, q, synchronicity = args
     max_iter = config.MAX_SOLVER_ITERS
@@ -438,7 +438,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
 
     :param system: elisa.binary_system.contaienr.OrbitalPositionContainer;
     :param symmetry_output: bool; if true, besides surface points are returned also `symmetry_vector`,
-    `base_symmetry_points_number`, `inverse_symmetry_matrix`
+                                 `base_symmetry_points_number`, `inverse_symmetry_matrix`
     :param component: str; `primary` or `secondary`
     :return: Union[Tuple, numpy.array]; (if symmetry_output is False)
 
@@ -455,6 +455,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
                           [x2 y2 z2],
                            ...
                           [xN yN zN]]) - array of surface points,
+
              numpy.array([indices_of_symmetrical_points]) - array which remapped surface points to symmetrical one
              quarter of surface,
              numpy.float - number of points included in symmetrical one quarter of surface,

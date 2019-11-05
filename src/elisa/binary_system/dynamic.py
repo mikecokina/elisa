@@ -163,7 +163,7 @@ def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, res
     :param size: int;
     :param rel_d: numpy.array; array, based on geometry change is going to be evaluated
     :param resolve: str; decision parameter whether resolved object on eccentric orbit or spots movement,
-    "object" or "spots"
+                         "object" or "spots"
     :return: numpy.array[bool];
     """
     if resolve not in ["object", "spot"]:
@@ -248,7 +248,7 @@ def calculate_spot_longitudes(system, phases, component="all"):
     Function calculates the latitudes of every spot on given component(s) for every phase.
 
     :param system: Union[elisa.binary_system.system.BinarySystem,
-    elisa.binary_system.container.OrbitalPositionContainer];
+                   elisa.binary_system.container.OrbitalPositionContainer];
     :param phases: numpy.array;
     :param component: str; 'primary' or 'secondary', if None both will be calculated
     :return: Dict; {component: {spot_idx: np.array([....]), ...}, ...}
@@ -269,11 +269,11 @@ def assign_spot_longitudes(system, spots_longitudes, index=None, component="all"
     function assigns spot latitudes for each spot according to values in `spots_longitudes` in index `index`
 
     :param system: Union[elisa.binary_system.system.BinarySystem,
-    elisa.binary_system.container.OrbitalPositionContainer]
+                   elisa.binary_system.container.OrbitalPositionContainer]
     :param spots_longitudes: Dict; {component: {spot_idx: np.array([....]), ...}, ...}, takes output of function
-    `calculate_spot_latitudes`
+                                   `calculate_spot_latitudes`
     :param index: int; index of spot longitude values to be used, if none is given, scalar values are expected in
-    `spots_longitudes`
+                      `spots_longitudes`
     :param component: str; 'primary' or 'secondary', if None both will be calculated
     """
     components = bsutils.component_to_list(component)

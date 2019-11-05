@@ -23,16 +23,15 @@ class Spot(object):
     Input parameters:
 
     :param longitude: Union[(numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity];
-    Expecting value in degrees or as astropy units instance.
+                      Expecting value in degrees or as astropy units instance.
     :param latitude: Union[(numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity];
-    Expecting value in degrees or as astropy units instance.
+                     Expecting value in degrees or as astropy units instance.
     :param angular_radius: Union[(numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity];
-    Expecting value in degrees or as astropy units instance.
+            `              Expecting value in degrees or as astropy units instance.
     :param temperature_factor: Union[(numpy.)int, (numpy.)float];
     :param discretization_factor: Union[(numpy.)int, (numpy.)float, astropy.unit.quantity.Quantity];
-    Spot discretization_factor (mean angular size of spot face).
-    Expecting value in degrees or as astropy units instance.
-
+                                  Spot discretization_factor (mean angular size of spot face).
+                                  Expecting value in degrees or as astropy units instance.
 
     Output parameters (parameters set on call of related methods):
     
@@ -147,8 +146,9 @@ def setup_body_points(on_container, points):
     Setup points for Star instance and spots based on input `points` Dict object.
     Such `points` map looks like following
 
-    :param on_container: Union;  instance to setup spot points and body points on
-    :param points: Dict[str, numpy.array]
+    :param on_container: Union; instance to setup spot points and body points on
+    :param points: Dict[str, numpy.array];
+
     ::
 
         {
@@ -156,7 +156,8 @@ def setup_body_points(on_container, points):
             "0": [<points>],
             "1": [<points>]...
         },
-        where `object` contain numpy.array of object points and indices points for given spot.
+
+    where `object` contain numpy.array of object points and indices points for given spot.
     """
     on_container.points = points.pop("object")
     for spot_index, spot_points in points.items():
@@ -250,8 +251,9 @@ def remap_surface_elements(on_container, mapper, points_to_remap):
     :param on_container: Union; container object with spots
     :param mapper: List; list of indices of points in `points_to_remap` divided into star and spots sublists
     :param points_to_remap: numpy.array; array of all surface points (star + points used in
-    `_split_spots_and_component_faces`)
+                            `_split_spots_and_component_faces`)
     """
+
     # remapping points and faces of star
     __logger__.debug(f"changing value of parameter points of component {on_container.name}")
     indices = np.unique(mapper["object"])
@@ -287,7 +289,6 @@ def remove_overlaped_spots_by_spot_index(from_container, keep_spot_indices, _rai
     :param from_container: Union; container object with spots
     :param keep_spot_indices: List[int]; list of spot indices to keep
     :param _raise: bool;
-    :return:
     """
     all_spot_indices = set([int(val) for val in from_container.spots.keys()])
     spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)

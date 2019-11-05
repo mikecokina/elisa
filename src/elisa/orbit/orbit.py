@@ -35,12 +35,12 @@ class Orbit(object):
     Input parameters:
 
     :param period: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; Orbital period of binary
-    star system. If unit is not specified, default period unit is assumed (days).
+                   star system. If unit is not specified, default period unit is assumed (days).
     :param inclination: ; Union[float, astropy.units.Quantity]; If unitless values is supplied, default unit
-    suppose to be radians.
+                          suppose to be radians.
     :param eccentricity: Union[(numpy.)int, (numpy.)float];
     :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; If unit is
-    not supplied, value in radians is assumed.
+                                   not supplied, value in radians is assumed.
     :param phase_shift: float;
 
     Output parameters:
@@ -154,7 +154,7 @@ class Orbit(object):
 
     def eccentric_anomaly_to_mean_anomaly(self, eccentric_anomaly):
         """
-        returns mean anomaly as a function of eccentric anomaly calculated using Kepler equation
+        Returns mean anomaly as a function of eccentric anomaly calculated using Kepler equation.
 
         :param eccentric_anomaly: numpy.array;
         :return: numpy.array
@@ -175,10 +175,10 @@ class Orbit(object):
 
     def true_anomaly_to_eccentric_anomaly(self, true_anomaly):
         """
-        returns eccentric anomaly as a function of true anomaly and eccentricity
+        Returns eccentric anomaly as a function of true anomaly and eccentricity.
 
-        :param true_anomaly: Union[numpy.array, float]
-        :return: Union[numpy.array, float]
+        :param true_anomaly: Union[numpy.array, float];
+        :return: Union[numpy.array, float];
         """
         eccentric_anomaly = \
             2.0 * up.arctan(up.sqrt((1.0 - self.eccentricity) / (1.0 + self.eccentricity)) * up.tan(true_anomaly / 2.0))
@@ -187,10 +187,10 @@ class Orbit(object):
 
     def relative_radius(self, true_anomaly):
         """
-        calculates the length of radius vector of elipse where a=1
+        Calculates the length of radius vector of elipse where a=1.
 
-        :param true_anomaly: Union[numpy.array, float]
-        :return: Union[numpy.array, float]
+        :param true_anomaly: Union[numpy.array, float];
+        :return: Union[numpy.array, float];
         """
         return (1.0 - self.eccentricity ** 2) / (1.0 + self.eccentricity * up.cos(true_anomaly))
 
@@ -200,15 +200,15 @@ class Orbit(object):
 
         ::
 
-        azimuth 0 alligns with -y axis
-                 |
-                 |      pi/2
-            -----------
-                 |
-                 | 0
+            azimuth 0 alligns with -y axis
+                     |
+                     |      pi/2
+                -----------
+                     |
+                     | 0
 
-        :param true_anomaly: numpy.array or float
-        :return: numpy.array or float
+        :param true_anomaly: Union[numpy.array, float];
+        :return: Union[numpy.array, float];
         """
         return (true_anomaly + self.argument_of_periastron) % const.FULL_ARC
 
@@ -254,15 +254,19 @@ class Orbit(object):
 
     def orbital_motion_from_azimuths(self, azimuth):
         """
-        function takes azimuths of the binary system (angle between ascending node (-y) as input and calculates
-        positions of the secondary component in the frame of reference of primary component
+        Function takes azimuths of the binary system (angle between ascending node (-y) as input and calculates
+        positions of the secondary component in the frame of reference of primary component.
 
         :param azimuth: Union[numpy.array, float];
         :return: numpy.array: matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
-                           numpy.array((r1, az1, ni1, phs1),
-                                       (r2, az2, ni2, phs2),
-                                        ...
-                                       (rN, azN, niN, phsN))
+
+        ::
+
+               numpy.array((r1, az1, ni1, phs1),
+                           (r2, az2, ni2, phs2),
+                            ...
+                           (rN, azN, niN, phsN))
+
         """
         true_anomaly = self.azimuth_to_true_anomaly(azimuth)
         distance = self.relative_radius(true_anomaly=true_anomaly)

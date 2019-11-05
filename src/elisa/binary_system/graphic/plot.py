@@ -43,7 +43,7 @@ class Plot(object):
         :param stop_phase: float; finishing phase for the plot
         :param number_of_points: int; number of points in the plot
         :param axis_units: Union[astropy.unit, str]; specifying axis unit, use astropy
-        units or `dimensionless` or `SMA` (semi-major axis) units for axis scale
+                           units or `dimensionless` or `SMA` (semi-major axis) units for axis scale
         :param frame_of_reference: str; `barycentric` or `primary`
         """
         orbit_kwargs = dict()
@@ -112,7 +112,7 @@ class Plot(object):
         Function plots 3D scatter plot of the surface points.
 
         :param phase: float; phase at which to construct plot
-        :param components_to_plot: str; component to plot `primary`, `secondary` or `both`(default)
+        :param components_to_plot: str; component to plot `primary`, `secondary` or `both` (default)
         :param plot_axis: bool; switch the plot axis on/off
         :param inclination: Union[float, astropy.Quantity]; elevation of the camera (in degrees if float)
         :param azimuth: Union[float, astropy.Quantity]; azimuth of the camera (in degrees if float)
@@ -153,7 +153,7 @@ class Plot(object):
         Function displays wireframe model of the stellar surface.
 
         :param phase: float; phase at which to construct plot
-        :param components_to_plot: str; component to plot `primary`, `secondary` or `both`(default)
+        :param components_to_plot: str; component to plot `primary`, `secondary` or `both` (default)
         :param plot_axis: bool; switch the plot axis on/off
         :param inclination: Union[float, astropy.Quantity]; elevation of the camera (in degrees if float)
         :param azimuth: Union[float, astropy.Quantity]; azimuth of the camera (in degrees if float)
@@ -198,7 +198,7 @@ class Plot(object):
         function creates plot of binary system components
 
         :param phase: float -- phase at which plot the system, important for eccentric orbits
-        :param components_to_plot: str; `primary`, `secondary` or `both`(default),
+        :param components_to_plot: str; `primary`, `secondary` or `both` (default),
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
         :param colormap: str; 'gravity_acceleration`, `temperature` or None(default)
@@ -209,7 +209,7 @@ class Plot(object):
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
         :param units: str; units of gravity acceleration colormap  `SI` or `cgs`
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
-        :param colorbar_orientation: str; `horizontal` or `vertical`(default)
+        :param colorbar_orientation: str; `horizontal` or `vertical` (default)
         :param colorbar: bool; colorabar on/off switchic
         :param scale: str; `linear` or `log`
         """

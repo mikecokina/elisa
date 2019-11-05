@@ -1,16 +1,15 @@
-import numpy as np
-from astropy import units as u
-
-from elisa import utils, const, graphics, units
+from elisa import graphics
 
 
 class Plot(object):
     """
-    universal plot interface for Observer class, more detailed documentation for each value of descriptor is
-    available in graphics library
+    Universal plot interface for Observer class, more detailed documentation for each value of descriptor is
+    available in graphics library.
 
-                        `orbit` - plots orbit in orbital plane
-    :return:
+    Available methods::
+
+        `orbit` - plots orbit in orbital plane
+
     """
 
     def __init__(self, instance):
@@ -18,11 +17,10 @@ class Plot(object):
 
     def phase_curve(self, **kwargs):
         """
-        function plots phase curves calculated in Observer class
+        Function plots phase curves calculated in Observer class.
 
-        :param kwargs: dict; `phases` (array), `fluxes` (dict), `flux_unit` - unit of flux measurements,
-        `legend` (bool) onn/off, `legend_location` (int)
-        :return:
+        :param kwargs: Dict; `phases` (array), `fluxes` (dict), `flux_unit` - unit of flux measurements,
+                             `legend` (bool) onn/off, `legend_location` (int)
         """
         kwargs['phases'] = kwargs.get('phases', self._self.phases)
         kwargs['fluxes'] = kwargs.get('fluxes', self._self.fluxes)
@@ -31,4 +29,3 @@ class Plot(object):
         kwargs['legend_location'] = kwargs.get('legend_location', 4)
 
         graphics.phase_curve(**kwargs)
-

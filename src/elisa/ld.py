@@ -152,7 +152,7 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
 
     :param limb_darkening_law: str;  `linear` or `cosine`, `logarithmic`, `square_root`
     :param cos_theta: numpy.array; if supplied, function will skip calculation of its own cos theta and will disregard
-    `normal_vector` and `line_of_sight`
+                                   `normal_vector` and `line_of_sight`
     :return: numpy.array; gravity darkening factors, the same type/shape as cos_theta
     """
     if normal_vector is None and cos_theta is None:

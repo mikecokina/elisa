@@ -88,14 +88,19 @@ def cartesian_to_spherical(points, degrees=False):
     Convert cartesian to spherical coordinates.
     If only 1 point is given input an output is only 1D vector
 
-    :param points: numpy.array([[x1, y1, z1],
+    :param points:
+
+        shape::
+
+                    numpy.array([[x1, y1, z1],
                                 [x2, y2, z2],
                                  ...
                                 [xn, yn, zn]])
+
     :param degrees: bool; whether return spherical angular coordinates in degrees
     :return: numpy.array;
 
-    ::
+    shhape::
 
         ([[r1, phi1, theta1],
           [r2, phi2, theta2],
@@ -226,9 +231,9 @@ def arbitrary_rotation(theta, omega, vector, degrees=False, omega_normalized=Fal
 
 def around_axis_rotation(theta, vector, axis, inverse=False, degrees=False):
     """
-    Rotation of `vector` around 'axis' by an amount `theta.
+    Rotation of `vector` around `axis` by an amount `theta`.
 
-    :param theta: float, degree of rotation
+    :param theta: float; degree of rotation
     :param vector: numpy.array; vector to rotate around
     :param axis: str; axis of rotation `x`, `y`, or `z`
     :param inverse: bool; rotate to inverse direction than is math positive
@@ -264,6 +269,7 @@ def average_spacing_cgal(data, neighbours=6):
     """
     Average Spacing - calculates average distance between points using average distances to `neighbours` number of
     points.
+
     Match w/ CGAL average spacing function (https://www.cgal.org/).
 
     :param data: List; 3-dimensinal dataset
@@ -285,15 +291,15 @@ def average_spacing(data, mean_angular_distance):
     Calculates mean distance between points using mean radius of data points and mean angular distance between them
     :param data: numpy.array;
 
-    :: shape
+        shape::
 
-        ([[x1 y1 z1],
-         [x2 y2 z2],
-          ...
-         [xN yN zN]])
+            ([[x1 y1 z1],
+              [x2 y2 z2],
+               ...
+              [xN yN zN]])
 
-    :param mean_angular_distance: (numpy.)float; - in radians
-    :return: float
+    :param mean_angular_distance: (numpy.)float; in radians
+    :return: float;
     """
     average_radius = np.mean(np.linalg.norm(data, axis=1)) if not np.isscalar(data) else data
     return average_radius * mean_angular_distance
@@ -376,11 +382,11 @@ def find_face_centres(faces):
     """
     Function calculates centres (center of mass) of each supplied face.
 
-    i - th coordinate of center of mas for one given triangle is computed as::
+    i-th coordinate of center of mas for one given triangle is computed as::
 
         x_i = (X_j[0] + X_j[1] + X_j[2]) / 3; j, i = [0, 1, 2],
 
-    where X_j is coordinate if j - th corner of face.
+    where X_j is coordinate if j-th corner of face.
 
     :param faces: numpy.array;
 
@@ -394,6 +400,7 @@ def find_face_centres(faces):
                       [x22,y22,z22]]
                       ...
                       ])
+
     :return: numpy.array
     """
     return np.mean(faces, axis=1)
@@ -625,7 +632,7 @@ def cosine_similarity(a, b):
     Function calculates cosine of angle between vectors.
 
     :note: Use only in case that a, and b are not normalized, otherwise
-    use function calculate_cos_theta; it is way faster since it doesn't normalize vectors on fly.
+           use function calculate_cos_theta; it is way faster since it doesn't normalize vectors on fly.
 
     :param a: numpy.array;
     :param b: numpy.array;
