@@ -22,8 +22,8 @@ class PassbandContainer(object):
         """
         Setup PassbandContainier object. It carres dependedncies of throughputs on wavelengths for given passband.
 
-        :param table: pandads.DataFrame
-        :param passband: str
+        :param table: pandads.DataFrame;
+        :param passband: str;
         """
         self.left_bandwidth = np.nan
         self.right_bandwidth = np.nan
@@ -41,7 +41,7 @@ class PassbandContainer(object):
         """
         Return pandas dataframe which represent pasband table as dependecy of throughput on wavelength.
 
-        :return: pandas.DataFrame
+        :return: pandas.DataFrame;
         """
         return self._table
 
@@ -55,8 +55,7 @@ class PassbandContainer(object):
             lambda x: 1.0
 
 
-        :param df: pandas.DataFrame
-        :return:
+        :param df: pandas.DataFrame;
         """
         self._table = df
         self.akima = Observer.bolometric if (self.passband.lower() in ['bolometric']) else \
@@ -102,7 +101,7 @@ class Observer(object):
         """
         Returns list of observables that will be calculated during Observer.observe()
 
-        :return: list; list of observables
+        :return: List; list of observables
         """
         return self._observables
 
@@ -151,9 +150,7 @@ class Observer(object):
         If there is several passband defined on different intervals, e.g. ([350, 650], [450, 750]) then global limits
         are total boarder values, in example case as [350, 750].
 
-
-        :param passband: str or Iterable str
-        :return:
+        :param passband: Union[str; Iterable[str]]
         """
         passband = [passband] if isinstance(passband, str) else passband
         for band in passband:
@@ -178,9 +175,8 @@ class Observer(object):
         or lower (`left_bandwidth`).
 
 
-        :param left_bandwidth: float
-        :param right_bandwidth: float
-        :return:
+        :param left_bandwidth: float;
+        :param right_bandwidth: float;
         """
         if left_bandwidth < self.left_bandwidth:
             self.left_bandwidth = left_bandwidth
@@ -192,8 +188,8 @@ class Observer(object):
         """
         Read content o passband table (csv file) based on passband name.
 
-        :param passband: str
-        :return: pandas.DataFrame
+        :param passband: str;
+        :return: pandas.DataFrame;
         """
         if passband not in config.PASSBANDS:
             raise ValueError('Invalid or unsupported passband function')
@@ -207,12 +203,12 @@ class Observer(object):
         Method for observation simulation. Based on input parmeters and supplied Ob server system on initialization
         will compute lightcurve.
 
-        :param normalize_lc: bool
-        :param from_phase: float
-        :param to_phase: float
-        :param phase_step: float
-        :param phases: Iterable float
-        :return: Dict
+        :param normalize_lc: bool;
+        :param from_phase: float;
+        :param to_phase: float;
+        :param phase_step: float;
+        :param phases: Iterable float;
+        :return: Dict;
         """
 
         if not phases and (from_phase is None or to_phase is None or phase_step is None):
@@ -226,15 +222,7 @@ class Observer(object):
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
 
-        self._logger.info("observation start w/ following configuration {<add>}")
-        # self._logger.warning("logger will be suppressed due multiprocessing incompatibility")
-        """
-        distance, azimut angle, true anomaly and phase
-                           np.array((r1, az1, ni1, phs1),
-                                    (r2, az2, ni2, phs2),
-                                    ...
-                                    (rN, azN, niN, phsN))
-        """
+        self._logger.info(f"observation is running")
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
 
