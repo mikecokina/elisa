@@ -32,7 +32,7 @@ from elisa import (
     const
 )
 
-TOL = 1e-3
+TOL = 5e-3
 
 
 class MockSelf(object):
