@@ -211,14 +211,13 @@ class MeshUtilsTestCase(ElisaTestCase):
         args = (distance, phi, theta)
 
         obtained = list()
-        expected = [[1.21, 0., 0., 0.375],
-                    [1.21, 0., 0., 0.8438]]
+        expected = np.round([[1.21, 0., 0., 0.375], [1.21, 0., 0., 0.8438]], 3)
 
         for bs in self._binaries:
             argss = (bs.primary.synchronicity, bs.mass_ratio) + args
             obtained.append(model.pre_calculate_for_potential_value_primary(*argss))
 
-        obtained = np.round(obtained, 4)
+        obtained = np.round(obtained, 3)
         assert_array_equal(expected, obtained)
 
     def test_pre_calculate_for_potential_value_secondary(self):
