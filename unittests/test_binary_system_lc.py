@@ -32,6 +32,8 @@ from elisa import (
     const
 )
 
+TOL = 1e-3
+
 
 class MockSelf(object):
     class StarMock(object):
@@ -366,8 +368,8 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
+        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 4) - np.round(expected_phases, 4)) < TOL))
+        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 4) - np.round(expected_flux, 4)) < TOL))
 
     def test_circular_synchronous_overcontact_system(self):
         config.LIMB_DARKENING_LAW = "linear"
@@ -386,8 +388,8 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        self.assertTrue(np.all(np.round(obtained_flux, 4) - np.round(expected_flux, 4) <= 1e-3))
+        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 4) - np.round(expected_phases, 4)) < TOL))
+        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 4) - np.round(expected_flux, 4)) < TOL))
 
     def test_eccentric_synchronous_detached_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
@@ -408,8 +410,8 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
+        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 4) - np.round(expected_phases, 4)) < TOL))
+        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 4) - np.round(expected_flux, 4)) < TOL))
 
     def test_eccentric_synchronous_detached_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
@@ -429,8 +431,8 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(abs(np.round(expected_phases, 4) == np.round(obtained_phases, 4))))
-        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
+        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 4) - np.round(expected_phases, 4)) < TOL))
+        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 4) - np.round(expected_flux, 4)) < TOL))
 
     def test_eccentric_synchronous_detached_system_approximation_two(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
@@ -451,12 +453,12 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(np.round(expected_phases, 4) == np.round(obtained_phases, 4)))
-        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
+        self.assertTrue(np.all(np.round(obtained_phases, 4) - np.round(expected_phases, 4) < TOL))
+        self.assertTrue(np.all(np.round(obtained_flux, 4) - np.round(expected_flux, 4) < TOL))
 
         expected_exact = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
         expected_flux_exact = normalize_lc_for_unittests(expected_exact[1]["Generic.Bessell.V"])
-        self.assertTrue(np.all(abs(obtained_flux - expected_flux_exact) < 1e5))
+        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 4) - np.round(expected_flux_exact, 4)) < TOL))
 
         # from matplotlib import pyplot as plt
         # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
@@ -479,8 +481,8 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(abs(np.round(expected_phases, 4) == np.round(obtained_phases, 4))))
-        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
+        self.assertTrue(np.all(np.round(obtained_phases, 4) - np.round(expected_phases, 4) < TOL))
+        self.assertTrue(np.all(np.round(obtained_flux, 4) - np.round(expected_flux, 4) < TOL))
 
     def test_circular_spotty_synchronous_detached_system(self):
         bs = prepare_binary_system(self.params["detached"],
@@ -498,8 +500,8 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
+        self.assertTrue(np.all(np.round(obtained_phases, 4) - np.round(expected_phases, 4) < TOL))
+        self.assertTrue(np.all(np.round(obtained_flux, 4) - np.round(expected_flux, 4) < TOL))
 
     def test_circular_spotty_synchronous_overcontact_system(self):
         bs = prepare_binary_system(self.params["over-contact"],
@@ -517,8 +519,8 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(np.round(obtained_phases, 4) == np.round(expected_phases, 4)))
-        self.assertTrue(np.all(np.round(obtained_flux, 4) == np.round(expected_flux, 4)))
+        self.assertTrue(np.all(np.round(obtained_phases, 4) - np.round(expected_phases, 4) < TOL))
+        self.assertTrue(np.all(np.round(obtained_flux, 4) - np.round(expected_flux, 4) < TOL))
 
     def test_cicular_spotty_asynchronous_detached_system(self):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
@@ -552,5 +554,5 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(abs(np.round(expected_phases, 4) == np.round(obtained_phases, 4))))
-        assert_array_equal(np.round(obtained_flux, 4), np.round(expected_flux, 4))
+        self.assertTrue(np.all(np.round(obtained_phases, 4) - np.round(expected_phases, 4) < TOL))
+        self.assertTrue(np.all(np.round(obtained_flux, 4) - np.round(expected_flux, 4) < TOL))
