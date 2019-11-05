@@ -44,7 +44,7 @@ Requirements
     cycler==0.10.0
     matplotlib==2.1.0
     numpy==1.14.0
-    pandas==0.23.0
+    pandas==0.24.0
     pyparsing==2.2.0
     pypex==0.1.0
     pytest==3.2.3
