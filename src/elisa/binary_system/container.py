@@ -60,7 +60,7 @@ class OrbitalPositionContainer(PositionContainer):
     def has_pulsations(self):
         return self.primary.has_pulsations() or self.secondary.has_pulsations()
 
-    def build(self, components_distance, component="all", do_pulsations=False, phase=None, **kwargs):
+    def build(self, components_distance=None, component="all", do_pulsations=False, phase=None, **kwargs):
         """
         Main method to build binary star system from parameters given on init of BinaryStar.
 
@@ -79,6 +79,8 @@ class OrbitalPositionContainer(PositionContainer):
         :param components_distance: float; distance of components is SMA units
         :return:
         """
+        if components_distance is None:
+            components_distance = self.position.distance
         self.build_mesh(components_distance, component)
         self.build_from_points(components_distance, component, do_pulsations=do_pulsations, phase=phase)
 
