@@ -69,11 +69,11 @@ class Observables(object):
     def __init__(self, observer):
         self.observer = observer
 
-    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
-        return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize_lc)
+    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+        return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize)
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
-        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize_lc)
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize)
 
 
 class Observer(object):
@@ -102,6 +102,7 @@ class Observer(object):
         self.fluxes = None
         self.fluxes_unit = None
         self.radial_velocities = None
+        self.rv_unit = None
 
         self.plot = Plot(self)
         self.observe = Observables(self)
@@ -180,12 +181,12 @@ class Observer(object):
         df[config.PASSBAND_DATAFRAME_WAVE] = df[config.PASSBAND_DATAFRAME_WAVE] * 10.0
         return df
 
-    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
+    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
         """
         Method for observation simulation. Based on input parmeters and supplied Ob server system on initialization
         will compute lightcurve.
 
-        :param normalize_lc: bool;
+        :param normalize: bool;
         :param from_phase: float;
         :param to_phase: float;
         :param phase_step: float;
@@ -239,7 +240,7 @@ class Observer(object):
             curves[items] += correction
 
         self.phases = phases
-        if normalize_lc:
+        if normalize:
             self.fluxes_unit = u.dimensionless_unscaled
         else:
             self.fluxes = curves
@@ -247,22 +248,39 @@ class Observer(object):
         self._logger.info("observation finished")
         return phases, curves
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize_lc=False):
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+        """
+        Method for simulation of observation radial velocity curves.
 
-        # todo: put together with lc
+        :param normalize: bool;
+        :param from_phase: float;
+        :param to_phase: float;
+        :param phase_step: float;
+        :param phases: Iterable float;
+        :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
+        """
+
         if not phases and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
             phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
         phases = np.array(phases)
-
-        return self._system.compute_rv(
+        phases, primary_rv, secondary_rv = self._system.compute_rv(
             **dict(
                 phases=phases,
                 position_method=self._system.get_positions_method()
             )
         )
+
+        self.rv_unit = units.m / units.s
+        if normalize:
+            self.rv_unit = u.dimensionless_unscaled
+            _max = np.max([primary_rv, secondary_rv])
+            primary_rv /= _max
+            secondary_rv /= _max
+
+        return phases, primary_rv, secondary_rv
 
     def phase_interval_reduce(self, phases):
         """

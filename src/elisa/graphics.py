@@ -666,3 +666,20 @@ def phase_curve(**kwargs):
     if kwargs['legend']:
         plt.legend(loc=kwargs['legend_location'])
     plt.show()
+
+
+def rv_curve(**kwargs):
+    plt.figure(figsize=(8, 6))
+    phases, primary_rv, secondary_rv = kwargs["phases"], kwargs["primary_rv"], kwargs["secondary_rv"]
+    plt.plot(phases, primary_rv, label="primary")
+    plt.plot(phases, secondary_rv, label="secondary")
+    plt.legend()
+
+    plt.xlabel('Phase')
+    if kwargs['unit'] == units.m / units.s:
+        plt.ylabel(r'Radial Velocity/($m/s$)')
+    else:
+        plt.ylabel('Radial Velocity')
+    if kwargs['legend']:
+        plt.legend(loc=kwargs['legend_location'])
+    plt.show()
