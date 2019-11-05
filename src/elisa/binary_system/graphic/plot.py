@@ -267,7 +267,7 @@ class Plot(object):
                 sma = (self.binary.semi_major_axis * eu.DISTANCE_UNIT).to(axis_unit).value
                 surface_kwargs[f'points_{component}'] *= sma
 
-                if surface_kwargs['normals']:
+                if normals:
                     surface_kwargs[f'{component}_centres'] *= sma
 
         surface_kwargs.update({
