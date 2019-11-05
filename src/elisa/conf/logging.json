@@ -29,18 +29,18 @@
     "loggers": {
         "main": {
             "level": "INFO",
-            "handlers": ["console", "file_handler"],
+            "handlers": ["console"],
             "propagate": 0
         },
         "BinarySystem": {
             "level": "INFO",
-            "handlers": ["console", "file_handler"],
+            "handlers": ["console"],
             "propagate": 0
         }
     },
 
     "root": {
         "level": "DEBUG",
-        "handlers": ["console", "file_handler"]
+        "handlers": ["console"]
     }
 }

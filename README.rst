@@ -43,7 +43,7 @@ Requirements
     astropy==2.0.2
     cycler==0.10.0
     matplotlib==2.1.0
-    numpy==1.13.3
+    numpy==1.14.0
     pandas==0.23.0
     pyparsing==2.2.0
     pypex==0.1.0
