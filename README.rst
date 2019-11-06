@@ -3,7 +3,7 @@
 .. |Travis build| image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
     :target: https://travis-ci.org/mikecokina/elisa
 
-.. |GitHub version| image:: https://img.shields.io/badge/version-0.1.dev0-yellow.svg
+.. |GitHub version| image:: https://img.shields.io/badge/version-0.1-yellow.svg
    :target: https://github.com/Naereen/StrapDown.js
 
 .. |Licence GPLv2| image:: https://img.shields.io/badge/License-GNU/GPLv2-blue.svg
