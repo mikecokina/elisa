@@ -24,7 +24,7 @@ setup(
     version=get_version(),
 
     description='Eclipsing Binary Modeling Software',
-    long_description=long_description,
+    long_description='For more information visit https://github.com/mikecokina/elisa/',
 
     # The project's main homepage.
     url='https://github.com/mikecokina/elisa',
