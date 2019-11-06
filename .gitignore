@@ -7,17 +7,25 @@ __pycache__
 my_main.py
 main.py
 postup
-sandbox.py
 limbdarkening.tar
 env36/*
 limbdarkening/*/*.csv
 limbdarkening/*.csv
 atmosphere/*/*.csv
 atmosphere/ck04/*
+atmosphere/k93/*
 atmosphere/*.csv
 conf/elisa_conf.ini
+objects/HD_99458.py
 
 *.log
 __main__.py
 .cache
 *.pickle
+
+sandbox.py
+
+build/*
+dist/*
+elisa.egg-info
+docs/build/*

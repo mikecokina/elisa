@@ -1,7 +1,7 @@
 Limbdarkening models
 ====================
 
-    **url:** https://mega.nz/#!XY9zBAaS!zsZSN0KMnW5hXnr5m5WchQv6BtTqo4odVv73ZrxD3dY
+    **url:** https://mega.nz/#!PAs1xCqZ!JIMLIdEjK48OEu1kkPPm_uw1GjxtbD0gUP5loKYKpac
 
     Contain limb darkening models for given limbdarkening models, passbands and metalicities
     Extract content of ``limbdarkening.tar`` archive to any directory and setup ``support.van_hamme_ld_tables``
@@ -56,6 +56,7 @@ List of passbands included
     Generic.Bessell.R
     Generic.Bessell.I
     Kepler
+    GaiaDR2
     SLOAN.SDSS.u
     SLOAN.SDSS.g
     SLOAN.SDSS.r

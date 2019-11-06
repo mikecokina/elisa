@@ -10,14 +10,14 @@
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "level": "DEBUG",
+            "level": "INFO",
             "formatter": "simple",
             "stream": "ext://sys.stdout"
         },
 
         "file_handler": {
             "class": "logging.handlers.RotatingFileHandler",
-            "level": "DEBUG",
+            "level": "INFO",
             "formatter": "simple",
             "filename": "elisa.log",
             "maxBytes": 10485760,
@@ -28,19 +28,19 @@
 
     "loggers": {
         "main": {
-            "level": "DEBUG",
-            "handlers": ["console", "file_handler"],
+            "level": "INFO",
+            "handlers": ["console"],
             "propagate": 0
         },
-        "HttpImporter": {
-            "level": "DEBUG",
-            "handlers": ["console", "file_handler"],
+        "BinarySystem": {
+            "level": "INFO",
+            "handlers": ["console"],
             "propagate": 0
         }
     },
 
     "root": {
         "level": "DEBUG",
-        "handlers": ["console", "file_handler"]
+        "handlers": ["console"]
     }
 }

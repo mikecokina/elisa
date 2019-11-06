@@ -1,0 +1,47 @@
+import numpy as np
+
+from scipy import special
+from scipy import optimize
+
+# numpy
+degrees = np.degrees
+radians = np.radians
+
+cos = np.cos
+sin = np.sin
+tan = np.tan
+arctan = np.arctan
+arcsin = np.arcsin
+arccos = np.arccos
+arctan2 = np.arctan2
+pi = np.pi
+zeros = np.zeros
+log10 = np.log10
+divide = np.divide
+log = np.log
+
+isnan = np.isnan
+power = np.power
+matmul = np.matmul
+multiply = np.multiply
+inner = np.inner
+arange = np.arange
+abs = np.abs
+ceil = np.ceil
+where = np.where
+invert = np.invert
+concatenate = np.concatenate
+sqrt = np.sqrt
+sign = np.sign
+
+logical_xor = np.logical_xor
+logical_and = np.logical_and
+logical_or = np.logical_or
+mod = np.mod
+equal = np.equal
+less = np.less
+
+# scipy
+sph_harm = special.sph_harm
+lpmv = special.lpmv
+optimize = optimize
