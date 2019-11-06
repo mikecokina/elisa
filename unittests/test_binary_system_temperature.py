@@ -1,6 +1,9 @@
 import numpy as np
+import os.path as op
 
+from importlib import reload
 from elisa import umpy as up
+from elisa.conf import config
 from elisa.utils import is_empty
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
@@ -8,6 +11,10 @@ from unittests.utils import ElisaTestCase
 
 class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
     def generator_test_temperatures(self, key, allowed_range=None):
+        config.LIMB_DARKENING_LAW = 'linear'
+        config.VAN_HAMME_LD_TABLES = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
+        reload(testutils)
+
         s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])
         s.primary.discretization_factor = up.radians(10)
         s.secondary.discretization_factor = up.radians(10)

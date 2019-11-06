@@ -59,6 +59,11 @@ class MockSelf(object):
 
 
 class SupportMethodsTestCase(ElisaTestCase):
+    def setUp(self):
+        config.LIMB_DARKENING_LAW = 'linear'
+        config.VAN_HAMME_LD_TABLES = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
+        reload(lc)
+
     def test_compute_filling_factor(self):
         potential, l_points = 100.0, [2.4078, 2.8758, 2.5772]
         expected = -325.2652

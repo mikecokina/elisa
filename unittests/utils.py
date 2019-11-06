@@ -4,6 +4,7 @@ import os.path as op
 import unittest
 import numpy as np
 
+from importlib import reload
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -19,6 +20,7 @@ from elisa.orbit import orbit
 from elisa.utils import is_empty
 
 ax3 = Axes3D
+# ld =
 
 
 def reset_config():
