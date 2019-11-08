@@ -2,6 +2,18 @@ import numpy as np
 from elisa import const
 
 
+def surface_potential_from_polar_log_g(polar_log_g, mass):
+    """
+    calculation of surface potential based from polar gravity acceleration
+
+    :param polar_log_g: float; polar gravity acceleration
+    :param mass: float; stellar mass
+    :return:
+    """
+    polar_gravity_acceleration = np.power(10, polar_log_g)
+    return - np.power(const.G * mass * polar_gravity_acceleration, 0.5)
+
+
 def potential_fn(radius, *args):
     """
     implicit potential function
@@ -26,7 +38,7 @@ def potential(radius, *args):
     return - a / radius - b * np.power(radius, 2.0)
 
 
-def pre_calculate_for_potential_value(self, *args, return_as_tuple=False):
+def pre_calculate_for_potential_value(*args, return_as_tuple=False):
     """
     Function calculates auxiliary values for calculation of primary component potential,
     and therefore they don't need to be wastefully recalculated every iteration in solver.
