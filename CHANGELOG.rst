@@ -29,9 +29,18 @@ v0.1_
     - orbit plot
     - animations of orbital motions
 
-* **in progress/pending**
 
-    - LC normalization
+v0.2.dev0_
+----------
+.. v0.2.dev0_: https://github.com/mikecokina/elisa
+
+**Features**
+
+**Fixes**
+
+    - `elisa.observer.Observer.observe.lc` and `elisa.observer.Observer.observe.rv` will not raise an error in case
+      when parameter `phases` is `numpy.array` type
+
 
 
 Future plans
