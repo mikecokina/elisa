@@ -194,7 +194,7 @@ class Observer(object):
         :return: Dict;
         """
 
-        if not phases and (from_phase is None or to_phase is None or phase_step is None):
+        if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
@@ -260,7 +260,7 @@ class Observer(object):
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
 
-        if not phases and (from_phase is None or to_phase is None or phase_step is None):
+        if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
