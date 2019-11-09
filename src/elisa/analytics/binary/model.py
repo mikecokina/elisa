@@ -18,39 +18,39 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
         * **inclination** * -- float;
         * **p__mass** * -- float;
         * **p__t_eff** * -- float;
-        * **p__omega** * -- float;
-        * **p__beta** * -- float;
+        * **p__surface_potential** * -- float;
+        * **p__gravity_darkening** * -- float;
         * **p__albedo** * -- float;
-        * **p__mh** * -- float;
+        * **p__metallicity** * -- float;
         * **s__mass** * -- float;
         * **s__t_eff** * -- float;
-        * **s__omega** * -- float;
-        * **s__beta** * -- float;
+        * **s__surface_potential** * -- float;
+        * **s__gravity_darkening** * -- float;
         * **s__albedo** * -- float;
-        * **s__mh** * -- float;
+        * **s__metallicity** * -- float;
     :return: elisa.binary_system.system.BinarySystem;
     """
 
     primary = Star(
         mass=kwargs['p__mass'] * units.solMass,
-        surface_potential=kwargs['p__omega'],
+        surface_potential=kwargs['p__surface_potential'],
         synchronicity=1.0,
         t_eff=kwargs['p__t_eff'] * units.K,
-        gravity_darkening=kwargs.get('p__beta', 1.0),
+        gravity_darkening=kwargs.get('p__gravity_darkening', 1.0),
         discretization_factor=discretization,
         albedo=kwargs.get('p__albedo', 1.0),
-        metallicity=0.0,
+        metallicity=kwargs['p__metallicity'],
         suppress_logger=True
     )
 
     secondary = Star(
         mass=kwargs['s__mass'] * units.solMass,
-        surface_potential=kwargs['p__omega'],
+        surface_potential=kwargs['p__surface_potential'],
         synchronicity=1.0,
         t_eff=kwargs['s__t_eff'] * units.K,
-        gravity_darkening=kwargs.get('s__beta', 1.0),
+        gravity_darkening=kwargs.get('s__gravity_darkening', 1.0),
         albedo=kwargs.get('s__albedo', 1.0),
-        metallicity=0.0,
+        metallicity=kwargs['s__metallicity'],
         suppress_logger=True
     )
 
@@ -80,16 +80,16 @@ def circular_sync_synthetic(xs, period, passband, discretization, **kwargs):
         * **inclination** * -- float;
         * **p__mass** * -- float;
         * **p__t_eff** * -- float;
-        * **p__omega** * -- float;
-        * **p__beta** * -- float;
+        * **p__surface_potential** * -- float;
+        * **p__gravity_darkening** * -- float;
         * **p__albedo** * -- float;
-        * **p__mh** * -- float;
+        * **p__metallicity** * -- float;
         * **s__mass** * -- float;
         * **s__t_eff** * -- float;
-        * **s__omega** * -- float;
-        * **s__beta** * -- float;
+        * **s__surface_potential** * -- float;
+        * **s__gravity_darkening** * -- float;
         * **s__albedo** * -- float;
-        * **s__mh** * -- float;
+        * **s__metallicity** * -- float;
     :return: numpy.array;
     """
     binary = prepare_circual_sync_binary(period, discretization, **kwargs)

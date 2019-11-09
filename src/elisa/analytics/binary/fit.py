@@ -1,9 +1,8 @@
 import functools
 import json
-from copy import copy
-
 import numpy as np
 
+from copy import copy
 from typing import Tuple, List
 from scipy.optimize import least_squares
 
@@ -18,16 +17,16 @@ __logger__ = logger.getLogger('binary-fit')
 ALL_PARAMS = ['inclination',
               'p__mass',
               'p__t_eff',
-              'p__omega',
-              'p__beta',
+              'p__surface_potential',
+              'p__gravity_darkening',
               'p__albedo',
-              'p__mh',
+              'p__metallicity',
               's__mass',
               's__t_eff',
-              's__omega',
-              's__beta',
+              's__surface_potential',
+              's__gravity_darkening',
               's__albedo',
-              's__mh']
+              's__metallicity']
 
 TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", config.ATM_ATLAS)
 METALLICITY = atm_file_prefix_to_quantity_list("metallicity", config.ATM_ATLAS)
@@ -37,10 +36,10 @@ NORMALIZE_MAP = {
     'inclination': (0, 180),
     'mass': (0.5, 20),
     't_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
-    'mh': (np.min(METALLICITY), np.max(METALLICITY)),
-    'omega': (2.0, 50.0),
+    'metallicity': (np.min(METALLICITY), np.max(METALLICITY)),
+    'surface_potential': (2.0, 50.0),
     'albedo': (0, 1),
-    'beta': (0, 1)
+    'gravity_darkening': (0, 1)
 }
 
 
