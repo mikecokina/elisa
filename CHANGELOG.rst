@@ -3,9 +3,9 @@ Change Log
 |
 
 
-v0.1.dev0_
-----------
-.. _v0.1.dev0: https://github.com/mikecokina/elisa
+v0.1_
+-----
+.. v0.1_: https://github.com/mikecokina/elisa/commits/release/0.1
 
 
 **Features**
