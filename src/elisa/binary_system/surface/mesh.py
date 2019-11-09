@@ -255,9 +255,9 @@ def get_surface_points(*args):
                 theta: numpy.array,
                 x0: float,
                 components_distance: float,
-                precalc_fn: method,
-                potential_fn: method,
-                fprime: method,
+                precalc_fn: callable,
+                potential_fn: callable,
+                fprime: callable,
                 surface_potential: float,
                 mass_ratio: float
                 symchronicity: float
@@ -287,9 +287,9 @@ def get_surface_points_cylindrical(*args):
                 z: numpy.array,
                 components_distance: float,
                 x0: float,
-                precalc_fn: method,
-                potential_fn: method,
-                fprime: method (fprime),
+                precalc_fn: callable,
+                potential_fn: callable,
+                fprime: callable (fprime),
                 surface_potential: float,
                 mass_ratio: float,
                 synchronicity: float

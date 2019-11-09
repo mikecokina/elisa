@@ -60,9 +60,9 @@ def get_surface_points_radii(*args):
         Tuple[
                 theta: numpy.array,
                 x0: float,
-                precalc: method,
-                fn: method,
-                derivative_fn: method]
+                precalc: callable,
+                fn: callable,
+                derivative_fn: callable]
 
     :return: numpy.array
     """

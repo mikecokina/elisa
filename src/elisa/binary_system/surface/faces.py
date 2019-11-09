@@ -112,7 +112,7 @@ def get_surface_builder_fn(morphology):
     """
     Returns suitable triangulation function depending on morphology.
 
-    :return: method; method that performs generation surface faces
+    :return: callable; method that performs generation surface faces
     """
     return over_contact_system_surface if morphology == "over-contact" else detached_system_surface
 

@@ -462,7 +462,7 @@ class BinarySystem(System):
         """
         Return method to use for orbital motion computation.
 
-        :return: method;
+        :return: callable;
         """
         return self.calculate_orbital_motion
 
