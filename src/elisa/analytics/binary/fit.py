@@ -9,7 +9,9 @@ from scipy.optimize import least_squares
 from elisa import logger
 from elisa.analytics.binary import model
 from elisa.atm import atm_file_prefix_to_quantity_list
+from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
+from elisa.observer.observer import Observer
 
 config.set_up_logging()
 __logger__ = logger.getLogger('binary-fit')
@@ -169,13 +171,12 @@ def _logger_decorator(suppress_logger=False):
 
 
 def circular_sync_model_to_fit(x, *args):
-    xs, ys, period, kwords, fixed, passband, discretization, suppress_logger = args
+    xs, ys, period, kwords, fixed, passband, discretization, suppress_logger, observer = args
     x = _renormalize(x, kwords)
     kwargs = {k: v for k, v in zip(kwords, x)}
     kwargs.update(fixed)
-
     fn = model.circular_sync_synthetic
-    synthetic = _logger_decorator(suppress_logger)(fn)(xs, period, passband, discretization, **kwargs)
+    synthetic = _logger_decorator(suppress_logger)(fn)(xs, period, passband, discretization, observer, **kwargs)
     return synthetic - ys
 
 
@@ -198,7 +199,9 @@ def r_squared(*args, **x):
     observed_mean = np.mean(ys)
 
     variability = np.sum(np.power(ys - observed_mean, 2))
-    synthetic = model.circular_sync_synthetic(xs, period, passband, discretization, **x)
+    observer = Observer(passband=passband, system=None, suppress_logger=True)
+    observer._system_cls = BinarySystem
+    synthetic = model.circular_sync_synthetic(xs, period, passband, discretization, observer **x)
     residual = np.sum(np.power(ys - synthetic, 2))
     return 1.0 - (residual / variability)
 
@@ -212,7 +215,10 @@ class Fit(object):
         x0 = _normalize(x0_vectorized, kwords)
         bounds = (0.0, 1.0)
 
-        args = (xs, ys, period, kwords, fixed, passband, discretization, suppress_logger)
+        observer = Observer(passband=passband, system=None, suppress_logger=True)
+        observer._system_cls = BinarySystem
+
+        args = (xs, ys, period, kwords, fixed, passband, discretization, suppress_logger, observer)
 
         __logger__.info("fitting circular synchronous system...")
         result = least_squares(circular_sync_model_to_fit, x0, bounds=bounds, args=args, max_nfev=max_nfev, xtol=xtol)

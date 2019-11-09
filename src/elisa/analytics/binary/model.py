@@ -69,12 +69,13 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
     return bs
 
 
-def circular_sync_synthetic(xs, period, passband, discretization, **kwargs):
+def circular_sync_synthetic(xs, period, passband, discretization, observer, **kwargs):
     """
     :param xs: Union[List, numpy.array];
     :param period: float;
     :param discretization: float;
     :param passband: str;
+    :param observer: elisa.observer.observer.Observer; instance
     :param kwargs: Dict;
     :**kwargs options**:
         * **inclination** * -- float;
@@ -93,6 +94,6 @@ def circular_sync_synthetic(xs, period, passband, discretization, **kwargs):
     :return: numpy.array;
     """
     binary = prepare_circual_sync_binary(period, discretization, **kwargs)
-    observer = Observer(passband=passband, system=binary, suppress_logger=True)
+    observer._system = binary
     lc = observer.observe.lc(phases=xs, normalize=True)
     return lc[1][passband] / np.max(lc[1][passband])
