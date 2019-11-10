@@ -5,7 +5,6 @@ import pandas as pd
 
 from multiprocessing.pool import Pool
 from scipy import interpolate
-from astropy import units as u
 
 from elisa.binary_system.system import BinarySystem
 from elisa.observer import mp

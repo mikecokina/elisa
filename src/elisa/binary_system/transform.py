@@ -1,6 +1,5 @@
 import numpy as np
 
-from astropy import units as au
 from elisa import units, const
 from elisa.base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
 
@@ -28,7 +27,7 @@ class BinarySystemProperties(SystemProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float;
         """
-        if isinstance(value, au.quantity.Quantity):
+        if isinstance(value, units.Quantity):
             value = np.float64(value.to(units.ARC_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64((value * units.deg).to(units.ARC_UNIT))

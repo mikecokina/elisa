@@ -3,7 +3,6 @@ import numpy as np
 from elisa import utils, const, units
 
 from scipy.special import sph_harm
-from astropy import units as u
 from copy import copy
 
 """file containing functions dealing with pulsations"""
@@ -146,7 +145,7 @@ def calc_temp_pert_on_container(star_instance, container, phase, rot_period, com
         if mode.mode_axis_theta != 0.0:
             recalculate_rals(container, phi_corr, centres, mode, mode_index)
 
-        freq = (mode.frequency * units.FREQUENCY_UNIT).to(1/u.d).value
+        freq = (mode.frequency * units.FREQUENCY_UNIT).to(1/units.d).value
         exponent = const.FULL_ARC * freq * rot_period * phase - mode.start_phase
         exponential = np.exp(complex(0, -exponent))
         temp_pert_cmplx = mode.amplitude * container.rals[mode_index] * exponential
@@ -168,7 +167,7 @@ def calc_temp_pert(star_instance, phase, rot_period):
                       for spot_idx, spot in star_instance.spots.items()}
 
     for mode_index, mode in star_instance.pulsations.items():
-        freq = (mode.frequency * units.FREQUENCY_UNIT).to(1 / u.d).value
+        freq = (mode.frequency * units.FREQUENCY_UNIT).to(1 / units.d).value
         exponent = const.FULL_ARC * freq * rot_period * phase - mode.start_phase
         exponential = np.exp(complex(0, -exponent))
         temp_pert_cmplx = mode.amplitude * mode.rals[0] * exponential

@@ -1,10 +1,8 @@
 import numpy as np
 
-from astropy import units as au
 from elisa import (
     units,
-    const,
-    umpy as up
+    const
 )
 
 
@@ -20,7 +18,7 @@ def quantity_transform(value, unit, when_float64):
     :param when_float64: Tuple(Types)
     :return: float
     """
-    if isinstance(value, au.quantity.Quantity):
+    if isinstance(value, units.Quantity):
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
         value = np.float64(value)
@@ -31,10 +29,10 @@ def quantity_transform(value, unit, when_float64):
 
 
 def deg_transform(value, unit, when_float64):
-    if isinstance(value, au.quantity.Quantity):
+    if isinstance(value, units.Quantity):
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
-        value = np.float64(value)*au.deg.to(unit)
+        value = np.float64(value)*units.deg.to(unit)
     else:
         raise TypeError('Input of variable `longitude` is not (numpy.)int or (numpy.)float '
                         'nor astropy.unit.quantity.Quantity instance.')
@@ -65,7 +63,7 @@ class SystemProperties(TransformProperties):
         :param value:
         :return: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         """
-        if isinstance(value, au.quantity.Quantity):
+        if isinstance(value, units.Quantity):
             value = np.float64(value.to(units.ARC_UNIT))
         elif isinstance(value, (int, np.int, float, np.float)):
             value = np.float64((value * units.deg).to(units.ARC_UNIT))
@@ -136,7 +134,7 @@ class BodyProperties(TransformProperties):
        :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
        :return: float
        """
-        if isinstance(value, au.quantity.Quantity):
+        if isinstance(value, units.Quantity):
             value = np.float64(value.to(units.MASS_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64(value * units.solMass.to(units.MASS_UNIT))
@@ -178,7 +176,7 @@ class BodyProperties(TransformProperties):
         """
         This function accepts value in Any temperature unit.
         If your input is without unit, function assumes that supplied value is in Kelvins.
-        
+
         :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
         :return: float
         """

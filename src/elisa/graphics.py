@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 from matplotlib import cm
-from astropy import units as au
 from elisa import (
     umpy as up,
     utils,
@@ -27,7 +26,7 @@ def orbit(**kwargs):
         * **frame_of_reference** * -- str; `barycentric` or `primary`
     """
     unit = str(kwargs['axis_units'])
-    if kwargs['axis_units'] == au.dimensionless_unscaled:
+    if kwargs['axis_units'] == units.dimensionless_unscaled:
         x_label, y_label = 'x/[SMA]', 'y/[SMA]'
     else:
         x_label, y_label = r'x/' + unit, r'y/' + unit
@@ -426,7 +425,7 @@ def binary_surface(**kwargs):
 
     if kwargs['plot_axis']:
         unit = str(kwargs['axis_unit'])
-        if kwargs['axis_unit'] == au.dimensionless_unscaled:
+        if kwargs['axis_unit'] == units.dimensionless_unscaled:
             x_label, y_label, z_label = 'x', 'y', 'z'
         else:
             x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit

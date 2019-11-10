@@ -1,6 +1,5 @@
 import numpy as np
-from elisa import const as c, units as U, opt
-from astropy import units as u
+from elisa import const as c, units, opt
 from elisa.conf import config
 
 
@@ -9,7 +8,8 @@ def angular_velocity(rotation_period):
     rotational angular velocity of the star
     :return:
     """
-    return c.FULL_ARC / (rotation_period * U.PERIOD_UNIT).to(u.s).value
+    return c.FULL_ARC / (rotation_period * units.PERIOD_UNIT).to(units.s).value
+
 
 def potential(radius, *args):
     """

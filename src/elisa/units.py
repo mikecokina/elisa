@@ -25,3 +25,5 @@ W = u.W
 solRad = u.solRad
 K = u.K
 dimensionless_unscaled = u.dimensionless_unscaled
+
+Quantity = u.quantity.Quantity

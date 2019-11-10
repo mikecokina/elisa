@@ -1,6 +1,5 @@
 import numpy as np
-from elisa import utils, const as c, units as e_units
-from astropy import units as u
+from elisa import utils, const as c, units
 from elisa.logger import getLogger
 
 logger = getLogger('pulse.mode')
@@ -129,11 +128,11 @@ class PulsationMode(object):
         """
         Setter for temperature amplitude of pulsation mode.
         
-        :param amplitude: float or astropy.unit.quantity.Quantity
+        :param amplitude: float or astropy.unit.quantity.units.Quantity
         :return:
         """
-        if isinstance(amplitude, u.quantity.Quantity):
-            self._amplitude = np.float64(amplitude.to(e_units.TEMPERATURE_UNIT))
+        if isinstance(amplitude, units.Quantity):
+            self._amplitude = np.float64(amplitude.to(units.TEMPERATURE_UNIT))
         elif isinstance(amplitude, (int, np.int, float, np.float)):
             self._amplitude = np.float64(amplitude)
         else:
@@ -160,8 +159,8 @@ class PulsationMode(object):
         :param frequency: float or astropy.unit.quantity.Quantity
         :return:
         """
-        if isinstance(frequency, u.quantity.Quantity):
-            self._frequency = np.float64(frequency.to(e_units.FREQUENCY_UNIT))
+        if isinstance(frequency, units.Quantity):
+            self._frequency = np.float64(frequency.to(units.FREQUENCY_UNIT))
         elif isinstance(frequency, (int, np.int, float, np.float)):
             self._frequency = np.float64(frequency)
         else:
@@ -207,16 +206,16 @@ class PulsationMode(object):
         Setter for latitude of pulsation mode axis. 
         If unit is not supplied, degrees are assumed.
 
-        :param mode_axis_theta: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
+        :param mode_axis_theta: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.units.units.Quantity]
         :return:
         """
-        if isinstance(mode_axis_theta, u.quantity.Quantity):
-            self._mode_axis_theta = np.float64(mode_axis_theta.to(e_units.ARC_UNIT))
+        if isinstance(mode_axis_theta, units.Quantity):
+            self._mode_axis_theta = np.float64(mode_axis_theta.to(units.ARC_UNIT))
         elif isinstance(mode_axis_theta, (int, np.int, float, np.float)):
-            self._mode_axis_theta = np.float64((mode_axis_theta*u.deg).to(e_units.ARC_UNIT))
+            self._mode_axis_theta = np.float64((mode_axis_theta*u.deg).to(units.ARC_UNIT))
         else:
             raise TypeError('Input of variable `mode_axis_theta` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+                            'nor astropy.unit.quantity.units.Quantity instance.')
         if not 0 <= self._mode_axis_theta < c.PI:
             raise ValueError(f'Value of `mode_axis_theta`: {self._mode_axis_theta} is outside bounds (0, pi).')
 
@@ -238,10 +237,10 @@ class PulsationMode(object):
         :param mode_axis_phi: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
-        if isinstance(mode_axis_phi, u.quantity.Quantity):
-            self._mode_axis_phi = np.float64(mode_axis_phi.to(e_units.ARC_UNIT))
+        if isinstance(mode_axis_phi, units.Quantity):
+            self._mode_axis_phi = np.float64(mode_axis_phi.to(units.ARC_UNIT))
         elif isinstance(mode_axis_phi, (int, np.int, float, np.float)):
-            self._mode_axis_phi = np.float64((mode_axis_phi * u.deg).to(e_units.ARC_UNIT))
+            self._mode_axis_phi = np.float64((mode_axis_phi * u.deg).to(units.ARC_UNIT))
         else:
             raise TypeError('Input of variable `mode_axis_phi` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')

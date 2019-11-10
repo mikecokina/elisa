@@ -1,10 +1,8 @@
 from copy import copy
 import numpy as np
-from astropy import units as u
 
 from elisa.base.container import StarContainer
 from elisa.single_system.container import SystemContainer
-
 from elisa import utils, graphics, units
 
 
@@ -33,7 +31,7 @@ class Plot(object):
         """
         all_kwargs = ['axis_unit']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.equipotential)
-        kwargs['axis_unit'] = kwargs.get('axis_unit', u.solRad)
+        kwargs['axis_unit'] = kwargs.get('axis_unit', units.solRad)
 
         points = self._self.calculate_equipotential_boundary()
         kwargs['points'] = (points * units.DISTANCE_UNIT).to(kwargs['axis_unit'])
@@ -55,7 +53,7 @@ class Plot(object):
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.mesh)
 
         kwargs['inclination'] = kwargs.get('inclination', np.degrees(self._self.inclination))
-        kwargs['axis_unit'] = kwargs.get('axis_unit', u.solRad)
+        kwargs['axis_unit'] = kwargs.get('axis_unit', units.solRad)
         kwargs['plot_axis'] = kwargs.get('plot_axis', True)
         kwargs['inclination'] = np.degrees(kwargs.get('inclination', self._self.inclination))
         kwargs['azimuth'] = kwargs.get('azimuth', 0)
@@ -74,7 +72,7 @@ class Plot(object):
 
     def wireframe(self, **kwargs):
         if 'axis_unit' not in kwargs:
-            kwargs['axis_unit'] = u.solRad
+            kwargs['axis_unit'] = units.solRad
 
         all_kwargs = ['axis_unit', 'plot_axis', 'inclination', 'azimuth']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.wireframe)
@@ -92,7 +90,7 @@ class Plot(object):
 
     def surface(self, **kwargs):
         if 'axis_unit' not in kwargs:
-            kwargs['axis_unit'] = u.solRad
+            kwargs['axis_unit'] = units.solRad
 
         all_kwargs = ['axis_unit', 'edges', 'normals', 'colormap', 'plot_axis', 'inclination', 'azimuth', 'units']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.surface)
