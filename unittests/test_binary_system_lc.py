@@ -7,11 +7,11 @@ from numpy.testing import assert_array_equal
 from pypex.poly2d import polygon
 
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.binary_system.curves import lc
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.observer.observer import Observer
 from elisa.orbit.container import OrbitalSupplements
+from elisa.binary_system import surface
 
 from elisa.binary_system import (
     utils as bsutils,
@@ -30,6 +30,10 @@ from elisa import (
     umpy as up,
     units,
     const
+)
+from elisa.binary_system.curves import (
+    lc,
+    lcmp
 )
 
 TOL = 5e-3
@@ -109,7 +113,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         visible = [0, 2]
         coverage = [10, 20]
 
-        obtained = lc.surface_area_coverage(size, visible, coverage)
+        obtained = surface.coverage.surface_area_coverage(size, visible, coverage)
         expected = np.array([10., 0., 20., 0., 0.])
         self.assertTrue(np.all(obtained == expected))
 
@@ -120,7 +124,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         coverage = [10, 20]
         partial_coverage = [30]
 
-        obtained = lc.surface_area_coverage(size, visible, coverage, partial, partial_coverage)
+        obtained = surface.coverage.surface_area_coverage(size, visible, coverage, partial, partial_coverage)
         expected = np.array([10., 30., 20., 0., 0.])
         self.assertTrue(np.all(obtained == expected))
 
@@ -229,7 +233,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         normals = np.array([[1, -1, 0]]) / np.linalg.norm(np.array([-1, 1, 0]))
         hull = np.array([[0, 0], [2, 0], [2, 2], [0, 2]])
 
-        obtained = np.round(lc.partial_visible_faces_surface_coverage(points, faces, normals, hull), 10)
+        obtained = np.round(surface.coverage.partial_visible_faces_surface_coverage(points, faces, normals, hull), 10)
         expected = np.round(0.5 / up.cos(up.pi / 4.0), 10)
 
         self.assertTrue(np.all(obtained == expected))
@@ -351,8 +355,10 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
         laws = config.LD_LAW_TO_FILE_PREFIX.keys()
+
         for law in laws:
             config.LIMB_DARKENING_LAW = law
+            reload(lcmp)
             o = Observer(passband=['Generic.Bessell.V'], system=bs)
             o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
 
