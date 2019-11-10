@@ -552,12 +552,15 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     position_method = kwargs.pop("position_method")
     orbital_motion = position_method(input_argument=unique_phase_interval, return_nparray=False, calculate_from='phase')
 
+    normal_radiance, ld_cfs = prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
+
+    # TODO: multiprocess rest of it
+
     # is in eclipse test eval
     ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
     azimuths = [position.azimuth for position in orbital_motion]
     in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
 
-    normal_radiance, ld_cfs = prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
     band_curves = {key: up.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
 
     for pos_idx, position in enumerate(orbital_motion):
@@ -594,6 +597,11 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
             band_curves[band][pos_idx] = np.sum(flux)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
+
+
+
+
+
     return band_curves
 
 

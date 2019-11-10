@@ -225,7 +225,6 @@ class Observer(object):
         )
 
         # ##################################
-        self.suppress_multiprocessing = False
         config.NUMBER_OF_PROCESSES = 4
         if not self.suppress_multiprocessing:
             batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
