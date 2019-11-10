@@ -3,18 +3,23 @@ import sys
 import numpy as np
 import pandas as pd
 
+from multiprocessing.pool import Pool
 from scipy import interpolate
 from astropy import units as u
 
 from elisa.binary_system.system import BinarySystem
+from elisa.observer import mp
 from elisa.observer.plot import Plot
 from elisa.conf import config
 from elisa.utils import is_empty
+from elisa.logger import getLogger
 from elisa import (
-    logger,
     units,
-    umpy as up
+    umpy as up,
+    utils
 )
+
+logger = getLogger('observer.observer')
 
 
 class PassbandContainer(object):
@@ -77,19 +82,18 @@ class Observables(object):
 
 
 class Observer(object):
-    def __init__(self, passband, system, suppress_logger=False):
+    def __init__(self, passband, system, allow_multiprocessing=False):
         """
         Initializer for observer class.
 
         :param passband: string; for valid filter name see config.py file
-        :param suppress_logger: bool;
         :param system: system instance (BinarySystem or SingleSystem)
         """
-        self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
-        self._logger.info("initialising Observer instance")
+        logger.info("initialising Observer instance")
         # specifying what kind of system is observed
         self._system = system
         self._system_cls = type(self._system)
+        self.allow_multiprocessing = allow_multiprocessing
 
         self.left_bandwidth = sys.float_info.max
         self.right_bandwidth = 0.0
@@ -205,7 +209,7 @@ class Observer(object):
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
 
-        self._logger.info(f"observation is running")
+        logger.info(f"observation is running")
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
 
@@ -220,7 +224,22 @@ class Observer(object):
                      )
                  )
 
-        # pool = Pool(processes=config.NUMBER_OF_THREADS)
+        # self.allow_multiprocessing = True
+        #
+        # if self.allow_multiprocessing:
+        #     batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
+        #     phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
+        #
+        #     pool = Pool(processes=config.NUMBER_OF_PROCESSES)
+        #     result = [pool.apply_async(mp.observe_lc_worker, (batch_idx, batch))
+        #               for batch_idx, batch in enumerate(phase_batches)]
+        #     pool.close()
+        #     pool.join()
+        #     result_list = [r.get() for r in result]
+        #
+        #     print(result_list)
+        #
+        # exit()
         # res = [pool.apply_async(mp.observe_worker,
         #                         (self._system.initial_kwargs, self._system_cls, _args)) for _args in args]
         # pool.close()
@@ -245,7 +264,7 @@ class Observer(object):
         else:
             self.fluxes = curves
             self.fluxes_unit = units.W / units.m**2
-        self._logger.info("observation finished")
+        logger.info("observation finished")
         return phases, curves
 
     def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):

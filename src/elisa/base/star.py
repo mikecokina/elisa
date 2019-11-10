@@ -5,11 +5,14 @@ from elisa.base.body import Body
 from elisa.base.container import StarPropertiesContainer
 from elisa.base.transform import StarProperties
 from elisa.pulse.mode import PulsationMode
+from elisa.logger import getLogger
 
 from copy import (
     copy,
     deepcopy
 )
+
+logger = getLogger('base.star')
 
 
 class Star(Body):
@@ -41,9 +44,9 @@ class Star(Body):
                        'discretization_factor', 'spots', 'metallicity', 'polar_log_g']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, name=None, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Star.ALL_KWARGS, Star)
-        super(Star, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
+        super(Star, self).__init__(name, **kwargs)
         kwargs = self.transform_input(**kwargs)
 
         # default values of properties
@@ -77,7 +80,7 @@ class Star(Body):
         :param kwargs: Dict; initial parameters
         :return:
         """
-        self._logger.debug(f"initialising properties of class instance {self.__class__.__name__}")
+        logger.debug(f"initialising properties of class instance {self.__class__.__name__}")
         for kwarg in Star.ALL_KWARGS:
             if kwarg in kwargs:
                 setattr(self, kwarg, kwargs[kwarg])

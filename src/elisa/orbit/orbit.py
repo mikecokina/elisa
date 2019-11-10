@@ -1,7 +1,14 @@
 import numpy as np
 
-from elisa import logger, utils, const, umpy as up
+from elisa import (
+    utils,
+    const,
+    umpy as up
+)
+from elisa.logger import getLogger
 from elisa.orbit.transform import OrbitProperties
+
+logger = getLogger('orbit.orbit')
 
 
 def angular_velocity(period, eccentricity, distance):
@@ -53,11 +60,10 @@ class Orbit(object):
     OPTIONAL_KWARGS = ['phase_shift']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, suppress_logger=False, **kwargs):
+    def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs, Orbit.ALL_KWARGS, Orbit)
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
         kwargs = OrbitProperties.transform_input(**kwargs)
-        self._logger = logger.getLogger(name=self.__class__.__name__, suppress=suppress_logger)
 
         # default valeus of properties
         self.period = np.nan
@@ -71,7 +77,7 @@ class Orbit(object):
         self.phase_shift = 0.0
 
         # values of properties
-        self._logger.debug(f"setting properties of orbit")
+        logger.debug(f"setting properties of orbit")
         for kwarg in kwargs:
             setattr(self, kwarg, kwargs[kwarg])
 
@@ -148,7 +154,7 @@ class Orbit(object):
             else:
                 return False
         except Exception as e:
-            self._logger.debug(f"Solver scipy.optimize.newton in function Orbit.eccentric_anomaly did not provide "
+            logger.debug(f"Solver scipy.optimize.newton in function Orbit.eccentric_anomaly did not provide "
                                f"solution.\n Reason: {e}")
             return False
 
@@ -338,6 +344,6 @@ class Orbit(object):
         :return: float;
         """
         periastron_distance = self.relative_radius(true_anomaly=np.array([0])[0])
-        self._logger.debug(f"setting property periastron_distance "
+        logger.debug(f"setting property periastron_distance "
                            f"of class instance {self.__class__.__name__} to {periastron_distance}")
         return periastron_distance

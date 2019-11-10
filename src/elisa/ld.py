@@ -2,17 +2,16 @@ import os
 import numpy as np
 import pandas as pd
 
+from elisa.logger import getLogger
 from scipy import interpolate
 from elisa.conf import config
 from elisa import (
-    logger,
     utils,
     const,
     umpy as up
 )
 
-config.set_up_logging()
-__logger__ = logger.getLogger("limb-darkening-module")
+logger = getLogger(__name__)
 
 
 def get_metallicity_from_ld_table_filename(filename):
@@ -64,7 +63,7 @@ def get_van_hamme_ld_table_by_name(fname):
     :param fname: str;
     :return: pandas.DataFrame;
     """
-    __logger__.debug(f"accessing limb darkening file {fname}")
+    logger.debug(f"accessing limb darkening file {fname}")
     path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"there is no file like {path}")
@@ -104,7 +103,7 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
     log_g = utils.convert_gravity_acceleration_array(log_g, units='log_cgs')
 
     results = dict()
-    __logger__.debug('interpolating limb darkening coefficients')
+    logger.debug('interpolating limb darkening coefficients')
     for band in passband:
         relevant_tables = get_relevant_ld_tables(passband=band, metallicity=metallicity, law=config.LIMB_DARKENING_LAW)
         csv_columns = config.LD_LAW_COLS_ORDER[config.LIMB_DARKENING_LAW]
@@ -130,7 +129,7 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
                                  "It might be caused by definition of unphysical object on input.")
             result_df[col] = vals
         results[band] = result_df
-    __logger__.debug('limb darkening coefficients interpolation finished')
+    logger.debug('limb darkening coefficients interpolation finished')
     return results
 
 

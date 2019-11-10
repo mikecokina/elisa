@@ -3,7 +3,6 @@ import numpy as np
 from elisa import units
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
-from elisa.observer.observer import Observer
 
 
 def prepare_circual_sync_binary(period, discretization, **kwargs):
@@ -39,8 +38,7 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
         gravity_darkening=kwargs.get('p__gravity_darkening', 1.0),
         discretization_factor=discretization,
         albedo=kwargs.get('p__albedo', 1.0),
-        metallicity=kwargs['p__metallicity'],
-        suppress_logger=True
+        metallicity=kwargs['p__metallicity']
     )
 
     secondary = Star(
@@ -50,8 +48,7 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
         t_eff=kwargs['s__t_eff'] * units.K,
         gravity_darkening=kwargs.get('s__gravity_darkening', 1.0),
         albedo=kwargs.get('s__albedo', 1.0),
-        metallicity=kwargs['s__metallicity'],
-        suppress_logger=True
+        metallicity=kwargs['s__metallicity']
     )
 
     bs = BinarySystem(
@@ -63,8 +60,7 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
         eccentricity=0.0,
         inclination=kwargs['inclination'],
         primary_minimum_time=0.0,
-        phase_shift=0.0,
-        suppress_logger=True
+        phase_shift=0.0
     )
     return bs
 

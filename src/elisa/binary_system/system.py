@@ -12,6 +12,7 @@ from elisa.binary_system.transform import BinarySystemProperties
 
 from elisa.conf import config
 from elisa.orbit import orbit
+from elisa.logger import getLogger
 from elisa import (
     umpy as up,
     utils,
@@ -23,6 +24,8 @@ from elisa.binary_system import (
     radius as bsradius,
     model
 )
+
+logger = getLogger('binary_system.system')
 
 
 class BinarySystem(System):
@@ -60,17 +63,17 @@ class BinarySystem(System):
     COMPONENT_OPTIONAL_KWARGS = []
     COMPONENT_ALL_KWARGS = COMPONENT_MANDATORY_KWARGS + COMPONENT_OPTIONAL_KWARGS
 
-    def __init__(self, primary, secondary, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, primary, secondary, name=None, **kwargs):
         # initial validity checks
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
         self.object_params_validity_check(dict(primary=primary, secondary=secondary), self.COMPONENT_MANDATORY_KWARGS)
         kwargs = self.transform_input(**kwargs)
 
-        super(BinarySystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
+        super(BinarySystem, self).__init__(name, **kwargs)
 
-        self._logger.info(f"initialising object {self.__class__.__name__}")
-        self._logger.debug(f"setting properties of components of class instance {self.__class__.__name__}")
+        logger.info(f"initialising object {self.__class__.__name__}")
+        logger.debug(f"setting properties of components of class instance {self.__class__.__name__}")
 
         self.plot = graphic.plot.Plot(self)
         self.animation = graphic.animation.Animation(self)
@@ -93,17 +96,17 @@ class BinarySystem(System):
         self.init_properties(**kwargs)
 
         # calculation of dependent parameters
-        self._logger.debug("computing semi-major axis")
+        logger.debug("computing semi-major axis")
         self.semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
         self.init_orbit()
 
         # setup critical surface potentials in periastron
-        self._logger.debug("setting up critical surface potentials of components in periastron")
+        logger.debug("setting up critical surface potentials of components in periastron")
         self.setup_periastron_critical_potential()
 
-        self._logger.debug("setting up morphological classification of binary system")
+        logger.debug("setting up morphological classification of binary system")
         self.morphology = self.compute_morphology()
 
         self.setup_periastron_components_radii(components_distance=self.orbit.periastron_distance)
@@ -157,9 +160,9 @@ class BinarySystem(System):
         """
         Orbit class in binary system.
         """
-        self._logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
+        logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
-        self.orbit = orbit.Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
+        self.orbit = orbit.Orbit(**orbit_kwargs)
 
     def is_synchronous(self):
         """
@@ -247,7 +250,7 @@ class BinarySystem(System):
         if not self.secondary.kwargs.get('discretization_factor'):
             self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
                                                     / self.secondary.polar_radius * units.rad).value
-            self._logger.info(f"setting discretization factor of secondary component to "
+            logger.info(f"setting discretization factor of secondary component to "
                               f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
                               f"according to discretization factor of the primary component ")
 
@@ -369,7 +372,7 @@ class BinarySystem(System):
                 potential_dx(round(x_val, round_to), *args_val)
                 np.seterr(divide='print', invalid='print')
             except Exception as e:
-                self._logger.debug(f"invalid value passed to potential, exception: {str(e)}")
+                logger.debug(f"invalid value passed to potential, exception: {str(e)}")
                 continue
 
             try:
@@ -381,7 +384,7 @@ class BinarySystem(System):
                             value_dx = abs(round(potential_dx(solution[0], *args_val), 4))
                             use = True if value_dx == 0 else False
                         except Exception as e:
-                            self._logger.debug(f"skipping sollution for x: {x_val} due to exception: {str(e)}")
+                            logger.debug(f"skipping sollution for x: {x_val} due to exception: {str(e)}")
                             use = False
 
                         if use:
@@ -390,7 +393,7 @@ class BinarySystem(System):
                             if len(lagrange) == 3:
                                 break
             except Exception as e:
-                self._logger.debug(f"solution for x: {x_val} lead to nowhere, exception: {str(e)}")
+                logger.debug(f"solution for x: {x_val} lead to nowhere, exception: {str(e)}")
                 continue
 
         return sorted(lagrange) if self.mass_ratio < 1.0 else sorted(lagrange, reverse=True)
@@ -501,7 +504,7 @@ class BinarySystem(System):
         for component in components:
             component_instance = getattr(self, component)
             for fn in fns:
-                self._logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
+                logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
                                    f'for {component} component')
 
                 param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
@@ -652,21 +655,13 @@ class BinarySystem(System):
 
         if is_circular:
             if assynchronous_spotty_test:
-                self._logger.info('applying light curve generator function for asynchronous binary system with '
-                                  'circular orbit and spots.')
                 return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('applying light curve generator function for synchronous binary system with '
-                                  'circular orbit or circular assynchronous systems without spots.')
                 return self._compute_circular_synchronous_lightcurve(**kwargs)
         elif is_eccentric:
             if assynchronous_spotty_test:
-                self._logger.info('applying light curve generator function for asynchronous binary system with '
-                                  'eccentric orbit and spots.')
                 return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('applying light curve generator function for eccentric orbit with synchronous '
-                                  'rotation of the components or assynchronous rotation without spots.')
                 return self._compute_eccentric_lightcurve(**kwargs)
 
         raise NotImplementedError("Orbit type not implemented or invalid")

@@ -4,17 +4,15 @@ import numpy as np
 from copy import copy
 from scipy.spatial.qhull import Delaunay
 from elisa.base import spot
-from elisa.conf import config
 from elisa.pulse import pulsations
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
+from elisa.logger import getLogger
 from elisa import (
-    umpy as up,
-    logger
+    umpy as up
 )
 
-config.set_up_logging()
-__logger__ = logger.getLogger("binary-system-faces-module")
+logger = getLogger("binary_system.surface.faces")
 
 
 # TODO: a lot of these functions are not BinarySystem specific and are needed elsewhere, relocate them to suitable
@@ -223,7 +221,7 @@ def build_faces(system, components_distance, component="all"):
     :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
-        __logger__.debug("no component set to build faces")
+        logger.debug("no component set to build faces")
         return system
 
     if is_empty(components_distance):
@@ -332,11 +330,11 @@ def detached_system_surface(system, components_distance, points=None, component=
     potential = system.primary.surface_potential if component == 'primary' \
         else system.secondary.surface_potential
     if potential - critical_pot > 0.01:
-        __logger__.debug(f'triangulating surface of {component} component using standard method')
+        logger.debug(f'triangulating surface of {component} component using standard method')
         triangulation = Delaunay(points)
         triangles_indices = triangulation.convex_hull
     else:
-        __logger__.debug(f'surface of {component} component is near or at critical potential; therefore custom '
+        logger.debug(f'surface of {component} component is near or at critical potential; therefore custom '
                          f'triangulation method for (near)critical potential surfaces will be used')
         # calculating closest point to the barycentre
         r_near = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
@@ -431,13 +429,13 @@ def compute_all_surface_areas(system, component):
     :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
-        __logger__.debug("no component set to build surface areas")
+        logger.debug("no component set to build surface areas")
         return
 
     components = bsutils.component_to_list(component)
     for component in components:
         star = getattr(system, component)
-        __logger__.debug(f'computing surface areas of component: '
+        logger.debug(f'computing surface areas of component: '
                          f'{star} / name: {star.name}')
         star.calculate_all_areas()
     return system
@@ -455,7 +453,7 @@ def build_faces_orientation(system, components_distance, component="all"):
     :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
-        __logger__.debug("no component set to build face orientation")
+        logger.debug("no component set to build face orientation")
         return system
 
     component = bsutils.component_to_list(component)

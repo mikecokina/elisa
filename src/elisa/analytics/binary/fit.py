@@ -6,15 +6,14 @@ from copy import copy
 from typing import Tuple, List
 from scipy.optimize import least_squares
 
-from elisa import logger
 from elisa.analytics.binary import model
 from elisa.atm import atm_file_prefix_to_quantity_list
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.observer.observer import Observer
+from elisa.logger import getLogger
 
-config.set_up_logging()
-__logger__ = logger.getLogger('binary-fit')
+logger = getLogger('analytics.binary.fit')
 
 ALL_PARAMS = ['inclination',
               'p__mass',
@@ -164,7 +163,7 @@ def _logger_decorator(suppress_logger=False):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if not suppress_logger:
-                __logger__.info(f'current xn value: {json.dumps(kwargs, indent=4)}')
+                logger.info(f'current xn value: {json.dumps(kwargs, indent=4)}')
             return func(*args, **kwargs)
         return wrapper
     return do
@@ -199,7 +198,7 @@ def r_squared(*args, **x):
     observed_mean = np.mean(ys)
 
     variability = np.sum(np.power(ys - observed_mean, 2))
-    observer = Observer(passband=passband, system=None, suppress_logger=True)
+    observer = Observer(passband=passband, system=None)
     observer._system_cls = BinarySystem
     synthetic = model.circular_sync_synthetic(xs, period, passband, discretization, observer **x)
     residual = np.sum(np.power(ys - synthetic, 2))
@@ -215,14 +214,14 @@ class Fit(object):
         x0 = _normalize(x0_vectorized, kwords)
         bounds = (0.0, 1.0)
 
-        observer = Observer(passband=passband, system=None, suppress_logger=True)
+        observer = Observer(passband=passband, system=None)
         observer._system_cls = BinarySystem
 
         args = (xs, ys, period, kwords, fixed, passband, discretization, suppress_logger, observer)
 
-        __logger__.info("fitting circular synchronous system...")
+        logger.info("fitting circular synchronous system...")
         result = least_squares(circular_sync_model_to_fit, x0, bounds=bounds, args=args, max_nfev=max_nfev, xtol=xtol)
-        __logger__.info("fitting finished")
+        logger.info("fitting finished")
 
         result = _renormalize(result.x, kwords)
         result_dict = {k: v for k, v in zip(kwords, result)}

@@ -1,14 +1,8 @@
 import numpy as np
-from scipy.optimize import fsolve
-from elisa.conf import config
-from elisa import (
-    logger,
-    const as c,
-    utils
-)
+from elisa import const as c
+from elisa.logger import getLogger
 
-config.set_up_logging()
-__logger__ = logger.getLogger("single-system-mesh-module")
+logger = getLogger("single-system-mesh-module")
 
 
 def build_mesh(system_container):

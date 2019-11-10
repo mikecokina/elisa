@@ -1,20 +1,17 @@
 import numpy as np
 
 from abc import abstractmethod
+from elisa.logger import getLogger
 from copy import (
     deepcopy,
     copy
 )
-from elisa.conf import config
 from elisa import (
-    logger,
     utils,
     umpy as up
 )
 
-
-config.set_up_logging()
-__logger__ = logger.getLogger("base-container-module")
+logger = getLogger("base.container")
 
 
 class PropertiesContainer(object):

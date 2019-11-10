@@ -1,5 +1,9 @@
 import numpy as np
+
 from copy import copy
+from elisa.logger import getLogger
+
+logger = getLogger('single_system.build')
 
 
 def build_surface_with_no_spots(self):
@@ -106,21 +110,21 @@ def build_surface_map(self, colormap=None, return_map=False):
 
     if colormap == 'temperature':
         build_temperature_distribution(self)
-        # self._logger.debug('Computing effective temprature distibution of stellar surface.')
+        # logger.debug('Computing effective temprature distibution of stellar surface.')
         # self.star.temperatures = self.star.calculate_effective_temperatures()
         if self.star.pulsations:
-            self._logger.debug('Adding pulsations to surface temperature distribution of the star.')
+            logger.debug('Adding pulsations to surface temperature distribution of the star.')
             self.star.temperatures = self.star.add_pulsations()
 
     if self.star.spots:
         for spot_index, spot in self.star.spots.items():
             if colormap == 'temperature':
                 if self.star.pulsations:
-                    self._logger.debug('Adding pulsations to temperature distribution of spot: '
+                    logger.debug('Adding pulsations to temperature distribution of spot: '
                                        '{}'.format(spot_index))
                     spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                  temperatures=spot.temperatures)
-        self._logger.debug('Renormalizing temperature map of star surface.')
+        logger.debug('Renormalizing temperature map of star surface.')
         self.star.renormalize_temperatures()
 
     if return_map:
@@ -145,24 +149,24 @@ def build_surface_gravity(self):
     :return:
     """
 
-    self._logger.debug('computing surface areas of star')
+    logger.debug('computing surface areas of star')
     self.star.areas = self.star.calculate_areas()
 
     # compute and assign potential gradient magnitudes for elements if missing
-    self._logger.debug('computing potential gradient magnitudes distribution of a star')
+    logger.debug('computing potential gradient magnitudes distribution of a star')
     self.star.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient()
 
-    self._logger.debug('computing magnitude of polar potential gradient')
+    logger.debug('computing magnitude of polar potential gradient')
     self.star.polar_potential_gradient_magnitude = self.calculate_polar_potential_gradient_magnitude()
     gravity_scalling_factor = np.power(10, self.star.polar_log_g) / self.star.polar_potential_gradient_magnitude
     self.star.log_g = np.log10(gravity_scalling_factor * self.star.potential_gradient_magnitudes)
 
     if self.star.spots:
         for spot_index, spot in self.star.spots.items():
-            self._logger.debug('calculating surface areas of {} spot'.format(spot_index))
+            logger.debug('calculating surface areas of {} spot'.format(spot_index))
             spot.areas = spot.calculate_areas()
 
-            self._logger.debug('calculating distribution of potential '
+            logger.debug('calculating distribution of potential '
                                'gradient magnitudes of {} spot'.format(spot_index))
             spot.potential_gradient_magnitudes = self.calculate_face_magnitude_gradient(points=spot.points,
                                                                                         faces=spot.faces)
@@ -175,19 +179,19 @@ def build_temperature_distribution(self):
 
     :return:
     """
-    self._logger.debug('Computing effective temprature distibution on the star.')
+    logger.debug('Computing effective temprature distibution on the star.')
     self.star.temperatures = self.star.calculate_effective_temperatures()
     if self.star.pulsations:
-        self._logger.debug('Adding pulsations to surface temperature distribution ')
+        logger.debug('Adding pulsations to surface temperature distribution ')
         self.star.temperatures = self.star.add_pulsations()
 
     if self.star.spots:
         for spot_index, spot in self.star.spots.items():
-            self._logger.debug('Computing temperature distribution of {} spot'.format(spot_index))
+            logger.debug('Computing temperature distribution of {} spot'.format(spot_index))
             spot.temperatures = spot.temperature_factor * self.star.calculate_effective_temperatures(
                 gradient_magnitudes=spot.potential_gradient_magnitudes)
             if self.star.pulsations:
-                self._logger.debug('Adding pulsations to temperature distribution of {} spot'.format(spot_index))
+                logger.debug('Adding pulsations to temperature distribution of {} spot'.format(spot_index))
                 spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                              temperatures=spot.temperatures)
 

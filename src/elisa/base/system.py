@@ -2,10 +2,12 @@ import numpy as np
 
 from abc import ABCMeta, abstractmethod
 from elisa.base.body import Body
+from elisa.logger import getLogger
 from elisa import (
-    logger,
     utils
 )
+
+logger = getLogger('base.system')
 
 
 class System(metaclass=ABCMeta):
@@ -14,7 +16,6 @@ class System(metaclass=ABCMeta):
     It implements following input arguments (system properties) which can be set on input of child instance.
 
     :param name: str; arbitrary name of instance
-    :param suppress_logger: bool;
     :param inclination: Union[float, astropy.unit.quantity.Quantity]; Inclination of the system.
                         If unit is not supplied, value in degrees is assumed.
     :param period: Union[float, astropy.unit.quantity.Quantity];
@@ -30,10 +31,7 @@ class System(metaclass=ABCMeta):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    def __init__(self, name=None, logger_name=None, suppress_logger=False, **kwargs):
-
-        self._suppress_logger = suppress_logger
-        self._logger = logger.getLogger(logger_name or self.__class__.__name__, suppress=self._suppress_logger)
+    def __init__(self, name=None, **kwargs):
 
         # default params
         self.inclination = np.nan
@@ -43,7 +41,7 @@ class System(metaclass=ABCMeta):
 
         if utils.is_empty(name):
             self.name = str(System.ID)
-            self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
+            logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
             self.__class__.ID += 1
         else:
             self.name = str(name)
@@ -71,7 +69,7 @@ class System(metaclass=ABCMeta):
 
         :param kwargs: Dict; all supplied input properties
         """
-        self._logger.debug(f"initialising properties of system {self.name}, values: {kwargs}")
+        logger.debug(f"initialising properties of system {self.name}, values: {kwargs}")
         for kwarg in kwargs:
             setattr(self, kwarg, kwargs[kwarg])
 

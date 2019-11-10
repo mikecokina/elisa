@@ -5,13 +5,16 @@ from abc import (
     ABCMeta,
     abstractmethod
 )
+
 from elisa.utils import is_empty
 from elisa.base.spot import Spot
+from elisa.logger import getLogger
 from elisa import (
-    logger,
     units,
     umpy as up
 )
+
+logger = getLogger('base.body')
 
 
 class Body(metaclass=ABCMeta):
@@ -24,7 +27,6 @@ class Body(metaclass=ABCMeta):
     It implements following input arguments (body properties) which can be set on input of child instance.
 
     :param name: str; arbitrary name of instance
-    :param suppress_logger: bool;
     :param synchronicity: float; Object synchronicity (F = omega_rot/omega_orb) setter.
                                  Expects number input convertible to numpy float64 / float.
     :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
@@ -59,18 +61,16 @@ class Body(metaclass=ABCMeta):
 
     ID = 1
 
-    def __init__(self, name, logger_name=None, suppress_logger=False, **kwargs):
+    def __init__(self, name, **kwargs):
         """
         Properties of abstract class Body.
         """
         # initial kwargs
         self.kwargs = copy(kwargs)
-        self._suppress_logger = suppress_logger
-        self._logger = logger.getLogger(logger_name or self.__class__.__name__, suppress=self._suppress_logger)
 
         if is_empty(name):
             self.name = str(Body.ID)
-            self._logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
+            logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
             Body.ID += 1
         else:
             self.name = str(name)
@@ -154,11 +154,11 @@ class Body(metaclass=ABCMeta):
         :return: elisa.base.spot.Spot;
         """
         if is_empty(spot_instance.discretization_factor):
-            self._logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
+            logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
                                f'and discretization factor of star {self.discretization_factor} was used.')
             spot_instance.discretization_factor = (0.9 * self.discretization_factor * units.ARC_UNIT).value
         if spot_instance.discretization_factor > spot_instance.angular_radius:
-            self._logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
+            logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
                                f'component was larger than its angular radius. Therefore value of angular density was '
                                f'set to be equal to 0.5 * angular diameter')
             spot_instance.discretization_factor = spot_instance.angular_radius

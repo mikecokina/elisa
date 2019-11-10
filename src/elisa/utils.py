@@ -825,3 +825,8 @@ def plane_projection(points, plane, keep_3d=False):
     in_plane = deepcopy(points)
     in_plane[:, rm_index] = 0.0
     return in_plane
+
+
+def split_to_batches(batch_size, array):
+    chunks = lambda d: (d[i:i + batch_size] for i in range(0, len(d), batch_size))
+    return [chunk for chunk in chunks(array)]

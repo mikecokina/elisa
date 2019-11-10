@@ -1,11 +1,10 @@
 import numpy as np
 
-from elisa import umpy as up, logger
+from elisa import umpy as up
 from scipy.optimize import fsolve
-from elisa.conf import config
+from elisa.logger import getLogger
 
-config.set_up_logging()
-__logger__ = logger.getLogger(__name__)
+logger = getLogger('opt.fsolver')
 
 
 def fsolver(fn, condition, *args, **kwargs):
@@ -29,9 +28,9 @@ def fsolver(fn, condition, *args, **kwargs):
             solution = solution[0]
             use = True if 1e15 > solution > 0 else False
         else:
-            __logger__.warning(f'solution in implicit solver was not found, cause: {msg}')
+            logger.warning(f'solution in implicit solver was not found, cause: {msg}')
     except Exception as e:
-        __logger__.debug(f"attempt to solve function {fn.__name__} finished w/ exception: {str(e)}")
+        logger.debug(f"attempt to solve function {fn.__name__} finished w/ exception: {str(e)}")
         use = False
         raise
 

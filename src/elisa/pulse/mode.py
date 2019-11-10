@@ -1,7 +1,9 @@
 import numpy as np
-import logging
 from elisa import utils, const as c, units as e_units
 from astropy import units as u
+from elisa.logger import getLogger
+
+logger = getLogger('pulse.mode')
 
 
 class PulsationMode(object):
@@ -17,9 +19,8 @@ class PulsationMode(object):
         utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=PulsationMode.ALL_KWARGS, instance=self.__class__.__name__)
 
         # get logger
-        self._logger = logging.getLogger(PulsationMode.__name__)
-        self._logger.info(f"initialising object {self.__class__.__name__}")
-        self._logger.debug(f"setting property components of class instance {self.__class__.__name__}")
+        logger.info(f"initialising object {self.__class__.__name__}")
+        logger.debug(f"setting property components of class instance {self.__class__.__name__}")
 
         # self._n = np.nan
         self._l = np.nan
@@ -34,13 +35,11 @@ class PulsationMode(object):
         self.rals = None
         self.rals_constant = None
 
-        self._logger = logging.getLogger(PulsationMode.__name__)
-
         utils.check_missing_kwargs(PulsationMode.MANDATORY_KWARGS, kwargs, instance_of=PulsationMode)
 
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
         for kwarg in kwargs:
-            self._logger.debug(f"setting property {kwarg} "
+            logger.debug(f"setting property {kwarg} "
                                f"of class instance {self.__class__.__name__} to {kwargs[kwarg]}")
             setattr(self, kwarg, kwargs[kwarg])
 

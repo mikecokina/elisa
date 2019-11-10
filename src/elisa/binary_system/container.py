@@ -2,9 +2,8 @@ import numpy as np
 
 from copy import deepcopy
 from elisa.binary_system import dynamic
-from elisa.conf import config
+from elisa.logger import getLogger
 from elisa import (
-    logger,
     const,
     utils
 )
@@ -19,9 +18,7 @@ from elisa.binary_system.surface import (
     temperature
 )
 
-
-config.set_up_logging()
-__logger__ = logger.getLogger("binary-system-container-module")
+logger = getLogger("binary_system.container")
 
 
 class OrbitalPositionContainer(PositionContainer):

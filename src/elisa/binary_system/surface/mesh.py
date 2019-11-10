@@ -6,6 +6,7 @@ from elisa.base.spot import incorporate_spots_mesh
 from elisa.conf import config
 from elisa.opt.fsolver import fsolver
 from elisa.utils import is_empty
+from elisa.logger import getLogger
 
 from elisa.binary_system import (
     utils as bsutils,
@@ -15,12 +16,10 @@ from elisa import (
     umpy as up,
     utils,
     opt,
-    logger,
     const
 )
 
-config.set_up_logging()
-__logger__ = logger.getLogger("binary-system-mesh-module")
+logger = getLogger("binary_system.surface.mesh")
 
 
 def build_mesh(system, components_distance, component="all"):
@@ -357,7 +356,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
     args = phi, theta, star.side_radius, components_distance, precalc_fn, \
         potential_fn, fprime, potential, mass_ratio, synchronicity
 
-    __logger__.debug(f'calculating surface points of {component} component in mesh_detached '
+    logger.debug(f'calculating surface points of {component} component in mesh_detached '
                      f'function using single process method')
     points_q = get_surface_points(*args)
 
@@ -495,7 +494,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
     # solving points on farside
     # here implement multiprocessing
     args = phi_farside, theta_farside, r_polar, components_distance, precalc, fn, fprime, potential, q, synchronicity
-    __logger__.debug(f'calculating farside points of {component} component in mesh_overcontact '
+    logger.debug(f'calculating farside points of {component} component in mesh_overcontact '
                      f'function using single process method')
     points_farside = get_surface_points(*args)
 
@@ -521,7 +520,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
     args = phi_neck, z_neck, components_distance, star.polar_radius, \
         precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
         star.surface_potential, system.mass_ratio, synchronicity
-    __logger__.debug(f'calculating neck points of {component} component in mesh_overcontact '
+    logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
                      f'function using single process method')
     points_neck = get_surface_points_cylindrical(*args)
 
@@ -632,12 +631,12 @@ def mesh_spots(system, components_distance, component="all"):
     neck_position = calculate_neck_position(system) if system.morphology == "over-contact" else 1e10
 
     for component, functions in fns.items():
-        __logger__.debug(f"evaluating spots for {component} component")
+        logger.debug(f"evaluating spots for {component} component")
         potential_fn, precalc_fn, fprime = functions
         component_instance = getattr(system, component)
 
         if not component_instance.spots:
-            __logger__.debug(f"no spots to evaluate for {component} component - continue")
+            logger.debug(f"no spots to evaluate for {component} component - continue")
             continue
 
         # iterate over spots
@@ -662,7 +661,7 @@ def mesh_spots(system, components_distance, component="all"):
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
-                __logger__.warning(f"center of spot {spot_instance.kwargs_serializer()} "
+                logger.warning(f"center of spot {spot_instance.kwargs_serializer()} "
                                    f"doesn't satisfy reasonable conditions and entire spot will be omitted")
 
                 component_instance.remove_spot(spot_index=spot_index)
@@ -681,7 +680,7 @@ def mesh_spots(system, components_distance, component="all"):
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
-                __logger__.warning(f"first inner ring of spot {spot_instance.kwargs_serializer()} "
+                logger.warning(f"first inner ring of spot {spot_instance.kwargs_serializer()} "
                                    f"doesn't satisfy reasonable conditions and entire spot will be omitted")
 
                 component_instance.remove_spot(spot_index=spot_index)
@@ -692,7 +691,7 @@ def mesh_spots(system, components_distance, component="all"):
             # number of points in latitudal direction
             # + 1 to obtain same discretization as object itself
             num_radial = int(np.round(spot_radius / alpha)) + 1
-            __logger__.debug(f'number of rings in spot {spot_instance.kwargs_serializer()} is {num_radial}')
+            logger.debug(f'number of rings in spot {spot_instance.kwargs_serializer()} is {num_radial}')
             thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
 
             num_azimuthal = [1 if i == 0 else int(i * 2.0 * const.PI * x0 // x0) for i in range(0, len(thetas))]
@@ -723,7 +722,7 @@ def mesh_spots(system, components_distance, component="all"):
             try:
                 spot_points = get_surface_points(*args)
             except MaxIterationError:
-                __logger__.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
+                logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
                                    f"doesn't satisfy reasonable conditions and entire spot will be omitted")
                 component_instance.remove_spot(spot_index=spot_index)
                 continue

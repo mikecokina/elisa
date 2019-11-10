@@ -7,6 +7,8 @@ from copy import (
 )
 from scipy.interpolate import Akima1DInterpolator
 from scipy.spatial.qhull import ConvexHull
+
+from elisa.logger import getLogger
 from elisa.conf import config
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system import radius as bsradius
@@ -17,7 +19,6 @@ from elisa import (
     const,
     atm,
     ld,
-    logger,
     utils
 )
 from elisa.binary_system import (
@@ -26,8 +27,7 @@ from elisa.binary_system import (
     surface
 )
 
-config.set_up_logging()
-__logger__ = logger.getLogger(__name__)
+logger = getLogger('binary_system.curves.lc')
 
 
 def _update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
@@ -184,7 +184,7 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
     :param in_eclipse: bool;
     :return: Dict;
     """
-    __logger__.debug(f"computing surface coverage for {system.position}")
+    logger.debug(f"computing surface coverage for {system.position}")
     cover_component = 'secondary' if 0.0 < system.position.azimuth < const.PI else 'primary'
     cover_object = getattr(system, cover_component)
     undercover_object = getattr(system, config.BINARY_COUNTERPARTS[cover_component])
@@ -622,7 +622,7 @@ def compute_eccentric_lightcurve(binary, **kwargs):
                'line will be copied from their symmetrical counterparts'
     }
 
-    __logger__.info(logger_messages.get(appx_uid))
+    logger.info(logger_messages.get(appx_uid))
     return run()
 
 

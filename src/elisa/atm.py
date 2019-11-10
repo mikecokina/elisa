@@ -2,14 +2,15 @@ import itertools
 import os
 import sys
 import warnings
+import numpy as np
+import pandas as pd
 
 from queue import Queue
 from threading import Thread
 from typing import Iterable
-
-import numpy as np
-import pandas as pd
 from copy import deepcopy
+
+from elisa.logger import getLogger
 from scipy import (
     integrate,
     interpolate
@@ -17,14 +18,11 @@ from scipy import (
 from elisa.conf import config
 from elisa import (
     umpy as up,
-    logger,
     utils,
     const
 )
 
-
-config.set_up_logging()
-__logger__ = logger.getLogger("atm-module")
+logger = getLogger(__name__)
 
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/const.PI)
@@ -244,7 +242,7 @@ class NaiveInterpolatedAtm(object):
             bottom_flux, top_flux = flux_matrix[:len(flux_matrix) // 2], flux_matrix[len(flux_matrix) // 2:]
             bottom_atm, top_atm = band_atm[:len(band_atm) // 2], band_atm[len(band_atm) // 2:]
 
-            __logger__.debug(f"computing atmosphere interpolation weights for band: {band}")
+            logger.debug(f"computing atmosphere interpolation weights for band: {band}")
             interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
             flux = NaiveInterpolatedAtm.compute_unknown_intensity_from_surounded_flux_matrices(
                 interpolation_weights, top_flux, bottom_flux
@@ -482,7 +480,7 @@ def apply_passband(atm_containers, passband, **kwargs):
     :return: Dict[str, elisa.atm.AtmDataContainer];
     """
     passbanded_atm_containers = dict()
-    __logger__.debug("applying passband functions on given atmospheres")
+    logger.debug("applying passband functions on given atmospheres")
     for band, band_container in passband.items():
         passbanded_atm_containers[band] = list()
         for atm_container in atm_containers:
@@ -505,7 +503,7 @@ def apply_passband(atm_containers, passband, **kwargs):
             passband_df.fillna(0.0, inplace=True)
             atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX] *= passband_df[config.PASSBAND_DATAFRAME_THROUGHPUT]
             passbanded_atm_containers[band].append(atm_container)
-    __logger__.debug("passband application finished")
+    logger.debug("passband application finished")
     return passbanded_atm_containers
 
 
@@ -835,14 +833,14 @@ def multithread_atm_tables_reader_runner(fpaths):
     try:
         for index, fpath in enumerate(fpaths):
             if not os.path.isfile(fpath):
-                __logger__.debug(f"accessing atmosphere file {fpath}")
+                logger.debug(f"accessing atmosphere file {fpath}")
                 raise FileNotFoundError(f"file {fpath} doesn't exist. it seems your model could be not physical")
             path_queue.put((index, fpath))
 
         for _ in range(n_threads):
             path_queue.put("TERMINATOR")
 
-        __logger__.debug("initialising multithread atm table reader")
+        logger.debug("initialising multithread atm table reader")
         for _ in range(n_threads):
             t = Thread(target=multithread_atm_tables_reader, args=(path_queue, error_queue, result_queue))
             threads.append(t)
@@ -851,7 +849,7 @@ def multithread_atm_tables_reader_runner(fpaths):
 
         for t in threads:
             t.join()
-        __logger__.debug("atm multithread reader finished all jobs")
+        logger.debug("atm multithread reader finished all jobs")
     except KeyboardInterrupt:
         raise
     finally:

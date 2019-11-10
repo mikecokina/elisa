@@ -1,19 +1,13 @@
 import numpy as np
 
-from elisa.conf import config
-from elisa import (
-    logger,
-)
 from elisa.base.container import (
     StarContainer,
     PositionContainer
 )
-from elisa.single_system.surface import (
-    mesh,
-)
+from elisa.single_system.surface import mesh
+from elisa.logger import getLogger
 
-config.set_up_logging()
-__logger__ = logger.getLogger("single-system-container-module")
+logger = getLogger("single-system-container-module")
 
 
 class SystemContainer(PositionContainer):

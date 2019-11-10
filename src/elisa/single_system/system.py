@@ -1,9 +1,8 @@
 import numpy as np
 import scipy
-from astropy import units as u
 from scipy.spatial.qhull import Delaunay
 
-from elisa import logger, utils, const as c, units as eunits
+from elisa import utils, const as c, units as eunits
 from elisa.base.system import System
 from elisa.single_system import build
 from elisa.single_system import static
@@ -11,6 +10,9 @@ from elisa.opt.fsolver import fsolver
 from elisa.single_system.transform import SingleSystemProperties
 from elisa.single_system import graphic
 from elisa.base import error
+from elisa.logger import getLogger
+
+logger = getLogger('single_system.system')
 
 
 class SingleSystem(System):
@@ -26,16 +28,16 @@ class SingleSystem(System):
     STAR_OPTIONAL_KWARGS = []
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
-    def __init__(self, star, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, star, name=None, **kwargs):
         utils.invalid_kwarg_checker(kwargs, SingleSystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(SingleSystem.MANDATORY_KWARGS, kwargs, instance_of=SingleSystem)
         self.object_params_validity_check(dict(star=star), self.STAR_MANDATORY_KWARGS)
         kwargs = self.transform_input(**kwargs)
 
-        super(SingleSystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
+        super(SingleSystem, self).__init__(name, **kwargs)
 
-        self._logger.info(f"initialising object {self.__class__.__name__}")
-        self._logger.debug(f"setting properties of a star in class instance {self.__class__.__name__}")
+        logger.info(f"initialising object {self.__class__.__name__}")
+        logger.debug(f"setting properties of a star in class instance {self.__class__.__name__}")
 
         self.plot = graphic.plot.Plot(self)
         self.animation = graphic.animation.Animation(self)
@@ -64,13 +66,13 @@ class SingleSystem(System):
         auxiliary function for calculation of important radii
         :return:
         """
-        self._logger.debug('calculating polar radius')
+        logger.debug('calculating polar radius')
         self.star.polar_radius = self.calculate_polar_radius()
-        self._logger.debug('calculating surface potential')
+        logger.debug('calculating surface potential')
         args = 0,
         p_args = self.pre_calculate_for_potential_value(*args)
         self.star._surface_potential = static.potential(self.star.polar_radius, *p_args)
-        self._logger.debug('calculating equatorial radius')
+        logger.debug('calculating equatorial radius')
         self.star.equatorial_radius = self.calculate_equatorial_radius()
 
     def _evaluate_spots(self):
@@ -84,10 +86,10 @@ class SingleSystem(System):
         def solver_condition(x, *_args, **_kwargs):
             return True
 
-        self._logger.info("Evaluating spots.")
+        logger.info("Evaluating spots.")
 
         if not self.star.has_spots():
-            self._logger.info("No spots to evaluate.")
+            logger.info("No spots to evaluate.")
             return
 
         # iterate over spots
@@ -95,7 +97,7 @@ class SingleSystem(System):
             # lon -> phi, lat -> theta
             lon, lat = spot_instance.longitude, spot_instance.latitude
             if spot_instance.angular_density is None:
-                self._logger.debug('Angular density of the spot {0} was not supplied and discretization factor of star '
+                logger.debug('Angular density of the spot {0} was not supplied and discretization factor of star '
                                    '{1} was used.'.format(spot_index, self.star.discretization_factor))
                 spot_instance.angular_density = 0.9 * self.star.discretization_factor * eunits.ARC_UNIT
             alpha, spot_radius = spot_instance.angular_density, spot_instance.angular_radius
@@ -114,7 +116,7 @@ class SingleSystem(System):
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
-                self._logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
+                logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
                                   "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
 
                 self.star.remove_spot(spot_index=spot_index)
@@ -130,7 +132,7 @@ class SingleSystem(System):
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
-                self._logger.info("First ring of spot {} doesn't satisfy reasonable conditions and "
+                logger.info("First ring of spot {} doesn't satisfy reasonable conditions and "
                                   "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
 
                 self.star.remove_spot(spot_index=spot_index)
@@ -175,7 +177,7 @@ class SingleSystem(System):
                             boundary_points.append(spot_point)
 
             except StopIteration:
-                self._logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
+                logger.info("At least 1 point of spot {} doesn't satisfy reasonable conditions and "
                                   "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
                 return
 
@@ -335,10 +337,10 @@ class SingleSystem(System):
         def solver_condition(x, *_args, **_kwargs):
             return True
 
-        self._logger.info("Evaluating spots.")
+        logger.info("Evaluating spots.")
 
         if not self.star.has_spots():
-            self._logger.info("No spots to evaluate.")
+            logger.info("No spots to evaluate.")
             return
 
         potential_fn = self.potential_fn
@@ -367,7 +369,7 @@ class SingleSystem(System):
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
-                self._logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
+                logger.info("Center of spot {} doesn't satisfy reasonable conditions and "
                                   "entire spot will be omitted.".format(spot_instance.kwargs_serializer()))
 
                 self.star.remove_spot(spot_index=spot_index)
@@ -383,7 +385,7 @@ class SingleSystem(System):
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
-                self._logger.info("First ring of spot {} doesn't satisfy reasonable conditions and "
+                logger.info("First ring of spot {} doesn't satisfy reasonable conditions and "
                                   "entire spot will be omitted".format(spot_instance.kwargs_serializer()))
 
                 self.star.remove_spot(spot_index=spot_index)
@@ -423,7 +425,7 @@ class SingleSystem(System):
             try:
                 spot_points = static.get_surface_points(*args)
             except error.MaxIterationError:
-                self._logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
+                logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
                                      f"doesn't satisfy reasonable conditions and entire spot will be omitted")
                 self.star.remove_spot(spot_index=spot_index)
                 continue
@@ -439,19 +441,19 @@ class SingleSystem(System):
 
         :return:
         """
-        self._logger.debug('Computing effective temprature distibution on the star.')
+        logger.debug('Computing effective temprature distibution on the star.')
         self.star.temperatures = self.star.calculate_effective_temperatures()
         if self.star.pulsations:
-            self._logger.debug('Adding pulsations to surface temperature distribution ')
+            logger.debug('Adding pulsations to surface temperature distribution ')
             self.star.temperatures = self.star.add_pulsations()
 
         if self.star.has_spots():
             for spot_index, spot in self.star.spots.items():
-                self._logger.debug('Computing temperature distribution of {} spot'.format(spot_index))
+                logger.debug('Computing temperature distribution of {} spot'.format(spot_index))
                 spot.temperatures = spot.temperature_factor * self.star.calculate_effective_temperatures(
                     gradient_magnitudes=spot.potential_gradient_magnitudes)
                 if self.star.pulsations:
-                    self._logger.debug('Adding pulsations to temperature distribution of {} spot'.format(spot_index))
+                    logger.debug('Adding pulsations to temperature distribution of {} spot'.format(spot_index))
                     spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                  temperatures=spot.temperatures)
 
@@ -523,7 +525,7 @@ class SingleSystem(System):
 
         :return:
         """
-        self._logger.info(f're/initialising class instance {SingleSystem.__name__}')
+        logger.info(f're/initialising class instance {SingleSystem.__name__}')
         self.__init__(star=self.star, **self.kwargs_serializer())
 
     @property
