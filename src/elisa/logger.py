@@ -1,6 +1,8 @@
 import logging
 from elisa.conf import config
 
+config.set_up_logging()
+
 
 def getLogger(name, suppress=False):
     if config.SUPPRESS_LOGGER is not None:

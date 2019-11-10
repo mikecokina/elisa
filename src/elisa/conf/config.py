@@ -42,7 +42,7 @@ LIMB_DARKENING_LAW = 'cosine'
 # computational
 MAX_DISCRETIZATION_FACTOR = 20
 NUMBER_OF_THREADS = 1
-NUMBER_OF_PROCESSES = int(os.cpu_count())
+NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
 POINTS_ON_ECC_ORBIT = 99999
 MAX_RELATIVE_D_R_POINT = 0.0
 MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
@@ -144,6 +144,9 @@ def update_config():
         NUMBER_OF_THREADS = c_parse.getint('computational', 'number_of_threads', fallback=NUMBER_OF_THREADS)
         if NUMBER_OF_THREADS <= 0:
             raise ValueError("Invalid value for `number_of_threads`, allowed >= 1")
+
+        global NUMBER_OF_PROCESSES
+        NUMBER_OF_PROCESSES = c_parse.getint('computational', 'number_of_processess', fallback=NUMBER_OF_PROCESSES)
 
         global POINTS_ON_ECC_ORBIT
         POINTS_ON_ECC_ORBIT = c_parse.getint('computational', 'points_on_ecc_orbit', fallback=POINTS_ON_ECC_ORBIT)

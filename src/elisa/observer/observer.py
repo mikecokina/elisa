@@ -81,7 +81,7 @@ class Observables(object):
 
 
 class Observer(object):
-    def __init__(self, passband, system, allow_multiprocessing=False):
+    def __init__(self, passband, system, suppress_multiprocessing=False):
         """
         Initializer for observer class.
 
@@ -92,7 +92,6 @@ class Observer(object):
         # specifying what kind of system is observed
         self._system = system
         self._system_cls = type(self._system)
-        self.allow_multiprocessing = allow_multiprocessing
 
         self.left_bandwidth = sys.float_info.max
         self.right_bandwidth = 0.0
@@ -109,6 +108,10 @@ class Observer(object):
 
         self.plot = Plot(self)
         self.observe = Observables(self)
+
+        self.suppress_multiprocessing = suppress_multiprocessing
+        if config.NUMBER_OF_PROCESSES < 2:
+            self.suppress_multiprocessing = True
 
     @staticmethod
     def bolometric(x):
@@ -212,43 +215,33 @@ class Observer(object):
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
 
-        self.allow_multiprocessing = True
+        lc_kwargs = dict(
+            passband=self.passband,
+            left_bandwidth=self.left_bandwidth,
+            right_bandwidth=self.right_bandwidth,
+            atlas="ck04",
+            phases=base_phases,
+            position_method=position_method
+        )
 
-        if self.allow_multiprocessing:
+        # ##################################
+        self.suppress_multiprocessing = False
+        config.NUMBER_OF_PROCESSES = 4
+        if not self.suppress_multiprocessing:
             batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
             phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
+            func = self._system.compute_lightcurve
 
             pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-            result = [pool.apply_async(mp.observe_lc_worker, (batch_idx, batch))
+            result = [pool.apply_async(mp.observe_lc_worker, (func, batch_idx, batch, lc_kwargs))
                       for batch_idx, batch in enumerate(phase_batches)]
             pool.close()
             pool.join()
-            result_list = [r.get() for r in result]
-
-            print(result_list)
-
-        exit()
-        res = [pool.apply_async(mp.observe_worker,
-                                (self._system.initial_kwargs, self._system_cls, _args)) for _args in args]
-        pool.close()
-        pool.join()
-        result_list = [np.array(r.get()) for r in res]
-
-        print(result_list)
-        # # r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
-        # # return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
-
-
-        curves = self._system.compute_lightcurve(
-                     **dict(
-                         passband=self.passband,
-                         left_bandwidth=self.left_bandwidth,
-                         right_bandwidth=self.right_bandwidth,
-                         atlas="ck04",
-                         phases=base_phases,
-                         position_method=position_method
-                     )
-                 )
+            # this will return output in same order as was given on apply_async init
+            result = [r.get() for r in result]
+            curves = self.renormalize_async_result(result)
+        else:
+            curves = self._system.compute_lightcurve(**lc_kwargs)
 
         # remap unique phases back to original phase interval
         for items in curves:
@@ -260,7 +253,7 @@ class Observer(object):
 
         self.phases = phases
         if normalize:
-            self.fluxes_unit = u.dimensionless_unscaled
+            self.fluxes_unit = units.dimensionless_unscaled
         else:
             self.fluxes = curves
             self.fluxes_unit = units.W / units.m**2
@@ -294,7 +287,7 @@ class Observer(object):
 
         self.rv_unit = units.m / units.s
         if normalize:
-            self.rv_unit = u.dimensionless_unscaled
+            self.rv_unit = units.dimensionless_unscaled
             _max = np.max([primary_rv, secondary_rv])
             primary_rv /= _max
             secondary_rv /= _max
@@ -327,5 +320,28 @@ class Observer(object):
                 base_interval = np.round(phases % 1, 9)
                 return np.unique(base_interval, return_inverse=True)
         else:
-            # implement for single system
-            pass
+            raise NotImplemented("not implemented")
+
+    @staticmethod
+    def renormalize_async_result(result):
+        """
+        Renormalize multiprocessing output to native form.
+        Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
+        computaion require dict in form like::
+
+            [{'passband': [all fluxes]}]
+
+        instead::
+
+            [[{'passband': [fluxes in batch]}], [{'passband': [fluxes in batch]}], ...]
+
+        :param result: List;
+        :return: Dict[str; numpy.array]
+        """
+        # todo: come with something more sophisticated
+        placeholder = {key: np.array([]) for key in result[-1]}
+        for record in result:
+            for passband in placeholder:
+                placeholder[passband] = record[passband] if is_empty(placeholder[passband]) else np.hstack(
+                    (placeholder[passband], record[passband]))
+        return placeholder
