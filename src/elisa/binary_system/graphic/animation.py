@@ -2,7 +2,7 @@ import numpy as np
 
 from copy import copy
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.const import BINARY_POSITION_PLACEHOLDER
+from elisa.const import Position
 from elisa.logger import getLogger
 
 from elisa.binary_system import (
@@ -20,7 +20,7 @@ logger = getLogger('binary_system.graphic.animation')
 
 
 class Animation(object):
-    defpos = BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0))
+    defpos = Position(*(0, 1.0, 0.0, 0.0, 0.0))
 
     def __init__(self, instance):
         self.binary = instance

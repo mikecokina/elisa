@@ -1,4 +1,5 @@
-import matplotlib.path as mpltpath
+from multiprocessing.pool import Pool
+
 import numpy as np
 
 from copy import (
@@ -6,13 +7,14 @@ from copy import (
     copy
 )
 from scipy.interpolate import Akima1DInterpolator
-from scipy.spatial.qhull import ConvexHull
 
 from elisa.logger import getLogger
 from elisa.conf import config
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system import radius as bsradius
 from elisa.orbit.container import OrbitalSupplements
+from elisa.binary_system.surface.coverage import calculate_coverage_with_cosines
+from elisa.binary_system.curves import lcmp
 
 from elisa import (
     umpy as up,
@@ -26,6 +28,7 @@ from elisa.binary_system import (
     dynamic,
     surface
 )
+
 
 logger = getLogger('binary_system.curves.lc')
 
@@ -100,164 +103,6 @@ def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
     }
     flux = flux['primary'] + flux['secondary']
     return flux
-
-
-def calculate_coverage_with_cosines(system, semi_major_axis, in_eclipse=True):
-    """
-    Function prepares surface-related parameters such as coverage(area of visibility
-    of the triangles) and directional cosines towards line-of-sight vector.
-
-    :param semi_major_axis: float;
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :param in_eclipse: bool; indicate if eclipse occur for given position container.
-                             If you are not sure leave it to True
-    :return: Tuple;
-
-    shape::
-
-        (numpy.array, Dict[str, numpy.array])
-
-    coverage -- numpy.array; visible area of triangles
-    p_cosines, s_cosines -- Dict[str, numpy.array]; directional cosines for each face with
-    respect to line-of-sight vector
-    """
-    coverage = compute_surface_coverage(system, semi_major_axis=semi_major_axis, in_eclipse=in_eclipse)
-    p_cosines = utils.calculate_cos_theta_los_x(system.primary.normals)
-    s_cosines = utils.calculate_cos_theta_los_x(system.secondary.normals)
-    cosines = {'primary': p_cosines, 'secondary': s_cosines}
-    return coverage, cosines
-
-
-def surface_area_coverage(size, visible, visible_coverage, partial=None, partial_coverage=None):
-    """
-    Prepare array with coverage os surface areas.
-
-    :param size: int; size of array
-    :param visible: numpy.array; full visible areas (numpy fancy indexing), array like [False, True, True, False]
-    :param visible_coverage: numpy.array; defines coverage of visible (coverage onTrue positions)
-    :param partial: numpy.array; partial visible areas (numpy fancy indexing)
-    :param partial_coverage: numpy.array; defines coverage of partial visible
-    :return: numpy.array
-    """
-    # initialize zeros, since there is no input for invisible (it means everything what left after is invisible)
-    coverage = up.zeros(size)
-    coverage[visible] = visible_coverage
-    if partial is not None:
-        coverage[partial] = partial_coverage
-    return coverage
-
-
-def partial_visible_faces_surface_coverage(points, faces, normals, hull):
-    """
-    Compute surface coverage of partialy visible faces.
-
-    :param points: numpy.array;
-    :param faces: numpy.array;
-    :param normals: numpy.array;
-    :param hull: numpy.array; sorted clockwise to create
-                              matplotlib.path.Path; path of points boundary of infront component projection
-    :return: numpy.array;
-    """
-    pypex_hull = bsutils.hull_to_pypex_poly(hull)
-    pypex_faces = bsutils.faces_to_pypex_poly(points[faces])
-    # it is possible to None happens in intersection, tkae care about it latter
-    pypex_intersection = bsutils.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
-
-    # think about surface normalisation like and avoid surface areas like 1e-6 which lead to loss in precission
-    pypex_polys_surface_area = np.array(bsutils.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
-
-    inplane_points_3d = up.concatenate((points.T, [[0.0] * len(points)])).T
-    inplane_surface_area = utils.triangle_areas(triangles=faces, points=inplane_points_3d)
-    correction_cosine = utils.calculate_cos_theta_los_x(normals)
-    retval = (inplane_surface_area - pypex_polys_surface_area) / correction_cosine
-    return retval
-
-
-def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
-    # todo: add unittests
-    """
-    Compute surface coverage of faces for given orbital position
-    defined by container/SingleOrbitalPositionContainer.
-
-    :param semi_major_axis: float;
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;;
-    :param in_eclipse: bool;
-    :return: Dict;
-    """
-    logger.debug(f"computing surface coverage for {system.position}")
-    cover_component = 'secondary' if 0.0 < system.position.azimuth < const.PI else 'primary'
-    cover_object = getattr(system, cover_component)
-    undercover_object = getattr(system, config.BINARY_COUNTERPARTS[cover_component])
-    undercover_visible_point_indices = np.unique(undercover_object.faces[undercover_object.indices])
-
-    cover_object_obs_visible_projection = bsutils.get_visible_projection(cover_object)
-    undercover_object_obs_visible_projection = bsutils.get_visible_projection(undercover_object)
-    # get matplotlib boudary path defined by hull of projection
-    if in_eclipse:
-        bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)
-        # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
-        out_of_bound = up.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
-        # undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
-    else:
-        out_of_bound = np.ones(undercover_object_obs_visible_projection.shape[0], dtype=np.bool)
-
-    undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
-    undercover_faces = np.array([const.FALSE_FACE_PLACEHOLDER] * np.shape(undercover_object.normals)[0])
-    undercover_faces[undercover_object.indices] = undercover_object.faces[undercover_object.indices]
-    eclipse_faces_visibility = np.isin(undercover_faces, undercover_visible_point_indices)
-
-    # get indices of full visible, invisible and partial visible faces
-    full_visible = np.all(eclipse_faces_visibility, axis=1)
-    invisible = np.all(up.invert(eclipse_faces_visibility), axis=1)
-    partial_visible = up.invert(full_visible | invisible)
-
-    # process partial and full visible faces (get surface area of 3d polygon) of undercover object
-    partial_visible_faces = undercover_object.faces[partial_visible]
-    partial_visible_normals = undercover_object.normals[partial_visible]
-    undercover_object_pts_projection = utils.plane_projection(undercover_object.points, "yz", keep_3d=False)
-    if in_eclipse:
-        partial_coverage = partial_visible_faces_surface_coverage(
-            points=undercover_object_pts_projection,
-            faces=partial_visible_faces,
-            normals=partial_visible_normals,
-            hull=bb_path.vertices
-        )
-    else:
-        partial_coverage = None
-
-    visible_coverage = utils.poly_areas(undercover_object.points[undercover_object.faces[full_visible]])
-
-    undercover_obj_coverage = surface_area_coverage(
-        size=np.shape(undercover_object.normals)[0],
-        visible=full_visible, visible_coverage=visible_coverage,
-        partial=partial_visible, partial_coverage=partial_coverage
-    )
-
-    visible_coverage = utils.poly_areas(cover_object.points[cover_object.faces[cover_object.indices]])
-    cover_obj_coverage = surface_area_coverage(len(cover_object.faces), cover_object.indices, visible_coverage)
-
-    # areas are now in SMA^2, converting to SI
-    cover_obj_coverage *= up.power(semi_major_axis, 2)
-    undercover_obj_coverage *= up.power(semi_major_axis, 2)
-
-    return {
-        cover_component: cover_obj_coverage,
-        config.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
-    }
-
-
-def get_eclipse_boundary_path(hull):
-    """
-    Return `matplotlib.path.Path` object which represents boundary of component projection
-    to plane `yz`.
-
-    :param hull: numpy.array;
-    :return: matplotlib.path.Path;
-    """
-    cover_bound = ConvexHull(hull)
-    hull_points = hull[cover_bound.vertices]
-    bb_path = mpltpath.Path(hull_points)
-    return bb_path
 
 
 def get_limbdarkening_cfs(system, component="all", **kwargs):
@@ -540,68 +385,33 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
             * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array];
     """
-    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
-    from_this = dict(binary_system=binary, position=const.BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
     initial_system.build(components_distance=1.0)
 
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
-
-    position_method = kwargs.pop("position_method")
-    orbital_motion = position_method(input_argument=unique_phase_interval, return_nparray=False, calculate_from='phase')
-
     normal_radiance, ld_cfs = prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
-    # TODO: multiprocess rest of it
+    if config.NUMBER_OF_PROCESSES > 1:
+        batch_size = int(np.ceil(len(unique_phase_interval) / config.NUMBER_OF_PROCESSES))
+        phase_batches = utils.split_to_batches(batch_size=batch_size, array=unique_phase_interval)
+        func = lcmp.compute_circular_synchronous_lightcurve
+        pool = Pool(processes=config.NUMBER_OF_PROCESSES)
 
-    # is in eclipse test eval
-    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
-    azimuths = [position.azimuth for position in orbital_motion]
-    in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
-
-    band_curves = {key: up.zeros(unique_phase_interval.shape) for key in kwargs["passband"].keys()}
-
-    for pos_idx, position in enumerate(orbital_motion):
-        on_pos = move_sys_onpos(initial_system, position)
-        # dict of components
-        stars = {component: getattr(on_pos, component) for component in config.BINARY_COUNTERPARTS}
-
-        coverage = compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx])
-
-        # calculating cosines between face normals and line of sight
-        cosines, visibility_test = dict(), dict()
-        for component, star in stars.items():
-            cosines[component] = utils.calculate_cos_theta_los_x(star.normals)
-            visibility_test[component] = cosines[component] > 0
-            cosines[component] = cosines[component][visibility_test[component]]
-
-            # todo: pulsations adjustment should come here
-
-        # integrating resulting flux
-        for band in kwargs["passband"].keys():
-            flux, ld_cors = np.empty(2), dict()
-
-            for component_idx, component in enumerate(config.BINARY_COUNTERPARTS.keys()):
-                ld_cors[component] = \
-                    ld.limb_darkening_factor(
-                        coefficients=ld_cfs[component][band][ld_law_cfs_columns].values[visibility_test[component]],
-                        limb_darkening_law=config.LIMB_DARKENING_LAW,
-                        cos_theta=cosines[component])
-
-                flux[component_idx] = np.sum(normal_radiance[component][band][visibility_test[component]] *
-                                             cosines[component] *
-                                             coverage[component][visibility_test[component]] *
-                                             ld_cors[component])
-            band_curves[band][pos_idx] = np.sum(flux)
+        result = [pool.apply_async(func, (binary, initial_system, batch, normal_radiance, ld_cfs, kwargs))
+                  for batch in phase_batches]
+        pool.close()
+        pool.join()
+        # this will return output in same order as was given on apply_async init
+        result = [r.get() for r in result]
+        band_curves = bsutils.renormalize_async_result(result)
+    else:
+        args = (binary, initial_system, unique_phase_interval, normal_radiance, ld_cfs, kwargs)
+        band_curves = lcmp.compute_circular_synchronous_lightcurve(*args)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
-
-
-
-
-
     return band_curves
 
 
@@ -660,7 +470,7 @@ def _integrate_eccentric_lc_exactly(binary, orbital_motion, phases, **kwargs):
 
         # todo: pulsations adjustment should come here
         normal_radiance, ld_cfs = prep_surface_params(on_pos, **kwargs)
-        on_pos = move_sys_onpos(on_pos, position, on_copy=False)
+        on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"]:
@@ -697,7 +507,7 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
     potentials = binary.correct_potentials(orbital_supplements.body[:, 4], component="all", iterations=2)
 
     # prepare initial orbital position container
-    from_this = dict(binary_system=binary, position=const.BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
     # both, body and mirror should be defined in this approximation (those points are created in way to be mirrored
@@ -710,8 +520,8 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
         initial_system.set_on_position_params(body_orb_pos, potentials['primary'][idx], potentials['secondary'][idx])
         initial_system = _update_surface_in_ecc_orbits(initial_system, body_orb_pos, require_geometry_rebuild)
 
-        on_pos_body = move_sys_onpos(initial_system, body_orb_pos)
-        on_pos_mirror = move_sys_onpos(initial_system, mirror_orb_pos)
+        on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos)
+        on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos)
 
         normal_radiance = get_normal_radiance(on_pos_body, **kwargs)
         ld_cfs = get_limbdarkening_cfs(on_pos_body, **kwargs)
@@ -776,7 +586,7 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         """
         Helper function.
 
-        :param orbital_position: collections.tamedtuple; elisa.const.BINARY_POSITION_PLACEHOLDER;
+        :param orbital_position: collections.tamedtuple; elisa.const.Position;
         :param ldc: Dict[str, Dict[str, pandas.DataFrame]];
         :param n_radiance: Dict[str, Dict[str, pandas.DataFrame]];
         :param cvrg: numpy.array;
@@ -798,7 +608,7 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
     potentials = binary.correct_potentials(phases_to_correct, component="all", iterations=2)
 
     # prepare initial orbital position container
-    from_this = dict(binary_system=binary, position=const.BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
     for idx, position_pair in enumerate(orbital_supplements):
@@ -810,13 +620,13 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         initial_system = _update_surface_in_ecc_orbits(initial_system, body_orb_pos, require_geometry_rebuild)
 
         if body_orb_pos.phase not in used_phases:
-            on_pos_body = move_sys_onpos(initial_system, body_orb_pos, on_copy=True)
+            on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos, on_copy=True)
             _args = _onpos_params(on_pos_body)
             _incont_lc_point(body_orb_pos, *_args)
             used_phases += [body_orb_pos.phase]
 
         if (not OrbitalSupplements.is_empty(mirror)) and (mirror_orb_pos.phase not in used_phases):
-            on_pos_mirror = move_sys_onpos(initial_system, mirror_orb_pos, on_copy=True)
+            on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, on_copy=True)
             _args = _onpos_params(on_pos_mirror)
             _incont_lc_point(mirror_orb_pos, *_args)
             used_phases += [mirror_orb_pos.phase]
@@ -845,7 +655,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
     normal_radiance, ld_cfs = dict(), dict()
 
-    from_this = dict(binary_system=binary, position=const.BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
     points = {}
@@ -893,7 +703,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
         initial_system.build_from_points(components_distance=orbital_position.distance, do_pulsations=True,
                                          phase=orbital_position.phase, component=require_build)
 
-        on_pos = move_sys_onpos(initial_system, orbital_position, on_copy=True)
+        on_pos = bsutils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
 
         # if None of components has to be rebuilded, use previously compyted radiances and limbdarkening when available
         if utils.is_empty(normal_radiance) or not utils.is_empty(require_build):
@@ -937,8 +747,8 @@ def compute_eccentric_spotty_asynchronous_lightcurve(binary, **kwargs):
         # assigning new longitudes for each spot
         dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_index, component="all")
         on_pos.build(components_distance=position.distance)
-        on_pos = move_sys_onpos(on_pos, position, potentials["primary"][pos_index],
-                                potentials["secondary"][pos_index], on_copy=False)
+        on_pos = bsutils.move_sys_onpos(on_pos, position, potentials["primary"][pos_index],
+                                        potentials["secondary"][pos_index], on_copy=False)
         normal_radiance = get_normal_radiance(on_pos, **kwargs)
         ld_cfs = get_limbdarkening_cfs(on_pos, **kwargs)
 
@@ -948,31 +758,3 @@ def compute_eccentric_spotty_asynchronous_lightcurve(binary, **kwargs):
             band_curves[band][int(position.idx)] = calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
 
     return band_curves
-
-
-def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_potential=None, on_copy=True):
-    """
-    Prepares a postion container for given orbital position.
-    Supplied `system` is not affected if `on_copy` is set to True.
-
-    Following methods are applied::
-
-        system.set_on_position_params()
-        system.flatt_it()
-        system.apply_rotation()
-        system.apply_darkside_filter()
-
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :param orbital_position: collections.namedtuple; elisa.const.Position;
-    :return: container; elisa.binary_system.container.OrbitalPositionContainer;
-    :param primary_potential: float;
-    :param secondary_potential: float;
-    :param on_copy: bool;
-    """
-    if on_copy:
-        system = system.copy()
-    system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
-    system.flatt_it()
-    system.apply_rotation()
-    system.apply_darkside_filter()
-    return system

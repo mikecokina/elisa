@@ -1,7 +1,7 @@
 import numpy as np
 
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.const import BINARY_POSITION_PLACEHOLDER
+from elisa.const import Position
 from elisa.binary_system import utils as butils, dynamic
 from elisa.utils import is_empty
 from elisa.base import transform
@@ -28,7 +28,7 @@ class Plot(object):
         `surface` - plot stellar surfaces
     """
 
-    defpos = BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0))
+    defpos = Position(*(0, 1.0, 0.0, 0.0, 0.0))
 
     def __init__(self, instance):
         self.binary = instance

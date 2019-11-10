@@ -476,8 +476,8 @@ class BinarySystem(System):
         :param calculate_from: str; 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
         :param return_nparray: bool; if True positions in form of numpy arrays will be also returned
         :param input_argument: numpy.array;
-        :return: Tuple[List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER], List[Integer]] or
-                 List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER]
+        :return: Tuple[List[NamedTuple: elisa.const.Position], List[Integer]] or
+                 List[NamedTuple: elisa.const.Position]
         """
         input_argument = np.array([input_argument]) if np.isscalar(input_argument) else input_argument
         orbital_motion = self.orbit.orbital_motion(phase=input_argument) if calculate_from == 'phase' \
@@ -488,7 +488,7 @@ class BinarySystem(System):
         if return_nparray:
             return positions
         else:
-            return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
+            return [const.Position(*p) for p in positions]
 
     def setup_periastron_components_radii(self, components_distance):
         """

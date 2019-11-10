@@ -784,7 +784,7 @@ def is_even(x):
 
 
 def convert_binary_orbital_motion_arr_to_positions(arr):
-    return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in arr]
+    return [const.Position(*p) for p in arr]
 
 
 def nested_dict_values(dictionary):

@@ -74,4 +74,4 @@ LINE_OF_SIGHT = np.array([1.0, 0.0, 0.0])
 FALSE_FACE_PLACEHOLDER = np.array([-1, -1, -1])
 
 
-BINARY_POSITION_PLACEHOLDER = namedtuple('Position', ['idx', 'distance', 'azimuth', 'true_anomaly', 'phase'])
+Position = namedtuple('Position', ['idx', 'distance', 'azimuth', 'true_anomaly', 'phase'])
