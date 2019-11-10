@@ -212,6 +212,33 @@ class Observer(object):
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
 
+        self.allow_multiprocessing = True
+
+        if self.allow_multiprocessing:
+            batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
+            phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
+
+            pool = Pool(processes=config.NUMBER_OF_PROCESSES)
+            result = [pool.apply_async(mp.observe_lc_worker, (batch_idx, batch))
+                      for batch_idx, batch in enumerate(phase_batches)]
+            pool.close()
+            pool.join()
+            result_list = [r.get() for r in result]
+
+            print(result_list)
+
+        exit()
+        res = [pool.apply_async(mp.observe_worker,
+                                (self._system.initial_kwargs, self._system_cls, _args)) for _args in args]
+        pool.close()
+        pool.join()
+        result_list = [np.array(r.get()) for r in res]
+
+        print(result_list)
+        # # r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
+        # # return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
+
+
         curves = self._system.compute_lightcurve(
                      **dict(
                          passband=self.passband,
@@ -222,32 +249,6 @@ class Observer(object):
                          position_method=position_method
                      )
                  )
-
-        # self.allow_multiprocessing = True
-        #
-        # if self.allow_multiprocessing:
-        #     batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
-        #     phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
-        #
-        #     pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-        #     result = [pool.apply_async(mp.observe_lc_worker, (batch_idx, batch))
-        #               for batch_idx, batch in enumerate(phase_batches)]
-        #     pool.close()
-        #     pool.join()
-        #     result_list = [r.get() for r in result]
-        #
-        #     print(result_list)
-        #
-        # exit()
-        # res = [pool.apply_async(mp.observe_worker,
-        #                         (self._system.initial_kwargs, self._system_cls, _args)) for _args in args]
-        # pool.close()
-        # pool.join()
-        # result_list = [np.array(r.get()) for r in res]
-        #
-        # print(result_list)
-        # # r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
-        # # return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
 
         # remap unique phases back to original phase interval
         for items in curves:

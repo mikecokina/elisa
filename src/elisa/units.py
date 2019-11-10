@@ -1,3 +1,6 @@
+import builtins
+builtins._ASTROPY_SETUP_ = True
+
 from astropy import units as u
 
 # DO NOT CHANGE THIS!!!
