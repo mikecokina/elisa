@@ -261,7 +261,7 @@ class SupportMethodsTestCase(ElisaTestCase):
 
     def test_visible_indices_when_darkside_filter_apply(self):
         bs = prepare_binary_system(BINARY_SYSTEM_PARAMS['detached-physical'])
-        from_this = dict(binary_system=bs, position=const.BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+        from_this = dict(binary_system=bs, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
         system = OrbitalPositionContainer.from_binary_system(**from_this)
         system.build(components_distance=1.0)
         system.apply_darkside_filter()

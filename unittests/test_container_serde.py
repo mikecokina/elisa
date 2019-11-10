@@ -8,7 +8,7 @@ from elisa.base.container import (
 )
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
-from elisa.const import BINARY_POSITION_PLACEHOLDER
+from elisa.const import Position
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
 
@@ -52,7 +52,7 @@ class OrbitalPositionContainerSerDeTestCase(ElisaTestCase):
         self.assertTrue(all(has_attr))
 
     def test_from_binary_system(self):
-        system = OrbitalPositionContainer.from_binary_system(self.s, BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+        system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         self.assertTrue(isinstance(system, OrbitalPositionContainer))
         self.assertTrue(isinstance(system.primary, StarContainer))
         self.assertTrue(isinstance(system.secondary, StarContainer))
@@ -68,7 +68,7 @@ class IndempotenceTestCase(ElisaTestCase):
         self.s.primary.discretization_factor = up.radians(10)
 
     def test_star_container_is_indempotence(self):
-        system = OrbitalPositionContainer.from_binary_system(self.s, BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+        system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)
         star = system.primary
 
@@ -77,7 +77,7 @@ class IndempotenceTestCase(ElisaTestCase):
         self.assertTrue(len(flatt_1.points) == len(flatt_2.points))
 
     def test_orbital_position_container_is_indempotence(self):
-        system = OrbitalPositionContainer.from_binary_system(self.s, BINARY_POSITION_PLACEHOLDER(0, 1.0, 0.0, 0.0, 0.0))
+        system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)
         flatt_1 = system.flatt_it()
         flatt_2 = system.flatt_it()
