@@ -3,19 +3,16 @@ import sys
 import numpy as np
 import pandas as pd
 
-from multiprocessing.pool import Pool
 from scipy import interpolate
 
 from elisa.binary_system.system import BinarySystem
-from elisa.observer import mp
 from elisa.observer.plot import Plot
 from elisa.conf import config
 from elisa.utils import is_empty
 from elisa.logger import getLogger
 from elisa import (
     units,
-    umpy as up,
-    utils
+    umpy as up
 )
 
 logger = getLogger('observer.observer')
@@ -224,23 +221,23 @@ class Observer(object):
             position_method=position_method
         )
 
-        # ##################################
-        config.NUMBER_OF_PROCESSES = 4
-        if not self.suppress_multiprocessing:
-            batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
-            phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
-            func = self._system.compute_lightcurve
-
-            pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-            result = [pool.apply_async(mp.observe_lc_worker, (func, batch_idx, batch, lc_kwargs))
-                      for batch_idx, batch in enumerate(phase_batches)]
-            pool.close()
-            pool.join()
-            # this will return output in same order as was given on apply_async init
-            result = [r.get() for r in result]
-            curves = self.renormalize_async_result(result)
-        else:
-            curves = self._system.compute_lightcurve(**lc_kwargs)
+        # # ##################################
+        # config.NUMBER_OF_PROCESSES = 4
+        # if not self.suppress_multiprocessing:
+        #     batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
+        #     phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
+        #     func = self._system.compute_lightcurve
+        #
+        #     pool = Pool(processes=config.NUMBER_OF_PROCESSES)
+        #     result = [pool.apply_async(mp.observe_lc_worker, (func, batch_idx, batch, lc_kwargs))
+        #               for batch_idx, batch in enumerate(phase_batches)]
+        #     pool.close()
+        #     pool.join()
+        #     # this will return output in same order as was given on apply_async init
+        #     result = [r.get() for r in result]
+        #     curves = self.renormalize_async_result(result)
+        # else:
+        curves = self._system.compute_lightcurve(**lc_kwargs)
 
         # remap unique phases back to original phase interval
         for items in curves:
@@ -320,27 +317,3 @@ class Observer(object):
                 return np.unique(base_interval, return_inverse=True)
         else:
             raise NotImplemented("not implemented")
-
-    @staticmethod
-    def renormalize_async_result(result):
-        """
-        Renormalize multiprocessing output to native form.
-        Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
-        computaion require dict in form like::
-
-            [{'passband': [all fluxes]}]
-
-        instead::
-
-            [[{'passband': [fluxes in batch]}], [{'passband': [fluxes in batch]}], ...]
-
-        :param result: List;
-        :return: Dict[str; numpy.array]
-        """
-        # todo: come with something more sophisticated
-        placeholder = {key: np.array([]) for key in result[-1]}
-        for record in result:
-            for passband in placeholder:
-                placeholder[passband] = record[passband] if is_empty(placeholder[passband]) else np.hstack(
-                    (placeholder[passband], record[passband]))
-        return placeholder
