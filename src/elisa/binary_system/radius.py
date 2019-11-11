@@ -42,10 +42,9 @@ def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *a
                          f'Expecting `primary` or `secondary`.')
 
     precalc_args = (synchronicity, mass_ratio) + args
-    scipy_solver_init_value = np.array(1/1000)
+    scipy_solver_init_value = np.array([1e-4])
     argss = ((mass_ratio,) + precalc(*precalc_args), surface_potential)
-    solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value,
-                                                full_output=True, args=argss, xtol=1e-10)
+    solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=argss, xtol=1e-10)
 
     # check for regular solution
     if ier == 1 and not up.isnan(solution[0]) and 30 >= solution[0] >= 0:
