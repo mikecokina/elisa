@@ -260,6 +260,7 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
     if config.NUMBER_OF_PROCESSES > 1:
+        logger.info("starting multiprocessor workers")
         batch_size = int(np.ceil(len(unique_phase_interval) / config.NUMBER_OF_PROCESSES))
         phase_batches = utils.split_to_batches(batch_size=batch_size, array=unique_phase_interval)
         func = lcmp.compute_circular_synchronous_lightcurve
@@ -325,6 +326,7 @@ def _integrate_eccentric_lc_exactly(binary, orbital_motion, phases, **kwargs):
     potentials = binary.correct_potentials(phases, component="all", iterations=2)
 
     if config.NUMBER_OF_PROCESSES > 1:
+        logger.info("starting multiprocessor workers")
         batch_size = int(np.ceil(len(orbital_motion) / config.NUMBER_OF_PROCESSES))
         motion_batches = utils.split_to_batches(batch_size=batch_size, array=orbital_motion)
         func = lcmp.integrate_eccentric_lc_exactly
