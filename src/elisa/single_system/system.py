@@ -2,13 +2,22 @@ import numpy as np
 import scipy
 from scipy.spatial.qhull import Delaunay
 
-from elisa import utils, const as c, units as eunits
+from elisa import (
+    logger,
+    utils,
+    const as c,
+    units as eunits
+)
 from elisa.base.system import System
-from elisa.single_system import build
-from elisa.single_system import static
+from elisa.single_system import (
+    build,
+    model,
+    static,
+    graphic,
+    radius as sradius,
+)
 from elisa.opt.fsolver import fsolver
 from elisa.single_system.transform import SingleSystemProperties
-from elisa.single_system import graphic
 from elisa.base import error
 from elisa.logger import getLogger
 
@@ -57,16 +66,27 @@ class SingleSystem(System):
 
         # calculation of dependent parameters
         self.angular_velocity = static.angular_velocity(self.rotation_period)
+        self.star.surface_potential = model.surface_potential_from_polar_log_g(self.star.polar_log_g, self.star.mass)
 
         # this is also check if star surface is closed
-        self.init_radii()
+        self.setup_radii()
 
-    def init_radii(self):
+    def setup_radii(self):
         """
         auxiliary function for calculation of important radii
         :return:
         """
-        logger.debug('calculating polar radius')
+        fns = [sradius.calculate_polar_radius, sradius.calculate_equatorial_radius]
+        star = self.star
+        for fn in fns:
+            self._logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
+                               f'for the star')
+            param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
+            kwargs = dict()
+            r = fn(**kwargs)
+            setattr(star, param, r)
+
+        self._logger.debug('calculating polar radius')
         self.star.polar_radius = self.calculate_polar_radius()
         logger.debug('calculating surface potential')
         args = 0,
