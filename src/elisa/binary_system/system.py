@@ -6,6 +6,7 @@ from scipy import optimize
 from elisa.binary_system.curves import lc, rv
 from elisa.base.container import SystemPropertiesContainer
 from elisa.base.system import System
+from elisa.base.star import Star
 from elisa.binary_system import graphic
 from elisa.binary_system.surface import mesh
 from elisa.binary_system.transform import BinarySystemProperties
@@ -113,6 +114,48 @@ class BinarySystem(System):
 
         # adjust and setup discretization factor if necessary
         self.setup_discretisation_factor()
+
+    @classmethod
+    def from_json(cls, data):
+        """
+        Create instance of BinarySystem from JSON in form like::
+
+            {
+              "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primamry_minimum_time": 0.0,
+                "phase_shift": 0.0
+              },
+              "primary": {
+                "mass": 2.0,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              },
+              "secondary": {
+                "mass": 2.0,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              }
+            }
+
+        :return: elisa.binary_system.system.BinarySystem
+        """
+        primary, secondary = Star(**data["primary"]), Star(**data["secondary"])
+        return cls(primary=primary, secondary=secondary, **data["system"])
 
     def init(self):
         """
