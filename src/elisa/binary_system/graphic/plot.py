@@ -1,10 +1,11 @@
 import numpy as np
 
+
+from elisa.base import transform
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import Position
 from elisa.binary_system import utils as butils, dynamic
 from elisa.utils import is_empty
-from elisa.base import transform
 
 from elisa import (
     umpy as up,

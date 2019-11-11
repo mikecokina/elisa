@@ -16,6 +16,7 @@ from elisa.single_system import (
     graphic,
     radius as sradius,
 )
+from elisa.single_system.orbit import orbit
 from elisa.opt.fsolver import fsolver
 from elisa.single_system.transform import SingleSystemProperties
 from elisa.base import error
@@ -31,7 +32,7 @@ class SingleSystem(System):
     """
 
     MANDATORY_KWARGS = ['gamma', 'inclination', 'rotation_period']
-    OPTIONAL_KWARGS = ['reference_time']
+    OPTIONAL_KWARGS = ['reference_time', 'phase_shift']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g']
@@ -56,18 +57,23 @@ class SingleSystem(System):
         self._components = dict(star=self.star)
 
         # default values of properties
+        self.orbit = None
         self.rotation_period = None
         self.reference_time = 0
         self.angular_velocity = None
         self.period = self.rotation_period
+        self.phase_shift = 0.0
 
         # set attributes and test whether all parameters were initialized
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
         self.init_properties(**kwargs)
 
         # calculation of dependent parameters
-        self.angular_velocity = static.angular_velocity(self.rotation_period)
+        self.angular_velocity = orbit.angular_velocity(self.rotation_period)
         self.star.surface_potential = model.surface_potential_from_polar_log_g(self.star.polar_log_g, self.star.mass)
+
+        # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
+        self.init_orbit()
 
         # this is also check if star surface is closed
         self.setup_radii()
@@ -415,12 +421,6 @@ class SingleSystem(System):
                     spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
                                                                  temperatures=spot.temperatures)
 
-    def compute_lightcurve(self, **kwargs):
-        # calculating line of sights vector from time vector
-        # defining
-        positions = kwargs['positions'][2]
-        # print(line_of_sight)
-
     def get_info(self):
         pass
 
@@ -486,6 +486,15 @@ class SingleSystem(System):
         logger.info(f're/initialising class instance {SingleSystem.__name__}')
         self.__init__(star=self.star, **self.kwargs_serializer())
 
+    def init_orbit(self):
+        """
+        Initialization of single system orbit class. Similar in functionality of Orbit in Binary system. Simulates
+        apparent motion of the observer around single star as the star rotates.
+        """
+        logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
+        orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
+        self.orbit = orbit.Orbit(**orbit_kwargs)
+
     def setup_radii(self):
         """
         auxiliary function for calculation of important radii
@@ -544,19 +553,20 @@ class SingleSystem(System):
         """
         calculates a equipotential boundary of star in zx(yz) plane
 
-        :return: tuple (np.array, np.array)
+        :return: tuple; (np.array, np.array)
         """
         points = []
         angles = np.linspace(0, c.FULL_ARC, 300, endpoint=True)
+        init_val = - c.G * self.star.mass / self.star.surface_potential
+        scipy_solver_init_value = np.array([init_val])
+
         for angle in angles:
-            args, use = angle, False
-            scipy_solver_init_value = np.array([1 / 1000.0])
-            solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
-                                                        full_output=True, args=args)
+            precalc_args = (self.star.mass, self.angular_velocity, angle)
+            argss = (model.pre_calculate_for_potential_value(*precalc_args), self.star.surface_potential)
+            solution, _, ier, _ = scipy.optimize.fsolve(model.potential_fn, scipy_solver_init_value,
+                                                        full_output=True, args=argss)
             if ier == 1 and not np.isnan(solution[0]):
                 solution = solution[0]
-                if 30 >= solution >= 0:
-                    use = True
             else:
                 continue
 
