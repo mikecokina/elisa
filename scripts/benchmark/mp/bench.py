@@ -32,7 +32,7 @@ def get_params(stype):
 
 
 def store_result(filename, data):
-    tempdir = tempfile.tempdir()
+    tempdir = tempfile.gettempdir()
     fpath = op.join(tempdir, filename)
     with open(fpath, "w") as f:
         f.write(json.dumps(data, indent=4))
@@ -40,11 +40,12 @@ def store_result(filename, data):
 
 
 class BenchMark(object):
-    def __init__(self, stype, n_steps=5, n_from=10, n_to=200, multiprocessing=True):
+    def __init__(self, stype, n_steps=5, n_each=5, n_from=10, n_to=200, multiprocessing=True):
         self.stype = stype
         self.n_steps = n_steps
         self.n_from = n_from
         self.n_to = n_to
+        self.n_each = n_each
         self.mp_result = {"cores": int(os.cpu_count()), "n_phases": [], "elapsed_time": []}
         self.sc_result = {"cores": 1, "n_phases": [], "elapsed_time": []}
         self.multiprocessing = multiprocessing
@@ -60,7 +61,7 @@ class BenchMark(object):
     def eval(self, store=False):
         logger.info("starting benchmark evaluation")
         data = get_params(stype=self.stype)
-        for n_run in range(self.n_from, self.n_to):
+        for n_run in range(self.n_from, self.n_to, self.n_each):
             if n_run % 5 == 0:
                 logger.info(f'evaluating run for {n_run} phases')
 
@@ -87,8 +88,9 @@ class BenchMark(object):
 
         if store:
             mp_in_name = {True: "multiprocessing", False: "singleprocess"}
-            filename = f'{mp_in_name[self.multiprocessing]}].{self.stype}'
-            stored_in = store_result(filename, self.result)
+            filename = f'{mp_in_name[self.multiprocessing]}.{self.stype}.json'
+            result = self.mp_result if self.multiprocessing else self.sc_result
+            stored_in = store_result(filename, result)
             logger.info(f"result stored in {stored_in}")
 
     def plot(self):
@@ -105,9 +107,10 @@ class BenchMark(object):
 
 
 def main():
-    bm = BenchMark('detached.ecc.sync', n_steps=3, n_from=10, n_to=30)
-    bm.eval()
-    bm.plot()
+    bm = BenchMark('detached.ecc.sync', n_steps=10, n_from=10, n_to=400)
+    bm.eval(store=True)
+    bm.multiprocessing = False
+    bm.eval(store=True)
 
 
 if __name__ == "__main__":
