@@ -405,7 +405,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_synchronous_detached_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(lc)
+        reload(lcmp)
 
         bs = prepare_binary_system(self.params["eccentric"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
