@@ -80,7 +80,7 @@ class Plot(object):
             "azimuth": azimuth
         })
 
-        graphics.single_star_mesh(**kwargs)
+        graphics.single_star_mesh(**single_mesh_kwargs)
 
     def wireframe(self, **kwargs):
         if 'axis_unit' not in kwargs:
