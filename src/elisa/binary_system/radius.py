@@ -26,7 +26,7 @@ def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *a
             components_distance: float - distance between components in SMA units,
             phi: float - longitudonal angle of direction vector measured from point under L_1 in
                          positive direction (in radians)
-            omega: float - latitudonal angle of direction vector measured from north pole (in radians)
+            theta: float - latitudonal angle of direction vector measured from north pole (in radians)
          )
 
     :return: float; radius
@@ -42,7 +42,7 @@ def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *a
                          f'Expecting `primary` or `secondary`.')
 
     precalc_args = (synchronicity, mass_ratio) + args
-    scipy_solver_init_value = np.array([args[0] / 1e4])
+    scipy_solver_init_value = np.array(1/surface_potential)
     argss = ((mass_ratio,) + precalc(*precalc_args), surface_potential)
     solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value,
                                                 full_output=True, args=argss, xtol=1e-10)

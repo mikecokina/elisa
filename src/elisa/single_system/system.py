@@ -21,6 +21,7 @@ from elisa.single_system.transform import SingleSystemProperties
 from elisa.base import error
 from elisa.logger import getLogger
 
+
 logger = getLogger('single_system.system')
 
 
@@ -70,30 +71,6 @@ class SingleSystem(System):
 
         # this is also check if star surface is closed
         self.setup_radii()
-
-    def setup_radii(self):
-        """
-        auxiliary function for calculation of important radii
-        :return:
-        """
-        fns = [sradius.calculate_polar_radius, sradius.calculate_equatorial_radius]
-        star = self.star
-        for fn in fns:
-            self._logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
-                               f'for the star')
-            param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
-            kwargs = dict()
-            r = fn(**kwargs)
-            setattr(star, param, r)
-
-        self._logger.debug('calculating polar radius')
-        self.star.polar_radius = self.calculate_polar_radius()
-        logger.debug('calculating surface potential')
-        args = 0,
-        p_args = self.pre_calculate_for_potential_value(*args)
-        self.star._surface_potential = static.potential(self.star.polar_radius, *p_args)
-        logger.debug('calculating equatorial radius')
-        self.star.equatorial_radius = self.calculate_equatorial_radius()
 
     def _evaluate_spots(self):
         """
@@ -225,45 +202,6 @@ class SingleSystem(System):
         is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.ALL_KWARGS]
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
-
-    def calculate_polar_radius(self):
-        """
-        returns polar radius of the star in default units
-
-        :return: float
-        """
-        polar_gravity_acceleration = np.power(10, self.star.polar_log_g)
-        return np.power(c.G * self.star.mass / polar_gravity_acceleration, 0.5)
-
-    def calculate_equatorial_radius(self):
-        """
-        returns equatorial radius of the star in default units
-
-        :return: float
-        """
-        args, use = (c.HALF_PI,), False
-        p_args = (self.pre_calculate_for_potential_value(*args), self.star.surface_potential)
-        scipy_solver_init_value = np.array([1 / 1000.0])
-        solution, _, ier, _ = scipy.optimize.fsolve(self.potential_fn, scipy_solver_init_value,
-                                                    full_output=True, args=p_args)
-        # check if star is closed
-        if ier == 1 and not np.isnan(solution[0]):
-            solution = solution[0]
-            if solution <= 0:
-                print(solution)
-                raise ValueError('Value of single star equatorial radius {} is not valid'.format(solution))
-        else:
-            raise ValueError('Surface of the star is not closed. Check values of polar gravity an rotation period.')
-
-        return solution
-
-    def transform_input(self, **kwargs):
-        """
-        Transform and validate input kwargs.
-        :param kwargs: Dict
-        :return: Dict
-        """
-        return SingleSystemProperties.transform_input(**kwargs)
 
     def calculate_face_magnitude_gradient(self, points=None, faces=None):
         """
@@ -548,6 +486,23 @@ class SingleSystem(System):
         logger.info(f're/initialising class instance {SingleSystem.__name__}')
         self.__init__(star=self.star, **self.kwargs_serializer())
 
+    def setup_radii(self):
+        """
+        auxiliary function for calculation of important radii
+        :return:
+        """
+        fns = [sradius.calculate_polar_radius, sradius.calculate_equatorial_radius]
+        star = self.star
+        for fn in fns:
+            logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
+                               f'for the star')
+            param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
+            kwargs = dict(mass=star.mass,
+                          angular_velocity=self.angular_velocity,
+                          surface_potential=star.surface_potential)
+            r = fn(**kwargs)
+            setattr(star, param, r)
+
     @property
     def components(self):
         """
@@ -614,3 +569,13 @@ class SingleSystem(System):
             "angular_velocity": self.angular_velocity,
         })
         return props
+
+    def transform_input(self, **kwargs):
+        """
+        Transform and validate input kwargs.
+        :param kwargs: Dict
+        :return: Dict
+        """
+        return SingleSystemProperties.transform_input(**kwargs)
+
+
