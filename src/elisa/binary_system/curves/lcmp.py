@@ -10,6 +10,8 @@ from elisa.binary_system import (
     dynamic,
     surface
 )
+from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.binary_system.curves import shared
 from elisa.conf import config
 
 LD_LAW_CFS_COLUMNS = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
@@ -61,4 +63,27 @@ def compute_circular_synchronous_lightcurve(*args):
                                              ld_cors[component])
             band_curves[band][pos_idx] = np.sum(flux)
 
+    return band_curves
+
+
+def integrate_eccentric_lc_exactly(*args):
+    binary, motion_batch, potentials, kwargs = args
+    band_curves = {key: np.empty(len(motion_batch)) for key in kwargs["passband"]}
+
+    for run_idx, position in enumerate(motion_batch):
+        pos_idx = int(position.idx)
+        from_this = dict(binary_system=binary, position=position)
+        on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
+        on_pos.primary.surface_potential = potentials['primary'][pos_idx]
+        on_pos.secondary.surface_potential = potentials['secondary'][pos_idx]
+        on_pos.build(components_distance=position.distance)
+
+        # todo: pulsations adjustment should come here
+        normal_radiance, ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
+        on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
+        coverage, cosines = surface.coverage.calculate_coverage_with_cosines(on_pos, binary.semi_major_axis,
+                                                                             in_eclipse=True)
+
+        for band in kwargs["passband"]:
+            band_curves[band][run_idx] = shared.calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
     return band_curves

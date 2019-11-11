@@ -14,13 +14,11 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system import radius as bsradius
 from elisa.orbit.container import OrbitalSupplements
 from elisa.binary_system.surface.coverage import calculate_coverage_with_cosines
-from elisa.binary_system.curves import lcmp
+from elisa.binary_system.curves import lcmp, shared
 
 from elisa import (
     umpy as up,
     const,
-    atm,
-    ld,
     utils
 )
 from elisa.binary_system import (
@@ -76,139 +74,6 @@ def _compute_rel_d_radii(binary, orbital_supplements):
     }
     fwd_radii = np.array(list(fwd_radii.values()))
     return up.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii[:, 1:]
-
-
-def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
-    """
-    Calculates point on the light curve for given band.
-
-    :param band: str; name of the photometric band
-    :param ld_cfs: Dict[str, Dict[str, pandas.DataFrame]];
-    :param normal_radiance: Dict[str, Dict[str, numpy.array]];
-    :param coverage: Dict[str, Dict[str, numpy.array]];
-    :param cosines: Dict[str, Dict[str, numpy.array]];
-    :return: float;
-    """
-    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-    ld_cors = {
-        component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values,
-                                            limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                            cos_theta=cosines[component])
-        for component in config.BINARY_COUNTERPARTS
-    }
-    flux = {
-        component:
-            np.sum(normal_radiance[component][band] * cosines[component] * coverage[component] * ld_cors[component])
-        for component in config.BINARY_COUNTERPARTS
-    }
-    flux = flux['primary'] + flux['secondary']
-    return flux
-
-
-def get_limbdarkening_cfs(system, component="all", **kwargs):
-    """
-    Returns limb darkening coefficients for each face of each component.
-
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :param component: str;
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** * - float
-        * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
-    :return: Dict[str, numpy.array];
-    """
-    if component in ["all", "both"]:
-        return {
-            component:
-                ld.interpolate_on_ld_grid(
-                    temperature=getattr(system, component).temperatures,
-                    log_g=getattr(system, component).log_g,
-                    metallicity=getattr(system, component).metallicity,
-                    passband=kwargs["passband"]
-                ) for component in config.BINARY_COUNTERPARTS.keys()
-        }
-    elif component in config.BINARY_COUNTERPARTS.keys():
-        return ld.interpolate_on_ld_grid(
-            temperature=getattr(system, component).temperatures,
-            log_g=getattr(system, component).log_g,
-            metallicity=getattr(system, component).metallicity,
-            passband=kwargs["passband"]
-        )
-    else:
-        raise ValueError('Invalid value of `component` argument. '
-                         'Available parameters are `primary`, `secondary` or `all`.')
-
-
-def get_normal_radiance(system, component="all", **kwargs):
-    """
-    Compute normal radiance for all faces and all components in SingleOrbitalPositionContainer.
-
-    :param component: str;
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :param kwargs: Dict; arguments to be passed into light curve generator functions
-    :**kwargs options**:
-        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** * - float
-        * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
-    :return: Dict[String, numpy.array]
-    """
-    if component in ["all", "both"]:
-        return {
-            component:
-                atm.NaiveInterpolatedAtm.radiance(
-                    **dict(
-                        temperature=getattr(system, component).temperatures,
-                        log_g=getattr(system, component).log_g,
-                        metallicity=getattr(system, component).metallicity,
-                        **kwargs
-                    )
-                ) for component in config.BINARY_COUNTERPARTS
-        }
-    elif component in config.BINARY_COUNTERPARTS:
-        return atm.NaiveInterpolatedAtm.radiance(
-            **dict(
-                temperature=getattr(system, component).temperatures,
-                log_g=getattr(system, component).log_g,
-                metallicity=getattr(system, component).metallicity,
-                **kwargs
-            )
-        )
-    else:
-        raise ValueError('Invalid value of `component` argument.\n'
-                         'Available parameters are `primary`, `secondary` or `all`.')
-
-
-def prep_surface_params(system, **kwargs):
-    """
-    Prepares normal radiances and limb darkening coefficients variables.
-
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** * - float
-        * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
-    :return:
-    """
-
-    if not system.has_pulsations():
-        # compute normal radiance for each face and each component
-        normal_radiance = get_normal_radiance(system, **kwargs)
-        # obtain limb darkening factor for each face
-        ld_cfs = get_limbdarkening_cfs(system, **kwargs)
-    elif not system.primary.has_pulsations():
-        normal_radiance = {'primary': get_normal_radiance(system, 'primary', **kwargs)}
-        ld_cfs = {'primary': get_limbdarkening_cfs(system, 'primary', **kwargs)}
-    elif not system.secondary.has_pulsations():
-        normal_radiance = {'secondary': get_normal_radiance(system, 'secondary', **kwargs)}
-        ld_cfs = {'secondary': get_limbdarkening_cfs(system, 'secondary', **kwargs)}
-    else:
-        raise NotImplemented("Pulsations are not fully implemented")
-    return normal_radiance, ld_cfs
 
 
 def _look_for_approximation(phases_span_test, not_pulsations_test):
@@ -392,7 +257,7 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
 
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
-    normal_radiance, ld_cfs = prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
+    normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
     if config.NUMBER_OF_PROCESSES > 1:
         batch_size = int(np.ceil(len(unique_phase_interval) / config.NUMBER_OF_PROCESSES))
@@ -459,23 +324,21 @@ def _integrate_eccentric_lc_exactly(binary, orbital_motion, phases, **kwargs):
     # surface potentials with constant volume of components
     potentials = binary.correct_potentials(phases, component="all", iterations=2)
 
-    band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"]}
+    if config.NUMBER_OF_PROCESSES > 1:
+        batch_size = int(np.ceil(len(orbital_motion) / config.NUMBER_OF_PROCESSES))
+        motion_batches = utils.split_to_batches(batch_size=batch_size, array=orbital_motion)
+        func = lcmp.integrate_eccentric_lc_exactly
+        pool = Pool(processes=config.NUMBER_OF_PROCESSES)
 
-    for pos_idx, position in enumerate(orbital_motion):
-        from_this = dict(binary_system=binary, position=position)
-        on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
-        on_pos.primary.surface_potential = potentials['primary'][pos_idx]
-        on_pos.secondary.surface_potential = potentials['secondary'][pos_idx]
-        on_pos.build(components_distance=position.distance)
-
-        # todo: pulsations adjustment should come here
-        normal_radiance, ld_cfs = prep_surface_params(on_pos, **kwargs)
-        on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
-        coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
-
-        for band in kwargs["passband"]:
-            band_curves[band][int(position.idx)] = calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
-
+        result = [pool.apply_async(func, (binary, batch, potentials, kwargs)) for batch in motion_batches]
+        pool.close()
+        pool.join()
+        # this will return output in same order as was given on apply_async init
+        result = [r.get() for r in result]
+        band_curves = bsutils.renormalize_async_result(result)
+    else:
+        args = (binary, orbital_motion, potentials, kwargs)
+        band_curves = lcmp.integrate_eccentric_lc_exactly(*args)
     return band_curves
 
 
@@ -523,15 +386,17 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
         on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos)
         on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos)
 
-        normal_radiance = get_normal_radiance(on_pos_body, **kwargs)
-        ld_cfs = get_limbdarkening_cfs(on_pos_body, **kwargs)
+        normal_radiance = shared.get_normal_radiance(on_pos_body, **kwargs)
+        ld_cfs = shared.get_limbdarkening_cfs(on_pos_body, **kwargs)
 
         coverage_b, cosines_b = calculate_coverage_with_cosines(on_pos_body, binary.semi_major_axis, in_eclipse=True)
         coverage_m, cosines_m = calculate_coverage_with_cosines(on_pos_mirror, binary.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"].keys():
-            band_curves_body[band].append(calculate_lc_point(band, ld_cfs, normal_radiance, coverage_b, cosines_b))
-            band_curves_mirror[band].append(calculate_lc_point(band, ld_cfs, normal_radiance, coverage_m, cosines_m))
+            band_curves_body[band].append(shared.calculate_lc_point(band, ld_cfs, normal_radiance,
+                                                                    coverage_b, cosines_b))
+            band_curves_mirror[band].append(shared.calculate_lc_point(band, ld_cfs, normal_radiance,
+                                                                      coverage_m, cosines_m))
 
     # interpolation of the points in the second half of the light curves using splines
     x = up.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4] % 1))
@@ -577,8 +442,8 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         :param on_pos: elisa.binary_system.container.OrbitalPositionContainer;
         :return: Tuple;
         """
-        _normal_radiance = get_normal_radiance(on_pos, **kwargs)
-        _ld_cfs = get_limbdarkening_cfs(on_pos, **kwargs)
+        _normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
+        _ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
         _coverage, _cosines = calculate_coverage_with_cosines(on_pos, on_pos.semi_major_axis, in_eclipse=True)
         return _normal_radiance, _ld_cfs, _coverage, _cosines
 
@@ -594,7 +459,7 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         :return:
         """
         for band in kwargs["passband"]:
-            band_curves[band][int(orbital_position.idx)] = calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
+            band_curves[band][int(orbital_position.idx)] = shared.calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
 
     # this array `used_phases` is used to check, whether flux on given phase was already computed
     # it is necessary to do it due to orbital supplementes tolarance what can leads
@@ -707,15 +572,15 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
 
         # if None of components has to be rebuilded, use previously compyted radiances and limbdarkening when available
         if utils.is_empty(normal_radiance) or not utils.is_empty(require_build):
-            normal_radiance = get_normal_radiance(on_pos, **kwargs)
-            ld_cfs = get_limbdarkening_cfs(on_pos, **kwargs)
+            normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
+            ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
 
         coverage, cosines = calculate_coverage_with_cosines(
             on_pos, on_pos.semi_major_axis, in_eclipse=in_eclipse[pos_index])
 
         for band in kwargs["passband"]:
-            band_curves[band][int(orbital_position.idx)] = calculate_lc_point(band, ld_cfs, normal_radiance,
-                                                                              coverage, cosines)
+            band_curves[band][int(orbital_position.idx)] = shared.calculate_lc_point(band, ld_cfs, normal_radiance,
+                                                                                     coverage, cosines)
 
     return band_curves
 
@@ -749,12 +614,12 @@ def compute_eccentric_spotty_asynchronous_lightcurve(binary, **kwargs):
         on_pos.build(components_distance=position.distance)
         on_pos = bsutils.move_sys_onpos(on_pos, position, potentials["primary"][pos_index],
                                         potentials["secondary"][pos_index], on_copy=False)
-        normal_radiance = get_normal_radiance(on_pos, **kwargs)
-        ld_cfs = get_limbdarkening_cfs(on_pos, **kwargs)
+        normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
+        ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
 
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"]:
-            band_curves[band][int(position.idx)] = calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
+            band_curves[band][int(position.idx)] = shared.calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
 
     return band_curves
