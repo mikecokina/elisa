@@ -3,7 +3,11 @@ import numpy as np
 
 from elisa.base.container import StarContainer
 from elisa.single_system.container import SystemContainer
-from elisa import utils, graphics, units
+from elisa import (
+    utils,
+    graphics,
+    units as eu,
+)
 
 
 class Plot(object):
@@ -21,7 +25,7 @@ class Plot(object):
     def __init__(self, instance):
         self._self = instance
 
-    def equipotential(self, **kwargs):
+    def equipotential(self, axis_unit=eu):
         """
         Function for quick 2D plot of equipotential cross-section in xz plane
         :param kwargs:
@@ -29,6 +33,8 @@ class Plot(object):
             * **axis_unit** * -- astropy.unit or dimensionless - axis units, solar radius is default
         :return:
         """
+        equipotential_kwargs = dict()
+
         all_kwargs = ['axis_unit']
         utils.invalid_kwarg_checker(kwargs, all_kwargs, self.equipotential)
         kwargs['axis_unit'] = kwargs.get('axis_unit', units.solRad)
