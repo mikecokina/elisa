@@ -837,32 +837,3 @@ def add_spots_to_mesh(system, components_distance, component="all"):
         star = getattr(system, component)
         mesh_spots(system, components_distance=components_distance, component=component)
         incorporate_spots_mesh(star, component_com=component_com[component])
-
-
-# def get_surface_points_cylindrical_parallel(self, component, *args):
-#     """
-#     function calculates surface points on neck of over-contact system, using parallel Newton solver
-#
-#     :param component: `primary` or `secondary`
-#     :param args: azimuth angles, polar angles, auxiliary function for pre-calculation of coefficients in potential
-#     functions, potential function, function for radial derivative of potential function
-#     :param args: tuple
-#     :return: surface points in cartesian coordinates
-#     """
-#     phi, z, precalc_fn, potential_fn, potential_derivative_fn = args
-#     precalc_vals = precalc_fn(*(phi, z), return_as_tuple=True)
-#
-#     components_instance = getattr(self, component)
-#     initial_guess = components_instance.polar_radius
-#
-#     # setting side radius as a initial guess for points
-#     radius = initial_guess * np.ones(phi.shape)
-#     tol = 1e-10  # RELATIVE precision of calculated points
-#     while True:
-#         difference = potential_fn(radius, *precalc_vals) / potential_derivative_fn(radius, *precalc_vals)
-#         radius -= difference
-#         if np.max(np.abs(difference) / radius) <= tol:
-#             break
-#
-#     radius = np.abs(radius)
-#     return utils.cylindrical_to_cartesian(np.column_stack((radius, phi, z)))
