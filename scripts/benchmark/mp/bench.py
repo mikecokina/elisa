@@ -40,7 +40,7 @@ def store_result(filename, data):
 
 
 class BenchMark(object):
-    def __init__(self, stype, n_steps=5, n_each=5, n_from=10, n_to=200, multiprocessing=True):
+    def __init__(self, stype, n_steps=5, n_each=5, n_from=10, n_to=200, multiprocess=True):
         self.stype = stype
         self.n_steps = n_steps
         self.n_from = n_from
@@ -48,13 +48,21 @@ class BenchMark(object):
         self.n_each = n_each
         self.mp_result = {"cores": int(os.cpu_count()), "n_phases": [], "elapsed_time": []}
         self.sc_result = {"cores": 1, "n_phases": [], "elapsed_time": []}
-        self.multiprocessing = multiprocessing
 
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
 
-        config.NUMBER_OF_PROCESSES = int(os.cpu_count()) if self.multiprocessing else 1
+        self._multiprocess = True
+        setattr(self, "multiprocess", multiprocess)
 
+    @property
+    def multiprocess(self):
+        return self._multiprocess
+
+    @multiprocess.setter
+    def multiprocess(self, value):
+        self._multiprocess = value
+        config.NUMBER_OF_PROCESSES = int(os.cpu_count()) if self.multiprocess else 1
         reload(system)
         reload(observer)
 
@@ -77,7 +85,7 @@ class BenchMark(object):
                 o.observe.lc(phases=phases)
                 inter_run.append(time() - start_time)
 
-            if self.multiprocessing:
+            if self.multiprocess:
                 self.mp_result["n_phases"].append(n_run)
                 self.mp_result["elapsed_time"].append(np.mean(inter_run))
             else:
@@ -88,8 +96,8 @@ class BenchMark(object):
 
         if store:
             mp_in_name = {True: "multiprocess", False: "singleprocess"}
-            filename = f'{mp_in_name[self.multiprocessing]}.{self.stype}.json'
-            result = self.mp_result if self.multiprocessing else self.sc_result
+            filename = f'{mp_in_name[self.multiprocess]}.{self.stype}.json'
+            result = self.mp_result if self.multiprocess else self.sc_result
             stored_in = store_result(filename, result)
             logger.info(f"result stored in {stored_in}")
 
@@ -109,7 +117,7 @@ class BenchMark(object):
 def main():
     bm = BenchMark('detached.ecc.sync', n_steps=10, n_from=10, n_to=400)
     bm.eval(store=True)
-    bm.multiprocessing = False
+    bm.multiprocess = False
     bm.eval(store=True)
 
 
