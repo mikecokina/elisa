@@ -2,7 +2,7 @@ import numpy as np
 
 from numpy.testing import assert_array_equal
 from unittests.utils import ElisaTestCase
-from elisa.orbit.container import OrbitalSupplements
+from elisa.binary_system.orbit.container import OrbitalSupplements
 
 
 class OrbitalSupplementsTestCase(ElisaTestCase):

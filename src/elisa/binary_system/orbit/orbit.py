@@ -6,7 +6,7 @@ from elisa import (
     umpy as up
 )
 from elisa.logger import getLogger
-from elisa.orbit.transform import OrbitProperties
+from elisa.binary_system.orbit.transform import OrbitProperties
 
 logger = getLogger('orbit.orbit')
 

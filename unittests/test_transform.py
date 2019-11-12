@@ -5,7 +5,7 @@ from numpy.testing import assert_array_equal
 from elisa import const, units
 from elisa.base.transform import SystemProperties, BodyProperties, StarProperties, SpotProperties
 from elisa.binary_system.transform import BinarySystemProperties
-from elisa.orbit.transform import OrbitProperties
+from elisa.binary_system.orbit.transform import OrbitProperties
 from unittests.utils import ElisaTestCase
 
 

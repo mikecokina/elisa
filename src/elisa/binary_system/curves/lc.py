@@ -12,7 +12,7 @@ from elisa.logger import getLogger
 from elisa.conf import config
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system import radius as bsradius
-from elisa.orbit.container import OrbitalSupplements
+from elisa.binary_system.orbit.container import OrbitalSupplements
 from elisa.binary_system.surface.coverage import calculate_coverage_with_cosines
 from elisa.binary_system.curves import lcmp, shared
 

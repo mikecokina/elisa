@@ -10,7 +10,7 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.observer.observer import Observer
-from elisa.orbit.container import OrbitalSupplements
+from elisa.binary_system.orbit.container import OrbitalSupplements
 from elisa.binary_system import surface
 
 from elisa.binary_system import (

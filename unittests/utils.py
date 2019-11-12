@@ -4,7 +4,6 @@ import os.path as op
 import unittest
 import numpy as np
 
-from importlib import reload
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -16,7 +15,7 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.const import Position
-from elisa.orbit import orbit
+from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
 
 ax3 = Axes3D

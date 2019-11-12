@@ -1,6 +1,6 @@
 import numpy as np
 
-from elisa.orbit.container import OrbitalSupplements
+from elisa.binary_system.orbit.container import OrbitalSupplements
 from elisa.conf import config
 from elisa.binary_system import utils as bsutils
 from elisa import (

@@ -12,7 +12,7 @@ from elisa.binary_system.surface import mesh
 from elisa.binary_system.transform import BinarySystemProperties
 
 from elisa.conf import config
-from elisa.orbit import orbit
+from elisa.binary_system.orbit import orbit
 from elisa.logger import getLogger
 from elisa import (
     umpy as up,
