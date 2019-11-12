@@ -30,5 +30,5 @@ class SystemContainer(PositionContainer):
         :param kwargs:
         :return:
         """
-        return mesh.build_mesh()
+        return mesh.build_mesh(self)
 

@@ -279,3 +279,17 @@ class SpotProperties(BodyProperties):
         if not isinstance(value, (int, np.int, float, np.float)):
             raise TypeError('Input of variable `temperature_factor` is not (numpy.)int or (numpy.)float.')
         return np.float64(value)
+
+    @staticmethod
+    def discretization_factor(value):
+        # TODO: solve the case when discretization_factor is larger than angular_radius
+        """
+        Discretization factor. Degrees is considered as default value.
+
+        :param value: Union[float, astropy.quantity.Quantity]
+        :return: float
+        """
+        value = deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        if value > const.HALF_PI:
+            raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
+        return value

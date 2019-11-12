@@ -43,7 +43,7 @@ class Plot(object):
         })
         graphics.equipotential_single_star(**equipotential_kwargs)
 
-    def mesh(self, phase=0.0, plot_axis=True, axis_unit=eu.dimensionless_unscaled, inclination=None, azimuth=None):
+    def mesh(self, phase=0.0, plot_axis=True, axis_unit=eu.solRad, inclination=None, azimuth=None):
         """
         Function plots 3D scatter plot of the surface points
 
@@ -58,7 +58,7 @@ class Plot(object):
 
         inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else np.degrees(self.single.inclination)
-        azim = self.single.orbit.orbital_motion(phase=phase)[0][0]
+        azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
         azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else np.degrees(azim) - 90
 
@@ -66,18 +66,20 @@ class Plot(object):
             star=StarContainer.from_properties_container(self.single.star.to_properties_container()),
             **self.single.properties_serializer()
         )
-
-        # kwargs['mesh'], _ = self._self.build_surface(return_surface=True)  # potom tu daj ked bude vediet skvrny
-        # denominator = (1 * kwargs['axis_unit'].to(eu.DISTANCE_UNIT))
-        # kwargs['mesh'] /= denominator
-        # kwargs['equatorial_radius'] = self._self.star.equatorial_radius * eu.DISTANCE_UNIT.to(kwargs['axis_unit'])
+        position_container.build_mesh()
+        mesh = position_container.star.get_flatten_parameter('points')
+        denominator = (1 * axis_unit.to(eu.DISTANCE_UNIT))
+        mesh /= denominator
+        equatorial_radius = position_container.star.equatorial_radius * eu.DISTANCE_UNIT.to(axis_unit)
 
         single_mesh_kwargs.update({
             'phase': phase,
             'axis_unit': axis_unit,
             'plot_axis': plot_axis,
             "inclination": inclination,
-            "azimuth": azimuth
+            "azimuth": azimuth,
+            "mesh": mesh,
+            'equatorial_radius': equatorial_radius,
         })
 
         graphics.single_star_mesh(**single_mesh_kwargs)

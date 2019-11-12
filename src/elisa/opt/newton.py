@@ -27,7 +27,7 @@ def newton(func, x0, fprime, args=(), maxiter=50, rtol=0.0):
     """
     x_n = np.copy(x0) if isinstance(x0, np.ndarray) else x0
     for _ in range(maxiter):
-        difference = func(x_n, *args) / fprime(x_n, *args)
+        difference = func(x_n, *args) / fprime(x_n, *args[0])
         x_m = x_n - difference
         if np.max(up.abs(difference / x_n)) <= rtol:
             return x_m

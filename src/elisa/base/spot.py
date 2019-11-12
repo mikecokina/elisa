@@ -180,7 +180,7 @@ def incorporate_spots_mesh(to_container, component_com):
     Enum indices >= 0 means the same, but for Spot.
 
     :param to_container: Union; instace to incorporate spots into
-    :param component_com: float; center of mass of component
+    :param component_com: float; center of mass of component (it's x coordinate)
     :return: to_container: Union; instace to incorporate spots into
     """
     if not to_container.spots:

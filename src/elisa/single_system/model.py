@@ -60,3 +60,18 @@ def pre_calculate_for_potential_value(*args, return_as_tuple=False):
         return (aa, b) if return_as_tuple else np.column_stack((aa, b))
 
 
+def radial_potential_derivative(radius, *args):
+    """
+    function calculate radial derivative of potential function in spherical coordinates
+
+    :param radius: float; radius of given point(s) in spherical coordinates
+    :param args: tuple; (A, B) - such that: Psi = -a/r**2 - 2*b*r
+    :type args: tuple
+    :return:
+    """
+    a, b = args
+
+    return a / np.power(radius, 2) - 2 * b * radius
+
+
+
