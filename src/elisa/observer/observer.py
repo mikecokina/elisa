@@ -3,16 +3,20 @@ import sys
 import numpy as np
 import pandas as pd
 
+from multiprocessing.pool import Pool
 from scipy import interpolate
 
 from elisa.binary_system.system import BinarySystem
+from elisa.observer import mp
 from elisa.observer.plot import Plot
 from elisa.conf import config
 from elisa.utils import is_empty
 from elisa.logger import getLogger
+from elisa.binary_system import utils as bsutils
 from elisa import (
     units,
-    umpy as up
+    umpy as up,
+    utils
 )
 
 logger = getLogger('observer.observer')
@@ -78,7 +82,7 @@ class Observables(object):
 
 
 class Observer(object):
-    def __init__(self, passband, system, suppress_multiprocessing=False):
+    def __init__(self, passband, system):
         """
         Initializer for observer class.
 
@@ -217,23 +221,21 @@ class Observer(object):
             position_method=position_method
         )
 
-        # # ##################################
-        # config.NUMBER_OF_PROCESSES = 4
-        # if config.NUMBER_OF_PROCESSES > 1:
-        #     batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
-        #     phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
-        #     func = self._system.compute_lightcurve
-        #
-        #     pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-        #     result = [pool.apply_async(mp.observe_lc_worker, (func, batch_idx, batch, lc_kwargs))
-        #               for batch_idx, batch in enumerate(phase_batches)]
-        #     pool.close()
-        #     pool.join()
-        #     # this will return output in same order as was given on apply_async init
-        #     result = [r.get() for r in result]
-        #     curves = self.renormalize_async_result(result)
-        # else:
-        curves = self._system.compute_lightcurve(**lc_kwargs)
+        if config.NUMBER_OF_PROCESSES > 1 and self._system.is_eccentric():
+            batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
+            phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
+            func = self._system.compute_lightcurve
+
+            pool = Pool(processes=config.NUMBER_OF_PROCESSES)
+            result = [pool.apply_async(mp.observe_lc_worker, (func, batch_idx, batch, lc_kwargs))
+                      for batch_idx, batch in enumerate(phase_batches)]
+            pool.close()
+            pool.join()
+            # this will return output in same order as was given on apply_async init
+            result = [r.get() for r in result]
+            curves = bsutils.renormalize_async_result(result)
+        else:
+            curves = self._system.compute_lightcurve(**lc_kwargs)
 
         # remap unique phases back to original phase interval
         for items in curves:

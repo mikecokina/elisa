@@ -210,6 +210,14 @@ class BinarySystem(System):
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
         self.orbit = orbit.Orbit(**orbit_kwargs)
 
+    def is_eccentric(self):
+        """
+        Resolve whether system is eccentri.
+
+        :return: bool;
+        """
+        return self.eccentricity > 0
+
     def is_synchronous(self):
         """
         Resolve whether system is synchronous (consider synchronous system

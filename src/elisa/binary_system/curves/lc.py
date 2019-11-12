@@ -324,23 +324,8 @@ def _integrate_eccentric_lc_exactly(binary, orbital_motion, phases, **kwargs):
     """
     # surface potentials with constant volume of components
     potentials = binary.correct_potentials(phases, component="all", iterations=2)
-
-    if config.NUMBER_OF_PROCESSES > 1:
-        logger.info("starting multiprocessor workers")
-        batch_size = int(np.ceil(len(orbital_motion) / config.NUMBER_OF_PROCESSES))
-        motion_batches = utils.split_to_batches(batch_size=batch_size, array=orbital_motion)
-        func = lcmp.integrate_eccentric_lc_exactly
-        pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-
-        result = [pool.apply_async(func, (binary, batch, potentials, kwargs)) for batch in motion_batches]
-        pool.close()
-        pool.join()
-        # this will return output in same order as was given on apply_async init
-        result = [r.get() for r in result]
-        band_curves = bsutils.renormalize_async_result(result)
-    else:
-        args = (binary, orbital_motion, potentials, kwargs)
-        band_curves = lcmp.integrate_eccentric_lc_exactly(*args)
+    args = (binary, orbital_motion, potentials, kwargs)
+    band_curves = lcmp.integrate_eccentric_lc_exactly(*args)
     return band_curves
 
 
