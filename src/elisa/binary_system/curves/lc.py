@@ -559,20 +559,20 @@ def compute_eccentric_spotty_asynchronous_lightcurve(binary, **kwargs):
     # surface potentials with constant volume of components
     potentials = binary.correct_potentials(phases, component="all", iterations=2)
 
-    for pos_index, position in enumerate(orbital_motion):
+    for pos_idx, position in enumerate(orbital_motion):
         from_this = dict(binary_system=binary, position=position)
         on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
         # assigning new longitudes for each spot
-        dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_index, component="all")
+        dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_idx, component="all")
         on_pos.build(components_distance=position.distance)
-        on_pos = bsutils.move_sys_onpos(on_pos, position, potentials["primary"][pos_index],
-                                        potentials["secondary"][pos_index], on_copy=False)
+        on_pos = bsutils.move_sys_onpos(on_pos, position, potentials["primary"][pos_idx],
+                                        potentials["secondary"][pos_idx], on_copy=False)
         normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
         ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
 
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"]:
-            band_curves[band][int(position.idx)] = shared.calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
+            band_curves[band][pos_idx] = shared.calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
 
     return band_curves
