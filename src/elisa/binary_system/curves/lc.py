@@ -324,23 +324,8 @@ def _integrate_eccentric_lc_exactly(binary, orbital_motion, phases, **kwargs):
     """
     # surface potentials with constant volume of components
     potentials = binary.correct_potentials(phases, component="all", iterations=2)
-
-    if config.NUMBER_OF_PROCESSES > 1:
-        logger.info("starting multiprocessor workers")
-        batch_size = int(np.ceil(len(orbital_motion) / config.NUMBER_OF_PROCESSES))
-        motion_batches = utils.split_to_batches(batch_size=batch_size, array=orbital_motion)
-        func = lcmp.integrate_eccentric_lc_exactly
-        pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-
-        result = [pool.apply_async(func, (binary, batch, potentials, kwargs)) for batch in motion_batches]
-        pool.close()
-        pool.join()
-        # this will return output in same order as was given on apply_async init
-        result = [r.get() for r in result]
-        band_curves = bsutils.renormalize_async_result(result)
-    else:
-        args = (binary, orbital_motion, potentials, kwargs)
-        band_curves = lcmp.integrate_eccentric_lc_exactly(*args)
+    args = (binary, orbital_motion, potentials, kwargs)
+    band_curves = lcmp.integrate_eccentric_lc_exactly(*args)
     return band_curves
 
 
@@ -518,14 +503,11 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     position_method = kwargs.pop("position_method")
     orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
     ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
-    azimuths = [position.azimuth for position in orbital_motion]
-    in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
-    normal_radiance, ld_cfs = dict(), dict()
 
     from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
-    points = {}
+    points = dict()
     for component in config.BINARY_COUNTERPARTS:
         star = getattr(initial_system, component)
         _a, _b, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
@@ -535,54 +517,23 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
         setattr(star, "base_symmetry_points_number", _c)
         setattr(star, "inverse_point_symmetry_matrix", _d)
 
-    # pre-calculate the longitudes of each spot for each phase
-    spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all")
-    primary_reducer, secondary_reducer = dynamic.resolve_spots_geometry_update(spots_longitudes)
-    combined_reducer = primary_reducer & secondary_reducer
+    if config.NUMBER_OF_PROCESSES > 1:
+        logger.info("starting multiprocessor workers")
+        batch_size = int(np.ceil(len(orbital_motion) / config.NUMBER_OF_PROCESSES))
+        phase_batches = utils.split_to_batches(batch_size=batch_size, array=orbital_motion)
+        func = lcmp.compute_circular_spotty_asynchronous_lightcurve
+        pool = Pool(processes=config.NUMBER_OF_PROCESSES)
 
-    # calculating lc with spots gradually shifting their positions in each phase
-    band_curves = {key: np.empty(phases.shape) for key in kwargs["passband"]}
-    for pos_index, orbital_position in enumerate(orbital_motion):
-        # setup component necessary to build/rebuild
-
-        require_build = "all" if combined_reducer[pos_index] \
-            else "primary" if primary_reducer[pos_index] \
-            else "secondary" if secondary_reducer[pos_index] \
-            else None
-
-        # use clear system surface points as a starting place to save a time
-        # if reducers for related component is set to False, previous build will be used
-
-        # todo/fixme: we can remove `reset_spots_properties` when methods will work as expected
-        if primary_reducer[pos_index]:
-            initial_system.primary.points = copy(points['primary'])
-            initial_system.primary.reset_spots_properties()
-        if secondary_reducer[pos_index]:
-            initial_system.secondary.points = copy(points['secondary'])
-            initial_system.secondary.reset_spots_properties()
-
-        # assigning new longitudes for each spot
-        dynamic.assign_spot_longitudes(initial_system, spots_longitudes, index=pos_index, component="all")
-
-        # build the spots points
-        surface.mesh.add_spots_to_mesh(initial_system, orbital_position.distance, component=require_build)
-        # build the rest of the surface based on preset surface points
-        initial_system.build_from_points(components_distance=orbital_position.distance, do_pulsations=True,
-                                         phase=orbital_position.phase, component=require_build)
-
-        on_pos = bsutils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
-
-        # if None of components has to be rebuilded, use previously compyted radiances and limbdarkening when available
-        if utils.is_empty(normal_radiance) or not utils.is_empty(require_build):
-            normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
-            ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
-
-        coverage, cosines = calculate_coverage_with_cosines(
-            on_pos, on_pos.semi_major_axis, in_eclipse=in_eclipse[pos_index])
-
-        for band in kwargs["passband"]:
-            band_curves[band][int(orbital_position.idx)] = shared.calculate_lc_point(band, ld_cfs, normal_radiance,
-                                                                                     coverage, cosines)
+        result = [pool.apply_async(func, (binary, initial_system, batch, points, ecl_boundaries, kwargs))
+                  for batch in phase_batches]
+        pool.close()
+        pool.join()
+        # this will return output in same order as was given on apply_async init
+        result = [r.get() for r in result]
+        band_curves = bsutils.renormalize_async_result(result)
+    else:
+        args = (binary, initial_system, orbital_motion, points, ecl_boundaries, kwargs)
+        band_curves = lcmp.compute_circular_spotty_asynchronous_lightcurve(*args)
 
     return band_curves
 

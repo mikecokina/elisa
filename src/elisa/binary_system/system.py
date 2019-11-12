@@ -199,6 +199,9 @@ class BinarySystem(System):
     def to_properties_container(self):
         return SystemPropertiesContainer(**self.properties_serializer())
 
+    def evaluate_stype(self):
+        pass
+
     def init_orbit(self):
         """
         Orbit class in binary system.
@@ -206,6 +209,14 @@ class BinarySystem(System):
         logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
         self.orbit = orbit.Orbit(**orbit_kwargs)
+
+    def is_eccentric(self):
+        """
+        Resolve whether system is eccentri.
+
+        :return: bool;
+        """
+        return self.eccentricity > 0
 
     def is_synchronous(self):
         """
@@ -294,8 +305,8 @@ class BinarySystem(System):
             self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
                                                     / self.secondary.polar_radius * units.rad).value
             logger.info(f"setting discretization factor of secondary component to "
-                              f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
-                              f"according to discretization factor of the primary component ")
+                        f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
+                        f"according to discretization factor of the primary component ")
 
     def transform_input(self, **kwargs):
         """
