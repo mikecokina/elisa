@@ -196,7 +196,7 @@ def radial_primary_potential_derivative(radius, *args):
     """
     # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
     # fixme: it is inappropriate to take *args but use just args[0], solve it on higher layer
-    mass_ratio, b, c, d, e = args
+    mass_ratio, b, c, d, e = args[0]
     radius2 = up.power(radius, 2)
 
     return - 1 / radius2 + 0.5 * mass_ratio * (c - 2 * radius) / up.power(b - c * radius + radius2, 1.5) \
@@ -214,7 +214,7 @@ def radial_secondary_potential_derivative(radius, *args):
     :return: float;
     """
     # auxiliary values pre-calculated in pre_calculate_for_potential_value_primary()
-    mass_ratio, b, c, d, e, f = args
+    mass_ratio, b, c, d, e, f = args[0]
     radius2 = up.power(radius, 2)
 
     return - mass_ratio / radius2 + (0.5 * c - radius) / up.power(b - c * radius + radius2, 1.5) \
@@ -287,7 +287,7 @@ def radial_primary_potential_derivative_cylindrical(radius, *args):
     :type args: Tuple;
     :return: float;
     """
-    mass_ratio, a, b, c, d, e = args
+    mass_ratio, a, b, c, d, e = args[0]
 
     radius2 = up.power(radius, 2)
     return + 0 - radius / up.power(a + radius2, 1.5) - radius * mass_ratio / up.power(b + radius2, 1.5) \
@@ -304,7 +304,7 @@ def radial_secondary_potential_derivative_cylindrical(radius, *args):
     :type args: Tuple;
     :return: float;
     """
-    mass_ratio, a, b, c, d, e, f = args
+    mass_ratio, a, b, c, d, e, f = args[0]
 
     radius2 = up.power(radius, 2)
     return + 0 - radius * mass_ratio / up.power(a + radius2, 1.5) - radius / up.power(b + radius2, 1.5) \

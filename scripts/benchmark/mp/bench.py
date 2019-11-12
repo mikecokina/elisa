@@ -87,7 +87,7 @@ class BenchMark(object):
         logger.info("benchmark evaluation finished")
 
         if store:
-            mp_in_name = {True: "multiprocessing", False: "singleprocess"}
+            mp_in_name = {True: "multiprocess", False: "singleprocess"}
             filename = f'{mp_in_name[self.multiprocessing]}.{self.stype}.json'
             result = self.mp_result if self.multiprocessing else self.sc_result
             stored_in = store_result(filename, result)
