@@ -147,6 +147,8 @@ def update_config():
 
         global NUMBER_OF_PROCESSES
         NUMBER_OF_PROCESSES = c_parse.getint('computational', 'number_of_processess', fallback=NUMBER_OF_PROCESSES)
+        if NUMBER_OF_PROCESSES > os.cpu_count():
+            NUMBER_OF_PROCESSES = int(os.cpu_count())
 
         global POINTS_ON_ECC_ORBIT
         POINTS_ON_ECC_ORBIT = c_parse.getint('computational', 'points_on_ecc_orbit', fallback=POINTS_ON_ECC_ORBIT)

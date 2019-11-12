@@ -35,6 +35,9 @@ v0.2.dev0_
 .. v0.2.dev0_: https://github.com/mikecokina/elisa
 
 **Features**
+    * **capability to compute lightcurves on several processor's cores (multiprocessing)** *
+        - supplied phases are split to `N` smaller batches (N is equal to desired processes but
+        up to number of available cores) and computed all at once
 
 **Fixes**
 
@@ -49,7 +52,6 @@ Future plans
 v0.2
 ----
 
-    - multiprocess approach
     - single system
     - lc differencial correction
     - genetic algorithm
