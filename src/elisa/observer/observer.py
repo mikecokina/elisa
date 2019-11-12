@@ -106,10 +106,6 @@ class Observer(object):
         self.plot = Plot(self)
         self.observe = Observables(self)
 
-        self.suppress_multiprocessing = suppress_multiprocessing
-        if config.NUMBER_OF_PROCESSES < 2:
-            self.suppress_multiprocessing = True
-
     @staticmethod
     def bolometric(x):
         """
@@ -223,7 +219,7 @@ class Observer(object):
 
         # # ##################################
         # config.NUMBER_OF_PROCESSES = 4
-        # if not self.suppress_multiprocessing:
+        # if config.NUMBER_OF_PROCESSES > 1:
         #     batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
         #     phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
         #     func = self._system.compute_lightcurve

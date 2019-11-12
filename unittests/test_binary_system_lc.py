@@ -550,7 +550,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
         self.assertTrue(np.all(abs(np.round(expected_phases, 3) == np.round(obtained_phases, 3))))
-        assert_array_equal(np.round(obtained_flux, 3), np.round(expected_flux, 3))
+        self.assertTrue(np.all(np.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < 9e-3))
 
     def test_eccentric_spotty_asynchronous_detached_system(self):
         bs = prepare_binary_system(self.params["detached-async-ecc"],
