@@ -1,6 +1,8 @@
 import gc
 import numpy as np
 
+from copy import copy
+
 from elisa import umpy as up
 
 
