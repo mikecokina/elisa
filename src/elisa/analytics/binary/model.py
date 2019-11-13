@@ -3,6 +3,62 @@ from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 
 
+def _prepare_star(**kwargs):
+    return Star(
+        **dict(
+            **dict(
+                mass=kwargs['mass'] * units.solMass,
+                surface_potential=kwargs['surface_potential'],
+                synchronicity=kwargs['synchronicity'],
+                t_eff=kwargs['t_eff'] * units.K,
+                gravity_darkening=kwargs.get('gravity_darkening', 1.0),
+                albedo=kwargs.get('albedo', 1.0),
+                metallicity=kwargs['metallicity']
+            ),
+            **{"discretization_factor": kwargs["discretization_factor"]}
+            if kwargs.get("discretization_factor") else {})
+    )
+
+
+def _serialize_star_kwargs(component, **kwargs):
+    return {str(k)[3:]: v for k, v in kwargs.items() if str(k).startswith(component)}
+
+
+def serialize_primary_kwargs(**kwargs):
+    return _serialize_star_kwargs(component='p', **kwargs)
+
+
+def serialize_seondary_kwargs(**kwargs):
+    return _serialize_star_kwargs(component='s', **kwargs)
+
+
+def prepare_central_rv_binary(period, **kwargs):
+    kwargs.update({
+        "p__synchronicity": 1.0,
+        "s__synchronicity": 1.0,
+        "p__surface_potential": 100,
+        "s__surface_potential": 100,
+        "p__t_eff": 10000.0,
+        "s__t_eff": 10000.0,
+        "p__metallicity": 10000.0,
+        "s__metallicity": 10000.0
+    })
+    primary = _prepare_star(**serialize_primary_kwargs(**kwargs))
+    secondary = _prepare_star(**serialize_seondary_kwargs(**kwargs))
+
+    return BinarySystem(
+        primary=primary,
+        secondary=secondary,
+        argument_of_periastron=kwargs['argument_of_periastron'],
+        gamma=0.0,
+        period=period * units.d,
+        eccentricity=kwargs['eccentricity'],
+        inclination=kwargs['inclination'],
+        primary_minimum_time=0.0,
+        phase_shift=0.0
+    )
+
+
 def prepare_circual_sync_binary(period, discretization, **kwargs):
     """
     Setup circular synchrnonous binary system.
@@ -28,28 +84,11 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
     :return: elisa.binary_system.system.BinarySystem;
     """
 
-    primary = Star(
-        mass=kwargs['p__mass'] * units.solMass,
-        surface_potential=kwargs['p__surface_potential'],
-        synchronicity=1.0,
-        t_eff=kwargs['p__t_eff'] * units.K,
-        gravity_darkening=kwargs.get('p__gravity_darkening', 1.0),
-        discretization_factor=discretization,
-        albedo=kwargs.get('p__albedo', 1.0),
-        metallicity=kwargs['p__metallicity']
-    )
+    kwargs.update({"p__synchronicity": 1.0, "s__synchronicity": 1.0, "p__discretization_factor": discretization})
+    primary = _prepare_star(**serialize_primary_kwargs(**kwargs))
+    secondary = _prepare_star(**serialize_seondary_kwargs(**kwargs))
 
-    secondary = Star(
-        mass=kwargs['s__mass'] * units.solMass,
-        surface_potential=kwargs['p__surface_potential'],
-        synchronicity=1.0,
-        t_eff=kwargs['s__t_eff'] * units.K,
-        gravity_darkening=kwargs.get('s__gravity_darkening', 1.0),
-        albedo=kwargs.get('s__albedo', 1.0),
-        metallicity=kwargs['s__metallicity']
-    )
-
-    bs = BinarySystem(
+    return BinarySystem(
         primary=primary,
         secondary=secondary,
         argument_of_periastron=0.0,
@@ -60,7 +99,6 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
         primary_minimum_time=0.0,
         phase_shift=0.0
     )
-    return bs
 
 
 def circular_sync_synthetic(xs, period, discretization, observer, **kwargs):
@@ -90,3 +128,10 @@ def circular_sync_synthetic(xs, period, discretization, observer, **kwargs):
     observer._system = binary
     lc = observer.observe.lc(phases=xs, normalize=True)
     return lc[1]
+
+
+def central_rv_synthetic(xs, period, observer, **kwargs):
+    binary = prepare_central_rv_binary(period, **kwargs)
+    observer._system = binary
+    rv = observer.observe.rv(phases=xs, normalize=True)
+    return rv[1], rv[2]

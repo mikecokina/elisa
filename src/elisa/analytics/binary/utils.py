@@ -2,7 +2,7 @@ import numpy as np
 from typing import Tuple
 
 
-def normalize_to_max(lc):
+def normalize_lightcurve_to_max(lc):
     """
     Normalize light-curve dict to maximal value.
     Require light-curve in following shape::
@@ -16,6 +16,11 @@ def normalize_to_max(lc):
     """
     _max = np.max(list(lc.values()))
     return {key: val/_max for key, val in lc.items()}
+
+
+def normalize_rv_curve_to_max(rv):
+    _max = np.max([rv[0], rv[1]])
+    return rv[0]/_max, rv[1]/_max
 
 
 def renormalize_value(val, _min, _max):

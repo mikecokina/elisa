@@ -25,6 +25,8 @@ from elisa.analytics.binary.utils import (
 logger = getLogger('analytics.binary.fit')
 
 ALL_PARAMS = ['inclination',
+              'eccentricity',
+              'argument_of_periastron'
               'p__mass',
               'p__t_eff',
               'p__surface_potential',
@@ -44,6 +46,8 @@ METALLICITY = atm_file_prefix_to_quantity_list("metallicity", config.ATM_ATLAS)
 
 NORMALIZATION_MAP = {
     'inclination': (0, 180),
+    'eccentricity': (0, 1),
+    'argument_of_periastron': (0, 360),
     'p__mass': (0.5, 20),
     's__mass': (0.5, 20),
     'p__t_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
@@ -107,8 +111,8 @@ def _serialize_param_boundaries(x0):
     :param x0: List[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Dict[str, Tuple[float, float]]
     """
-    return {record['param']: (record.get('min', NORMALIZATION_MAP[record['param']]),
-                              record.get('max', NORMALIZATION_MAP[record['param']]))
+    return {record['param']: (record.get('min', NORMALIZATION_MAP[record['param']][0]),
+                              record.get('max', NORMALIZATION_MAP[record['param']][1]))
             for record in x0 if not record['fixed']}
 
 
@@ -123,7 +127,7 @@ def _logger_decorator(suppress_logger=False):
     return do
 
 
-def r_squared(synthetic, *args, **x):
+def lc_r_squared(synthetic, *args, **x):
     """
     Compute R^2 (coefficient of determination).
 
@@ -147,12 +151,41 @@ def r_squared(synthetic, *args, **x):
     observer._system_cls = BinarySystem
     synthetic = synthetic(xs, period, discretization, observer, **x)
 
-    synthetic = analutils.normalize_to_max(synthetic)
+    synthetic = analutils.normalize_lightcurve_to_max(synthetic)
     residual = np.sum([np.power(np.sum(synthetic[band] - ys[band]), 2) for band in ys])
     return 1.0 - (residual / variability)
 
 
-class CircularSyncLightCurves(object):
+def rv_r_squared(synthetic, *args, **x):
+    xs, ys, period = args
+    observed_means = np.array([np.repeat(np.mean(ys[comp]), len(xs)) for comp in config.BINARY_COUNTERPARTS])
+    variability = np.sum([np.sum(np.power(ys[comp] - observed_means, 2)) for comp in config.BINARY_COUNTERPARTS])
+
+    observer = Observer(passband='bolometric', system=None)
+    observer._system_cls = BinarySystem
+    synthetic = synthetic(xs, period, observer, **x)
+    synthetic = analutils.normalize_rv_curve_to_max(synthetic)
+    synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
+
+    residual = np.sum([np.power(np.sum(synthetic[comp] - ys[comp]), 2) for comp in config.BINARY_COUNTERPARTS])
+    return 1.0 - (residual / variability)
+
+
+def initializer(x0, passband=None):
+    boundaries = _serialize_param_boundaries(x0)
+    _update_normalization_map(boundaries)
+
+    fixed = x0_to_fixed_kwargs(x0)
+    x0_vectorized, kwords = x0_vectorize(x0)
+    x0 = _normalize(x0_vectorized, kwords)
+
+    observer = Observer(passband='bolometric' if passband is None else passband, system=None)
+    observer._system_cls = BinarySystem
+
+    return x0, kwords, fixed, observer
+
+
+class CircularSyncLightCurve(object):
     @staticmethod
     def circular_sync_model_to_fit(x, *args):
         """
@@ -176,26 +209,17 @@ class CircularSyncLightCurves(object):
         kwargs.update(fixed)
         fn = model.circular_sync_synthetic
         synthetic = _logger_decorator(suppress_logger)(fn)(xs, period, discretization, observer, **kwargs)
-        synthetic = analutils.normalize_to_max(synthetic)
+        synthetic = analutils.normalize_lightcurve_to_max(synthetic)
         return np.array([np.sum(synthetic[band] - ys[band]) for band in synthetic])
 
     @staticmethod
     def fit(xs, ys, period, x0, passband, discretization, xtol=1e-15, max_nfev=None, suppress_logger=False):
         initial_x0 = copy(x0)
-        boundaries = _serialize_param_boundaries(initial_x0)
-        _update_normalization_map(boundaries)
-
-        fixed = x0_to_fixed_kwargs(x0)
-        x0_vectorized, kwords = x0_vectorize(x0)
-        x0 = _normalize(x0_vectorized, kwords)
-
-        observer = Observer(passband=passband, system=None)
-        observer._system_cls = BinarySystem
-
+        x0, kwords, fixed, observer = initializer(x0, passband=passband)
         args = (xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, observer)
 
         logger.info("fitting circular synchronous system...")
-        func = CircularSyncLightCurves.circular_sync_model_to_fit
+        func = CircularSyncLightCurve.circular_sync_model_to_fit
         result = least_squares(func, x0, bounds=(0, 1), args=args, max_nfev=max_nfev, xtol=xtol)
         logger.info("fitting finished")
 
@@ -204,10 +228,47 @@ class CircularSyncLightCurves(object):
         result_dict.update(x0_to_fixed_kwargs(initial_x0))
 
         r_squared_args = xs, ys, period, passband, discretization
-        r_squared_result = r_squared(model.circular_sync_synthetic, *r_squared_args, **result_dict)
+        r_squared_result = lc_r_squared(model.circular_sync_synthetic, *r_squared_args, **result_dict)
         logger.info(f'r_squared: {r_squared_result}')
 
         return result_dict
 
 
-circular_sync = CircularSyncLightCurves()
+class CentralRadialVelocity(object):
+    @staticmethod
+    def centarl_rv_model_to_fit(x, *args):
+        xs, ys, period, kwords, fixed, suppress_logger, observer = args
+        x = _renormalize(x, kwords)
+        kwargs = {k: v for k, v in zip(kwords, x)}
+        kwargs.update(fixed)
+        fn = model.central_rv_synthetic
+
+        synthetic = _logger_decorator(suppress_logger)(fn)(xs, period, observer, **kwargs)
+        synthetic = analutils.normalize_rv_curve_to_max(synthetic)
+        synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
+        return np.array([np.sum(synthetic[comp] - ys[comp]) for comp in config.BINARY_COUNTERPARTS])
+
+    @staticmethod
+    def fit(xs, ys, period, x0, xtol=1e-15, max_nfev=None, suppress_logger=False):
+        initial_x0 = copy(x0)
+        x0, kwords, fixed, observer = initializer(x0)
+
+        args = (xs, ys, period, kwords, fixed, suppress_logger, observer)
+        logger.info("fitting radial velocity light curve...")
+        func = CentralRadialVelocity.centarl_rv_model_to_fit
+        result = least_squares(func, x0, bounds=(0, 1), args=args, max_nfev=max_nfev, xtol=xtol)
+        logger.info("fitting finished")
+
+        result = _renormalize(result.x, kwords)
+        result_dict = {k: v for k, v in zip(kwords, result)}
+        result_dict.update(x0_to_fixed_kwargs(initial_x0))
+
+        r_squared_args = xs, ys, period
+        r_squared_result = rv_r_squared(model.central_rv_synthetic, *r_squared_args, **result_dict)
+        logger.info(f'r_squared: {r_squared_result}')
+
+        return result_dict
+
+
+circular_sync = CircularSyncLightCurve()
+central_rv = CentralRadialVelocity()

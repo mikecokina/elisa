@@ -9,7 +9,7 @@ from elisa import (
 from elisa.logger import getLogger
 from elisa.single_system.orbit.transform import OrbitProperties
 
-logger = getLogger('orbit.orbit')
+logger = getLogger('single_system.orbit.orbit')
 
 
 def angular_velocity(rotation_period):
