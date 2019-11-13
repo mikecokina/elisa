@@ -3,7 +3,7 @@
 .. |Travis build| image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
     :target: https://travis-ci.org/mikecokina/elisa
 
-.. |GitHub version| image:: https://img.shields.io/badge/version-0.1-yellow.svg
+.. |GitHub version| image:: https://img.shields.io/badge/version-0.2.dev0-yellow.svg
    :target: https://github.com/Naereen/StrapDown.js
 
 .. |Licence GPLv2| image:: https://img.shields.io/badge/License-GNU/GPLv2-blue.svg
@@ -175,3 +175,27 @@ Now you are all setup and ready to code.
 Usage
 -------
 For in depth tutorials, see directory ``elisa/jupyter_tutorials``
+
+
+Available passbands
+-------------------
+
+::
+
+    bolometric
+    Generic.Bessell.U
+    Generic.Bessell.B
+    Generic.Bessell.V
+    Generic.Bessell.R
+    Generic.Bessell.I
+    SLOAN.SDSS.u
+    SLOAN.SDSS.g
+    SLOAN.SDSS.r
+    SLOAN.SDSS.i
+    SLOAN.SDSS.z
+    Generic.Stromgren.u
+    Generic.Stromgren.v
+    Generic.Stromgren.b
+    Generic.Stromgren.y
+    Kepler
+    GaiaDR2
