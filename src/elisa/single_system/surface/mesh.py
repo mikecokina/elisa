@@ -1,4 +1,6 @@
 import numpy as np
+import elisa.umpy as up
+from scipy.special import ellipkinc
 from elisa.conf import config
 from elisa import (
     const as c,
@@ -69,7 +71,7 @@ def mesh(system_container, symmetry_output=False):
     x_eq, y_eq, z_eq = equator_points[:, 0], equator_points[:, 1], equator_points[:, 2]
 
     # axial symmetry, therefore calculating latitudes
-    thetas = pre_calc_latitudes(discretization_factor)
+    thetas = pre_calc_latitudes(discretization_factor, star_container.polar_radius, star_container.equatorial_radius)
 
     x0 = 0.5 * (star_container.equatorial_radius + star_container.polar_radius)
     args = thetas, x0, precalc_fn, potential_fn, potential_derivative_fn, star_container.surface_potential, \
@@ -175,14 +177,20 @@ def mesh(system_container, symmetry_output=False):
         return np.column_stack((x, y, z))
 
 
-def pre_calc_latitudes(alpha):
+def pre_calc_latitudes(alpha, polar_radius, equatorial_radius):
     """
     function pre-calculates latitudes of stellar surface with exception of pole and equator
+    :param equatorial_radius: float;
+    :param polar_radius: float;
     :param alpha: angular distance of points
-    :return:
+    :return: numpy.array; latitudes for mesh
     """
     num = int((c.HALF_PI - 2 * alpha) // alpha)
-    return np.linspace(alpha, c.HALF_PI - alpha, num=num, endpoint=True)
+    thetas = np.linspace(alpha, c.HALF_PI - alpha, num=num, endpoint=True)
+    # solving non uniform sampling along theta coordinates for squashed stars
+    thetas = thetas + up.arctan((equatorial_radius - polar_radius) * up.tan(thetas) /
+                                (polar_radius + equatorial_radius * up.tan(thetas)**2))
+    return thetas
 
 
 def get_surface_points_radii(*args):
@@ -223,8 +231,8 @@ def calculate_points_on_quarter_surface(radius, thetas, characteristic_distance)
     r_q, phi_q, theta_q = [], [], []
     for ii, theta in enumerate(thetas):
         num = int(c.HALF_PI * radius[ii] * np.sin(theta) / characteristic_distance)
-        alpha = c.HALF_PI / num
-        num = 0 if num < 0 else num
+        alpha = (c.HALF_PI / num)
+        num -= 1 if num > 0 else num
         r_q.append(radius[ii] * np.ones(num))
         theta_q.append(theta * np.ones(num))
         phi_q.append(np.linspace(alpha, c.HALF_PI-alpha, num=num, endpoint=True))
