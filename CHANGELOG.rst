@@ -7,6 +7,7 @@ v0.1_
 -----
 .. v0.1_: https://github.com/mikecokina/elisa/commits/release/0.1
 
+**Release date:** 2019-11-06
 
 **Features**
 
@@ -34,15 +35,18 @@ v0.2.dev0_
 ----------
 .. v0.2.dev0_: https://github.com/mikecokina/elisa
 
+**Release date:** In progress
+
 **Features**
-    * **capability to compute lightcurves on several processor's cores (multiprocessing)** *
-        - supplied phases are split to `N` smaller batches (N is equal to desired processes but
-        up to number of available cores) and computed all at once
+
+* **capability to compute lightcurves on several processor's cores (multiprocessing)** *
+
+    - split supplied phases to `N` smaller batches (N is equal to desired processes but up to number of available cores) and computed all at once
 
 **Fixes**
 
-    - `elisa.observer.Observer.observe.lc` and `elisa.observer.Observer.observe.rv` will not raise an error in case
-      when parameter `phases` is `numpy.array` type
+- `elisa.observer.Observer.observe.lc` and `elisa.observer.Observer.observe.rv` will not raise an error in case
+  when parameter `phases` is `numpy.array` type
 
 
 
@@ -52,11 +56,14 @@ Future plans
 v0.2
 ----
 
-    - single system
-    - lc differencial correction
-    - genetic algorithm
+    - basic fitting methods
 
 v0.3
 ----
+    - single system
 
+v0.4
+----
+    - genetic algorithm
     - pulsations
+    - extended fitting methods

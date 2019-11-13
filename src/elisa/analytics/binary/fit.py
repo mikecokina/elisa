@@ -1,17 +1,20 @@
 import functools
-import json
 import numpy as np
 
 from copy import copy
 from typing import Tuple, List
 from scipy.optimize import least_squares
 
-from elisa.analytics.binary import model
 from elisa.atm import atm_file_prefix_to_quantity_list
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.observer.observer import Observer
 from elisa.logger import getLogger
+
+from elisa.analytics.binary import (
+    utils as analutils,
+    model
+)
 
 logger = getLogger('analytics.binary.fit')
 
@@ -33,15 +36,30 @@ TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", config.ATM_ATLAS)
 METALLICITY = atm_file_prefix_to_quantity_list("metallicity", config.ATM_ATLAS)
 
 
-NORMALIZE_MAP = {
+NORMALIZATION_MAP = {
     'inclination': (0, 180),
-    'mass': (0.5, 20),
-    't_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
-    'metallicity': (np.min(METALLICITY), np.max(METALLICITY)),
-    'surface_potential': (2.0, 50.0),
-    'albedo': (0, 1),
-    'gravity_darkening': (0, 1)
+    'p__mass': (0.5, 20),
+    's__mass': (0.5, 20),
+    'p__t_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
+    's__t_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
+    'p__metallicity': (np.min(METALLICITY), np.max(METALLICITY)),
+    's__metallicity': (np.min(METALLICITY), np.max(METALLICITY)),
+    'p__surface_potential': (2.0, 50.0),
+    's__surface_potential': (2.0, 50.0),
+    'p__albedo': (0, 1),
+    's__albedo': (0, 1),
+    'p__gravity_darkening': (0, 1),
+    's__gravity_darkening': (0, 1)
 }
+
+
+def update_normalization_map(update):
+    """
+    Update module normalization map with supplied dict.
+
+    :param update: Dict;
+    """
+    NORMALIZATION_MAP.update(update)
 
 
 def _renormalize_value(val, _min, _max):
@@ -97,8 +115,19 @@ def _get_param_boundaries(param):
     :param param: str; name of parameter to get boundaries for
     :return: Tuple[float, float];
     """
-    param = param[3:] if param not in ['inclination'] else param
-    return NORMALIZE_MAP[param]
+    return NORMALIZATION_MAP[param]
+
+
+def _serialize_param_boundaries(x0):
+    """
+    Serialize boundaries of parameters if exists and parameter is not fixed.
+
+    :param x0: List[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
+    :return: Dict[str, Tuple[float, float]]
+    """
+    return {record['param']: (record.get('min', NORMALIZATION_MAP[record['param']]),
+                              record.get('max', NORMALIZATION_MAP[record['param']]))
+            for record in x0 if not record['fixed']}
 
 
 def _x0_vectorize(x0) -> Tuple:
@@ -110,12 +139,16 @@ def _x0_vectorize(x0) -> Tuple:
             {
                 'value': 2.0,
                 'param': 'p__mass',
-                'fixed': False
+                'fixed': False,
+                'min': 1.0,
+                'max': 3.0
             },
             {
                 'value': 4000.0,
                 'param': 'p__t_eff',
-                'fixed': True
+                'fixed': True,
+                'min': 3500.0,
+                'max': 4500.0
             },
             ...
         ]
@@ -163,20 +196,36 @@ def _logger_decorator(suppress_logger=False):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if not suppress_logger:
-                logger.info(f'current xn value: {json.dumps(kwargs, indent=4)}')
+                logger.info(f'current xn value: {kwargs}')
             return func(*args, **kwargs)
         return wrapper
     return do
 
 
 def circular_sync_model_to_fit(x, *args):
-    xs, ys, period, kwords, fixed, passband, discretization, suppress_logger, observer = args
+    """
+    Molde to find minimum.
+
+    :param x: Iterable[float];
+    :param args: Tuple;
+     :**args*::
+        * **xs** * -- numpy.array; phases
+        * **ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
+        * **period** * -- float;
+        * **discretization** * -- flaot;
+        * **suppress_logger** * -- bool;
+        * **passband** * -- Iterable[str];
+        * **observer** * -- elisa.observer.observer.Observer;
+    :return: float;
+    """
+    xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, observer = args
     x = _renormalize(x, kwords)
     kwargs = {k: v for k, v in zip(kwords, x)}
     kwargs.update(fixed)
     fn = model.circular_sync_synthetic
-    synthetic = _logger_decorator(suppress_logger)(fn)(xs, period, passband, discretization, observer, **kwargs)
-    return synthetic - ys
+    synthetic = _logger_decorator(suppress_logger)(fn)(xs, period, discretization, observer, **kwargs)
+    synthetic = analutils.normalize_to_max(synthetic)
+    return np.array([np.sum(synthetic[band] - ys[band]) for band in synthetic])
 
 
 def r_squared(*args, **x):
@@ -188,20 +237,22 @@ def r_squared(*args, **x):
         * **xs** * -- numpy.array; phases
         * **ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
         * **period** * -- float;
-        * **passband** * -- str;
+        * **passband** * -- Union[str, List[str]];
+        * **discretization** * -- flaot;
     :param x: Dict;
     :** x options**: kwargs of current parameters to compute binary system
     :return: float;
     """
+    xs, ys, period, passband, discretization = args
+    observed_means = np.array([np.repeat(np.mean(ys[band]), len(xs)) for band in ys])
+    variability = np.sum([np.sum(np.power(ys[band] - observed_means, 2)) for band in ys])
 
-    xs, ys, period, passband, discretization, suppress_logger = args
-    observed_mean = np.mean(ys)
-
-    variability = np.sum(np.power(ys - observed_mean, 2))
     observer = Observer(passband=passband, system=None)
     observer._system_cls = BinarySystem
-    synthetic = model.circular_sync_synthetic(xs, period, passband, discretization, observer **x)
-    residual = np.sum(np.power(ys - synthetic, 2))
+    synthetic = model.circular_sync_synthetic(xs, period, discretization, observer, **x)
+
+    synthetic = analutils.normalize_to_max(synthetic)
+    residual = np.sum([np.power(np.sum(synthetic[band] - ys[band]), 2) for band in ys])
     return 1.0 - (residual / variability)
 
 
@@ -209,23 +260,29 @@ class Fit(object):
     @staticmethod
     def circular_sync(xs, ys, period, x0, passband, discretization, xtol=1e-15, max_nfev=None, suppress_logger=False):
         initial_x0 = copy(x0)
+        boundaries = _serialize_param_boundaries(initial_x0)
+        update_normalization_map(boundaries)
+
         fixed = _x0_to_fixed_kwargs(x0)
         x0_vectorized, kwords = _x0_vectorize(x0)
         x0 = _normalize(x0_vectorized, kwords)
-        bounds = (0.0, 1.0)
 
         observer = Observer(passband=passband, system=None)
         observer._system_cls = BinarySystem
 
-        args = (xs, ys, period, kwords, fixed, passband, discretization, suppress_logger, observer)
+        args = (xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, observer)
 
         logger.info("fitting circular synchronous system...")
-        result = least_squares(circular_sync_model_to_fit, x0, bounds=bounds, args=args, max_nfev=max_nfev, xtol=xtol)
+        result = least_squares(circular_sync_model_to_fit, x0, bounds=(0, 1), args=args, max_nfev=max_nfev, xtol=xtol)
         logger.info("fitting finished")
 
         result = _renormalize(result.x, kwords)
         result_dict = {k: v for k, v in zip(kwords, result)}
         result_dict.update(_x0_to_fixed_kwargs(initial_x0))
+
+        r_squared_args = xs, ys, period, passband, discretization
+        logger.info(f'r_squared: {r_squared(*r_squared_args, **result_dict)}')
+
         return result_dict
 
 
