@@ -559,7 +559,7 @@ class BinarySystem(System):
             component_instance = getattr(self, component)
             for fn in fns:
                 logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
-                                   f'for {component} component')
+                             f'for {component} component')
 
                 param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
                 kwargs = dict(synchronicity=component_instance.synchronicity,

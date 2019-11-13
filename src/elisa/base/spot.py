@@ -185,7 +185,7 @@ def incorporate_spots_mesh(to_container, component_com):
     """
     if not to_container.spots:
         logger.debug(f"not spots found, skipping incorporating spots "
-                         f"to_container mesh on component {to_container.name}")
+                     f"to_container mesh on component {to_container.name}")
         return to_container
     logger.debug(f"incorporating spot points to_container component {to_container.name} mesh")
 
@@ -294,7 +294,8 @@ def remove_overlaped_spots_by_spot_index(from_container, keep_spot_indices, _rai
     """
     all_spot_indices = set([int(val) for val in from_container.spots.keys()])
     spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
-    spots_meta = [from_container.spots[idx].kwargs_serializer() for idx in from_container.spots if idx in spot_indices_to_remove]
+    spots_meta = [from_container.spots[idx].kwargs_serializer()
+                  for idx in from_container.spots if idx in spot_indices_to_remove]
     spots_meta = '\n'.join([str(meta) for meta in spots_meta])
     if _raise and not is_empty(spot_indices_to_remove):
         raise ValueError(f"Spots {spots_meta} have no pointns to continue.\nPlease, specify spots wisely.")
@@ -317,7 +318,7 @@ def remove_overlaped_spots_by_vertex_map(from_container, vertices_map):
     for spot_index, _ in list(from_container.spots.items()):
         if spot_index not in spots_instance_indices:
             logger.warning(f"spot with index {spot_index} doesn't contain Any face "
-                               f"and will be removed from component {from_container.name} spot list")
+                           f"and will be removed from component {from_container.name} spot list")
             from_container.remove_spot(spot_index=spot_index)
     gc.collect()
     return from_container

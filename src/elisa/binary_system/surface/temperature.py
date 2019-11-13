@@ -51,7 +51,7 @@ def reflection_effect(system, components_distance, iterations):
         return system
     if iterations <= 0:
         logger.debug('number of reflections in reflection effect was set to zero or negative; '
-                         'reflection effect will not be calculated')
+                     'reflection effect will not be calculated')
         return system
 
     components = bsutils.component_to_list(component='all')
@@ -273,11 +273,11 @@ def calculate_polar_effective_temperature(star):
     :return: float;
     """
     return star.t_eff * up.power(np.sum(star.areas) /
-                                           np.sum(star.areas * up.power(
-                                               star.potential_gradient_magnitudes /
-                                               star.polar_potential_gradient_magnitude,
-                                               star.gravity_darkening)),
-                                           0.25)
+                                 np.sum(star.areas * up.power(
+                                     star.potential_gradient_magnitudes /
+                                     star.polar_potential_gradient_magnitude,
+                                     star.gravity_darkening)),
+                                 0.25)
 
 
 def calculate_effective_temperatures(star, gradient_magnitudes):
@@ -304,7 +304,7 @@ def build_temperature_distribution(system, components_distance, component="all",
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param components_distance: str;
     :param component: `primary` or `secondary`
-    :param do_pulsations:
+    :param do_pulsations: bool;
     :param phase: float;
     :return: system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
@@ -319,7 +319,7 @@ def build_temperature_distribution(system, components_distance, component="all",
         star = getattr(system, component)
 
         logger.debug(f'computing effective temperature distibution '
-                         f'on {component} component name: {star.name}')
+                     f'on {component} component name: {star.name}')
 
         temperatures = calculate_effective_temperatures(star, star.potential_gradient_magnitudes)
         setattr(star, "temperatures", temperatures)
@@ -333,7 +333,7 @@ def build_temperature_distribution(system, components_distance, component="all",
                 setattr(spot, "temperatures", spot_temperatures)
 
         logger.debug(f'renormalizing temperature of components due to '
-                         f'presence of spots in case of component {component}')
+                     f'presence of spots in case of component {component}')
         renormalize_temperatures(star)
 
     #     if star.has_pulsations() and do_pulsations:
@@ -350,7 +350,7 @@ def build_temperature_distribution(system, components_distance, component="all",
 
     if 'primary' in components and 'secondary' in components:
         logger.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
-                         f'iterations.')
+                     f'iterations.')
         reflection_effect(system, components_distance, config.REFLECTION_EFFECT_ITERATIONS)
     return system
 

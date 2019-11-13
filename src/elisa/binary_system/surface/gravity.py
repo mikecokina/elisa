@@ -177,7 +177,7 @@ def build_surface_gravity(system, components_distance, component="all"):
             for spot_index, spot in star.spots.items():
                 logger.debug(f'calculating surface SI unit gravity of {component} component / {spot_index} spot')
                 logger.debug(f'calculating distribution of potential gradient '
-                                 f'magnitudes of spot index: {spot_index} / {component} component')
+                             f'magnitudes of spot index: {spot_index} / {component} component')
 
                 spot_pgms = calculate_face_magnitude_gradient(components_distance, component, spot.points, spot.faces,
                                                               synchronicity, mass_ratio, face_symmetry_vector=None)

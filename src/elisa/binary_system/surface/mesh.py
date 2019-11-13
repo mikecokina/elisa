@@ -357,7 +357,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
         potential_fn, fprime, potential, mass_ratio, synchronicity
 
     logger.debug(f'calculating surface points of {component} component in mesh_detached '
-                     f'function using single process method')
+                 f'function using single process method')
     points_q = get_surface_points(*args)
 
     equator = points_q[:separator[0], :]
@@ -495,7 +495,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
     # here implement multiprocessing
     args = phi_farside, theta_farside, r_polar, components_distance, precalc, fn, fprime, potential, q, synchronicity
     logger.debug(f'calculating farside points of {component} component in mesh_overcontact '
-                     f'function using single process method')
+                 f'function using single process method')
     points_farside = get_surface_points(*args)
 
     # assigning equator points and point A (the point on the tip of the farside equator)
@@ -521,7 +521,7 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
         precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
         star.surface_potential, system.mass_ratio, synchronicity
     logger.debug(f'calculating neck points of {component} component in mesh_overcontact '
-                     f'function using single process method')
+                 f'function using single process method')
     points_neck = get_surface_points_cylindrical(*args)
 
     # assigning equator points on neck
@@ -662,7 +662,7 @@ def mesh_spots(system, components_distance, component="all"):
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
                 logger.warning(f"center of spot {spot_instance.kwargs_serializer()} "
-                                   f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                               f"doesn't satisfy reasonable conditions and entire spot will be omitted")
 
                 component_instance.remove_spot(spot_index=spot_index)
                 continue
@@ -681,7 +681,7 @@ def mesh_spots(system, components_distance, component="all"):
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
                 logger.warning(f"first inner ring of spot {spot_instance.kwargs_serializer()} "
-                                   f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                               f"doesn't satisfy reasonable conditions and entire spot will be omitted")
 
                 component_instance.remove_spot(spot_index=spot_index)
                 continue
@@ -723,7 +723,7 @@ def mesh_spots(system, components_distance, component="all"):
                 spot_points = get_surface_points(*args)
             except MaxIterationError:
                 logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
-                                   f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                               f"doesn't satisfy reasonable conditions and entire spot will be omitted")
                 component_instance.remove_spot(spot_index=spot_index)
                 continue
 

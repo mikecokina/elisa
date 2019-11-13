@@ -3,13 +3,19 @@ import numpy as np
 from copy import copy
 from scipy.spatial.qhull import Delaunay
 from elisa.base import spot
-from elisa.base.surface import faces as bfaces
 from elisa.pulse import pulsations
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
 from elisa.logger import getLogger
+
 from elisa import (
     umpy as up
+)
+from elisa.base.surface.faces import (
+    initialize_model_container,
+    split_spots_and_component_faces,
+    set_all_surface_centres,
+    set_all_normals
 )
 
 logger = getLogger("binary_system.surface.faces")
@@ -178,9 +184,9 @@ def build_surface_with_spots(system, components_distance, component="all"):
         surface_fn = get_surface_builder_fn(system.morphology)
         surface_fn_kwargs = dict(component=component, points=points, components_distance=components_distance)
         faces = surface_fn(system, **surface_fn_kwargs)
-        model, spot_candidates = bfaces.initialize_model_container(vertices_map)
-        model = bfaces.split_spots_and_component_faces(star_container, points, faces, model,
-                                                       spot_candidates, vertices_map, component_com[component])
+        model, spot_candidates = initialize_model_container(vertices_map)
+        model = split_spots_and_component_faces(star_container, points, faces, model,
+                                                spot_candidates, vertices_map, component_com[component])
         spot.remove_overlaped_spots_by_vertex_map(star_container, vertices_map)
         spot.remap_surface_elements(star_container, model, points)
     return system
@@ -214,7 +220,7 @@ def detached_system_surface(system, components_distance, points=None, component=
         triangles_indices = triangulation.convex_hull
     else:
         logger.debug(f'surface of {component} component is near or at critical potential; therefore custom '
-                         f'triangulation method for (near)critical potential surfaces will be used')
+                     f'triangulation method for (near)critical potential surfaces will be used')
         # calculating closest point to the barycentre
         r_near = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
         # projection of component's far side surface into ``sphere`` with radius r1
@@ -315,7 +321,7 @@ def compute_all_surface_areas(system, component):
     for component in components:
         star = getattr(system, component)
         logger.debug(f'computing surface areas of component: '
-                         f'{star} / name: {star.name}')
+                     f'{star} / name: {star.name}')
         star.calculate_all_areas()
     return system
 
@@ -340,8 +346,8 @@ def build_faces_orientation(system, components_distance, component="all"):
 
     for _component in component:
         star = getattr(system, _component)
-        bfaces.set_all_surface_centres(star)
-        bfaces.set_all_normals(star, com=com_x[_component])
+        set_all_surface_centres(star)
+        set_all_normals(star, com=com_x[_component])
 
         # todo: move it to separate method
         # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
@@ -349,5 +355,3 @@ def build_faces_orientation(system, components_distance, component="all"):
         if star.has_pulsations():
             pulsations.set_ralp(star, com_x=com_x[_component])
     return system
-
-

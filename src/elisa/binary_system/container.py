@@ -107,7 +107,7 @@ class OrbitalPositionContainer(PositionContainer):
 
     def build_from_points(self, components_distance=None, component="all", do_pulsations=False, phase=None):
         """
-        Build binary system from present surface points
+        Build binary system from present surface points.
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units

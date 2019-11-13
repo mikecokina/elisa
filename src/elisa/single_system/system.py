@@ -2,9 +2,11 @@ import numpy as np
 import scipy
 
 from scipy import optimize
+from elisa.single_system.orbit import orbit
+from elisa.logger import getLogger
+from elisa.single_system.transform import SingleSystemProperties
 
 from elisa import (
-    logger,
     utils,
     const as c,
 )
@@ -15,10 +17,6 @@ from elisa.single_system import (
     graphic,
     radius as sradius,
 )
-from elisa.single_system.orbit import orbit
-from elisa.single_system.transform import SingleSystemProperties
-from elisa.logger import getLogger
-
 
 logger = getLogger('single_system.system')
 
@@ -82,10 +80,9 @@ class SingleSystem(System):
     @classmethod
     def is_property(cls, kwargs):
         """
-        method for checking if keyword arguments are valid properties of this class
+        Method for checking if keyword arguments are valid properties of this class.
 
-        :param kwargs: dict
-        :return:
+        :param kwargs: Dict;
         """
         is_not = ['`{}`'.format(k) for k in kwargs if k not in cls.ALL_KWARGS]
         if is_not:

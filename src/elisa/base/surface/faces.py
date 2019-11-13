@@ -2,7 +2,6 @@ import gc
 import numpy as np
 
 from copy import copy
-
 from elisa import umpy as up
 
 
@@ -201,4 +200,3 @@ def calculate_normals(points, faces, centres, com):
     # making sure that normals are properly oriented near the axial planes
     sgn = up.sign(np.sum(up.multiply(normals, corr_centres), axis=1))
     return normals * sgn[:, None]
-

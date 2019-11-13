@@ -154,8 +154,8 @@ class Orbit(object):
             else:
                 return False
         except Exception as e:
-            logger.debug(f"Solver scipy.optimize.newton in function Orbit.eccentric_anomaly did not provide "
-                               f"solution.\n Reason: {e}")
+            logger.debug(f"solver scipy.optimize.newton in function Orbit.eccentric_anomaly did not provide "
+                         f"solution.\n Reason: {e}")
             return False
 
     def eccentric_anomaly_to_mean_anomaly(self, eccentric_anomaly):
@@ -345,5 +345,5 @@ class Orbit(object):
         """
         periastron_distance = self.relative_radius(true_anomaly=np.array([0])[0])
         logger.debug(f"setting property periastron_distance "
-                           f"of class instance {self.__class__.__name__} to {periastron_distance}")
+                     f"of class instance {self.__class__.__name__} to {periastron_distance}")
         return periastron_distance

@@ -57,7 +57,7 @@ def _compute_rel_d_radii(binary, orbital_supplements):
     Requires `orbital_supplements` sorted by distance.
 
     :param binary: elisa.binary_system.system.BinarySystem;
-    :param orbital_supplements: elisa.orbit.container.OrbitalSupplements;
+    :param orbital_supplements: elisa.binary_system.orbit.container.OrbitalSupplements;
     :return: numpy.array;
     """
     # note: defined bodies/objects/templates in orbital supplements instance are sorted by distance (line above),
@@ -339,7 +339,7 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param phases: numpy.array;
-    :param orbital_supplements: elisa.orbit.container.OrbitalSupplements;
+    :param orbital_supplements: elisa.binary_system.orbit.container.OrbitalSupplements;
     :param new_geometry_mask: numpy.array;
     :param kwargs: Dict;
     :**kwargs options**:
@@ -412,7 +412,7 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param phases: numpy.array;
-    :param orbital_supplements: elisa.orbit.container.OrbitalSupplements;
+    :param orbital_supplements: elisa.binary_system.orbit.container.OrbitalSupplements;
     :param new_geometry_mask: numpy.array;
     :param kwargs: Dict;
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
