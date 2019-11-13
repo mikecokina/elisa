@@ -167,6 +167,11 @@ class Plot(object):
             if azimuth is not None else up.degrees(azim) - 90
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
+
+        # recalculating spot latitudes
+        spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phase, component="all")
+        dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=None, component="all")
+
         orbital_position_container.build_mesh(components_distance=components_distance)
         orbital_position_container.build_faces(components_distance=components_distance)
 

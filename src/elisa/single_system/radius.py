@@ -39,7 +39,7 @@ def calculate_radius(mass, angular_velocity, surface_potential, *args):
     if ier == 1 and not np.isnan(solution[0]) and 5*init_val >= solution[0] >= 0:
         return solution[0]
     else:
-        if 0 < solution[0] < 1.0:
+        if 0 < solution[0] < 5*init_val:
             return solution[0]
         else:
             raise ValueError(f'Invalid value of radius {solution} was calculated.')

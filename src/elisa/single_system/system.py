@@ -1,12 +1,12 @@
 import numpy as np
 import scipy
-from scipy.spatial.qhull import Delaunay
+
+from scipy import optimize
 
 from elisa import (
     logger,
     utils,
     const as c,
-    units as eunits
 )
 from elisa.base.system import System
 from elisa.single_system import (
@@ -15,11 +15,8 @@ from elisa.single_system import (
     graphic,
     radius as sradius,
 )
-from elisa.single_system.surface import mesh
 from elisa.single_system.orbit import orbit
-from elisa.opt.fsolver import fsolver
 from elisa.single_system.transform import SingleSystemProperties
-from elisa.base import error
 from elisa.logger import getLogger
 
 
@@ -74,6 +71,10 @@ class SingleSystem(System):
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
         self.init_orbit()
+
+        self.setup_critical_potential()
+        # checking if star is below break-up rotational velocity
+        self.check_stability()
 
         # this is also check if star surface is closed
         self.setup_radii()
@@ -143,35 +144,6 @@ class SingleSystem(System):
         """
         return np.power(c.G * self.star.mass * self.angular_velocity, 1.0 / 3.0)
 
-    def single_surface(self, points=None):
-        """
-        calculates triangulation of given set of points, if points are not given, star surface points are used. Returns
-        set of triple indices of surface pints that make up given triangle
-
-        :param points: np.array:
-
-        ::
-
-            numpy.array([[x1 y1 z1],
-                         [x2 y2 z2],
-                         ...
-                        [xN yN zN]])
-
-        :return: np.array():
-
-        ::
-
-            numpy.array([[point_index1 point_index2 point_index3],
-                         [...],
-                          ...
-                         [...]])
-        """
-        if points is None:
-            points = self.star.points
-        triangulation = Delaunay(points)
-        triangles_indices = triangulation.convex_hull
-        return triangles_indices
-
     def build_temperature_distribution(self):
         """
         function calculates temperature distribution on across all faces
@@ -196,14 +168,6 @@ class SingleSystem(System):
 
     def get_info(self):
         pass
-
-    def build_faces(self):
-        """
-            function creates faces of the star surface provided you already calculated surface points of the star
-
-            :return:
-            """
-        build.build_faces(self)
 
     def build_surface(self, return_surface=False):
         """
@@ -282,7 +246,11 @@ class SingleSystem(System):
             kwargs = dict(mass=star.mass,
                           angular_velocity=self.angular_velocity,
                           surface_potential=star.surface_potential)
-            r = fn(**kwargs)
+            try:
+                r = fn(**kwargs)
+            except:
+                raise ValueError(f'Function {fn.__name__} was not able to calculate its radius. '
+                                 f'Your system is not physical')
             setattr(star, param, r)
 
     @property
@@ -360,5 +328,32 @@ class SingleSystem(System):
         :return: Dict
         """
         return SingleSystemProperties.transform_input(**kwargs)
+
+    def setup_critical_potential(self):
+        self.star.critical_surface_potential = self.calculate_critical_potential()
+
+    def calculate_critical_potential(self):
+        """
+        Compute and set critical surface potential.
+        Critical surface potential is for component defined as potential when component fill its Roche lobe.
+        """
+        precalc_args = self.star.mass, self.angular_velocity, c.HALF_PI
+        args = (model.pre_calculate_for_potential_value(*precalc_args), 0.0)
+
+        x0 = - c.G * self.star.mass / self.star.surface_potential
+        solution = optimize.newton(model.radial_potential_derivative, x0, args=args, tol=1e-12)
+        if not np.isnan(solution):
+            return model.potential_fn(solution, *args)
+        else:
+            raise ValueError("Iteration process to solve critical potential seems "
+                             "to lead nowhere (critical potential solver has failed).")
+
+    def check_stability(self):
+        """
+        checks if star is rotationally stable
+        :return:
+        """
+        if self.star.critical_surface_potential < self.star.surface_potential:
+            raise ValueError('Non-physical system. Star rotation is above critical break-up velocity.')
 
 
