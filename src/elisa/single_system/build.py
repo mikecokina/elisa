@@ -6,29 +6,6 @@ from elisa.logger import getLogger
 logger = getLogger('single_system.build')
 
 
-def build_surface_with_no_spots(self):
-    """
-    function is calling surface building function for single systems without spots and assigns star's surface to
-    star object as its property
-    :return:
-    """
-    points_length = np.shape(self.star.points[:self.star.base_symmetry_points_number, :])[0]
-    # triangulating only one eighth of the star
-    points_to_triangulate = np.append(self.star.points[:self.star.base_symmetry_points_number, :],
-                                      [[0, 0, 0]], axis=0)
-    triangles = self.single_surface(points=points_to_triangulate)
-    # removing faces from triangulation, where origin point is included
-    triangles = triangles[~(triangles >= points_length).any(1)]
-    triangles = triangles[~((points_to_triangulate[triangles] == 0.).all(1)).any(1)]
-    # setting number of base symmetry faces
-    self.star.base_symmetry_faces_number = np.int(np.shape(triangles)[0])
-    # lets exploit axial symmetry and fill the rest of the surface of the star
-    all_triangles = [inv[triangles] for inv in self.star.inverse_point_symmetry_matrix]
-    self.star.faces = np.concatenate(all_triangles, axis=0)
-
-    base_face_symmetry_vector = np.arange(self.star.base_symmetry_faces_number)
-    self.star.face_symmetry_vector = np.concatenate([base_face_symmetry_vector for _ in range(8)])
-
 
 def build_surface_with_spots(self):
     """
@@ -46,19 +23,6 @@ def build_surface_with_spots(self):
 
     self._remove_overlaped_spots(vertices_map, self.star)
     self._remap_surface_elements(model, self.star, points)
-
-
-def build_faces(self):
-    """
-    function creates faces of the star surface provided you already calculated surface points of the star
-
-    :return:
-    """
-    # build surface if there is no spot specified
-    if not self.star.spots:
-        build_surface_with_no_spots(self)
-    else:
-        build_surface_with_spots(self)
 
 
 def build_surface(self, return_surface=False):

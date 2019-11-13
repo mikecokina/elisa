@@ -4,7 +4,10 @@ from elisa.base.container import (
     StarContainer,
     PositionContainer
 )
-from elisa.single_system.surface import mesh
+from elisa.single_system.surface import (
+    mesh,
+    faces,
+)
 from elisa.logger import getLogger
 
 logger = getLogger("single-system-container-module")
@@ -23,12 +26,9 @@ class SystemContainer(PositionContainer):
     def build(self, *args, **kwargs):
         pass
 
-    def build_mesh(self, *args, **kwargs):
-        """
-
-        :param args:
-        :param kwargs:
-        :return:
-        """
+    def build_mesh(self):
         return mesh.build_mesh(self)
+
+    def build_faces(self):
+        return faces.build_faces(self)
 
