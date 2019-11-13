@@ -124,3 +124,79 @@ def resolve_obvious_spots(points, faces, model, spot_candidates, vmap):
     gc.collect()
     return model, spot_candidates
 
+
+def set_all_surface_centres(star):
+    """
+    Calculates all surface centres for given body(including spots) and assign to object as `face_centers` property
+    """
+    star.face_centres = calculate_surface_centres(star.points, star.faces)
+    if star.has_spots():
+        for spot_index, spot_instance in star.spots.items():
+            spot_instance.face_centres = calculate_surface_centres(spot_instance.points, spot_instance.faces)
+    return star
+
+
+def calculate_surface_centres(points, faces):
+    """
+    Returns centers of every surface face.
+
+    :return: numpy.array;
+
+    ::
+
+        numpy.array([[center_x1, center_y1, center_z1],
+                     [center_x2, center_y2, center_z2],
+                      ...
+                     [center_xn, center_yn, center_zn]])
+    """
+    return np.average(points[faces], axis=1)
+
+
+def set_all_normals(for_container, com):
+    """
+    Function calculates normals for each face of given body (including spots) and assign it to object.
+
+    :param for_container: instance of container to set normals on;
+    :param com: numpy.array;
+    :param for_container: instance of container to set normals on;
+    """
+    points, faces, cntrs = for_container.points, for_container.faces, for_container.face_centres
+    for_container.normals = calculate_normals(points, faces, cntrs, com)
+
+    if for_container.has_spots():
+        for spot_index in for_container.spots:
+            for_container.spots[spot_index].normals = calculate_normals(for_container.spots[spot_index].points,
+                                                                        for_container.spots[spot_index].faces,
+                                                                        for_container.spots[spot_index].face_centres,
+                                                                        com)
+    return for_container
+
+
+def calculate_normals(points, faces, centres, com):
+    """
+    Returns outward facing normal unit vector for each face of stellar surface.
+
+    :param points: numpy.array;
+    :param faces: numpy.array;
+    :param centres: numpy.array;
+    :param com: numpy.array;
+    :return: numpy.array;
+
+    ::
+
+        numpy.array([[normal_x1, normal_y1, normal_z1],
+                     [normal_x2, normal_y2, normal_z2],
+                      ...
+                     [normal_xn, normal_yn, normal_zn]])
+    """
+    # vectors defining triangle ABC, a = B - A, b = C - A
+    a = points[faces[:, 1]] - points[faces[:, 0]]
+    b = points[faces[:, 2]] - points[faces[:, 0]]
+    normals = np.cross(a, b)
+    normals /= np.linalg.norm(normals, axis=1)[:, None]
+    corr_centres = copy(centres) - np.array([com, 0, 0])[None, :]
+
+    # making sure that normals are properly oriented near the axial planes
+    sgn = up.sign(np.sum(up.multiply(normals, corr_centres), axis=1))
+    return normals * sgn[:, None]
+

@@ -7,6 +7,7 @@ from elisa.base.container import (
 from elisa.single_system.surface import (
     mesh,
     faces,
+    gravity
 )
 from elisa.logger import getLogger
 
@@ -52,7 +53,14 @@ class SystemContainer(PositionContainer):
         return faces.build_faces(self)
 
     def build_surface_areas(self):
-        return faces.compute_all_surface_areas()
+        return faces.compute_all_surface_areas(self)
+
+    def build_faces_orientation(self):
+        return faces.build_faces_orientation(self)
+
+    def build_surface_gravity(self):
+        # return gravity
+        pass
 
     def build_from_points(self, do_pulsations=False, phase=None):
         """
@@ -63,7 +71,5 @@ class SystemContainer(PositionContainer):
         :return:
         """
         self.build_faces()
-
-
-
-
+        self.build_surface_areas()
+        self.build_faces_orientation()
