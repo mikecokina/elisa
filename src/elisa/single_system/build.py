@@ -7,22 +7,7 @@ logger = getLogger('single_system.build')
 
 
 
-def build_surface_with_spots(self):
-    """
-    function for triangulation of surface with spots
 
-    :return:
-    """
-    points, vertices_map = self._return_all_points(self.star, return_vertices_map=True)
-    faces = self.single_surface(points=points)
-    model, spot_candidates = self._initialize_model_container(vertices_map)
-    model = self._split_spots_and_component_faces(
-        points, faces, model, spot_candidates, vertices_map, self.star,
-        component_com=0
-    )
-
-    self._remove_overlaped_spots(vertices_map, self.star)
-    self._remap_surface_elements(model, self.star, points)
 
 
 def build_surface(self, return_surface=False):

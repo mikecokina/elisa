@@ -91,33 +91,6 @@ class SingleSystem(System):
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
 
-    def setup_critical_potential(self):
-        self.star.critical_surface_potential = self.calculate_critical_potential()
-
-    def calculate_critical_potential(self):
-        """
-        Compute and set critical surface potential.
-        Critical surface potential is for component defined as potential when component fill its Roche lobe.
-        """
-        precalc_args = self.star.mass, self.angular_velocity, c.HALF_PI
-        args = (model.pre_calculate_for_potential_value(*precalc_args), 0.0)
-
-        x0 = - c.G * self.star.mass / self.star.surface_potential
-        solution = optimize.newton(model.radial_potential_derivative, x0, args=args, tol=1e-12)
-        if not np.isnan(solution):
-            return model.potential_fn(solution, *args)
-        else:
-            raise ValueError("Iteration process to solve critical potential seems "
-                             "to lead nowhere (critical potential solver has failed).")
-
-    def check_stability(self):
-        """
-        checks if star is rotationally stable
-        :return:
-        """
-        if self.star.critical_surface_potential < self.star.surface_potential:
-            raise ValueError('Non-physical system. Star rotation is above critical break-up velocity.')
-
     def calculate_face_magnitude_gradient(self, points=None, faces=None):
         """
         returns array of absolute values of potential gradients for corresponding faces
@@ -355,5 +328,32 @@ class SingleSystem(System):
         :return: Dict
         """
         return SingleSystemProperties.transform_input(**kwargs)
+
+    def setup_critical_potential(self):
+        self.star.critical_surface_potential = self.calculate_critical_potential()
+
+    def calculate_critical_potential(self):
+        """
+        Compute and set critical surface potential.
+        Critical surface potential is for component defined as potential when component fill its Roche lobe.
+        """
+        precalc_args = self.star.mass, self.angular_velocity, c.HALF_PI
+        args = (model.pre_calculate_for_potential_value(*precalc_args), 0.0)
+
+        x0 = - c.G * self.star.mass / self.star.surface_potential
+        solution = optimize.newton(model.radial_potential_derivative, x0, args=args, tol=1e-12)
+        if not np.isnan(solution):
+            return model.potential_fn(solution, *args)
+        else:
+            raise ValueError("Iteration process to solve critical potential seems "
+                             "to lead nowhere (critical potential solver has failed).")
+
+    def check_stability(self):
+        """
+        checks if star is rotationally stable
+        :return:
+        """
+        if self.star.critical_surface_potential < self.star.surface_potential:
+            raise ValueError('Non-physical system. Star rotation is above critical break-up velocity.')
 
 

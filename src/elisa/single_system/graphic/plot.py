@@ -86,7 +86,17 @@ class Plot(object):
         graphics.single_star_mesh(**single_mesh_kwargs)
 
     def wireframe(self, phase=0.0, plot_axis=True, axis_unit=eu.solRad, inclination=None, azimuth=None):
-        wirwframe_kwargs = dict()
+        """
+        returns 3D wireframe of the object
+
+        :param phase: float;
+        :param plot_axis: bool; switch the plot axis on/off
+        :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
+        :param inclination: Union[float, astropy.Quantity]; in degree - elevation of camera
+        :param azimuth: Union[float, astropy.Quantity]; camera azimuth
+        :return:
+        """
+        wireframe_kwargs = dict()
 
         inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else np.degrees(self.single.inclination)
@@ -106,7 +116,7 @@ class Plot(object):
         points /= denominator
         equatorial_radius = position_container.star.equatorial_radius * eu.DISTANCE_UNIT.to(axis_unit)
 
-        wirwframe_kwargs.update({
+        wireframe_kwargs.update({
             'phase': phase,
             'axis_unit': axis_unit,
             'plot_axis': plot_axis,
@@ -117,9 +127,24 @@ class Plot(object):
             'equatorial_radius': equatorial_radius,
         })
 
-        graphics.single_star_wireframe(**wirwframe_kwargs)
+        graphics.single_star_wireframe(**wireframe_kwargs)
 
-    def surface(self, **kwargs):
+    def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
+                inclination=None, azimuth=None, units='cgs', axis_unit=eu.dimensionless_unscaled,
+                colorbar_orientation='vertical', colorbar=True, scale='linear'):
+        surface_kwargs = dict()
+
+        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+            if inclination is not None else np.degrees(self.single.inclination)
+        azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
+        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+            if azimuth is not None else np.degrees(azim) - 90
+
+        position_container = SystemContainer(
+            star=StarContainer.from_properties_container(self.single.star.to_properties_container()),
+            **self.single.properties_serializer()
+        )
+
         if 'axis_unit' not in kwargs:
             kwargs['axis_unit'] = units.solRad
 
@@ -149,5 +174,7 @@ class Plot(object):
                                                                  com=0)
             kwargs['centres'] = self._self.star.calculate_surface_centres(points=kwargs['mesh'],
                                                                           faces=kwargs['triangles'])
+        surface_kwargs.update({
 
-        graphics.single_star_surface(**kwargs)
+        })
+        graphics.single_star_surface(**surface_kwargs)

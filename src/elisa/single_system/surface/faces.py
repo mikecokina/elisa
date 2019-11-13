@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.spatial.qhull import Delaunay
 
+from elisa.base import spot
+from elisa.base.surface import faces as bfaces
 from elisa.logger import getLogger
 
 logger = getLogger("single_system.surface.faces")
@@ -74,3 +76,23 @@ def single_surface(star_container=None, points=None):
     triangulation = Delaunay(points)
     triangles_indices = triangulation.convex_hull
     return triangles_indices
+
+
+def build_surface_with_spots(system_container):
+    """
+    function for triangulation of surface with spots
+
+    :return:
+    """
+    star_container = system_container.star
+    points, vertices_map = star_container.get_flatten_points_map()
+    faces = single_surface(points=points)
+    model, spot_candidates = bfaces.initialize_model_container(vertices_map)
+    model = bfaces.split_spots_and_component_faces(
+        star_container, points, faces, model, spot_candidates, vertices_map, component_com=0.0
+    )
+
+    spot.remove_overlaped_spots_by_vertex_map(star_container, vertices_map)
+    spot.remap_surface_elements(star_container, model, points)
+
+    return system_container
