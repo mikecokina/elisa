@@ -39,7 +39,7 @@ v0.2.dev0_
 
 **Features**
 
-* **capability to compute lightcurves on several processor's cores (multiprocessing)** *
+* **capability to compute lightcurves on several processor's cores (multiprocessing)**
 
     - split supplied phases to `N` smaller batches (N is equal to desired processes but up to number of available cores) and computed all at once
 
