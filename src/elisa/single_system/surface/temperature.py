@@ -9,7 +9,8 @@ def build_temperature_distribution(system_container, do_pulsations=False, phase=
     star_container = system_container.star
 
     logger.debug('Computing effective temperature distribution on the star.')
-    star_container.temperatures = btemperature.calculate_effective_temperatures()
+    star_container.temperatures = \
+        btemperature.calculate_effective_temperatures(star_container,star_container.potential_gradient_magnitudes)
 
     if star_container.has_spots():
         for spot_index, spot in star_container.spots.items():

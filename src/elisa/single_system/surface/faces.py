@@ -108,7 +108,7 @@ def compute_all_surface_areas(system_container):
     """
     star_container = system_container.star
     logger.debug(f'computing surface areas of component: '
-                 f'{star} / name: {star.name}')
+                 f'{star_container} / name: {star_container.name}')
     star_container.calculate_all_areas()
 
     return system_container

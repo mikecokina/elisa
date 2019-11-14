@@ -215,24 +215,32 @@ def single_star_surface(**kwargs):
     ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
-    star_plot = ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2],
-                                triangles=kwargs['triangles'], antialiased=True, shade=False, alpha=1)
+    star_plot = ax.plot_trisurf(kwargs['points'][:, 0], kwargs['points'][:, 1], kwargs['points'][:, 2],
+                                triangles=kwargs['triangles'], antialiased=True, shade=False, color='g')
     if kwargs['edges']:
         star_plot.set_edgecolor('black')
 
     if kwargs['normals']:
-        arrows = ax.quiver(kwargs['centres'][:, 0], kwargs['centres'][:, 1], kwargs['centres'][:, 2],
-                           kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
-                           length=0.1 * kwargs['equatorial_radius'])
+        ax.quiver(kwargs['centres'][:, 0], kwargs['centres'][:, 1], kwargs['centres'][:, 2],
+                  kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
+                  length=0.1 * kwargs['equatorial_radius'])
 
     if kwargs.get('colormap', False):
-        star_plot.set_cmap(cmap=cm.jet_r)
-        star_plot.set_array(kwargs['cmap'])
-        colorbar = fig.colorbar(star_plot, shrink=0.7)
         if kwargs['colormap'] == 'temperature':
-            colorbar.set_label('T/[K]')
+            star_plot.set_cmap(cmap=cm.jet_r)
+            star_plot.set_array(kwargs['cmap'])
+            if kwargs['colorbar']:
+                colorbar = fig.colorbar(star_plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
+                set_t_colorbar_label(colorbar, kwargs['scale'])
+
         elif kwargs['colormap'] == 'gravity_acceleration':
-            set_g_colorbar_label(colorbar, kwargs['units'])
+            try:
+                star_plot.set_cmap(cmap=cm.jet_r)
+            except:
+                pass
+            star_plot.set_array(kwargs['cmap'])
+            colorbar = fig.colorbar(star_plot, shrink=0.7, orientation=kwargs['colorbar_orientation'])
+            set_g_colorbar_label(colorbar, kwargs['units'], kwargs['scale'])
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
@@ -384,27 +392,27 @@ def binary_surface(**kwargs):
             if kwargs['components_to_plot'] == 'primary':
                 plot.set_array(kwargs['primary_cmap'])
                 if kwargs['colorbar']:
-                    colorbar1 = fig.colorbar(plot, shrink=0.7)
+                    colorbar1 = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                     set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'])
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'])
                 if kwargs['colorbar']:
-                    colorbar1 = fig.colorbar(plot, shrink=0.7)
+                    colorbar1 = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                     set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'])
             elif kwargs['components_to_plot'] == 'both':
                 if kwargs['morphology'] == 'over-contact':
                     both_cmaps = up.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                     plot.set_array(both_cmaps)
                     if kwargs['colorbar']:
-                        colorbar = fig.colorbar(plot, shrink=0.7)
+                        colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                         set_g_colorbar_label(colorbar, kwargs['units'], kwargs['scale'])
                 else:
                     plot1.set_array(kwargs['primary_cmap'])
                     plot2.set_array(kwargs['secondary_cmap'])
                     if kwargs['colorbar']:
-                        colorbar1 = fig.colorbar(plot1, shrink=0.7)
+                        colorbar1 = fig.colorbar(plot1, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                         set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'], extra='primary')
-                        colorbar2 = fig.colorbar(plot2, shrink=0.7)
+                        colorbar2 = fig.colorbar(plot2, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                         set_g_colorbar_label(colorbar2, kwargs['units'], kwargs['scale'], extra='secondary')
 
     x_min, x_max = 0, 0

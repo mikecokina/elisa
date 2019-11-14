@@ -16,7 +16,7 @@ def build_surface_gravity(system_container):
         """
     star_container = system_container.star
 
-    polar_gravity = np.log10(star_container.polar_log_g)
+    polar_gravity = np.power(10, star_container.polar_log_g)
 
     pgm = calculate_polar_potential_gradient_magnitude(star_container.polar_radius, star_container.mass)
     star_container.polar_potential_gradient_magnitude = pgm
@@ -24,7 +24,7 @@ def build_surface_gravity(system_container):
 
     logger.debug('computing potential gradient magnitudes distribution on a star')
     pgms_args = bgravity.eval_args_for_magnitude_gradient(star_container) + \
-                (star_container.angular_velocity, star_container.mass_ratio)
+                (system_container.angular_velocity, star_container.mass)
     pgms_kwargs = dict(
         **{"face_symmetry_vector": star_container.face_symmetry_vector} if not star_container.has_spots() else {})
 
@@ -41,7 +41,7 @@ def build_surface_gravity(system_container):
                                                                                    system_container.angular_velocity,
                                                                                    star_container.mass,
                                                                                    face_symmetry_vector=None)
-            spot.log_g = np.log(gravity_scalling_factor * spot.potential_gradient_magnitudes)
+            spot.log_g = np.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
     return system_container
 
 
