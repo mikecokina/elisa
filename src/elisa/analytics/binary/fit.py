@@ -27,6 +27,7 @@ logger = getLogger('analytics.binary.fit')
 ALL_PARAMS = ['inclination',
               'eccentricity',
               'argument_of_periastron'
+              'gamma',
               'p__mass',
               'p__t_eff',
               'p__surface_potential',
@@ -48,6 +49,7 @@ NORMALIZATION_MAP = {
     'inclination': (0, 180),
     'eccentricity': (0, 1),
     'argument_of_periastron': (0, 360),
+    'gamma': (0, 1e6),
     'p__mass': (0.5, 20),
     's__mass': (0.5, 20),
     'p__t_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
@@ -63,7 +65,7 @@ NORMALIZATION_MAP = {
 }
 
 
-def _update_normalization_map(update):
+def update_normalization_map(update):
     """
     Update module normalization map with supplied dict.
 
@@ -72,7 +74,7 @@ def _update_normalization_map(update):
     NORMALIZATION_MAP.update(update)
 
 
-def _renormalize(x, kwords):
+def param_renormalizer(x, kwords):
     """
     Renormalize values from `x` to their native form.
 
@@ -80,10 +82,10 @@ def _renormalize(x, kwords):
     :param kwords: Iterable[str]; related parmaeter names from `x`
     :return: List[float];
     """
-    return [renormalize_value(_x, *_get_param_boundaries(_kword)) for _x, _kword in zip(x, kwords)]
+    return [renormalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, kwords)]
 
 
-def _normalize(x: List, kwords: List) -> List:
+def param_normalizer(x: List, kwords: List) -> List:
     """
     Normalize values from `x` to value between (0, 1).
 
@@ -91,10 +93,10 @@ def _normalize(x: List, kwords: List) -> List:
     :param kwords: Iterable[str]; iterable str of names related to `x`
     :return: List[float];
     """
-    return [normalize_value(_x, *_get_param_boundaries(_kword)) for _x, _kword in zip(x, kwords)]
+    return [normalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, kwords)]
 
 
-def _get_param_boundaries(param):
+def get_param_boundaries(param):
     """
     Return normalization boundaries for given parmeter.
 
@@ -104,7 +106,7 @@ def _get_param_boundaries(param):
     return NORMALIZATION_MAP[param]
 
 
-def _serialize_param_boundaries(x0):
+def serialize_param_boundaries(x0):
     """
     Serialize boundaries of parameters if exists and parameter is not fixed.
 
@@ -116,7 +118,7 @@ def _serialize_param_boundaries(x0):
             for record in x0 if not record['fixed']}
 
 
-def _logger_decorator(suppress_logger=False):
+def logger_decorator(suppress_logger=False):
     def do(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -157,27 +159,28 @@ def lc_r_squared(synthetic, *args, **x):
 
 
 def rv_r_squared(synthetic, *args, **x):
-    xs, ys, period = args
+    xs, ys, period, on_normalized = args
     observed_means = np.array([np.repeat(np.mean(ys[comp]), len(xs)) for comp in config.BINARY_COUNTERPARTS])
     variability = np.sum([np.sum(np.power(ys[comp] - observed_means, 2)) for comp in config.BINARY_COUNTERPARTS])
 
     observer = Observer(passband='bolometric', system=None)
     observer._system_cls = BinarySystem
     synthetic = synthetic(xs, period, observer, **x)
-    synthetic = analutils.normalize_rv_curve_to_max(synthetic)
+    if on_normalized:
+        synthetic = analutils.normalize_rv_curve_to_max(synthetic)
     synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
 
     residual = np.sum([np.power(np.sum(synthetic[comp] - ys[comp]), 2) for comp in config.BINARY_COUNTERPARTS])
     return 1.0 - (residual / variability)
 
 
-def initializer(x0, passband=None):
-    boundaries = _serialize_param_boundaries(x0)
-    _update_normalization_map(boundaries)
+def fit_data_initializer(x0, passband=None):
+    boundaries = serialize_param_boundaries(x0)
+    update_normalization_map(boundaries)
 
     fixed = x0_to_fixed_kwargs(x0)
     x0_vectorized, kwords = x0_vectorize(x0)
-    x0 = _normalize(x0_vectorized, kwords)
+    x0 = param_normalizer(x0_vectorized, kwords)
 
     observer = Observer(passband='bolometric' if passband is None else passband, system=None)
     observer._system_cls = BinarySystem
@@ -204,18 +207,18 @@ class CircularSyncLightCurve(object):
         :return: float;
         """
         xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, observer = args
-        x = _renormalize(x, kwords)
+        x = param_renormalizer(x, kwords)
         kwargs = {k: v for k, v in zip(kwords, x)}
         kwargs.update(fixed)
         fn = model.circular_sync_synthetic
-        synthetic = _logger_decorator(suppress_logger)(fn)(xs, period, discretization, observer, **kwargs)
+        synthetic = logger_decorator(suppress_logger)(fn)(xs, period, discretization, observer, **kwargs)
         synthetic = analutils.normalize_lightcurve_to_max(synthetic)
         return np.array([np.sum(synthetic[band] - ys[band]) for band in synthetic])
 
     @staticmethod
     def fit(xs, ys, period, x0, passband, discretization, xtol=1e-15, max_nfev=None, suppress_logger=False):
         initial_x0 = copy(x0)
-        x0, kwords, fixed, observer = initializer(x0, passband=passband)
+        x0, kwords, fixed, observer = fit_data_initializer(x0, passband=passband)
         args = (xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, observer)
 
         logger.info("fitting circular synchronous system...")
@@ -223,7 +226,7 @@ class CircularSyncLightCurve(object):
         result = least_squares(func, x0, bounds=(0, 1), args=args, max_nfev=max_nfev, xtol=xtol)
         logger.info("fitting finished")
 
-        result = _renormalize(result.x, kwords)
+        result = param_renormalizer(result.x, kwords)
         result_dict = {k: v for k, v in zip(kwords, result)}
         result_dict.update(x0_to_fixed_kwargs(initial_x0))
 
@@ -237,33 +240,33 @@ class CircularSyncLightCurve(object):
 class CentralRadialVelocity(object):
     @staticmethod
     def centarl_rv_model_to_fit(x, *args):
-        xs, ys, period, kwords, fixed, suppress_logger, observer = args
-        x = _renormalize(x, kwords)
+        xs, ys, period, kwords, fixed, suppress_logger, observer, on_normalized = args
+        x = param_renormalizer(x, kwords)
         kwargs = {k: v for k, v in zip(kwords, x)}
         kwargs.update(fixed)
         fn = model.central_rv_synthetic
-
-        synthetic = _logger_decorator(suppress_logger)(fn)(xs, period, observer, **kwargs)
-        synthetic = analutils.normalize_rv_curve_to_max(synthetic)
+        synthetic = logger_decorator(suppress_logger)(fn)(xs, period, observer, **kwargs)
+        if on_normalized:
+            synthetic = analutils.normalize_rv_curve_to_max(synthetic)
         synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
         return np.array([np.sum(synthetic[comp] - ys[comp]) for comp in config.BINARY_COUNTERPARTS])
 
     @staticmethod
-    def fit(xs, ys, period, x0, xtol=1e-15, max_nfev=None, suppress_logger=False):
+    def fit(xs, ys, period, x0, xtol=1e-15, max_nfev=None, suppress_logger=False, on_normalized=False):
         initial_x0 = copy(x0)
-        x0, kwords, fixed, observer = initializer(x0)
+        x0, kwords, fixed, observer = fit_data_initializer(x0)
 
-        args = (xs, ys, period, kwords, fixed, suppress_logger, observer)
+        args = (xs, ys, period, kwords, fixed, suppress_logger, observer, on_normalized)
         logger.info("fitting radial velocity light curve...")
         func = CentralRadialVelocity.centarl_rv_model_to_fit
         result = least_squares(func, x0, bounds=(0, 1), args=args, max_nfev=max_nfev, xtol=xtol)
         logger.info("fitting finished")
 
-        result = _renormalize(result.x, kwords)
+        result = param_renormalizer(result.x, kwords)
         result_dict = {k: v for k, v in zip(kwords, result)}
         result_dict.update(x0_to_fixed_kwargs(initial_x0))
 
-        r_squared_args = xs, ys, period
+        r_squared_args = xs, ys, period, on_normalized
         r_squared_result = rv_r_squared(model.central_rv_synthetic, *r_squared_args, **result_dict)
         logger.info(f'r_squared: {r_squared_result}')
 
