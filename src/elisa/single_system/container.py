@@ -59,8 +59,7 @@ class SystemContainer(PositionContainer):
         return faces.build_faces_orientation(self)
 
     def build_surface_gravity(self):
-        # return gravity
-        pass
+        return gravity.build_surface_gravity(self)
 
     def build_from_points(self, do_pulsations=False, phase=None):
         """
@@ -73,3 +72,4 @@ class SystemContainer(PositionContainer):
         self.build_faces()
         self.build_surface_areas()
         self.build_faces_orientation()
+        self.build_surface_gravity()

@@ -88,43 +88,6 @@ class SingleSystem(System):
         if is_not:
             raise AttributeError('Arguments {} are not valid {} properties.'.format(', '.join(is_not), cls.__name__))
 
-    def calculate_face_magnitude_gradient(self, points=None, faces=None):
-        """
-        returns array of absolute values of potential gradients for corresponding faces
-
-        :return: np.array
-        """
-        if points is not None and faces is None:
-            raise TypeError('Specify faces corresponding to given points')
-        if self.star.has_spots():
-            face = self.star.faces if faces is None else faces
-            point = self.star.points if points is None else points
-        else:
-            face = self.star.faces[:self.star.base_symmetry_faces_number] if faces is None else faces
-            point = self.star.points[:self.star.base_symmetry_points_number] if points is None else points
-
-        r3 = np.power(np.linalg.norm(point, axis=1), 3)
-        domega_dx = c.G * self.star.mass * point[:, 0] / r3 \
-                    - np.power(self.angular_velocity, 2) * point[:, 0]
-        domega_dy = c.G * self.star.mass * point[:, 1] / r3 \
-                    - np.power(self.angular_velocity, 2) * point[:, 1]
-        domega_dz = c.G * self.star.mass * point[:, 2] / r3
-        points_gradients = np.power(np.power(domega_dx, 2) + np.power(domega_dy, 2) + np.power(domega_dz, 2), 0.5)
-
-        return np.mean(points_gradients[face], axis=1) if self.star.has_spots() \
-            else np.mean(points_gradients[face], axis=1)[self.star.face_symmetry_vector]
-
-    def calculate_polar_potential_gradient_magnitude(self):
-        """
-        returns matgnitude of polar gradient of gravitational potential
-
-        :return:
-        """
-        points_z = self.calculate_polar_radius()
-        r3 = np.power(points_z, 3)
-        domega_dz = c.G * self.star.mass * points_z / r3
-        return domega_dz
-
     def critical_break_up_radius(self):
         """
         returns critical, break-up equatorial radius for given mass and rotational period

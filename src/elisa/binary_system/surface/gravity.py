@@ -3,6 +3,7 @@ import numpy as np
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
 from elisa.logger import getLogger
+from elisa.base.surface import gravity as bgravity
 
 from elisa import (
     umpy as up,
@@ -10,15 +11,6 @@ from elisa import (
 )
 
 logger = getLogger("binary-system-gravity-module")
-
-
-def eval_args_for_magnitude_gradient(star):
-    if star.spots:
-        points, faces = star.points, star.faces
-    else:
-        points = star.points[:star.base_symmetry_points_number]
-        faces = star.faces[:star.base_symmetry_faces_number]
-    return points, faces
 
 
 def calculate_potential_gradient(components_distance, component, points, synchronicity, mass_ratio):
@@ -164,7 +156,7 @@ def build_surface_gravity(system, components_distance, component="all"):
 
         logger.debug(f'computing potential gradient magnitudes distribution of {component} component')
 
-        pgms_args = eval_args_for_magnitude_gradient(star) + (synchronicity, mass_ratio)
+        pgms_args = bgravity.eval_args_for_magnitude_gradient(star) + (synchronicity, mass_ratio)
         pgms_kwargs = dict(
             **{"face_symmetry_vector": star.face_symmetry_vector} if not star.has_spots() else {})
         pgms = calculate_face_magnitude_gradient(components_distance, component, *pgms_args, **pgms_kwargs)
