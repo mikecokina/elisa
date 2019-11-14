@@ -154,7 +154,7 @@ def lc_r_squared(synthetic, *args, **x):
     synthetic = synthetic(xs, period, discretization, observer, **x)
 
     synthetic = analutils.normalize_lightcurve_to_max(synthetic)
-    residual = np.sum([np.power(np.sum(synthetic[band] - ys[band]), 2) for band in ys])
+    residual = np.sum([np.sum(np.power(synthetic[band] - ys[band], 2)) for band in ys])
     return 1.0 - (residual / variability)
 
 
@@ -170,7 +170,7 @@ def rv_r_squared(synthetic, *args, **x):
         synthetic = analutils.normalize_rv_curve_to_max(synthetic)
     synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
 
-    residual = np.sum([np.power(np.sum(synthetic[comp] - ys[comp]), 2) for comp in config.BINARY_COUNTERPARTS])
+    residual = np.sum([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in config.BINARY_COUNTERPARTS])
     return 1.0 - (residual / variability)
 
 
@@ -213,7 +213,7 @@ class CircularSyncLightCurve(object):
         fn = model.circular_sync_synthetic
         synthetic = logger_decorator(suppress_logger)(fn)(xs, period, discretization, observer, **kwargs)
         synthetic = analutils.normalize_lightcurve_to_max(synthetic)
-        return np.array([np.sum(synthetic[band] - ys[band]) for band in synthetic])
+        return np.array([np.sum(np.power(synthetic[band] - ys[band], 2)) for band in synthetic])
 
     @staticmethod
     def fit(xs, ys, period, x0, passband, discretization, xtol=1e-15, max_nfev=None, suppress_logger=False):
@@ -249,7 +249,7 @@ class CentralRadialVelocity(object):
         if on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
         synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
-        return np.array([np.sum(synthetic[comp] - ys[comp]) for comp in config.BINARY_COUNTERPARTS])
+        return np.array([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in config.BINARY_COUNTERPARTS])
 
     @staticmethod
     def fit(xs, ys, period, x0, xtol=1e-15, max_nfev=None, suppress_logger=False, on_normalized=False):

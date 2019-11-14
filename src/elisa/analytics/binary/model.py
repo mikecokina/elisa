@@ -32,33 +32,6 @@ def serialize_seondary_kwargs(**kwargs):
     return _serialize_star_kwargs(component='s', **kwargs)
 
 
-def prepare_central_rv_binary(period, **kwargs):
-    kwargs.update({
-        "p__synchronicity": 1.0,
-        "s__synchronicity": 1.0,
-        "p__surface_potential": 100,
-        "s__surface_potential": 100,
-        "p__t_eff": 10000.0,
-        "s__t_eff": 10000.0,
-        "p__metallicity": 10000.0,
-        "s__metallicity": 10000.0
-    })
-    primary = _prepare_star(**serialize_primary_kwargs(**kwargs))
-    secondary = _prepare_star(**serialize_seondary_kwargs(**kwargs))
-
-    return BinarySystem(
-        primary=primary,
-        secondary=secondary,
-        argument_of_periastron=kwargs['argument_of_periastron'],
-        gamma=0.0,
-        period=period * units.d,
-        eccentricity=kwargs['eccentricity'],
-        inclination=kwargs['inclination'],
-        primary_minimum_time=0.0,
-        phase_shift=0.0
-    )
-
-
 def prepare_circual_sync_binary(period, discretization, **kwargs):
     """
     Setup circular synchrnonous binary system.
@@ -128,6 +101,33 @@ def circular_sync_synthetic(xs, period, discretization, observer, **kwargs):
     observer._system = binary
     lc = observer.observe.lc(phases=xs, normalize=True)
     return lc[1]
+
+
+def prepare_central_rv_binary(period, **kwargs):
+    kwargs.update({
+        "p__synchronicity": 1.0,
+        "s__synchronicity": 1.0,
+        "p__surface_potential": 100,
+        "s__surface_potential": 100,
+        "p__t_eff": 10000.0,
+        "s__t_eff": 10000.0,
+        "p__metallicity": 10000.0,
+        "s__metallicity": 10000.0
+    })
+    primary = _prepare_star(**serialize_primary_kwargs(**kwargs))
+    secondary = _prepare_star(**serialize_seondary_kwargs(**kwargs))
+
+    return BinarySystem(
+        primary=primary,
+        secondary=secondary,
+        argument_of_periastron=kwargs['argument_of_periastron'],
+        gamma=kwargs['gamma'],
+        period=period * units.d,
+        eccentricity=kwargs['eccentricity'],
+        inclination=kwargs['inclination'],
+        primary_minimum_time=0.0,
+        phase_shift=0.0
+    )
 
 
 def central_rv_synthetic(xs, period, observer, **kwargs):

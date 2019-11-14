@@ -56,3 +56,6 @@ class Plot(object):
             "legend_location": legend_location
         }
         graphics.rv_curve(**kwargs)
+
+    rv = rv_curve
+    lc = phase_curve

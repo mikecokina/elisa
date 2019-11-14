@@ -199,3 +199,131 @@ Available passbands
     Generic.Stromgren.y
     Kepler
     GaiaDR2
+
+
+Radial Curves Fitting of Binary Stars
+-------------------------------------
+
+In current version of `ELISa`, you can use capability to fit curves of radial velocities obtained as velocities
+of center of mass from primary and secondary component. An example of synthetic radial vecolity curve is shown below.
+
+.. image:: ./docs/source/_static/readme/rv_example.png
+  :width: 300
+  :alt: rv_example.png
+  :align: center
+
+This radial velocity curve was obtained on system with following relevant parameters::
+
+    primary mass: 2.0 [Solar mass]
+    secondary mass: 1.0 [Solar mass]
+    inclination: 90 [degree]
+    argument of periastron: 0.0 [degree]
+    eccentricity: 0.2 [-]
+    period: 4.5 [day]
+
+
+Each fitting initial input has form like::
+
+    initial = [
+        {
+            'value': <float>,
+            'param': <str>,
+            'fixed': <bool>,
+            'min': <float>,
+            'max': <float>
+        }, ...
+    ]
+
+and require all params from list:
+
+    * ``p__mass`` - mass of primary component in units of Solar mass
+    * ``s__mass`` - mass of secondary component in units of Solar mass
+    * ``eccentricity`` - eccentricity of binary system, (0, 1)
+    * ``inclination`` - inclination of binary system in `degrees`
+    * ``argument_of_periastron`` - argument of periastron in `degrees`
+    * ``gamma`` - radial velocity of system center of mass in `m/s`
+
+There are already specified global minimal an maximal values for parameters, but user is free to adjust parameters
+which might work better.
+
+Parameter set to be `fixed` is naturaly not fitted and its value is fixed during procedure.
+
+In this part you can see minimal example of base code providing fitting
+
+.. code:: python
+
+    import numpy as np
+    from elisa.analytics.binary.fit import central_rv
+
+    def main():
+        phases = np.arange(-0.6, 0.62, 0.02)
+        rv = {
+            'primary': np.array([79218.00737957, 76916.16835599, 74104.73384787, 70765.71345562, ...]),
+            'secondary': np.array([-59436.01475914, -54832.33671198, -49209.46769573, -42531.42691124, ...])
+        }
+
+        rv_initial_parameters = [
+            {
+                'value': 0.1,
+                'param': 'eccentricity',
+                'fixed': False,
+                'min': 0,
+                'max': 1
+
+            },
+            {
+                'value': 90.0,
+                'param': 'inclination',
+                'fixed': True,
+
+            },
+            {
+                'value': 1.8,
+                'param': 'p__mass',
+                'fixed': False,
+                'min': 1,
+                'max': 3
+            },
+            {
+                'value': 1.0,
+                'param': 's__mass',
+                'fixed': True,
+            },
+            {
+                'value': 0.0,
+                'param': 'argument_of_periastron',
+                'fixed': True
+            },
+            {
+                'value': 20000.0,
+                'param': 'gamma',
+                'fixed': False,
+                'min': 20000,
+                'max': 40000
+            }
+        ]
+
+
+        result = central_rv.fit(xs=phases, ys=rv, period=4.5, x0=rv_initial_parameters)
+
+    if __name__ == '__main__':
+        main()
+
+Result of fitting procedure was estimated as
+
+.. code:: python
+
+    r_squared = 0.9999999999999997
+    {
+        'eccentricity': 0.19999999738789395,
+        'p__mass': 1.9999999157860147,
+        'gamma': 32999.99919352919,
+        'inclination': 90.0,
+        's__mass': 1.0,
+        'argument_of_periastron': 0.0
+    }
+
+.. image:: ./docs/source/_static/readme/rv_fit.png
+  :width: 300
+  :alt: rv_fit.png
+  :align: center
