@@ -12,6 +12,7 @@ from elisa import (
     ld,
     utils
 )
+from elisa.base.surface import temperature as btemperature
 
 
 logger = getLogger("binary_system.surface.temperature")
@@ -266,36 +267,6 @@ def renormalize_temperatures(star):
             spot.temperatures *= coefficient
 
 
-def calculate_polar_effective_temperature(star):
-    """
-    Returns polar effective temperature.
-
-    :return: float;
-    """
-    return star.t_eff * up.power(np.sum(star.areas) /
-                                 np.sum(star.areas * up.power(
-                                     star.potential_gradient_magnitudes /
-                                     star.polar_potential_gradient_magnitude,
-                                     star.gravity_darkening)),
-                                 0.25)
-
-
-def calculate_effective_temperatures(star, gradient_magnitudes):
-    """
-    Calculates effective temperatures for given gradient magnitudes.
-    If None is given, star surface t_effs are calculated.
-
-    :param star: elisa.base.container.StarContainer;
-    :param gradient_magnitudes: numpy.array;
-    :return: numpy.array;
-    """
-
-    t_eff_polar = calculate_polar_effective_temperature(star)
-    t_eff = t_eff_polar * up.power(gradient_magnitudes / star.polar_potential_gradient_magnitude,
-                                   0.25 * star.gravity_darkening)
-    return t_eff if star.spots else t_eff[star.face_symmetry_vector]
-
-
 def build_temperature_distribution(system, components_distance, component="all", do_pulsations=False, phase=None):
     """
     Function calculates temperature distribution on across all faces.
@@ -318,10 +289,10 @@ def build_temperature_distribution(system, components_distance, component="all",
     for component in components:
         star = getattr(system, component)
 
-        logger.debug(f'computing effective temperature distibution '
+        logger.debug(f'computing effective temperature distribution '
                      f'on {component} component name: {star.name}')
 
-        temperatures = calculate_effective_temperatures(star, star.potential_gradient_magnitudes)
+        temperatures = btemperature.calculate_effective_temperatures(star, star.potential_gradient_magnitudes)
         setattr(star, "temperatures", temperatures)
 
         if star.has_spots():
@@ -329,7 +300,7 @@ def build_temperature_distribution(system, components_distance, component="all",
                 logger.debug(f'computing temperature distribution of spot {spot_index} / {component} component')
 
                 pgms = spot.potential_gradient_magnitudes
-                spot_temperatures = spot.temperature_factor * calculate_effective_temperatures(star, pgms)
+                spot_temperatures = spot.temperature_factor * btemperature.calculate_effective_temperatures(star, pgms)
                 setattr(spot, "temperatures", spot_temperatures)
 
         logger.debug(f'renormalizing temperature of components due to '

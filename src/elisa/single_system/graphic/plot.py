@@ -4,6 +4,7 @@ import numpy as np
 from elisa.base.container import StarContainer
 from elisa.base import transform
 from elisa.single_system.container import SystemContainer
+from elisa.const import SinglePosition
 from elisa import (
     utils,
     graphics,
@@ -22,6 +23,8 @@ class Plot(object):
                         `surface` - plot stellar surfaces
     :return:
     """
+
+    defpos = SinglePosition(*(0, 0.0, 0.0))
 
     def __init__(self, instance):
         self.single = instance
@@ -62,10 +65,7 @@ class Plot(object):
         azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else np.degrees(azim) - 90
 
-        position_container = SystemContainer(
-            star=StarContainer.from_properties_container(self.single.star.to_properties_container()),
-            **self.single.properties_serializer()
-        )
+        position_container = SystemContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
 
         mesh = position_container.star.get_flatten_parameter('points')
@@ -104,10 +104,7 @@ class Plot(object):
         azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else np.degrees(azim) - 90
 
-        position_container = SystemContainer(
-            star=StarContainer.from_properties_container(self.single.star.to_properties_container()),
-            **self.single.properties_serializer()
-        )
+        position_container = SystemContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
         position_container.build_faces()
 

@@ -104,28 +104,6 @@ class SingleSystem(System):
         """
         return np.power(c.G * self.star.mass * self.angular_velocity, 1.0 / 3.0)
 
-    def build_temperature_distribution(self):
-        """
-        function calculates temperature distribution on across all faces
-
-        :return:
-        """
-        logger.debug('Computing effective temprature distibution on the star.')
-        self.star.temperatures = self.star.calculate_effective_temperatures()
-        if self.star.pulsations:
-            logger.debug('Adding pulsations to surface temperature distribution ')
-            self.star.temperatures = self.star.add_pulsations()
-
-        if self.star.has_spots():
-            for spot_index, spot in self.star.spots.items():
-                logger.debug('Computing temperature distribution of {} spot'.format(spot_index))
-                spot.temperatures = spot.temperature_factor * self.star.calculate_effective_temperatures(
-                    gradient_magnitudes=spot.potential_gradient_magnitudes)
-                if self.star.pulsations:
-                    logger.debug('Adding pulsations to temperature distribution of {} spot'.format(spot_index))
-                    spot.temperatures = self.star.add_pulsations(points=spot.points, faces=spot.faces,
-                                                                 temperatures=spot.temperatures)
-
     def get_info(self):
         pass
 

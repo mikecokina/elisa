@@ -7,7 +7,8 @@ from elisa.base.container import (
 from elisa.single_system.surface import (
     mesh,
     faces,
-    gravity
+    gravity,
+    temperature
 )
 from elisa.logger import getLogger
 
@@ -15,14 +16,20 @@ logger = getLogger("single-system-container-module")
 
 
 class SystemContainer(PositionContainer):
-    def __init__(self, star: StarContainer, **properties):
+    def __init__(self, star: StarContainer, position, **properties):
         self.star = star
+        self.position = position
 
         # placeholder (set in loop below)
         self.inclination = np.nan
 
         for key, val in properties.items():
             setattr(self, key, val)
+
+    @classmethod
+    def from_single_system(cls, single_system, position):
+        star = StarContainer.from_star_instance(single_system.star)
+        return cls(star, position, **single_system.properties_serializer())
 
     def build(self, do_pulsations=False, phase=None, **kwargs):
         """
@@ -61,6 +68,9 @@ class SystemContainer(PositionContainer):
     def build_surface_gravity(self):
         return gravity.build_surface_gravity(self)
 
+    def build_temperature_distribution(self, do_pulsations=False, phase=None):
+        return temperature.build_temperature_distribution(self, do_pulsations, phase)
+
     def build_from_points(self, do_pulsations=False, phase=None):
         """
         Build single system from present surface points
@@ -73,3 +83,8 @@ class SystemContainer(PositionContainer):
         self.build_surface_areas()
         self.build_faces_orientation()
         self.build_surface_gravity()
+        self.build_temperature_distribution(do_pulsations, phase)
+        return self
+
+    def _phase(self, phase):
+        return phase if phase is not None else self.position.phase
