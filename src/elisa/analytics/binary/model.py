@@ -133,5 +133,5 @@ def circular_sync_synthetic(xs, period, discretization, observer, **kwargs):
 def central_rv_synthetic(xs, period, observer, **kwargs):
     binary = prepare_central_rv_binary(period, **kwargs)
     observer._system = binary
-    rv = observer.observe.rv(phases=xs, normalize=True)
+    rv = observer.observe.rv(phases=xs, normalize=False)
     return rv[1], rv[2]

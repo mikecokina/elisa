@@ -70,4 +70,4 @@ def radial_velocity(binary, **kwargs):
     rv_secondary = _radial_velocity(sma_secondary, binary.inclination, binary.eccentricity,
                                     binary.argument_of_periastron, period, orbital_motion[:, 3])
 
-    return orbital_motion[:, 4], rv_primary, rv_secondary
+    return orbital_motion[:, 4], rv_primary + binary.gamma, rv_secondary + binary.gamma
