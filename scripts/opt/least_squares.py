@@ -26,7 +26,7 @@ def model(x0, *args):
     # return fn1(x0, xs) - ys1
     # return fn2(x0, xs) - ys2
     # return (fn1(x0, xs) - ys1) + (fn2(x0, xs) - ys2)
-    return np.array([np.sum(fn1(x0, xs) - ys1), np.sum(fn2(x0, xs) - ys2)])
+    return np.array([np.sum(np.power(fn1(x0, xs) - ys1, 2)), np.sum(np.power(fn2(x0, xs) - ys2, 2))])
 
 
 def fit(xs, ys1, ys2):

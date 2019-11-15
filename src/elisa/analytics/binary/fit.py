@@ -8,6 +8,7 @@ from scipy.optimize import least_squares
 from elisa.atm import atm_file_prefix_to_quantity_list
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
+from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.observer.observer import Observer
 from elisa.logger import getLogger
 
@@ -160,8 +161,8 @@ def lc_r_squared(synthetic, *args, **x):
 
 def rv_r_squared(synthetic, *args, **x):
     xs, ys, period, on_normalized = args
-    observed_means = np.array([np.repeat(np.mean(ys[comp]), len(xs)) for comp in config.BINARY_COUNTERPARTS])
-    variability = np.sum([np.sum(np.power(ys[comp] - observed_means, 2)) for comp in config.BINARY_COUNTERPARTS])
+    observed_means = np.array([np.repeat(np.mean(ys[comp]), len(xs)) for comp in BINARY_COUNTERPARTS])
+    variability = np.sum([np.sum(np.power(ys[comp] - observed_means, 2)) for comp in BINARY_COUNTERPARTS])
 
     observer = Observer(passband='bolometric', system=None)
     observer._system_cls = BinarySystem
@@ -170,7 +171,7 @@ def rv_r_squared(synthetic, *args, **x):
         synthetic = analutils.normalize_rv_curve_to_max(synthetic)
     synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
 
-    residual = np.sum([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in config.BINARY_COUNTERPARTS])
+    residual = np.sum([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in BINARY_COUNTERPARTS])
     return 1.0 - (residual / variability)
 
 
@@ -249,7 +250,7 @@ class CentralRadialVelocity(object):
         if on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
         synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
-        return np.array([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in config.BINARY_COUNTERPARTS])
+        return np.array([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in BINARY_COUNTERPARTS])
 
     @staticmethod
     def fit(xs, ys, period, x0, xtol=1e-15, max_nfev=None, suppress_logger=False, on_normalized=False):
