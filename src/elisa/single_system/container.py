@@ -22,6 +22,7 @@ class SystemContainer(PositionContainer):
 
         # placeholder (set in loop below)
         self.inclination = np.nan
+        self._flatten = False
 
         for key, val in properties.items():
             setattr(self, key, val)
@@ -88,3 +89,15 @@ class SystemContainer(PositionContainer):
 
     def _phase(self, phase):
         return phase if phase is not None else self.position.phase
+
+    def flatt_it(self):
+        # naive implementation of idempotence
+        if self._flatten:
+            return self
+
+        star_container = self.star
+        if star_container.has_spots() or star_container.has_pulsations():
+                star_container.flatt_it()
+
+        self._flatten = True
+        return self

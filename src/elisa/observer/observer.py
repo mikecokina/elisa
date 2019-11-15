@@ -247,6 +247,7 @@ class Observer(object):
 
         self.phases = phases
         if normalize:
+            # TODO: here develop lc normalization method
             self.fluxes_unit = units.dimensionless_unscaled
         else:
             self.fluxes = curves

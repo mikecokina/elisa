@@ -64,7 +64,6 @@ def mesh(system_container, symmetry_output=False):
     precalc_fn = model.pre_calculate_for_potential_value
     potential_derivative_fn = model.radial_potential_derivative
 
-    n = int(const.HALF_PI // discretization_factor)
     characteristic_distance = discretization_factor * star_container.polar_radius
 
     # calculating equatorial part

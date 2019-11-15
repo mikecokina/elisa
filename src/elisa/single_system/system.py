@@ -3,6 +3,7 @@ import scipy
 
 from scipy import optimize
 from elisa.single_system.orbit import orbit
+from elisa.single_system.curves import lc
 from elisa.logger import getLogger
 from elisa.single_system.transform import SingleSystemProperties
 
@@ -12,7 +13,6 @@ from elisa import (
 )
 from elisa.base.system import System
 from elisa.single_system import (
-    build,
     model,
     graphic,
     radius as sradius,
@@ -107,27 +107,6 @@ class SingleSystem(System):
     def get_info(self):
         pass
 
-    def build_surface(self, return_surface=False):
-        """
-        function for building of general system component points and surfaces including spots
-
-        :param return_surface: bool - if true, function returns arrays with all points and faces (surface + spots)
-        :type: str
-        :return:
-        """
-        return build.build_surface(self, return_surface=return_surface)
-
-    def build_surface_map(self, colormap=None, return_map=False):
-        """
-        function calculates surface maps (temperature or gravity acceleration) for star and spot faces and it can return
-        them as one array if return_map=True
-
-        :param return_map: if True function returns arrays with surface map including star and spot segments
-        :param colormap: str - `temperature` or `gravity`
-        :return:
-        """
-        return build.build_surface_map(self, colormap=colormap, return_map=return_map)
-
     def get_positions_method(self):
         return self.calculate_lines_of_sight
 
@@ -146,9 +125,6 @@ class SingleSystem(System):
         line_of_sight_spherical[:, 2] = self.inclination
         line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
         return np.hstack((idx[:, np.newaxis], line_of_sight))
-
-    def build(self, *args, **kwargs):
-        pass
 
     # _________________________AFTER_REFACTOR___________________________________
 
@@ -211,22 +187,6 @@ class SingleSystem(System):
         for kwarg in self.ALL_KWARGS:
             serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
-
-    def compute_lightcurve(self, **kwargs):
-        """
-        This function decides which light curve generator function is used.
-        Depending on the basic properties of the binary system.
-
-        :param kwargs: Dict; arguments to be passed into light curve generator functions
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
-            * ** phases ** * - numpy.array
-            * ** position_method ** * - method
-        :return: Dict
-        """
-        pass
 
     def calculate_equipotential_boundary(self):
         """
@@ -294,4 +254,28 @@ class SingleSystem(System):
         if self.star.critical_surface_potential < self.star.surface_potential:
             raise ValueError('Non-physical system. Star rotation is above critical break-up velocity.')
 
+    # light curves *****************************************************************************************************
+    def compute_lightcurve(self, **kwargs):
+        """
+        This function decides which light curve generator function is used.
+        Depending on the basic properties of the binary system.
 
+        :param kwargs: Dict; arguments to be passed into light curve generator functions
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+            * ** phases ** * - numpy.array
+            * ** position_method ** * - method
+        :return: Dict
+        """
+        if self.star.has_pulsations():
+            return self._compute_light_curve_with_pulsations(**kwargs)
+        else:
+            return self._compute_light_curve_without_pulsations(**kwargs)
+
+    def _compute_light_curve_with_pulsations(self, **kwargs):
+        return lc.compute_light_curve_with_pulsations(self, **kwargs)
+
+    def _compute_light_curve_without_pulsations(self, **kwargs):
+        return lc.compute_light_curve_without_pulsations(self, **kwargs)

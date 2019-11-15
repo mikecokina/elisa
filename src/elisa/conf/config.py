@@ -146,7 +146,7 @@ def update_config():
             raise ValueError("Invalid value for `number_of_threads`, allowed >= 1")
 
         global NUMBER_OF_PROCESSES
-        NUMBER_OF_PROCESSES = c_parse.getint('computational', 'number_of_processess', fallback=NUMBER_OF_PROCESSES)
+        NUMBER_OF_PROCESSES = c_parse.getint('computational', 'number_of_processes', fallback=NUMBER_OF_PROCESSES)
         if NUMBER_OF_PROCESSES > os.cpu_count():
             NUMBER_OF_PROCESSES = int(os.cpu_count())
 
