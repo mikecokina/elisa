@@ -248,6 +248,7 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
             * ** right_bandwidth ** * - float
             * ** atlas ** * - str
             * ** position_method** * - function definition; to evaluate orbital positions
+            * ** phases ** * - numpy.array
     :return: Dict[str, numpy.array];
     """
 
