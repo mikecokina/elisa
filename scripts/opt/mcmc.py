@@ -1,5 +1,8 @@
 import emcee
 import numpy as np
+import os
+
+os.environ["OMP_NUM_THREADS"] = f"{int(os.cpu_count())}"
 
 
 def random_sign():
@@ -51,7 +54,8 @@ def main():
     x0 = (1.1, 4.0)
     ndim, niter = len(x0), 1024
 
-    p0 = np.array([np.array(x0) + 1e-2 * np.random.randn(ndim) for _ in range(nwalkers)])
+    # p0 = np.array([np.array(x0) + 1e-2 * np.random.randn(ndim) for _ in range(nwalkers)])
+    p0 = np.random.uniform(1.0, 5.0, (nwalkers, ndim))
 
     xs = np.arange(0, 10, 0.01)
     ys = model(x, xs)

@@ -18,7 +18,8 @@ logger = getLogger('benchmark')
 
 
 STYPE_TO_FILENAME = {
-    "detached.ecc.sync": "detached.ecc.sync.json"
+    "detached.ecc.sync": "detached.ecc.sync.json",
+    "detached.circ.sync": "detached.circ.sync.json"
 }
 
 DATA = op.join(op.abspath(op.dirname(__file__)), "data")
@@ -115,7 +116,7 @@ class BenchMark(object):
 
 
 def main():
-    bm = BenchMark('detached.ecc.sync', n_steps=10, n_from=10, n_to=400)
+    bm = BenchMark('detached.circ.sync', n_steps=10, n_from=10, n_to=400)
     bm.eval(store=True)
     bm.multiprocess = False
     bm.eval(store=True)
