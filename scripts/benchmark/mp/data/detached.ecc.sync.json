@@ -4,7 +4,7 @@
     "period": 10.1,
     "argument_of_periastron": 90.0,
     "gamma": 0.0,
-    "eccentricity": 0.0,
+    "eccentricity": 0.3,
     "primary_minimum_time": 0.0,
     "phase_shift": 0.0
   },
