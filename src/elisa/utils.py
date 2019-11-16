@@ -828,5 +828,20 @@ def plane_projection(points, plane, keep_3d=False):
 
 
 def split_to_batches(batch_size, array):
+    """
+    Split array to batches with size `batch_size`.
+
+    :param batch_size: int;
+    :param array: Union[List, numpy.array];
+    :return: List;
+    """
     chunks = lambda d: (d[i:i + batch_size] for i in range(0, len(d), batch_size))
     return [chunk for chunk in chunks(array)]
+
+
+def random_sign():
+    """
+    Return random sign (-1 or 1)
+    """
+    random = np.random.randint(0, 2)
+    return 1 if random else -1

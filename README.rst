@@ -208,7 +208,7 @@ In current version of `ELISa`, you can use capability to fit curves of radial ve
 of center of mass from primary and secondary component. An example of synthetic radial vecolity curve is shown below.
 
 .. image:: ./docs/source/_static/readme/rv_example.png
-  :width: 300
+  :width: 70%
   :alt: rv_example.png
   :align: center
 
@@ -324,6 +324,41 @@ Result of fitting procedure was estimated as
     }
 
 .. image:: ./docs/source/_static/readme/rv_fit.png
-  :width: 300
+  :width: 70%
   :alt: rv_fit.png
   :align: center
+
+
+Multiprocessing
+---------------
+
+To speedup computaion of light curves, paralellization of processes has been implemented. Practically, computation
+of light curve points is separated to smaller batches and each batch is evaluated on separated CPU core. Paralelliation
+necessarily bring some overhead to process and in some cases might cause even slower behavior of application.
+It is important to choose wisely when use it espeially in case of circular synchronous orbits which consist of spot-free
+components.
+
+Down below are shown some result of multiprocessor approach for different binary system type.
+
+
+.. figure:: ./docs/source/_static/readme/detached.circ.sync.svg
+  :width: 70%
+  :alt: detached.circ.sync.svg
+  :align: center
+
+  Paralellization benchmark for ``detached circular synchronous`` star system.
+
+.. figure:: ./docs/source/_static/readme/detached.circ.async.svg
+  :width: 70%
+  :alt: detached.circ.async.svg
+  :align: center
+
+  Paralellization benchmark for ``detached circular asynchronous`` star system.
+
+
+.. figure:: ./docs/source/_static/readme/detached.ecc.sync.svg
+  :width: 70%
+  :alt: detached.ecc.sync.svg
+  :align: center
+
+  Paralellization benchmark for ``detached eccentric synchronous`` star system.

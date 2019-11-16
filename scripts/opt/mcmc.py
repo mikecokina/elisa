@@ -1,3 +1,5 @@
+import time
+
 import emcee
 import numpy as np
 import os
@@ -23,7 +25,7 @@ def ln_likelihood(xn, *args):
 
 
 def ln_prior(xn):
-    bound = ((0, 3), (0, 5))
+    bound = ((0, 5), (0, 5))
     in_bounds = [bound[idx][0] <= xn[idx] <= bound[idx][1] for idx in range(0, len(bound))]
     return 0.0 if np.all(in_bounds) else -np.inf
 
@@ -49,6 +51,7 @@ def eval_mcmc(p0, nwalkers, niter, ndim, _lnprob, *args):
 
 
 def main():
+    np.random.seed(int(time.time()))
     nwalkers = 500
     x = (1.3, 3.21)
     x0 = (1.1, 4.0)
@@ -68,6 +71,7 @@ def main():
     sampler, pos, prob, state = eval_mcmc(p0, nwalkers, niter, ndim, ln_prob, *args)
 
     flat_samples = sampler.get_chain(discard=100, thin=15, flat=True)
+    flat_samples = sampler.get_chain(flat=True)
     for i in range(ndim):
         mcmc = np.percentile(flat_samples[:, i], [16, 50, 84])
         q = np.diff(mcmc)

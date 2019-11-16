@@ -19,7 +19,8 @@ logger = getLogger('benchmark')
 
 STYPE_TO_FILENAME = {
     "detached.ecc.sync": "detached.ecc.sync.json",
-    "detached.circ.sync": "detached.circ.sync.json"
+    "detached.circ.sync": "detached.circ.sync.json",
+    "detached.circ.async": "detached.circ.async.json"
 }
 
 DATA = op.join(op.abspath(op.dirname(__file__)), "data")

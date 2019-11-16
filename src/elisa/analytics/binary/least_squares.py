@@ -2,121 +2,19 @@ import functools
 import numpy as np
 
 from copy import copy
-from typing import List
 from scipy.optimize import least_squares
 
-from elisa.atm import atm_file_prefix_to_quantity_list
 from elisa.binary_system.system import BinarySystem
-from elisa.conf import config
 from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.observer.observer import Observer
 from elisa.logger import getLogger
-
+from elisa.analytics.binary import params
 from elisa.analytics.binary import (
     utils as analutils,
     model
 )
-from elisa.analytics.binary.utils import (
-    renormalize_value,
-    normalize_value,
-    x0_vectorize,
-    x0_to_fixed_kwargs
-)
 
 logger = getLogger('analytics.binary.fit')
-
-ALL_PARAMS = ['inclination',
-              'eccentricity',
-              'argument_of_periastron'
-              'gamma',
-              'p__mass',
-              'p__t_eff',
-              'p__surface_potential',
-              'p__gravity_darkening',
-              'p__albedo',
-              'p__metallicity',
-              's__mass',
-              's__t_eff',
-              's__surface_potential',
-              's__gravity_darkening',
-              's__albedo',
-              's__metallicity']
-
-TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", config.ATM_ATLAS)
-METALLICITY = atm_file_prefix_to_quantity_list("metallicity", config.ATM_ATLAS)
-
-
-NORMALIZATION_MAP = {
-    'inclination': (0, 180),
-    'eccentricity': (0, 1),
-    'argument_of_periastron': (0, 360),
-    'gamma': (0, 1e6),
-    'p__mass': (0.5, 20),
-    's__mass': (0.5, 20),
-    'p__t_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
-    's__t_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
-    'p__metallicity': (np.min(METALLICITY), np.max(METALLICITY)),
-    's__metallicity': (np.min(METALLICITY), np.max(METALLICITY)),
-    'p__surface_potential': (2.0, 50.0),
-    's__surface_potential': (2.0, 50.0),
-    'p__albedo': (0, 1),
-    's__albedo': (0, 1),
-    'p__gravity_darkening': (0, 1),
-    's__gravity_darkening': (0, 1)
-}
-
-
-def update_normalization_map(update):
-    """
-    Update module normalization map with supplied dict.
-
-    :param update: Dict;
-    """
-    NORMALIZATION_MAP.update(update)
-
-
-def param_renormalizer(x, kwords):
-    """
-    Renormalize values from `x` to their native form.
-
-    :param x: Iterable[float]; iterable of normalized parameter values
-    :param kwords: Iterable[str]; related parmaeter names from `x`
-    :return: List[float];
-    """
-    return [renormalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, kwords)]
-
-
-def param_normalizer(x: List, kwords: List) -> List:
-    """
-    Normalize values from `x` to value between (0, 1).
-
-    :param x: Iterable[float]; iterable of values in their native form
-    :param kwords: Iterable[str]; iterable str of names related to `x`
-    :return: List[float];
-    """
-    return [normalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, kwords)]
-
-
-def get_param_boundaries(param):
-    """
-    Return normalization boundaries for given parmeter.
-
-    :param param: str; name of parameter to get boundaries for
-    :return: Tuple[float, float];
-    """
-    return NORMALIZATION_MAP[param]
-
-
-def serialize_param_boundaries(x0):
-    """
-    Serialize boundaries of parameters if exists and parameter is not fixed.
-
-    :param x0: List[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
-    :return: Dict[str, Tuple[float, float]]
-    """
-    return {record['param']: (record.get('min', NORMALIZATION_MAP[record['param']][0]),
-                              record.get('max', NORMALIZATION_MAP[record['param']][1]))
-            for record in x0 if not record['fixed']}
 
 
 def logger_decorator(suppress_logger=False):
@@ -175,20 +73,6 @@ def rv_r_squared(synthetic, *args, **x):
     return 1.0 - (residual / variability)
 
 
-def fit_data_initializer(x0, passband=None):
-    boundaries = serialize_param_boundaries(x0)
-    update_normalization_map(boundaries)
-
-    fixed = x0_to_fixed_kwargs(x0)
-    x0_vectorized, kwords = x0_vectorize(x0)
-    x0 = param_normalizer(x0_vectorized, kwords)
-
-    observer = Observer(passband='bolometric' if passband is None else passband, system=None)
-    observer._system_cls = BinarySystem
-
-    return x0, kwords, fixed, observer
-
-
 class CircularSyncLightCurve(object):
     @staticmethod
     def circular_sync_model_to_fit(x, *args):
@@ -208,7 +92,7 @@ class CircularSyncLightCurve(object):
         :return: float;
         """
         xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, observer = args
-        x = param_renormalizer(x, kwords)
+        x = params.param_renormalizer(x, kwords)
         kwargs = {k: v for k, v in zip(kwords, x)}
         kwargs.update(fixed)
         fn = model.circular_sync_synthetic
@@ -219,7 +103,7 @@ class CircularSyncLightCurve(object):
     @staticmethod
     def fit(xs, ys, period, x0, passband, discretization, xtol=1e-15, max_nfev=None, suppress_logger=False):
         initial_x0 = copy(x0)
-        x0, kwords, fixed, observer = fit_data_initializer(x0, passband=passband)
+        x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
         args = (xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, observer)
 
         logger.info("fitting circular synchronous system...")
@@ -227,9 +111,9 @@ class CircularSyncLightCurve(object):
         result = least_squares(func, x0, bounds=(0, 1), args=args, max_nfev=max_nfev, xtol=xtol)
         logger.info("fitting finished")
 
-        result = param_renormalizer(result.x, kwords)
+        result = params.param_renormalizer(result.x, kwords)
         result_dict = {k: v for k, v in zip(kwords, result)}
-        result_dict.update(x0_to_fixed_kwargs(initial_x0))
+        result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
 
         r_squared_args = xs, ys, period, passband, discretization
         r_squared_result = lc_r_squared(model.circular_sync_synthetic, *r_squared_args, **result_dict)
@@ -242,7 +126,7 @@ class CentralRadialVelocity(object):
     @staticmethod
     def centarl_rv_model_to_fit(x, *args):
         xs, ys, period, kwords, fixed, suppress_logger, observer, on_normalized = args
-        x = param_renormalizer(x, kwords)
+        x = params.param_renormalizer(x, kwords)
         kwargs = {k: v for k, v in zip(kwords, x)}
         kwargs.update(fixed)
         fn = model.central_rv_synthetic
@@ -255,7 +139,7 @@ class CentralRadialVelocity(object):
     @staticmethod
     def fit(xs, ys, period, x0, xtol=1e-15, max_nfev=None, suppress_logger=False, on_normalized=False):
         initial_x0 = copy(x0)
-        x0, kwords, fixed, observer = fit_data_initializer(x0)
+        x0, kwords, fixed, observer = params.fit_data_initializer(x0)
 
         args = (xs, ys, period, kwords, fixed, suppress_logger, observer, on_normalized)
         logger.info("fitting radial velocity light curve...")
@@ -263,9 +147,9 @@ class CentralRadialVelocity(object):
         result = least_squares(func, x0, bounds=(0, 1), args=args, max_nfev=max_nfev, xtol=xtol)
         logger.info("fitting finished")
 
-        result = param_renormalizer(result.x, kwords)
+        result = params.param_renormalizer(result.x, kwords)
         result_dict = {k: v for k, v in zip(kwords, result)}
-        result_dict.update(x0_to_fixed_kwargs(initial_x0))
+        result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
 
         r_squared_args = xs, ys, period, on_normalized
         r_squared_result = rv_r_squared(model.central_rv_synthetic, *r_squared_args, **result_dict)
