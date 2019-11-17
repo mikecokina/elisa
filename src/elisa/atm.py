@@ -11,6 +11,11 @@ from typing import Iterable
 from copy import deepcopy
 
 from elisa.logger import getLogger
+from elisa.base.error import (
+    AtmosphereError,
+    MetallicityError,
+    TemperatureError,
+    GravityError, ElisaError)
 from scipy import (
     integrate,
     interpolate
@@ -460,7 +465,7 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
     # interpolating values precisely on the border of the filter(s) coverage
     on_border_flux = interpolator([left_bandwidth, right_bandwidth])
     if np.isin(np.nan, on_border_flux):
-        raise ValueError('Interpolation on bandwidth boundaries led to NaN value.')
+        raise AtmosphereError('Interpolation on bandwidth boundaries leed to NaN value.')
     df: pd.DataFrame = atm_container.model
 
     df.values[[0, -1], :] = np.array([[on_border_flux[0], left_bandwidth], [on_border_flux[1], right_bandwidth]])
@@ -561,8 +566,8 @@ def validate_temperature(temperature, atlas, _raise=True):
     invalid = any([True if (allowed[-1] < t or t < allowed[0]) else False for t in temperature])
     if invalid:
         if _raise:
-            raise ValueError("any temperature in system atmosphere is out of bound; "
-                             "it is usually caused by invalid physical model")
+            msg = "Any temperature in system atmosphere is out of bound; it is usually caused by invalid physical model"
+            raise TemperatureError(msg)
         return False
     return True
 
@@ -582,9 +587,9 @@ def validate_metallicity(metallicity, atlas, _raise=True):
     out_of_bound = is_out_of_bound(allowed, metallicity, out_of_bound_tol)
     if any(out_of_bound):
         if _raise:
-            raise ValueError(f"any metallicity in system atmosphere is out of bound, allowed values "
-                             f"are in range <{min(allowed) - out_of_bound_tol}, {max(allowed) + out_of_bound_tol}>; "
-                             f"it is usually caused by invalid physical model")
+            raise MetallicityError(f"Any metallicity in system atmosphere is out of bound, allowed values "
+                                   f"are in range <{min(allowed) - out_of_bound_tol}, {max(allowed) + out_of_bound_tol}"
+                                   f">; it is usually caused by invalid physical model")
         return False
     return True
 
@@ -615,8 +620,8 @@ def _validate_logg(temperature, log_g, atlas, _raise=True):
                         ]["gravity"], [g], 0.1)[0] for t, g in zip(temperature, log_g)]
     if np.any(invalid):
         if _raise:
-            raise ValueError("Any gravity (log_g) in system atmosphere is out of bound; "
-                             "it is usually caused by invalid physical model")
+            raise GravityError("Any gravity (log_g) in system atmosphere is out of bound; "
+                               "it is usually caused by invalid physical model")
         return False
     return True
 
@@ -644,7 +649,7 @@ def validate_atm(temperature, log_g, metallicity, atlas, _raise=True):
         validate_temperature(temperature, atlas)
         validate_metallicity(metallicity, atlas)
         _validate_logg(temperature, log_g, atlas)
-    except ValueError:
+    except (ElisaError, ValueError):
         if not _raise:
             return False
         raise
@@ -1013,7 +1018,7 @@ def find_atm_defined_wavelength(atm_containers):
     """
     for atm_container in atm_containers:
         return atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]
-    raise ValueError('No valid atmospheric container has been supplied to method.')
+    raise AtmosphereError('No valid atmospheric container has been supplied to method.')
 
 
 def remap_passbanded_unique_atms_to_matrix(passbanded_containers, fpaths_map):
