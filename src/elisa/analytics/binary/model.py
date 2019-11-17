@@ -74,11 +74,12 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
     )
 
 
-def circular_sync_synthetic(xs, period, discretization, observer, **kwargs):
+def circular_sync_synthetic(xs, period, discretization, morphology, observer, **kwargs):
     """
     :param xs: Union[List, numpy.array];
     :param period: float;
     :param discretization: float;
+    :param morphology: str;
     :param observer: elisa.observer.observer.Observer; instance
     :param kwargs: Dict;
     :**kwargs options**:
@@ -95,10 +96,15 @@ def circular_sync_synthetic(xs, period, discretization, observer, **kwargs):
         * **s__gravity_darkening** * -- float;
         * **s__albedo** * -- float;
         * **s__metallicity** * -- float;
-    :return: numpy.array;
+    :return: Tuple[numpy.array, str]
     """
     binary = prepare_circual_sync_binary(period, discretization, **kwargs)
     observer._system = binary
+
+    # todo: implement whe figure out what to do with least_squares method
+    if morphology in ['over-contact']:
+        pass
+
     lc = observer.observe.lc(phases=xs, normalize=True)
     return lc[1]
 

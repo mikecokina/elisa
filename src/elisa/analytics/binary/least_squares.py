@@ -88,23 +88,26 @@ class CircularSyncLightCurve(object):
             * **discretization** * -- flaot;
             * **suppress_logger** * -- bool;
             * **passband** * -- Iterable[str];
+            * **morphology** * -- str;
             * **observer** * -- elisa.observer.observer.Observer;
         :return: float;
         """
-        xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, observer = args
+        xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, morphology, observer = args
         x = params.param_renormalizer(x, kwords)
         kwargs = {k: v for k, v in zip(kwords, x)}
         kwargs.update(fixed)
         fn = model.circular_sync_synthetic
-        synthetic = logger_decorator(suppress_logger)(fn)(xs, period, discretization, observer, **kwargs)
+        synthetic = logger_decorator(suppress_logger)(fn)(xs, period, discretization, morphology, observer, **kwargs)
         synthetic = analutils.normalize_lightcurve_to_max(synthetic)
         return np.array([np.sum(np.power(synthetic[band] - ys[band], 2)) for band in synthetic])
 
     @staticmethod
-    def fit(xs, ys, period, x0, passband, discretization, xtol=1e-15, max_nfev=None, suppress_logger=False):
+    def fit(xs, ys, period, x0, passband, discretization, morphology='detached',
+            xtol=1e-15, max_nfev=None, suppress_logger=False):
+
         initial_x0 = copy(x0)
         x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
-        args = (xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, observer)
+        args = (xs, ys, period, kwords, fixed, discretization, suppress_logger, passband, morphology, observer)
 
         logger.info("fitting circular synchronous system...")
         func = CircularSyncLightCurve.circular_sync_model_to_fit

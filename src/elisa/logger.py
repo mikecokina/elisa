@@ -11,6 +11,10 @@ def getLogger(name, suppress=False):
     return logging.getLogger(name=name) if not suppress else Logger(name)
 
 
+def getPersistentLogger(name):
+    return logging.getLogger(name=name)
+
+
 class Logger(object):
     def __init__(self, name, *args, **kwargs):
         self.name = name
