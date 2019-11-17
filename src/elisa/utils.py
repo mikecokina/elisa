@@ -111,13 +111,13 @@ def cartesian_to_spherical(points, degrees=False):
     points = np.expand_dims(points, axis=0) if len(np.shape(points)) == 1 else points
     r = np.linalg.norm(points, axis=1)
 
-    np.seterr(divide='ignore', invalid='ignore')
+    old_settings = np.seterr(divide='ignore', invalid='ignore')
     phi = up.arcsin(points[:, 1] / (np.linalg.norm(points[:, :2], axis=1)))  # vypocet azimutalneho (rovinneho) uhla
     phi[up.isnan(phi)] = 0
 
     theta = up.arccos(points[:, 2] / r)  # vypocet polarneho (elevacneho) uhla
     theta[up.isnan(theta)] = 0
-    np.seterr(divide='print', invalid='print')
+    np.seterr(**old_settings)
 
     signtest = points[:, 0] < 0
     phi[signtest] = (const.PI - phi[signtest])

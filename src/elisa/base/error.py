@@ -28,3 +28,13 @@ class MetallicityError(ElisaError, ValueError):
 
 class GravityError(ElisaError, ValueError):
     pass
+
+
+class MorphologyError(ElisaError):
+    pass
+
+
+class HitSolutionBubble(ElisaError):
+    def __init__(self, *args, **kwargs):
+        self.solution = kwargs.get('solution')
+        super().__init__(*args)

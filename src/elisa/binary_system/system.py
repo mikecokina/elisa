@@ -3,6 +3,7 @@ import scipy
 
 from scipy import optimize
 
+from elisa.base.error import MorphologyError
 from elisa.binary_system.curves import lc, rv
 from elisa.base.container import SystemPropertiesContainer
 from elisa.base.system import System
@@ -254,12 +255,13 @@ class BinarySystem(System):
 
             if ((1 > self.secondary.filling_factor > 0) or (1 > self.primary.filling_factor > 0)) and \
                     (abs(self.primary.filling_factor - self.secondary.filling_factor) > __PRECISSION__):
-                raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
+                msg = "Detected over-contact binary system, but potentials of components are not the same."
+                raise MorphologyError(msg)
             if self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
-                raise ValueError("Non-Physical system: primary_filling_factor or "
-                                 "secondary_filling_factor is greater then 1\n"
-                                 "Filling factor is obtained as following:"
-                                 "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
+                raise MorphologyError("Non-Physical system: primary_filling_factor or "
+                                      "secondary_filling_factor is greater then 1. "
+                                      "Filling factor is obtained as following:"
+                                      "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
             if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or \
                     (self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__) or \
@@ -271,7 +273,7 @@ class BinarySystem(System):
             elif 1 >= self.primary.filling_factor > 0:
                 __MORPHOLOGY__ = "over-contact"
             elif self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
-                raise ValueError("Non-Physical system: potential of components is to low.")
+                raise MorphologyError("Non-Physical system: potential of components is to low.")
 
         else:
             self.primary.filling_factor, self.secondary.filling_factor = None, None
@@ -293,7 +295,7 @@ class BinarySystem(System):
                 __MORPHOLOGY__ = "detached"
 
             else:
-                raise ValueError("Non-Physical system. Change stellar parameters.")
+                raise MorphologyError("Non-Physical system. Change stellar parameters.")
         return __MORPHOLOGY__
 
     def setup_discretisation_factor(self):
@@ -422,9 +424,9 @@ class BinarySystem(System):
         for x_val in xs:
             try:
                 # if there is no valid value (in case close to x=0.0, potential_dx diverge)
-                np.seterr(divide='raise', invalid='raise')
+                old_settings = np.seterr(divide='raise', invalid='raise')
                 potential_dx(round(x_val, round_to), *args_val)
-                np.seterr(divide='print', invalid='print')
+                np.seterr(**old_settings)
             except Exception as e:
                 logger.debug(f"invalid value passed to potential, exception: {str(e)}")
                 continue

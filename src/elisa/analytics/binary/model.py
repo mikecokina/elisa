@@ -1,4 +1,6 @@
 from elisa import units
+from elisa.analytics.binary import params
+from elisa.base import error
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 
@@ -21,6 +23,13 @@ def _prepare_star(**kwargs):
 
 
 def _serialize_star_kwargs(component, **kwargs):
+    """
+    Serialize `x0` input like kawrgs to Star kwargs (truncate p__ or s__).
+
+    :param component: str; `p` or `s`
+    :param kwargs: Dict;
+    :return: Dict;
+    """
     return {str(k)[3:]: v for k, v in kwargs.items() if str(k).startswith(component)}
 
 
@@ -101,9 +110,8 @@ def circular_sync_synthetic(xs, period, discretization, morphology, observer, **
     binary = prepare_circual_sync_binary(period, discretization, **kwargs)
     observer._system = binary
 
-    # todo: implement whe figure out what to do with least_squares method
-    if morphology in ['over-contact']:
-        pass
+    if params.is_overcontact(morphology) and not params.is_overcontact(binary.morphology):
+        raise error.MorphologyError(f'Expected morphology is {morphology} but obtained is {binary.morphology}')
 
     lc = observer.observe.lc(phases=xs, normalize=True)
     return lc[1]

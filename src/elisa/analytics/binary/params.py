@@ -1,7 +1,9 @@
+from typing import List, Tuple, Dict
+
 import numpy as np
 
-from typing import List, Tuple
 from elisa.atm import atm_file_prefix_to_quantity_list
+from elisa.base import error
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.observer.observer import Observer
@@ -25,7 +27,6 @@ ALL_PARAMS = ['inclination',
 
 TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", config.ATM_ATLAS)
 METALLICITY = atm_file_prefix_to_quantity_list("metallicity", config.ATM_ATLAS)
-
 
 NORMALIZATION_MAP = {
     'inclination': (0, 180),
@@ -197,3 +198,54 @@ def fit_data_initializer(x0, passband=None):
     observer._system_cls = BinarySystem
 
     return x0, kwords, fixed, observer
+
+
+def initial_x0_validity_check(x0: List[Dict], morphology):
+    hash_map = {val['param']: idx for idx, val in enumerate(x0)}
+    param = 'surface_potential'
+    is_oc = morphology in ['over-contact']
+    are_same = x0[hash_map[f'p__{param}']]['value'] == x0[hash_map[f's__{param}']]['value']
+    any_fixed = x0[hash_map[f'p__{param}']].get('fixed', False) or x0[hash_map[f's__{param}']].get('fixed', False)
+    all_fixed = x0[hash_map[f'p__{param}']].get('fixed', False) and x0[hash_map[f's__{param}']].get('fixed', False)
+
+    if is_oc and all_fixed and are_same:
+        return x0
+    if is_oc and all_fixed and not are_same:
+        msg = 'different potential in over-contact morphology with all fixed (pontetial) value are not allowed'
+        raise error.InitialParamsError(msg)
+    if is_oc and any_fixed:
+        msg = 'just one fixed potential in over-contact morphology is not allowed'
+        raise error.InitialParamsError(msg)
+    if is_oc:
+        # if is overcontact, fix secondary pontetial for further steps
+        x0[hash_map[f's__{param}']]['fixed'] = True
+        _min, _max = x0[hash_map[f'p__{param}']]['min'], x0[hash_map[f'p__{param}']]['max']
+        x0[hash_map[f's__{param}']]['min'] = _min
+        x0[hash_map[f's__{param}']]['max'] = _max
+        update_normalization_map({f's__{param}': (_min, _max)})
+    return x0
+
+
+def is_overcontact(morphology):
+    return morphology in ['over-contact']
+
+
+def adjust_constrained_potential(adjust_in, to_value=None):
+    if to_value is not None:
+        adjust_in['s__surface_potential'] = to_value
+    else:
+        adjust_in['s__surface_potential'] = adjust_in['p__surface_potential']
+    return adjust_in
+
+
+def adjust_result_constrained_potential(adjust_in, hash_map):
+    value = adjust_in[hash_map['p__surface_potential']]["value"]
+    adjust_in[hash_map['s__surface_potential']] = {
+        "param": "s__surface_potential",
+        "value": value,
+        "min": adjust_in[hash_map['p__surface_potential']].get("min", value),
+        "max": adjust_in[hash_map['p__surface_potential']].get("max", value),
+        "fixed": False
+
+    }
+    return adjust_in

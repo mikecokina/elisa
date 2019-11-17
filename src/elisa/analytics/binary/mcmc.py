@@ -1,8 +1,12 @@
 import emcee
 import numpy as np
 
-from elisa.base import error
+from copy import copy
 from elisa.logger import getPersistentLogger
+from elisa.base.error import (
+    ElisaError,
+    HitSolutionBubble
+)
 from elisa.analytics.binary import (
     utils as analutils,
     params,
@@ -13,94 +17,123 @@ logger = getPersistentLogger('analytics.binary.mcmc')
 
 
 class CircularSyncLightCurve(object):
-    @classmethod
-    def likelihood(cls, xn, *args):
-        xs, ys, yerrs, period, kwords, fixed, discretization, morphology, hash_map, observer = args
-        xn = params.param_renormalizer(xn, kwords)
+    def __init__(self):
+        self._hash_map = dict()
+        self._morphology = 'detached'
+        self._discretization = np.nan
+        self._passband = ''
+        self._fixed = dict()
+        self._kwords = list()
+        self._observer = None
+        self._period = np.nan
+
+        self._xs = list()
+        self._ys = dict()
+        self._yerrs = np.nan
+        self._xtol = np.nan
+
+    def likelihood(self, xn):
+        xn = params.param_renormalizer(xn, self._kwords)
 
         # if morphology is overcontact, secondary pontetial has to be same as primary
-        if morphology in ['over-contact']:
-            fixed['s__surface_potential'] = xn[hash_map['p__surface_potential']]
+        if params.is_overcontact(self._morphology):
+            self._fixed['s__surface_potential'] = xn[self._hash_map['p__surface_potential']]
 
-        kwargs = {k: v for k, v in zip(kwords, xn)}
-        kwargs.update(fixed)
-        synthetic = model.circular_sync_synthetic(xs, period, discretization, morphology, observer, **kwargs)
+        kwargs = {k: v for k, v in zip(self._kwords, xn)}
+        kwargs.update(self._fixed)
+
+        args = self._xs, self._period, self._discretization, self._morphology, self._observer
+        synthetic = model.circular_sync_synthetic(*args, **kwargs)
         synthetic = analutils.normalize_lightcurve_to_max(synthetic)
-        return -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band] - ys[band]) / yerrs, 2)) for band in synthetic]))
+        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band] - self._ys[band]) / self._yerrs, 2))
+                                        for band in synthetic]))
 
-    @classmethod
-    def ln_prior(cls, xn):
-        in_bounds = [0 <= val <= 1 for val in xn]
-        return 0.0 if np.all(in_bounds) else -np.inf
+        if np.abs(lhood) <= self._xtol:
+            import sys
+            sys.tracebacklimit = 0
+            raise HitSolutionBubble(f"mcmc hit solution", solution=kwargs)
 
-    @classmethod
-    def ln_probability(cls, xn, *args):
-        lp = cls.ln_prior(xn)
+        return lhood
 
-        if not np.isfinite(lp):
+    @staticmethod
+    def ln_prior(xn):
+        return np.all(0 <= xn <= 1)
+
+    def ln_probability(self, xn):
+        if not self.ln_prior(xn):
             return -np.inf
+
         try:
-            likelihood = cls.likelihood(xn, *args)
-        # fixme: this might filter important errors; it will require to change type of accross elisa and catch expected
-        except Exception as e:
-            logger.warning(f'mcmc hit invalid parameters, expcetion {str(e)}')
-            return -np.inf
+            likelihood = self.likelihood(xn)
+        except HitSolutionBubble:
+            raise
+        except ElisaError as e:
+            logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
+            return -10.0 * np.finfo(float).eps * np.sum(xn)
 
-        return lp + likelihood
-
-    @staticmethod
-    def initial_x0_validity_check(x0, morphology):
-        hash_map = {val['param']: idx for idx, val in enumerate(x0)}
-        param = 'surface_potential'
-        is_oc = morphology in ['over-contact']
-        are_same = x0[hash_map[f'p__{param}']]['value'] == x0[hash_map[f's__{param}']]['value']
-        any_fixed = x0[hash_map[f'p__{param}']].get('fixed', False) or x0[hash_map[f's__{param}']].get('fixed', False)
-        all_fixed = x0[hash_map[f'p__{param}']].get('fixed', False) and x0[hash_map[f's__{param}']].get('fixed', False)
-
-        if is_oc and all_fixed and not are_same:
-            msg = 'different potential in over-contact morphology with all fixed (pontetial) value are not allowed'
-            raise error.InitialParamsError(msg)
-        if is_oc and any_fixed:
-            msg = 'just one fixed potential in over-contact morphology is not allowed'
-            raise error.InitialParamsError(msg)
-        if is_oc:
-            # if is overcontact, fix secondary pontetial for further steps
-            x0[hash_map[f's__{param}']]['fixed'] = True
-        return x0
-
-    @classmethod
-    def eval_mcmc(cls, xs, ys, period, x0, passband, discretization,
-                  nwalkers, nsteps, morphology="detached", p0=None, yerrs=None, explore=100):
-
-        x0 = cls.initial_x0_validity_check(x0, morphology)
-        x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
-        hash_map = {key: idx for idx, key in enumerate(kwords)}
-        yerrs = analutils.lightcurves_mean_error(ys) if yerrs is None else yerrs
-        args = (xs, ys, yerrs, period, kwords, fixed, discretization, morphology, hash_map, observer)
-
-        ndim = len(x0)
-        p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
-        sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=cls.ln_probability, args=args)
-
-        logger.info("running burn-in...")
-        p0, _, _ = sampler.run_mcmc(p0, explore)
-        sampler.reset()
-
-        logger.info("running production...")
-        pos, prob, state = sampler.run_mcmc(p0, nsteps)
-
-        result = cls.eval_mcmc_result(sampler, kwords)
-        return result
+        return likelihood
 
     @staticmethod
-    def eval_mcmc_result(sampler, kwords, discard=False, thin=1):
+    def resolve_mcmc_result(sampler, kwords, discard=False, thin=1):
         flat_samples = sampler.get_chain(discard=discard, thin=thin, flat=True)
         result = list()
         for idx, key in enumerate(kwords):
             mcmc = np.percentile(flat_samples[:, idx], [16, 50, 84])
-            val = params.param_renormalizer((mcmc[1], ), (key, ))
+            val = params.param_renormalizer((mcmc[1],), (key,))[0]
             q = np.diff(params.param_renormalizer(mcmc, np.repeat(key, len(mcmc))))
-            result.append({key: val, "error": {"min": -q[0], "max": q[1]}})
+            result.append({"param": key, "value": val, "min": val - q[0], "max": val + q[1], "fixed": False})
+        return result
+
+    def eval_mcmc(self, xs, ys, period, x0, passband, discretization, nwalkers, nsteps,
+                  niters=1, morphology="detached", xtol=1e-6, p0=None, yerrs=None, explore=10):
+
+        yerrs = analutils.lightcurves_mean_error(ys) if yerrs is None else yerrs
+        self._xs, self._ys, self._yerrs = xs, ys, yerrs
+        self._xtol = xtol
+
+        result = dict()
+        for iter_num in range(niters):
+            x0 = params.initial_x0_validity_check(x0, morphology)
+            x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
+            
+            self._hash_map = {key: idx for idx, key in enumerate(kwords)}
+            self._period = period
+            self._morphology = morphology
+            self._discretization = discretization
+            self._passband = passband
+            self._fixed = fixed
+            self._kwords = kwords
+            self._observer = observer
+
+            ndim = len(x0)
+            p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
+            # assign intial value
+            p0[0] = x0
+            sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=self.ln_probability)
+
+            try:
+                logger.info("running burn-in...")
+                p0, _, _ = sampler.run_mcmc(p0, explore if nsteps > explore else nsteps)
+                sampler.reset()
+
+                logger.info("running production...")
+                _, _, _ = sampler.run_mcmc(p0, nsteps)
+            except HitSolutionBubble as e:
+                result = [{"param": key, "value": val, "fixed": True} for key, val in e.solution.items()]
+                if params.is_overcontact(morphology):
+                    hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
+                    result = params.adjust_result_constrained_potential(result, hash_map)
+                return result
+
+            result = self.resolve_mcmc_result(sampler, kwords)
+            result = result + [{"param": key, "value": val, "fixed": True} for key, val in fixed.items()]
+            if params.is_overcontact(morphology):
+                hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
+                result = params.adjust_result_constrained_potential(result, hash_map)
+
+            logger.info(f'result after {iter_num}. iteration: {result}')
+            x0 = copy(result)
+
         return result
 
 
