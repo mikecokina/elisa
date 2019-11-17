@@ -5,6 +5,7 @@ from elisa import (
     atm,
     ld
 )
+from elisa.binary_system import utils as butils
 
 
 def get_limbdarkening_cfs(system, component="all", **kwargs):
@@ -55,32 +56,42 @@ def get_normal_radiance(system, component="all", **kwargs):
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
         * ** atlas ** * - str
-    :return: Dict[String, numpy.array]
+    :return: Dict[String, dict]
     """
-    if component in ["all", "both"]:
-        return {
-            component:
-                atm.NaiveInterpolatedAtm.radiance(
-                    **dict(
-                        temperature=getattr(system, component).temperatures,
-                        log_g=getattr(system, component).log_g,
-                        metallicity=getattr(system, component).metallicity,
-                        **kwargs
-                    )
-                ) for component in config.BINARY_COUNTERPARTS
-        }
-    elif component in config.BINARY_COUNTERPARTS:
-        return atm.NaiveInterpolatedAtm.radiance(
-            **dict(
-                temperature=getattr(system, component).temperatures,
-                log_g=getattr(system, component).log_g,
-                metallicity=getattr(system, component).metallicity,
-                **kwargs
-            )
-        )
-    else:
-        raise ValueError('Invalid value of `component` argument.\n'
-                         'Available parameters are `primary`, `secondary` or `all`.')
+    components = butils.component_to_list(component)
+    symmetry_test = {cmpnt: not getattr(system, cmpnt).has_spots() and not getattr(system, cmpnt).has_pulsations() for
+                     cmpnt in components}
+    temperatures, log_g = {}, {}
+
+    # utilizing surface symmetry in case of a clear surface
+    for cmpnt in components:
+        component_instance = getattr(system, cmpnt)
+        if symmetry_test[cmpnt]:
+            temperatures[cmpnt] = component_instance.temperatures[:component_instance.base_symmetry_faces_number]
+            log_g[cmpnt] = component_instance.log_g[:component_instance.base_symmetry_faces_number]
+        else:
+            temperatures[cmpnt] = component_instance.temperatures
+            log_g[cmpnt] = component_instance.log_g
+
+    retval = {
+        cpmnt:
+            atm.NaiveInterpolatedAtm.radiance(
+                **dict(
+                    temperature=temperatures[cpmnt],
+                    log_g=log_g[cpmnt],
+                    metallicity=getattr(system, cpmnt).metallicity,
+                    **kwargs
+                )
+            ) for cpmnt in config.BINARY_COUNTERPARTS
+    }
+
+    # mirroring symmetrical part back to the rest of the surface
+    for cpmnt in components:
+        if symmetry_test[cpmnt]:
+            retval[cpmnt] = {filter: vals[getattr(system, cpmnt).face_symmetry_vector] for
+                             filter, vals in retval[cpmnt].items()}
+
+    return retval
 
 
 def prep_surface_params(system, **kwargs):
