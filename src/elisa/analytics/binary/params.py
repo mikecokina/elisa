@@ -8,22 +8,26 @@ from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.observer.observer import Observer
 
-ALL_PARAMS = ['inclination',
-              'eccentricity',
-              'argument_of_periastron'
-              'gamma',
-              'p__mass',
-              'p__t_eff',
-              'p__surface_potential',
-              'p__gravity_darkening',
-              'p__albedo',
-              'p__metallicity',
-              's__mass',
-              's__t_eff',
-              's__surface_potential',
-              's__gravity_darkening',
-              's__albedo',
-              's__metallicity']
+
+# DO NOT CHANGE KEYS - NEVER EVER
+PARAMS_KEY = {
+    'inclination': 'inclination',
+    'eccentricity': 'eccentricity',
+    'aop ': 'argument_of_periastron',
+    'gamma': 'gamma',
+    'p__mass': 'p__mass',
+    'p__t_eff': 'p__t_eff',
+    'p__omega': 'p__surface_potential',
+    'p__beta': 'p__gravity_darkening',
+    'p__albedo': 'p__albedo',
+    'p__mh': 'p__metallicity',
+    's__mass': 's__mass',
+    's__t_eff': 's__t_eff',
+    's__omega': 's__surface_potential',
+    's__beta': 's__gravity_darkening',
+    's__albedo': 's__albedo',
+    's__mh': 's__metallicity',
+}
 
 TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", config.ATM_ATLAS)
 METALLICITY = atm_file_prefix_to_quantity_list("metallicity", config.ATM_ATLAS)
@@ -232,20 +236,19 @@ def is_overcontact(morphology):
 
 def adjust_constrained_potential(adjust_in, to_value=None):
     if to_value is not None:
-        adjust_in['s__surface_potential'] = to_value
+        adjust_in[PARAMS_KEY['s__omega']] = to_value
     else:
-        adjust_in['s__surface_potential'] = adjust_in['p__surface_potential']
+        adjust_in[PARAMS_KEY['s__omega']] = adjust_in[PARAMS_KEY['p__omega']]
     return adjust_in
 
 
 def adjust_result_constrained_potential(adjust_in, hash_map):
-    value = adjust_in[hash_map['p__surface_potential']]["value"]
-    adjust_in[hash_map['s__surface_potential']] = {
-        "param": "s__surface_potential",
+    value = adjust_in[hash_map[PARAMS_KEY['p__omega']]]["value"]
+    adjust_in[hash_map[PARAMS_KEY['s__omega']]] = {
+        "param": PARAMS_KEY['s__omega'],
         "value": value,
-        "min": adjust_in[hash_map['p__surface_potential']].get("min", value),
-        "max": adjust_in[hash_map['p__surface_potential']].get("max", value),
+        "min": adjust_in[hash_map[PARAMS_KEY['p__omega']]].get("min", value),
+        "max": adjust_in[hash_map[PARAMS_KEY['p__omega']]].get("max", value),
         "fixed": False
-
     }
     return adjust_in

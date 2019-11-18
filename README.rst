@@ -313,15 +313,36 @@ Result of fitting procedure was estimated as
 
 .. code:: python
 
-    r_squared = 0.9999999999999997
-    {
-        'eccentricity': 0.19999999738789395,
-        'p__mass': 1.9999999157860147,
-        'gamma': 32999.99919352919,
-        'inclination': 90.0,
-        's__mass': 1.0,
-        'argument_of_periastron': 0.0
-    }
+    [
+        {
+            'value': 0.19999999738789395,
+            'param': 'eccentricity',
+
+        },
+        {
+            'value': 1.9999999157860147,
+            'param': 'p__mass',
+
+        },
+        {
+            'value': 32999.99919352919,
+            'param': 'gamma',
+
+        },
+        {
+            'value': 90,
+            'param': 'inclination',
+        },
+        {
+            'value': 1.0,
+            'param': 's__mass',
+        },
+        {
+            'value': 0.0,
+            'param': 'argument_of_periastron',
+        },
+        "r_squared": 0.9999999999999997,
+    ]
 
 .. image:: ./docs/source/_static/readme/rv_fit.png
   :width: 70%

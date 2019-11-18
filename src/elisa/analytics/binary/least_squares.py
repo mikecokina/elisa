@@ -5,14 +5,13 @@ from copy import copy
 from scipy.optimize import least_squares
 
 from elisa.base.error import HitSolutionBubble
-from elisa.binary_system.system import BinarySystem
 from elisa.conf.config import BINARY_COUNTERPARTS
-from elisa.observer.observer import Observer
 from elisa.logger import getPersistentLogger
 from elisa.analytics.binary import params
 from elisa.analytics.binary import (
     utils as analutils,
-    model
+    model,
+    shared
 )
 
 logger = getPersistentLogger('analytics.binary.fit')
@@ -29,85 +28,10 @@ def logger_decorator(suppress_logger=False):
     return do
 
 
-def lc_r_squared(synthetic, *args, **x):
-    """
-    Compute R^2 (coefficient of determination).
-
-    :param synthetic: callable; synthetic method
-    :param args: Tuple;
-    :**args*::
-        * **xs** * -- numpy.array; phases
-        * **ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
-        * **period** * -- float;
-        * **passband** * -- Union[str, List[str]];
-        * **discretization** * -- flaot;
-    :param x: Dict;
-    :** x options**: kwargs of current parameters to compute binary system
-    :return: float;
-    """
-    xs, ys, period, passband, discretization, morphology = args
-    observed_means = np.array([np.repeat(np.mean(ys[band]), len(xs)) for band in ys])
-    variability = np.sum([np.sum(np.power(ys[band] - observed_means, 2)) for band in ys])
-
-    observer = Observer(passband=passband, system=None)
-    observer._system_cls = BinarySystem
-    synthetic = synthetic(xs, period, discretization, morphology, observer, **x)
-
-    synthetic = analutils.normalize_lightcurve_to_max(synthetic)
-    residual = np.sum([np.sum(np.power(synthetic[band] - ys[band], 2)) for band in ys])
-    return 1.0 - (residual / variability)
-
-
-def rv_r_squared(synthetic, *args, **x):
-    xs, ys, period, on_normalized = args
-    observed_means = np.array([np.repeat(np.mean(ys[comp]), len(xs)) for comp in BINARY_COUNTERPARTS])
-    variability = np.sum([np.sum(np.power(ys[comp] - observed_means, 2)) for comp in BINARY_COUNTERPARTS])
-
-    observer = Observer(passband='bolometric', system=None)
-    observer._system_cls = BinarySystem
-    synthetic = synthetic(xs, period, observer, **x)
-    if on_normalized:
-        synthetic = analutils.normalize_rv_curve_to_max(synthetic)
-    synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
-
-    residual = np.sum([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in BINARY_COUNTERPARTS])
-    return 1.0 - (residual / variability)
-
-
-class CircularSyncLightCurve(object):
-    """
-    Params::
-    * **_hash_map** * -- Dict[str, int];
-    * **_xs** * -- numpy.array; phases
-    * **_ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
-    * **_period** * -- float;
-    * **_discretization** * -- flaot;
-    * **_passband** * -- Iterable[str];
-    * **_morphology** * -- str;
-    * **_hash_map** * -- Dict;
-    * **_observer** * -- elisa.observer.observer.Observer;
-    * **_xtol** * -- float;
-    * **_kwords** * -- Iterable[str];
-    * **_fixed** * -- Dict;
-    """
-
-    def __init__(self):
-        self._hash_map = dict()
-        self._morphology = 'detached'
-        self._discretization = np.nan
-        self._passband = ''
-        self._fixed = dict()
-        self._kwords = list()
-        self._observer = None
-        self._period = np.nan
-
-        self._xs = list()
-        self._ys = dict()
-        self._xtol = np.nan
-
+class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
     def circular_sync_model_to_fit(self, xn):
         """
-        Molde to find minimum.
+        Model to find minimum.
 
         :param xn: Iterable[float];
         :return: float;
@@ -163,21 +87,11 @@ class CircularSyncLightCurve(object):
         func = self.circular_sync_model_to_fit
         try:
             result = least_squares(func, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol)
-        except HitSolutionBubble as e:
-            result = [{"param": key, "value": val, "fixed": True} for key, val in e.solution.items()]
-            if params.is_overcontact(morphology):
-                hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
-                result = params.adjust_result_constrained_potential(result, hash_map)
-
-            r_squared_args = xs, ys, period, passband, discretization, morphology
-            r_squared_result = lc_r_squared(model.circular_sync_synthetic, *r_squared_args, **e.solution)
-            result.append({"r_squared": r_squared_result})
-
-            return result
+        except HitSolutionBubble as bubble:
+            return self.serialize_bubble(bubble)
 
         logger.info("fitting finished")
 
-        # fixme: fix surface potentials in case of over-contact
         result = params.param_renormalizer(result.x, kwords)
         result_dict = {k: v for k, v in zip(kwords, result)}
         result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
@@ -189,7 +103,7 @@ class CircularSyncLightCurve(object):
             result = params.adjust_result_constrained_potential(result, hash_map)
 
         r_squared_args = xs, ys, period, passband, discretization, morphology
-        r_squared_result = lc_r_squared(model.circular_sync_synthetic, *r_squared_args, **result_dict)
+        r_squared_result = shared.lc_r_squared(model.circular_sync_synthetic, *r_squared_args, **result_dict)
         result.append({"r_squared": r_squared_result})
 
         return result
@@ -225,8 +139,10 @@ class CentralRadialVelocity(object):
         result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
 
         r_squared_args = xs, ys, period, on_normalized
-        r_squared_result = rv_r_squared(model.central_rv_synthetic, *r_squared_args, **result_dict)
-        logger.info(f'r_squared: {r_squared_result}')
+        r_squared_result = shared.rv_r_squared(model.central_rv_synthetic, *r_squared_args, **result_dict)
+
+        result = [{"param": key, "value": val} for key, val in result_dict.items()]
+        result.append({"r_squared": r_squared_result})
 
         return result_dict
 

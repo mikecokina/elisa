@@ -2,6 +2,7 @@ import emcee
 import numpy as np
 
 from copy import copy
+
 from elisa.logger import getPersistentLogger
 from elisa.base.error import (
     ElisaError,
@@ -10,28 +11,14 @@ from elisa.base.error import (
 from elisa.analytics.binary import (
     utils as analutils,
     params,
-    model
+    model,
+    shared
 )
 
 logger = getPersistentLogger('analytics.binary.mcmc')
 
 
-class CircularSyncLightCurve(object):
-    def __init__(self):
-        self._hash_map = dict()
-        self._morphology = 'detached'
-        self._discretization = np.nan
-        self._passband = ''
-        self._fixed = dict()
-        self._kwords = list()
-        self._observer = None
-        self._period = np.nan
-
-        self._xs = list()
-        self._ys = dict()
-        self._yerrs = np.nan
-        self._xtol = np.nan
-
+class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
     def likelihood(self, xn):
         xn = params.param_renormalizer(xn, self._kwords)
 
@@ -57,7 +44,7 @@ class CircularSyncLightCurve(object):
 
     @staticmethod
     def ln_prior(xn):
-        return np.all(0 <= xn <= 1)
+        return np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0)))
 
     def ln_probability(self, xn):
         if not self.ln_prior(xn):
@@ -118,12 +105,8 @@ class CircularSyncLightCurve(object):
 
                 logger.info("running production...")
                 _, _, _ = sampler.run_mcmc(p0, nsteps)
-            except HitSolutionBubble as e:
-                result = [{"param": key, "value": val, "fixed": True} for key, val in e.solution.items()]
-                if params.is_overcontact(morphology):
-                    hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
-                    result = params.adjust_result_constrained_potential(result, hash_map)
-                return result
+            except HitSolutionBubble as bubble:
+                return self.serialize_bubble(bubble)
 
             result = self.resolve_mcmc_result(sampler, kwords)
             result = result + [{"param": key, "value": val, "fixed": True} for key, val in fixed.items()]

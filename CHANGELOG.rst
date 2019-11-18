@@ -42,6 +42,9 @@ v0.2.dev0_
 * **capability to compute lightcurves on several processor's cores (multiprocessing)**
 
     - split supplied phases to `N` smaller batches (N is equal to desired processes but up to number of available cores) and computed all at once
+* **fitting parameters of binary system** *
+
+    - radial velocity fitting based on ``least squares`` method
 
 **Fixes**
 
