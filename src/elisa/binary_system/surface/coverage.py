@@ -11,6 +11,7 @@ from elisa import (
     utils,
     const
 )
+from time import time
 
 logger = getLogger('binary_system.curves.lcmp')
 
@@ -47,8 +48,10 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     """
     pypex_hull = bsutils.hull_to_pypex_poly(hull)
     pypex_faces = bsutils.faces_to_pypex_poly(points[faces])
+    start = time()
     # it is possible to None happens in intersection, tkae care about it latter
     pypex_intersection = bsutils.pypex_poly_hull_intersection(pypex_faces, pypex_hull)
+    print(time()-start)
 
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to loss in precission
     pypex_polys_surface_area = np.array(bsutils.pypex_poly_surface_area(pypex_intersection), dtype=np.float)

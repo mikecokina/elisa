@@ -75,7 +75,7 @@ class Star(Body):
 
     def init_parameters(self, **kwargs):
         """
-        Initialise instance paramters
+        Initialise instance parameters
 
         :param kwargs: Dict; initial parameters
         :return:
