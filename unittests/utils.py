@@ -129,6 +129,10 @@ def prepare_binary_system(params, spots_primary=None, spots_secondary=None):
                         phase_shift=params["phase_shift"])
 
 
+def prepare_star(star_params):
+    return Star(**star_params)
+
+
 def prepare_orbital_position_container(system):
     orbital_position_container = OrbitalPositionContainer(
         primary=StarContainer.from_properties_container(system.primary.to_properties_container()),
