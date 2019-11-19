@@ -101,7 +101,8 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return gravity.build_surface_gravity(self, components_distance, component)
 
-    def build_temperature_distribution(self, components_distance=None, component="all", do_pulsations=False, phase=None):
+    def build_temperature_distribution(self, components_distance=None, component="all", do_pulsations=False,
+                                       phase=None):
         components_distance = self._components_distance(components_distance)
         return temperature.build_temperature_distribution(self, components_distance, component, do_pulsations, phase)
 

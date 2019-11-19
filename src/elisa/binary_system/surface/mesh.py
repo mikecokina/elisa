@@ -7,6 +7,8 @@ from elisa.conf import config
 from elisa.opt.fsolver import fsolver
 from elisa.utils import is_empty
 from elisa.logger import getLogger
+from elisa.pulse import pulsations
+from elisa.binary_system import utils as butils
 
 from elisa.binary_system import (
     utils as bsutils,
@@ -24,14 +26,14 @@ logger = getLogger("binary_system.surface.mesh")
 
 def build_mesh(system, components_distance, component="all"):
     """
-   Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
-   Points are assigned to system.
+    Build points of surface for primary or/and secondary component. Mesh is evaluated with spots.
+    Points are assigned to system.
 
-   :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
-   :param component: Union[str, None];
-   :param components_distance: float;
-   :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
-   """
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param component: Union[str, None];
+    :param components_distance: float;
+    :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    """
     components = bsutils.component_to_list(component)
 
     for component in components:
@@ -46,6 +48,12 @@ def build_mesh(system, components_distance, component="all"):
         star.point_symmetry_vector = b
         star.base_symmetry_points_number = c
         star.inverse_point_symmetry_matrix = d
+
+        # adding pulsations
+        if star.has_pulsations():
+            phase = butils.calculate_rotational_phase(system, component)
+            com_x = 0 if component == 'primary' else components_distance
+            pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, phase=phase)
 
     add_spots_to_mesh(system, components_distance, component="all")
     return system

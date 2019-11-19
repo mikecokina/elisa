@@ -397,3 +397,31 @@ class StarContainer(object):
 
         self._flatten = True
         return self
+
+    def transform_points_to_spherical_coordinates(self, kind='points', com_x=0):
+        """
+        transforming container cartesian variable to spherical coordinates in a frame of reference of given object
+
+        :param kind: str; `points` or `face_centres` or other variable containing cartesian points in both star and spot
+        containers
+        :param com_x: float;
+        :return: tuple; sperical coordinates of star variable, dictionary of spherical coordinates of spot variable
+        """
+        # separating variables to convert
+        centres_cartesian = copy(getattr(self, kind))
+        centres_spot_cartesian = {spot_idx: copy(getattr(spot, kind)) for spot_idx, spot in self.spots.items()}
+
+        # transforming variables
+        centres_cartesian[:, 0] -= com_x
+        for spot_index, spot in self.spots.items():
+            centres_spot_cartesian[spot_index][:, 0] -= com_x
+
+        # conversion
+        centres = utils.cartesian_to_spherical(centres_cartesian)
+        centres_spot = {spot_idx: utils.cartesian_to_spherical(spot_centres) for spot_idx, spot_centres in
+                        centres_spot_cartesian.items()}
+
+        return centres, centres_spot
+
+
+

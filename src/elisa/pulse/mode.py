@@ -24,7 +24,7 @@ class PulsationMode(object):
         logger.info(f"initialising object {self.__class__.__name__}")
         logger.debug(f"setting property components of class instance {self.__class__.__name__}")
 
-        # # self._n = np.nan
+        # self._n = np.nan
         self.l = np.nan
         self.m = np.nan
         self.amplitude = np.nan
@@ -39,11 +39,7 @@ class PulsationMode(object):
 
         self.init_properties(**kwargs)
 
-        # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
-        for kwarg in kwargs:
-            logger.debug(f"setting property {kwarg} "
-                               f"of class instance {self.__class__.__name__} to {kwargs[kwarg]}")
-            setattr(self, kwarg, kwargs[kwarg])
+        self.angular_frequency = c.FULL_ARC * self.frequency
 
         self.validate_mode()
 
@@ -68,7 +64,8 @@ class PulsationMode(object):
     #         raise ValueError('Value for radial degree `n`={0} in pulsation mode class instance {1} is not valid.'
     #                          .format(radial_degree, PulsationMode.__name__))
 
-    def transform_input(self, **kwargs):
+    @staticmethod
+    def transform_input(**kwargs):
         """
         Transform and validate input kwargs.
 
@@ -91,32 +88,3 @@ class PulsationMode(object):
         logger.debug(f"initialising properties of PulsationMode, values: {kwargs}")
         for kwarg in kwargs:
             setattr(self, kwarg, kwargs[kwarg])
-
-
-    @property
-    def mode_axis_phi(self):
-        """
-        Returns longitude angle of pulsation mode axis at t_0.
-
-        :return: (npumpy.)float; in radians
-        """
-        return self._mode_axis_phi
-
-    @mode_axis_phi.setter
-    def mode_axis_phi(self, mode_axis_phi):
-        """
-        Setter for longitude of pulsation mode axis. 
-        If unit is not supplied, degrees are assumed.
-
-        :param mode_axis_phi: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
-        :return:
-        """
-        if isinstance(mode_axis_phi, units.Quantity):
-            self._mode_axis_phi = np.float64(mode_axis_phi.to(units.ARC_UNIT))
-        elif isinstance(mode_axis_phi, (int, np.int, float, np.float)):
-            self._mode_axis_phi = np.float64((mode_axis_phi * units.deg).to(units.ARC_UNIT))
-        else:
-            raise TypeError('Input of variable `mode_axis_phi` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
-        if not 0 <= self._mode_axis_phi <= c.FULL_ARC:
-            raise ValueError(f'Value of `mode_axis_phi`: {self._mode_axis_phi} is outside bounds (0, 2pi).')

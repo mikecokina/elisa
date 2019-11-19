@@ -19,6 +19,7 @@ zeros = np.zeros
 log10 = np.log10
 divide = np.divide
 log = np.log
+exp = np.exp
 
 isnan = np.isnan
 power = np.power

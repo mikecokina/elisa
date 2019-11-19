@@ -169,3 +169,15 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
     system.apply_rotation()
     system.apply_darkside_filter()
     return system
+
+
+def calculate_rotational_phase(system_container, component):
+    """
+    returns rotational phase with in co-rotating frame of reference
+
+    :param system_container: SystemContainer;
+    :param component: str; `primary` or `secondary`
+    :return: float;
+    """
+    star = getattr(system_container, component)
+    return (star.synchronicity - 1.0) * system_container.position.phase
