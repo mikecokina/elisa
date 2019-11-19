@@ -352,6 +352,6 @@ def build_faces_orientation(system, components_distance, component="all"):
         # todo: move it to separate method
         # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
         # pulsation mode
-        if star.has_pulsations():
-            pulsations.set_ralp(star, com_x=com_x[_component])
+        # if star.has_pulsations():
+        #     pulsations.set_ralp(star, com_x=com_x[_component], phase=)
     return system
