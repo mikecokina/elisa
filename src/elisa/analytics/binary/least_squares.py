@@ -55,7 +55,9 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         except Exception:
             logger.error(f'your initial parmeters lead to invalid morphology, choose different')
             raise
-        residua = np.array([np.sum(np.power(synthetic[band] - self._ys[band], 2)) for band in synthetic])
+
+        residua = np.array([np.sum(np.power(synthetic[band] - self._ys[band], 2) / self._yerrs[band])
+                            for band in synthetic])
 
         if np.abs(residua) <= self._xtol:
             import sys
@@ -64,8 +66,21 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
 
         return residua
 
-    def fit(self, xs, ys, period, x0, passband, discretization, xtol=1e-15, yerrs=None, max_nfev=None):
-        yerrs = analutils.lightcurves_mean_error(ys) if yerrs is None else yerrs
+    def fit(self, xs, ys, period, x0, discretization, xtol=1e-15, yerrs=None, max_nfev=None):
+        """
+        Fit method using Markov Chain Monte Carlo.
+
+        :param xs: Iterable[float];
+        :param ys: Dict;
+        :param period: float; sytem period
+        :param x0: List[Dict]; initial state (metadata included)
+        :param discretization: float; discretization of objects
+        :param xtol: float; tolerance of error to consider hitted solution as exact
+        :param yerrs: Union[numpy.array, float]; errors for each point of observation
+        :return: Dict; solution on supplied quantiles, default is [16, 50, 84]
+        """
+        passband = list(ys.keys())
+        yerrs = {band: analutils.lightcurves_mean_error(ys) for band in passband} if yerrs is None else yerrs
         self._xs, self._ys, self._yerrs = xs, ys, yerrs
         self._xtol = xtol
 

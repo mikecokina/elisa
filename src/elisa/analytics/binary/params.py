@@ -30,6 +30,27 @@ PARAMS_KEY_MAP = {
     'F2': 's__synchronicity',
 }
 
+PARAMS_KEY_TEX_MAP = {
+    'argument_of_periastron': '$\\omega$',
+    'inclination': '$i$',
+    'eccentricity': '$e$',
+    'gamma': '$\\gamma$',
+    'p__mass': '$M_1$',
+    'p__t_eff': '$T_1^{eff}$',
+    'p__surface_potential': '$\\Omega_1$',
+    'p__gravity_darkening': '$\\beta_1$',
+    'p__albedo': '$A_1$',
+    'p__metallicity': '$M/H_1$',
+    'p__synchronicity': '$F_1$',
+    's__mass': '$M_2$',
+    's__t_eff': '$T_2^{eff}$',
+    's__surface_potential': '$\\Omega_2$',
+    's__gravity_darkening': '$\\beta_2$',
+    's__albedo': '$A_2$',
+    's__metallicity': '$M/H_2$',
+    's__synchronicity': '$F_2$'
+}
+
 
 PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['i']: 'degrees',
@@ -176,7 +197,7 @@ def param_renormalizer(x, kwords):
     """
     Renormalize values from `x` to their native form.
 
-    :param x: Iterable[float]; iterable of normalized parameter values
+    :param x: List[float]; iterable of normalized parameter values
     :param kwords: Iterable[str]; related parmaeter names from `x`
     :return: List[float];
     """
@@ -187,8 +208,8 @@ def param_normalizer(x: List, kwords: List) -> List:
     """
     Normalize values from `x` to value between (0, 1).
 
-    :param x: Iterable[float]; iterable of values in their native form
-    :param kwords: Iterable[str]; iterable str of names related to `x`
+    :param x: List[float]; iterable of values in their native form
+    :param kwords: List[str]; iterable str of names related to `x`
     :return: List[float];
     """
     return [normalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, kwords)]
@@ -244,7 +265,6 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
     :return: List[Dict];
     """
     hash_map = {val['param']: idx for idx, val in enumerate(x0)}
-    param = 'surface_potential'
     is_oc = morphology in ['over-contact']
     are_same = x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['value'] == x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['value']
 
@@ -280,6 +300,9 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
 
 
 def is_overcontact(morphology):
+    """
+    Is string equal to `over-contact`?
+    """
     return morphology in ['over-contact']
 
 

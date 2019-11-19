@@ -1,4 +1,4 @@
-from elisa import graphics
+from elisa.graphic import graphics
 
 
 class Plot(object):

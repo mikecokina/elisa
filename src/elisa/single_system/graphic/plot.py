@@ -1,14 +1,13 @@
-from copy import copy
 import numpy as np
 
-from elisa.base.container import StarContainer
 from elisa.base import transform
 from elisa.single_system.container import SystemContainer
 from elisa.const import SinglePosition
+from elisa.graphic import graphics
+
 from elisa import (
     utils,
-    graphics,
-    units as eu,
+    units as eu
 )
 from elisa.utils import is_empty
 

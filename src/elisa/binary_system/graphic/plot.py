@@ -6,12 +6,12 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import Position
 from elisa.binary_system import utils as butils, dynamic
 from elisa.utils import is_empty
+from elisa.graphic import graphics
 
 from elisa import (
     umpy as up,
     utils,
     const,
-    graphics,
     units as eu
 )
 

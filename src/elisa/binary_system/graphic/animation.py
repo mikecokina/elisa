@@ -4,6 +4,7 @@ from copy import copy
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.const import Position
 from elisa.logger import getLogger
+from elisa.graphic import graphics
 
 from elisa.binary_system import (
     utils as butils,
@@ -12,7 +13,6 @@ from elisa.binary_system import (
 from elisa import (
     umpy as up,
     utils,
-    graphics,
     const
 )
 

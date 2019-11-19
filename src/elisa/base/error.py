@@ -6,27 +6,27 @@ class MaxIterationError(ElisaError):
     pass
 
 
-class InitialParamsError(ElisaError, ValueError):
+class InitialParamsError(ElisaError):
     pass
 
 
-class AtmosphereError(ElisaError, ValueError):
+class AtmosphereError(ElisaError):
     pass
 
 
-class TemperatureError(ElisaError, ValueError):
+class TemperatureError(ElisaError):
     pass
 
 
-class LimbDarkeningError(ElisaError, ValueError):
+class LimbDarkeningError(ElisaError):
     pass
 
 
-class MetallicityError(ElisaError, ValueError):
+class MetallicityError(ElisaError):
     pass
 
 
-class GravityError(ElisaError, ValueError):
+class GravityError(ElisaError):
     pass
 
 
