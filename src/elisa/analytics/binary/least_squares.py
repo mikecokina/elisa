@@ -1,16 +1,18 @@
 import functools
+from abc import ABCMeta
+
 import numpy as np
 
 from copy import copy
 from scipy.optimize import least_squares
 
-from elisa.base.error import HitSolutionBubble
+from elisa.base.error import SolutionBubbleException
 from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.logger import getPersistentLogger
 from elisa.analytics.binary import params
 from elisa.analytics.binary import (
     utils as analutils,
-    model,
+    models,
     shared
 )
 
@@ -28,8 +30,8 @@ def logger_decorator(suppress_logger=False):
     return do
 
 
-class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
-    def circular_sync_model_to_fit(self, xn):
+class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
+    def model_to_fit(self, xn):
         """
         Model to find minimum.
 
@@ -45,38 +47,34 @@ class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
             self._fixed = params.adjust_constrained_potential(self._fixed, to_value)
 
         kwargs.update(self._fixed)
-        fn = model.circular_sync_synthetic
+        fn = models.synthetic_binary
         args = self._xs, self._period, self._discretization, self._morphology, self._observer
         try:
             synthetic = logger_decorator()(fn)(*args, **kwargs)
             synthetic = analutils.normalize_lightcurve_to_max(synthetic)
-        except Exception as e:
-            logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
+        except Exception:
+            logger.error(f'your initial parmeters lead to invalid morphology, choose different')
             raise
         residua = np.array([np.sum(np.power(synthetic[band] - self._ys[band], 2)) for band in synthetic])
 
         if np.abs(residua) <= self._xtol:
             import sys
             sys.tracebacklimit = 0
-            raise HitSolutionBubble(f"least_squares hit solution", solution=kwargs)
+            raise SolutionBubbleException(f"least_squares hit solution", solution=kwargs)
 
         return residua
 
-    def fit(self, xs, ys, period, x0, passband, discretization, morphology='detached', xtol=1e-15, max_nfev=None):
-        self._xs, self._ys = xs, ys
+    def fit(self, xs, ys, period, x0, passband, discretization, xtol=1e-15, yerrs=None, max_nfev=None):
+        yerrs = analutils.lightcurves_mean_error(ys) if yerrs is None else yerrs
+        self._xs, self._ys, self._yerrs = xs, ys, yerrs
         self._xtol = xtol
 
-        # Main idea of `initial_x0_validity_check` is to cut of initialization if over-contact system is expected,
-        # but potentials are fixed both to different values or just one of them is fixed.
-        # Valid input requires either both potentials fixed on same values or non-of them fixed.
-        # When non of them are fixed, internaly is fixed secondary and its value is keep same as primary.
-        x0 = params.initial_x0_validity_check(x0, morphology)
+        x0 = params.initial_x0_validity_check(x0, self._morphology)
         initial_x0 = copy(x0)
         x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
 
         self._hash_map = {key: idx for idx, key in enumerate(kwords)}
         self._period = period
-        self._morphology = morphology
         self._discretization = discretization
         self._passband = passband
         self._fixed = fixed
@@ -84,11 +82,12 @@ class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
         self._observer = observer
 
         logger.info("fitting circular synchronous system...")
-        func = self.circular_sync_model_to_fit
+        func = self.model_to_fit
         try:
             result = least_squares(func, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol)
-        except HitSolutionBubble as bubble:
-            return self.serialize_bubble(bubble)
+        except SolutionBubbleException as bubble:
+            result = self.serialize_bubble(bubble)
+            return params.extend_result_with_units(result)
 
         logger.info("fitting finished")
 
@@ -98,15 +97,27 @@ class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
 
         result = [{"param": key, "value": val} for key, val in result_dict.items()]
 
-        if params.is_overcontact(morphology):
+        if params.is_overcontact(self._morphology):
             hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
             result = params.adjust_result_constrained_potential(result, hash_map)
 
-        r_squared_args = xs, ys, period, passband, discretization, morphology
-        r_squared_result = shared.lc_r_squared(model.circular_sync_synthetic, *r_squared_args, **result_dict)
+        r_squared_args = xs, ys, period, passband, discretization, self._morphology
+        r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **result_dict)
         result.append({"r_squared": r_squared_result})
 
-        return result
+        return params.extend_result_with_units(result)
+
+
+class OvercontactLightCurveFit(LightCurveFit):
+    def __init__(self):
+        super().__init__()
+        self._morphology = 'over-contact'
+
+
+class DetachedLightCurveFit(LightCurveFit):
+    def __init__(self):
+        super().__init__()
+        self._morphology = 'detached'
 
 
 class CentralRadialVelocity(object):
@@ -116,7 +127,7 @@ class CentralRadialVelocity(object):
         x = params.param_renormalizer(x, kwords)
         kwargs = {k: v for k, v in zip(kwords, x)}
         kwargs.update(fixed)
-        fn = model.central_rv_synthetic
+        fn = models.central_rv_synthetic
         synthetic = logger_decorator()(fn)(xs, period, observer, **kwargs)
         if on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
@@ -139,7 +150,7 @@ class CentralRadialVelocity(object):
         result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
 
         r_squared_args = xs, ys, period, on_normalized
-        r_squared_result = shared.rv_r_squared(model.central_rv_synthetic, *r_squared_args, **result_dict)
+        r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **result_dict)
 
         result = [{"param": key, "value": val} for key, val in result_dict.items()]
         result.append({"r_squared": r_squared_result})
@@ -147,5 +158,7 @@ class CentralRadialVelocity(object):
         return result_dict
 
 
-circular_sync = CircularSyncLightCurve()
+binary_detached = LightCurveFit()
+binary_overcontact = LightCurveFit()
+
 central_rv = CentralRadialVelocity()

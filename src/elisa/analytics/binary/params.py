@@ -1,7 +1,6 @@
-from typing import List, Tuple, Dict
-
 import numpy as np
 
+from typing import List, Tuple, Dict
 from elisa.atm import atm_file_prefix_to_quantity_list
 from elisa.base import error
 from elisa.binary_system.system import BinarySystem
@@ -10,45 +9,72 @@ from elisa.observer.observer import Observer
 
 
 # DO NOT CHANGE KEYS - NEVER EVER
-PARAMS_KEY = {
-    'inclination': 'inclination',
-    'eccentricity': 'eccentricity',
-    'aop ': 'argument_of_periastron',
+PARAMS_KEY_MAP = {
+    'omega': 'argument_of_periastron',
+    'i': 'inclination',
+    'e': 'eccentricity',
     'gamma': 'gamma',
-    'p__mass': 'p__mass',
-    'p__t_eff': 'p__t_eff',
-    'p__omega': 'p__surface_potential',
-    'p__beta': 'p__gravity_darkening',
-    'p__albedo': 'p__albedo',
-    'p__mh': 'p__metallicity',
-    's__mass': 's__mass',
-    's__t_eff': 's__t_eff',
-    's__omega': 's__surface_potential',
-    's__beta': 's__gravity_darkening',
-    's__albedo': 's__albedo',
-    's__mh': 's__metallicity',
+    'M1': 'p__mass',
+    'T1': 'p__t_eff',
+    'Omega1': 'p__surface_potential',
+    'beta1': 'p__gravity_darkening',
+    'A1': 'p__albedo',
+    'MH1': 'p__metallicity',
+    'F1': 'p__synchronicity',
+    'M2': 's__mass',
+    'T2': 's__t_eff',
+    'Omega2': 's__surface_potential',
+    'beta2': 's__gravity_darkening',
+    'A2': 's__albedo',
+    'MH2': 's__metallicity',
+    'F2': 's__synchronicity',
 }
+
+
+PARAMS_UNITS_MAP = {
+    PARAMS_KEY_MAP['i']: 'degrees',
+    PARAMS_KEY_MAP['e']: 'dimensionless',
+    PARAMS_KEY_MAP['omega']: 'degrees',
+    PARAMS_KEY_MAP['gamma']: 'm/s',
+    PARAMS_KEY_MAP['M1']: 'solMass',
+    PARAMS_KEY_MAP['M2']: 'solMass',
+    PARAMS_KEY_MAP['T1']: 'K',
+    PARAMS_KEY_MAP['T2']: 'K',
+    PARAMS_KEY_MAP['MH1']: 'dimensionless',
+    PARAMS_KEY_MAP['MH2']: 'dimensionless',
+    PARAMS_KEY_MAP['Omega1']: 'dimensionless',
+    PARAMS_KEY_MAP['Omega2']: 'dimensionless',
+    PARAMS_KEY_MAP['A1']: 'dimensionless',
+    PARAMS_KEY_MAP['A2']: 'dimensionless',
+    PARAMS_KEY_MAP['beta1']: 'dimensionless',
+    PARAMS_KEY_MAP['beta2']: 'dimensionless',
+    PARAMS_KEY_MAP['F1']: 'dimensionless',
+    PARAMS_KEY_MAP['F2']: 'dimensionless',
+}
+
 
 TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", config.ATM_ATLAS)
 METALLICITY = atm_file_prefix_to_quantity_list("metallicity", config.ATM_ATLAS)
 
 NORMALIZATION_MAP = {
-    'inclination': (0, 180),
-    'eccentricity': (0, 1),
-    'argument_of_periastron': (0, 360),
-    'gamma': (0, 1e6),
-    'p__mass': (0.5, 20),
-    's__mass': (0.5, 20),
-    'p__t_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
-    's__t_eff': (np.min(TEMPERATURES), np.max(TEMPERATURES)),
-    'p__metallicity': (np.min(METALLICITY), np.max(METALLICITY)),
-    's__metallicity': (np.min(METALLICITY), np.max(METALLICITY)),
-    'p__surface_potential': (2.0, 50.0),
-    's__surface_potential': (2.0, 50.0),
-    'p__albedo': (0, 1),
-    's__albedo': (0, 1),
-    'p__gravity_darkening': (0, 1),
-    's__gravity_darkening': (0, 1)
+    PARAMS_KEY_MAP['i']: (0, 180),
+    PARAMS_KEY_MAP['e']: (0, 1),
+    PARAMS_KEY_MAP['omega']: (0, 360),
+    PARAMS_KEY_MAP['gamma']: (0, 1e6),
+    PARAMS_KEY_MAP['M1']: (0.5, 20),
+    PARAMS_KEY_MAP['M2']: (0.5, 20),
+    PARAMS_KEY_MAP['T1']: (np.min(TEMPERATURES), np.max(TEMPERATURES)),
+    PARAMS_KEY_MAP['T2']: (np.min(TEMPERATURES), np.max(TEMPERATURES)),
+    PARAMS_KEY_MAP['MH1']: (np.min(METALLICITY), np.max(METALLICITY)),
+    PARAMS_KEY_MAP['MH2']: (np.min(METALLICITY), np.max(METALLICITY)),
+    PARAMS_KEY_MAP['Omega1']: (2.0, 50.0),
+    PARAMS_KEY_MAP['Omega2']: (2.0, 50.0),
+    PARAMS_KEY_MAP['A1']: (0, 1),
+    PARAMS_KEY_MAP['A2']: (0, 1),
+    PARAMS_KEY_MAP['beta1']: (0, 1),
+    PARAMS_KEY_MAP['beta2']: (0, 1),
+    PARAMS_KEY_MAP['F1']: (0, 10),
+    PARAMS_KEY_MAP['F2']: (0, 10),
 }
 
 
@@ -205,12 +231,34 @@ def fit_data_initializer(x0, passband=None):
 
 
 def initial_x0_validity_check(x0: List[Dict], morphology):
+    """
+    Validate parameters.
+
+    # Main idea of `initial_x0_validity_check` is to cut of initialization if over-contact system is expected,
+    # but potentials are fixed both to different values or just one of them is fixed.
+    # Valid input requires either both potentials fixed on same values or non-of them fixed.
+    # When non of them are fixed, internaly is fixed secondary and its value is keep same as primary.
+
+    :param x0: List[Dict];
+    :param morphology: str;
+    :return: List[Dict];
+    """
     hash_map = {val['param']: idx for idx, val in enumerate(x0)}
     param = 'surface_potential'
     is_oc = morphology in ['over-contact']
-    are_same = x0[hash_map[f'p__{param}']]['value'] == x0[hash_map[f's__{param}']]['value']
-    any_fixed = x0[hash_map[f'p__{param}']].get('fixed', False) or x0[hash_map[f's__{param}']].get('fixed', False)
-    all_fixed = x0[hash_map[f'p__{param}']].get('fixed', False) and x0[hash_map[f's__{param}']].get('fixed', False)
+    are_same = x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['value'] == x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['value']
+
+    omega_1 = x0[hash_map[PARAMS_KEY_MAP['Omega1']]].get('fixed', False)
+    omega_2 = x0[hash_map[PARAMS_KEY_MAP['Omega2']]].get('fixed', False)
+
+    any_fixed = omega_1 | omega_2
+    all_fixed = omega_1 & omega_2
+
+    for x in x0:
+        _min, _max = x.get('min', NORMALIZATION_MAP[x['param']][0]), x.get('max', NORMALIZATION_MAP[x['param']][1])
+        if not (_min <= x['value'] <= _max):
+            msg = f'Initial parametres are not fisible. Invalid bounds NOT: {_min} <= {x["param"]} <= {_max}'
+            raise ValueError(msg)
 
     if is_oc and all_fixed and are_same:
         return x0
@@ -222,11 +270,12 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
         raise error.InitialParamsError(msg)
     if is_oc:
         # if is overcontact, fix secondary pontetial for further steps
-        x0[hash_map[f's__{param}']]['fixed'] = True
-        _min, _max = x0[hash_map[f'p__{param}']]['min'], x0[hash_map[f'p__{param}']]['max']
-        x0[hash_map[f's__{param}']]['min'] = _min
-        x0[hash_map[f's__{param}']]['max'] = _max
-        update_normalization_map({f's__{param}': (_min, _max)})
+        x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['fixed'] = True
+        _min, _max = x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['min'], x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['max']
+        x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['min'] = _min
+        x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['max'] = _max
+        update_normalization_map({PARAMS_KEY_MAP['Omega2']: (_min, _max)})
+
     return x0
 
 
@@ -236,19 +285,26 @@ def is_overcontact(morphology):
 
 def adjust_constrained_potential(adjust_in, to_value=None):
     if to_value is not None:
-        adjust_in[PARAMS_KEY['s__omega']] = to_value
+        adjust_in[PARAMS_KEY_MAP['Omega2']] = to_value
     else:
-        adjust_in[PARAMS_KEY['s__omega']] = adjust_in[PARAMS_KEY['p__omega']]
+        adjust_in[PARAMS_KEY_MAP['Omega2']] = adjust_in[PARAMS_KEY_MAP['Omega1']]
     return adjust_in
 
 
 def adjust_result_constrained_potential(adjust_in, hash_map):
-    value = adjust_in[hash_map[PARAMS_KEY['p__omega']]]["value"]
-    adjust_in[hash_map[PARAMS_KEY['s__omega']]] = {
-        "param": PARAMS_KEY['s__omega'],
+    value = adjust_in[hash_map[PARAMS_KEY_MAP['Omega1']]]["value"]
+    adjust_in[hash_map[PARAMS_KEY_MAP['Omega2']]] = {
+        "param": PARAMS_KEY_MAP['Omega2'],
         "value": value,
-        "min": adjust_in[hash_map[PARAMS_KEY['p__omega']]].get("min", value),
-        "max": adjust_in[hash_map[PARAMS_KEY['p__omega']]].get("max", value),
-        "fixed": False
+        "min": adjust_in[hash_map[PARAMS_KEY_MAP['Omega1']]].get("min", value),
+        "max": adjust_in[hash_map[PARAMS_KEY_MAP['Omega1']]].get("max", value),
     }
     return adjust_in
+
+
+def extend_result_with_units(result):
+    for res in result:
+        key = res.get('param')
+        if key in PARAMS_UNITS_MAP:
+            res['unit'] = PARAMS_UNITS_MAP[key]
+    return result

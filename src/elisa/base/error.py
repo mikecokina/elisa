@@ -34,7 +34,7 @@ class MorphologyError(ElisaError):
     pass
 
 
-class HitSolutionBubble(ElisaError):
+class SolutionBubbleException(ElisaError):
     def __init__(self, *args, **kwargs):
         self.solution = kwargs.get('solution')
         super().__init__(*args)

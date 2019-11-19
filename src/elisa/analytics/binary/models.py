@@ -11,11 +11,11 @@ def _prepare_star(**kwargs):
             **dict(
                 mass=kwargs['mass'] * units.solMass,
                 surface_potential=kwargs['surface_potential'],
-                synchronicity=kwargs['synchronicity'],
+                synchronicity=kwargs.get('synchronicity', 1.0),
                 t_eff=kwargs['t_eff'] * units.K,
                 gravity_darkening=kwargs.get('gravity_darkening', 1.0),
                 albedo=kwargs.get('albedo', 1.0),
-                metallicity=kwargs['metallicity']
+                metallicity=kwargs.get('metallicity', 0.0)
             ),
             **{"discretization_factor": kwargs["discretization_factor"]}
             if kwargs.get("discretization_factor") else {})
@@ -41,7 +41,7 @@ def serialize_seondary_kwargs(**kwargs):
     return _serialize_star_kwargs(component='s', **kwargs)
 
 
-def prepare_circual_sync_binary(period, discretization, **kwargs):
+def prepare_binary(period, discretization, **kwargs):
     """
     Setup circular synchrnonous binary system.
     If `beta` (gravity darkening factor) or `albedo` is not supplied, then `1.0` is used as their default value.
@@ -50,6 +50,8 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
     :param discretization; float;
     :param kwargs: Dict;
     :**kwargs options**:
+        * **argument_of_periastron** * -- float;
+        * **eccentricity** * -- float;
         * **inclination** * -- float;
         * **p__mass** * -- float;
         * **p__t_eff** * -- float;
@@ -57,33 +59,35 @@ def prepare_circual_sync_binary(period, discretization, **kwargs):
         * **p__gravity_darkening** * -- float;
         * **p__albedo** * -- float;
         * **p__metallicity** * -- float;
+        * **p__synchronicity** * -- float;
         * **s__mass** * -- float;
         * **s__t_eff** * -- float;
         * **s__surface_potential** * -- float;
         * **s__gravity_darkening** * -- float;
         * **s__albedo** * -- float;
         * **s__metallicity** * -- float;
+        * **s__synchronicity** * -- float;
     :return: elisa.binary_system.system.BinarySystem;
     """
 
-    kwargs.update({"p__synchronicity": 1.0, "s__synchronicity": 1.0, "p__discretization_factor": discretization})
+    kwargs.update({"p__discretization_factor": discretization})
     primary = _prepare_star(**serialize_primary_kwargs(**kwargs))
     secondary = _prepare_star(**serialize_seondary_kwargs(**kwargs))
 
     return BinarySystem(
         primary=primary,
         secondary=secondary,
-        argument_of_periastron=0.0,
+        argument_of_periastron=kwargs.get('argument_of_periastron', 90.0) * units.deg,
         gamma=0.0,
         period=period * units.d,
-        eccentricity=0.0,
-        inclination=kwargs['inclination'],
+        eccentricity=kwargs.get('eccentricity', 0.0),
+        inclination=kwargs['inclination'] * units.deg,
         primary_minimum_time=0.0,
         phase_shift=0.0
     )
 
 
-def circular_sync_synthetic(xs, period, discretization, morphology, observer, **kwargs):
+def synthetic_binary(xs, period, discretization, morphology, observer, **kwargs):
     """
     :param xs: Union[List, numpy.array];
     :param period: float;
@@ -92,6 +96,8 @@ def circular_sync_synthetic(xs, period, discretization, morphology, observer, **
     :param observer: elisa.observer.observer.Observer; instance
     :param kwargs: Dict;
     :**kwargs options**:
+        * **argument_of_periastron** * -- float;
+        * **eccentricity** * -- float;
         * **inclination** * -- float;
         * **p__mass** * -- float;
         * **p__t_eff** * -- float;
@@ -99,15 +105,17 @@ def circular_sync_synthetic(xs, period, discretization, morphology, observer, **
         * **p__gravity_darkening** * -- float;
         * **p__albedo** * -- float;
         * **p__metallicity** * -- float;
+        * **p__synchronicity** * -- float;
         * **s__mass** * -- float;
         * **s__t_eff** * -- float;
         * **s__surface_potential** * -- float;
         * **s__gravity_darkening** * -- float;
         * **s__albedo** * -- float;
         * **s__metallicity** * -- float;
+        * **s__synchronicity** * -- float;
     :return: Tuple[numpy.array, str]
     """
-    binary = prepare_circual_sync_binary(period, discretization, **kwargs)
+    binary = prepare_binary(period, discretization, **kwargs)
     observer._system = binary
 
     if params.is_overcontact(morphology) and not params.is_overcontact(binary.morphology):
@@ -119,8 +127,6 @@ def circular_sync_synthetic(xs, period, discretization, morphology, observer, **
 
 def prepare_central_rv_binary(period, **kwargs):
     kwargs.update({
-        "p__synchronicity": 1.0,
-        "s__synchronicity": 1.0,
         "p__surface_potential": 100,
         "s__surface_potential": 100,
         "p__t_eff": 10000.0,

@@ -1,3 +1,5 @@
+from abc import ABC
+
 import emcee
 import numpy as np
 
@@ -6,19 +8,22 @@ from copy import copy
 from elisa.logger import getPersistentLogger
 from elisa.base.error import (
     ElisaError,
-    HitSolutionBubble
+    SolutionBubbleException
 )
 from elisa.analytics.binary import (
     utils as analutils,
     params,
-    model,
+    models,
     shared
 )
 
 logger = getPersistentLogger('analytics.binary.mcmc')
 
 
-class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
+class LightCurveFit(shared.AbstractLightCurveFit):
+    def model_to_fit(self, *args, **kwargs):
+        return self.likelihood(*args, **kwargs)
+
     def likelihood(self, xn):
         xn = params.param_renormalizer(xn, self._kwords)
 
@@ -30,7 +35,7 @@ class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
         kwargs.update(self._fixed)
 
         args = self._xs, self._period, self._discretization, self._morphology, self._observer
-        synthetic = model.circular_sync_synthetic(*args, **kwargs)
+        synthetic = models.synthetic_binary(*args, **kwargs)
         synthetic = analutils.normalize_lightcurve_to_max(synthetic)
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band] - self._ys[band]) / self._yerrs, 2))
                                         for band in synthetic]))
@@ -38,7 +43,7 @@ class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
         if np.abs(lhood) <= self._xtol:
             import sys
             sys.tracebacklimit = 0
-            raise HitSolutionBubble(f"mcmc hit solution", solution=kwargs)
+            raise SolutionBubbleException(f"mcmc hit solution", solution=kwargs)
 
         return lhood
 
@@ -51,8 +56,8 @@ class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
             return -np.inf
 
         try:
-            likelihood = self.likelihood(xn)
-        except HitSolutionBubble:
+            likelihood = self.model_to_fit(xn)
+        except SolutionBubbleException:
             raise
         except ElisaError as e:
             logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
@@ -71,53 +76,62 @@ class CircularSyncLightCurve(shared.AbstractCircularSyncLightCurve):
             result.append({"param": key, "value": val, "min": val - q[0], "max": val + q[1], "fixed": False})
         return result
 
-    def eval_mcmc(self, xs, ys, period, x0, passband, discretization, nwalkers, nsteps,
-                  niters=1, morphology="detached", xtol=1e-6, p0=None, yerrs=None, explore=10):
+    def fit(self, xs, ys, period, x0, passband, discretization, nwalkers, nsteps,
+            xtol=1e-6, p0=None, yerrs=None, nsteps_burn_in=10):
 
         yerrs = analutils.lightcurves_mean_error(ys) if yerrs is None else yerrs
         self._xs, self._ys, self._yerrs = xs, ys, yerrs
         self._xtol = xtol
 
-        result = dict()
-        for iter_num in range(niters):
-            x0 = params.initial_x0_validity_check(x0, morphology)
-            x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
-            
-            self._hash_map = {key: idx for idx, key in enumerate(kwords)}
-            self._period = period
-            self._morphology = morphology
-            self._discretization = discretization
-            self._passband = passband
-            self._fixed = fixed
-            self._kwords = kwords
-            self._observer = observer
+        x0 = params.initial_x0_validity_check(x0, self._morphology)
+        x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
 
-            ndim = len(x0)
-            p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
-            # assign intial value
-            p0[0] = x0
-            sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=self.ln_probability)
+        self._hash_map = {key: idx for idx, key in enumerate(kwords)}
+        self._period = period
+        self._morphology = self._morphology
+        self._discretization = discretization
+        self._passband = passband
+        self._fixed = fixed
+        self._kwords = kwords
+        self._observer = observer
 
-            try:
-                logger.info("running burn-in...")
-                p0, _, _ = sampler.run_mcmc(p0, explore if nsteps > explore else nsteps)
-                sampler.reset()
+        ndim = len(x0)
+        p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
+        # assign intial value
+        p0[0] = x0
+        sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=self.ln_probability)
 
-                logger.info("running production...")
-                _, _, _ = sampler.run_mcmc(p0, nsteps)
-            except HitSolutionBubble as bubble:
-                return self.serialize_bubble(bubble)
+        try:
+            logger.info("running burn-in...")
+            p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in if nsteps > nsteps_burn_in else nsteps)
+            sampler.reset()
 
-            result = self.resolve_mcmc_result(sampler, kwords)
-            result = result + [{"param": key, "value": val, "fixed": True} for key, val in fixed.items()]
-            if params.is_overcontact(morphology):
-                hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
-                result = params.adjust_result_constrained_potential(result, hash_map)
+            logger.info("running production...")
+            _, _, _ = sampler.run_mcmc(p0, nsteps)
+        except SolutionBubbleException as bubble:
+            result = self.serialize_bubble(bubble)
+            return params.extend_result_with_units(result)
 
-            logger.info(f'result after {iter_num}. iteration: {result}')
-            x0 = copy(result)
+        result = self.resolve_mcmc_result(sampler, kwords)
+        result = result + [{"param": key, "value": val} for key, val in fixed.items()]
+        if params.is_overcontact(self._morphology):
+            hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
+            result = params.adjust_result_constrained_potential(result, hash_map)
 
-        return result
+        return params.extend_result_with_units(result)
 
 
-circular_sync = CircularSyncLightCurve()
+class OvercontactLightCurveFit(LightCurveFit):
+    def __init__(self):
+        super().__init__()
+        self._morphology = 'over-contact'
+
+
+class DetachedLightCurveFit(LightCurveFit):
+    def __init__(self):
+        super().__init__()
+        self._morphology = 'detached'
+
+
+binary_detached = DetachedLightCurveFit()
+binary_overcontact = OvercontactLightCurveFit()
