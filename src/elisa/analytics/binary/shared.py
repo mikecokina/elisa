@@ -1,3 +1,5 @@
+from abc import ABCMeta, abstractmethod
+
 import numpy as np
 
 from elisa.binary_system.system import BinarySystem
@@ -6,11 +8,11 @@ from elisa.observer.observer import Observer
 from elisa.analytics.binary import (
     utils as analutils,
     params,
-    model
+    models
 )
 
 
-class AbstractCircularSyncLightCurve(object):
+class AbstractLightCurveFit(object, metaclass=ABCMeta):
     """
     Params:
 
@@ -29,7 +31,7 @@ class AbstractCircularSyncLightCurve(object):
     """
     def __init__(self):
         self._hash_map = dict()
-        self._morphology = 'detached'
+        self._morphology = ''
         self._discretization = np.nan
         self._passband = ''
         self._fixed = dict()
@@ -49,9 +51,17 @@ class AbstractCircularSyncLightCurve(object):
             result = params.adjust_result_constrained_potential(result, hash_map)
 
         r_squared_args = self._xs, self._ys, self._period, self._passband, self._discretization, self._morphology
-        r_squared_result = lc_r_squared(model.circular_sync_synthetic, *r_squared_args, **bubble.solution)
+        r_squared_result = lc_r_squared(models.synthetic_binary, *r_squared_args, **bubble.solution)
         result.append({"r_squared": r_squared_result})
         return result
+
+    @abstractmethod
+    def fit(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def model_to_fit(self, *args, **kwargs):
+        pass
 
 
 def lc_r_squared(synthetic, *args, **x):

@@ -69,10 +69,6 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         self._xs, self._ys, self._yerrs = xs, ys, yerrs
         self._xtol = xtol
 
-        # Main idea of `initial_x0_validity_check` is to cut of initialization if over-contact system is expected,
-        # but potentials are fixed both to different values or just one of them is fixed.
-        # Valid input requires either both potentials fixed on same values or non-of them fixed.
-        # When non of them are fixed, internaly is fixed secondary and its value is keep same as primary.
         x0 = params.initial_x0_validity_check(x0, self._morphology)
         initial_x0 = copy(x0)
         x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
@@ -109,7 +105,7 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **result_dict)
         result.append({"r_squared": r_squared_result})
 
-        return result
+        return params.extend_result_with_units(result)
 
 
 class OvercontactLightCurveFit(LightCurveFit):

@@ -298,7 +298,6 @@ def adjust_result_constrained_potential(adjust_in, hash_map):
         "value": value,
         "min": adjust_in[hash_map[PARAMS_KEY_MAP['Omega1']]].get("min", value),
         "max": adjust_in[hash_map[PARAMS_KEY_MAP['Omega1']]].get("max", value),
-        "fixed": False
     }
     return adjust_in
 
