@@ -183,7 +183,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
 
 
 class ValidityTestCase(ElisaTestCase):
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'phase_shift']
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron']
 
     def setUp(self):
         self._initial_params = {
@@ -270,8 +270,7 @@ class ValidityTestCase(ElisaTestCase):
                               period=self._initial_params["period"],
                               eccentricity=self._initial_params["eccentricity"],
                               inclination=self._initial_params["inclination"],
-                              primary_minimum_time=self._initial_params["primary_minimum_time"],
-                              phase_shift=self._initial_params["phase_shift"])
+                              primary_minimum_time=self._initial_params["primary_minimum_time"])
 
         for kw in self.MANDATORY_KWARGS:
             kwargs = copy(initial_kwargs)
