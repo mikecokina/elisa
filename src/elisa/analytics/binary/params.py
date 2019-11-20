@@ -14,6 +14,8 @@ PARAMS_KEY_MAP = {
     'i': 'inclination',
     'e': 'eccentricity',
     'gamma': 'gamma',
+    'q': 'mass_ratio',
+    'a': 'semi_major_axis',
     'M1': 'p__mass',
     'T1': 'p__t_eff',
     'Omega1': 'p__surface_potential',
@@ -35,6 +37,8 @@ PARAMS_KEY_TEX_MAP = {
     'inclination': '$i$',
     'eccentricity': '$e$',
     'gamma': '$\\gamma$',
+    'mass_ratio': '$q$',
+    'semi_major_axis': '$a$',
     'p__mass': '$M_1$',
     'p__t_eff': '$T_1^{eff}$',
     'p__surface_potential': '$\\Omega_1$',
@@ -48,7 +52,7 @@ PARAMS_KEY_TEX_MAP = {
     's__gravity_darkening': '$\\beta_2$',
     's__albedo': '$A_2$',
     's__metallicity': '$M/H_2$',
-    's__synchronicity': '$F_2$'
+    's__synchronicity': '$F_2$',
 }
 
 
@@ -71,6 +75,8 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['beta2']: 'dimensionless',
     PARAMS_KEY_MAP['F1']: 'dimensionless',
     PARAMS_KEY_MAP['F2']: 'dimensionless',
+    PARAMS_KEY_MAP['q']: 'dimensionless',
+    PARAMS_KEY_MAP['a']: 'solRad'
 }
 
 
@@ -96,6 +102,8 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['beta2']: (0, 1),
     PARAMS_KEY_MAP['F1']: (0, 10),
     PARAMS_KEY_MAP['F2']: (0, 10),
+    PARAMS_KEY_MAP['q']: (0, 20),
+    PARAMS_KEY_MAP['a']: (0, 100)
 }
 
 
@@ -150,8 +158,8 @@ def x0_vectorize(x0) -> Tuple:
     :return: Tuple;
     """
     _x0 = [record['value'] for record in x0 if not record['fixed']]
-    _kwords = [record['param'] for record in x0 if not record['fixed']]
-    return _x0, _kwords
+    _labels = [record['param'] for record in x0 if not record['fixed']]
+    return _x0, _labels
 
 
 def x0_to_kwargs(x0):
@@ -193,26 +201,26 @@ def update_normalization_map(update):
     NORMALIZATION_MAP.update(update)
 
 
-def param_renormalizer(x, kwords):
+def param_renormalizer(x, labels):
     """
     Renormalize values from `x` to their native form.
 
     :param x: List[float]; iterable of normalized parameter values
-    :param kwords: Iterable[str]; related parmaeter names from `x`
+    :param labels: Iterable[str]; related parmaeter names from `x`
     :return: List[float];
     """
-    return [renormalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, kwords)]
+    return [renormalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, labels)]
 
 
-def param_normalizer(x: List, kwords: List) -> List:
+def param_normalizer(x: List, labels: List) -> List:
     """
     Normalize values from `x` to value between (0, 1).
 
     :param x: List[float]; iterable of values in their native form
-    :param kwords: List[str]; iterable str of names related to `x`
+    :param labels: List[str]; iterable str of names related to `x`
     :return: List[float];
     """
-    return [normalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, kwords)]
+    return [normalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, labels)]
 
 
 def get_param_boundaries(param):
@@ -242,13 +250,13 @@ def fit_data_initializer(x0, passband=None):
     update_normalization_map(boundaries)
 
     fixed = x0_to_fixed_kwargs(x0)
-    x0_vectorized, kwords = x0_vectorize(x0)
-    x0 = param_normalizer(x0_vectorized, kwords)
+    x0_vectorized, labels = x0_vectorize(x0)
+    x0 = param_normalizer(x0_vectorized, labels)
 
     observer = Observer(passband='bolometric' if passband is None else passband, system=None)
     observer._system_cls = BinarySystem
 
-    return x0, kwords, fixed, observer
+    return x0, labels, fixed, observer
 
 
 def initial_x0_validity_check(x0: List[Dict], morphology):

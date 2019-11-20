@@ -1,9 +1,9 @@
 import numpy as np
 
 from abc import ABCMeta, abstractmethod
-from elisa.base.body import Body
-from elisa.logger import getLogger
-from elisa import (
+from ..base.body import Body
+from ..logger import getLogger
+from .. import (
     utils
 )
 from elisa.pulse import pulsations

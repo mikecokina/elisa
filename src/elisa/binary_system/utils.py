@@ -1,8 +1,13 @@
 import numpy as np
 
 from pypex.poly2d.polygon import Polygon
-from jsonschema import validate, ValidationError
+from jsonschema import (
+    validate,
+    ValidationError
+)
 
+from elisa import units, const
+from elisa.base.error import YouHaveNoIdeaError
 from ..conf.config import SCHEMA_REGISTRY
 from ..binary_system import model
 from ..utils import is_empty
@@ -176,7 +181,7 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
 
 def calculate_rotational_phase(system_container, component):
     """
-    returns rotational phase with in co-rotating frame of reference
+    Returns rotational phase with in co-rotating frame of reference.
 
     :param system_container: SystemContainer;
     :param component: str; `primary` or `secondary`
@@ -211,6 +216,52 @@ def validate_binary_json(data):
         pass
 
     if (not community_valid) & (not std_valid):
-        raise ValidationError("BinarySystem cannot be created from supplied json schema")
+        raise ValidationError("BinarySystem cannot be created from supplied json schema.")
+
+    if community_valid & std_valid:
+        raise YouHaveNoIdeaError("You have no idea what is going on [M1, M2, q, a].")
 
     return True
+
+
+def resolve_json_kind(data):
+    """
+    Resolve if json is `std` or `community`.
+
+    std - standard physical parameters (M1, M2)
+    community - astro community parameters (q, a)
+
+    :param data: Dict; json like
+    :return: str; `std` or `community`
+    """
+    m1, m2 = data["primary"].get("mass"), data["secondary"].get("mass")
+    q, a = data["system"].get("mass_ratio"), data["system"].get("semi_major_axis")
+
+    if m1 and m2:
+        return "std"
+    if q and a:
+        return "community"
+    raise LookupError("It seems your JSON is invalid.")
+
+
+def transform_json_community_to_std(data):
+    """
+    Transform `community` input json to `std` json.
+    Compute `M1` and `M2` from `q` and `a`.
+
+    All units of values are expected to be default.
+
+    :param data: Dict;
+    :return: Dict;
+    """
+    q = data["system"].pop("mass_ratio")
+    a = np.float64((data["system"].pop("semi_major_axis") * units.solRad).to(units.m))
+    period = np.float64((data["system"]["period"] * units.PERIOD_UNIT).to(units.s))
+    m1 = ((4.0 * const.PI ** 2 * a ** 3) / (const.G * (1.0 + q) * period ** 2))
+    m1 = np.float64((m1 * units.kg).to(units.solMass))
+    m2 = q * m1
+
+    data["primary"].update({"mass": m1})
+    data["secondary"].update({"mass": m2})
+
+    return data

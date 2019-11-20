@@ -2,7 +2,7 @@ import gc
 import numpy as np
 
 from copy import copy
-from elisa import umpy as up
+from ... import umpy as up
 
 
 def initialize_model_container(vertices_map):

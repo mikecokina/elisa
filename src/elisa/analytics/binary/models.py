@@ -1,24 +1,6 @@
-from ... import units
-from ...analytics.binary import params
+from ..binary import params
 from ...base import error
 from ...binary_system.system import BinarySystem
-
-
-# def _prepare_star(**kwargs):
-#     return Star(
-#         **dict(
-#             **dict(
-#                 mass=kwargs['mass'] * units.solMass,
-#                 surface_potential=kwargs['surface_potential'],
-#                 synchronicity=kwargs.get('synchronicity', 1.0),
-#                 t_eff=kwargs['t_eff'] * units.K,
-#                 gravity_darkening=kwargs.get('gravity_darkening', 1.0),
-#                 albedo=kwargs.get('albedo', 1.0),
-#                 metallicity=kwargs.get('metallicity', 0.0)
-#             ),
-#             **{"discretization_factor": kwargs["discretization_factor"]}
-#             if kwargs.get("discretization_factor") else {})
-#     )
 
 
 def _serialize_star_kwargs(component, **kwargs):
@@ -156,22 +138,18 @@ def prepare_central_rv_binary(period, **kwargs):
         "p__t_eff": 10000.0,
         "s__t_eff": 10000.0,
         "p__metallicity": 10000.0,
-        "s__metallicity": 10000.0
+        "s__metallicity": 10000.0,
+        "period": period
     })
-    primary = _prepare_star(**serialize_primary_kwargs(**kwargs))
-    secondary = _prepare_star(**serialize_seondary_kwargs(**kwargs))
-
-    return BinarySystem(
-        primary=primary,
-        secondary=secondary,
-        argument_of_periastron=kwargs['argument_of_periastron'],
-        gamma=kwargs['gamma'],
-        period=period * units.d,
-        eccentricity=kwargs['eccentricity'],
-        inclination=kwargs['inclination'],
-        primary_minimum_time=0.0,
-        phase_shift=0.0
-    )
+    primary_kwargs = serialize_primary_kwargs(**kwargs)
+    secondary_kwargs = serialize_seondary_kwargs(**kwargs)
+    system_kwargs = serialize_system_kwargs(**kwargs)
+    json = {
+        "primary": dict(**primary_kwargs),
+        "secondary": dict(**secondary_kwargs),
+        "system": dict(**system_kwargs)
+    }
+    return BinarySystem.from_json(json, _verify=False)
 
 
 def central_rv_synthetic(xs, period, observer, **kwargs):

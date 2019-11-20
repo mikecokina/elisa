@@ -2,10 +2,10 @@ import gc
 import numpy as np
 
 from copy import copy
-from elisa.base.transform import SpotProperties
-from elisa.utils import is_empty
-from elisa.logger import getLogger
-from elisa import (
+from ..base.transform import SpotProperties
+from ..utils import is_empty
+from ..logger import getLogger
+from .. import (
     utils,
     umpy as up
 )

@@ -6,10 +6,10 @@ from abc import (
     abstractmethod
 )
 
-from elisa.utils import is_empty
-from elisa.base.spot import Spot
-from elisa.logger import getLogger
-from elisa import (
+from ..utils import is_empty
+from ..base.spot import Spot
+from ..logger import getLogger
+from .. import (
     units,
     umpy as up
 )

@@ -1,5 +1,5 @@
 import numpy as np
-from elisa import umpy as up
+from ... import umpy as up
 
 
 def calculate_effective_temperatures(star_container, gradient_magnitudes):

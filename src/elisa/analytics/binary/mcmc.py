@@ -8,14 +8,14 @@ from multiprocessing import Pool
 from typing import Iterable, Dict
 from datetime import datetime
 
-from ...analytics.binary.plot import Plot
+from ..binary.plot import Plot
 from ...conf import config
 from ...logger import getPersistentLogger
 from ...base.error import (
     ElisaError,
     SolutionBubbleException
 )
-from ...analytics.binary import (
+from ..binary import (
     utils as analutils,
     params,
     models,
@@ -37,13 +37,13 @@ class LightCurveFit(shared.AbstractLightCurveFit):
         return self.likelihood(*args, **kwargs)
 
     def likelihood(self, xn):
-        xn = params.param_renormalizer(xn, self._kwords)
+        xn = params.param_renormalizer(xn, self._labels)
 
         # if morphology is overcontact, secondary pontetial has to be same as primary
         if params.is_overcontact(self._morphology):
             self._fixed['s__surface_potential'] = xn[self._hash_map['p__surface_potential']]
 
-        kwargs = {k: v for k, v in zip(self._kwords, xn)}
+        kwargs = {k: v for k, v in zip(self._labels, xn)}
         kwargs.update(self._fixed)
 
         args = self._xs, self._period, self._discretization, self._morphology, self._observer
@@ -78,11 +78,11 @@ class LightCurveFit(shared.AbstractLightCurveFit):
         return likelihood
 
     @staticmethod
-    def resolve_mcmc_result(sampler, kwords, discard=False, thin=1, quantiles=None):
+    def resolve_mcmc_result(sampler, labels, discard=False, thin=1, quantiles=None):
         flat_samples = sampler.get_chain(discard=discard, thin=thin, flat=True)
         quantiles = [16, 50, 84] if quantiles is None else quantiles
         result = list()
-        for idx, key in enumerate(kwords):
+        for idx, key in enumerate(labels):
             mcmc = np.percentile(flat_samples[:, idx], quantiles)
             val = params.param_renormalizer((mcmc[1],), (key,))[0]
             q = np.diff(params.param_renormalizer(mcmc, np.repeat(key, len(mcmc))))
@@ -123,20 +123,20 @@ class LightCurveFit(shared.AbstractLightCurveFit):
         self._xtol = xtol
 
         x0 = params.initial_x0_validity_check(x0, self._morphology)
-        x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
+        x0, labels, fixed, observer = params.fit_data_initializer(x0, passband=passband)
         ndim = len(x0)
 
         if nwalkers < ndim * 2:
             msg = f'Fit cannot be executed with fewer walkers ({nwalkers}) than twice the number of dimensions ({ndim})'
             raise RuntimeError(msg)
 
-        self._hash_map = {key: idx for idx, key in enumerate(kwords)}
+        self._hash_map = {key: idx for idx, key in enumerate(labels)}
         self._period = period
         self._morphology = self._morphology
         self._discretization = discretization
         self._passband = passband
         self._fixed = fixed
-        self._kwords = kwords
+        self._labels = labels
         self._observer = observer
 
         p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
@@ -158,7 +158,7 @@ class LightCurveFit(shared.AbstractLightCurveFit):
             result = self.serialize_bubble(bubble)
             return params.extend_result_with_units(result)
 
-        result = self.resolve_mcmc_result(sampler, kwords, discard=discard)
+        result = self.resolve_mcmc_result(sampler, labels, discard=discard)
         result = result + [{"param": key, "value": val} for key, val in fixed.items()]
         if params.is_overcontact(self._morphology):
             hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
@@ -166,7 +166,7 @@ class LightCurveFit(shared.AbstractLightCurveFit):
 
         self.last_sampler = sampler
         self.last_normalization = params.NORMALIZATION_MAP.copy()
-        self.last_fname = self._store_flat_chain(sampler.get_chain(flat=True), kwords, self.last_normalization)
+        self.last_fname = self._store_flat_chain(sampler.get_chain(flat=True), labels, self.last_normalization)
         return params.extend_result_with_units(result)
 
     @staticmethod

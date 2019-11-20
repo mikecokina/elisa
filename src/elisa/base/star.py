@@ -1,11 +1,11 @@
 import numpy as np
 
-from elisa import utils
-from elisa.base.body import Body
-from elisa.base.container import StarPropertiesContainer
-from elisa.base.transform import StarProperties
-from elisa.pulse.mode import PulsationMode
-from elisa.logger import getLogger
+from .. import utils
+from ..base.body import Body
+from ..base.container import StarPropertiesContainer
+from ..base.transform import StarProperties
+from ..pulse.mode import PulsationMode
+from ..logger import getLogger
 
 from copy import (
     copy,

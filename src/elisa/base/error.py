@@ -1,3 +1,10 @@
+from jsonschema import ValidationError
+
+
+class YouHaveNoIdeaError(ValidationError):
+    pass
+
+
 class ElisaError(Exception):
     pass
 

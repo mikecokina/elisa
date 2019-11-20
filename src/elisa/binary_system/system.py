@@ -56,7 +56,7 @@ class BinarySystem(System):
     :morphology: str; morphology of current system
     """
 
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'phase_shift']
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron']
     OPTIONAL_KWARGS = ['phase_shift', 'additional_light', 'primary_minimum_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
@@ -118,7 +118,7 @@ class BinarySystem(System):
         self.setup_discretisation_factor()
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data, _verify=True, _kind_of=None):
         """
         Create instance of BinarySystem from JSON in form like::
 
@@ -154,11 +154,115 @@ class BinarySystem(System):
               }
             }
 
+            or
+
+            {
+              "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0,
+                "semi_major_axis": 10.5,
+                "mass_ratio": 0.5
+              },
+              "primary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              },
+              "secondary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              }
+            }
+            
+        Currently, this approach require values in default units used in app.
+
+        Default units::
+
+             {
+                "inclination": [degrees],
+                "period": [days],
+                "argument_of_periastron": [degrees],
+                "gamma": [m/s],
+                "eccentricity": [dimensionless],
+                "primary_minimum_time": ,
+                "phase_shift": [dimensionless],
+                "mass": [solMass],
+                "surface_potential": [dimensionless],
+                "synchronicity": [dimensionless],
+                "t_eff": [K],
+                "gravity_darkening": [dimensionless],
+                "discretization_factor": [degrees],
+                "albedo": [dimensionless],
+                "metallicity": [dimensionless],
+
+                "semi_major_axis": [solRad],
+                "mass_ratio": [dimensionless]
+            }
+
         :return: elisa.binary_system.system.BinarySystem
         """
-        bsutils.validate_binary_json(data)
+        if _verify:
+            bsutils.validate_binary_json(data)
+
+        kind_of = _kind_of or bsutils.resolve_json_kind(data)
+        if kind_of in ["community"]:
+            data = bsutils.transform_json_community_to_std(data)
+
         primary, secondary = Star(**data["primary"]), Star(**data["secondary"])
         return cls(primary=primary, secondary=secondary, **data["system"])
+
+    def to_json(self):
+        """
+        Serialize BinarySystem instance to json.
+
+        :return: Dict; json like
+        """
+
+        return {
+            "system": {
+                "inclination":  (self.inclination * units.rad).to(units.deg),
+                "period": self.period,
+                "argument_of_periastron": (self.argument_of_periastron * units.rad).to(units.deg),
+                "gamma": self.gamma,
+                "eccentricity": self.eccentricity,
+                "primary_minimum_time": self.primary_minimum_time,
+                "phase_shift": self.phase_shift
+            },
+            "primary": {
+                "mass": (self.primary.mass * units.kg).to(units.solMass),
+                "surface_potential": self.primary.surface_potential,
+                "synchronicity": self.primary.synchronicity,
+                "t_eff": self.primary.t_eff,
+                "gravity_darkening": self.primary.gravity_darkening,
+                "discretization_factor": (self.primary.discretization_factor * units.rad).to(units.deg),
+                "albedo": self.primary.albedo,
+                "metallicity": self.primary.metallicity
+            },
+            "secondary": {
+                "mass": (self.secondary.mass * units.kg).to(units.solMass),
+                "surface_potential": self.secondary.surface_potential,
+                "synchronicity": self.secondary.synchronicity,
+                "t_eff": self.secondary.t_eff,
+                "gravity_darkening": self.primary.gravity_darkening,
+                "discretization_factor": (self.secondary.discretization_factor * units.rad).to(units.deg),
+                "albedo": self.secondary.albedo,
+                "metallicity": self.secondary.metallicity
+            },
+        }
 
     def init(self):
         """

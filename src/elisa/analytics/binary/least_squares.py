@@ -5,11 +5,11 @@ from abc import ABCMeta
 from copy import copy
 from scipy.optimize import least_squares
 
-from elisa.base.error import SolutionBubbleException
-from elisa.conf.config import BINARY_COUNTERPARTS
-from elisa.logger import getPersistentLogger
-from elisa.analytics.binary import params
-from elisa.analytics.binary import (
+from ...base.error import SolutionBubbleException
+from ...conf.config import BINARY_COUNTERPARTS
+from ...logger import getPersistentLogger
+from ..binary import params
+from ..binary import (
     utils as analutils,
     models,
     shared
@@ -37,8 +37,8 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         :param xn: Iterable[float];
         :return: float;
         """
-        xn = params.param_renormalizer(xn, self._kwords)
-        kwargs = {k: v for k, v in zip(self._kwords, xn)}
+        xn = params.param_renormalizer(xn, self._labels)
+        kwargs = {k: v for k, v in zip(self._labels, xn)}
 
         # if morphology is overcontact, secondary pontetial has to be same as primary
         if params.is_overcontact(self._morphology):
@@ -86,14 +86,14 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
 
         x0 = params.initial_x0_validity_check(x0, self._morphology)
         initial_x0 = copy(x0)
-        x0, kwords, fixed, observer = params.fit_data_initializer(x0, passband=passband)
+        x0, labels, fixed, observer = params.fit_data_initializer(x0, passband=passband)
 
-        self._hash_map = {key: idx for idx, key in enumerate(kwords)}
+        self._hash_map = {key: idx for idx, key in enumerate(labels)}
         self._period = period
         self._discretization = discretization
         self._passband = passband
         self._fixed = fixed
-        self._kwords = kwords
+        self._labels = labels
         self._observer = observer
 
         logger.info("fitting circular synchronous system...")
@@ -106,8 +106,8 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
 
         logger.info("fitting finished")
 
-        result = params.param_renormalizer(result.x, kwords)
-        result_dict = {k: v for k, v in zip(kwords, result)}
+        result = params.param_renormalizer(result.x, labels)
+        result_dict = {k: v for k, v in zip(labels, result)}
         result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
 
         result = [{"param": key, "value": val} for key, val in result_dict.items()]
@@ -135,12 +135,12 @@ class DetachedLightCurveFit(LightCurveFit):
         self._morphology = 'detached'
 
 
-class CentralRadialVelocity(object):
+class CentralRadialVelocityCommunity(object):
     @staticmethod
     def centarl_rv_model_to_fit(x, *args):
-        xs, ys, period, kwords, fixed, observer, on_normalized = args
-        x = params.param_renormalizer(x, kwords)
-        kwargs = {k: v for k, v in zip(kwords, x)}
+        xs, ys, period, labels, fixed, observer, on_normalized = args
+        x = params.param_renormalizer(x, labels)
+        kwargs = {k: v for k, v in zip(labels, x)}
         kwargs.update(fixed)
         fn = models.central_rv_synthetic
         synthetic = logger_decorator()(fn)(xs, period, observer, **kwargs)
@@ -150,18 +150,18 @@ class CentralRadialVelocity(object):
         return np.array([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in BINARY_COUNTERPARTS])
 
     @staticmethod
-    def fit(xs, ys, period, x0, xtol=1e-15, max_nfev=None, on_normalized=False):
+    def fit(xs, ys, period, x0, xtol=1e-10, max_nfev=None, on_normalized=False):
         initial_x0 = copy(x0)
-        x0, kwords, fixed, observer = params.fit_data_initializer(x0)
+        x0, labels, fixed, observer = params.fit_data_initializer(x0)
 
-        args = (xs, ys, period, kwords, fixed, observer, on_normalized)
+        args = (xs, ys, period, labels, fixed, observer, on_normalized)
         logger.info("fitting radial velocity light curve...")
-        func = CentralRadialVelocity.centarl_rv_model_to_fit
+        func = CentralRadialVelocityCommunity.centarl_rv_model_to_fit
         result = least_squares(func, x0, bounds=(0, 1), args=args, max_nfev=max_nfev, xtol=xtol)
         logger.info("fitting finished")
 
-        result = params.param_renormalizer(result.x, kwords)
-        result_dict = {k: v for k, v in zip(kwords, result)}
+        result = params.param_renormalizer(result.x, labels)
+        result_dict = {k: v for k, v in zip(labels, result)}
         result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
 
         r_squared_args = xs, ys, period, on_normalized
@@ -173,12 +173,12 @@ class CentralRadialVelocity(object):
         return result_dict
 
 
-class CentralRadialVelocityStd(CentralRadialVelocity):
+class CentralRadialVelocityStd(CentralRadialVelocityCommunity):
     pass
 
 
 binary_detached = DetachedLightCurveFit()
 binary_overcontact = OvercontactLightCurveFit()
 
-central_rv = CentralRadialVelocity()
-central_rvstd = CentralRadialVelocityStd()
+central_rv_community = CentralRadialVelocityCommunity()
+central_rv_std = CentralRadialVelocityStd()

@@ -1,12 +1,12 @@
 import numpy as np
 
 from abc import abstractmethod
-from elisa.logger import getLogger
+from ..logger import getLogger
 from copy import (
     deepcopy,
     copy
 )
-from elisa import (
+from .. import (
     utils,
     umpy as up
 )

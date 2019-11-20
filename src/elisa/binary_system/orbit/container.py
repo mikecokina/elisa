@@ -1,10 +1,11 @@
 import numpy as np
 
-from elisa import umpy as up
-from elisa.utils import is_empty, polar_to_cartesian
 from collections.abc import Sequence
 from matplotlib import pyplot as plt
-from elisa.logger import getLogger
+
+from ...logger import getLogger
+from ... import umpy as up
+from ...utils import is_empty, polar_to_cartesian
 
 logger = getLogger("orbit.container")
 

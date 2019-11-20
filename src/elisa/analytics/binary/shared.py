@@ -26,7 +26,7 @@ class AbstractLightCurveFit(object, metaclass=ABCMeta):
     * **_hash_map** * -- Dict;
     * **_observer** * -- elisa.observer.observer.Observer;
     * **_xtol** * -- float;
-    * **_kwords** * -- Iterable[str];
+    * **_labels** * -- Iterable[str];
     * **_fixed** * -- Dict;
     """
     def __init__(self):
@@ -35,7 +35,7 @@ class AbstractLightCurveFit(object, metaclass=ABCMeta):
         self._discretization = np.nan
         self._passband = ''
         self._fixed = dict()
-        self._kwords = list()
+        self._labels = list()
         self._observer = None
         self._period = np.nan
 

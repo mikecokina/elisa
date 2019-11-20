@@ -1,12 +1,12 @@
 import numpy as np
 
-from elisa import (
+from ... import (
     utils,
     const,
     umpy as up
 )
-from elisa.logger import getLogger
-from elisa.binary_system.orbit.transform import OrbitProperties
+from ...logger import getLogger
+from ...binary_system.orbit.transform import OrbitProperties
 
 logger = getLogger('binary_system.orbit.orbit')
 

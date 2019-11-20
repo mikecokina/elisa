@@ -345,7 +345,7 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
             self.assertTrue(e in obtained)
 
     @staticmethod
-    def test_init_from_json_std():
+    def _get_std():
         data = {
             "system": {
                 "inclination": 90.0,
@@ -367,7 +367,7 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "metallicity": 0.0
             },
             "secondary": {
-                "mass": 2.0,
+                "mass": 1.5,
                 "surface_potential": 7.1,
                 "synchronicity": 1.0,
                 "t_eff": 6500.0,
@@ -377,7 +377,57 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
                 "metallicity": 0.0
             }
         }
-        BinarySystem.from_json(data)
+        return BinarySystem.from_json(data)
 
-    def test_init_from_json_community(self):
-        pass
+    @staticmethod
+    def _get_community():
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0,
+                "mass_ratio": 0.75,
+                "semi_major_axis": 29.854
+            },
+            "primary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            },
+            "secondary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            }
+        }
+
+        return BinarySystem.from_json(data, _kind_of='community')
+
+    @classmethod
+    def test_init_from_json_std(cls):
+        cls._get_std()
+
+    @classmethod
+    def test_init_from_json_community(cls):
+        cls._get_community()
+
+    def test_init_from_json_community_and_std_are_equivalent(self):
+        com = self._get_community()
+        std = self._get_std()
+
+        com_a1 = np.float64((com.semi_major_axis * units.m).to(units.solRad))
+        com_a2 = np.float64((std.semi_major_axis * units.m).to(units.solRad))
+        self.assertTrue(np.round(com_a1, 2) == np.round(com_a2, 2))
+        self.assertTrue(np.round(com.mass_ratio, 2) == np.round(std.mass_ratio, 2))

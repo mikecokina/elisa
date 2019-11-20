@@ -1,6 +1,6 @@
 import numpy as np
 
-from elisa import (
+from .. import (
     units,
     const
 )

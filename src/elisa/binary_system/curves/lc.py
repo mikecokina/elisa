@@ -8,20 +8,20 @@ from copy import (
 )
 from scipy.interpolate import Akima1DInterpolator
 
-from elisa.logger import getLogger
-from elisa.conf import config
-from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.binary_system import radius as bsradius
-from elisa.binary_system.orbit.container import OrbitalSupplements
-from elisa.binary_system.surface.coverage import calculate_coverage_with_cosines
-from elisa.binary_system.curves import lcmp, shared
+from ...logger import getLogger
+from ...conf import config
+from ...binary_system.container import OrbitalPositionContainer
+from ...binary_system import radius as bsradius
+from ...binary_system.orbit.container import OrbitalSupplements
+from ...binary_system.surface.coverage import calculate_coverage_with_cosines
+from ...binary_system.curves import lcmp, shared
 
-from elisa import (
+from ... import (
     umpy as up,
     const,
     utils
 )
-from elisa.binary_system import (
+from ...binary_system import (
     utils as bsutils,
     dynamic,
     surface
