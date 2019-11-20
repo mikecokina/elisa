@@ -6,6 +6,7 @@ from elisa.logger import getLogger
 from elisa import (
     utils
 )
+from elisa.pulse import pulsations
 
 logger = getLogger('base.system')
 
@@ -62,6 +63,11 @@ class System(metaclass=ABCMeta):
     @abstractmethod
     def transform_input(self, *args, **kwargs):
         pass
+
+    def assign_pulsations_amplitudes(self):
+        for component, component_instance in self._components.items():
+            if component_instance.has_pulsations():
+                pulsations.assign_amplitudes(component_instance)
 
     def init_properties(self, **kwargs):
         """

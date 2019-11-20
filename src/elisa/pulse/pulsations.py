@@ -184,6 +184,7 @@ def generate_tilt_coordinates(star_container, phase):
 
 
 def assign_amplitudes(star_container):
-    pass
+    for mode_index, mode in star_container.pulsations.items():
+        mode.radial_relative_amplitude = mode.amplitude / (star_container.polar_radius * mode.angular_frequency)
 
 

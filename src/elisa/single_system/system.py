@@ -76,6 +76,7 @@ class SingleSystem(System):
 
         # this is also check if star surface is closed
         self.setup_radii()
+        self.assign_pulsations_amplitudes()
 
     @classmethod
     def is_property(cls, kwargs):
