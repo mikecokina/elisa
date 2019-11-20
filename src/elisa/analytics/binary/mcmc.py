@@ -8,14 +8,14 @@ from multiprocessing import Pool
 from typing import Iterable, Dict
 from datetime import datetime
 
-from elisa.analytics.binary.plot import Plot
-from elisa.conf import config
-from elisa.logger import getPersistentLogger
-from elisa.base.error import (
+from ...analytics.binary.plot import Plot
+from ...conf import config
+from ...logger import getPersistentLogger
+from ...base.error import (
     ElisaError,
     SolutionBubbleException
 )
-from elisa.analytics.binary import (
+from ...analytics.binary import (
     utils as analutils,
     params,
     models,

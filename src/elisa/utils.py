@@ -14,7 +14,7 @@ from copy import (
     copy,
     deepcopy
 )
-from elisa import (
+from . import (
     const,
     umpy as up
 )

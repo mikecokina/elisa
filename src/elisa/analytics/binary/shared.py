@@ -2,10 +2,10 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 
-from elisa.binary_system.system import BinarySystem
-from elisa.conf.config import BINARY_COUNTERPARTS
-from elisa.observer.observer import Observer
-from elisa.analytics.binary import (
+from ...binary_system.system import BinarySystem
+from ...conf.config import BINARY_COUNTERPARTS
+from ...observer.observer import Observer
+from ...analytics.binary import (
     utils as analutils,
     params,
     models

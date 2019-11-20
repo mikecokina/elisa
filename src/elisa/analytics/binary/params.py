@@ -1,11 +1,11 @@
 import numpy as np
 
 from typing import List, Tuple, Dict
-from elisa.atm import atm_file_prefix_to_quantity_list
-from elisa.base import error
-from elisa.binary_system.system import BinarySystem
-from elisa.conf import config
-from elisa.observer.observer import Observer
+from ...atm import atm_file_prefix_to_quantity_list
+from ...base import error
+from ...binary_system.system import BinarySystem
+from ...conf import config
+from ...observer.observer import Observer
 
 
 # DO NOT CHANGE KEYS - NEVER EVER

@@ -1,25 +1,24 @@
-from elisa import units
-from elisa.analytics.binary import params
-from elisa.base import error
-from elisa.base.star import Star
-from elisa.binary_system.system import BinarySystem
+from ... import units
+from ...analytics.binary import params
+from ...base import error
+from ...binary_system.system import BinarySystem
 
 
-def _prepare_star(**kwargs):
-    return Star(
-        **dict(
-            **dict(
-                mass=kwargs['mass'] * units.solMass,
-                surface_potential=kwargs['surface_potential'],
-                synchronicity=kwargs.get('synchronicity', 1.0),
-                t_eff=kwargs['t_eff'] * units.K,
-                gravity_darkening=kwargs.get('gravity_darkening', 1.0),
-                albedo=kwargs.get('albedo', 1.0),
-                metallicity=kwargs.get('metallicity', 0.0)
-            ),
-            **{"discretization_factor": kwargs["discretization_factor"]}
-            if kwargs.get("discretization_factor") else {})
-    )
+# def _prepare_star(**kwargs):
+#     return Star(
+#         **dict(
+#             **dict(
+#                 mass=kwargs['mass'] * units.solMass,
+#                 surface_potential=kwargs['surface_potential'],
+#                 synchronicity=kwargs.get('synchronicity', 1.0),
+#                 t_eff=kwargs['t_eff'] * units.K,
+#                 gravity_darkening=kwargs.get('gravity_darkening', 1.0),
+#                 albedo=kwargs.get('albedo', 1.0),
+#                 metallicity=kwargs.get('metallicity', 0.0)
+#             ),
+#             **{"discretization_factor": kwargs["discretization_factor"]}
+#             if kwargs.get("discretization_factor") else {})
+#     )
 
 
 def _serialize_star_kwargs(component, **kwargs):
@@ -30,7 +29,32 @@ def _serialize_star_kwargs(component, **kwargs):
     :param kwargs: Dict;
     :return: Dict;
     """
-    return {str(k)[3:]: v for k, v in kwargs.items() if str(k).startswith(component)}
+
+    no_prefix = {str(k)[3:]: v for k, v in kwargs.items() if str(k).startswith(component)}
+    return dict(
+        surface_potential=no_prefix['surface_potential'],
+        synchronicity=no_prefix.get('synchronicity', 1.0),
+        t_eff=no_prefix['t_eff'],
+        gravity_darkening=no_prefix.get('gravity_darkening', 1.0),
+        albedo=no_prefix.get('albedo', 1.0),
+        metallicity=no_prefix.get('metallicity', 0.0),
+        **{"discretization_factor": no_prefix["discretization_factor"]}
+        if no_prefix.get("discretization_factor") else {},
+        **{"mass": no_prefix["mass"]} if no_prefix.get("mass") else {}
+    )
+
+
+def serialize_system_kwargs(**kwargs):
+    return dict(
+        argument_of_periastron=kwargs.get('argument_of_periastron', 90.0),
+        gamma=kwargs.get('gamma', 0.0),
+        period=kwargs["period"],
+        eccentricity=kwargs.get('eccentricity', 0.0),
+        inclination=kwargs['inclination'],
+        primary_minimum_time=0.0,
+        **{"semi_major_axis": kwargs["semi_major_axis"]} if kwargs.get("semi_major_axis") else {},
+        **{"mass_ratio": kwargs["mass_ratio"]} if kwargs.get("mass_ratio") else {}
+    )
 
 
 def serialize_primary_kwargs(**kwargs):
@@ -43,8 +67,9 @@ def serialize_seondary_kwargs(**kwargs):
 
 def prepare_binary(period, discretization, **kwargs):
     """
-    Setup circular synchrnonous binary system.
-    If `beta` (gravity darkening factor) or `albedo` is not supplied, then `1.0` is used as their default value.
+    Setup binary system.
+    If `beta` (gravity darkening factor), `albedo`, `metallicity` or `synchronicity` is not supplied,
+    then `1.0` is used as their default value.
 
     :param period: float;
     :param discretization; float;
@@ -53,6 +78,8 @@ def prepare_binary(period, discretization, **kwargs):
         * **argument_of_periastron** * -- float;
         * **eccentricity** * -- float;
         * **inclination** * -- float;
+        * **mass_ratio** * -- float; parameter has to be paired with `semi_major_axis`
+        * **semi_major_axis** * -- float;
         * **p__mass** * -- float;
         * **p__t_eff** * -- float;
         * **p__surface_potential** * -- float;
@@ -70,21 +97,16 @@ def prepare_binary(period, discretization, **kwargs):
     :return: elisa.binary_system.system.BinarySystem;
     """
 
-    kwargs.update({"p__discretization_factor": discretization})
-    primary = _prepare_star(**serialize_primary_kwargs(**kwargs))
-    secondary = _prepare_star(**serialize_seondary_kwargs(**kwargs))
-
-    return BinarySystem(
-        primary=primary,
-        secondary=secondary,
-        argument_of_periastron=kwargs.get('argument_of_periastron', 90.0) * units.deg,
-        gamma=0.0,
-        period=period * units.d,
-        eccentricity=kwargs.get('eccentricity', 0.0),
-        inclination=kwargs['inclination'] * units.deg,
-        primary_minimum_time=0.0,
-        phase_shift=0.0
-    )
+    kwargs.update({"p__discretization_factor": discretization, "period": period})
+    primary_kwargs = serialize_primary_kwargs(**kwargs)
+    secondary_kwargs = serialize_seondary_kwargs(**kwargs)
+    system_kwargs = serialize_system_kwargs(**kwargs)
+    json = {
+        "primary": dict(**primary_kwargs),
+        "secondary": dict(**secondary_kwargs),
+        "system": dict(**system_kwargs)
+    }
+    return BinarySystem.from_json(json, _verify=False)
 
 
 def synthetic_binary(xs, period, discretization, morphology, observer, **kwargs):
@@ -99,6 +121,8 @@ def synthetic_binary(xs, period, discretization, morphology, observer, **kwargs)
         * **argument_of_periastron** * -- float;
         * **eccentricity** * -- float;
         * **inclination** * -- float;
+        * **mass_ratio** * -- float; parameter has to be paired with `semi_major_axis`
+        * **semi_major_axis** * -- float;
         * **p__mass** * -- float;
         * **p__t_eff** * -- float;
         * **p__surface_potential** * -- float;
@@ -151,6 +175,14 @@ def prepare_central_rv_binary(period, **kwargs):
 
 
 def central_rv_synthetic(xs, period, observer, **kwargs):
+    """
+
+    :param xs:
+    :param period:
+    :param observer:
+    :param kwargs:
+    :return:
+    """
     binary = prepare_central_rv_binary(period, **kwargs)
     observer._system = binary
     rv = observer.observe.rv(phases=xs, normalize=False)

@@ -2,7 +2,7 @@ import numpy as np
 
 from corner import corner as _corner
 from matplotlib import pyplot as plt
-from elisa.analytics.binary import params
+from ...analytics.binary import params
 
 
 class Plot(object):
