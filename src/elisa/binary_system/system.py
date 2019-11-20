@@ -128,7 +128,7 @@ class BinarySystem(System):
                 "argument_of_periastron": 90.0,
                 "gamma": 0.0,
                 "eccentricity": 0.3,
-                "primamry_minimum_time": 0.0,
+                "primary_minimum_time": 0.0,
                 "phase_shift": 0.0
               },
               "primary": {
@@ -155,6 +155,7 @@ class BinarySystem(System):
 
         :return: elisa.binary_system.system.BinarySystem
         """
+        bsutils.validate_binary_json(data)
         primary, secondary = Star(**data["primary"]), Star(**data["secondary"])
         return cls(primary=primary, secondary=secondary, **data["system"])
 

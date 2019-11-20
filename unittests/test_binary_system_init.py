@@ -1,6 +1,6 @@
-import numpy as np
-
 from copy import copy
+
+import numpy as np
 from astropy import units as u
 from numpy.testing import assert_array_equal
 
@@ -343,3 +343,41 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
         expected = ["semi_major_axis", "morphology", "mass_ratio"]
         for e in expected:
             self.assertTrue(e in obtained)
+
+    @staticmethod
+    def test_init_from_json_std():
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0
+            },
+            "primary": {
+                "mass": 2.0,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            },
+            "secondary": {
+                "mass": 2.0,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            }
+        }
+        BinarySystem.from_json(data)
+
+    def test_init_from_json_community(self):
+        pass

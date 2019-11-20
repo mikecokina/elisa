@@ -44,7 +44,7 @@ v0.2.dev0_
     - split supplied phases to `N` smaller batches (N is equal to desired processes but up to number of available cores) and computed all at once
 * **fitting parameters of binary system** *
 
-    - radial velocity fitting based on ``least squares`` method
+    - radial velocity fitting based on ``least squares`` method (standard physical parameters, :math:`M_1`, :math:`M_2`, :math:`e`, :math:`i`, :math:`{\omega}`, :math:`{\gamma}`
 
 **Fixes**
 
