@@ -16,7 +16,7 @@ class Plot(object):
                      for key, val in zip(labels, sample)] for sample in flat_chain]
 
     @staticmethod
-    def corner(flat_chain, labels, plot_datapoints=True, quantiles=None, renorm=None):
+    def corner(flat_chain, labels, plot_datapoints=True, quantiles=None, renorm=None, truths=None):
         """
         Evaluate mcmc corner plot.
 
@@ -31,11 +31,13 @@ class Plot(object):
         :param plot_datapoints: bool;
         :param quantiles: Union[List, numpy.array];
         :param renorm: Dict[str, Tuple(float, float)];
+        :param truths: List[float], real value to be ploted
         """
         flat_chain = Plot._renormalize_flat_chain(flat_chain, labels, renorm)
         quantiles = [0.16, 0.5, 0.84] if quantiles is None else quantiles
         labels = [params.PARAMS_KEY_TEX_MAP[label] for label in labels]
-        _corner(flat_chain, show_titles=True, labels=labels, plot_datapoints=plot_datapoints, quantiles=quantiles)
+        _corner(flat_chain, show_titles=True, labels=labels, plot_datapoints=plot_datapoints,
+                quantiles=quantiles, truths=truths)
         plt.show()
 
     @staticmethod

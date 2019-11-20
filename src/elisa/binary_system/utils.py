@@ -1,9 +1,12 @@
 import numpy as np
-from pypex.poly2d.polygon import Polygon
 
-from elisa.binary_system import model
-from elisa.utils import is_empty
-from elisa import (
+from pypex.poly2d.polygon import Polygon
+from jsonschema import validate, ValidationError
+
+from ..conf.config import SCHEMA_REGISTRY
+from ..binary_system import model
+from ..utils import is_empty
+from .. import (
     umpy as up,
     utils
 )
@@ -181,3 +184,33 @@ def calculate_rotational_phase(system_container, component):
     """
     star = getattr(system_container, component)
     return (star.synchronicity - 1.0) * system_container.position.phase
+
+
+def validate_binary_json(data):
+    """
+    Validate input json to create binary instance from.
+
+    :param data: Dict; json like object
+    :return bool; return True if valid schema, othervise raise error
+    :raise ValidationError;
+    """
+    schema_std = SCHEMA_REGISTRY.get_schema("binary_system_std")
+    schema_community = SCHEMA_REGISTRY.get_schema("binary_system_community")
+    std_valid, community_valid = False, False
+
+    try:
+        validate(instance=data, schema=schema_std)
+        std_valid = True
+    except ValidationError:
+        pass
+
+    try:
+        validate(instance=data, schema=schema_community)
+        community_valid = True
+    except ValidationError:
+        pass
+
+    if (not community_valid) & (not std_valid):
+        raise ValidationError("BinarySystem cannot be created from supplied json schema")
+
+    return True

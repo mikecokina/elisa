@@ -103,6 +103,8 @@ setup(
         'elisa': [
             'passband/*',
             'conf/*',
+            'schema_registry/*',
+            'schema_registry/schema_files/*'
         ],
     },
 

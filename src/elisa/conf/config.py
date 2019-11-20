@@ -2,12 +2,12 @@ import json
 import logging
 import os
 import warnings
-
 import numpy as np
 
 from configparser import ConfigParser
 from logging import config as log_conf
 from os.path import dirname, isdir, pardir
+from ..schema_registry import registry
 
 
 c_parse = ConfigParser()
@@ -27,6 +27,9 @@ else:
     raise LookupError("Couldn't resolve configuration file. To define it \n "
                       "  - Set the environment variable ELISA_CONFIG, or \n "
                       "  - Add conf/elisa_conf.ini under your virtualenv root \n ")
+
+# schema registry
+SCHEMA_REGISTRY = registry.Registry()
 
 # basic app configuration
 CONFIG_FILE = config_file

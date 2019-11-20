@@ -1,8 +1,7 @@
 import functools
-from abc import ABCMeta
-
 import numpy as np
 
+from abc import ABCMeta
 from copy import copy
 from scipy.optimize import least_squares
 
@@ -77,6 +76,7 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         :param discretization: float; discretization of objects
         :param xtol: float; tolerance of error to consider hitted solution as exact
         :param yerrs: Union[numpy.array, float]; errors for each point of observation
+        :param max_nfev: int; maximal iteration
         :return: Dict; solution on supplied quantiles, default is [16, 50, 84]
         """
         passband = list(ys.keys())
@@ -173,7 +173,12 @@ class CentralRadialVelocity(object):
         return result_dict
 
 
-binary_detached = LightCurveFit()
-binary_overcontact = LightCurveFit()
+class CentralRadialVelocityStd(CentralRadialVelocity):
+    pass
+
+
+binary_detached = DetachedLightCurveFit()
+binary_overcontact = OvercontactLightCurveFit()
 
 central_rv = CentralRadialVelocity()
+central_rvstd = CentralRadialVelocityStd()

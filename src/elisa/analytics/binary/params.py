@@ -315,6 +315,14 @@ def adjust_constrained_potential(adjust_in, to_value=None):
 
 
 def adjust_result_constrained_potential(adjust_in, hash_map):
+    """
+    In constarained potentials (over-contact system), secondary potential is artificialy fixed and its values has to
+    be changed to valid at the end of the fitting process.
+
+    :param adjust_in: List[Dict]; result like Dict
+    :param hash_map: Dict[str, int]; map of indices for parameters
+    :return: List[Dict]; same shape as input
+    """
     value = adjust_in[hash_map[PARAMS_KEY_MAP['Omega1']]]["value"]
     adjust_in[hash_map[PARAMS_KEY_MAP['Omega2']]] = {
         "param": PARAMS_KEY_MAP['Omega2'],
@@ -326,6 +334,12 @@ def adjust_result_constrained_potential(adjust_in, hash_map):
 
 
 def extend_result_with_units(result):
+    """
+    Add unit information to `result` list.
+
+    :param result: List[Dict];
+    :return: List[Dict];
+    """
     for res in result:
         key = res.get('param')
         if key in PARAMS_UNITS_MAP:
