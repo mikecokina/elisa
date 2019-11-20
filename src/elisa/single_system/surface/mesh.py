@@ -7,6 +7,7 @@ from elisa.base.spot import incorporate_spots_mesh
 from elisa.base.error import MaxIterationError
 from elisa.single_system.radius import calculate_radius
 from elisa.conf import config
+from elisa.pulse import pulsations
 
 from elisa import (
     const,
@@ -21,14 +22,18 @@ def build_mesh(system_container):
     """
     Build points of surface for including spots.
     """
+    star = system_container.star
     a, b, c, d = mesh(system_container=system_container, symmetry_output=True)
 
-    system_container.star.points = a
-    system_container.star.point_symmetry_vector = b
-    system_container.star.base_symmetry_points_number = c
-    system_container.star.inverse_point_symmetry_matrix = d
+    star.points = a
+    star.point_symmetry_vector = b
+    star.base_symmetry_points_number = c
+    star.inverse_point_symmetry_matrix = d
 
     add_spots_to_mesh(system_container)
+    if system_container.star.has_pulsations():
+        star = pulsations.incorporate_pulsations_to_mesh(star, com_x=0.0, phase=system_container.position.phase)
+    return system_container
 
 
 def mesh(system_container, symmetry_output=False):

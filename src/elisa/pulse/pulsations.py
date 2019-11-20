@@ -2,7 +2,7 @@ import numpy as np
 
 from elisa import utils, const, units, umpy as up
 
-from scipy.special import sph_harm
+from scipy.special import sph_harm, factorial
 from copy import copy
 
 """file containing functions dealing with pulsations"""
@@ -121,10 +121,9 @@ def calc_temp_pert(star_instance, phase, rot_period):
         exponential = np.exp(complex(0, -exponent))
         temp_pert_cmplx = mode.amplitude * mode.rals[0] * exponential
         temp_pert += temp_pert_cmplx.real
-        if star_instance.has_spots():
-            for spot_idx, spot in star_instance.spots.items():
-                temp_pert_cmplx = mode.amplitude * mode.rals[1][spot_idx] * exponential
-                temp_pert_spot[spot_idx] += temp_pert_cmplx.real
+        for spot_idx, spot in star_instance.spots.items():
+            temp_pert_cmplx = mode.amplitude * mode.rals[1][spot_idx] * exponential
+            temp_pert_spot[spot_idx] += temp_pert_cmplx.real
     return temp_pert, temp_pert_spot
 
 
@@ -140,15 +139,27 @@ def phase_correction(phase):
 
 
 def incorporate_pulsations_to_mesh(star_container, com_x, phase):
-    centres, centres_spot = star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
+    points, points_spot = star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
 
     tilt_phi, tilt_theta = generate_tilt_coordinates(star_container, phase)
-    centres, centres_spot = tilt_mode_coordinates(centres, centres_spot, tilt_phi, tilt_theta)
+    points, points_spot = tilt_mode_coordinates(points, points_spot, tilt_phi, tilt_theta)
 
-    displacement = up.zeros(centres.shape)
-    displacement = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in centres_spot.items()}
+    displacement = up.zeros(points.shape)
+    displacement_spots = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in points_spot.items()}
+
     for mode_index, mode in star_container.pulsations.items():
-        pass
+        rals = mode.renorm_const * sph_harm(mode.m, mode.l, points[:, 1], points[:, 2])
+        rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2])
+                     for spot_idx, spotp in points_spot.items()}
+
+        displacement += calculate_mode_displacement(mode, points, rals)
+        for spot_idx, scentres in points_spot.items():
+            displacement_spots[spot_idx] += calculate_mode_displacement(mode, scentres, rals_spots[spot_idx])
+
+    star_container.points = utils.spherical_to_cartesian(points + displacement)
+    for spot_idx, spot in star_container.spots.items():
+        spot.points = utils.spherical_to_cartesian(points_spot[spot_idx] + displacement_spots[spot_idx])
+    return star_container
 
 
 def tilt_mode_coordinates(points, spot_points, phi, theta):
@@ -162,9 +173,10 @@ def tilt_mode_coordinates(points, spot_points, phi, theta):
     :return: tuple;
     """
     if theta != 0:
-        points = utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
-        spot_points = {spot_idx: utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
-                       for spot_idx, points in spot_points.items()}
+        tilted_phi, tilted_theta = utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
+        spot_points = {spot_idx: utils.rotation_in_spherical(spoints[:, 1], spoints[:, 2], phi, theta)
+                       for spot_idx, spoints in spot_points.items()}
+        points = np.column_stack((points[:, 0], tilted_phi, tilted_theta))
     return points, spot_points
 
 
@@ -183,8 +195,90 @@ def generate_tilt_coordinates(star_container, phase):
     return phi, theta
 
 
-def assign_amplitudes(star_container):
+def assign_amplitudes(star_container, normalization_constant=1.0):
+    """
+    assigns amplitude of radial and horizontal motion for given modes
+
+    :param normalization_constant: factor to adjust amplitudes, in cas of Binary system it is semi major axis, in case
+    of single system it should stay 1.0
+    :param star_container: StarContainer;
+    :return:
+    """
+    mult = const.G * star_container.mass / (star_container.polar_radius * normalization_constant)**3
     for mode_index, mode in star_container.pulsations.items():
-        mode.radial_relative_amplitude = mode.amplitude / (star_container.polar_radius * mode.angular_frequency)
+        mode.radial_relative_amplitude = mode.amplitude / (star_container.polar_radius * mode.angular_frequency) / \
+                                         normalization_constant
+        mode.horizontal_relative_amplitude = \
+            mode.radial_relative_amplitude * np.sqrt(mode.l*(mode.l+1)) * mult * mode.angular_frequency**2
 
 
+def calculate_radial_displacement(relative_amplitude, radii, rals):
+    """
+    calculates radial displacement of surface points
+
+    :param rals: numpy.array;
+    :param relative_amplitude: float; relative radial amplitude of the pulsation mode
+    see: PulsationMode.radial_relative_amplitude
+    :param radii: numpy.array;
+    :return: numpy.array
+    """
+    return relative_amplitude * radii * np.real(rals)
+
+
+def calculate_phi_displacement(relative_amplitude, radii, thetas, m, rals):
+    """
+    displacement of azimuthal coordinates
+
+    :param relative_amplitude: float; relative amplitude of horizontal displacement
+    :param radii: numpy.array;
+    :param thetas: numpy.array
+    :param m: int;
+    :param rals: numpy.array;
+    :return: numpy.array;
+    """
+    sin_thetas = np.sin(thetas)
+    sin_test = sin_thetas != 0.0
+    retval = np.zeros(radii.shape)
+    retval[sin_test] = \
+        relative_amplitude * radii[sin_test] * m * np.imag(- rals[sin_test]) / sin_thetas[sin_test]
+    return retval
+
+
+def calculate_theta_displacement(relative_amplitude, radii, phis, thetas, l, m):
+    """
+    displacement in latitude
+
+    :param relative_amplitude: float; relative amplitude of horizontal displacement
+    :param radii: numpy.array;
+    :param thetas: numpy.array;
+    :param phis: numpy.array;
+    :param l: int;
+    :param m: int;
+    :return: numpy.array;
+    """
+    def alp_derivative(order):
+        """works for m > 0"""
+        derivative = \
+            0.5 * np.sqrt((l + order) * (l - order + 1)) * \
+            np.real(np.exp(1j*phis) * sph_harm(order-1, l, phis, thetas))
+        derivative += 0 if order == l else \
+            0.5 * np.sqrt((l - order) * (l + order + 1)) * \
+            np.real(np.exp(-1j*phis) * sph_harm(order+1, l, phis, thetas))
+        return derivative
+
+    if m > 0:
+        return relative_amplitude * radii * alp_derivative(m)
+    elif m == 0:
+        return - relative_amplitude * radii * np.real(sph_harm(1, l, phis, thetas))
+    elif m < 0:
+        coeff = np.power(-1, -m) * factorial(l+m) / factorial(l-m)
+        return relative_amplitude * radii * coeff * alp_derivative(-m)
+
+
+def calculate_mode_displacement(mode, points, rals):
+    radial_displacement = calculate_radial_displacement(mode.radial_relative_amplitude, points[:, 0], rals)
+    phi_displacement = calculate_phi_displacement(mode.horizontal_relative_amplitude, points[:, 0], points[:, 2],
+                                                  mode.m, rals)
+    theta_displacement = calculate_theta_displacement(mode.horizontal_relative_amplitude, points[:, 0], points[:, 1],
+                                                      points[:, 2], mode.l, mode.m)
+    return np.column_stack((radial_displacement, phi_displacement, theta_displacement))

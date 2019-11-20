@@ -112,7 +112,7 @@ class BinarySystem(System):
         self.morphology = self.compute_morphology()
 
         self.setup_periastron_components_radii(components_distance=self.orbit.periastron_distance)
-        self.assign_pulsations_amplitudes()
+        self.assign_pulsations_amplitudes(normalisation_constant=self.semi_major_axis)
 
         # adjust and setup discretization factor if necessary
         self.setup_discretisation_factor()

@@ -35,12 +35,13 @@ class PulsationMode(object):
 
         # here the time-independent, renormalized associated Legendree polynomial is stored
         self.rals = None
-        self.rals_constant = None
         self.radial_relative_amplitude = None
+        self.horizontal_relative_amplitude = None
 
         self.init_properties(**kwargs)
 
         self.angular_frequency = c.FULL_ARC * self.frequency
+        self.renorm_const = utils.spherical_harmonics_renormalization_constant(self.l, self.m)
 
         self.validate_mode()
 

@@ -49,13 +49,14 @@ def build_mesh(system, components_distance, component="all"):
         star.base_symmetry_points_number = c
         star.inverse_point_symmetry_matrix = d
 
-        # adding pulsations
+    add_spots_to_mesh(system, components_distance, component="all")
+    # adding pulsations
+    for component in components:
+        star = getattr(system, component)
         if star.has_pulsations():
             phase = butils.calculate_rotational_phase(system, component)
             com_x = 0 if component == 'primary' else components_distance
-            pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, phase=phase)
-
-    add_spots_to_mesh(system, components_distance, component="all")
+            star = pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, phase=phase)
     return system
 
 

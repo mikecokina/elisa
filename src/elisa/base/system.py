@@ -40,6 +40,8 @@ class System(metaclass=ABCMeta):
         self.gamma = np.nan
         self.additional_light = 0.0
 
+        self._components = None
+
         if utils.is_empty(name):
             self.name = str(System.ID)
             logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
@@ -64,10 +66,16 @@ class System(metaclass=ABCMeta):
     def transform_input(self, *args, **kwargs):
         pass
 
-    def assign_pulsations_amplitudes(self):
+    def assign_pulsations_amplitudes(self, normalisation_constant=1.0):
+        """
+        function assigns amplitudes of displacement to each mode based on radial velocity amplitude
+
+        :param normalisation_constant: float;
+        :return:
+        """
         for component, component_instance in self._components.items():
             if component_instance.has_pulsations():
-                pulsations.assign_amplitudes(component_instance)
+                pulsations.assign_amplitudes(component_instance, normalisation_constant)
 
     def init_properties(self, **kwargs):
         """

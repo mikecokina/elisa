@@ -839,7 +839,9 @@ def multithread_atm_tables_reader_runner(fpaths):
         for index, fpath in enumerate(fpaths):
             if not os.path.isfile(fpath):
                 logger.debug(f"accessing atmosphere file {fpath}")
-                raise FileNotFoundError(f"file {fpath} doesn't exist. it seems your model could be not physical")
+                raise FileNotFoundError(f"file {fpath} doesn't exist. Your atmosphere tables are either not properly "
+                                        f"installed or atmosphere parameters of your stellar model are not covered by "
+                                        f"the currently used table.")
             path_queue.put((index, fpath))
 
         for _ in range(n_threads):

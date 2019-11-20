@@ -363,7 +363,8 @@ class StarContainer(object):
         faces = self.faces
         temperatures = self.temperatures
         log_g = self.log_g
-        rals = {mode_idx: mode.rals[0] for mode_idx, mode in self.pulsations.items()}
+        rals = {mode_idx: None for mode_idx, mode in self.pulsations.items()}
+        # rals = {mode_idx: mode.rals[0] for mode_idx, mode in self.pulsations.items()}
         centres = self.face_centres
 
         if isinstance(self.spots, (dict,)):
@@ -373,8 +374,8 @@ class StarContainer(object):
                 normals = up.concatenate((normals, spot.normals), axis=0)
                 temperatures = up.concatenate((temperatures, spot.temperatures), axis=0)
                 log_g = up.concatenate((log_g, spot.log_g), axis=0)
-                for mode_idx, mode in self.pulsations.items():
-                    rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
+                # for mode_idx, mode in self.pulsations.items():
+                #     rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
                 centres = up.concatenate((centres, spot.face_centres), axis=0)
 
         return points, normals, faces, temperatures, log_g, rals, centres

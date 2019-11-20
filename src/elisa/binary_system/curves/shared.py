@@ -82,7 +82,7 @@ def get_normal_radiance(system, component="all", **kwargs):
                     metallicity=getattr(system, cpmnt).metallicity,
                     **kwargs
                 )
-            ) for cpmnt in config.BINARY_COUNTERPARTS
+            ) for cpmnt in components
     }
 
     # mirroring symmetrical part back to the rest of the surface
@@ -107,20 +107,10 @@ def prep_surface_params(system, **kwargs):
         * ** atlas ** * - str
     :return:
     """
-
-    if not system.has_pulsations():
-        # compute normal radiance for each face and each component
-        normal_radiance = get_normal_radiance(system, **kwargs)
-        # obtain limb darkening factor for each face
-        ld_cfs = get_limbdarkening_cfs(system, **kwargs)
-    elif not system.primary.has_pulsations():
-        normal_radiance = {'primary': get_normal_radiance(system, 'primary', **kwargs)}
-        ld_cfs = {'primary': get_limbdarkening_cfs(system, 'primary', **kwargs)}
-    elif not system.secondary.has_pulsations():
-        normal_radiance = {'secondary': get_normal_radiance(system, 'secondary', **kwargs)}
-        ld_cfs = {'secondary': get_limbdarkening_cfs(system, 'secondary', **kwargs)}
-    else:
-        raise NotImplemented("Pulsations are not fully implemented")
+    # compute normal radiance for each face and each component
+    normal_radiance = get_normal_radiance(system, **kwargs)
+    # obtain limb darkening factor for each face
+    ld_cfs = get_limbdarkening_cfs(system, **kwargs)
     return normal_radiance, ld_cfs
 
 
