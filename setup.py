@@ -74,6 +74,8 @@ setup(
     install_requires=[
         'astropy==2.0.2',
         'cycler==0.10.0',
+        'corner==2.0.1',
+        'emcee==3.0.1',
         'matplotlib==2.1.0',
         'numpy==1.16.2',
         'pandas==0.24.0',

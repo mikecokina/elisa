@@ -42,9 +42,15 @@ v0.2.dev0_
 * **capability to compute lightcurves on several processor's cores (multiprocessing)**
 
     - split supplied phases to `N` smaller batches (N is equal to desired processes but up to number of available cores) and computed all at once
-* **fitting parameters of binary system** *
+* **fitting parameters of binary system**
 
+    - light curve fitting using ``Markov Chain Monte Carlo`` (capability to fit using standard physical parameters :math:`M_1`, :math:`M_2` or parameters used by community :math:`q` (mass ratio) and :math:`a` (semi major axis))
+    - light curve fitting using ``non-linear least squares`` method (capability to fit using standard physica; parameters :math:`M_1`, :math:`M_2` or parameters used by community :math:`q` (mass ratio) and :math:`a` (semi major axis))
     - radial velocity fitting based on ``least squares`` method (standard physical parameters, :math:`M_1`, :math:`M_2`, :math:`e`, :math:`i`, :math:`{\omega}`, :math:`{\gamma}`
+
+* **more specific errors raised**
+
+    - created several different type of errors (see ``elisa.base.errors`` for more information)
 
 **Fixes**
 
@@ -56,17 +62,12 @@ v0.2.dev0_
 Future plans
 ============
 
-v0.2
-----
-
-    - basic fitting methods
-
 v0.3
 ----
-    - single system
+    - pulsations
 
 v0.4
 ----
     - genetic algorithm
-    - pulsations
+    - single system
     - extended fitting methods

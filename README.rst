@@ -42,17 +42,21 @@ Requirements
 
     astropy==2.0.2
     cycler==0.10.0
+    corner==2.0.1
+    emcee==3.0.1
+    jsonschema==3.2.0
     matplotlib==2.1.0
     numpy==1.16.2
     pandas==0.24.0
+    py==1.4.34
     pyparsing==2.2.0
     pypex==0.1.0
     pytest==3.2.3
     python-dateutil==2.6.1
     pytz==2017.2
-    py==1.4.34
     scipy==1.0.0
     six==1.11.0
+
 
 and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
 
