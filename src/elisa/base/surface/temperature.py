@@ -15,7 +15,7 @@ def calculate_effective_temperatures(star_container, gradient_magnitudes):
     t_eff_polar = calculate_polar_effective_temperature(star_container)
     t_eff = t_eff_polar * up.power(gradient_magnitudes / star_container.polar_potential_gradient_magnitude,
                                    0.25 * star_container.gravity_darkening)
-    return t_eff if star_container.symmetry_test() else t_eff[star_container.face_symmetry_vector]
+    return t_eff[star_container.face_symmetry_vector] if star_container.symmetry_test() else t_eff
 
 
 def calculate_polar_effective_temperature(star_container):
