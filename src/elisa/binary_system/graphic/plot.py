@@ -128,6 +128,8 @@ class Plot(object):
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
+        orbital_position_container.build_pulsations_on_mesh(component=components_to_plot,
+                                                            components_distance=components_distance)
 
         if components_to_plot in ['primary', 'both']:
             binary_mesh_kwargs.update({
@@ -274,6 +276,7 @@ class Plot(object):
 
                 if normals:
                     surface_kwargs[f'{component}_centres'] *= sma
+                    surface_kwargs[f'{component}_arrows'] *= sma
 
         surface_kwargs.update({
             "phase": phase,

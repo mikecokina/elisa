@@ -237,6 +237,9 @@ class StarContainer(object):
     def has_pulsations(self):
         return len(self.pulsations) > 0
 
+    def symmetry_test(self):
+        return not self.has_spots() and not self.has_pulsations()
+
     def copy(self):
         """
         Return deepcopy of StarContainer instance.
@@ -297,7 +300,7 @@ class StarContainer(object):
         if len(self.faces) == 0 or len(self.points) == 0:
             raise ValueError('Faces or/and points of object {self.name} have not been set yet.\n'
                              'Run build method first.')
-        if not self.has_spots():  # temporary
+        if self.symmetry_test():
             base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
                                               self.points[:self.base_symmetry_points_number])
             return base_areas[self.face_symmetry_vector]
@@ -406,7 +409,7 @@ class StarContainer(object):
         :param kind: str; `points` or `face_centres` or other variable containing cartesian points in both star and spot
         containers
         :param com_x: float;
-        :return: tuple; sperical coordinates of star variable, dictionary of spherical coordinates of spot variable
+        :return: tuple; spherical coordinates of star variable, dictionary of spherical coordinates of spot variable
         """
         # separating variables to convert
         centres_cartesian = copy(getattr(self, kind))

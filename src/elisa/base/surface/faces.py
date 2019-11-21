@@ -153,26 +153,6 @@ def calculate_surface_centres(points, faces):
     return np.average(points[faces], axis=1)
 
 
-def set_all_normals(for_container, com):
-    """
-    Function calculates normals for each face of given body (including spots) and assign it to object.
-
-    :param for_container: instance of container to set normals on;
-    :param com: numpy.array;
-    :param for_container: instance of container to set normals on;
-    """
-    points, faces, cntrs = for_container.points, for_container.faces, for_container.face_centres
-    for_container.normals = calculate_normals(points, faces, cntrs, com)
-
-    if for_container.has_spots():
-        for spot_index in for_container.spots:
-            for_container.spots[spot_index].normals = calculate_normals(for_container.spots[spot_index].points,
-                                                                        for_container.spots[spot_index].faces,
-                                                                        for_container.spots[spot_index].face_centres,
-                                                                        com)
-    return for_container
-
-
 def calculate_normals(points, faces, centres, com):
     """
     Returns outward facing normal unit vector for each face of stellar surface.

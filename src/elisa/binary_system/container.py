@@ -57,7 +57,7 @@ class OrbitalPositionContainer(PositionContainer):
     def has_pulsations(self):
         return self.primary.has_pulsations() or self.secondary.has_pulsations()
 
-    def build(self, components_distance=None, component="all", do_pulsations=False, phase=None, **kwargs):
+    def build(self, components_distance=None, component="all", phase=None, **kwargs):
         """
         Main method to build binary star system from parameters given on init of BinaryStar.
 
@@ -79,7 +79,7 @@ class OrbitalPositionContainer(PositionContainer):
 
         components_distance = self._components_distance(components_distance)
         self.build_mesh(components_distance, component)
-        self.build_from_points(components_distance, component, do_pulsations=do_pulsations, phase=phase)
+        self.build_from_points(components_distance, component, phase=phase)
         return self
 
     def build_mesh(self, components_distance=None, component="all"):
@@ -89,6 +89,9 @@ class OrbitalPositionContainer(PositionContainer):
     def build_faces(self, components_distance=None, component="all"):
         components_distance = self._components_distance(components_distance)
         return faces.build_faces(self, components_distance, component)
+
+    def build_pulsations_on_mesh(self, component, components_distance):
+        return mesh.build_pulsations_on_mesh(self, component, components_distance)
 
     def build_surface_areas(self, component="all"):
         return faces.compute_all_surface_areas(self, component)
@@ -104,9 +107,9 @@ class OrbitalPositionContainer(PositionContainer):
     def build_temperature_distribution(self, components_distance=None, component="all", do_pulsations=False,
                                        phase=None):
         components_distance = self._components_distance(components_distance)
-        return temperature.build_temperature_distribution(self, components_distance, component, do_pulsations, phase)
+        return temperature.build_temperature_distribution(self, components_distance, component, phase)
 
-    def build_from_points(self, components_distance=None, component="all", do_pulsations=False, phase=None):
+    def build_from_points(self, components_distance=None, component="all", phase=None):
         """
         Build binary system from present surface points.
 
@@ -118,10 +121,11 @@ class OrbitalPositionContainer(PositionContainer):
         """
         components_distance = self._components_distance(components_distance)
         self.build_faces(components_distance, component)
+        self.build_pulsations_on_mesh(component, components_distance)
         self.build_surface_areas(component)
         self.build_faces_orientation(components_distance, component)
         self.build_surface_gravity(components_distance, component)
-        self.build_temperature_distribution(components_distance, component, do_pulsations=do_pulsations, phase=phase)
+        self.build_temperature_distribution(components_distance, component, phase=phase)
         return self
 
     def apply_eclipse_filter(self):

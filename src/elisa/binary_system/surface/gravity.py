@@ -63,7 +63,6 @@ def calculate_face_magnitude_gradient(components_distance, component, points, fa
     :param face_symmetry_vector: Union[numpy.array, None];
     :return: numpy.array;
     """
-
     gradients = calculate_potential_gradient(components_distance, component, points, synchronicity, mass_ratio)
     domega_dx, domega_dy, domega_dz = gradients[:, 0], gradients[:, 1], gradients[:, 2]
     points_gradients = up.power(up.power(domega_dx, 2) + up.power(domega_dy, 2) + up.power(domega_dz, 2), 0.5)
@@ -158,7 +157,7 @@ def build_surface_gravity(system, components_distance, component="all"):
 
         pgms_args = bgravity.eval_args_for_magnitude_gradient(star) + (synchronicity, mass_ratio)
         pgms_kwargs = dict(
-            **{"face_symmetry_vector": star.face_symmetry_vector} if not star.has_spots() else {})
+            **{"face_symmetry_vector": star.face_symmetry_vector} if star.symmetry_test() else {})
         pgms = calculate_face_magnitude_gradient(components_distance, component, *pgms_args, **pgms_kwargs)
         setattr(star, "potential_gradient_magnitudes", pgms)
 

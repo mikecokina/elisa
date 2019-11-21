@@ -119,8 +119,43 @@ def build_faces_orientation(system_container):
 
     star_container = system_container.star
     bfaces.set_all_surface_centres(star_container)
-    bfaces.set_all_normals(star_container, com=com_x)
+    set_all_normals(star_container, com=com_x)
 
     if star_container.has_pulsations():
-        pulsations.set_ralp(star_container, com_x=com_x)
+        pulsations.set_ralp(star_container, com_x=com_x, phase=system_container.position.phase)
     return system_container
+
+
+def set_all_normals(star_container, com):
+    """
+    Function calculates normals for each face of given body (including spots) and assign it to object.
+
+    :param star_container: instance of container to set normals on;
+    :param com: numpy.array;
+    :param star_container: instance of container to set normals on;
+    """
+    points, faces, cntrs = star_container.points, star_container.faces, star_container.face_centres
+    if star_container.symmetry_test():
+        normals1 = bfaces.calculate_normals(points[:star_container.base_symmetry_faces_number],
+                                            faces[:star_container.base_symmetry_faces_number],
+                                            cntrs[:star_container.base_symmetry_faces_number], com)
+        normals2 = normals1[:, [1, 0, 2]] * np.array([-1.0,  1.0, 1.0])
+        normals3 = normals2[:, [1, 0, 2]] * np.array([-1.0,  1.0, 1.0])
+        normals4 = normals3[:, [1, 0, 2]] * np.array([-1.0,  1.0, 1.0])
+        normals5 = normals1 * np.array([ 1.0,  1.0, -1.0])
+        normals6 = normals2 * np.array([ 1.0,  1.0, -1.0])
+        normals7 = normals3 * np.array([ 1.0,  1.0, -1.0])
+        normals8 = normals4 * np.array([ 1.0,  1.0, -1.0])
+        star_container.normals = np.concatenate((normals1, normals2, normals3, normals4,
+                                                 normals5, normals6, normals7, normals8), axis=0)
+    else:
+        star_container.normals = bfaces.calculate_normals(points, faces, cntrs, com)
+
+    if star_container.has_spots():
+        for spot_index in star_container.spots:
+            star_container.spots[spot_index].normals = \
+                bfaces.calculate_normals(star_container.spots[spot_index].points,
+                                         star_container.spots[spot_index].faces,
+                                         star_container.spots[spot_index].face_centres,
+                                         com)
+    return star_container

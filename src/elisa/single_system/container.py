@@ -60,6 +60,9 @@ class SystemContainer(PositionContainer):
     def build_faces(self):
         return faces.build_faces(self)
 
+    def build_pulsations_on_mesh(self):
+        return mesh.build_pulsations_on_mesh(self)
+
     def build_surface_areas(self):
         return faces.compute_all_surface_areas(self)
 
@@ -82,6 +85,7 @@ class SystemContainer(PositionContainer):
         """
         self.build_faces()
         self.build_surface_areas()
+        self.build_pulsations_on_mesh()
         self.build_faces_orientation()
         self.build_surface_gravity()
         self.build_temperature_distribution(do_pulsations, phase)

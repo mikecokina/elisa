@@ -31,9 +31,20 @@ def build_mesh(system_container):
     star.inverse_point_symmetry_matrix = d
 
     add_spots_to_mesh(system_container)
-    if system_container.star.has_pulsations():
-        star = pulsations.incorporate_pulsations_to_mesh(star, com_x=0.0, phase=system_container.position.phase)
     return system_container
+
+
+def build_pulsations_on_mesh(system_container):
+    """
+    adds position perturbations to stellar mesh
+
+    :param system_container: elisa.single_system.contaier.PositionContainer; instance
+    :return:
+    """
+    if system_container.star.has_pulsations():
+        system_container.star = \
+            pulsations.incorporate_pulsations_to_mesh(system_container.star, com_x=0.0,
+                                                      phase=system_container.position.phase)
 
 
 def mesh(system_container, symmetry_output=False):

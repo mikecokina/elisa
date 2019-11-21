@@ -4,13 +4,12 @@ from elisa.base.surface import temperature as btemperature
 logger = getLogger("single_system.surface.temperature")
 
 
-def build_temperature_distribution(system_container, do_pulsations=False, phase=None):
-    phase = 0 if phase is None else phase
+def build_temperature_distribution(system_container, phase=0.0):
     star_container = system_container.star
 
     logger.debug('Computing effective temperature distribution on the star.')
     star_container.temperatures = \
-        btemperature.calculate_effective_temperatures(star_container,star_container.potential_gradient_magnitudes)
+        btemperature.calculate_effective_temperatures(star_container, star_container.potential_gradient_magnitudes)
 
     if star_container.has_spots():
         for spot_index, spot in star_container.spots.items():
