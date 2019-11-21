@@ -142,23 +142,25 @@ def incorporate_pulsations_to_mesh(star_container, com_x, phase):
     points, points_spot = star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
 
     tilt_phi, tilt_theta = generate_tilt_coordinates(star_container, phase)
-    points, points_spot = tilt_mode_coordinates(points, points_spot, tilt_phi, tilt_theta)
+    tilted_points, tilted_points_spot = tilt_mode_coordinates(points, points_spot, tilt_phi, tilt_theta)
 
     displacement = up.zeros(points.shape)
     displacement_spots = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in points_spot.items()}
 
     for mode_index, mode in star_container.pulsations.items():
-        rals = mode.renorm_const * sph_harm(mode.m, mode.l, points[:, 1], points[:, 2])
+        rals = mode.renorm_const * sph_harm(mode.m, mode.l, tilted_points[:, 1], tilted_points[:, 2])
         rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2])
-                     for spot_idx, spotp in points_spot.items()}
+                      for spot_idx, spotp in tilted_points_spot.items()}
 
         displacement += calculate_mode_displacement(mode, points, rals)
-        for spot_idx, scentres in points_spot.items():
-            displacement_spots[spot_idx] += calculate_mode_displacement(mode, scentres, rals_spots[spot_idx])
+        for spot_idx, spoints in points_spot.items():
+            displacement_spots[spot_idx] += calculate_mode_displacement(mode, spoints, rals_spots[spot_idx])
 
     star_container.points = utils.spherical_to_cartesian(points + displacement)
+    star_container.points[:, 0] += com_x
     for spot_idx, spot in star_container.spots.items():
         spot.points = utils.spherical_to_cartesian(points_spot[spot_idx] + displacement_spots[spot_idx])
+        spot.points[:, 0] += com_x
     return star_container
 
 
@@ -174,10 +176,15 @@ def tilt_mode_coordinates(points, spot_points, phi, theta):
     """
     if theta != 0:
         tilted_phi, tilted_theta = utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
-        spot_points = {spot_idx: utils.rotation_in_spherical(spoints[:, 1], spoints[:, 2], phi, theta)
-                       for spot_idx, spoints in spot_points.items()}
-        points = np.column_stack((points[:, 0], tilted_phi, tilted_theta))
-    return points, spot_points
+        ret_points = np.column_stack((points[:, 0], tilted_phi, tilted_theta))
+
+        ret_spot_points = dict()
+        for spot_idx, spoints in spot_points.items():
+            tilted_phi, tilted_theta = utils.rotation_in_spherical(spoints[:, 1], spoints[:, 2], phi, theta)
+            ret_spot_points[spot_idx] = np.column_stack((spoints[:, 0], tilted_phi, tilted_theta))
+        return ret_points, ret_spot_points
+    else:
+        return points, spot_points
 
 
 def generate_tilt_coordinates(star_container, phase):

@@ -122,5 +122,5 @@ def build_faces_orientation(system_container):
     bfaces.set_all_normals(star_container, com=com_x)
 
     if star_container.has_pulsations():
-        pulsations.set_ralp(star_container, com_x=com_x)
+        pulsations.set_ralp(star_container, com_x=com_x,phase=system_container.position.phase)
     return system_container

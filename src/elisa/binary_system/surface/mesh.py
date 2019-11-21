@@ -50,17 +50,28 @@ def build_mesh(system, components_distance, component="all"):
         star.inverse_point_symmetry_matrix = d
 
     add_spots_to_mesh(system, components_distance, component="all")
-    # adding pulsations
+
+
+def build_pulsations_on_mesh(system_container, component, components_distance):
+    """
+    adds position perturbations to stellar mesh
+
+    :param system_container: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param component: Union[str, None];
+    :param components_distance: float;
+    :return: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    """
+    components = bsutils.component_to_list(component)
     for component in components:
-        star = getattr(system, component)
+        star = getattr(system_container, component)
         if star.has_pulsations():
-            phase = butils.calculate_rotational_phase(system, component)
+            phase = butils.calculate_rotational_phase(system_container, component)
             com_x = 0 if component == 'primary' else components_distance
             star = pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, phase=phase)
-    return system
+    return system_container
 
 
-def pre_calc_azimuths_for_detached_points(deiscretization):
+def pre_calc_azimuths_for_detached_points(discretization):
     """
     Returns azimuths for the whole quarter surface in specific order::
 
@@ -68,21 +79,21 @@ def pre_calc_azimuths_for_detached_points(deiscretization):
 
     separator gives you information about position of these sections.
 
-    :param deiscretization: float; discretization factor
-    :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: numpy.array)
+    :param discretization: float; discretization factor
+    :return: Tuple; (phi: numpy.array, theta: numpy.array, separator: numpy.array)
     """
     separator = []
 
     # azimuths for points on equator
-    num = int(const.PI // deiscretization)
+    num = int(const.PI // discretization)
     phi = np.linspace(0., const.PI, num=num + 1)
     theta = np.array([const.HALF_PI for _ in phi])
     separator.append(np.shape(theta)[0])
 
     # azimuths for points on meridian
-    num = int(const.HALF_PI // deiscretization)
+    num = int(const.HALF_PI // discretization)
     phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
-    theta_meridian = up.concatenate((np.linspace(const.HALF_PI - deiscretization, deiscretization, num=num - 1),
+    theta_meridian = up.concatenate((np.linspace(const.HALF_PI - discretization, discretization, num=num - 1),
                                      np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
 
     phi = up.concatenate((phi, phi_meridian))
@@ -90,11 +101,11 @@ def pre_calc_azimuths_for_detached_points(deiscretization):
     separator.append(np.shape(theta)[0])
 
     # azimuths for rest of the quarter
-    num = int(const.HALF_PI // deiscretization)
-    thetas = np.linspace(deiscretization, const.HALF_PI, num=num - 1, endpoint=False)
+    num = int(const.HALF_PI // discretization)
+    thetas = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
     phi_q, theta_q = [], []
     for tht in thetas:
-        alpha_corrected = deiscretization / up.sin(tht)
+        alpha_corrected = discretization / up.sin(tht)
         num = int(const.PI // alpha_corrected)
         alpha_corrected = const.PI / (num + 1)
         phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]

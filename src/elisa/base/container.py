@@ -406,7 +406,7 @@ class StarContainer(object):
         :param kind: str; `points` or `face_centres` or other variable containing cartesian points in both star and spot
         containers
         :param com_x: float;
-        :return: tuple; sperical coordinates of star variable, dictionary of spherical coordinates of spot variable
+        :return: tuple; spherical coordinates of star variable, dictionary of spherical coordinates of spot variable
         """
         # separating variables to convert
         centres_cartesian = copy(getattr(self, kind))

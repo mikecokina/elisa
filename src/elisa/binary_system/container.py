@@ -90,6 +90,9 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return faces.build_faces(self, components_distance, component)
 
+    def build_pulsations_on_mesh(self, component, components_distance):
+        return mesh.build_pulsations_on_mesh(self, component, components_distance)
+
     def build_surface_areas(self, component="all"):
         return faces.compute_all_surface_areas(self, component)
 
@@ -118,6 +121,7 @@ class OrbitalPositionContainer(PositionContainer):
         """
         components_distance = self._components_distance(components_distance)
         self.build_faces(components_distance, component)
+        self.build_pulsations_on_mesh(component, components_distance)
         self.build_surface_areas(component)
         self.build_faces_orientation(components_distance, component)
         self.build_surface_gravity(components_distance, component)
