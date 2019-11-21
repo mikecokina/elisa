@@ -267,7 +267,7 @@ def renormalize_temperatures(star):
             spot.temperatures *= coefficient
 
 
-def build_temperature_distribution(system, components_distance, component="all", do_pulsations=False, phase=None):
+def build_temperature_distribution(system, components_distance, component="all", phase=0):
     """
     Function calculates temperature distribution on across all faces.
     Value assigned to face is mean of values calculated in corners of given face.
@@ -283,7 +283,6 @@ def build_temperature_distribution(system, components_distance, component="all",
         logger.debug("no component set to build temperature distribution")
         return system
 
-    phase = 0 if phase is None else phase
     components = bsutils.component_to_list(component)
 
     for component in components:

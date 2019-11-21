@@ -300,7 +300,7 @@ class StarContainer(object):
         if len(self.faces) == 0 or len(self.points) == 0:
             raise ValueError('Faces or/and points of object {self.name} have not been set yet.\n'
                              'Run build method first.')
-        if self.symmetry_test():  # temporary
+        if self.symmetry_test():
             base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
                                               self.points[:self.base_symmetry_points_number])
             return base_areas[self.face_symmetry_vector]
