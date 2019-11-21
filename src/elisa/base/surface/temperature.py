@@ -25,8 +25,6 @@ def calculate_polar_effective_temperature(star_container):
     :param star_container: elisa.base.container.StarContainer;
     :return:
     """
-    # if star_container.symmetry_test():
-    #     areas =
     return star_container.t_eff * up.power(np.sum(star_container.areas) /
                                            np.sum(star_container.areas * up.power(
                                                star_container.potential_gradient_magnitudes /
