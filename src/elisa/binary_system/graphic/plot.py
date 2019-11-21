@@ -276,6 +276,7 @@ class Plot(object):
 
                 if normals:
                     surface_kwargs[f'{component}_centres'] *= sma
+                    surface_kwargs[f'{component}_arrows'] *= sma
 
         surface_kwargs.update({
             "phase": phase,

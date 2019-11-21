@@ -15,7 +15,7 @@ from elisa.base.surface.faces import (
     initialize_model_container,
     split_spots_and_component_faces,
     set_all_surface_centres,
-    set_all_normals
+    calculate_normals
 )
 
 logger = getLogger("binary_system.surface.faces")
@@ -355,3 +355,32 @@ def build_faces_orientation(system, components_distance, component="all"):
         # if star.has_pulsations():
         #     pulsations.set_ralp(star, com_x=com_x[_component], phase=)
     return system
+
+
+def set_all_normals(star_container, com):
+    """
+    Function calculates normals for each face of given body (including spots) and assign it to object.
+
+    :param star_container: instance of container to set normals on;
+    :param com: numpy.array;
+    :param star_container: instance of container to set normals on;
+    """
+    points, faces, cntrs = star_container.points, star_container.faces, star_container.face_centres
+    if star_container.symmetry_test():
+        normals1 = calculate_normals(points[:star_container.base_symmetry_faces_number],
+                                     faces[:star_container.base_symmetry_faces_number],
+                                     cntrs[:star_container.base_symmetry_faces_number], com)
+        normals2 = normals1 * np.array([1.0, -1.0,  1.0])
+        normals3 = normals1 * np.array([1.0, -1.0, -1.0])
+        normals4 = normals1 * np.array([1.0,  1.0, -1.0])
+        star_container.normals = np.concatenate((normals1, normals2, normals3, normals4), axis=0)
+    else:
+        star_container.normals = calculate_normals(points, faces, cntrs, com)
+
+    if star_container.has_spots():
+        for spot_index in star_container.spots:
+            star_container.spots[spot_index].normals = calculate_normals(star_container.spots[spot_index].points,
+                                                                         star_container.spots[spot_index].faces,
+                                                                         star_container.spots[spot_index].face_centres,
+                                                                         com)
+    return star_container
