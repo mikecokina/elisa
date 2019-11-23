@@ -224,7 +224,7 @@ def validate_binary_json(data):
     return True
 
 
-def resolve_json_kind(data):
+def resolve_json_kind(data, _sin=False):
     """
     Resolve if json is `std` or `community`.
 
@@ -232,10 +232,12 @@ def resolve_json_kind(data):
     community - astro community parameters (q, a)
 
     :param data: Dict; json like
+    :param _sin: bool; if False, looking for `semi_major_axis` in given JSON, otherwise looking for `asini`
     :return: str; `std` or `community`
     """
+    lookup = "asini" if _sin else "semi_major_axis"
     m1, m2 = data["primary"].get("mass"), data["secondary"].get("mass")
-    q, a = data["system"].get("mass_ratio"), data["system"].get("semi_major_axis")
+    q, a = data["system"].get("mass_ratio"), data["system"].get(lookup)
 
     if m1 and m2:
         return "std"

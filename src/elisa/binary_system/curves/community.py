@@ -4,7 +4,6 @@ from elisa.binary_system.curves import rv
 from elisa.binary_system.orbit import orbit
 from elisa.binary_system.transform import RadialVelocityObserverProperties
 from elisa.logger import getLogger
-from elisa.utils import is_empty
 
 from elisa import (
     umpy as up,
@@ -135,7 +134,7 @@ class RadialVelocitySystem(object):
         :param argument_of_periastron: float
         :param true_anomaly: float or numpy.array
         :param period: float
-        :return: float or numpy.array
+        :return: Union[float, numpy.array];
         """
         a = 2.0 * up.pi * asini
         b = period * up.sqrt(1.0 - up.power(eccentricity, 2))

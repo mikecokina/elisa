@@ -1,6 +1,8 @@
+from elisa.binary_system.curves.community import RadialVelocitySystem
 from ..binary import params
 from ...base import error
 from ...binary_system.system import BinarySystem
+from ...binary_system.utils import resolve_json_kind
 
 
 def _serialize_star_kwargs(component, **kwargs):
@@ -35,7 +37,8 @@ def serialize_system_kwargs(**kwargs):
         inclination=kwargs['inclination'],
         primary_minimum_time=0.0,
         **{"semi_major_axis": kwargs["semi_major_axis"]} if kwargs.get("semi_major_axis") else {},
-        **{"mass_ratio": kwargs["mass_ratio"]} if kwargs.get("mass_ratio") else {}
+        **{"mass_ratio": kwargs["mass_ratio"]} if kwargs.get("mass_ratio") else {},
+        **{"asini": kwargs["asini"]} if kwargs.get("asini") else {}
     )
 
 
@@ -132,25 +135,8 @@ def synthetic_binary(xs, period, discretization, morphology, observer, **kwargs)
     return lc[1]
 
 
-def prepare_central_rv_binary(period, **kwargs):
-    kwargs.update({
-        "p__surface_potential": 100,
-        "s__surface_potential": 100,
-        "p__t_eff": 10000.0,
-        "s__t_eff": 10000.0,
-        "p__metallicity": 10000.0,
-        "s__metallicity": 10000.0,
-        "period": period
-    })
-    primary_kwargs = serialize_primary_kwargs(**kwargs)
-    secondary_kwargs = serialize_seondary_kwargs(**kwargs)
-    system_kwargs = serialize_system_kwargs(**kwargs)
-    json = {
-        "primary": dict(**primary_kwargs),
-        "secondary": dict(**secondary_kwargs),
-        "system": dict(**system_kwargs)
-    }
-    return BinarySystem.from_json(json, _verify=False)
+def prepare_central_rv_binary(**kwargs):
+    return BinarySystem.from_json(kwargs, _verify=False)
 
 
 def central_rv_synthetic(xs, period, observer, **kwargs):
@@ -169,7 +155,27 @@ def central_rv_synthetic(xs, period, observer, **kwargs):
         * **gamma** * -- float;
     :return: Tuple;
     """
-    binary = prepare_central_rv_binary(period, **kwargs)
-    observer._system = binary
+
+    kwargs.update({
+        "p__surface_potential": 100,
+        "s__surface_potential": 100,
+        "p__t_eff": 10000.0,
+        "s__t_eff": 10000.0,
+        "p__metallicity": 10000.0,
+        "s__metallicity": 10000.0,
+        "period": period
+    })
+
+    primary_kwargs = serialize_primary_kwargs(**kwargs)
+    secondary_kwargs = serialize_seondary_kwargs(**kwargs)
+    system_kwargs = serialize_system_kwargs(**kwargs)
+    json = {
+        "primary": dict(**primary_kwargs),
+        "secondary": dict(**secondary_kwargs),
+        "system": dict(**system_kwargs)
+    }
+    kind_of = resolve_json_kind(data=json, _sin=True)
+    observable = prepare_central_rv_binary(**json) if kind_of in ["std"] else RadialVelocitySystem(**json["system"])
+    observer._system = observable
     rv = observer.observe.rv(phases=xs, normalize=False)
     return rv[1], rv[2]
