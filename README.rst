@@ -22,8 +22,11 @@ surface features. Current capabilities include:
     - ``BinarySystem:`` class for modelling surfaces of detached, semi-detached and over-contact binaries
     - ``Observer:`` class for generating light curves (and in future other observables)
     - ``Spots:`` class for generating stellar spot with given longitude, latitude, radius and temperature factor
+    - ``Fitting methods`` provide capability to fit radial velocities curves and light curves via implementaion of
+      ``non-linear least squares`` method and it also implements lightcurve fitting via ``Markov Chain Monte Carlo``
+      method.
 
-**ELISa** is currently under development. Following features are in progress:
+**ELISa** is currently still under development. Following features are in progress:
 
     - ``SingleSystem:`` class for modelling surfaces of single star light curves with full implementation of spots and
       pulsations
@@ -205,8 +208,43 @@ Available passbands
     GaiaDR2
 
 
-Radial Curves Fitting of Binary Stars
--------------------------------------
+Multiprocessing
+---------------
+
+To speedup computaion of light curves, paralellization of processes has been implemented. Practically, computation
+of light curve points is separated to smaller batches and each batch is evaluated on separated CPU core. Paralelliation
+necessarily bring some overhead to process and in some cases might cause even slower behavior of application.
+It is important to choose wisely when use it espeially in case of circular synchronous orbits which consist of spot-free
+components.
+
+Down below are shown some result of multiprocessor approach for different binary system type.
+
+
+.. figure:: ./docs/source/_static/readme/detached.circ.sync.svg
+  :width: 70%
+  :alt: detached.circ.sync.svg
+  :align: center
+
+  Paralellization benchmark for ``detached circular synchronous`` star system.
+
+.. figure:: ./docs/source/_static/readme/detached.circ.async.svg
+  :width: 70%
+  :alt: detached.circ.async.svg
+  :align: center
+
+  Paralellization benchmark for ``detached circular asynchronous`` star system.
+
+
+.. figure:: ./docs/source/_static/readme/detached.ecc.sync.svg
+  :width: 70%
+  :alt: detached.ecc.sync.svg
+  :align: center
+
+  Paralellization benchmark for ``detached eccentric synchronous`` star system.
+
+
+Binary Stars Radial Curves Fitting
+----------------------------------
 
 In current version of `ELISa`, you can use capability to fit curves of radial velocities obtained as velocities
 of center of mass from primary and secondary component. An example of synthetic radial vecolity curve is shown below.
@@ -332,7 +370,7 @@ by parameters::
             }
         ]
 
-        result = central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial_parameters)
+        result = central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial_parameters, yerrs=None)
 
     if __name__ == '__main__':
         main()
@@ -378,36 +416,54 @@ Result of fitting procedure was estimated as
   :align: center
 
 
-Multiprocessing
----------------
+Binary Stars Radial Light Fitting
+---------------------------------
 
-To speedup computaion of light curves, paralellization of processes has been implemented. Practically, computation
-of light curve points is separated to smaller batches and each batch is evaluated on separated CPU core. Paralelliation
-necessarily bring some overhead to process and in some cases might cause even slower behavior of application.
-It is important to choose wisely when use it espeially in case of circular synchronous orbits which consist of spot-free
-components.
+Packgae `elisa` currently implements two approaches to be able provide very basic fitting of light curves.
+First method is standard approach which use `non-linear least squares` method algorithm and second rule
+Markov Chain Monte Carlo (`MCMC`) method.
 
-Down below are shown some result of multiprocessor approach for different binary system type.
+Following chapter is supposed to give you brief information about capabilities provided by `elisa`.
+Lets assume that we have a given light curve like lightcurve below
 
-
-.. figure:: ./docs/source/_static/readme/detached.circ.sync.svg
+.. image:: ./docs/source/_static/readme/lc_example.svg
   :width: 70%
-  :alt: detached.circ.sync.svg
+  :alt: lc_example.svg
   :align: center
 
-  Paralellization benchmark for ``detached circular synchronous`` star system.
+Such light curve came from parameters::
 
-.. figure:: ./docs/source/_static/readme/detached.circ.async.svg
-  :width: 70%
-  :alt: detached.circ.async.svg
-  :align: center
+    [
+        {
+            'value': 2.0,
+            'param': 'p__mass'
+        },
+        {
+            'value': 5000.0,
+            'param': 'p__t_eff'
+        },
+        {
+            'value': 5.0,
+            'param': 'p__surface_potential'
+        },
+        {
+            'value': 1.0,
+            'param': 's__mass'
+        },
+        {
+            'value': 7000.0,
+            'param': 's__t_eff'
+        },
+        {
+            'value': 5,
+            'param': 's__surface_potential'
+        },
+        {
+            'value': 90.0,
+            'param': 'inclination'
+        }
+    ]
 
-  Paralellization benchmark for ``detached circular asynchronous`` star system.
+with some bias added.
+Lets apply some fitting algorithm to demonstrate software capabilities.
 
-
-.. figure:: ./docs/source/_static/readme/detached.ecc.sync.svg
-  :width: 70%
-  :alt: detached.ecc.sync.svg
-  :align: center
-
-  Paralellization benchmark for ``detached eccentric synchronous`` star system.
