@@ -137,6 +137,12 @@ class DetachedLightCurveFit(LightCurveFit):
 
 class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
     def centarl_rv_model_to_fit(self, xn):
+        """
+        Residual function.
+
+        :param xn: numpy.array; current vector
+        :return: numpy.array;
+        """
         xn = params.param_renormalizer(xn, self._labels)
         kwargs = {k: v for k, v in zip(self._labels, xn)}
         kwargs.update(self._fixed)
@@ -145,10 +151,26 @@ class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
         if self._on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
         synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
-        return np.array([np.sum(np.power(synthetic[comp] - self._ys[comp], 2)) for comp in BINARY_COUNTERPARTS])
+        return np.array([np.sum(np.power((synthetic[comp] - self._ys[comp]) / self._yerrs[comp], 2))
+                         for comp in BINARY_COUNTERPARTS])
 
     def fit(self, xs, ys, period, x0, yerrs=None, xtol=1e-10, max_nfev=None, on_normalized=False):
+        """
+        Method to provide fitting of radial velocities cruves.
+        It can handle standadrd physical parameters `M_1`, `M_2` or astro community parameters `asini` and `q`.
+
+        :param on_normalized: bool; if True, fitting is provided on normalized radial velocities curves
+        :param xs: Iterable[float];
+        :param ys: Dict;
+        :param period: float; sytem period
+        :param x0: List[Dict]; initial state (metadata included)
+        :param xtol: float; tolerance of error to consider hitted solution as exact
+        :param yerrs: Union[numpy.array, float]; errors for each point of observation
+        :param max_nfev: int; maximal iteration
+        :return: Dict; solution on supplied quantiles, default is [16, 50, 84]
+        """
         initial_x0 = copy(x0)
+        yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
         x0, labels, fixed, observer = params.fit_data_initializer(x0)
 
         self._fixed, self._labels, self._observer, self._period = fixed, labels, observer, period
@@ -173,5 +195,4 @@ class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
 
 binary_detached = DetachedLightCurveFit()
 binary_overcontact = OvercontactLightCurveFit()
-
 central_rv = CentralRadialVelocity()
