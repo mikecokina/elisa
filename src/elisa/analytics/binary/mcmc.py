@@ -214,12 +214,19 @@ class LightCurveFit(shared.AbstractLightCurveFit):
 
 
 class OvercontactLightCurveFit(LightCurveFit):
+    """
+    Non-Linear Least Squares Fitting implementation for light curves of over-contact binaries.
+    It keeps eye on values of potentials - keep it same for primary and secondary component.
+    """
     def __init__(self):
         super().__init__()
         self._morphology = 'over-contact'
 
 
 class DetachedLightCurveFit(LightCurveFit):
+    """
+    Non-Linear Least Squares Fitting implementation for light curves of detached binaries.
+    """
     def __init__(self):
         super().__init__()
         self._morphology = 'detached'
