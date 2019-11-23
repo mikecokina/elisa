@@ -4,7 +4,6 @@ from elisa.binary_system.curves import rv
 from elisa.binary_system.orbit import orbit
 from elisa.binary_system.transform import RadialVelocityObserverProperties
 from elisa.logger import getLogger
-from elisa.observer import plot
 from elisa.utils import is_empty
 
 from elisa import (
@@ -16,15 +15,7 @@ from elisa import (
 logger = getLogger('binary_system.curves.community')
 
 
-class Observables(object):
-    def __init__(self, observer):
-        self.observer = observer
-
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
-        return self.observer.radial_velocity(from_phase, to_phase, phase_step, phases, normalize)
-
-
-class RadialVelocityObserver(object):
+class RadialVelocitySystem(object):
     """
     Standalone class to compute binary components center of mass radial velocity via astro-community parameters.
 
@@ -51,8 +42,6 @@ class RadialVelocityObserver(object):
     phase_shift = 0.0
 
     def __init__(self, eccentricity, argument_of_periastron, period, mass_ratio, asini, gamma):
-        self.plot = Plot(self)
-
         kwargs = self.transform_input(**dict(
             eccentricity=eccentricity,
             argument_of_periastron=argument_of_periastron,
@@ -70,8 +59,6 @@ class RadialVelocityObserver(object):
         self.gamma = np.nan
         self.orbit = None
         self.rv_unit = units.dimensionless_unscaled
-
-        self.observe = Observables(self)
 
         self.init_properties(**kwargs)
         self.init_orbit()
@@ -103,24 +90,12 @@ class RadialVelocityObserver(object):
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
         self.orbit = orbit.Orbit(**orbit_kwargs)
 
-    def radial_velocity(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+    def radial_velocity(self, **kwargs):
         """
         Method for simulation of observation radial velocity curves in community manner (on params `asini` and `q`).
-
-        :param normalize: bool;
-        :param from_phase: float;
-        :param to_phase: float;
-        :param phase_step: float;
-        :param phases: Iterable float;
-        :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
-        if phases is None and (from_phase is None or to_phase is None or phase_step is None):
-            raise ValueError("Missing arguments. Specify phases.")
-
-        if is_empty(phases):
-            phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
-        phases = np.array(phases)
-        position_method = self.orbit.orbital_motion
+        phases = kwargs.pop("phases")
+        position_method = kwargs.pop("position_method")
         orbital_motion = position_method(phase=phases)
         r1, r2 = self.distance_to_center_of_mass(self.mass_ratio, orbital_motion)
 
@@ -141,13 +116,6 @@ class RadialVelocityObserver(object):
 
         primary_rv += self.gamma
         secondary_rv += self.gamma
-
-        self.rv_unit = units.m / units.s
-        if normalize:
-            self.rv_unit = units.dimensionless_unscaled
-            _max = np.max([primary_rv, secondary_rv])
-            primary_rv /= _max
-            secondary_rv /= _max
 
         return phases, primary_rv, secondary_rv
 
@@ -174,9 +142,8 @@ class RadialVelocityObserver(object):
         c = up.cos(true_anomaly + argument_of_periastron) + (eccentricity * up.cos(argument_of_periastron))
         return a * c / b
 
+    def get_positions_method(self):
+        return self.orbit.orbital_motion
 
-class Plot(object):
-    def __init__(self, observer):
-        self.observer = observer
-
-    rv_curve = plot.Plot.rv_curve
+    def compute_rv(self, **kwargs):
+        return self.radial_velocity(**kwargs)

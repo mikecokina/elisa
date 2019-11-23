@@ -151,7 +151,7 @@ class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
         initial_x0 = copy(x0)
         x0, labels, fixed, observer = params.fit_data_initializer(x0)
 
-        self._fixed, self._labels,self._observer, self._period = fixed, labels, observer, period
+        self._fixed, self._labels, self._observer, self._period = fixed, labels, observer, period
         self._xs, self._ys, self._yerrs = xs, ys, yerrs
 
         logger.info("fitting radial velocity light curve...")
