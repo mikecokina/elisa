@@ -372,9 +372,9 @@ Result of fitting procedure was estimated as
         }
     ]
 
-.. image:: ./docs/source/_static/readme/rv_fit.png
+.. image:: ./docs/source/_static/readme/rv_fit.svg
   :width: 70%
-  :alt: rv_fit.png
+  :alt: rv_fit.svg
   :align: center
 
 
