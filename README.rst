@@ -503,13 +503,64 @@ Here is minimal base code for demonstration of light curve fitting via ``binary_
     import numpy as np
     from elisa.analytics.binary.least_squares import binary_detached
 
+    init = [
+                {
+                    'value': 1.0,
+                    'param': 'mass_ratio',
+                    'fixed': False,
+                    'min': 0.1,
+                    'max': 3.0
+                },
+                {
+                    'value': 10.0,
+                    'param': 'semi_major_axis',
+                    'fixed': False,
+                    'min': 8.0,
+                    'max': 15.0
+                },
+                {
+                    'value': 6000.0,
+                    'param': 'p__t_eff',
+                    'fixed': False,
+                    'min': 4000.0,
+                    'max': 7000.0
+                },
+                {
+                    'value': 4.0,
+                    'param': 'p__surface_potential',
+                    'fixed': False,
+                    'min': 4.0,
+                    'max': 10.0
+                },
+                {
+                    'value': 8000.0,
+                    'param': 's__t_eff',
+                    'fixed': False,
+                    'min': 6000.0,
+                    'max': 10000.0
+                },
+                {
+                    'value': 6.0,
+                    'param': 's__surface_potential',
+                    'fixed': False,
+                    'min': 4.0,
+                    'max': 10.0
+                },
+                {
+                    'value': 90.0,
+                    'param': 'inclination',
+                    'fixed': True
+                }
+            ]
+
+
     def main():
         phases = np.arange(-0.6, 0.62, 0.02)
         lc = {
             'Generic.Bessell.V': np.array([111221.02018955, 102589.40515112, 92675.34114568, ...]),
             'Generic.Bessell.B': np.array([-144197.83633559, -128660.92926642, -110815.61405663, ...])
         }
-        result = binary_detached.fit(xs=phases, ys=lc, period=3.0, discretization=5, x0=dinit, xtol=1e-5)
+        result = binary_detached.fit(xs=phases, ys=lc, period=3.0, discretization=5, x0=dinit, xtol=1e-5, yerrs=None)
 
     if __name__ == "__main__":
         main()
