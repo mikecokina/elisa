@@ -161,8 +161,8 @@ def x0_vectorize(x0) -> Tuple:
     :param x0: List[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Tuple;
     """
-    _x0 = [record['value'] for record in x0 if not record['fixed']]
-    _labels = [record['param'] for record in x0 if not record['fixed']]
+    _x0 = [record['value'] for record in x0 if not record.get('fixed', False)]
+    _labels = [record['param'] for record in x0 if not record.get('fixed', False)]
     return _x0, _labels
 
 
@@ -193,7 +193,7 @@ def x0_to_fixed_kwargs(x0):
     :param x0: List[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {record['param']: record['value'] for record in x0 if record['fixed']}
+    return {record['param']: record['value'] for record in x0 if record.get('fixed', False)}
 
 
 def update_normalization_map(update):
@@ -246,7 +246,7 @@ def serialize_param_boundaries(x0):
     """
     return {record['param']: (record.get('min', NORMALIZATION_MAP[record['param']][0]),
                               record.get('max', NORMALIZATION_MAP[record['param']][1]))
-            for record in x0 if not record['fixed']}
+            for record in x0 if not record.get('fixed', False)}
 
 
 def fit_data_initializer(x0, passband=None):
