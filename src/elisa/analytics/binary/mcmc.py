@@ -52,7 +52,7 @@ class LightCurveFit(shared.AbstractLightCurveFit):
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band] - self._ys[band]) / self._yerrs[band], 2))
                                         for band in synthetic]))
 
-        if np.abs(lhood) <= self._xtol:
+        if np.all(np.less_equal(np.abs(lhood), self._xtol)):
             import sys
             sys.tracebacklimit = 0
             raise SolutionBubbleException(f"mcmc hit solution", solution=kwargs)

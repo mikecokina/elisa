@@ -58,7 +58,7 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         residua = np.array([np.sum(np.power(synthetic[band] - self._ys[band], 2) / self._yerrs[band])
                             for band in synthetic])
 
-        if np.abs(residua) <= self._xtol:
+        if np.all(np.less_equal(np.abs(residua), self._xtol)):
             import sys
             sys.tracebacklimit = 0
             raise SolutionBubbleException(f"least_squares hit solution", solution=kwargs)

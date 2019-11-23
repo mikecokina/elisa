@@ -5,7 +5,11 @@ from numpy.testing import assert_array_equal
 from elisa.analytics.binary import params
 from elisa.base.error import InitialParamsError
 from unittests.utils import ElisaTestCase
-from elisa.analytics.binary.least_squares import central_rv
+
+from elisa.analytics.binary.least_squares import (
+    binary_detached as ls_binary_detached,
+    central_rv
+)
 
 TOL = 1e-5
 
@@ -172,7 +176,128 @@ class TestParamsTestCase(ElisaTestCase):
 
 
 class LeastSqaureLCTestCase(ElisaTestCase):
-    pass
+    phases = np.arange(-0.6, 0.62, 0.02)
+    flux = {'Generic.Bessell.V': np.array([0.98128349, 0.97901564, 0.9776404, 0.77030991, 0.38623294,
+                                           0.32588823, 0.38623294, 0.77030991, 0.9776404, 0.97901564,
+                                           0.98128349, 0.9831816, 0.98542223, 0.9880625, 0.99034951,
+                                           0.99261368, 0.99453225, 0.99591341, 0.9972921, 0.99865607,
+                                           0.99943517, 0.99978567, 1., 0.99970989, 0.99963265,
+                                           0.99967025, 0.9990695, 0.99904945, 0.96259235, 0.8771112,
+                                           0.83958173, 0.8771112, 0.96259235, 0.99904945, 0.9990695,
+                                           0.99967025, 0.99963265, 0.99970989, 1., 0.99978567,
+                                           0.99943517, 0.99865607, 0.9972921, 0.99591341, 0.99453225,
+                                           0.99261368, 0.99034951, 0.9880625, 0.98542223, 0.9831816,
+                                           0.98128349, 0.97901564, 0.9776404, 0.77030991, 0.38623294,
+                                           0.32588823, 0.38623294, 0.77030991, 0.9776404, 0.97901564,
+                                           0.98128349]),
+            'Generic.Bessell.B': np.array([0.80924345, 0.80729325, 0.80604709, 0.60603475, 0.2294959,
+                                           0.17384023, 0.2294959, 0.60603475, 0.80604709, 0.80729325,
+                                           0.80924345, 0.81088916, 0.81276665, 0.81488617, 0.81664783,
+                                           0.81831472, 0.81957938, 0.82037431, 0.82105228, 0.82161889,
+                                           0.82171702, 0.82140855, 0.82099437, 0.82019232, 0.81957921,
+                                           0.81911052, 0.81821162, 0.81784563, 0.79824012, 0.7489621,
+                                           0.72449315, 0.7489621, 0.79824012, 0.81784563, 0.81821162,
+                                           0.81911052, 0.81957921, 0.82019232, 0.82099437, 0.82140855,
+                                           0.82171702, 0.82161889, 0.82105228, 0.82037431, 0.81957938,
+                                           0.81831472, 0.81664783, 0.81488617, 0.81276665, 0.81088916,
+                                           0.80924345, 0.80729325, 0.80604709, 0.60603475, 0.2294959,
+                                           0.17384023, 0.2294959, 0.60603475, 0.80604709, 0.80729325,
+                                           0.80924345])}
+
+    def test_least_squares_lc_fit_std_params(self):
+        dinit = [
+            {
+                'value': 1.8,  # 2.0
+                'param': 'p__mass',
+                'fixed': False,
+                'min': 1.5,
+                'max': 2.2
+            },
+            {
+                'value': 5000.0,
+                'param': 'p__t_eff',
+                'fixed': True
+            },
+            {
+                'value': 5.0,
+                'param': 'p__surface_potential',
+                'fixed': True
+            },
+            {
+                'value': 1.0,
+                'param': 's__mass',
+                'fixed': True
+            },
+            {
+                'value': 6500.0,  # 7000
+                'param': 's__t_eff',
+                'fixed': False,
+                'min': 5000.0,
+                'max': 10000.0
+            },
+            {
+                'value': 5,
+                'param': 's__surface_potential',
+                'fixed': True
+            },
+            {
+                'value': 90.0,
+                'param': 'inclination',
+                'fixed': True
+            }
+        ]
+        result = ls_binary_detached.fit(xs=self.phases, ys=self.flux, period=3.0, discretization=5, x0=dinit, xtol=1e-5)
+        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+
+    def test_least_squares_lc_fit_community_params(self):
+        dinit = [
+            {
+                'value': 11.0,  # 12.62
+                'param': 'semi_major_axis',
+                'fixed': False,
+                'min': 7.0,
+                'max': 15.0
+            },
+            {
+                'value': 0.7,  # 0.5
+                'param': 'mass_ratio',
+                'fixed': False,
+                'min': 0.3,
+                'max': 2.0
+            },
+            {
+                'value': 5000.0,
+                'param': 'p__t_eff',
+                'fixed': True
+            },
+            {
+                'value': 5.0,
+                'param': 'p__surface_potential',
+                'fixed': True
+            },
+            {
+                'value': 1.0,
+                'param': 's__mass',
+                'fixed': True
+            },
+            {
+                'value': 7000.0,
+                'param': 's__t_eff',
+                'fixed': True
+            },
+            {
+                'value': 5,
+                'param': 's__surface_potential',
+                'fixed': True
+            },
+            {
+                'value': 90.0,
+                'param': 'inclination',
+                'fixed': True
+            }
+        ]
+        result = ls_binary_detached.fit(xs=self.phases, ys=self.flux, period=3.0, discretization=5, x0=dinit, xtol=1e-5)
+        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
 
 
 class McMcLCTestCase(ElisaTestCase):
