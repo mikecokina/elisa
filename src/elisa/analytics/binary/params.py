@@ -205,26 +205,26 @@ def update_normalization_map(update):
     NORMALIZATION_MAP.update(update)
 
 
-def param_renormalizer(x, labels):
+def param_renormalizer(xn, labels):
     """
     Renormalize values from `x` to their native form.
 
-    :param x: List[float]; iterable of normalized parameter values
+    :param xn: List[float]; iterable of normalized parameter values
     :param labels: Iterable[str]; related parmaeter names from `x`
     :return: List[float];
     """
-    return [renormalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, labels)]
+    return [renormalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(xn, labels)]
 
 
-def param_normalizer(x: List, labels: List) -> List:
+def param_normalizer(xn: List, labels: List) -> List:
     """
     Normalize values from `x` to value between (0, 1).
 
-    :param x: List[float]; iterable of values in their native form
+    :param xn: List[float]; iterable of values in their native form
     :param labels: List[str]; iterable str of names related to `x`
     :return: List[float];
     """
-    return [normalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(x, labels)]
+    return [normalize_value(_x, *get_param_boundaries(_kword)) for _x, _kword in zip(xn, labels)]
 
 
 def get_param_boundaries(param):
@@ -277,7 +277,7 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
     :return: List[Dict];
     """
     hash_map = {val['param']: idx for idx, val in enumerate(x0)}
-    is_oc = morphology in ['over-contact']
+    is_oc = is_overcontact(morphology)
     are_same = x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['value'] == x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['value']
 
     omega_1 = x0[hash_map[PARAMS_KEY_MAP['Omega1']]].get('fixed', False)
@@ -295,10 +295,10 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
     if is_oc and all_fixed and are_same:
         return x0
     if is_oc and all_fixed and not are_same:
-        msg = 'different potential in over-contact morphology with all fixed (pontetial) value are not allowed'
+        msg = 'Different potential in over-contact morphology with all fixed (pontetial) value are not allowed.'
         raise error.InitialParamsError(msg)
     if is_oc and any_fixed:
-        msg = 'just one fixed potential in over-contact morphology is not allowed'
+        msg = 'Just one fixed potential in over-contact morphology is not allowed.'
         raise error.InitialParamsError(msg)
     if is_oc:
         # if is overcontact, fix secondary pontetial for further steps
