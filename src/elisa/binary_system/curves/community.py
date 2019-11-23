@@ -146,3 +146,14 @@ class RadialVelocitySystem(object):
 
     def compute_rv(self, **kwargs):
         return self.radial_velocity(**kwargs)
+
+    @staticmethod
+    def prepare_json(data):
+        return dict(
+            eccentricity=data['eccentricity'],
+            argument_of_periastron=data['argument_of_periastron'],
+            period=data['period'],
+            mass_ratio=data['mass_ratio'],
+            asini=data['asini'],
+            gamma=data['gamma']
+        )

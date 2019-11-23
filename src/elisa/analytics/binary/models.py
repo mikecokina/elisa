@@ -34,7 +34,7 @@ def serialize_system_kwargs(**kwargs):
         gamma=kwargs.get('gamma', 0.0),
         period=kwargs["period"],
         eccentricity=kwargs.get('eccentricity', 0.0),
-        inclination=kwargs['inclination'],
+        inclination=kwargs.get('inclination'),
         primary_minimum_time=0.0,
         **{"semi_major_axis": kwargs["semi_major_axis"]} if kwargs.get("semi_major_axis") else {},
         **{"mass_ratio": kwargs["mass_ratio"]} if kwargs.get("mass_ratio") else {},
@@ -174,8 +174,10 @@ def central_rv_synthetic(xs, period, observer, **kwargs):
         "secondary": dict(**secondary_kwargs),
         "system": dict(**system_kwargs)
     }
+
     kind_of = resolve_json_kind(data=json, _sin=True)
-    observable = prepare_central_rv_binary(**json) if kind_of in ["std"] else RadialVelocitySystem(**json["system"])
+    observable = prepare_central_rv_binary(**json) if kind_of in ["std"] \
+        else RadialVelocitySystem(**RadialVelocitySystem.prepare_json(json["system"]))
     observer._system = observable
     rv = observer.observe.rv(phases=xs, normalize=False)
     return rv[1], rv[2]
