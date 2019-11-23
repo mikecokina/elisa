@@ -464,6 +464,110 @@ Such light curve came from parameters::
         }
     ]
 
-with some bias added.
-Lets apply some fitting algorithm to demonstrate software capabilities.
+with some bias added. Such parameters are equivalent to following::
 
+    [
+        {
+            'value': 0.5,
+            'param': 'mass_ratio'
+        },
+        {
+            'value': 12.625,
+            'param': 'semi_major_axis'
+        },
+        ...
+    ]
+
+
+community used parmaeters, where instead of masses for both
+components are used semi major axis and mass ratio. All other parametres are assumed to be adjusted to create
+circular synchronous system.
+
+Lets apply some fitting algorithm to demonstrate software capabilities. Fitting modules are stored in module path
+``elisa.analytics.binary.least_squares`` and ``elisa.analytics.binary.mcmc``. It is up on the user what methods
+choose to use. In both cases, there is prepared instances for fitting, called ``binary_detached`` and ``binary_overcontact``.
+Difference is that ``binary_overcontact`` fitting module keeps surface potentiaal of both binary components constrained
+to same value.
+
+First, we elaborate algorithms based on `non-linear least squares` method. Binary system which can generate light curve
+shown above is with no doubt detached system, so it makes sence to use module ``binary_detached``.
+
+:warning: Non-linear least squares method used in such complex problem as fitting of eclipsing binaries stars
+          light curves definitely is, might be insuficient in case of initial parametres which are too far from real
+          values and also too broad fitting boundaries.
+
+Here is minimal base code for demonstration of light curve fitting via ``binary_detached`` module.
+
+.. code:: python
+
+    import numpy as np
+    from elisa.analytics.binary.least_squares import binary_detached
+
+    def main():
+        phases = np.arange(-0.6, 0.62, 0.02)
+        lc = {
+            'Generic.Bessell.V': np.array([111221.02018955, 102589.40515112, 92675.34114568, ...]),
+            'Generic.Bessell.B': np.array([-144197.83633559, -128660.92926642, -110815.61405663, ...])
+        }
+        result = binary_detached.fit(xs=phases, ys=lc, period=3.0, discretization=5, x0=dinit, xtol=1e-5)
+
+    if __name__ == "__main__":
+        main()
+
+
+Solution obtained from such approach is::
+
+    [
+        {
+            "param": "mass_ratio",
+            "value": 0.7258200560190059,
+            "unit": "dimensionless"
+        },
+        {
+            "param": "semi_major_axis",
+            "value": 9.99079425680755,
+            "unit": "solRad"
+        },
+        {
+            "param": "p__t_eff",
+            "value": 5020.857511549073,
+            "unit": "K"
+        },
+        {
+            "param": "p__surface_potential",
+            "value": 5.207136874939402,
+            "unit": "dimensionless"
+        },
+        {
+            "param": "s__t_eff",
+            "value": 7031.648838850117,
+            "unit": "K"
+        },
+        {
+            "param": "s__surface_potential",
+            "value": 6.639593976078232,
+            "unit": "dimensionless"
+        },
+        {
+            "param": "inclination",
+            "value": 90.0,
+            "unit": "degrees"
+        },
+        {
+            "r_squared": 0.9988791463851956
+        }
+    ]
+
+
+As you can see and as is commonly known, corelaction of parameters is so strong that slightly different parameters
+can lead to fit which is good enough to describe observed data.
+
+Here you can see visual output
+
+.. image:: ./docs/source/_static/readme/lc_fit.svg
+  :width: 70%
+  :alt: lc_fit.svg
+  :align: center
+
+:note: In mentioned approach we used community parmeters :math:`q` and :math:`a` instead of :math:`M_1` and :math:`M_2`, but
+       if you are somehow aware of information when is better to use masses, it is of course fully implemented and compatible.
