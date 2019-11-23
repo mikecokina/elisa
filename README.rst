@@ -238,7 +238,7 @@ Each fitting initial input has form like::
         }, ...
     ]
 
-and require all params from list:
+and require all params from following list if you would like to try absolute paramters fitting:
 
     * ``p__mass`` - mass of primary component in units of Solar mass
     * ``s__mass`` - mass of secondary component in units of Solar mass
@@ -247,12 +247,42 @@ and require all params from list:
     * ``argument_of_periastron`` - argument of periastron in `degrees`
     * ``gamma`` - radial velocity of system center of mass in `m/s`
 
+or otherwise, in community approach, you can use instead of ``p__mass``, ``s__mass`` and ``inclination`` parametres:
+
+    * ``asini`` - product of sinus of inclination and semi major axis in units of Solar radii
+    * ``mass_ratio`` - mass ratio, known as `q`
+
 There are already specified global minimal an maximal values for parameters, but user is free to adjust parameters
-which might work better.
+which might work better for him.
 
 Parameter set to be `fixed` is naturaly not fitted and its value is fixed during procedure.
 
-In this part you can see minimal example of base code providing fitting
+In this part you can see minimal example of base code providing fitting. Sample radial velocity curve was obtained
+by parameters::
+
+        [
+            {
+                'value': 0.1,
+                'param': 'eccentricity',
+            },
+            {
+                'value': 4.219,
+                'param': 'asini',
+            },
+            {
+                'value': 0.5555,
+                'param': 'mass_ratio',
+            },
+            {
+                'value': 0.0,
+                'param': 'argument_of_periastron'
+            },
+            {
+                'value': 20000.0,
+                'param': 'gamma'
+            }
+        ]
+
 
 .. code:: python
 
@@ -262,36 +292,33 @@ In this part you can see minimal example of base code providing fitting
     def main():
         phases = np.arange(-0.6, 0.62, 0.02)
         rv = {
-            'primary': np.array([79218.00737957, 76916.16835599, 74104.73384787, 70765.71345562, ...]),
-            'secondary': np.array([-59436.01475914, -54832.33671198, -49209.46769573, -42531.42691124, ...])
+            'primary': np.array([111221.02018955, 102589.40515112, 92675.34114568, ...]),
+            'secondary': np.array([-144197.83633559, -128660.92926642, -110815.61405663, ...])
         }
 
         rv_initial_parameters = [
             {
-                'value': 0.1,
+                'value': 0.2,
                 'param': 'eccentricity',
                 'fixed': False,
-                'min': 0,
-                'max': 1
+                'min': 0.0,
+                'max': 0.5
 
             },
             {
-                'value': 90.0,
-                'param': 'inclination',
-                'fixed': True,
-
-            },
-            {
-                'value': 1.8,
-                'param': 'p__mass',
+                'value': 10.0,  # 4.219470628180749
+                'param': 'asini',
                 'fixed': False,
-                'min': 1,
-                'max': 3
+                'min': 1.0,
+                'max': 20.0
+
             },
             {
-                'value': 1.0,
-                'param': 's__mass',
-                'fixed': True,
+                'value': 1.0,  # 1.0 / 1.8
+                'param': 'mass_ratio',
+                'fixed': False,
+                'min': 0,
+                'max': 10
             },
             {
                 'value': 0.0,
@@ -301,14 +328,11 @@ In this part you can see minimal example of base code providing fitting
             {
                 'value': 20000.0,
                 'param': 'gamma',
-                'fixed': False,
-                'min': 20000,
-                'max': 40000
+                'fixed': True
             }
         ]
 
-
-        result = central_rv.fit(xs=phases, ys=rv, period=4.5, x0=rv_initial_parameters)
+        result = central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial_parameters)
 
     if __name__ == '__main__':
         main()
@@ -319,33 +343,33 @@ Result of fitting procedure was estimated as
 
     [
         {
-            'value': 0.19999999738789395,
-            'param': 'eccentricity',
-
+            "param": "eccentricity",
+            "value": 0.09827682337603573,
+            "unit": "dimensionless"
         },
         {
-            'value': 1.9999999157860147,
-            'param': 'p__mass',
-
+            "param": "asini",
+            "value": 4.224709745351374,
+            "unit": "solRad"
         },
         {
-            'value': 32999.99919352919,
-            'param': 'gamma',
-
+            "param": "mass_ratio",
+            "value": 0.5471319947199411,
+            "unit": "dimensionless"
         },
         {
-            'value': 90,
-            'param': 'inclination',
+            "param": "argument_of_periastron",
+            "value": 0.0,
+            "unit": "degrees"
         },
         {
-            'value': 1.0,
-            'param': 's__mass',
+            "param": "gamma",
+            "value": 20000.0,
+            "unit": "m/s"
         },
         {
-            'value': 0.0,
-            'param': 'argument_of_periastron',
-        },
-        "r_squared": 0.9999999999999997,
+            "r_squared": 0.9983458226020854
+        }
     ]
 
 .. image:: ./docs/source/_static/readme/rv_fit.png
