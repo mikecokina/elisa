@@ -42,6 +42,8 @@ class BinarySystem(System):
     :param secondary: elisa.base.star.Star; instance of secondary component
     :param eccentricity: Union[(numpy.)int, (numpy.)float];
     :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
+    :param period: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; Orbital period of binary
+                   star system. If unit is not specified, default period unit is assumed (days).
     :param phase_shift: float; Phase shift of the primary eclipse minimum with respect to ephemeris
                                true_phase is used during calculations, where: true_phase = phase + phase_shift.;
     :param primary_minimum_time: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];

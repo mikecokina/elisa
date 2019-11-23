@@ -1,5 +1,5 @@
 import numpy as np
-from elisa import utils, const as c, units
+from elisa import utils, const as c
 from elisa.logger import getLogger
 from elisa.pulse.transform import PulsationModeProperties
 
@@ -8,7 +8,7 @@ logger = getLogger('pulse.mode')
 
 class PulsationMode(object):
     """
-    pulsation mode data container
+    Pulsation mode data container.
     """
     MANDATORY_KWARGS = ["l", "m", "amplitude", "frequency"]
 

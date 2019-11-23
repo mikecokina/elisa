@@ -135,29 +135,28 @@ class DetachedLightCurveFit(LightCurveFit):
         self._morphology = 'detached'
 
 
-class CentralRadialVelocityCommunity(object):
-    @staticmethod
-    def centarl_rv_model_to_fit(x, *args):
-        xs, ys, period, labels, fixed, observer, on_normalized = args
-        x = params.param_renormalizer(x, labels)
-        kwargs = {k: v for k, v in zip(labels, x)}
-        kwargs.update(fixed)
+class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
+    def centarl_rv_model_to_fit(self, xn):
+        xn = params.param_renormalizer(xn, self._labels)
+        kwargs = {k: v for k, v in zip(self._labels, xn)}
+        kwargs.update(self._fixed)
         fn = models.central_rv_synthetic
-        synthetic = logger_decorator()(fn)(xs, period, observer, **kwargs)
-        if on_normalized:
+        synthetic = logger_decorator()(fn)(self._xs, self._period, self._observer, **kwargs)
+        if self._on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
         synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
-        return np.array([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in BINARY_COUNTERPARTS])
+        return np.array([np.sum(np.power(synthetic[comp] - self._ys[comp], 2)) for comp in BINARY_COUNTERPARTS])
 
-    @staticmethod
-    def fit(xs, ys, period, x0, xtol=1e-10, max_nfev=None, on_normalized=False):
+    def fit(self, xs, ys, period, x0, yerrs=None, xtol=1e-10, max_nfev=None, on_normalized=False):
         initial_x0 = copy(x0)
         x0, labels, fixed, observer = params.fit_data_initializer(x0)
 
-        args = (xs, ys, period, labels, fixed, observer, on_normalized)
+        self._fixed, self._labels,self._observer, self._period = fixed, labels, observer, period
+        self._xs, self._ys, self._yerrs = xs, ys, yerrs
+
         logger.info("fitting radial velocity light curve...")
-        func = CentralRadialVelocityCommunity.centarl_rv_model_to_fit
-        result = least_squares(func, x0, bounds=(0, 1), args=args, max_nfev=max_nfev, xtol=xtol)
+        func = self.centarl_rv_model_to_fit
+        result = least_squares(func, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol)
         logger.info("fitting finished")
 
         result = params.param_renormalizer(result.x, labels)
@@ -169,16 +168,10 @@ class CentralRadialVelocityCommunity(object):
 
         result = [{"param": key, "value": val} for key, val in result_dict.items()]
         result.append({"r_squared": r_squared_result})
-
-        return result_dict
-
-
-class CentralRadialVelocityStd(CentralRadialVelocityCommunity):
-    pass
+        return params.extend_result_with_units(result)
 
 
 binary_detached = DetachedLightCurveFit()
 binary_overcontact = OvercontactLightCurveFit()
 
-central_rv_community = CentralRadialVelocityCommunity()
-central_rv_std = CentralRadialVelocityStd()
+central_rv = CentralRadialVelocity()

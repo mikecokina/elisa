@@ -1,14 +1,14 @@
 import numpy as np
 
-from elisa.base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
-from elisa import utils, const as c, units
+from elisa.base.transform import SystemProperties
+from elisa import const as c, units
 
 
 class PulsationModeProperties(SystemProperties):
     @staticmethod
     def l(value):
         """
-        returns angular degree of the pulsation mode
+        Returns angular degree of the pulsation mode.
 
         :param value: int;
         :return: int; validated value of angular degree
@@ -20,7 +20,7 @@ class PulsationModeProperties(SystemProperties):
     @staticmethod
     def m(value):
         """
-        returns azimuthal order of the pulsation mode
+        Returns azimuthal order of the pulsation mode.
 
         :param value: int;
         :return: int; validated value of azimuthal order
@@ -109,7 +109,7 @@ class PulsationModeProperties(SystemProperties):
         If unit is not supplied, degrees are assumed.
 
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
-        :return:
+        :return: float;
         """
         if isinstance(value, units.Quantity):
             retval = np.float64(value.to(units.ARC_UNIT))

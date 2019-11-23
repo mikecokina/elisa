@@ -30,6 +30,7 @@ PARAMS_KEY_MAP = {
     'A2': 's__albedo',
     'MH2': 's__metallicity',
     'F2': 's__synchronicity',
+    'asini': 'asini'
 }
 
 PARAMS_KEY_TEX_MAP = {
@@ -53,6 +54,7 @@ PARAMS_KEY_TEX_MAP = {
     's__albedo': '$A_2$',
     's__metallicity': '$M/H_2$',
     's__synchronicity': '$F_2$',
+    'asini': 'a$sin$(i)'
 }
 
 
@@ -76,7 +78,8 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['F1']: 'dimensionless',
     PARAMS_KEY_MAP['F2']: 'dimensionless',
     PARAMS_KEY_MAP['q']: 'dimensionless',
-    PARAMS_KEY_MAP['a']: 'solRad'
+    PARAMS_KEY_MAP['a']: 'solRad',
+    PARAMS_KEY_MAP['asini']: 'solRad'
 }
 
 
@@ -103,7 +106,8 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['F1']: (0, 10),
     PARAMS_KEY_MAP['F2']: (0, 10),
     PARAMS_KEY_MAP['q']: (0, 20),
-    PARAMS_KEY_MAP['a']: (0, 100)
+    PARAMS_KEY_MAP['a']: (0, 100),
+    PARAMS_KEY_MAP['asini']: (0, 100),
 }
 
 

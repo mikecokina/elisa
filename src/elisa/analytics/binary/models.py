@@ -119,6 +119,7 @@ def synthetic_binary(xs, period, discretization, morphology, observer, **kwargs)
         * **s__albedo** * -- float;
         * **s__metallicity** * -- float;
         * **s__synchronicity** * -- float;
+        * **gamma** * -- float;
     :return: Tuple[numpy.array, str]
     """
     binary = prepare_binary(period, discretization, **kwargs)
@@ -155,11 +156,18 @@ def prepare_central_rv_binary(period, **kwargs):
 def central_rv_synthetic(xs, period, observer, **kwargs):
     """
 
-    :param xs:
-    :param period:
-    :param observer:
-    :param kwargs:
-    :return:
+    :param xs: Union[List, numpy.array];
+    :param period: float;
+    :param observer: elisa.observer.observer.Observer; instance
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **argument_of_periastron** * -- float;
+        * **eccentricity** * -- float;
+        * **inclination** * -- float;
+        * **p__mass** * -- float;
+        * **s__mass** * -- float;
+        * **gamma** * -- float;
+    :return: Tuple;
     """
     binary = prepare_central_rv_binary(period, **kwargs)
     observer._system = binary

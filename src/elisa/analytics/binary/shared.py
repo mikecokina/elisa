@@ -12,6 +12,29 @@ from ...analytics.binary import (
 )
 
 
+class AbstractCentralRadialVelocity(object):
+    """
+    Params:
+
+    * **_xs** * -- numpy.array; phases
+    * **_ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
+    * **_period** * -- float;
+    * **_observer** * -- elisa.observer.observer.Observer;
+    * **_labels** * -- Iterable[str];
+    * **_fixed** * -- Dict;
+    """
+    def __init__(self):
+        self._fixed = dict()
+        self._labels = list()
+        self._observer = None
+        self._period = np.nan
+
+        self._xs = list()
+        self._ys = dict()
+        self._yerrs = np.nan
+        self._on_normalized = False
+
+
 class AbstractLightCurveFit(object, metaclass=ABCMeta):
     """
     Params:
@@ -23,7 +46,6 @@ class AbstractLightCurveFit(object, metaclass=ABCMeta):
     * **_discretization** * -- flaot;
     * **_passband** * -- Iterable[str];
     * **_morphology** * -- str;
-    * **_hash_map** * -- Dict;
     * **_observer** * -- elisa.observer.observer.Observer;
     * **_xtol** * -- float;
     * **_labels** * -- Iterable[str];
