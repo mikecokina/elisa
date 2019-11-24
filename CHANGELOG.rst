@@ -60,6 +60,8 @@ v0.2.dev0_
 
 - `elisa.observer.Observer.observe.lc` and `elisa.observer.Observer.observe.rv` will not raise an error in case
   when parameter `phases` is `numpy.array` type
+- adaptive discretization of binaries do not allow to change distretization factor out of prescribed boundaries
+  (it used to lead to small amount of surface points and triangulation crashed)
 
 
 
