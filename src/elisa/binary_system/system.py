@@ -236,31 +236,31 @@ class BinarySystem(System):
 
         return {
             "system": {
-                "inclination":  (self.inclination * units.rad).to(units.deg),
+                "inclination":  (self.inclination * units.rad).to(units.deg).value,
                 "period": self.period,
-                "argument_of_periastron": (self.argument_of_periastron * units.rad).to(units.deg),
+                "argument_of_periastron": (self.argument_of_periastron * units.rad).to(units.deg).value,
                 "gamma": self.gamma,
                 "eccentricity": self.eccentricity,
                 "primary_minimum_time": self.primary_minimum_time,
                 "phase_shift": self.phase_shift
             },
             "primary": {
-                "mass": (self.primary.mass * units.kg).to(units.solMass),
+                "mass": (self.primary.mass * units.kg).to(units.solMass).value,
                 "surface_potential": self.primary.surface_potential,
                 "synchronicity": self.primary.synchronicity,
                 "t_eff": self.primary.t_eff,
                 "gravity_darkening": self.primary.gravity_darkening,
-                "discretization_factor": (self.primary.discretization_factor * units.rad).to(units.deg),
+                "discretization_factor": (self.primary.discretization_factor * units.rad).to(units.deg).value,
                 "albedo": self.primary.albedo,
                 "metallicity": self.primary.metallicity
             },
             "secondary": {
-                "mass": (self.secondary.mass * units.kg).to(units.solMass),
+                "mass": (self.secondary.mass * units.kg).to(units.solMass).value,
                 "surface_potential": self.secondary.surface_potential,
                 "synchronicity": self.secondary.synchronicity,
                 "t_eff": self.secondary.t_eff,
                 "gravity_darkening": self.primary.gravity_darkening,
-                "discretization_factor": (self.secondary.discretization_factor * units.rad).to(units.deg),
+                "discretization_factor": (self.secondary.discretization_factor * units.rad).to(units.deg).value,
                 "albedo": self.secondary.albedo,
                 "metallicity": self.secondary.metallicity
             },
@@ -409,14 +409,20 @@ class BinarySystem(System):
     def setup_discretisation_factor(self):
         """
         If secondary discretization factor was not set, it will be now with respect to primary component.
-        :return:
         """
         if not self.secondary.kwargs.get('discretization_factor'):
             self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
                                                     / self.secondary.polar_radius * units.rad).value
+
+            if self.secondary.discretization_factor > np.radians(config.MAX_DISCRETIZATION_FACTOR):
+                self.secondary.discretization_factor = np.radians(config.MAX_DISCRETIZATION_FACTOR)
+            if self.secondary.discretization_factor < np.radians(config.MIN_DISCRETIZATION_FACTOR):
+                self.secondary.discretization_factor = np.radians(config.MIN_DISCRETIZATION_FACTOR)
+
             logger.info(f"setting discretization factor of secondary component to "
                         f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
-                        f"according to discretization factor of the primary component ")
+                        f"according to discretization factor of the primary component and"
+                        f"configuration boundaries")
 
     def transform_input(self, **kwargs):
         """

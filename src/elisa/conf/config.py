@@ -45,6 +45,7 @@ LIMB_DARKENING_LAW = 'cosine'
 
 # computational
 MAX_DISCRETIZATION_FACTOR = 20
+MIN_DISCRETIZATION_FACTOR = 1
 NUMBER_OF_THREADS = 1
 NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
 NUMBER_OF_MCMC_PROCESSES = -1
@@ -152,6 +153,9 @@ def update_config():
         global MAX_DISCRETIZATION_FACTOR
         MAX_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'max_discretization_factor',
                                                      fallback=MAX_DISCRETIZATION_FACTOR)
+        global MIN_DISCRETIZATION_FACTOR
+        MIN_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'min_discretization_factor',
+                                                     fallback=MIN_DISCRETIZATION_FACTOR)
 
         global NUMBER_OF_THREADS
         NUMBER_OF_THREADS = c_parse.getint('computational', 'number_of_threads', fallback=NUMBER_OF_THREADS)
