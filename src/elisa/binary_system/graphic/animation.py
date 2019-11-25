@@ -61,6 +61,7 @@ class Animation(object):
         logger.info('calculating surface parameters (points, faces, colormap)')
         for idx, phase in enumerate(phases):
             # assigning new longitudes for each spot
+            orbital_position_container.time = 86400 * self.binary.period * phase
             dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=idx, component="both")
             orbital_position_container.build(components_distance=components_distance[idx], components='both')
 
