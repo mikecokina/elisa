@@ -30,9 +30,13 @@ class OrbitalPositionContainer(PositionContainer):
         # placeholder (set in loop below)
         self.inclination = np.nan
         self._flatten = False
+        self.period = np.nan
 
         for key, val in properties.items():
             setattr(self, key, val)
+
+        # calculating a time that elapsed since t0
+        self.time = 86400 * self.period * self.position.phase
 
     def set_on_position_params(self, position, primary_potential=None, secondary_potential=None):
         setattr(self, "position", position)
@@ -71,7 +75,6 @@ class OrbitalPositionContainer(PositionContainer):
             - build_temperature_distribution
 
         :param phase: float; phase to build system on
-        :param do_pulsations: bool; switch to incorporate pulsations
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
         :return: self;
@@ -115,7 +118,6 @@ class OrbitalPositionContainer(PositionContainer):
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
-        :param do_pulsations: bool; switch to incorporate pulsations
         :param phase: float; phase to build system on
         :return: self;
         """

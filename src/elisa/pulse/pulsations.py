@@ -138,7 +138,16 @@ def phase_correction(phase):
     return phase * const.FULL_ARC
 
 
-def incorporate_pulsations_to_mesh(star_container, com_x, phase):
+def incorporate_pulsations_to_mesh(star_container, com_x, phase, time):
+    """
+    adds pulsation perturbation to the mesh
+
+    :param star_container: StarContainer;
+    :param com_x: float; centre of mass of the star
+    :param phase: float; rotational phase of the star
+    :param time: float; time elapsed since
+    :return: StarContainer;
+    """
     points, points_spot = star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
 
     tilt_phi, tilt_theta = generate_tilt_coordinates(star_container, phase)
@@ -148,8 +157,10 @@ def incorporate_pulsations_to_mesh(star_container, com_x, phase):
     displacement_spots = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in points_spot.items()}
 
     for mode_index, mode in star_container.pulsations.items():
-        rals = mode.renorm_const * sph_harm(mode.m, mode.l, tilted_points[:, 1], tilted_points[:, 2])
-        rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2])
+        exponent = mode.angular_frequency * time
+        exponential = up.exp(complex(0, -exponent))
+        rals = mode.renorm_const * sph_harm(mode.m, mode.l, tilted_points[:, 1], tilted_points[:, 2]) * exponential
+        rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2]) * exponential
                       for spot_idx, spotp in tilted_points_spot.items()}
 
         displacement += calculate_mode_displacement(mode, points, rals)
@@ -174,7 +185,7 @@ def tilt_mode_coordinates(points, spot_points, phi, theta):
     :param theta: float; latitude of the new polar axis
     :return: tuple;
     """
-    if theta != 0:
+    if theta != 0 and phi != 0:
         tilted_phi, tilted_theta = utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
         ret_points = np.column_stack((points[:, 0], tilted_phi, tilted_theta))
 

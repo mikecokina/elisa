@@ -23,9 +23,13 @@ class SystemContainer(PositionContainer):
         # placeholder (set in loop below)
         self.inclination = np.nan
         self._flatten = False
+        self.rotation_period = np.nan
 
         for key, val in properties.items():
             setattr(self, key, val)
+
+        # calculating a time that elapsed since t0
+        self.time = 86400 * self.rotation_period * self.position.phase
 
     @classmethod
     def from_single_system(cls, single_system, position):
