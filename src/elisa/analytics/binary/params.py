@@ -415,6 +415,13 @@ def eval_validator(x0):
 
 
 def eval_constraints(floatings, constraints):
+    """
+    Substitute variables in constraint with values and evalaute to number.
+
+    :param floatings: Dict[str, float]; non-fixed values (xn vector in dict form {label: xn_i})
+    :param constraints: Dict[str, float]; values estimated as constraintes in form {label: constraint_string}
+    :return: Dict[str, float]; evalauted constraints dict
+    """
     subst = {key: val.format(**floatings) for key, val in constraints.items()}
     evaluated = {key:  eval(val) for key, val in subst.items()}
     return evaluated
