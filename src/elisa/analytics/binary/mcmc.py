@@ -31,22 +31,15 @@ class LightCurveFit(shared.AbstractLightCurveFit):
         self.last_sampler = emcee.EnsembleSampler
         self.last_normalization = dict()
         self.last_fname = ''
-        super().__init__()
+        super(LightCurveFit, self).__init__()
 
     def model_to_fit(self, *args, **kwargs):
         return self.likelihood(*args, **kwargs)
 
     def likelihood(self, xn):
         xn = params.param_renormalizer(xn, self._labels)
-
-        # if morphology is overcontact, secondary pontetial has to be same as primary
-        if params.is_overcontact(self._morphology):
-            self._fixed['s__surface_potential'] = xn[self._hash_map['p__surface_potential']]
-
-        kwargs = {k: v for k, v in zip(self._labels, xn)}
-        kwargs.update(self._fixed)
-
-        args = self._xs, self._period, self._discretization, self._morphology, self._observer
+        kwargs = params.prepare_kwargs(xn, self._labels, self._constraint, self._fixed)
+        args = self._xs, self._period, self._discretization, self._morphology, self._observer, True
         synthetic = models.synthetic_binary(*args, **kwargs)
         synthetic = analutils.normalize_lightcurve_to_max(synthetic)
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band] - self._ys[band]) / self._yerrs[band], 2))
@@ -123,7 +116,7 @@ class LightCurveFit(shared.AbstractLightCurveFit):
         self._xtol = xtol
 
         x0 = params.initial_x0_validity_check(x0, self._morphology)
-        x0, labels, fixed, observer = params.fit_data_initializer(x0, passband=passband)
+        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
         ndim = len(x0)
 
         if nwalkers < ndim * 2:
@@ -136,6 +129,7 @@ class LightCurveFit(shared.AbstractLightCurveFit):
         self._discretization = discretization
         self._passband = passband
         self._fixed = fixed
+        self._constraint = constraint
         self._labels = labels
         self._observer = observer
 
@@ -159,10 +153,7 @@ class LightCurveFit(shared.AbstractLightCurveFit):
             return params.extend_result_with_units(result)
 
         result = self.resolve_mcmc_result(sampler, labels, discard=discard)
-        result = result + [{"param": key, "value": val} for key, val in fixed.items()]
-        if params.is_overcontact(self._morphology):
-            hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
-            result = params.adjust_result_constrained_potential(result, hash_map)
+        result = result + [{"param": key, "value": val} for key, val in self._fixed.items()]
 
         self.last_sampler = sampler
         self.last_normalization = params.NORMALIZATION_MAP.copy()

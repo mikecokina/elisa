@@ -38,22 +38,16 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         :return: float;
         """
         xn = params.param_renormalizer(xn, self._labels)
-        kwargs = {k: v for k, v in zip(self._labels, xn)}
-
-        # if morphology is overcontact, secondary pontetial has to be same as primary
-        if params.is_overcontact(self._morphology):
-            to_value = xn[self._hash_map['p__surface_potential']]
-            self._fixed = params.adjust_constrained_potential(self._fixed, to_value)
-
-        kwargs.update(self._fixed)
+        kwargs = params.prepare_kwargs(xn, self._labels, self._constraint, self._fixed)
         fn = models.synthetic_binary
-        args = self._xs, self._period, self._discretization, self._morphology, self._observer
+        args = self._xs, self._period, self._discretization, self._morphology, self._observer, False
         try:
             synthetic = logger_decorator()(fn)(*args, **kwargs)
             synthetic = analutils.normalize_lightcurve_to_max(synthetic)
-        except Exception:
-            logger.error(f'your initial parmeters lead to invalid morphology, choose different')
-            raise
+
+        except Exception as e:
+            logger.error(f'your initial parmeters lead during fitting to invalid binary system')
+            raise RuntimeError(f'your initial parmeters lead during fitting to invalid binary system: {str(e)}')
 
         residua = np.array([np.sum(np.power(synthetic[band] - self._ys[band], 2) / self._yerrs[band])
                             for band in synthetic])
@@ -86,13 +80,14 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
 
         x0 = params.initial_x0_validity_check(x0, self._morphology)
         initial_x0 = copy(x0)
-        x0, labels, fixed, observer = params.fit_data_initializer(x0, passband=passband)
+        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
 
         self._hash_map = {key: idx for idx, key in enumerate(labels)}
         self._period = period
         self._discretization = discretization
         self._passband = passband
         self._fixed = fixed
+        self._constraint = constraint
         self._labels = labels
         self._observer = observer
 
@@ -144,8 +139,7 @@ class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
         :return: numpy.array;
         """
         xn = params.param_renormalizer(xn, self._labels)
-        kwargs = {k: v for k, v in zip(self._labels, xn)}
-        kwargs.update(self._fixed)
+        kwargs = params.prepare_kwargs(xn, self._labels, self._constraint, self._fixed)
         fn = models.central_rv_synthetic
         synthetic = logger_decorator()(fn)(self._xs, self._period, self._observer, **kwargs)
         if self._on_normalized:
@@ -171,9 +165,10 @@ class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
         """
         initial_x0 = copy(x0)
         yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
-        x0, labels, fixed, observer = params.fit_data_initializer(x0)
+        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
 
-        self._fixed, self._labels, self._observer, self._period = fixed, labels, observer, period
+        self._labels, self._observer, self._period = labels, observer, period
+        self._fixed, self._constraint = fixed, constraint
         self._xs, self._ys, self._yerrs = xs, ys, yerrs
 
         logger.info("fitting radial velocity light curve...")

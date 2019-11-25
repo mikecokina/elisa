@@ -156,7 +156,6 @@ class TestParamsTestCase(ElisaTestCase):
             }
         ]
 
-        params.initial_x0_validity_check(xn, morphology='over-contact')
         params.initial_x0_validity_check(xn, morphology='detached')
 
         xn[0]["fixed"] = True
@@ -177,8 +176,57 @@ class TestParamsTestCase(ElisaTestCase):
         self.assertTrue(xn[0]['min'] == xn[1]['min'])
         self.assertTrue(xn[0]['max'] == xn[1]['max'])
 
-        self.assertTrue(xn[1]['fixed'])
+        self.assertTrue(xn[1]['constraint'] == "{p__surface_potential}")
         self.assertFalse(xn[0].get('fixed', False))
+
+    def test_mixed_fixed_and_constraint_raise_error(self):
+        xn = [
+            {
+                "value": 1.1,
+                "param": "p__surface_potential",
+                "min": 1.0,
+                "max": 10.0,
+                "fixed": True,
+                "constraint": "{s__surface_potential}"
+            },
+            {
+                "value": 1.1,
+                "param": "s__surface_potential"
+            }
+        ]
+
+        with self.assertRaises(InitialParamsError) as context:
+            params.initial_x0_validity_check(xn, morphology='detached')
+        self.assertTrue("to contain fixed and constraint" in str(context.exception).lower())
+
+    def test_constraints(self):
+        x0 = [
+            {
+                "param": "inclination",
+                "value": 44.0
+            },
+            {
+                "param": "p__mass",
+                "value": 10.0,
+                "fixed": False
+            },
+            {
+                "param": "semi_major_axis",
+                "value": 3.33,
+                "fixed": True
+            },
+            {
+                "param": "s__mass",
+                "value": 10.0,
+                "constraint": "2.0 * {p__mass}"
+            }
+        ]
+        x0c = params.x0_to_constraints_kwargs(x0)
+        vectorized, labels = params.x0_vectorize(x0)
+        x0v = {key: val for key, val in zip(labels, vectorized)}
+
+        evaluated = params.eval_constraints(x0v, x0c)
+        self.assertTrue(evaluated["s__mass"] == 20)
 
 
 class AbstractFitTestCase(ElisaTestCase):
