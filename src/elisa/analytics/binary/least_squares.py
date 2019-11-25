@@ -75,7 +75,7 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         """
         passband = list(ys.keys())
         yerrs = {band: analutils.lightcurves_mean_error(ys) for band in passband} if yerrs is None else yerrs
-        xs = xs if isinstance(xs, dict) else {band: xs for band in ys}
+        # xs = xs if isinstance(xs, dict) else {band: xs for band in ys}
         self._xs, self._ys, self._yerrs = xs, ys, yerrs
         self._xtol = xtol
 
