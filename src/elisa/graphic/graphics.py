@@ -661,8 +661,12 @@ def binary_surface_anim(**kwargs):
 
 def phase_curve(**kwargs):
     plt.figure(figsize=(8, 6))
+    if kwargs['flux_unit'] in ['normalized', 'normalised']:
+        C = np.max([kwargs['fluxes'][item] for item in kwargs['fluxes']])
+    else:
+        C = 1
     for item in kwargs['fluxes']:
-        plt.plot(kwargs['phases'], kwargs['fluxes'][item], label=item)
+        plt.plot(kwargs['phases'], kwargs['fluxes'][item] / C, label=item)
         plt.legend()
 
     plt.xlabel('Phase')

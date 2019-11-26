@@ -54,7 +54,9 @@ def get_eclipse_boundaries(binary, components_distance):
         radius1 = binary.primary.forward_radius
         radius2 = binary.secondary.forward_radius
         sin_i_critical = 1.01 * (radius1 + radius2) / components_distance
-        azimuth = up.arcsin(up.sqrt(up.power(sin_i_critical, 2) - up.power(up.cos(binary.inclination), 2)))
+        square = up.power(sin_i_critical, 2) - up.power(up.cos(binary.inclination), 2)
+        square = 0 if square < 0 else square
+        azimuth = up.arcsin(up.sqrt(square))
         azimuths = np.array([const.HALF_PI - azimuth, const.HALF_PI + azimuth, 1.5 * const.PI - azimuth,
                              1.5 * const.PI + azimuth]) % const.FULL_ARC
         return azimuths
