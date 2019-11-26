@@ -25,6 +25,7 @@ class AbstractCentralRadialVelocity(object):
     """
     def __init__(self):
         self._fixed = dict()
+        self._constraint = dict()
         self._labels = list()
         self._observer = None
         self._period = np.nan
@@ -57,6 +58,7 @@ class AbstractLightCurveFit(object, metaclass=ABCMeta):
         self._discretization = np.nan
         self._passband = ''
         self._fixed = dict()
+        self._constraint = dict()
         self._labels = list()
         self._observer = None
         self._period = np.nan
@@ -65,6 +67,8 @@ class AbstractLightCurveFit(object, metaclass=ABCMeta):
         self._ys = dict()
         self._yerrs = np.nan
         self._xtol = np.nan
+
+        self._is_initial_run = True
 
     def serialize_bubble(self, bubble):
         result = [{"param": key, "value": val, "fixed": True} for key, val in bubble.solution.items()]

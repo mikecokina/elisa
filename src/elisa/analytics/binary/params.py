@@ -161,9 +161,9 @@ def x0_vectorize(x0) -> Tuple:
     :param x0: List[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Tuple;
     """
-    _x0 = [record['value'] for record in x0 if not record.get('fixed', False)]
-    _labels = [record['param'] for record in x0 if not record.get('fixed', False)]
-    return _x0, _labels
+    _v = [record['value'] for record in x0 if not record.get('fixed', False) and not record.get('constraint', False)]
+    _l = [record['param'] for record in x0 if not record.get('fixed', False) and not record.get('constraint', False)]
+    return _v, _l
 
 
 def x0_to_kwargs(x0):
@@ -194,6 +194,21 @@ def x0_to_fixed_kwargs(x0):
     :return: Dict[str, float];
     """
     return {record['param']: record['value'] for record in x0 if record.get('fixed', False)}
+
+
+def x0_to_constraints_kwargs(x0):
+    """
+    Transform native JSON input form to `key, value` form, but select `constraint` parametres only::
+
+        {
+            key: value,
+            ...
+        }
+
+    :param x0: List[Dict[str, Union[float, str, bool]]];
+    :return: Dict[str, float];
+    """
+    return {record['param']: record['constraint'] for record in x0 if record.get('constraint', False)}
 
 
 def update_normalization_map(update):
@@ -246,7 +261,7 @@ def serialize_param_boundaries(x0):
     """
     return {record['param']: (record.get('min', NORMALIZATION_MAP[record['param']][0]),
                               record.get('max', NORMALIZATION_MAP[record['param']][1]))
-            for record in x0 if not record.get('fixed', False)}
+            for record in x0 if not record.get('fixed', False) and not record.get('constraint', False)}
 
 
 def fit_data_initializer(x0, passband=None):
@@ -254,13 +269,14 @@ def fit_data_initializer(x0, passband=None):
     update_normalization_map(boundaries)
 
     fixed = x0_to_fixed_kwargs(x0)
+    constraint = x0_to_constraints_kwargs(x0)
     x0_vectorized, labels = x0_vectorize(x0)
     x0 = param_normalizer(x0_vectorized, labels)
 
     observer = Observer(passband='bolometric' if passband is None else passband, system=None)
     observer._system_cls = BinarySystem
 
-    return x0, labels, fixed, observer
+    return x0, labels, fixed, constraint, observer
 
 
 def initial_x0_validity_check(x0: List[Dict], morphology):
@@ -276,6 +292,16 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
     :param morphology: str;
     :return: List[Dict];
     """
+
+    # first valdiate constraints
+    eval_validator(x0)
+
+    # invalidate fixed and constraints for same value
+    for record in x0:
+        if 'fixed' in record and 'constraint' in record:
+            msg = f'It is not allowed for record {record} to contain fixed and constraint.'
+            raise error.InitialParamsError(msg)
+
     hash_map = {val['param']: idx for idx, val in enumerate(x0)}
     is_oc = is_overcontact(morphology)
     are_same = x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['value'] == x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['value']
@@ -290,7 +316,7 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
         _min, _max = x.get('min', NORMALIZATION_MAP[x['param']][0]), x.get('max', NORMALIZATION_MAP[x['param']][1])
         if not (_min <= x['value'] <= _max):
             msg = f'Initial parametres are not fisible. Invalid bounds NOT: {_min} <= {x["param"]} <= {_max}'
-            raise ValueError(msg)
+            raise error.InitialParamsError(msg)
 
     if is_oc and all_fixed and are_same:
         return x0
@@ -301,11 +327,14 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
         msg = 'Just one fixed potential in over-contact morphology is not allowed.'
         raise error.InitialParamsError(msg)
     if is_oc:
-        # if is overcontact, fix secondary pontetial for further steps
-        x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['fixed'] = True
+        # if is overcontact, add constraint for secondary pontetial
         _min, _max = x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['min'], x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['max']
-        x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['min'] = _min
-        x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['max'] = _max
+        x0[hash_map[PARAMS_KEY_MAP['Omega2']]] = {
+            "value": x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['value'],
+            "constraint": "{p__surface_potential}",
+            "min": _min,
+            "max": _max,
+        }
         update_normalization_map({PARAMS_KEY_MAP['Omega2']: (_min, _max)})
 
     return x0
@@ -357,3 +386,54 @@ def extend_result_with_units(result):
         if key in PARAMS_UNITS_MAP:
             res['unit'] = PARAMS_UNITS_MAP[key]
     return result
+
+
+def eval_validator(x0):
+    """
+    Validate constraints. Make sure there is no harmful code.
+
+    :param x0: List[Dict]; initial values
+    :raise: elisa.base.error.InitialParamsError;
+    """
+    allowed = ['(', ')', '+', '-', '*', '/', '.'] + [str(i) for i in range(0, 10, 1)]
+
+    x0c = x0_to_constraints_kwargs(x0)
+    vectorized, labels = x0_vectorize(x0)
+    x0v = {key: val for key, val in zip(labels, vectorized)}
+
+    try:
+        subst = {key: val.format(**x0v).replace(' ', '') for key, val in x0c.items()}
+    except KeyError:
+        msg = f'It seems your constraint contain variable that cannot be resolved. ' \
+            f'Make sure taht linked constraint variable is not fixed or check for typos.'
+        raise error.InitialParamsError(msg)
+
+    for key, val in subst.items():
+        if not np.all(np.isin(list(val), allowed)):
+            msg = f'Constraint {key} contain forbidden characters. Allowed: {allowed}'
+            raise error.InitialParamsError(msg)
+
+
+def eval_constraints(floatings, constraints):
+    """
+    Substitute variables in constraint with values and evalaute to number.
+
+    :param floatings: Dict[str, float]; non-fixed values (xn vector in dict form {label: xn_i})
+    :param constraints: Dict[str, float]; values estimated as constraintes in form {label: constraint_string}
+    :return: Dict[str, float]; evalauted constraints dict
+    """
+    subst = {key: val.format(**floatings) for key, val in constraints.items()}
+    evaluated = {key:  eval(val) for key, val in subst.items()}
+    return evaluated
+
+
+def prepare_kwargs(xn, xn_lables, constraints, fixed):
+    """
+    This will prepare final kwargs for synthetic model evaluation.
+
+    :return: Dict[str, float];
+    """
+    kwargs = {key: val for key, val in zip(xn_lables, xn)}
+    kwargs.update(eval_constraints(kwargs, constraints))
+    kwargs.update(fixed)
+    return kwargs

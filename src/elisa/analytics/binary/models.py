@@ -94,8 +94,9 @@ def prepare_binary(period, discretization, **kwargs):
     return BinarySystem.from_json(json, _verify=False)
 
 
-def synthetic_binary(xs, period, discretization, morphology, observer, **kwargs):
+def synthetic_binary(xs, period, discretization, morphology, observer, _raise_invalid_morphology, **kwargs):
     """
+    :param _raise_invalid_morphology: bool; if morphology of system is different as expected, raise MorphologyError
     :param xs: Union[List, numpy.array];
     :param period: float;
     :param discretization: float;
@@ -123,12 +124,14 @@ def synthetic_binary(xs, period, discretization, morphology, observer, **kwargs)
         * **s__metallicity** * -- float;
         * **s__synchronicity** * -- float;
         * **gamma** * -- float;
-    :return: Tuple[numpy.array, str]
+    :return: Tuple[numpy.array, str];
+
+    :raise: elisa.base.errors.MorphologyError
     """
     binary = prepare_binary(period, discretization, **kwargs)
     observer._system = binary
 
-    if params.is_overcontact(morphology) and not params.is_overcontact(binary.morphology):
+    if params.is_overcontact(morphology) and not params.is_overcontact(binary.morphology) and _raise_invalid_morphology:
         raise error.MorphologyError(f'Expected morphology is {morphology} but obtained is {binary.morphology}')
 
     lc = observer.observe.lc(phases=xs, normalize=True)
