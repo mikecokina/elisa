@@ -4,32 +4,31 @@ import os
 import os.path as op
 import json
 
+from abc import ABCMeta, abstractmethod
 from multiprocessing import Pool
 from typing import Iterable, Dict
 from datetime import datetime
 
+from ...conf.config import BINARY_COUNTERPARTS
 from ..binary.plot import Plot
 from ...conf import config
 from ...logger import getPersistentLogger
-from ...base.error import (
-    ElisaError,
-    SolutionBubbleException
-)
+from ...base.error import ElisaError
 from ..binary import (
     utils as analutils,
     params,
-    models,
-    shared
+    models
+)
+from ...analytics.binary.shared import (
+    AbstractLightCurveDataMixin,
+    AbstractCentralRadialVelocityDataMixin,
+    AbstractFit
 )
 
 logger = getPersistentLogger('analytics.binary.mcmc')
 
 
 class McMcMixin(object):
-    @staticmethod
-    def ln_prior(xn):
-        return np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0)))
-
     @staticmethod
     def resolve_mcmc_result(sampler, labels, discard=False, thin=1, quantiles=None):
         flat_samples = sampler.get_chain(discard=discard, thin=thin, flat=True)
@@ -85,52 +84,79 @@ class McMcMixin(object):
         with open(fpath, "r") as f:
             return json.loads(f.read())
 
+    @staticmethod
+    def worker(sampler, p0, nsteps, nsteps_burn_in):
+        logger.info("running burn-in...")
+        p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in if nsteps > nsteps_burn_in else nsteps)
+        sampler.reset()
+        logger.info("running production...")
+        _, _, _ = sampler.run_mcmc(p0, nsteps)
 
-class LightCurveFit(shared.AbstractLightCurveFit, McMcMixin):
+    # @staticmethod
+    # def eval_mcmc(x0, p0, nwalkers, ndim, ln_probability, nsteps, nsteps_burn_in):
+    #     p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
+    #     # assign intial value
+    #     p0[0] = x0
+    #
+    #     lnf = self.ln_probability
+    #     if config.NUMBER_OF_MCMC_PROCESSES > 1:
+    #         with Pool(processes=config.NUMBER_OF_MCMC_PROCESSES) as pool:
+    #             logger.info('starting parallel mcmc')
+    #             sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf, pool=pool)
+    #             self.worker(sampler, p0, nsteps, nsteps_burn_in)
+    #     else:
+    #         logger.info('starting singlecore mcmc')
+    #         sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf)
+    #         self.worker(sampler, p0, nsteps, nsteps_burn_in)
+    #
+    #     result = self.resolve_mcmc_result(sampler, labels, discard=discard)
+    #     result = result + [{"param": key, "value": val} for key, val in self.fixed.items()]
+
+
+class McMcFit(AbstractFit, metaclass=ABCMeta):
     def __init__(self):
         self.plot = Plot()
         self.last_sampler = emcee.EnsembleSampler
         self.last_normalization = dict()
         self.last_fname = ''
-        super(LightCurveFit, self).__init__()
 
-    def model_to_fit(self, *args, **kwargs):
-        return self.likelihood(*args, **kwargs)
+    @staticmethod
+    def ln_prior(xn):
+        return np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0)))
 
+    @abstractmethod
     def likelihood(self, xn):
-        xn = params.param_renormalizer(xn, self._labels)
-        kwargs = params.prepare_kwargs(xn, self._labels, self._constraint, self._fixed)
-
-        args = self._xs, self._period, self._discretization, self._morphology, self._observer, True
-        synthetic = models.synthetic_binary(*args, **kwargs)
-        synthetic = analutils.normalize_lightcurve_to_max(synthetic)
-
-        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band] - self._ys[band]) / self._yerrs[band], 2))
-                                        for band in synthetic]))
-
-        if np.all(np.less_equal(np.abs(lhood), self._xtol)):
-            import sys
-            sys.tracebacklimit = 0
-            raise SolutionBubbleException(f"mcmc hit solution", solution=kwargs)
-
-        return lhood
+        pass
 
     def ln_probability(self, xn):
         if not self.ln_prior(xn):
             return -np.inf
-
         try:
-            likelihood = self.model_to_fit(xn)
-        except SolutionBubbleException:
-            raise
+            likelihood = self.likelihood(xn)
         except (ElisaError, ValueError) as e:
             logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
             return -10.0 * np.finfo(float).eps * np.sum(xn)
-
         return likelihood
 
+
+class LightCurveFit(McMcFit, AbstractLightCurveDataMixin, McMcMixin):
+    def __init__(self):
+        super().__init__()
+
+    def likelihood(self, xn):
+        xn = params.param_renormalizer(xn, self.labels)
+        kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
+
+        args = self.xs, self.period, self.discretization, self.morphology, self.observer, True
+        synthetic = models.synthetic_binary(*args, **kwargs)
+        synthetic = analutils.normalize_lightcurve_to_max(synthetic)
+
+        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band] - self.ys[band]) / self.yerrs[band], 2))
+                                        for band in synthetic]))
+        return lhood
+
     def fit(self, xs, ys, period, x0, discretization, nwalkers, nsteps,
-            xtol=1e-6, p0=None, yerrs=None, nsteps_burn_in=10, quantiles=None, discard=False):
+            p0=None, yerrs=None, nsteps_burn_in=10, quantiles=None, discard=False):
         """
         Fit method using Markov Chain Monte Carlo.
 
@@ -141,7 +167,6 @@ class LightCurveFit(shared.AbstractLightCurveFit, McMcMixin):
         :param discretization: float; discretization of objects
         :param nwalkers: int; number of walkers
         :param nsteps: int; number of steps in mcmc eval
-        :param xtol: float; tolerance of error to consider hitted solution as exact
         :param p0: numpy.array; inital priors for mcmc
         :param yerrs: Union[numpy.array, float]; errors for each point of observation
         :param nsteps_burn_in: int; numer of steps for mcmc to explore parameters
@@ -150,58 +175,37 @@ class LightCurveFit(shared.AbstractLightCurveFit, McMcMixin):
         :return: Dict; solution on supplied quantiles, default is [16, 50, 84]
         """
 
-        def worker(_sampler, _p0):
-            logger.info("running burn-in...")
-            _p0, _, _ = sampler.run_mcmc(_p0, nsteps_burn_in if nsteps > nsteps_burn_in else nsteps)
-            _sampler.reset()
-            logger.info("running production...")
-            _, _, _ = sampler.run_mcmc(_p0, nsteps)
-
-        passband = list(ys.keys())
-        yerrs = {band: analutils.lightcurves_mean_error(ys) for band in passband} if yerrs is None else yerrs
-        # xs = xs if isinstance(xs, dict) else {band: xs for band in ys}
-        self._xs, self._ys, self._yerrs = xs, ys, yerrs
-        self._xtol = xtol
-
-        x0 = params.initial_x0_validity_check(x0, self._morphology)
-        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
+        self.passband = list(ys.keys())
+        yerrs = {band: analutils.lightcurves_mean_error(ys) for band in self.passband} if yerrs is None else yerrs
+        x0 = params.initial_x0_validity_check(x0, self.morphology)
+        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=self.passband)
         ndim = len(x0)
+        params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
-        if nwalkers < ndim * 2:
-            msg = f'Fit cannot be executed with fewer walkers ({nwalkers}) than twice the number of dimensions ({ndim})'
-            raise RuntimeError(msg)
+        self.labels, self.observer, self.period = labels, observer, period
+        self.fixed, self.constraint = fixed, constraint
+        self.xs, self.ys, self.yerrs = xs, ys, yerrs
 
-        self._hash_map = {key: idx for idx, key in enumerate(labels)}
-        self._period = period
-        self._morphology = self._morphology
-        self._discretization = discretization
-        self._passband = passband
-        self._fixed = fixed
-        self._constraint = constraint
-        self._labels = labels
-        self._observer = observer
+        self.hash_map = {key: idx for idx, key in enumerate(labels)}
+        self.discretization = discretization
 
         p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
         # assign intial value
         p0[0] = x0
-        try:
-            lnf = self.ln_probability
-            if config.NUMBER_OF_MCMC_PROCESSES > 1:
-                with Pool(processes=config.NUMBER_OF_MCMC_PROCESSES) as pool:
-                    logger.info('starting parallel mcmc')
-                    sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf, pool=pool)
-                    worker(sampler, p0)
-            else:
-                logger.info('starting singlecore mcmc')
-                sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf)
-                worker(sampler, p0)
 
-        except SolutionBubbleException as bubble:
-            result = self.serialize_bubble(bubble)
-            return params.extend_result_with_units(result)
+        lnf = self.ln_probability
+        if config.NUMBER_OF_MCMC_PROCESSES > 1:
+            with Pool(processes=config.NUMBER_OF_MCMC_PROCESSES) as pool:
+                logger.info('starting parallel mcmc')
+                sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf, pool=pool)
+                self.worker(sampler, p0, nsteps, nsteps_burn_in)
+        else:
+            logger.info('starting singlecore mcmc')
+            sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf)
+            self.worker(sampler, p0, nsteps, nsteps_burn_in)
 
-        result = self.resolve_mcmc_result(sampler, labels, discard=discard)
-        result = result + [{"param": key, "value": val} for key, val in self._fixed.items()]
+        result = self.resolve_mcmc_result(sampler, labels, discard=discard, quantiles=quantiles)
+        result = result + [{"param": key, "value": val} for key, val in self.fixed.items()]
 
         self.last_sampler = sampler
         self.last_normalization = params.NORMALIZATION_MAP.copy()
@@ -216,7 +220,7 @@ class OvercontactLightCurveFit(LightCurveFit):
     """
     def __init__(self):
         super().__init__()
-        self._morphology = 'over-contact'
+        self.morphology = 'over-contact'
 
 
 class DetachedLightCurveFit(LightCurveFit):
@@ -225,7 +229,7 @@ class DetachedLightCurveFit(LightCurveFit):
     """
     def __init__(self):
         super().__init__()
-        self._morphology = 'detached'
+        self.morphology = 'detached'
 
 
 class CentralRadialVelocity(shared.AbstractCentralRadialVelocity, McMcMixin):

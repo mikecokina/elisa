@@ -5,7 +5,6 @@ from abc import ABCMeta
 from copy import copy
 from scipy.optimize import least_squares
 
-from ...base.error import SolutionBubbleException
 from ...conf.config import BINARY_COUNTERPARTS
 from ...logger import getPersistentLogger
 from ..binary import params
@@ -14,6 +13,9 @@ from ..binary import (
     models,
     shared
 )
+from elisa.analytics.binary.shared import (
+    AbstractCentralRadialVelocityDataMixin,
+    AbstractLightCurveDataMixin)
 
 logger = getPersistentLogger('analytics.binary.fit')
 
@@ -29,7 +31,7 @@ def logger_decorator(suppress_logger=False):
     return do
 
 
-class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
+class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
     def model_to_fit(self, xn):
         """
         Model to find minimum.
@@ -37,10 +39,10 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         :param xn: Iterable[float];
         :return: float;
         """
-        xn = params.param_renormalizer(xn, self._labels)
-        kwargs = params.prepare_kwargs(xn, self._labels, self._constraint, self._fixed)
+        xn = params.param_renormalizer(xn, self.labels)
+        kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
         fn = models.synthetic_binary
-        args = self._xs, self._period, self._discretization, self._morphology, self._observer, False
+        args = self.xs, self.period, self.discretization, self.morphology, self.observer, False
         try:
             synthetic = logger_decorator()(fn)(*args, **kwargs)
             synthetic = analutils.normalize_lightcurve_to_max(synthetic)
@@ -49,26 +51,21 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
             logger.error(f'your initial parmeters lead during fitting to invalid binary system')
             raise RuntimeError(f'your initial parmeters lead during fitting to invalid binary system: {str(e)}')
 
-        residua = np.array([np.sum(np.power(synthetic[band] - self._ys[band], 2) / self._yerrs[band])
+        residua = np.array([np.sum(np.power(synthetic[band] - self.ys[band], 2) / self.yerrs[band])
                             for band in synthetic])
-
-        if np.all(np.less_equal(np.abs(residua), self._xtol)):
-            import sys
-            sys.tracebacklimit = 0
-            raise SolutionBubbleException(f"least_squares hit solution", solution=kwargs)
 
         return residua
 
     def fit(self, xs, ys, period, x0, discretization, xtol=1e-15, yerrs=None, max_nfev=None):
         """
-        Fit method using Markov Chain Monte Carlo.
+        Fit method using non-linear least squares.
 
         :param xs: Iterable[float];
         :param ys: Dict;
         :param period: float; sytem period
         :param x0: List[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
-        :param xtol: float; tolerance of error to consider hitted solution as exact
+        :param xtol: float; relative tolerance to consider solution
         :param yerrs: Union[numpy.array, float]; errors for each point of observation
         :param max_nfev: int; maximal iteration
         :return: Dict; solution on supplied quantiles, default is [16, 50, 84]
@@ -76,29 +73,22 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
         passband = list(ys.keys())
         yerrs = {band: analutils.lightcurves_mean_error(ys) for band in passband} if yerrs is None else yerrs
         # xs = xs if isinstance(xs, dict) else {band: xs for band in ys}
-        self._xs, self._ys, self._yerrs = xs, ys, yerrs
-        self._xtol = xtol
+        self.xs, self.ys, self.yerrs = xs, ys, yerrs
 
-        x0 = params.initial_x0_validity_check(x0, self._morphology)
+        x0 = params.initial_x0_validity_check(x0, self.morphology)
         initial_x0 = copy(x0)
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
 
-        self._hash_map = {key: idx for idx, key in enumerate(labels)}
-        self._period = period
-        self._discretization = discretization
-        self._passband = passband
-        self._fixed = fixed
-        self._constraint = constraint
-        self._labels = labels
-        self._observer = observer
+        self.hash_map = {key: idx for idx, key in enumerate(labels)}
+        self.period = period
+        self.discretization = discretization
+        self.passband = passband
+        self.labels, self.fixed, self.constraint = labels, fixed, constraint
+        self.observer = observer
 
         logger.info("fitting circular synchronous system...")
         func = self.model_to_fit
-        try:
-            result = least_squares(func, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol)
-        except SolutionBubbleException as bubble:
-            result = self.serialize_bubble(bubble)
-            return params.extend_result_with_units(result)
+        result = least_squares(func, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol)
 
         logger.info("fitting finished")
 
@@ -108,11 +98,11 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
 
         result = [{"param": key, "value": val} for key, val in result_dict.items()]
 
-        if params.is_overcontact(self._morphology):
+        if params.is_overcontact(self.morphology):
             hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
             result = params.adjust_result_constrained_potential(result, hash_map)
 
-        r_squared_args = xs, ys, period, passband, discretization, self._morphology
+        r_squared_args = xs, ys, period, passband, discretization, self.morphology
         r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **result_dict)
         result.append({"r_squared": r_squared_result})
 
@@ -122,16 +112,16 @@ class LightCurveFit(shared.AbstractLightCurveFit, metaclass=ABCMeta):
 class OvercontactLightCurveFit(LightCurveFit):
     def __init__(self):
         super().__init__()
-        self._morphology = 'over-contact'
+        self.morphology = 'over-contact'
 
 
 class DetachedLightCurveFit(LightCurveFit):
     def __init__(self):
         super().__init__()
-        self._morphology = 'detached'
+        self.morphology = 'detached'
 
 
-class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
+class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
     def centarl_rv_model_to_fit(self, xn):
         """
         Residual function.
@@ -139,20 +129,21 @@ class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
         :param xn: numpy.array; current vector
         :return: numpy.array;
         """
-        xn = params.param_renormalizer(xn, self._labels)
-        kwargs = params.prepare_kwargs(xn, self._labels, self._constraint, self._fixed)
+        xn = params.param_renormalizer(xn, self.labels)
+        kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
         fn = models.central_rv_synthetic
-        synthetic = logger_decorator()(fn)(self._xs, self._period, self._observer, **kwargs)
-        if self._on_normalized:
+        synthetic = logger_decorator()(fn)(self.xs, self.period, self.observer, **kwargs)
+        if self.on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
         synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
-        return np.array([np.sum(np.power((synthetic[comp] - self._ys[comp]) / self._yerrs[comp], 2))
+        return np.array([np.sum(np.power((synthetic[comp] - self.ys[comp]) / self.yerrs[comp], 2))
                          for comp in BINARY_COUNTERPARTS])
 
     def fit(self, xs, ys, period, x0, yerrs=None, xtol=1e-10, max_nfev=None, on_normalized=False):
         """
-        Method to provide fitting of radial velocities cruves.
+        Method to provide fitting of radial velocities curves.
         It can handle standadrd physical parameters `M_1`, `M_2` or astro community parameters `asini` and `q`.
+        Based on non-linear least squares.
 
         :param on_normalized: bool; if True, fitting is provided on normalized radial velocities curves
         :param xs: Iterable[float];
@@ -168,9 +159,9 @@ class CentralRadialVelocity(shared.AbstractCentralRadialVelocity):
         yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
 
-        self._labels, self._observer, self._period = labels, observer, period
-        self._fixed, self._constraint = fixed, constraint
-        self._xs, self._ys, self._yerrs = xs, ys, yerrs
+        self.labels, self.observer, self.period = labels, observer, period
+        self.fixed, self.constraint = fixed, constraint
+        self.xs, self.ys, self.yerrs = xs, ys, yerrs
 
         logger.info("fitting radial velocity light curve...")
         func = self.centarl_rv_model_to_fit

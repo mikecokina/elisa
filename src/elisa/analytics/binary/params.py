@@ -437,3 +437,17 @@ def prepare_kwargs(xn, xn_lables, constraints, fixed):
     kwargs.update(eval_constraints(kwargs, constraints))
     kwargs.update(fixed)
     return kwargs
+
+
+def mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim):
+    """
+    Validate mcmc number of walkers and number of vector dimension.
+    Has to be satisfied `nwalkers < ndim * 2`.
+
+    :param nwalkers:
+    :param ndim:
+    :raise: RuntimeError; when condition `nwalkers < ndim * 2` is not satisfied
+    """
+    if nwalkers < ndim * 2:
+        msg = f'Fit cannot be executed with fewer walkers ({nwalkers}) than twice the number of dimensions ({ndim})'
+        raise RuntimeError(msg)

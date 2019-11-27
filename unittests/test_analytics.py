@@ -313,7 +313,7 @@ class McMcLCTestCase(AbstractFitTestCase):
         self.model_generator.keep_out = True
         with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.generator):
             mc_binary_detached.fit(xs=self.phases, ys=self.flux, period=3.0, discretization=5,
-                                   x0=dinit, nwalkers=4, nsteps=5, xtol=1e-5)
+                                   x0=dinit, nwalkers=4, nsteps=5)
 
     def test_mcmc_lc_fit_community_params_detached(self):
         dinit = [
@@ -365,7 +365,7 @@ class McMcLCTestCase(AbstractFitTestCase):
         self.model_generator.keep_out = True
         with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.generator):
             mc_binary_detached.fit(xs=self.phases, ys=self.flux, period=3.0, discretization=5,
-                                   x0=dinit, nwalkers=4, nsteps=5, xtol=1e-5)
+                                   x0=dinit, nwalkers=4, nsteps=5)
 
 
 class LeastSqaureRVTestCase(ElisaTestCase):
