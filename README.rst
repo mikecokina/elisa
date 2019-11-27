@@ -497,6 +497,9 @@ Object `central_rv` keep track of last executed mcmc "simulation" so you can wor
 There are also such informations stored in "elisa home" in json file, so you are able to parse and work with each
 previous run.
 
+:note: just beware, there was no bias added to data in case of mcmc fitting and
+       this is a reason why error of params is close to zero
+
 Binary Stars Radial Light Fitting
 ---------------------------------
 
@@ -703,3 +706,8 @@ Here you can see visual output
 
 :note: In mentioned approach we used community parmeters :math:`q` and :math:`a` instead of :math:`M_1` and :math:`M_2`, but
        if you are somehow aware of information when is better to use masses, it is of course fully implemented and compatible.
+
+Lets assume that we also posses radial velocities and we were able to obtain :math:`q` and :math:`asini`. Since we observed
+binary system via several optical filters then we can get B-V index and estimate effective temperature :math:`T_^{eff}_1`
+about photomeric phase, :math:`\Phi` = 0.75. Using Ballestero's formula we get :math:`T_^{eff}_1` ~ 6000K.
+$`\Phi` = 0.75$
