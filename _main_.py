@@ -73,18 +73,19 @@ def main():
         {
             'value': 0.0,
             'param': 'argument_of_periastron',
-            'fixed': False
+            'fixed': True
         },
         {
-            'value': 30000.0,
+            'value': 15000.0,
             'param': 'gamma',
             'fixed': False,
-            'min': 0,
-            'max': 50000.0
+            'min': 10000.0,
+            'max': 30000.0
         }
     ]
 
-    central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial_parameters, nwalkers=10, nsteps=10000)
+    central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial_parameters, nwalkers=10, nsteps=10000,
+                   nsteps_burn_in=1000)
     result = central_rv.restore_flat_chain(central_rv.last_fname)
     central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
 

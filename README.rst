@@ -272,11 +272,12 @@ Each fitting initial input has form like::
             'param': <str>,
             'fixed': <bool>,
             'min': <float>,
-            'max': <float>
+            'max': <float>,
+            'constraint': <str>
         }, ...
     ]
 
-and require all params from following list if you would like to try absolute paramters fitting:
+and require all params from following list if you would like to try absolute parameters fitting:
 
     * ``p__mass`` - mass of primary component in units of Solar mass
     * ``s__mass`` - mass of secondary component in units of Solar mass
@@ -325,7 +326,7 @@ by parameters::
 .. code:: python
 
     import numpy as np
-    from elisa.analytics.binary.fit import central_rv
+    from elisa.analytics.binary.least_squares import central_rv
 
     def main():
         phases = np.arange(-0.6, 0.62, 0.02)
@@ -415,6 +416,86 @@ Result of fitting procedure was estimated as
   :alt: rv_fit.svg
   :align: center
 
+Another approach is to use implemented fitting method based on `Markov Chain Monte Carlo`. Read data output requires
+more analytics skills, some minimal expirience with MCMC since output is not simple dictionary of values but
+it is basically descriptive set of parameters progress during evaluation of method.
+
+Following represents minimalistic base code which should explain how to use mcmc method and how to read outputs.
+
+.. code:: python
+
+    import numpy as np
+    from elisa.analytics.binary.mcmc import central_rv
+
+
+    def main():
+        phases = np.arange(-0.6, 0.62, 0.02)
+        rv = {'primary': np.array([111221.02018955, 102589.40515112, 92675.34114568,..., -22875.63138097]),
+              'secondary': np.array([-144197.83633559, -128660.92926642, -110815.61405663,.., 97176.13649135])}
+
+        rv_initial_parameters = [
+            {
+                'value': 0.2,
+                'param': 'eccentricity',
+                'fixed': False,
+                'min': 0.0,
+                'max': 0.5
+
+            },
+            {
+                'value': 10.0,  # 4.219470628180749
+                'param': 'asini',
+                'fixed': False,
+                'min': 1.0,
+                'max': 20.0
+
+            },
+            {
+                'value': 1.0,  # 1.0 / 1.8
+                'param': 'mass_ratio',
+                'fixed': False,
+                'min': 0,
+                'max': 10
+            },
+            {
+                'value': 0.0,
+                'param': 'argument_of_periastron',
+                'fixed': True
+            },
+            {
+                'value': 15000.0,
+                'param': 'gamma',
+                'fixed': False,
+                'min': 10000.0,
+                'max': 30000.0
+            }
+        ]
+
+        central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial_parameters, nwalkers=20,
+                       nsteps=10000, nsteps_burn_in=1000, yerrs=None)
+
+        result = central_rv.restore_flat_chain(central_rv.last_fname)
+        central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
+
+
+    if __name__ == '__main__':
+        main()
+
+Result of code above is corner plot which might looks like this one
+
+.. image:: ./docs/source/_static/readme/mcmc_rv_croner.svg
+  :width: 95%
+  :alt: mcmc_rv_croner.svg
+  :align: center
+
+Object `central_rv` keep track of last executed mcmc "simulation" so you can work with output. It stores::
+
+    last_sampler: emcee.EnsembleSampler; last instance of `sampler`
+    last_normalization: Dict; normalization map used during fitting
+    last_fname: str; filename of last stored flatten emcee `sampler` with metadata
+
+There are also such informations stored in "elisa home" in json file, so you are able to parse and work with each
+previous run.
 
 Binary Stars Radial Light Fitting
 ---------------------------------
