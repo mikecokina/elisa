@@ -232,22 +232,37 @@ class DetachedLightCurveFit(LightCurveFit):
         self.morphology = 'detached'
 
 
-class CentralRadialVelocity(shared.AbstractCentralRadialVelocity, McMcMixin):
+class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin, McMcMixin):
     def __init__(self):
-        self.plot = Plot()
-        self.last_sampler = emcee.EnsembleSampler
-        self.last_normalization = dict()
-        self.last_fname = ''
-        super(CentralRadialVelocity, self).__init__()
+        super().__init__()
 
     def likelihood(self, xn):
         pass
 
-    def ln_probability(self, xn):
-        pass
 
-    def fit(self):
-        pass
+    def fit(self, xs, ys, period, x0, discretization, nwalkers, nsteps,
+            xtol=1e-6, p0=None, yerrs=None, nsteps_burn_in=10, quantiles=None, discard=False):
+
+        yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
+
+
+
+
+
+
+
+
+        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
+        ndim = len(x0)
+        params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
+
+        self.labels, self.observer, self.period = labels, observer, period
+        self.fixed, self.constraint = fixed, constraint
+        self.xs, self.ys, self.yerrs, self.xtol = xs, ys, yerrs, xtol
+
+        p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
+        # assign intial value
+        p0[0] = x0
 
 
 binary_detached = DetachedLightCurveFit()
