@@ -79,7 +79,6 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         initial_x0 = copy(x0)
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
 
-        self.hash_map = {key: idx for idx, key in enumerate(labels)}
         self.period = period
         self.discretization = discretization
         self.passband = passband

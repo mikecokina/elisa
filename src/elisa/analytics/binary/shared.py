@@ -32,7 +32,6 @@ class AbstractCentralRadialVelocityDataMixin(AbstractFitDataMixin):
 
 
 class AbstractLightCurveDataMixin(AbstractFitDataMixin):
-    hash_map = dict()
     morphology = ''
     discretization = np.nan
     passband = ''
