@@ -172,8 +172,8 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
             self.last_normalization: Dict; normalization map used during fitting
             self.last_fname: str; filename of last stored flatten emcee `sampler` with metadata
 
-        :param xs: Iterable[float];
-        :param ys: Dict;
+        :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
+        :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
         :param period: float; sytem period
         :param x0: List[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
