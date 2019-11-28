@@ -845,3 +845,20 @@ def random_sign():
     """
     random = np.random.randint(0, 2)
     return 1 if random else -1
+
+
+def str_repalce(x, old, new):
+    """
+    Replace old values with new in strin `x`.
+
+    :param x: str;
+    :param old: Union[str, Iterable[str]];
+    :param new: Union[str, Iterable[str]];
+    :return: str;
+    """
+    old = [old] if isinstance(old, str) else old
+    new = [new] if isinstance(new, str) else new
+
+    for _old, _new in zip(old, new):
+        x = str(x).replace(_old, _new)
+    return x

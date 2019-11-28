@@ -1,23 +1,22 @@
 import time
-
-import numpy as np
-
 from copy import copy
-from numpy.testing import assert_array_equal
-from elisa.analytics.binary import params
-from elisa.base.error import InitialParamsError
-from elisa.conf.config import BINARY_COUNTERPARTS
-from unittests.utils import ElisaTestCase
-
 from unittest import (
     mock
 )
+
+import numpy as np
+from numpy.testing import assert_array_equal
+
+from elisa.analytics.binary import params
 from elisa.analytics.binary.least_squares import (
     binary_detached as ls_binary_detached,
     central_rv
 )
 from elisa.analytics.binary.mcmc import binary_detached as mc_binary_detached
 from elisa.analytics.binary.mcmc import central_rv as mc_central_rv
+from elisa.base.error import InitialParamsError
+from elisa.conf.config import BINARY_COUNTERPARTS
+from unittests.utils import ElisaTestCase
 
 TOL = 1e-5
 
@@ -227,7 +226,7 @@ class TestParamsTestCase(ElisaTestCase):
         vectorized, labels = params.x0_vectorize(x0)
         x0v = {key: val for key, val in zip(labels, vectorized)}
 
-        evaluated = params.eval_constraints(x0v, x0c)
+        evaluated = params.constraints_evaluator(x0v, x0c)
         self.assertTrue(evaluated["s__mass"] == 20)
 
 
@@ -719,7 +718,7 @@ class ModelSimulator(object):
                                  -68540.71327297, -44365.33897271, -18407.22971932,
                                  9082.58262586, 37786.04533903, 67309.27849613,
                                  97176.13649135])}
-    
+
     lc_mean = np.mean(list(flux.values()))
     rv_mean = np.mean(list(rv.values()))
 
@@ -753,3 +752,87 @@ class ModelSimulator(object):
         rv = {component: self.rv[component] + np.random.uniform(-add, +add, len(self.rv[component]))
               for component in BINARY_COUNTERPARTS}
         return rv["primary"], rv["secondary"]
+
+
+class ConstraintsTestCase(ElisaTestCase):
+    basic_x0 = [
+        {
+            "param": "a",
+            "value": 50
+        },
+        {
+            "param": "b",
+            "value": 2
+        },
+        {
+            "param": "c",
+            "value": 1.25
+        },
+        {
+            "param": "c1",
+            "value": 0,
+            "constraint": "2 * {a}"
+        },
+        {
+            "param": "c2",
+            "value": 0,
+            "constraint": "2 + {b}"
+        },
+        {
+            "param": "c3",
+            "value": 0,
+            "constraint": "{a} + {b}"
+        },
+        {
+            "param": "c4",
+            "value": 0,
+            "constraint": "({a} + {b}) * 2.0"
+        }
+    ]
+
+    extended_x0 = [
+        {
+            "param": "a",
+            "value": 50
+        },
+        {
+            "param": "b",
+            "value": 2
+        },
+        {
+            "param": "c1",
+            "value": 0,
+            "constraint": "{a} * sin({b})"
+        },
+        {
+            "param": "c2",
+            "value": 0,
+            "constraint": "{a} * log({b})"
+        },
+        {
+            "param": "c2",
+            "value": 0,
+            "constraint": "{a} * log10({b})"
+        }
+    ]
+
+    def test_constraints_validator_basic(self):
+        params.constraints_validator(self.basic_x0)
+
+    def test_constraints_evaluator_basic(self):
+        expected = {'c1': 100, 'c2': 4, 'c3': 52, 'c4': 104.0}
+        floats = params.x0_to_floats_kwargs(self.basic_x0)
+        constraints = params.x0_to_constraints_kwargs(self.basic_x0)
+        obtained = params.constraints_evaluator(floats, constraints)
+        self.assertDictEqual(expected, obtained)
+
+    def test_constraints_validator_extended(self):
+        params.constraints_validator(self.extended_x0)
+
+    def test_constraints_evaluator_extended(self):
+        expected = {'c1': np.round(45.46487134128409, 3), 'c2': np.round(15.05149978319906, 3)}
+        floats = params.x0_to_floats_kwargs(self.extended_x0)
+        constraints = params.x0_to_constraints_kwargs(self.extended_x0)
+        obtained = params.constraints_evaluator(floats, constraints)
+        obtained = {key: np.round(val, 3) for key, val in obtained.items()}
+        self.assertDictEqual(expected, obtained)

@@ -75,4 +75,4 @@ FALSE_FACE_PLACEHOLDER = np.array([-1, -1, -1])
 
 
 Position = namedtuple('Position', ['idx', 'distance', 'azimuth', 'true_anomaly', 'phase'])
-SinglePosition = namedtuple('Position', ['idx', 'azimuth', 'phase'])
+SinglePosition = namedtuple('SinglePosition', ['idx', 'azimuth', 'phase'])

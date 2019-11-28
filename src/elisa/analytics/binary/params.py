@@ -1,6 +1,8 @@
 import numpy as np
 
 from typing import List, Tuple, Dict
+
+from elisa import utils
 from ...atm import atm_file_prefix_to_quantity_list
 from ...base import error
 from ...binary_system.system import BinarySystem
@@ -161,9 +163,9 @@ def x0_vectorize(x0) -> Tuple:
     :param x0: List[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Tuple;
     """
-    _v = [record['value'] for record in x0 if not record.get('fixed', False) and not record.get('constraint', False)]
-    _l = [record['param'] for record in x0 if not record.get('fixed', False) and not record.get('constraint', False)]
-    return _v, _l
+
+    floats = x0_to_floats_kwargs(x0)
+    return list(floats.values()), list(floats.keys())
 
 
 def x0_to_kwargs(x0):
@@ -209,6 +211,23 @@ def x0_to_constraints_kwargs(x0):
     :return: Dict[str, float];
     """
     return {record['param']: record['constraint'] for record in x0 if record.get('constraint', False)}
+
+
+def x0_to_floats_kwargs(x0):
+    """
+    Transform native JSON input form to `key, value` form, but select `floats` parameters
+    (as in not fixed or constrained)::
+
+        {
+            key: value,
+            ...
+        }
+
+    :param x0: List[Dict[str, Union[float, str, bool]]];
+    :return: Dict[str, float];
+    """
+    return {record['param']: record['value'] for record in x0
+            if not record.get('fixed', False) and not record.get('constraint', False)}
 
 
 def update_normalization_map(update):
@@ -294,7 +313,7 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
     """
 
     # first valdiate constraints
-    eval_validator(x0)
+    constraints_validator(x0)
 
     # invalidate fixed and constraints for same value
     for record in x0:
@@ -388,18 +407,27 @@ def extend_result_with_units(result):
     return result
 
 
-def eval_validator(x0):
+def constraints_validator(x0):
     """
     Validate constraints. Make sure there is no harmful code.
+    Allowed methods used in constraints::
+
+        'log', 'sin', 'cos', 'tan', 'exp'
+
+    Allowed characters used in constraints::
+
+        '(', ')', '+', '-', '*', '/', '.'
 
     :param x0: List[Dict]; initial values
     :raise: elisa.base.error.InitialParamsError;
     """
-    allowed = ['(', ')', '+', '-', '*', '/', '.'] + [str(i) for i in range(0, 10, 1)]
+    x0 = x0.copy()
+    allowed_methods = ['log', 'sin', 'cos', 'tan', 'exp']
+    allowed_chars = ['(', ')', '+', '-', '*', '/', '.'] + [str(i) for i in range(0, 10, 1)]
 
     x0c = x0_to_constraints_kwargs(x0)
-    vectorized, labels = x0_vectorize(x0)
-    x0v = {key: val for key, val in zip(labels, vectorized)}
+    x0v = x0_to_floats_kwargs(x0)
+    x0c = {key: utils.str_repalce(val, allowed_methods, [''] * len(allowed_methods)) for key, val in x0c.items()}
 
     try:
         subst = {key: val.format(**x0v).replace(' ', '') for key, val in x0c.items()}
@@ -409,21 +437,29 @@ def eval_validator(x0):
         raise error.InitialParamsError(msg)
 
     for key, val in subst.items():
-        if not np.all(np.isin(list(val), allowed)):
-            msg = f'Constraint {key} contain forbidden characters. Allowed: {allowed}'
+        if not np.all(np.isin(list(val), allowed_chars)):
+            msg = f'Constraint {key} contain forbidden characters. Allowed: {allowed_chars}'
             raise error.InitialParamsError(msg)
 
 
-def eval_constraints(floatings, constraints):
+def constraints_evaluator(floats, constraints):
     """
     Substitute variables in constraint with values and evalaute to number.
 
-    :param floatings: Dict[str, float]; non-fixed values (xn vector in dict form {label: xn_i})
+    :param floats: Dict[str, float]; non-fixed values (xn vector in dict form {label: xn_i})
     :param constraints: Dict[str, float]; values estimated as constraintes in form {label: constraint_string}
     :return: Dict[str, float]; evalauted constraints dict
     """
-    subst = {key: val.format(**floatings) for key, val in constraints.items()}
-    evaluated = {key:  eval(val) for key, val in subst.items()}
+    allowed_methods = ['log', 'sin', 'cos', 'tan', 'exp']
+    numpy_methods = ['np.log', 'np.sin', 'np.cos', 'np.tan', 'np.exp']
+    floats, constraints = floats.copy(), constraints.copy()
+
+    numpy_callable = {key: utils.str_repalce(val, allowed_methods, numpy_methods) for key, val in constraints.items()}
+    subst = {key: val.format(**floats) for key, val in numpy_callable.items()}
+    try:
+        evaluated = {key:  eval(val) for key, val in subst.items()}
+    except Exception as e:
+        raise error.InitialParamsError(f'Invalid syntax in constraint, {str(e)}.')
     return evaluated
 
 
@@ -434,7 +470,7 @@ def prepare_kwargs(xn, xn_lables, constraints, fixed):
     :return: Dict[str, float];
     """
     kwargs = {key: val for key, val in zip(xn_lables, xn)}
-    kwargs.update(eval_constraints(kwargs, constraints))
+    kwargs.update(constraints_evaluator(kwargs, constraints))
     kwargs.update(fixed)
     return kwargs
 

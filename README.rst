@@ -710,4 +710,3 @@ Here you can see visual output
 Lets assume that we also posses radial velocities and we were able to obtain :math:`q` and :math:`asini`. Since we observed
 binary system via several optical filters then we can get B-V index and estimate effective temperature :math:`T_^{eff}_1`
 about photomeric phase, :math:`\Phi` = 0.75. Using Ballestero's formula we get :math:`T_^{eff}_1` ~ 6000K.
-$`\Phi` = 0.75$
