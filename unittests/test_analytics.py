@@ -121,25 +121,18 @@ class TestParamsTestCase(ElisaTestCase):
         xn = [
             {
                 "value": 1.1,
-                "param": "p__surface_potential",
-                "min": 1.0,
-                "max": 10.0
+                "param": "p__surface_potential"
             },
             {
                 "value": 1.2,
-                "param": "s__surface_potential",
-                "min": 1.1,
-                "max": 11.0
+                "param": "s__surface_potential"
             }
         ]
 
-        expected = [{'value': 1.1, 'param': 'p__surface_potential', 'min': 1.0, 'max': 10.0},
-                    {'param': 's__surface_potential', 'value': 1.1, 'min': 1.0, 'max': 10.0}]
+        expected = [{'value': 1.1, 'param': 'p__surface_potential'},
+                    {'param': 's__surface_potential', 'value': 1.1}]
         obtained = params.adjust_result_constrained_potential(xn, hash_map)
-
         self.assertTrue(expected[0]['value'] == obtained[0]['value'])
-        self.assertTrue(expected[0]['min'] == obtained[0]['min'])
-        self.assertTrue(expected[0]['max'] == obtained[0]['max'])
 
     def test_initial_x0_validity_check(self):
         xn = [
@@ -229,12 +222,35 @@ class TestParamsTestCase(ElisaTestCase):
         evaluated = params.constraints_evaluator(x0v, x0c)
         self.assertTrue(evaluated["s__mass"] == 20)
 
+    def test_xs_reducer_all_same(self):
+        a = np.linspace(0, 1, 5)
+        xs = {"a": a, "b": a, "c": a}
+        new_xs, inverse = params.xs_reducer(xs)
+        for band, phases in xs.items():
+            assert_array_equal(inverse[band], np.arange(len(phases)))
+        assert_array_equal(new_xs, a)
+
+    def test_xs_reducer_random(self):
+        a = np.linspace(0, 1, 5)
+        b = np.array(np.array(a + 0.01).tolist() + [0.021])
+        c = a + 0.02
+        xs = {"a": a, "b": b, "c": c}
+        new_xs, inverse = params.xs_reducer(xs)
+        expected_xs = [0., 0.01, 0.02, 0.021, 0.25, 0.26, 0.27, 0.5, 0.51, 0.52, 0.75, 0.76, 0.77, 1., 1.01, 1.02]
+        expected_inverse = {'a': [0, 4, 7, 10, 13], 'b': [1, 5, 8, 11, 14, 3], 'c': [2, 6, 9, 12, 15]}
+
+        for band, phases in xs.items():
+            assert_array_equal(inverse[band], expected_inverse[band])
+        assert_array_equal(expected_xs, new_xs)
+
 
 class AbstractFitTestCase(ElisaTestCase):
     def setUp(self):
         self.model_generator = ModelSimulator()
 
-    phases = np.arange(-0.6, 0.62, 0.02)
+    phases = {'Generic.Bessell.V': np.arange(-0.6, 0.62, 0.02),
+              'Generic.Bessell.B': np.arange(-0.6, 0.62, 0.02)}
+
     flux = {'Generic.Bessell.V': np.array([0.98128349, 0.97901564, 0.9776404, 0.77030991, 0.38623294,
                                            0.32588823, 0.38623294, 0.77030991, 0.9776404, 0.97901564,
                                            0.98128349, 0.9831816, 0.98542223, 0.9880625, 0.99034951,
@@ -267,7 +283,6 @@ class McMcLCTestCase(AbstractFitTestCase):
     """
     Requre just methods to pass.
     """
-
     def test_mcmc_lc_fit_std_params_detached(self):
         dinit = [
             {

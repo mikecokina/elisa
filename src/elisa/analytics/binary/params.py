@@ -386,9 +386,7 @@ def adjust_result_constrained_potential(adjust_in, hash_map):
     value = adjust_in[hash_map[PARAMS_KEY_MAP['Omega1']]]["value"]
     adjust_in[hash_map[PARAMS_KEY_MAP['Omega2']]] = {
         "param": PARAMS_KEY_MAP['Omega2'],
-        "value": value,
-        "min": adjust_in[hash_map[PARAMS_KEY_MAP['Omega1']]].get("min", value),
-        "max": adjust_in[hash_map[PARAMS_KEY_MAP['Omega1']]].get("max", value),
+        "value": value
     }
     return adjust_in
 
@@ -469,7 +467,7 @@ def prepare_kwargs(xn, xn_lables, constraints, fixed):
 
     :return: Dict[str, float];
     """
-    kwargs = {key: val for key, val in zip(xn_lables, xn)}
+    kwargs = dict(zip(xn_lables, xn))
     kwargs.update(constraints_evaluator(kwargs, constraints))
     kwargs.update(fixed)
     return kwargs
@@ -487,3 +485,25 @@ def mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim):
     if nwalkers < ndim * 2:
         msg = f'Fit cannot be executed with fewer walkers ({nwalkers}) than twice the number of dimensions ({ndim})'
         raise RuntimeError(msg)
+
+
+def xs_reducer(xs):
+    """
+    Convert phases `xs` to single list and inverse map related to given passband
+
+    :param xs: Dict[str, numpy.array]; phases defined for each passband::
+
+        {<passband>: <phases>}
+
+    :return: Tuple; (numpy.array, Dict[str, List[int]]);
+    """
+    x = np.hstack(list(xs.values())).flatten()
+    y = np.arange(len(x)).tolist()
+    reverse_dict = dict()
+    for band, phases in xs.items():
+        reverse_dict[band] = y[:len(phases)]
+        del(y[:len(phases)])
+
+    xs_reduced, inverse = np.unique(x, return_inverse=True)
+    reverse = {band: inverse[indices] for band, indices in reverse_dict.items()}
+    return xs_reduced, reverse

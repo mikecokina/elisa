@@ -51,8 +51,8 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
             logger.error(f'your initial parmeters lead during fitting to invalid binary system')
             raise RuntimeError(f'your initial parmeters lead during fitting to invalid binary system: {str(e)}')
 
-        residua = np.array([np.sum(np.power(synthetic[band] - self.ys[band], 2) / self.yerrs[band])
-                            for band in synthetic])
+        residua = np.array([np.sum(np.power(synthetic[band][self.xs_band_reverser[band]] - self.ys[band], 2)
+                                   / self.yerrs[band]) for band in synthetic])
 
         return residua
 
@@ -70,13 +70,15 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         :param max_nfev: int; maximal iteration
         :return: Dict; solution on supplied quantiles, default is [16, 50, 84]
         """
+
         passband = list(ys.keys())
+        # compute yerrs if not supplied
         yerrs = {band: analutils.lightcurves_mean_error(ys) for band in passband} if yerrs is None else yerrs
-        # xs = xs if isinstance(xs, dict) else {band: xs for band in ys}
-        self.xs, self.ys, self.yerrs = xs, ys, yerrs
+
+        self.xs, self.xs_band_reverser = params.xs_reducer(xs)
+        self.ys, self.yerrs = ys, yerrs
 
         x0 = params.initial_x0_validity_check(x0, self.morphology)
-        initial_x0 = copy(x0)
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
 
         self.period = period
@@ -85,22 +87,19 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         self.labels, self.fixed, self.constraint = labels, fixed, constraint
         self.observer = observer
 
+        # evaluate least squares from scipy
         logger.info("fitting circular synchronous system...")
-        func = self.model_to_fit
-        result = least_squares(func, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol)
-
+        result = least_squares(self.model_to_fit, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol)
         logger.info("fitting finished")
 
+        # put all together `floats`, `fixed` and `constraints`
         result = params.param_renormalizer(result.x, labels)
-        result_dict = {k: v for k, v in zip(labels, result)}
-        result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
-
+        result_dict = dict(zip(labels, result))
+        result_dict.update(self.fixed)
+        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
         result = [{"param": key, "value": val} for key, val in result_dict.items()]
 
-        if params.is_overcontact(self.morphology):
-            hash_map = {rec["param"]: idx for idx, rec in enumerate(result)}
-            result = params.adjust_result_constrained_potential(result, hash_map)
-
+        # compute r_squared and append to result
         r_squared_args = xs, ys, period, passband, discretization, self.morphology
         r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **result_dict)
         result.append({"r_squared": r_squared_result})
@@ -168,7 +167,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         logger.info("fitting finished")
 
         result = params.param_renormalizer(result.x, labels)
-        result_dict = {k: v for k, v in zip(labels, result)}
+        result_dict = dict(zip(labels, result))
         result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
 
         r_squared_args = xs, ys, period, on_normalized

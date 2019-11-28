@@ -158,8 +158,8 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         synthetic = models.synthetic_binary(*args, **kwargs)
         synthetic = analutils.normalize_lightcurve_to_max(synthetic)
 
-        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band] - self.ys[band]) / self.yerrs[band], 2))
-                                        for band in synthetic]))
+        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band][self.xs_band_reverser[band]] - self.ys[band])
+                                                        / self.yerrs[band], 2)) for band in synthetic]))
         return lhood
 
     def fit(self, xs, ys, period, x0, discretization, nwalkers, nsteps,
@@ -194,9 +194,10 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         ndim = len(x0)
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
+        self.xs, self.xs_band_reverser = params.xs_reducer(xs)
         self.labels, self.observer, self.period = labels, observer, period
         self.fixed, self.constraint = fixed, constraint
-        self.xs, self.ys, self.yerrs = xs, ys, yerrs
+        self.ys, self.yerrs = ys, yerrs
         self.discretization = discretization
 
         return self._fit(x0, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)

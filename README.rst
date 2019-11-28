@@ -508,4 +508,4 @@ First method is standard approach which use `non-linear least squares` method al
 Markov Chain Monte Carlo (`MCMC`) method.
 
 Following chapter is supposed to give you brief information about capabilities provided by `elisa`.
-Lets assume that we have a given light curve like lightcurve below
+Lets assume that we have a given light curve like shown below

@@ -1,3 +1,4 @@
+import functools
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
@@ -35,6 +36,7 @@ class AbstractLightCurveDataMixin(AbstractFitDataMixin):
     morphology = ''
     discretization = np.nan
     passband = ''
+    xs_band_reverser = list()
 
 
 def lc_r_squared(synthetic, *args, **x):
@@ -54,7 +56,7 @@ def lc_r_squared(synthetic, *args, **x):
     :return: float;
     """
     xs, ys, period, passband, discretization, morphology = args
-    observed_means = np.array([np.repeat(np.mean(ys[band]), len(xs)) for band in ys])
+    observed_means = np.array([np.repeat(np.mean(ys[band]), len(ys[band])) for band in ys])
     variability = np.sum([np.sum(np.power(ys[band] - observed_means, 2)) for band in ys])
 
     observer = Observer(passband=passband, system=None)
@@ -71,7 +73,7 @@ def rv_r_squared(synthetic, *args, **x):
     Compute R^2 (coefficient of determination).
     """
     xs, ys, period, on_normalized = args
-    observed_means = np.array([np.repeat(np.mean(ys[comp]), len(xs)) for comp in BINARY_COUNTERPARTS])
+    observed_means = np.array([np.repeat(np.mean(ys[comp]), len(ys[comp])) for comp in BINARY_COUNTERPARTS])
     variability = np.sum([np.sum(np.power(ys[comp] - observed_means, 2)) for comp in BINARY_COUNTERPARTS])
 
     observer = Observer(passband='bolometric', system=None)
