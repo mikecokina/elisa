@@ -59,7 +59,7 @@ def lc_r_squared(synthetic, *args, **x):
 
     observer = Observer(passband=passband, system=None)
     observer._system_cls = BinarySystem
-    synthetic = synthetic(xs, period, discretization, morphology, observer, **x)
+    synthetic = synthetic(xs, period, discretization, morphology, observer, False, **x)
 
     synthetic = analutils.normalize_lightcurve_to_max(synthetic)
     residual = np.sum([np.sum(np.power(synthetic[band] - ys[band], 2)) for band in ys])
