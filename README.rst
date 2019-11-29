@@ -261,8 +261,8 @@ This radial velocity curve was obtained on system with following relevant parame
     primary mass: 2.0 [Solar mass]
     secondary mass: 1.0 [Solar mass]
     inclination: 85 [degree]
-    argument of periastron: 20.0 [degree]
-    eccentricity: 0.2 [-]
+    argument of periastron: 0.0 [degree]
+    eccentricity: 0.0 [-]
     period: 4.5 [day]
     gamma: 20000.0 [m/s]
 
@@ -406,33 +406,6 @@ Result of fitting procedure was estimated as
   :alt: rv_fit.svg
   :align: center
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Another approach is to use implemented fitting method based on `Markov Chain Monte Carlo`. Read data output requires
 more analytics skills, some minimal expirience with MCMC since output is not simple dictionary of values but
 it is basically descriptive set of parameters progress during evaluation of method.
@@ -447,28 +420,27 @@ Following represents minimalistic base code which should explain how to use mcmc
 
     def main():
         phases = np.arange(-0.6, 0.62, 0.02)
-        rv = {'primary': np.array([111221.02018955, 102589.40515112, 92675.34114568,..., -22875.63138097]),
-              'secondary': np.array([-144197.83633559, -128660.92926642, -110815.61405663,.., 97176.13649135])}
+        rv = {'primary': [59290.08594439, 54914.25751111, 42736.77725629, 37525.38500226,..., -15569.43109441]),
+              'secondary': [-52146.12757077, -42053.17971052, -18724.62240468,..., 90020.23738585]}
 
-        rv_initial_parameters = [
+        rv_initial = [
             {
                 'value': 0.2,
                 'param': 'eccentricity',
                 'fixed': False,
-                'min': 0.0,
-                'max': 0.5
-
+                'max': 0.0,
+                'min': 0.5
             },
             {
-                'value': 10.0,  # 4.219470628180749
+                'value': 15.0,
                 'param': 'asini',
                 'fixed': False,
-                'min': 1.0,
+                'min': 10.0,
                 'max': 20.0
 
             },
             {
-                'value': 1.0,  # 1.0 / 1.8
+                'value': 3,
                 'param': 'mass_ratio',
                 'fixed': False,
                 'min': 0,
@@ -480,29 +452,28 @@ Following represents minimalistic base code which should explain how to use mcmc
                 'fixed': True
             },
             {
-                'value': 15000.0,
+                'value': 30000.0,
                 'param': 'gamma',
                 'fixed': False,
                 'min': 10000.0,
-                'max': 30000.0
+                'max': 50000.0
             }
         ]
 
-        central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial_parameters, nwalkers=20,
+        central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial, nwalkers=20,
                        nsteps=10000, nsteps_burn_in=1000, yerrs=None)
 
         result = central_rv.restore_flat_chain(central_rv.last_fname)
         central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
-
 
     if __name__ == '__main__':
         main()
 
 Result of code above is corner plot which might looks like this one
 
-.. image:: ./docs/source/_static/readme/mcmc_rv_croner.svg
+.. image:: ./docs/source/_static/readme/mcmc_rv_corner.svg
   :width: 95%
-  :alt: mcmc_rv_croner.svg
+  :alt: mcmc_rv_corner.svg
   :align: center
 
 Object `central_rv` keep track of last executed mcmc "simulation" so you can work with output. It stores::
@@ -514,8 +485,27 @@ Object `central_rv` keep track of last executed mcmc "simulation" so you can wor
 There are also such informations stored in "elisa home" in json file, so you are able to parse and work with each
 previous run.
 
-:note: just beware, there was no bias added to data in case of mcmc fitting and
-       this is a reason why error of params is close to zero
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Binary Stars Light Curves Fitting
 ---------------------------------

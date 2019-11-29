@@ -2,8 +2,9 @@ import json
 import numpy as np
 import os.path as op
 
-from elisa.analytics.binary.least_squares import central_rv
+from elisa.analytics.binary.mcmc import central_rv
 from elisa.utils import random_sign
+
 
 np.random.seed(1)
 DATA = op.join(op.abspath(op.dirname(__file__)), "data")
@@ -28,9 +29,11 @@ def main():
 
     rv_initial = [
         {
-            'value': 0.0,
+            'value': 0.2,
             'param': 'eccentricity',
-            'fixed': True
+            'fixed': False,
+            'max': 0.0,
+            'min': 0.5
         },
         {
             'value': 15.0,
@@ -61,8 +64,11 @@ def main():
         }
     ]
 
-    result = central_rv.fit(xs=phases, ys=rv, period=4.5, x0=rv_initial, xtol=1e-10, yerrs=None)
-    print(json.dumps(result, indent=4))
+    central_rv.fit(xs=phases, ys=rv, period=4.5, x0=rv_initial, nwalkers=20,
+                   nsteps=10000, nsteps_burn_in=1000, yerrs=None)
+
+    result = central_rv.restore_flat_chain(central_rv.last_fname)
+    central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
 
 
 if __name__ == '__main__':
