@@ -1,8 +1,6 @@
-import functools
-from abc import ABCMeta, abstractmethod
-
 import numpy as np
 
+from abc import ABCMeta, abstractmethod
 from ...binary_system.system import BinarySystem
 from ...conf.config import BINARY_COUNTERPARTS
 from ...observer.observer import Observer
@@ -71,6 +69,16 @@ def lc_r_squared(synthetic, *args, **x):
 def rv_r_squared(synthetic, *args, **x):
     """
     Compute R^2 (coefficient of determination).
+    :param synthetic: callable; synthetic method
+    :param args: Tuple;
+    :**args*::
+        * **xs** * -- numpy.array; phases
+        * **ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
+        * **period** * -- float;
+        * **on_normalized** * -- bool;
+    :param x: Dict;
+    :** x options**: kwargs of current parameters to compute radial velocities curve
+    :return: float;
     """
     xs, ys, period, on_normalized = args
     observed_means = np.array([np.repeat(np.mean(ys[comp]), len(ys[comp])) for comp in BINARY_COUNTERPARTS])

@@ -497,6 +497,7 @@ def xs_reducer(xs):
 
     :return: Tuple; (numpy.array, Dict[str, List[int]]);
     """
+    # this most likely cannot work corretly in python < 3.6, since dicts are not ordered
     x = np.hstack(list(xs.values())).flatten()
     y = np.arange(len(x)).tolist()
     reverse_dict = dict()

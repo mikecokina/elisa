@@ -53,20 +53,21 @@ pulsations_primary = [
 
 primary = Star(
     mass=2 * u.solMass,
-    surface_potential=2.78,
+    surface_potential=4.0,
     synchronicity=1.0,
     t_eff=7000 * u.K,
     gravity_darkening=1.0,
     # discretization_factor=5,  # angular size (in degrees) of the surface elements
     albedo=0.6,
     metallicity=0.0,
+    discretization_factor=10,
     # pulsations=pulsations_primary,
     # spots=spots_primary
 )
 
 secondary = Star(
     mass=1.0 * u.solMass,
-    surface_potential=2.78,
+    surface_potential=5.0,
     synchronicity=1.0,
     t_eff=7000 * u.K,
     gravity_darkening=1.0,
@@ -79,9 +80,9 @@ secondary = Star(
 bs = BinarySystem(
     primary=primary,
     secondary=secondary,
-    argument_of_periastron=58 * u.deg,
+    argument_of_periastron=90 * u.deg,
     gamma=-30.7 * u.km / u.s,
-    period=2.5 * u.d,
+    period=4.5 * u.d,
     eccentricity=0.0,
     inclination=85 * u.deg,
     primary_minimum_time=2440000.0 * u.d,
@@ -119,7 +120,7 @@ print(config.CONFIG_FILE)
 # )
 
 bs.plot.surface(
-    phase=0.2,
+    phase=0.0,
     # plot_axis=False,
     colormap='temperature',
     # colormap='gravity_acceleration',
@@ -130,6 +131,6 @@ bs.plot.surface(
     # scale='log',
     units='SI',
     axis_unit=u.solRad,
-    # inclination=90,
-    # azimuth=180*u.deg,
+    inclination=-45,
+    azimuth=0*u.deg,
 )

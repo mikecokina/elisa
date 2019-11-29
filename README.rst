@@ -249,22 +249,22 @@ Binary Stars Radial Curves Fitting
 In current version of `ELISa`, you can use capability to fit curves of radial velocities obtained as velocities
 of center of mass from primary and secondary component. An example of synthetic radial vecolity curve is shown below.
 
-.. image:: ./docs/source/_static/readme/rv_example.png
+.. image:: ./docs/source/_static/readme/rv_example.svg
   :width: 70%
-  :alt: rv_example.png
+  :alt: rv_example.svg
   :align: center
 
 This radial velocity curve was obtained on system with following relevant parameters::
 
     primary mass: 2.0 [Solar mass]
     secondary mass: 1.0 [Solar mass]
-    inclination: 90 [degree]
-    argument of periastron: 0.0 [degree]
+    inclination: 85 [degree]
+    argument of periastron: 20.0 [degree]
     eccentricity: 0.2 [-]
     period: 4.5 [day]
+    gamma: 20000.0 [m/s]
 
-
-Each fitting initial input has form like::
+Each fitting initial input (initial parameters list) has form like::
 
     initial = [
         {
@@ -286,7 +286,7 @@ and require all params from following list if you would like to try absolute par
     * ``argument_of_periastron`` - argument of periastron in `degrees`
     * ``gamma`` - radial velocity of system center of mass in `m/s`
 
-or otherwise, in community approach, you can use instead of ``p__mass``, ``s__mass`` and ``inclination`` parametres:
+or otherwise, in community approach, you can use instead of ``p__mass``, ``s__mass`` and ``inclination`` parameters:
 
     * ``asini`` - product of sinus of inclination and semi major axis in units of Solar radii
     * ``mass_ratio`` - mass ratio, known as `q`
@@ -294,7 +294,40 @@ or otherwise, in community approach, you can use instead of ``p__mass``, ``s__ma
 There are already specified global minimal an maximal values for parameters, but user is free to adjust parameters
 which might work better for him.
 
-Parameter set to be `fixed` is naturaly not fitted and its value is fixed during procedure.
+Parameter set to be `fixed` is naturaly not fitted and its value is fixed during procedure. User can also
+setup `constraint` for any parameter. It is allowed to put bound only parameter with other parameter which is not fixed.
+It makes sence, since if you have fixed parameter, you are free to use its numerica value in constraint directly withou
+other onstructions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mass_ratio = 0.5
+asin = <Quantity 4.30120295 solRad>
+
+
+
+
+
+
+
+
+
+
+
+
 
 In this part you can see minimal example of base code providing fitting. Sample radial velocity curve was obtained
 by parameters::
