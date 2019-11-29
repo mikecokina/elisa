@@ -1,9 +1,8 @@
 import numpy as np
 
-from elisa import utils, const, units, umpy as up
+from elisa import utils, const, umpy as up
 
 from scipy.special import sph_harm, factorial
-from copy import copy
 
 """file containing functions dealing with pulsations"""
 
@@ -204,10 +203,15 @@ def incorporate_temperature_perturbations(star_container, com_x, phase, time):
         rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2]) * exponential
                       for spot_idx, spotp in tilted_spot_centres.items()}
 
-        # t_pert += calculate_mode_displacement(mode, points, rals)
-        # for spot_idx, spoints in points_spot.items():
-        #     displacement_spots[spot_idx] += calculate_mode_displacement(mode, spoints, rals_spots[spot_idx])
+        t_pert += calculate_temperature_perturbation(mode, star_container.temperatures, rals)
+        for spot_idx, t_s in t_pert_spots.items():
+            t_s += calculate_temperature_perturbation(mode, star_container.spots[spot_idx].temperatures,
+                                                      rals_spots[spot_idx])
 
 
-def temperature_perturbation(mode, temperatur):
-    pass
+def calculate_temperature_perturbation(mode, temperatures, rals, adiabatic_gradient=None):
+    ad_g = const.IDEAL_ADIABATIC_GRADIENT if adiabatic_gradient is None else float(adiabatic_gradient)
+    l = mode.l
+    h, eps = mode.horizontal_amplitude, mode.radial_amplitude
+
+    return ad_g * temperatures * (h * l * (l + 1) - 4 - (1 / h)) * eps * rals
