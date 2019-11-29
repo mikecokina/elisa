@@ -197,7 +197,7 @@ def incorporate_temperature_perturbations(star_container, com_x, phase, time):
     t_pert_spots = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in spot_centres.items()}
 
     for mode_index, mode in star_container.pulsations.items():
-        exponent = mode.angular_frequency * time
+        exponent = mode.angular_frequency * time + mode.temperature_perturbation_phase_shift
         exponential = up.exp(complex(0, -exponent))
         rals = mode.renorm_const * sph_harm(mode.m, mode.l, tilted_centres[:, 1], tilted_centres[:, 2]) * exponential
         rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2]) * exponential

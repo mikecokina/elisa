@@ -40,6 +40,7 @@ class PulsationMode(object):
 
         self.init_properties(**kwargs)
 
+        self.temperature_perturbation_phase_shift = c.HALF_PI
         self.angular_frequency = c.FULL_ARC * self.frequency
         self.renorm_const = utils.spherical_harmonics_renormalization_constant(self.l, self.m)
 
