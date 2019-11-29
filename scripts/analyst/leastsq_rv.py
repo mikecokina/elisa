@@ -1,42 +1,47 @@
+import json
+
 import numpy as np
+import os.path as op
 from elisa.analytics.binary.least_squares import central_rv
+from elisa.utils import random_sign
 
 np.random.seed(1)
+DATA = op.join(op.abspath(op.dirname(__file__)), "data")
+
+
+def get_rv():
+    fpath = op.join(DATA, "rv.json")
+    with open(fpath, "r") as f:
+        return json.loads(f.read())
 
 
 def main():
     phases = np.arange(-0.6, 0.62, 0.02)
-    rv = {
-        'primary': np.array([]),
-        'secondary': np.array([])
-    }
+    rv = get_rv()
+    u = np.random.uniform
+    n = len(rv["primary"])
 
-    # _max = np.max(list(rv.values()))
-    # bias = {"primary": np.random.uniform(0, _max * 0.05, len(rv["primary"]))
-    #                    * np.array([random_sign() for _ in range(len(rv["primary"]))]),
-    #         "secondary": np.random.uniform(0, _max * 0.05, len(rv["primary"]))
-    #                      * np.array([random_sign() for _ in range(len(rv["primary"]))])}
-    # rv = {comp: val + bias[comp] for comp, val in rv.items()}
+    _max = np.max(list(rv.values()))
+    bias = {"primary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)]),
+            "secondary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)])}
+    rv = {comp: val + bias[comp] for comp, val in rv.items()}
 
     rv_initial = [
         {
-            'value': 0.2,
+            'value': 0.0,
             'param': 'eccentricity',
-            'fixed': False,
-            'min': 0.0,
-            'max': 0.5
-
+            'fixed': True
         },
         {
-            'value': 10.0,
+            'value': 15.0,
             'param': 'asini',
             'fixed': False,
-            'min': 1.0,
+            'min': 10.0,
             'max': 20.0
 
         },
         {
-            'value': 1.0,
+            'value': 3,
             'param': 'mass_ratio',
             'fixed': False,
             'min': 0,
@@ -48,52 +53,16 @@ def main():
             'fixed': True
         },
         {
-            'value': 20000.0,
+            'value': 30000.0,
             'param': 'gamma',
-            'fixed': True
+            'fixed': False,
+            'min': 10000.0,
+            'max': 50000.0
         }
     ]
 
-    rv_initial = [
-        {
-            'value': 0.0,
-            'param': 'eccentricity',
-            'fixed': True
-        },
-        {
-            'value': 85.0,
-            'param': 'inclination',
-            'fixed': True
-        },
-        {
-            'value': 2.0,
-            'param': 'p__mass',
-            'fixed': False,
-            'min': 1.0,
-            'max': 20.0
-
-        },
-        {
-            'value': 1.0,
-            'param': 's__mass',
-            'fixed': False,
-            'min': 0,
-            'max': 10
-        },
-        {
-            'value': 0.0,
-            'param': 'argument_of_periastron',
-            'fixed': True
-        },
-        {
-            'value': 20000.0,
-            'param': 'gamma',
-            'fixed': False
-        }
-    ]
-
-    result = central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial, yerrs=None)
-
+    result = central_rv.fit(xs=phases, ys=rv, period=4.5, x0=rv_initial, xtol=1e-10, yerrs=None)
+    print(json.dumps(result, indent=4))
 
 
 if __name__ == '__main__':

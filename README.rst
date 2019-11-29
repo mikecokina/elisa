@@ -242,6 +242,8 @@ Down below are shown some result of multiprocessor approach for different binary
 
   Paralellization benchmark for ``detached eccentric synchronous`` star system.
 
+:note: outliers in charts are caused by symetrization hitted during benchmark process
+
 
 Binary Stars Radial Curves Fitting
 ----------------------------------
@@ -299,62 +301,18 @@ setup `constraint` for any parameter. It is allowed to put bound only parameter 
 It makes sence, since if you have fixed parameter, you are free to use its numerica value in constraint directly withou
 other onstructions.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-mass_ratio = 0.5
-asin = <Quantity 4.30120295 solRad>
-
-
-
-
-
-
-
-
-
-
-
-
-
 In this part you can see minimal example of base code providing fitting. Sample radial velocity curve was obtained
 by parameters::
 
-        [
-            {
-                'value': 0.1,
-                'param': 'eccentricity',
-            },
-            {
-                'value': 4.219,
-                'param': 'asini',
-            },
-            {
-                'value': 0.5555,
-                'param': 'mass_ratio',
-            },
-            {
-                'value': 0.0,
-                'param': 'argument_of_periastron'
-            },
-            {
-                'value': 20000.0,
-                'param': 'gamma'
-            }
-        ]
-
+    {
+        'eccentricity': '0.0',
+        'asini': 16.48026197,
+        'mass_ratio': 0.5,
+        'argument_of_periastron': 0.0,
+        'gamma': 20000.0,
+        "inclination": 85.0,
+        "period": 4.5
+    }
 
 .. code:: python
 
@@ -363,30 +321,25 @@ by parameters::
 
     def main():
         phases = np.arange(-0.6, 0.62, 0.02)
-        rv = {
-            'primary': np.array([111221.02018955, 102589.40515112, 92675.34114568, ...]),
-            'secondary': np.array([-144197.83633559, -128660.92926642, -110815.61405663, ...])
-        }
+        rv = {'primary': [59290.08594439, 54914.25751111, 42736.77725629, 37525.38500226,..., -15569.43109441]),
+              'secondary': [-52146.12757077, -42053.17971052, -18724.62240468,..., 90020.23738585]}
 
-        rv_initial_parameters = [
+        rv_initial = [
             {
-                'value': 0.2,
+                'value': 0.0,
                 'param': 'eccentricity',
-                'fixed': False,
-                'min': 0.0,
-                'max': 0.5
-
+                'fixed': True
             },
             {
-                'value': 10.0,  # 4.219470628180749
+                'value': 15.0,
                 'param': 'asini',
                 'fixed': False,
-                'min': 1.0,
+                'min': 10.0,
                 'max': 20.0
 
             },
             {
-                'value': 1.0,  # 1.0 / 1.8
+                'value': 3,
                 'param': 'mass_ratio',
                 'fixed': False,
                 'min': 0,
@@ -398,35 +351,43 @@ by parameters::
                 'fixed': True
             },
             {
-                'value': 20000.0,
+                'value': 30000.0,
                 'param': 'gamma',
-                'fixed': True
+                'fixed': False,
+                'min': 10000.0,
+                'max': 50000.0
             }
         ]
 
-        result = central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial_parameters, yerrs=None)
+        result = central_rv.fit(xs=phases, ys=rv, period=4.5, x0=rv_initial, xtol=1e-10, yerrs=None)
 
     if __name__ == '__main__':
         main()
 
+
+
 Result of fitting procedure was estimated as
 
 .. code:: python
-
     [
         {
-            "param": "eccentricity",
-            "value": 0.09827682337603573,
-            "unit": "dimensionless"
-        },
-        {
             "param": "asini",
-            "value": 4.224709745351374,
+            "value": 16.515011290521596,
             "unit": "solRad"
         },
         {
             "param": "mass_ratio",
-            "value": 0.5471319947199411,
+            "value": 0.49156922351202637,
+            "unit": "dimensionless"
+        },
+        {
+            "param": "gamma",
+            "value": 19711.784379242825,
+            "unit": "m/s"
+        },
+        {
+            "param": "eccentricity",
+            "value": 0.0,
             "unit": "dimensionless"
         },
         {
@@ -435,19 +396,42 @@ Result of fitting procedure was estimated as
             "unit": "degrees"
         },
         {
-            "param": "gamma",
-            "value": 20000.0,
-            "unit": "m/s"
-        },
-        {
-            "r_squared": 0.9983458226020854
+            "r_squared": 0.998351027628904
         }
     ]
+
 
 .. image:: ./docs/source/_static/readme/rv_fit.svg
   :width: 70%
   :alt: rv_fit.svg
   :align: center
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Another approach is to use implemented fitting method based on `Markov Chain Monte Carlo`. Read data output requires
 more analytics skills, some minimal expirience with MCMC since output is not simple dictionary of values but
