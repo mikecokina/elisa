@@ -272,11 +272,12 @@ Each fitting initial input has form like::
             'param': <str>,
             'fixed': <bool>,
             'min': <float>,
-            'max': <float>
+            'max': <float>,
+            'constraint': <str>
         }, ...
     ]
 
-and require all params from following list if you would like to try absolute paramters fitting:
+and require all params from following list if you would like to try absolute parameters fitting:
 
     * ``p__mass`` - mass of primary component in units of Solar mass
     * ``s__mass`` - mass of secondary component in units of Solar mass
@@ -325,7 +326,7 @@ by parameters::
 .. code:: python
 
     import numpy as np
-    from elisa.analytics.binary.fit import central_rv
+    from elisa.analytics.binary.least_squares import central_rv
 
     def main():
         phases = np.arange(-0.6, 0.62, 0.02)
@@ -415,8 +416,91 @@ Result of fitting procedure was estimated as
   :alt: rv_fit.svg
   :align: center
 
+Another approach is to use implemented fitting method based on `Markov Chain Monte Carlo`. Read data output requires
+more analytics skills, some minimal expirience with MCMC since output is not simple dictionary of values but
+it is basically descriptive set of parameters progress during evaluation of method.
 
-Binary Stars Radial Light Fitting
+Following represents minimalistic base code which should explain how to use mcmc method and how to read outputs.
+
+.. code:: python
+
+    import numpy as np
+    from elisa.analytics.binary.mcmc import central_rv
+
+
+    def main():
+        phases = np.arange(-0.6, 0.62, 0.02)
+        rv = {'primary': np.array([111221.02018955, 102589.40515112, 92675.34114568,..., -22875.63138097]),
+              'secondary': np.array([-144197.83633559, -128660.92926642, -110815.61405663,.., 97176.13649135])}
+
+        rv_initial_parameters = [
+            {
+                'value': 0.2,
+                'param': 'eccentricity',
+                'fixed': False,
+                'min': 0.0,
+                'max': 0.5
+
+            },
+            {
+                'value': 10.0,  # 4.219470628180749
+                'param': 'asini',
+                'fixed': False,
+                'min': 1.0,
+                'max': 20.0
+
+            },
+            {
+                'value': 1.0,  # 1.0 / 1.8
+                'param': 'mass_ratio',
+                'fixed': False,
+                'min': 0,
+                'max': 10
+            },
+            {
+                'value': 0.0,
+                'param': 'argument_of_periastron',
+                'fixed': True
+            },
+            {
+                'value': 15000.0,
+                'param': 'gamma',
+                'fixed': False,
+                'min': 10000.0,
+                'max': 30000.0
+            }
+        ]
+
+        central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial_parameters, nwalkers=20,
+                       nsteps=10000, nsteps_burn_in=1000, yerrs=None)
+
+        result = central_rv.restore_flat_chain(central_rv.last_fname)
+        central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
+
+
+    if __name__ == '__main__':
+        main()
+
+Result of code above is corner plot which might looks like this one
+
+.. image:: ./docs/source/_static/readme/mcmc_rv_croner.svg
+  :width: 95%
+  :alt: mcmc_rv_croner.svg
+  :align: center
+
+Object `central_rv` keep track of last executed mcmc "simulation" so you can work with output. It stores::
+
+    last_sampler: emcee.EnsembleSampler; last instance of `sampler`
+    last_normalization: Dict; normalization map used during fitting
+    last_fname: str; filename of last stored flatten emcee `sampler` with metadata
+
+There are also such informations stored in "elisa home" in json file, so you are able to parse and work with each
+previous run.
+
+:note: just beware, there was no bias added to data in case of mcmc fitting and
+       this is a reason why error of params is close to zero
+
+Binary Stars Light Curves Fitting
 ---------------------------------
 
 Packgae `elisa` currently implements two approaches to be able provide very basic fitting of light curves.
@@ -424,201 +508,4 @@ First method is standard approach which use `non-linear least squares` method al
 Markov Chain Monte Carlo (`MCMC`) method.
 
 Following chapter is supposed to give you brief information about capabilities provided by `elisa`.
-Lets assume that we have a given light curve like lightcurve below
-
-.. image:: ./docs/source/_static/readme/lc_example.svg
-  :width: 70%
-  :alt: lc_example.svg
-  :align: center
-
-Such light curve came from parameters::
-
-    [
-        {
-            'value': 2.0,
-            'param': 'p__mass'
-        },
-        {
-            'value': 5000.0,
-            'param': 'p__t_eff'
-        },
-        {
-            'value': 5.0,
-            'param': 'p__surface_potential'
-        },
-        {
-            'value': 1.0,
-            'param': 's__mass'
-        },
-        {
-            'value': 7000.0,
-            'param': 's__t_eff'
-        },
-        {
-            'value': 5,
-            'param': 's__surface_potential'
-        },
-        {
-            'value': 90.0,
-            'param': 'inclination'
-        }
-    ]
-
-with some bias added. Such parameters are equivalent to following::
-
-    [
-        {
-            'value': 0.5,
-            'param': 'mass_ratio'
-        },
-        {
-            'value': 12.625,
-            'param': 'semi_major_axis'
-        },
-        ...
-    ]
-
-
-community used parmaeters, where instead of masses for both
-components are used semi major axis and mass ratio. All other parametres are assumed to be adjusted to create
-circular synchronous system.
-
-Lets apply some fitting algorithm to demonstrate software capabilities. Fitting modules are stored in module path
-``elisa.analytics.binary.least_squares`` and ``elisa.analytics.binary.mcmc``. It is up on the user what methods
-choose to use. In both cases, there is prepared instances for fitting, called ``binary_detached`` and ``binary_overcontact``.
-Difference is that ``binary_overcontact`` fitting module keeps surface potentiaal of both binary components constrained
-to same value.
-
-First, we elaborate algorithms based on `non-linear least squares` method. Binary system which can generate light curve
-shown above is with no doubt detached system, so it makes sence to use module ``binary_detached``.
-
-:warning: Non-linear least squares method used in such complex problem as fitting of eclipsing binaries stars
-          light curves definitely is, might be insuficient in case of initial parametres which are too far from real
-          values and also too broad fitting boundaries.
-
-Here is minimal base code for demonstration of light curve fitting via ``binary_detached`` module.
-
-.. code:: python
-
-    import numpy as np
-    from elisa.analytics.binary.least_squares import binary_detached
-
-    init = [
-                {
-                    'value': 1.0,
-                    'param': 'mass_ratio',
-                    'fixed': False,
-                    'min': 0.1,
-                    'max': 3.0
-                },
-                {
-                    'value': 10.0,
-                    'param': 'semi_major_axis',
-                    'fixed': False,
-                    'min': 8.0,
-                    'max': 15.0
-                },
-                {
-                    'value': 6000.0,
-                    'param': 'p__t_eff',
-                    'fixed': False,
-                    'min': 4000.0,
-                    'max': 7000.0
-                },
-                {
-                    'value': 4.0,
-                    'param': 'p__surface_potential',
-                    'fixed': False,
-                    'min': 4.0,
-                    'max': 10.0
-                },
-                {
-                    'value': 8000.0,
-                    'param': 's__t_eff',
-                    'fixed': False,
-                    'min': 6000.0,
-                    'max': 10000.0
-                },
-                {
-                    'value': 6.0,
-                    'param': 's__surface_potential',
-                    'fixed': False,
-                    'min': 4.0,
-                    'max': 10.0
-                },
-                {
-                    'value': 90.0,
-                    'param': 'inclination',
-                    'fixed': True
-                }
-            ]
-
-
-    def main():
-        phases = np.arange(-0.6, 0.62, 0.02)
-        lc = {
-            'Generic.Bessell.V': np.array([111221.02018955, 102589.40515112, 92675.34114568, ...]),
-            'Generic.Bessell.B': np.array([-144197.83633559, -128660.92926642, -110815.61405663, ...])
-        }
-        result = binary_detached.fit(xs=phases, ys=lc, period=3.0, discretization=5, x0=dinit, xtol=1e-5, yerrs=None)
-
-    if __name__ == "__main__":
-        main()
-
-
-Solution obtained from such approach is::
-
-    [
-        {
-            "param": "mass_ratio",
-            "value": 0.7258200560190059,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "semi_major_axis",
-            "value": 9.99079425680755,
-            "unit": "solRad"
-        },
-        {
-            "param": "p__t_eff",
-            "value": 5020.857511549073,
-            "unit": "K"
-        },
-        {
-            "param": "p__surface_potential",
-            "value": 5.207136874939402,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "s__t_eff",
-            "value": 7031.648838850117,
-            "unit": "K"
-        },
-        {
-            "param": "s__surface_potential",
-            "value": 6.639593976078232,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "inclination",
-            "value": 90.0,
-            "unit": "degrees"
-        },
-        {
-            "r_squared": 0.9988791463851956
-        }
-    ]
-
-
-As you can see and as is commonly known, corelaction of parameters is so strong that slightly different parameters
-can lead to fit which is good enough to describe observed data.
-
-Here you can see visual output
-
-.. image:: ./docs/source/_static/readme/lc_fit.svg
-  :width: 70%
-  :alt: lc_fit.svg
-  :align: center
-
-:note: In mentioned approach we used community parmeters :math:`q` and :math:`a` instead of :math:`M_1` and :math:`M_2`, but
-       if you are somehow aware of information when is better to use masses, it is of course fully implemented and compatible.
+Lets assume that we have a given light curve like shown below

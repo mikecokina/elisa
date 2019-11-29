@@ -46,10 +46,12 @@ v0.2.dev0_
 * **capability to compute lightcurves on several processor's cores (multiprocessing)**
 
     - split supplied phases to `N` smaller batches (N is equal to desired processes but up to number of available cores) and computed all at once
+
 * **fitting parameters of binary system**
 
     - light curve fitting using ``Markov Chain Monte Carlo`` (capability to fit using standard physical parameters :math:`M_1`, :math:`M_2` or parameters used by community :math:`q` (mass ratio) and :math:`a` (semi major axis))
     - light curve fitting using ``non-linear least squares`` method (capability to fit using standard physica; parameters :math:`M_1`, :math:`M_2` or parameters used by community :math:`q` (mass ratio) and :math:`a` (semi major axis))
+    - radial velocity fitting based on ``Markov Chain Monte Carlo`` method (standard physical parameters, :math:`M_1`, :math:`M_2`, :math:`e`, :math:`i`, :math:`{\omega}`, :math:`{\gamma}`
     - radial velocity fitting based on ``non-linear least squares`` method (standard physical parameters, :math:`M_1`, :math:`M_2`, :math:`e`, :math:`i`, :math:`{\omega}`, :math:`{\gamma}`
 
 * **more specific errors raised**
@@ -61,7 +63,7 @@ v0.2.dev0_
 - `elisa.observer.Observer.observe.lc` and `elisa.observer.Observer.observe.rv` will not raise an error in case
   when parameter `phases` is `numpy.array` type
 - adaptive discretization of binaries do not allow to change distretization factor out of prescribed boundaries
-  (it used to lead to small amount of surface points and triangulation crashed)
+  (it used to lead to small amount of surface points and then triangulation crashed)
 
 
 
