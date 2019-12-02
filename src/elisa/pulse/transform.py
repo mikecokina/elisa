@@ -105,7 +105,7 @@ class PulsationModeProperties(SystemProperties):
     @staticmethod
     def mode_axis_phi(value):
         """
-        Returns longitude of pulsation mode axis.
+        Evaluates longitude of pulsation mode axis.
         If unit is not supplied, degrees are assumed.
 
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
@@ -121,3 +121,14 @@ class PulsationModeProperties(SystemProperties):
 
         return retval
 
+    @staticmethod
+    def temperature_perturbation_phase_shift(value):
+        """
+        evaluates a phase shift between surface geometry perturbation and temperature perturbations
+
+        :param value: float; phase shift in radians
+        :return:
+        """
+        if not isinstance(value, (int, np.int, float, np.float)):
+            raise TypeError('Start_phase is not (numpy.)int or (numpy.)float')
+        return value

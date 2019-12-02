@@ -7,6 +7,7 @@ from elisa.pulse import pulsations
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
 from elisa.logger import getLogger
+from elisa.binary_system import utils as butils
 
 from elisa import (
     umpy as up
@@ -384,3 +385,23 @@ def set_all_normals(star_container, com):
                                                                          star_container.spots[spot_index].face_centres,
                                                                          com)
     return star_container
+
+
+def build_temperature_perturbations(system_container, components_distance, component):
+    """
+    adds position perturbations to container mesh
+
+    :param system_container: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param components_distance: float;
+    :param component: Union[str, None];
+    :return:
+    """
+    components = bsutils.component_to_list(component)
+    for component in components:
+        star = getattr(system_container, component)
+        if star.has_pulsations():
+            phase = butils.calculate_rotational_phase(system_container, component)
+            com_x = 0 if component == 'primary' else components_distance
+            star = pulsations.incorporate_temperature_perturbations(star, com_x=com_x, phase=phase,
+                                                                    time=system_container.time)
+    return system_container

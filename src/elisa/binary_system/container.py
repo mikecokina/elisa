@@ -112,6 +112,9 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return temperature.build_temperature_distribution(self, components_distance, component, phase)
 
+    def build_temperature_perturbations(self, components_distance, component):
+        return faces.build_temperature_perturbations(self, components_distance, component)
+
     def build_from_points(self, components_distance=None, component="all", phase=None):
         """
         Build binary system from present surface points.
@@ -128,6 +131,7 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_faces_orientation(components_distance, component)
         self.build_surface_gravity(components_distance, component)
         self.build_temperature_distribution(components_distance, component, phase=phase)
+        self.build_temperature_perturbations(components_distance, component)
         return self
 
     def apply_eclipse_filter(self):

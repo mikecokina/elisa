@@ -54,7 +54,7 @@ def build_mesh(system, components_distance, component="all"):
 
 def build_pulsations_on_mesh(system_container, component, components_distance):
     """
-    adds position perturbations to stellar mesh
+    adds position perturbations to container mesh
 
     :param system_container: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     :param component: Union[str, None];
