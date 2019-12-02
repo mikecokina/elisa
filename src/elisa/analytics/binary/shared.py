@@ -53,13 +53,15 @@ def lc_r_squared(synthetic, *args, **x):
     :** x options**: kwargs of current parameters to compute binary system
     :return: float;
     """
-    xs, ys, period, passband, discretization, morphology = args
+    xs, ys, period, passband, discretization, morphology, xs_band_reverser = args
     observed_means = np.array([np.repeat(np.mean(ys[band]), len(ys[band])) for band in ys])
     variability = np.sum([np.sum(np.power(ys[band] - observed_means, 2)) for band in ys])
 
     observer = Observer(passband=passband, system=None)
     observer._system_cls = BinarySystem
+
     synthetic = synthetic(xs, period, discretization, morphology, observer, False, **x)
+    synthetic = {band: synthetic[band][xs_band_reverser[band]] for band in synthetic}
 
     synthetic = analutils.normalize_lightcurve_to_max(synthetic)
     residual = np.sum([np.sum(np.power(synthetic[band] - ys[band], 2)) for band in ys])
