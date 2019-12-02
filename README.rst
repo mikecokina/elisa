@@ -310,8 +310,10 @@ by parameters::
         'mass_ratio': 0.5,
         'argument_of_periastron': 0.0,
         'gamma': 20000.0,
+        "period": 4.5,
+
         "inclination": 85.0,
-        "period": 4.5
+        "semi_major_axis": 16.54321389
     }
 
 .. code:: python
@@ -485,28 +487,6 @@ Object `central_rv` keep track of last executed mcmc "simulation" so you can wor
 There are also such informations stored in "elisa home" in json file, so you are able to parse and work with each
 previous run.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Binary Stars Light Curves Fitting
 ---------------------------------
 
@@ -515,4 +495,27 @@ First method is standard approach which use `non-linear least squares` method al
 Markov Chain Monte Carlo (`MCMC`) method.
 
 Following chapter is supposed to give you brief information about capabilities provided by `elisa`.
-Lets assume that we have a given light curve like shown below
+Lets assume that we have a given light curve like shown below generated on parameters::
+
+    {
+        'mass_ratio': 0.5,
+        'semi_major_axis': 16.54321389,
+        'p__t_eff': 6000.0,
+        'p__surface_potential': 5.0,
+        's__t_eff': 8000.0,
+        's__surface_potential': 6.0,
+        'inclination': 85.0,
+        'eccentricity': 0.0,
+        'p__beta': 1.0,
+        's__beta': 1.0,
+        'p_albedo': 1.0,
+        's__albedo': 1.0
+    }
+
+
+
+.. image:: ./docs/source/_static/readme/lc_example.svg
+  :width: 70%
+  :alt: lc_example.svg
+  :align: center
+
