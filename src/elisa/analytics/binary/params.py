@@ -8,6 +8,7 @@ from ...base import error
 from ...binary_system.system import BinarySystem
 from ...conf import config
 from ...observer.observer import Observer
+from ...analytics.binary import bonds
 
 
 # DO NOT CHANGE KEYS - NEVER EVER
@@ -410,7 +411,7 @@ def constraints_validator(x0):
     Validate constraints. Make sure there is no harmful code.
     Allowed methods used in constraints::
 
-        'log', 'sin', 'cos', 'tan', 'exp'
+        'arcsin', 'arccos', 'arctan', 'log', 'sin', 'cos', 'tan', 'exp', 'degrees', 'radians'
 
     Allowed characters used in constraints::
 
@@ -420,8 +421,8 @@ def constraints_validator(x0):
     :raise: elisa.base.error.InitialParamsError;
     """
     x0 = x0.copy()
-    allowed_methods = ['log', 'sin', 'cos', 'tan', 'exp']
-    allowed_chars = ['(', ')', '+', '-', '*', '/', '.'] + [str(i) for i in range(0, 10, 1)]
+    allowed_methods = bonds.ALLOWED_CONSTRAINT_METHODS
+    allowed_chars = bonds.ALLOWED_CONSTRAINT_CHARS
 
     x0c = x0_to_constraints_kwargs(x0)
     x0v = x0_to_floats_kwargs(x0)
@@ -431,7 +432,7 @@ def constraints_validator(x0):
         subst = {key: val.format(**x0v).replace(' ', '') for key, val in x0c.items()}
     except KeyError:
         msg = f'It seems your constraint contain variable that cannot be resolved. ' \
-            f'Make sure taht linked constraint variable is not fixed or check for typos.'
+            f'Make sure that linked constraint variable is not fixed or check for typos.'
         raise error.InitialParamsError(msg)
 
     for key, val in subst.items():
@@ -448,8 +449,8 @@ def constraints_evaluator(floats, constraints):
     :param constraints: Dict[str, float]; values estimated as constraintes in form {label: constraint_string}
     :return: Dict[str, float]; evalauted constraints dict
     """
-    allowed_methods = ['log', 'sin', 'cos', 'tan', 'exp']
-    numpy_methods = ['np.log', 'np.sin', 'np.cos', 'np.tan', 'np.exp']
+    allowed_methods = bonds.ALLOWED_CONSTRAINT_METHODS
+    numpy_methods = [f'bonds.{method}' for method in bonds.TRANSFORM_TO_METHODS]
     floats, constraints = floats.copy(), constraints.copy()
 
     numpy_callable = {key: utils.str_repalce(val, allowed_methods, numpy_methods) for key, val in constraints.items()}
@@ -457,7 +458,7 @@ def constraints_evaluator(floats, constraints):
     try:
         evaluated = {key:  eval(val) for key, val in subst.items()}
     except Exception as e:
-        raise error.InitialParamsError(f'Invalid syntax in constraint, {str(e)}.')
+        raise error.InitialParamsError(f'Invalid syntax or value in constraint, {str(e)}.')
     return evaluated
 
 

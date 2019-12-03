@@ -23,4 +23,4 @@ def pogsons_formula(f1, f2):
     :return: Union[float, numpy.array];
     """
 
-    return -2.5 * np.log(f1 / f2)
+    return -2.5 * np.log10(f1 / f2)

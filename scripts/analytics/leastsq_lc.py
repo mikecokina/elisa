@@ -28,64 +28,84 @@ def main():
     lc = {comp: val + bias[comp] for comp, val in lc.items()}
 
     lc_initial = [
-            {
-                'value': 0.5,
-                'param': 'mass_ratio',
-                'fixed': True
-            },
-            {
-                'value': 16.54321389,
-                'param': 'semi_major_axis',
-                'fixed': True
-            },
-            {
-                'value': 4800.0,
-                'param': 'p__t_eff',
-                'fixed': True
-            },
-            {
-                'value': 5.0,
-                'param': 'p__surface_potential',
-                'fixed': True
-            },
-            {
-                'value': 6700.0,
-                'param': 's__t_eff',
-                'fixed': True
-            },
-            {
-                'value': 6.0,
-                'param': 's__surface_potential',
-                'fixed': False,
-                'min': 4.0,
-                'max': 10.0
-            },
-            {
-                'value': 0.32,
-                'param': 'p__gravity_darkening',
-                'fixed': True
-            },
-            {
-                'value': 0.32,
-                'param': 's__gravity_darkening',
-                'fixed': True
-            },
-            {
-                'value': 0.6,
-                'param': 'p__albedo',
-                'fixed': True
-            },
-            {
-                'value': 0.6,
-                'param': 's__albedo',
-                'fixed': True
-            },
-            {
-                'value': 85.0,
-                'param': 'inclination',
-                'fixed': True
-            }
-        ]
+        {
+            'value': 16.6,
+            'param': 'semi_major_axis',
+            'fixed': False,
+            'min': 16.515,
+            'max': 16.8
+        },
+        {
+            'value': 5000,
+            'param': 'p__t_eff',
+            'fixed': False,
+            'min': 4800.0,
+            'max': 10000.0
+        },
+        {
+            'value': 6.0,
+            'param': 'p__surface_potential',
+            'fixed': False,
+            'min': 3,
+            'max': 10
+        },
+        {
+            'value': 7000.0,
+            'param': 's__t_eff',
+            'fixed': False,
+            'min': 4000.0,
+            'max': 10000.0
+        },
+        {
+            'value': 8.0,
+            'param': 's__surface_potential',
+            'fixed': False,
+            'min': 4.0,
+            'max': 10.0
+        },
+        {
+            'value': 0.32,
+            'param': 'p__gravity_darkening',
+            'fixed': True
+        },
+        {
+            'value': 0.32,
+            'param': 's__gravity_darkening',
+            'fixed': True
+        },
+        {
+            'value': 0.6,
+            'param': 'p__albedo',
+            'fixed': True
+        },
+        {
+            'value': 0.6,
+            'param': 's__albedo',
+            'fixed': True
+        },
+        {
+            'value': 85.0,
+            'param': 'inclination',
+            'fixed': False,
+            'min': 80,
+            'max': 90
+        },
+        {
+            'value': 0.0,
+            'param': 'argument_of_periastron',
+            'fixed': True
+        },
+        {
+            'value': 0.5,
+            'param': 'mass_ratio',
+            'fixed': True
+        },
+        {
+            'value': 0.0,
+            'param': 'eccentricity',
+            'fixed': True
+        }
+    ]
 
     result = binary_detached.fit(xs=phases, ys=lc, period=4.5, discretization=5.0, x0=lc_initial, yerrs=None)
     print(json.dumps(result, indent=4))
