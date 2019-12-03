@@ -17,20 +17,20 @@ ELISa
 -----
 
 **ELISa** is crossplatform python package dedicated to light curves modelling of close eclipsing binaries including
-surface features. Current capabilities include:
+surface features such as spots and pulsation (soon). Current capabilities include:
 
     - ``BinarySystem:`` class for modelling surfaces of detached, semi-detached and over-contact binaries
     - ``Observer:`` class for generating light curves (and in future other observables)
     - ``Spots:`` class for generating stellar spot with given longitude, latitude, radius and temperature factor
     - ``Fitting methods`` provide capability to fit radial velocities curves and light curves via implementaion of
-      ``non-linear least squares`` method and it also implements lightcurve fitting via ``Markov Chain Monte Carlo``
+      ``non-linear least squares`` method which also implements lightcurve fitting via ``Markov Chain Monte Carlo``
       method.
 
 **ELISa** is currently still under development. Following features are in progress:
 
     - ``SingleSystem:`` class for modelling surfaces of single star light curves with full implementation of spots and
       pulsations
-    - ``Pulsations:`` class for modelling low amplitude pulsations based on spherical harmonics
+    - ``Pulsations:`` class for modelling low amplitude pulsations based on spherical harmonics solution
 
 We also plan to implement following features:
 
@@ -212,10 +212,10 @@ Multiprocessing
 ---------------
 
 To speedup computaion of light curves, paralellization of processes has been implemented. Practically, computation
-of light curve points is separated to smaller batches and each batch is evaluated on separated CPU core. Paralelliation
+of light curve points is separated to smaller batches and each batch is evaluated on separated CPU core. Paralellization
 necessarily bring some overhead to process and in some cases might cause even slower behavior of application.
-It is important to choose wisely when use it espeially in case of circular synchronous orbits which consist of spot-free
-components.
+It is important to choose wisely when use it espeically in case of circular synchronous orbits which consist of
+spot-free components.
 
 Down below are shown some result of multiprocessor approach for different binary system type.
 
@@ -242,14 +242,14 @@ Down below are shown some result of multiprocessor approach for different binary
 
   Paralellization benchmark for ``detached eccentric synchronous`` star system.
 
-:note: outliers in charts are caused by symetrization hitted during benchmark process
+:note: outliers in charts are caused by curve symetrization process
 
 
 Binary Stars Radial Curves Fitting
 ----------------------------------
 
 In current version of `ELISa`, you can use capability to fit curves of radial velocities obtained as velocities
-of center of mass from primary and secondary component. An example of synthetic radial vecolity curve is shown below.
+of centre of mass from primary and secondary component. An example of synthetic radial velocity curve is shown below.
 
 .. image:: ./docs/source/_static/readme/rv_example.svg
   :width: 70%
@@ -266,7 +266,7 @@ This radial velocity curve was obtained on system with following relevant parame
     period: 4.5 [day]
     gamma: 20000.0 [m/s]
 
-Each fitting initial input (initial parameters list) has form like::
+Each fitted parameter has an input form as follows::
 
     initial = [
         {
@@ -279,29 +279,28 @@ Each fitting initial input (initial parameters list) has form like::
         }, ...
     ]
 
-and require all params from following list if you would like to try absolute parameters fitting:
+and require all params from the following list if you would like to try absolute parameters fitting:
 
-    * ``p__mass`` - mass of primary component in units of Solar mass
-    * ``s__mass`` - mass of secondary component in units of Solar mass
+    * ``p__mass`` - mass of primary component (in Solar masses)
+    * ``s__mass`` - mass of secondary component (in Solar masses)
     * ``eccentricity`` - eccentricity of binary system, (0, 1)
     * ``inclination`` - inclination of binary system in `degrees`
     * ``argument_of_periastron`` - argument of periastron in `degrees`
     * ``gamma`` - radial velocity of system center of mass in `m/s`
 
-or otherwise, in community approach, you can use instead of ``p__mass``, ``s__mass`` and ``inclination`` parameters:
+or otherwise, in "community approach", you can use instead of ``p__mass``, ``s__mass`` and ``inclination`` parameters:
 
-    * ``asini`` - product of sinus of inclination and semi major axis in units of Solar radii
-    * ``mass_ratio`` - mass ratio, known as `q`
+    * ``asini`` - in Solar radii
+    * ``mass_ratio`` - mass ratio (M_2/M_1), also known as `q`
 
-There are already specified global minimal an maximal values for parameters, but user is free to adjust parameters
+There are already specified global minimal and maximal values for parameters, but user is free to adjust parameters
 which might work better for him.
 
-Parameter set to be `fixed` is naturaly not fitted and its value is fixed during procedure. User can also
-setup `constraint` for any parameter. It is allowed to put bound only parameter with other parameter which is not fixed.
-It makes sence, since if you have fixed parameter, you are free to use its numerica value in constraint directly withou
-other onstructions.
+Parameter set to be `fixed` is will not be fitted and its value will stay fixed during the fitting procedure. User can
+also setup `constraint` for any parameter. It is allowed to put bounds only on parameter using other free parameters,
+otherwise the parameter should stay fixed.
 
-In this part you can see minimal example of base code providing fitting. Sample radial velocity curve was obtained
+In this part you can see minimal example of code providing fitting. Sample radial velocity curve was obtained
 by parameters::
 
     {
@@ -368,7 +367,7 @@ by parameters::
 
 
 
-Result of fitting procedure was estimated as
+Result of fitting procedure is displayed in the following format:
 
 .. code:: python
     [
@@ -484,7 +483,7 @@ Object `central_rv` keep track of last executed mcmc "simulation" so you can wor
     last_normalization: Dict; normalization map used during fitting
     last_fname: str; filename of last stored flatten emcee `sampler` with metadata
 
-There are also such informations stored in "elisa home" in json file, so you are able to parse and work with each
+The same information is stored in "elisa home" in json file, so you are able to access each
 previous run.
 
 Binary Stars Light Curves Fitting
