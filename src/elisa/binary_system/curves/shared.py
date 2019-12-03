@@ -3,7 +3,8 @@ import numpy as np
 from elisa.conf import config
 from elisa import (
     atm,
-    ld
+    ld,
+    const
 )
 from elisa.binary_system import utils as butils
 

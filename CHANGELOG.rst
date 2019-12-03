@@ -64,7 +64,10 @@ v0.2.dev0_
   when parameter `phases` is `numpy.array` type
 - adaptive discretization of binaries do not allow to change distretization factor out of prescribed boundaries
   (it used to lead to small amount of surface points and then triangulation crashed)
-
+- app does not crash on `phase_interval_reduce` in observer during light curve computation
+  if BinarySystem is not used from direct import of `BinarySystem`
+- const PI multiplicator removed from output flux (still require investigation)
+- app does not crash if `bolometric` passband is used
 
 
 Future plans
