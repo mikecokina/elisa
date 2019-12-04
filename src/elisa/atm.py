@@ -464,7 +464,7 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
 
     # interpolating values precisely on the border of the filter(s) coverage
     on_border_flux = interpolator([left_bandwidth, right_bandwidth])
-    if np.isin(np.nan, on_border_flux):
+    if np.isnan(on_border_flux).any():
         raise AtmosphereError('Interpolation on bandwidth boundaries leed to NaN value.')
     df: pd.DataFrame = atm_container.model
 
@@ -486,7 +486,13 @@ def apply_passband(atm_containers, passband, **kwargs):
     """
     passbanded_atm_containers = dict()
     logger.debug("applying passband functions on given atmospheres")
+
     for band, band_container in passband.items():
+
+        if band in ['bolometric']:
+            band_container.left_bandwidth = kwargs.get('global_left', band_container.left_bandwidth)
+            band_container.right_bandwidth = kwargs.get('global_right', band_container.right_bandwidth)
+
         passbanded_atm_containers[band] = list()
         for atm_container in atm_containers:
             # strip atm container on passband bandwidth (reason to do it is, that container
@@ -501,7 +507,7 @@ def apply_passband(atm_containers, passband, **kwargs):
             passband_df = pd.DataFrame(
                 {
                     config.PASSBAND_DATAFRAME_THROUGHPUT:
-                        band_container.akima(atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]),
+                        band_container.akima(atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE].values),
                     config.PASSBAND_DATAFRAME_WAVE: atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]
                 }
             )
@@ -895,7 +901,7 @@ def compute_normal_intensity(spectral_flux, wavelength, flux_mult=1.0, wave_mult
     :param wave_mult: float;
     :return: numpy.array;
     """
-    return const.PI * flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
+    return flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
 
 
 def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict):

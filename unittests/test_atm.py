@@ -10,8 +10,8 @@ from elisa.observer.observer import PassbandContainer
 from unittests.utils import ElisaTestCase
 from elisa import (
     umpy as up,
-    atm
-)
+    atm,
+    const)
 
 
 class TestMapDict(ElisaTestCase):
@@ -208,15 +208,18 @@ class TestAtmModuleGeneral(ElisaTestCase):
         spectral_flux = np.array([list(range(5)), list(range(5, 10, 1)), list(range(5))])
         wavelength = np.array(list(range(5)))
         result = np.round(atm.compute_normal_intensity(spectral_flux, wavelength), 4)
-        expected = [25.1327, 87.9646, 25.1327]
+        expected = np.round(np.array([25.1327, 87.9646, 25.1327]) * (1.0 / const.PI), 4)
+        result = np.round(result, 4)
         assert_array_equal(result, expected)
 
         result = np.round(atm.compute_normal_intensity(spectral_flux, wavelength, flux_mult=2.0), 4)
-        expected = [50.2655, 175.9292, 50.2655]
+        expected = np.round(np.array([50.2655, 175.9292, 50.2655]) * (1.0 / const.PI), 4)
+        result = np.round(result, 4)
         assert_array_equal(result, expected)
 
         result = np.round(atm.compute_normal_intensity(spectral_flux, wavelength, wave_mult=2.5), 4)
-        expected = [62.8319, 219.9115, 62.8319]
+        expected = np.round(np.array([62.8319, 219.9115, 62.8319]) * (1.0 / const.PI), 4)
+        result = np.round(result, 4)
         assert_array_equal(result, expected)
 
     def test_unique_atm_fpaths(self):
