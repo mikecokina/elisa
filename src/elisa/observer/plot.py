@@ -46,7 +46,8 @@ class Plot(object):
         :param legend: bool;
         :param legend_location: int;
         """
-
+        # TODO: needs rework, breaks commonly used patterns used in plot functions!!!
+        # TODO: units not working!!!
         kwargs = {
             "phases": phases,
             "primary_rv": primary_rv,

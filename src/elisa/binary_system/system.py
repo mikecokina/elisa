@@ -824,7 +824,7 @@ class BinarySystem(System):
         assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
 
         if is_circular:
-            if assynchronous_spotty_test:
+            if assynchronous_spotty_test and not self.has_pulsations():
                 return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
             else:
                 return self._compute_circular_synchronous_lightcurve(**kwargs)

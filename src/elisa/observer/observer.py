@@ -104,7 +104,7 @@ class Observer(object):
         self.times = None
         self.fluxes = None
         self.fluxes_unit = None
-        self.radial_velocities = None
+        self.radial_velocities = dict()
         self.rv_unit = None
 
         self.plot = Plot(self)
@@ -186,7 +186,7 @@ class Observer(object):
 
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
         """
-        Method for observation simulation. Based on input parmeters and supplied Ob server system on initialization
+        Method for simulated observation. Based on input parmeters and supplied Observer system on initialization
         will compute lightcurve.
 
         :param normalize: bool;
@@ -266,7 +266,7 @@ class Observer(object):
         :param phases: Iterable float;
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
-
+        # TODO: not Single System compatibile!!!
         if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
