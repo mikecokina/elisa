@@ -499,16 +499,17 @@ Lets assume that we have a given light curve like shown below generated on param
     {
         'mass_ratio': 0.5,
         'semi_major_axis': 16.54321389,
-        'p__t_eff': 6000.0,
-        'p__surface_potential': 5.0,
-        's__t_eff': 8000.0,
+        'p__t_eff': 8000.0,
+        'p__surface_potential': 4.0,
+        's__t_eff': 6000.0,
         's__surface_potential': 6.0,
         'inclination': 85.0,
         'eccentricity': 0.0,
         'p__beta': 0.32,
         's__beta': 0.32,
         'p_albedo': 0.6,
-        's__albedo': 0.6
+        's__albedo': 0.6,
+        'period': 4.5
     }
 
 
@@ -535,7 +536,8 @@ shown above is with no doubt detached system, so it makes sence to use module ``
 Following minimalistic python snippet will show you, how to use ``binary_detached`` fitting module. Parameters of system
 are same as in case of radial velocities fiting demonstration. It is most likely sequence of steps from real
 life. First, you should solve radial velocities if available and fix parametres in light curve fitting. Since we were able
-to obtain some basic information about our system, we should fix parameters::
+to obtain some basic information about our system, we should fix or efficiently truncate boundaries
+for following parameters::
 
     {
         "asini": 16.515,
@@ -555,118 +557,3 @@ We can also estimate surface temperature of primary component via Ballesteros_ f
     b_v = ballesteros.pogsons_formula(lc['Generic.Bessell.B'][55], lc['Generic.Bessell.V'][55])
     ballesteros.ballesteros_formula(b_v)
 
-This approach give us value ~ 5300K and lets use +/- 500K in boundaries.
-
-:note: index `55` is used because we know that such index will give as flux on photometric phase :math:`\Phi=0.5`,
-       where we eliminte impact of secondary component to result of primary component temperature.
-
-.. code:: python
-
-    import numpy as np
-    from elisa.analytics.binary.least_squares import binary_detached
-
-
-    lc = {
-      "Generic.Bessell.V": [0.98977255, 0.98887137, 0.98801165, 0.86524096, ..., 0.98977255],
-      "Generic.Bessell.B": [0.72322368, 0.72268273, 0.72213728, 0.61204661, ..., 0.72322368],
-      "Generic.Bessell.R": [0.97433043, 0.97341726, 0.97256159, 0.86488974, ..., 0.97433043]
-    }
-
-    lc_initial = [
-        {
-            'value': 16.6,
-            'param': 'semi_major_axis',
-            'fixed': False,
-            'min': 16.515,
-            'max': 16.8
-        },
-        {
-            'value': 5300,
-            'param': 'p__t_eff',
-            'fixed': False,
-            'min': 4800.0,
-            'max': 5800.0
-        },
-        {
-            'value': 5.0,
-            'param': 'p__surface_potential',
-            'fixed': False,
-            'min': 3,
-            'max': 10
-        },
-        {
-            'value': 5000.0,
-            'param': 's__t_eff',
-            'fixed': False,
-            'min': 4000,
-            'max': 8000
-        },
-        {
-            'value': 5.0,
-            'param': 's__surface_potential',
-            'fixed': False,
-            'min': 4.0,
-            'max': 10.0
-        },
-        {
-            'value': 0.32,
-            'param': 'p__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 0.32,
-            'param': 's__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 0.6,
-            'param': 'p__albedo',
-            'fixed': True
-        },
-        {
-            'value': 0.6,
-            'param': 's__albedo',
-            'fixed': True
-        },
-        {
-            'value': 85.0,
-            'param': 'inclination',
-            'fixed': False,
-            'min': 80,
-            'max': 90
-        },
-        {
-            'value': 0.0,
-            'param': 'argument_of_periastron',
-            'fixed': True
-        },
-        {
-            'value': 0.492,
-            'param': 'mass_ratio',
-            'fixed': True
-        },
-        {
-            'value': 0.0,
-            'param': 'eccentricity',
-            'fixed': True
-        }
-    ]
-
-    result = binary_detached.fit(xs=phases, ys=lc, period=4.5, discretization=5.0, x0=lc_initial, yerrs=None)
-
-    if __name__ == '__main__':
-        main()
-
-Estimated solution is::
-
-
-
-Here you can see visual output
-
-.... add fit
-
-:note: In mentioned approach we used community parmeters :math:`q` and :math:`a` instead of :math:`M_1` and :math:`M_2`, but
-       if you are somehow aware of information when is better to use masses, it is of course fully implemented and compatible.
-
-
-All example fitting scripts can be found in .......
