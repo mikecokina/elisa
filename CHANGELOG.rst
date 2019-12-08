@@ -68,6 +68,7 @@ v0.2.dev0_
   if BinarySystem is not used from direct import of `BinarySystem`
 - const PI multiplicator removed from output flux (still require investigation)
 - app does not crash if `bolometric` passband is used
+- np.int32/64 and np.float32/64 are considered as valid values on binary system initialization
 
 
 Future plans

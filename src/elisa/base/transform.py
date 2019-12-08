@@ -6,7 +6,7 @@ from .. import (
 )
 
 
-WHEN_FLOAT64 = (int, np.int, float, np.float)
+WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np.float64)
 
 
 def quantity_transform(value, unit, when_float64):
