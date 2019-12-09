@@ -432,6 +432,7 @@ class RVTestCase(ElisaTestCase):
 class McMcRVTestCase(RVTestCase):
     def test_mcmc_rv_fit_community_params(self):
         phases = np.arange(-0.6, 0.62, 0.02)
+        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
         initial_parameters = [
             {
                 'value': 0.1,
@@ -469,7 +470,7 @@ class McMcRVTestCase(RVTestCase):
         model_generator = ModelSimulator()
         model_generator.keep_out = True
         with mock.patch("elisa.analytics.binary.models.central_rv_synthetic", model_generator.rv_generator):
-            mc_central_rv.fit(xs=phases, ys=self.rv, period=0.6, x0=initial_parameters, nwalkers=4, nsteps=5)
+            mc_central_rv.fit(xs=xs, ys=self.rv, period=0.6, x0=initial_parameters, nwalkers=4, nsteps=5)
         # result = central_rv.fit(xs=phases, ys=self.rv, period=0.6, x0=copy(initial_parameters))
         # self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
 
@@ -481,6 +482,7 @@ class LeastSqaureRVTestCase(RVTestCase):
         real period = 0.6d
         """
         phases = np.arange(-0.6, 0.62, 0.02)
+        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
         initial_parameters = [
             {
                 'value': 0.1,
@@ -520,11 +522,12 @@ class LeastSqaureRVTestCase(RVTestCase):
             }
         ]
 
-        result = central_rv.fit(xs=phases, ys=self.rv, period=0.6, x0=copy(initial_parameters))
+        result = central_rv.fit(xs=xs, ys=self.rv, period=0.6, x0=copy(initial_parameters))
         self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
 
     def test_least_squares_rv_fit_community_params(self):
         phases = np.arange(-0.6, 0.62, 0.02)
+        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
         initial_parameters = [
             {
                 'value': 0.1,
@@ -559,7 +562,7 @@ class LeastSqaureRVTestCase(RVTestCase):
             }
         ]
 
-        result = central_rv.fit(xs=phases, ys=self.rv, period=0.6, x0=copy(initial_parameters))
+        result = central_rv.fit(xs=xs, ys=self.rv, period=0.6, x0=copy(initial_parameters))
         self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
 
 

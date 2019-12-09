@@ -240,8 +240,8 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
         synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
 
-        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[comp] - self.ys[comp]) / self.yerrs[comp], 2))
-                                        for comp in BINARY_COUNTERPARTS]))
+        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
+                                                        / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))
         return lhood
 
     def fit(self, xs, ys, period, x0, nwalkers, nsteps, p0=None, yerrs=None, nsteps_burn_in=10):
@@ -270,9 +270,10 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         ndim = len(x0)
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
+        self.xs, self.xs_reverser = params.xs_reducer(xs)
+        self.ys, self.yerrs = ys, yerrs
         self.labels, self.observer, self.period = labels, observer, period
         self.fixed, self.constraint = fixed, constraint
-        self.xs, self.ys, self.yerrs = xs, ys, yerrs
 
         return self._fit(x0, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)
 

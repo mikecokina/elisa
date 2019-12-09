@@ -24,6 +24,7 @@ class AbstractFitDataMixin(object):
     labels = list()
     observer = None
     period = np.nan
+    xs_reverser = list()
 
 
 class AbstractCentralRadialVelocityDataMixin(AbstractFitDataMixin):
@@ -34,7 +35,6 @@ class AbstractLightCurveDataMixin(AbstractFitDataMixin):
     morphology = ''
     discretization = np.nan
     passband = ''
-    xs_band_reverser = list()
 
 
 def lc_r_squared(synthetic, *args, **x):
@@ -53,7 +53,7 @@ def lc_r_squared(synthetic, *args, **x):
     :** x options**: kwargs of current parameters to compute binary system
     :return: float;
     """
-    xs, ys, period, passband, discretization, morphology, xs_band_reverser = args
+    xs, ys, period, passband, discretization, morphology, xs_reverser = args
     observed_means = np.array([np.repeat(np.mean(ys[band]), len(ys[band])) for band in ys])
     variability = np.sum([np.sum(np.power(ys[band] - observed_means, 2)) for band in ys])
 
@@ -61,7 +61,7 @@ def lc_r_squared(synthetic, *args, **x):
     observer._system_cls = BinarySystem
 
     synthetic = synthetic(xs, period, discretization, morphology, observer, False, **x)
-    synthetic = {band: synthetic[band][xs_band_reverser[band]] for band in synthetic}
+    synthetic = {band: synthetic[band][xs_reverser[band]] for band in synthetic}
 
     synthetic = analutils.normalize_lightcurve_to_max(synthetic)
     residual = np.sum([np.sum(np.power(synthetic[band] - ys[band], 2)) for band in ys])
@@ -82,13 +82,15 @@ def rv_r_squared(synthetic, *args, **x):
     :** x options**: kwargs of current parameters to compute radial velocities curve
     :return: float;
     """
-    xs, ys, period, on_normalized = args
+    xs, ys, period, on_normalized, xs_reverser = args
     observed_means = np.array([np.repeat(np.mean(ys[comp]), len(ys[comp])) for comp in BINARY_COUNTERPARTS])
     variability = np.sum([np.sum(np.power(ys[comp] - observed_means, 2)) for comp in BINARY_COUNTERPARTS])
 
     observer = Observer(passband='bolometric', system=None)
     observer._system_cls = BinarySystem
     synthetic = synthetic(xs, period, observer, **x)
+    synthetic = {comp: synthetic[comp][xs_reverser[comp]] for comp in synthetic}
+
     if on_normalized:
         synthetic = analutils.normalize_rv_curve_to_max(synthetic)
 

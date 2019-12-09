@@ -490,11 +490,13 @@ def mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim):
 
 def xs_reducer(xs):
     """
-    Convert phases `xs` to single list and inverse map related to given passband
+    Convert phases `xs` to single list and inverse map related to given passband (in case of light curves)
+    or component (in case of radial velocities).
 
-    :param xs: Dict[str, numpy.array]; phases defined for each passband::
+    :param xs: Dict[str, numpy.array]; phases defined for each passband or ceomponent::
 
-        {<passband>: <phases>}
+        {<passband>: <phases>} for light curves
+        {<component>: <phases>} for radial velocities
 
     :return: Tuple; (numpy.array, Dict[str, List[int]]);
     """
@@ -502,8 +504,8 @@ def xs_reducer(xs):
     x = np.hstack(list(xs.values())).flatten()
     y = np.arange(len(x)).tolist()
     reverse_dict = dict()
-    for band, phases in xs.items():
-        reverse_dict[band] = y[:len(phases)]
+    for xs_key, phases in xs.items():
+        reverse_dict[xs_key] = y[:len(phases)]
         del(y[:len(phases)])
 
     xs_reduced, inverse = np.unique(x, return_inverse=True)
