@@ -266,14 +266,13 @@ class Observer(object):
         :param phases: Iterable float;
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
-        # TODO: not Single System compatibile!!!
         if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
             phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
         phases = np.array(phases)
-        phases, primary_rv, secondary_rv = self._system.compute_rv(
+        phases, rvs = self._system.compute_rv(
             **dict(
                 phases=phases,
                 position_method=self._system.get_positions_method()
@@ -283,11 +282,10 @@ class Observer(object):
         self.rv_unit = units.m / units.s
         if normalize:
             self.rv_unit = units.dimensionless_unscaled
-            _max = np.max([primary_rv, secondary_rv])
-            primary_rv /= _max
-            secondary_rv /= _max
+            _max = np.max([np.max(item) for item in rvs.values()])
+            rvs = {key: value/_max for key, value in rvs.items()}
 
-        return phases, primary_rv, secondary_rv
+        return phases, rvs
 
     def phase_interval_reduce(self, phases):
         """

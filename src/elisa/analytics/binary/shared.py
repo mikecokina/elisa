@@ -91,7 +91,6 @@ def rv_r_squared(synthetic, *args, **x):
     synthetic = synthetic(xs, period, observer, **x)
     if on_normalized:
         synthetic = analutils.normalize_rv_curve_to_max(synthetic)
-    synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
 
     residual = np.sum([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in BINARY_COUNTERPARTS])
     return 1.0 - (residual / variability)

@@ -182,5 +182,5 @@ def central_rv_synthetic(xs, period, observer, **kwargs):
     observable = prepare_central_rv_binary(**json) if kind_of in ["std"] \
         else RadialVelocitySystem(**RadialVelocitySystem.prepare_json(json["system"]))
     observer._system = observable
-    rv = observer.observe.rv(phases=xs, normalize=False)
-    return rv[1], rv[2]
+    _, rv = observer.observe.rv(phases=xs, normalize=False)
+    return rv

@@ -133,7 +133,6 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         synthetic = logger_decorator()(fn)(self.xs, self.period, self.observer, **kwargs)
         if self.on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
-        synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
         return np.array([np.sum(np.power((synthetic[comp] - self.ys[comp]) / self.yerrs[comp], 2))
                          for comp in BINARY_COUNTERPARTS])
 

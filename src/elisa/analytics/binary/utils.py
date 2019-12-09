@@ -18,8 +18,8 @@ def normalize_lightcurve_to_max(lc):
 
 
 def normalize_rv_curve_to_max(rv):
-    _max = np.max([rv[0], rv[1]])
-    return rv[0]/_max, rv[1]/_max
+    _max = np.max([rv['primary'], rv['secondary']])
+    return {key: val/_max for key, val in rv.items()}
 
 
 def lightcurves_mean_error(lc):

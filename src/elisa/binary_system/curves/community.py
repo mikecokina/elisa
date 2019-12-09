@@ -91,7 +91,7 @@ class RadialVelocitySystem(object):
 
     def radial_velocity(self, **kwargs):
         """
-        Method for simulation of observation radial velocity curves in community manner (on params `asini` and `q`).
+        Method for simulation of observation radial velocity curves in community format (on params `asini` and `q`).
         """
         phases = kwargs.pop("phases")
         position_method = kwargs.pop("position_method")
@@ -113,10 +113,9 @@ class RadialVelocitySystem(object):
         secondary_rv = self._radial_velocity(sma_secondary, self.eccentricity, self.argument_of_periastron,
                                              period, orbital_motion[:, 2])
 
-        primary_rv += self.gamma
-        secondary_rv += self.gamma
+        rv_dict = {'primary':  primary_rv + self.gamma, 'secondary': secondary_rv + self.gamma}
 
-        return phases, primary_rv, secondary_rv
+        return phases, rv_dict
 
     @staticmethod
     def distance_to_center_of_mass(q, positions):
