@@ -14,7 +14,7 @@ def normalize_lightcurve_to_max(lc):
     :return: Dict[str, numpy.array(float)];
     """
     _max = np.max(list(lc.values()))
-    return {key: val/_max for key, val in lc.items()}
+    return {key: np.array(val)/_max for key, val in lc.items()}
 
 
 def normalize_rv_curve_to_max(rv):

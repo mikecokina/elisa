@@ -63,7 +63,7 @@ class SunTestCase(utils.ElisaTestCase):
         v_r = pogsons_formula(lc[1]['Generic.Bessell.V'][-1], lc[1]['Generic.Bessell.R'][-1])
         v_i = pogsons_formula(lc[1]['Generic.Bessell.V'][-1], lc[1]['Generic.Bessell.I'][-1])
 
-        obtained = np.array([u_b, b_v, v_r, v_i])
+        print(b_v)
 
 
 

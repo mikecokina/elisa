@@ -18,13 +18,12 @@ def get_lc():
 def main():
     lc = get_lc()
     phases = {band: np.arange(-0.6, 0.62, 0.02) for band in lc}
-    u = np.random.uniform
-    n = len(lc["Generic.Bessell.B"])
+    n = len(lc["Generic.Bessell.V"])
 
     _max = np.max(list(lc.values()))
-    bias = {"Generic.Bessell.B": np.random.uniform(0, _max * 0.008, n) * np.array([random_sign() for _ in range(n)]),
-            "Generic.Bessell.V": np.random.uniform(0, _max * 0.008, n) * np.array([random_sign() for _ in range(n)]),
-            "Generic.Bessell.R": np.random.uniform(0, _max * 0.008, n) * np.array([random_sign() for _ in range(n)])}
+    bias = {"Generic.Bessell.B": np.random.uniform(0, _max * 0.004, n) * np.array([random_sign() for _ in range(n)]),
+            "Generic.Bessell.V": np.random.uniform(0, _max * 0.004, n) * np.array([random_sign() for _ in range(n)]),
+            "Generic.Bessell.R": np.random.uniform(0, _max * 0.004, n) * np.array([random_sign() for _ in range(n)])}
     lc = {comp: val + bias[comp] for comp, val in lc.items()}
 
     lc_initial = [
@@ -84,7 +83,7 @@ def main():
             'fixed': True
         },
         {
-            'value': 85.0,
+            'value': 90.0,
             'param': 'inclination',
             'fixed': False,
             'min': 80,
@@ -116,21 +115,21 @@ def main():
             'max': 16.8
         },
         {
-            'value': 6000,
+            'value': 8000,
             'param': 'p__t_eff',
             'fixed': False,
             'min': 4800.0,
             'max': 10000.0
         },
         {
-            'value': 5,
+            'value': 4,
             'param': 'p__surface_potential',
             'fixed': False,
             'min': 3,
             'max': 10
         },
         {
-            'value': 8000.0,
+            'value': 6000.0,
             'param': 's__t_eff',
             'fixed': False,
             'min': 4000.0,
