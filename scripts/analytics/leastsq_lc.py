@@ -28,139 +28,37 @@ def main():
 
     lc_initial = [
         {
-            'value': 16.6,
+            'value': 16.515,
             'param': 'semi_major_axis',
-            'fixed': False,
-            'min': 16.515,
-            'max': 16.8
+            'constraint': '16.515 / sin(radians({inclination}))'
         },
         {
-            'value': 5000,
+            'value': 8307.0,
             'param': 'p__t_eff',
             'fixed': False,
-            'min': 4800.0,
-            'max': 10000.0
+            'min': 7500.0,
+            'max': 8500.0
         },
         {
-            'value': 6.0,
+            'value': 6.5,
             'param': 'p__surface_potential',
             'fixed': False,
             'min': 3,
             'max': 10
         },
         {
-            'value': 7000.0,
+            'value': 5500.0,
             'param': 's__t_eff',
             'fixed': False,
             'min': 4000.0,
-            'max': 10000.0
+            'max': 8000.0
         },
         {
-            'value': 8.0,
+            'value': 7,
             'param': 's__surface_potential',
             'fixed': False,
             'min': 4.0,
             'max': 10.0
-        },
-        {
-            'value': 0.32,
-            'param': 'p__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 0.32,
-            'param': 's__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 0.6,
-            'param': 'p__albedo',
-            'fixed': True
-        },
-        {
-            'value': 0.6,
-            'param': 's__albedo',
-            'fixed': True
-        },
-        {
-            'value': 90.0,
-            'param': 'inclination',
-            'fixed': False,
-            'min': 80,
-            'max': 90
-        },
-        {
-            'value': 0.0,
-            'param': 'argument_of_periastron',
-            'fixed': True
-        },
-        {
-            'value': 0.5,
-            'param': 'mass_ratio',
-            'fixed': True
-        },
-        {
-            'value': 0.0,
-            'param': 'eccentricity',
-            'fixed': True
-        }
-    ]
-
-    lc_initial = [
-        {
-            'value': 16.54321389,
-            'param': 'semi_major_axis',
-            'fixed': False,
-            'min': 16.515,
-            'max': 16.8
-        },
-        {
-            'value': 8000,
-            'param': 'p__t_eff',
-            'fixed': False,
-            'min': 4800.0,
-            'max': 10000.0
-        },
-        {
-            'value': 4,
-            'param': 'p__surface_potential',
-            'fixed': False,
-            'min': 3,
-            'max': 10
-        },
-        {
-            'value': 6000.0,
-            'param': 's__t_eff',
-            'fixed': False,
-            'min': 4000.0,
-            'max': 10000.0
-        },
-        {
-            'value': 6,
-            'param': 's__surface_potential',
-            'fixed': False,
-            'min': 4.0,
-            'max': 10.0
-        },
-        {
-            'value': 0.32,
-            'param': 'p__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 0.32,
-            'param': 's__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 0.6,
-            'param': 'p__albedo',
-            'fixed': True
-        },
-        {
-            'value': 0.6,
-            'param': 's__albedo',
-            'fixed': True
         },
         {
             'value': 85.0,
@@ -168,6 +66,26 @@ def main():
             'fixed': False,
             'min': 80,
             'max': 90
+        },
+        {
+            'value': 0.32,
+            'param': 'p__gravity_darkening',
+            'fixed': True
+        },
+        {
+            'value': 0.32,
+            'param': 's__gravity_darkening',
+            'fixed': True
+        },
+        {
+            'value': 0.6,
+            'param': 'p__albedo',
+            'fixed': True
+        },
+        {
+            'value': 0.6,
+            'param': 's__albedo',
+            'fixed': True
         },
         {
             'value': 0.0,
