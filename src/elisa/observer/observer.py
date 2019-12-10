@@ -7,6 +7,7 @@ from multiprocessing.pool import Pool
 from scipy import interpolate
 
 from elisa.binary_system.system import BinarySystem
+from elisa.single_system.system import SingleSystem
 from elisa.observer import mp
 from elisa.observer.plot import Plot
 from elisa.conf import config
@@ -312,5 +313,20 @@ class Observer(object):
             else:
                 base_interval = np.round(phases % 1, 9)
                 return np.unique(base_interval, return_inverse=True)
+
+        elif self._system_cls == SingleSystem or str(self._system_cls) == str(SingleSystem):
+            has_pulsation_test = self._system.star.has_pulsations()
+            has_spot_test = self._system.star.has_spots()
+
+            # the most complex case, has to be solved for each phase
+            if has_pulsation_test:
+                return phases, up.arange(phases.shape[0])
+            # in case of just spots on surface, unique (0.1) phases are only needed
+            elif has_spot_test and not has_pulsation_test:
+                base_interval = np.round(phases % 1, 9)
+                return np.unique(base_interval, return_inverse=True)
+            # in case of clear surface wo pulsations and spots, only single observation is needed
+            else:
+                return np.zeros(1), np.zeros(phases.shape[0], dtype=int)
         else:
             raise NotImplemented("not implemented")
