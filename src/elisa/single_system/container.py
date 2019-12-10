@@ -76,8 +76,8 @@ class SystemContainer(PositionContainer):
     def build_surface_gravity(self):
         return gravity.build_surface_gravity(self)
 
-    def build_temperature_distribution(self, do_pulsations=False, phase=None):
-        return temperature.build_temperature_distribution(self, do_pulsations, phase)
+    def build_temperature_distribution(self, phase=None):
+        return temperature.build_temperature_distribution(self, phase)
 
     def build_from_points(self, do_pulsations=False, phase=None):
         """
@@ -92,7 +92,7 @@ class SystemContainer(PositionContainer):
         self.build_pulsations_on_mesh()
         self.build_faces_orientation()
         self.build_surface_gravity()
-        self.build_temperature_distribution(do_pulsations, phase)
+        self.build_temperature_distribution(phase)
         return self
 
     def _phase(self, phase):

@@ -272,7 +272,7 @@ class Observer(object):
         if is_empty(phases):
             phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
         phases = np.array(phases)
-        phases, rvs = self._system.compute_rv(
+        self.phases, self.radial_velocities = self._system.compute_rv(
             **dict(
                 phases=phases,
                 position_method=self._system.get_positions_method()
@@ -282,10 +282,10 @@ class Observer(object):
         self.rv_unit = units.m / units.s
         if normalize:
             self.rv_unit = units.dimensionless_unscaled
-            _max = np.max([np.max(item) for item in rvs.values()])
-            rvs = {key: value/_max for key, value in rvs.items()}
+            _max = np.max([np.max(item) for item in self.radial_velocities.values()])
+            self.radial_velocities = {key: value/_max for key, value in self.radial_velocities.items()}
 
-        return phases, rvs
+        return self.phases, self.radial_velocities
 
     def phase_interval_reduce(self, phases):
         """

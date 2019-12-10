@@ -10,6 +10,7 @@ from elisa import (
     utils,
     units
 )
+from astropy import units as u
 
 
 def orbit(**kwargs):
@@ -661,7 +662,7 @@ def binary_surface_anim(**kwargs):
 
 def phase_curve(**kwargs):
     plt.figure(figsize=(8, 6))
-    if kwargs['flux_unit'] in ['normalized', 'normalised']:
+    if kwargs['unit'] in ['normalized', 'normalised']:
         C = np.max([kwargs['fluxes'][item] for item in kwargs['fluxes']])
     else:
         C = 1
@@ -670,8 +671,9 @@ def phase_curve(**kwargs):
         plt.legend()
 
     plt.xlabel('Phase')
-    if kwargs['flux_unit'] == units.W / units.m**2:
-        plt.ylabel(r'Flux/($W/m^{2}$)')
+    if isinstance(kwargs['unit'], type(u.W/u.m**2)):
+        uu = kwargs['unit']
+        plt.ylabel(f'Flux/({uu:latex})')
     else:
         plt.ylabel('Flux')
     if kwargs['legend']:
@@ -681,14 +683,15 @@ def phase_curve(**kwargs):
 
 def rv_curve(**kwargs):
     plt.figure(figsize=(8, 6))
-    phases, primary_rv, secondary_rv = kwargs["phases"], kwargs["primary_rv"], kwargs["secondary_rv"]
-    plt.plot(phases, primary_rv, label="primary")
-    plt.plot(phases, secondary_rv, label="secondary")
+    phases, rvs = kwargs["phases"], kwargs["rvs"]
+    for component in rvs.keys():
+        plt.plot(phases, rvs[component], label=component)
     plt.legend()
 
     plt.xlabel('Phase')
-    if kwargs['unit'] == units.m / units.s:
-        plt.ylabel(r'Radial Velocity/($m/s$)')
+    if isinstance(kwargs['unit'], type(u.m / u.s)):
+        uu = kwargs['unit']
+        plt.ylabel(f'Radial Velocity/({uu:latex})')
     else:
         plt.ylabel('Radial Velocity')
     if kwargs['legend']:
