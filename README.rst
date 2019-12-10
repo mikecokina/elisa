@@ -549,11 +549,38 @@ for following parameters::
 
 .. _Ballesteros: https://arxiv.org/pdf/1201.1809.pdf
 
-We can also estimate surface temperature of primary component via Ballesteros_ formula implemented in `elisa` package.
+We can also estimate surface temperature of primary component via formula implemented in `elisa` package.
 
 .. code:: python
 
-    from elisa.analytics import ballesteros
-    b_v = ballesteros.pogsons_formula(lc['Generic.Bessell.B'][55], lc['Generic.Bessell.V'][55])
-    ballesteros.ballesteros_formula(b_v)
+    from elisa.analytics import bvi
+    b_v = bvi.pogsons_formula(lc['Generic.Bessell.B'][55], lc['Generic.Bessell.V'][55])
+    bvi.elisa_bv_temperature(b_v)
+
+
+This approach give us value ~ 8307K.
+
+:note: index `55` is used because we know that such index will give as flux on photometric phase :math:`\Phi=0.5`,
+       where we eliminte impact of secondary component to result of primary component temperature.
+
+:note: we recomend you to set boundaries for temperature obtained from ballesteros formula at least in range +/-1000K.
+
+Lets create minimalistic code snippet which demonstrates least squares fitting method.
+
+.. code:: python
+
+    import numpy as np
+    from elisa.analytics.binary.least_squares import binary_detached
+
+    lc = {
+            'Generic.Bessell.B': np.array([0.9790975 , 0.97725314, 0.97137167, ..., 0.97783875]),
+            'Generic.Bessell.V': np.array([0.84067043, 0.8366796 , ..., 0.8389709 ]),
+            'Generic.Bessell.R': np.array([0.64415833, 0.64173746, 0.63749762, ..., 0.64368843])
+         }
+
+
+
+
+
+
 

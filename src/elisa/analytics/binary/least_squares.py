@@ -51,7 +51,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
             logger.error(f'your initial parmeters lead during fitting to invalid binary system')
             raise RuntimeError(f'your initial parmeters lead during fitting to invalid binary system: {str(e)}')
 
-        residua = np.array([np.sum(np.power(synthetic[band][self.xs_band_reverser[band]] - self.ys[band], 2)
+        residua = np.array([np.sum(np.power(synthetic[band][self.xs_reverser[band]] - self.ys[band], 2)
                                    / self.yerrs[band]) for band in synthetic])
 
         return residua
@@ -75,7 +75,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         # compute yerrs if not supplied
         yerrs = {band: analutils.lightcurves_mean_error(ys) for band in passband} if yerrs is None else yerrs
 
-        self.xs, self.xs_band_reverser = params.xs_reducer(xs)
+        self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.ys, self.yerrs = ys, yerrs
 
         x0 = params.initial_x0_validity_check(x0, self.morphology)
@@ -100,7 +100,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         result = [{"param": key, "value": val} for key, val in result_dict.items()]
 
         # compute r_squared and append to result
-        r_squared_args = self.xs, self.ys, period, self.passband, discretization, self.morphology, self.xs_band_reverser
+        r_squared_args = self.xs, self.ys, period, self.passband, discretization, self.morphology, self.xs_reverser
         r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **result_dict)
         result.append({"r_squared": r_squared_result})
 
@@ -133,8 +133,8 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         synthetic = logger_decorator()(fn)(self.xs, self.period, self.observer, **kwargs)
         if self.on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
-        return np.array([np.sum(np.power((synthetic[comp] - self.ys[comp]) / self.yerrs[comp], 2))
-                         for comp in BINARY_COUNTERPARTS])
+        return np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
+                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS])
 
     def fit(self, xs, ys, period, x0, yerrs=None, xtol=1e-10, max_nfev=None, on_normalized=False):
         """
@@ -156,9 +156,10 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
 
+        self.xs, self.xs_reverser = params.xs_reducer(xs)
+        self.ys, self.yerrs = ys, yerrs
         self.labels, self.observer, self.period = labels, observer, period
         self.fixed, self.constraint = fixed, constraint
-        self.xs, self.ys, self.yerrs = xs, ys, yerrs
 
         logger.info("fitting radial velocity light curve...")
         func = self.centarl_rv_model_to_fit
@@ -169,7 +170,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         result_dict = dict(zip(labels, result))
         result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
 
-        r_squared_args = xs, ys, period, on_normalized
+        r_squared_args = self.xs, self.ys, period, on_normalized, self.xs_reverser
         r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **result_dict)
 
         result = [{"param": key, "value": val} for key, val in result_dict.items()]
