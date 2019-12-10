@@ -3,6 +3,7 @@ import numpy as np
 import os.path as op
 
 from elisa.analytics.binary.least_squares import central_rv
+from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.utils import random_sign
 
 np.random.seed(1)
@@ -17,6 +18,7 @@ def get_rv():
 
 def main():
     phases = np.arange(-0.6, 0.62, 0.02)
+    xs = {comp: phases for comp in BINARY_COUNTERPARTS}
     rv = get_rv()
     u = np.random.uniform
     n = len(rv["primary"])
@@ -58,10 +60,15 @@ def main():
             'fixed': False,
             'min': 10000.0,
             'max': 50000.0
+        },
+        {
+            'value': 4.5,
+            'param': 'period',
+            'fixed': True
         }
     ]
 
-    result = central_rv.fit(xs=phases, ys=rv, period=4.5, x0=rv_initial, xtol=1e-10, yerrs=None)
+    result = central_rv.fit(xs=xs, ys=rv, x0=rv_initial, xtol=1e-10, yerrs=None)
     print(json.dumps(result, indent=4))
 
 

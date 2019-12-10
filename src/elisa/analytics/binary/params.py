@@ -1,5 +1,6 @@
 import numpy as np
 
+from astropy.time import Time
 from typing import List, Tuple, Dict
 
 from elisa import utils
@@ -33,7 +34,9 @@ PARAMS_KEY_MAP = {
     'A2': 's__albedo',
     'MH2': 's__metallicity',
     'F2': 's__synchronicity',
-    'asini': 'asini'
+    'asini': 'asini',
+    'P': 'period',
+    'T0': 'primary_minimum_time'
 }
 
 PARAMS_KEY_TEX_MAP = {
@@ -57,7 +60,9 @@ PARAMS_KEY_TEX_MAP = {
     's__albedo': '$A_2$',
     's__metallicity': '$M/H_2$',
     's__synchronicity': '$F_2$',
-    'asini': 'a$sin$(i)'
+    'asini': 'a$sin$(i)',
+    'period': '$days$',
+    'primary_minimum_time': '$days$'
 }
 
 
@@ -82,7 +87,9 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['F2']: 'dimensionless',
     PARAMS_KEY_MAP['q']: 'dimensionless',
     PARAMS_KEY_MAP['a']: 'solRad',
-    PARAMS_KEY_MAP['asini']: 'solRad'
+    PARAMS_KEY_MAP['asini']: 'solRad',
+    PARAMS_KEY_MAP['P']: 'days',
+    PARAMS_KEY_MAP['T0']: 'days',
 }
 
 
@@ -111,6 +118,8 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['q']: (0, 50),
     PARAMS_KEY_MAP['a']: (0, 100),
     PARAMS_KEY_MAP['asini']: (0, 100),
+    PARAMS_KEY_MAP['P']: (0, 100),
+    PARAMS_KEY_MAP['T0']: (Time.now().jd - 365.0, Time.now().jd),
 }
 
 
@@ -299,11 +308,11 @@ def fit_data_initializer(x0, passband=None):
     return x0, labels, fixed, constraint, observer
 
 
-def initial_x0_validity_check(x0: List[Dict], morphology):
+def lc_initial_x0_validity_check(x0: List[Dict], morphology):
     """
-    Validate parameters.
+    Validate parameters for light curve fitting.
 
-    # Main idea of `initial_x0_validity_check` is to cut of initialization if over-contact system is expected,
+    # Main idea of `lc_initial_x0_validity_check` is to cut of initialization if over-contact system is expected,
     # but potentials are fixed both to different values or just one of them is fixed.
     # Valid input requires either both potentials fixed on same values or non-of them fixed.
     # When non of them are fixed, internaly is fixed secondary and its value is keep same as primary.
@@ -357,6 +366,25 @@ def initial_x0_validity_check(x0: List[Dict], morphology):
         }
         update_normalization_map({PARAMS_KEY_MAP['Omega2']: (_min, _max)})
 
+    return x0
+
+
+def rv_initial_x0_validity_check(x0: List[Dict]):
+    """
+    Validate parameters for radial velocities curve fitting.
+
+    :param x0: List[Dict];
+    :return: List[Dict];
+    """
+    labels = [val["param"] for val in x0]
+    has_t0, has_period = 'primary_minimum_time' in labels, 'period' in labels
+
+    if has_t0:
+        if not (has_t0 and has_period):
+            raise error.ValidationError("Input requires both, period and primary minimum time.")
+    else:
+        if not has_period:
+            raise error.ValidationError("Input requires at least period.")
     return x0
 
 

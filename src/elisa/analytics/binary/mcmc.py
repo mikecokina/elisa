@@ -189,7 +189,7 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
 
         self.passband = list(ys.keys())
         yerrs = {band: analutils.lightcurves_mean_error(ys) for band in self.passband} if yerrs is None else yerrs
-        x0 = params.initial_x0_validity_check(x0, self.morphology)
+        x0 = params.lc_initial_x0_validity_check(x0, self.morphology)
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=self.passband)
         ndim = len(x0)
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
@@ -231,10 +231,11 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         :param xn: Iterable[float]; vector of parameters we are looking for
         :return: float;
         """
+        xs = self.xs
         xn = params.param_renormalizer(xn, self.labels)
         kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
 
-        args = self.xs, self.period, self.observer
+        args = xs, self.observer
         synthetic = models.central_rv_synthetic(*args, **kwargs)
         if self.on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
@@ -244,7 +245,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
                                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))
         return lhood
 
-    def fit(self, xs, ys, period, x0, nwalkers, nsteps, p0=None, yerrs=None, nsteps_burn_in=10):
+    def fit(self, xs, ys, x0, nwalkers, nsteps, p0=None, yerrs=None, nsteps_burn_in=10):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
@@ -255,7 +256,6 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
 
         :param xs: Iterable[float];
         :param ys: Dict;
-        :param period: float; sytem period
         :param x0: List[Dict]; initial state (metadata included)
         :param nwalkers: int; number of walkers
         :param nsteps: int; number of steps in mcmc eval
@@ -265,6 +265,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         :return: emcee.EnsembleSampler; sampler instance
         """
 
+        x0 = params.rv_initial_x0_validity_check(x0)
         yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
         ndim = len(x0)
@@ -272,7 +273,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.ys, self.yerrs = ys, yerrs
-        self.labels, self.observer, self.period = labels, observer, period
+        self.labels, self.observer = labels, observer
         self.fixed, self.constraint = fixed, constraint
 
         return self._fit(x0, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)

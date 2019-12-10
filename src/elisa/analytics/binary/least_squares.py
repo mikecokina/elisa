@@ -68,7 +68,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         :param xtol: float; relative tolerance to consider solution
         :param yerrs: Union[numpy.array, float]; errors for each point of observation
         :param max_nfev: int; maximal iteration
-        :return: Dict; solution on supplied quantiles, default is [16, 50, 84]
+        :return: Dict;
         """
 
         passband = list(ys.keys())
@@ -78,7 +78,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.ys, self.yerrs = ys, yerrs
 
-        x0 = params.initial_x0_validity_check(x0, self.morphology)
+        x0 = params.lc_initial_x0_validity_check(x0, self.morphology)
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
 
         self.period = period
@@ -127,16 +127,20 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         :param xn: numpy.array; current vector
         :return: numpy.array;
         """
+
+        # pop T0 and P from xn
+
+        xs = self.xs
         xn = params.param_renormalizer(xn, self.labels)
         kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
         fn = models.central_rv_synthetic
-        synthetic = logger_decorator()(fn)(self.xs, self.period, self.observer, **kwargs)
+        synthetic = logger_decorator()(fn)(xs, self.observer, **kwargs)
         if self.on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
         return np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                          / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS])
 
-    def fit(self, xs, ys, period, x0, yerrs=None, xtol=1e-10, max_nfev=None, on_normalized=False):
+    def fit(self, xs, ys, x0, yerrs=None, xtol=1e-10, max_nfev=None, on_normalized=False):
         """
         Method to provide fitting of radial velocities curves.
         It can handle standadrd physical parameters `M_1`, `M_2` or astro community parameters `asini` and `q`.
@@ -145,20 +149,20 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         :param on_normalized: bool; if True, fitting is provided on normalized radial velocities curves
         :param xs: Iterable[float];
         :param ys: Dict;
-        :param period: float; sytem period
         :param x0: List[Dict]; initial state (metadata included)
         :param xtol: float; tolerance of error to consider hitted solution as exact
         :param yerrs: Union[numpy.array, float]; errors for each point of observation
         :param max_nfev: int; maximal iteration
-        :return: Dict; solution on supplied quantiles, default is [16, 50, 84]
+        :return: Dict;
         """
         initial_x0 = copy(x0)
+        x0 = params.rv_initial_x0_validity_check(x0)
         yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.ys, self.yerrs = ys, yerrs
-        self.labels, self.observer, self.period = labels, observer, period
+        self.labels, self.observer = labels, observer
         self.fixed, self.constraint = fixed, constraint
 
         logger.info("fitting radial velocity light curve...")
@@ -170,7 +174,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         result_dict = dict(zip(labels, result))
         result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
 
-        r_squared_args = self.xs, self.ys, period, on_normalized, self.xs_reverser
+        r_squared_args = self.xs, self.ys, on_normalized, self.xs_reverser
         r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **result_dict)
 
         result = [{"param": key, "value": val} for key, val in result_dict.items()]

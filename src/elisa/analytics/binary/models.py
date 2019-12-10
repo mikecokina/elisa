@@ -142,11 +142,10 @@ def prepare_central_rv_binary(**kwargs):
     return BinarySystem.from_json(kwargs, _verify=False)
 
 
-def central_rv_synthetic(xs, period, observer, **kwargs):
+def central_rv_synthetic(xs, observer, **kwargs):
     """
 
     :param xs: Union[List, numpy.array];
-    :param period: float;
     :param observer: elisa.observer.observer.Observer; instance
     :param kwargs: Dict;
     :**kwargs options**:
@@ -166,12 +165,12 @@ def central_rv_synthetic(xs, period, observer, **kwargs):
         "s__t_eff": 10000.0,
         "p__metallicity": 10000.0,
         "s__metallicity": 10000.0,
-        "period": period
     })
 
     primary_kwargs = serialize_primary_kwargs(**kwargs)
     secondary_kwargs = serialize_seondary_kwargs(**kwargs)
     system_kwargs = serialize_system_kwargs(**kwargs)
+
     json = {
         "primary": dict(**primary_kwargs),
         "secondary": dict(**secondary_kwargs),

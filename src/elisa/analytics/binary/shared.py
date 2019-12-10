@@ -23,7 +23,6 @@ class AbstractFitDataMixin(object):
     constraint = dict()
     labels = list()
     observer = None
-    period = np.nan
     xs_reverser = list()
 
 
@@ -35,6 +34,7 @@ class AbstractLightCurveDataMixin(AbstractFitDataMixin):
     morphology = ''
     discretization = np.nan
     passband = ''
+    period = np.nan
 
 
 def lc_r_squared(synthetic, *args, **x):
@@ -82,13 +82,13 @@ def rv_r_squared(synthetic, *args, **x):
     :** x options**: kwargs of current parameters to compute radial velocities curve
     :return: float;
     """
-    xs, ys, period, on_normalized, xs_reverser = args
+    xs, ys, on_normalized, xs_reverser = args
     observed_means = np.array([np.repeat(np.mean(ys[comp]), len(ys[comp])) for comp in BINARY_COUNTERPARTS])
     variability = np.sum([np.sum(np.power(ys[comp] - observed_means, 2)) for comp in BINARY_COUNTERPARTS])
 
     observer = Observer(passband='bolometric', system=None)
     observer._system_cls = BinarySystem
-    synthetic = synthetic(xs, period, observer, **x)
+    synthetic = synthetic(xs, observer, **x)
     synthetic = {comp: synthetic[comp][xs_reverser[comp]] for comp in synthetic}
 
     if on_normalized:

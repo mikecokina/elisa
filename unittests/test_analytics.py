@@ -150,22 +150,22 @@ class TestParamsTestCase(ElisaTestCase):
             }
         ]
 
-        params.initial_x0_validity_check(xn, morphology='detached')
+        params.lc_initial_x0_validity_check(xn, morphology='detached')
 
         xn[0]["fixed"] = True
         xn[1]["fixed"] = False
         with self.assertRaises(InitialParamsError) as context:
-            params.initial_x0_validity_check(xn, morphology='over-contact')
+            params.lc_initial_x0_validity_check(xn, morphology='over-contact')
         self.assertTrue("just one fixed potential" in str(context.exception).lower())
 
         xn[1]["fixed"] = True
         with self.assertRaises(InitialParamsError) as context:
-            params.initial_x0_validity_check(xn, morphology='over-contact')
+            params.lc_initial_x0_validity_check(xn, morphology='over-contact')
         self.assertTrue("different potential" in str(context.exception).lower())
 
         xn[0]["fixed"] = False
         xn[1]["fixed"] = False
-        params.initial_x0_validity_check(xn, morphology='over-contact')
+        params.lc_initial_x0_validity_check(xn, morphology='over-contact')
 
         self.assertTrue(xn[0]['min'] == xn[1]['min'])
         self.assertTrue(xn[0]['max'] == xn[1]['max'])
@@ -190,7 +190,7 @@ class TestParamsTestCase(ElisaTestCase):
         ]
 
         with self.assertRaises(InitialParamsError) as context:
-            params.initial_x0_validity_check(xn, morphology='detached')
+            params.lc_initial_x0_validity_check(xn, morphology='detached')
         self.assertTrue("to contain fixed and constraint" in str(context.exception).lower())
 
     def test_constraints(self):
@@ -464,13 +464,18 @@ class McMcRVTestCase(RVTestCase):
                 'value': 20000.0,
                 'param': 'gamma',
                 'fixed': True
+            },
+            {
+                'value': 0.6,
+                'param': 'period',
+                'fixed': True
             }
         ]
 
         model_generator = ModelSimulator()
         model_generator.keep_out = True
         with mock.patch("elisa.analytics.binary.models.central_rv_synthetic", model_generator.rv_generator):
-            mc_central_rv.fit(xs=xs, ys=self.rv, period=0.6, x0=initial_parameters, nwalkers=4, nsteps=5)
+            mc_central_rv.fit(xs=xs, ys=self.rv, x0=initial_parameters, nwalkers=4, nsteps=5)
         # result = central_rv.fit(xs=phases, ys=self.rv, period=0.6, x0=copy(initial_parameters))
         # self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
 
@@ -519,10 +524,15 @@ class LeastSqaureRVTestCase(RVTestCase):
                 'fixed': False,
                 'min': 20000,
                 'max': 40000
+            },
+            {
+                'value': 0.6,
+                'param': 'period',
+                'fixed': True
             }
         ]
 
-        result = central_rv.fit(xs=xs, ys=self.rv, period=0.6, x0=copy(initial_parameters))
+        result = central_rv.fit(xs=xs, ys=self.rv, x0=copy(initial_parameters))
         self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
 
     def test_least_squares_rv_fit_community_params(self):
@@ -559,10 +569,15 @@ class LeastSqaureRVTestCase(RVTestCase):
                 'value': 20000.0,
                 'param': 'gamma',
                 'fixed': True
+            },
+            {
+                'value': 0.6,
+                'param': 'period',
+                'fixed': True
             }
         ]
 
-        result = central_rv.fit(xs=xs, ys=self.rv, period=0.6, x0=copy(initial_parameters))
+        result = central_rv.fit(xs=xs, ys=self.rv, x0=copy(initial_parameters))
         self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
 
 

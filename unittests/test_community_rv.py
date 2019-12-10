@@ -57,6 +57,3 @@ class RadialVelocityObserverTestCase(ElisaTestCase):
 
         self.assertTrue(np.all(np.abs(std_rvdict['primary'] - com_rv_dict['primary']) < TOL))
         self.assertTrue(np.all(np.abs(std_rvdict['secondary'] - com_rv_dict['secondary']) < TOL))
-
-    def compute_rv(self):
-        pass
