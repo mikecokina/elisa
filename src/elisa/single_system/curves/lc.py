@@ -7,7 +7,8 @@ from elisa import (
 from elisa.logger import getLogger
 from elisa.conf import config
 from elisa.single_system.container import SystemContainer
-from elisa.single_system.curves import shared
+from elisa.single_system.curves import shared, lcmp
+from elisa.single_system import utils
 # from elisa.single_system
 
 
@@ -34,28 +35,16 @@ def compute_light_curve_without_pulsations(single, **kwargs):
     phases = kwargs.pop("phases")
     normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
-    # if config.NUMBER_OF_PROCESSES > 1:
-    #     logger.info("starting multiprocessor workers")
-    #     batch_size = int(np.ceil(len(unique_phase_interval) / config.NUMBER_OF_PROCESSES))
-    #     phase_batches = utils.split_to_batches(batch_size=batch_size, array=unique_phase_interval)
-    #     func = lcmp.compute_circular_synchronous_lightcurve
-    #     pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-    #
-    #     result = [pool.apply_async(func, (binary, initial_system, batch, normal_radiance, ld_cfs, kwargs))
-    #               for batch in phase_batches]
-    #     pool.close()
-    #     pool.join()
-    #     # this will return output in same order as was given on apply_async init
-    #     result = [r.get() for r in result]
-    #     band_curves = bsutils.renormalize_async_result(result)
-    # else:
-    #     args = (binary, initial_system, unique_phase_interval, normal_radiance, ld_cfs, kwargs)
-    #     band_curves = lcmp.compute_circular_synchronous_lightcurve(*args)
-    #
-    # band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
-    # return band_curves
+    if (config.NUMBER_OF_PROCESSES > 1) and (len(phases) >= config.NUMBER_OF_PROCESSES):
+        logger.info("starting multiprocessor workers")
+        batch_size = int(np.ceil(len(phases) / config.NUMBER_OF_PROCESSES))
+        phase_batches = utils.split_to_batches(batch_size=batch_size, array=phases)
 
-    # TODO: finish
+        raise NotImplementedError('Multiprocessing in non-pulsating case is not not implemented')
+
+    else:
+        args = (single, initial_system, phases, normal_radiance, ld_cfs, kwargs)
+        band_curves = lcmp.compute_non_pulsating_lightcurve(*args)
 
 
 def compute_light_curve_with_pulsations(self, **kwargs):
