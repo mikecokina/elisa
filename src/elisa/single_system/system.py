@@ -6,6 +6,7 @@ from elisa.single_system.orbit import orbit
 from elisa.single_system.curves import lc
 from elisa.logger import getLogger
 from elisa.single_system.transform import SingleSystemProperties
+from elisa import const
 
 from elisa import (
     utils,
@@ -107,25 +108,6 @@ class SingleSystem(System):
 
     def get_info(self):
         pass
-
-    def get_positions_method(self):
-        return self.calculate_lines_of_sight
-
-    def calculate_lines_of_sight(self, phase=None):
-        """
-        returns vector oriented in direction star - observer
-
-        :param phase: list
-        :return: np.array([index, spherical coordinates of line of sight vector])
-        """
-        idx = np.arange(np.shape(phase)[0], dtype=np.int)
-
-        line_of_sight_spherical = np.empty((np.shape(phase)[0], 3), dtype=np.float)
-        line_of_sight_spherical[:, 0] = 1
-        line_of_sight_spherical[:, 1] = c.FULL_ARC * phase
-        line_of_sight_spherical[:, 2] = self.inclination
-        line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
-        return np.hstack((idx[:, np.newaxis], line_of_sight))
 
     # _________________________AFTER_REFACTOR___________________________________
 
@@ -254,6 +236,30 @@ class SingleSystem(System):
         """
         if self.star.critical_surface_potential < self.star.surface_potential:
             raise ValueError('Non-physical system. Star rotation is above critical break-up velocity.')
+
+    def get_positions_method(self):
+        return self.calculate_lines_of_sight
+
+    def calculate_lines_of_sight(self, input_argument=None, return_nparray=False, calculate_from='phase'):
+        """
+        returns vector oriented in direction star - observer
+
+        :param calculate_from: str; 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
+        :param return_nparray: bool; if True positions in form of numpy arrays will be also returned
+        :param input_argument: numpy.array;
+        :return: Tuple[List[NamedTuple: elisa.const.SinglePosition], List[Integer]] or
+                 List[NamedTuple: elisa.const.SinglePosition]
+        """
+        input_argument = np.array([input_argument]) if np.isscalar(input_argument) else input_argument
+        rotational_motion = self.orbit.rotational_motion(phase=input_argument) if calculate_from == 'phase' \
+            else self.orbit.rotational_motion_from_azimuths(azimuth=input_argument)
+        idx = np.arange(np.shape(input_argument)[0], dtype=np.int)
+        positions = np.hstack((idx[:, np.newaxis], rotational_motion))
+
+        if return_nparray:
+            return positions
+        else:
+            return [const.SinglePosition(*p) for p in positions]
 
     # light curves *****************************************************************************************************
     def compute_lightcurve(self, **kwargs):

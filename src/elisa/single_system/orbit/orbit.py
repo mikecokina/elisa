@@ -31,6 +31,10 @@ def true_phase_to_azimuth(phase):
     return c.FULL_ARC * phase
 
 
+def azimuth_to_true_phase(azimuth):
+    return azimuth / c.FULL_ARC
+
+
 class Orbit(object):
     """
     Model which represents rotational motion of the single system as apparent orbital motion of the observer.
@@ -91,3 +95,23 @@ class Orbit(object):
         azimuth_angle = true_phase_to_azimuth(phase=true_phase)
 
         return np.column_stack((azimuth_angle, phase))
+
+    def rotational_motion_from_azimuths(self, azimuth):
+        """
+        return rotational motion derived from known azimuths
+
+        :param azimuth: Union[numpy.array, float];
+        :return: numpy.ndarray; matrix consisting of column stacked vectors distance, azimut angle, true anomaly and
+        phase
+
+        ::
+
+               numpy.array((az1, phs1),
+                           (az2, phs2),
+                            ...
+                           (azN, phsN))
+
+        """
+        true_phase = azimuth_to_true_phase(azimuth)
+        phase = self.phase(true_phase=true_phase, phase_shift=-self.phase_shift)
+        return np.column_stack((azimuth, phase))
