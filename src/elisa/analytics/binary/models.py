@@ -1,3 +1,4 @@
+from elisa.binary_system import t_layer
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from ..binary import params
 from ...base import error
@@ -155,6 +156,10 @@ def central_rv_synthetic(xs, observer, **kwargs):
         * **p__mass** * -- float;
         * **s__mass** * -- float;
         * **gamma** * -- float;
+        * **asini** * --float;
+        * **mass_ratio** * --float;
+        * **primary_minimum_time** * -- float;
+        * **period** * -- float;
     :return: Tuple;
     """
 
@@ -167,6 +172,7 @@ def central_rv_synthetic(xs, observer, **kwargs):
         "s__metallicity": 10000.0,
     })
 
+    xs, kwargs = rvt_layer_resolver(xs, **kwargs)
     primary_kwargs = serialize_primary_kwargs(**kwargs)
     secondary_kwargs = serialize_seondary_kwargs(**kwargs)
     system_kwargs = serialize_system_kwargs(**kwargs)
@@ -183,3 +189,19 @@ def central_rv_synthetic(xs, observer, **kwargs):
     observer._system = observable
     _, rv = observer.observe.rv(phases=xs, normalize=False)
     return rv
+
+
+def rvt_layer_resolver(xs, **kwargs):
+    """
+    If kwargs contain `peridod` and `primary_minimum_time`, then xs is expected to be JD time not phases.
+    Then, xs has to be converted to phases.
+
+    :param xs: Union[List, bumpy.array];
+    :param kwargs:
+    :return:
+    """
+    if params.is_time_dependent(list(kwargs.keys())):
+        t0 = kwargs.pop('primary_minimum_time')
+        period = kwargs['period']
+        xs = t_layer.jd_to_phase(t0, period, xs)
+    return xs, kwargs

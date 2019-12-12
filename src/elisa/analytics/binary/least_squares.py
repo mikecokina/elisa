@@ -2,7 +2,6 @@ import functools
 import numpy as np
 
 from abc import ABCMeta
-from copy import copy
 from scipy.optimize import least_squares
 
 from ...conf.config import BINARY_COUNTERPARTS
@@ -127,14 +126,10 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         :param xn: numpy.array; current vector
         :return: numpy.array;
         """
-
-        # pop T0 and P from xn
-
-        xs = self.xs
         xn = params.param_renormalizer(xn, self.labels)
         kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
         fn = models.central_rv_synthetic
-        synthetic = logger_decorator()(fn)(xs, self.observer, **kwargs)
+        synthetic = logger_decorator()(fn)(self.xs, self.observer, **kwargs)
         if self.on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
         return np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
@@ -155,7 +150,6 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         :param max_nfev: int; maximal iteration
         :return: Dict;
         """
-        initial_x0 = copy(x0)
         x0 = params.rv_initial_x0_validity_check(x0)
         yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
@@ -172,7 +166,8 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
 
         result = params.param_renormalizer(result.x, labels)
         result_dict = dict(zip(labels, result))
-        result_dict.update(params.x0_to_fixed_kwargs(initial_x0))
+        result_dict.update(self.fixed)
+        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
 
         r_squared_args = self.xs, self.ys, on_normalized, self.xs_reverser
         r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **result_dict)

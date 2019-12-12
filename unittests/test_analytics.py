@@ -15,6 +15,7 @@ from elisa.analytics.binary.least_squares import (
 from elisa.analytics.binary.mcmc import binary_detached as mc_binary_detached
 from elisa.analytics.binary.mcmc import central_rv as mc_central_rv
 from elisa.base.error import InitialParamsError
+from elisa.binary_system import t_layer
 from elisa.conf.config import BINARY_COUNTERPARTS
 from unittests.utils import ElisaTestCase
 
@@ -481,6 +482,66 @@ class McMcRVTestCase(RVTestCase):
 
 
 class LeastSqaureRVTestCase(RVTestCase):
+    def test_least_squares_rv_fit_unknown_phases(self):
+        period, t0 = 0.6, 12.0
+        phases = np.arange(-0.6, 0.62, 0.02)
+        jd = t_layer.phase_to_jd(t0, period, phases)
+        xs = {comp: jd for comp in BINARY_COUNTERPARTS}
+
+        initial_parameters = [
+            {
+                'value': 0.1,
+                'param': 'eccentricity',
+                'fixed': True,
+
+            },
+            {
+                'value': 90.0,
+                'param': 'inclination',
+                'fixed': True,
+
+            },
+            {
+                'value': 1.8,
+                'param': 'p__mass',
+                'fixed': True
+            },
+            {
+                'value': 1.0,
+                'param': 's__mass',
+                'fixed': True,
+            },
+            {
+                'value': 0.0,
+                'param': 'argument_of_periastron',
+                'fixed': True
+            },
+            {
+                'value': 30000.0,  # 20000.0 is real
+                'param': 'gamma',
+                'fixed': False,
+                'min': 20000,
+                'max': 40000
+            },
+            {
+                'value': 0.65,  # 0.6 isreal
+                'param': 'period',
+                'fixed': False,
+                'min': 0.5,
+                'max': 0.7
+            },
+            {
+                'value': 11.5,  # 12 is ireal
+                'param': 'primary_minimum_time',
+                'fixed': False,
+                'min': 11.0,
+                'max': 13.0
+            }
+        ]
+
+        result = central_rv.fit(xs=xs, ys=self.rv, x0=copy(initial_parameters))
+        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+
     def test_least_squares_rv_fit_std_params(self):
         """
         Test has to pass and finis in real time.
