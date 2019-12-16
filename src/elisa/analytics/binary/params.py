@@ -4,6 +4,7 @@ from astropy.time import Time
 from typing import List, Tuple, Dict
 
 from elisa import utils
+from elisa.binary_system import t_layer
 from ...atm import atm_file_prefix_to_quantity_list
 from ...base import error
 from ...binary_system.system import BinarySystem
@@ -539,3 +540,9 @@ def xs_reducer(xs):
     xs_reduced, inverse = np.unique(x, return_inverse=True)
     reverse = {band: inverse[indices] for band, indices in reverse_dict.items()}
     return xs_reduced, reverse
+
+
+def is_time_dependent(labels):
+    if 'period' in labels and 'primary_minimum_time' in labels:
+        return True
+    return False

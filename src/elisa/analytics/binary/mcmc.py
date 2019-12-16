@@ -158,7 +158,7 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         synthetic = models.synthetic_binary(*args, **kwargs)
         synthetic = analutils.normalize_lightcurve_to_max(synthetic)
 
-        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band][self.xs_band_reverser[band]] - self.ys[band])
+        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band][self.xs_reverser[band]] - self.ys[band])
                                                         / self.yerrs[band], 2)) for band in synthetic]))
         return lhood
 
@@ -194,7 +194,7 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         ndim = len(x0)
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
-        self.xs, self.xs_band_reverser = params.xs_reducer(xs)
+        self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.labels, self.observer, self.period = labels, observer, period
         self.fixed, self.constraint = fixed, constraint
         self.ys, self.yerrs = ys, yerrs
@@ -231,11 +231,10 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         :param xn: Iterable[float]; vector of parameters we are looking for
         :return: float;
         """
-        xs = self.xs
         xn = params.param_renormalizer(xn, self.labels)
         kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
 
-        args = xs, self.observer
+        args = self.xs, self.observer
         synthetic = models.central_rv_synthetic(*args, **kwargs)
         if self.on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
