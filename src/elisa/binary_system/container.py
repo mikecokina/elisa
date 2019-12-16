@@ -142,30 +142,6 @@ class OrbitalPositionContainer(PositionContainer):
         """
         raise NotImplemented("This is not implemented")
 
-    def apply_rotation(self):
-        """
-        Rotate quantities defined in __PROPERTIES__ in case of components defined in __PROPERTIES__.
-        Rotation is made in orbital plane and inclination around y axis.
-        Angles of rotation by defined in self.position and self.inclination.
-
-        :return:
-        """
-        __COMPONENTS__ = ["primary", "secondary"]
-        __PROPERTIES__ = ["points", "normals"]
-
-        for component in __COMPONENTS__:
-            star_container = getattr(self, component)
-            for prop in __PROPERTIES__:
-                prop_value = getattr(star_container, prop)
-
-                args = (self.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
-                prop_value = utils.around_axis_rotation(*args)
-
-                args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
-                prop_value = utils.around_axis_rotation(*args)
-                setattr(star_container, prop, prop_value)
-        return self
-
     def apply_darkside_filter(self):
         """
         Apply darkside filter on current position defined in container.
