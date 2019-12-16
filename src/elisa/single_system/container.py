@@ -36,7 +36,7 @@ class SystemContainer(PositionContainer):
         star = StarContainer.from_star_instance(single_system.star)
         return cls(star, position, **single_system.properties_serializer())
 
-    def build(self, do_pulsations=False, phase=None, **kwargs):
+    def build(self, phase=None, **kwargs):
         """
         Main method to build binary star system from parameters given on init of BinaryStar.
 
@@ -55,7 +55,7 @@ class SystemContainer(PositionContainer):
         :return: self;
         """
         self.build_mesh()
-        self.build_from_points(do_pulsations=do_pulsations, phase=phase)
+        self.build_from_points(phase=phase)
         return self
 
     def build_mesh(self):
@@ -79,11 +79,10 @@ class SystemContainer(PositionContainer):
     def build_temperature_distribution(self, phase=None):
         return temperature.build_temperature_distribution(self, phase)
 
-    def build_from_points(self, do_pulsations=False, phase=None):
+    def build_from_points(self, phase=None):
         """
         Build single system from present surface points
 
-        :param do_pulsations: bool; switch to incorporate pulsations
         :param phase: float; phase to build system on
         :return:
         """
@@ -97,14 +96,3 @@ class SystemContainer(PositionContainer):
 
     def _phase(self, phase):
         return phase if phase is not None else self.position.phase
-
-    def flatt_it(self):
-        if self._flatten:
-            return self
-
-        star_container = self.star
-        if star_container.has_spots() or star_container.has_pulsations():
-                star_container.flatt_it()
-
-        self._flatten = True
-        return self

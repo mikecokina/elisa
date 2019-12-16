@@ -46,8 +46,6 @@ def compute_circular_synchronous_lightcurve(*args):
             visibility_test[component] = cosines[component] > 0
             cosines[component] = cosines[component][visibility_test[component]]
 
-            # todo: pulsations adjustment should come here
-
         # integrating resulting flux
         for band in kwargs["passband"].keys():
             flux, ld_cors = np.empty(2), dict()

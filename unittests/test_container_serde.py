@@ -1,5 +1,6 @@
 from elisa import (
-    umpy as up
+    umpy as up,
+    utils
 )
 from elisa.base.container import (
     StarContainer,
@@ -7,8 +8,12 @@ from elisa.base.container import (
     SystemPropertiesContainer
 )
 from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.single_system.container import SystemContainer
 from elisa.binary_system.system import BinarySystem
-from elisa.const import Position
+from elisa.const import (
+    Position,
+    SinglePosition
+)
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
 
@@ -67,7 +72,10 @@ class IndempotenceTestCase(ElisaTestCase):
                                                  testutils.SPOTS_META["primary"])
         self.s.primary.discretization_factor = up.radians(10)
 
-    def test_star_container_is_indempotence(self):
+        self.single = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
+                                                      testutils.SPOTS_META["primary"])
+
+    def test_star_container_is_indempotent(self):
         system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)
         star = system.primary
@@ -76,9 +84,16 @@ class IndempotenceTestCase(ElisaTestCase):
         flatt_2 = star.flatt_it()
         self.assertTrue(len(flatt_1.points) == len(flatt_2.points))
 
-    def test_orbital_position_container_is_indempotence(self):
+    def test_orbital_position_container_is_indempotent(self):
         system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)
-        flatt_1 = system.flatt_it()
-        flatt_2 = system.flatt_it()
+        flatt_1 = utils.flatt_it(system_container=system, components=['primary', 'secondary'])
+        flatt_2 = utils.flatt_it(system_container=system, components=['primary', 'secondary'])
         self.assertTrue(len(flatt_1.primary.points) == len(flatt_2.primary.points))
+
+    def test_single_position_container_is_indempotent(self):
+        system = SystemContainer.from_single_system(self.single, SinglePosition(0, 0.0, 0.0))
+        system.build()
+        flatt_1 = utils.flatt_it(system_container=system, components=['star'])
+        flatt_2 = utils.flatt_it(system_container=system, components=['star'])
+        self.assertTrue(len(flatt_1.star.points) == len(flatt_2.star.points))

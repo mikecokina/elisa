@@ -862,3 +862,25 @@ def str_repalce(x, old, new):
     for _old, _new in zip(old, new):
         x = str(x).replace(_old, _new)
     return x
+
+
+def flatt_it(system_container, components):
+    """
+    this function flats the `components` in system container
+
+    :param system_container: elisa.base.PositionContainer;
+    :param components: list; list of components to flat, e.g. ['primary', secondary'] for BinarySystem or ['Star']
+    for SingleSystem
+    :return: elisa.base.PositionContainer;
+    """
+    # naive implementation of idempotence
+    if system_container._flatten:
+        return system_container
+
+    for component in components:
+        star_container = getattr(system_container, component)
+        if star_container.has_spots() or star_container.has_pulsations():
+            star_container.flatt_it()
+
+    system_container._flatten = True
+    return system_container

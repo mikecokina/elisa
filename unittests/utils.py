@@ -13,6 +13,7 @@ from elisa.base.container import StarContainer
 from elisa.base.star import Star
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
+from elisa.single_system.system import SingleSystem
 from elisa.conf import config
 from elisa.const import Position
 from elisa.binary_system.orbit import orbit
@@ -147,7 +148,7 @@ def prepare_single_system(params, spots=None, pulsations=None):
                 gravity_darkening=params['gravity_darkening'],
                 polar_log_g=params['polar_log_g'], spots=spots, pulsations=pulsations)
 
-    return BinarySystem(star=star,
+    return SingleSystem(star=star,
                         gamma=params["gamma"],
                         inclination=params["inclination"],
                         rotation_period=params['rotation_period'])
@@ -247,6 +248,27 @@ BINARY_SYSTEM_PARAMS = {
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
         "primary_albedo": 0.6, "secondary_albedo": 0.6
     }
+}
+
+SINGLE_SYSTEM_PARAMS = {
+    "spherical": {
+        "mass": 1.0,
+        "t_eff": 5774*units.K,
+        "gravity_darkening": 0.32,
+        "polar_log_g": 4.1,
+        "gamma": 0.0,
+        "inclination": 90.0 * units.deg,
+        "rotation_period": 30*units.d
+    },
+    "squashed":{
+        "mass": 1.0,
+        "t_eff": 5774*units.K,
+        "gravity_darkening": 0.32,
+        "polar_log_g": 4.1,
+        "gamma": 0.0,
+        "inclination": 90.0 * units.deg,
+        "rotation_period": 0.3818*units.d
+    },
 }
 
 SPOTS_META = {

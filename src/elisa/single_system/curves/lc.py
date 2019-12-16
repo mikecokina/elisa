@@ -33,7 +33,8 @@ def compute_light_curve_without_pulsations(single, **kwargs):
     initial_system.build()
 
     phases = kwargs.pop("phases")
-    normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
+    normal_radiance, ld_cfs = shared.prep_surface_params(
+        utils.flatt_it(initial_system.copy(), components=single.components.keys()), **kwargs)
 
     if (config.NUMBER_OF_PROCESSES > 1) and (len(phases) >= config.NUMBER_OF_PROCESSES):
         logger.info("starting multiprocessor workers")

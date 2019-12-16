@@ -145,8 +145,8 @@ class OrbitalPositionContainer(PositionContainer):
     def apply_rotation(self):
         """
         Rotate quantities defined in __PROPERTIES__ in case of components defined in __PROPERTIES__.
-        Rotation is made in orbital plane and inclination direction in respective order.
-        Angle are defined in self.position and self.inclination.
+        Rotation is made in orbital plane and inclination around y axis.
+        Angles of rotation by defined in self.position and self.inclination.
 
         :return:
         """
@@ -181,20 +181,6 @@ class OrbitalPositionContainer(PositionContainer):
             normals = getattr(star_container, "normals")
             valid_indices = dynamic.darkside_filter(line_of_sight=const.LINE_OF_SIGHT, normals=normals)
             setattr(star_container, "indices", valid_indices)
-        return self
-
-    def flatt_it(self):
-        # naive implementation of idempotence
-        if self._flatten:
-            return self
-
-        components = ["primary", "secondary"]
-        for component in components:
-            star_container = getattr(self, component)
-            if self.primary.has_spots() or self.primary.has_pulsations():
-                star_container.flatt_it()
-
-        self._flatten = True
         return self
 
     def _components_distance(self, components_distance):

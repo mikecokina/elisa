@@ -258,7 +258,8 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
 
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
-    normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
+    normal_radiance, ld_cfs = shared.prep_surface_params(
+        utils.flatt_it(system_container=initial_system.copy(), components=binary.components.keys()), **kwargs)
 
     if config.NUMBER_OF_PROCESSES > 1:
         logger.info("starting multiprocessor workers")
