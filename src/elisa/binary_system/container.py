@@ -142,22 +142,5 @@ class OrbitalPositionContainer(PositionContainer):
         """
         raise NotImplemented("This is not implemented")
 
-    def apply_darkside_filter(self):
-        """
-        Apply darkside filter on current position defined in container.
-        Function iterates over components and assigns indices of visible points to EasyObject instance.
-
-        :return: self;
-        """
-        __COMPONENTS__ = ["primary", "secondary"]
-        __PROPERTIES__ = ["points", "normals"]
-
-        for component in __COMPONENTS__:
-            star_container = getattr(self, component)
-            normals = getattr(star_container, "normals")
-            valid_indices = dynamic.darkside_filter(line_of_sight=const.LINE_OF_SIGHT, normals=normals)
-            setattr(star_container, "indices", valid_indices)
-        return self
-
     def _components_distance(self, components_distance):
         return components_distance if components_distance is not None else self.position.distance

@@ -165,17 +165,17 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param orbital_position: collections.namedtuple; elisa.const.Position;
-    :return: container; elisa.binary_system.container.OrbitalPositionContainer;
     :param primary_potential: float;
     :param secondary_potential: float;
     :param on_copy: bool;
+    :return: container; elisa.binary_system.container.OrbitalPositionContainer;
     """
     if on_copy:
         system = system.copy()
     system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
     system = utils.flatt_it(system_container=system, components=['primary', 'secondary'])
     system = utils.apply_rotation(system_container=system, components=['primary', 'secondary'])
-    system.apply_darkside_filter()
+    system = utils.apply_darkside_filter(system_container=system, components=['primary', 'secondary'])
     return system
 
 

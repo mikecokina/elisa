@@ -1,7 +1,7 @@
 from elisa import utils
 
 
-def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_potential=None, on_copy=True):
+def move_sys_onpos(system, on_copy=True):
     """
     Prepares a postion container for given orbital position.
     Supplied `system` is not affected if `on_copy` is set to True.
@@ -14,15 +14,12 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
         system.apply_darkside_filter()
 
     :param system: elisa.single_system.container.PositionContainer;
-    :param orbital_position: collections.namedtuple; elisa.const.SinglePosition;
-    :return: container; elisa.binary_system.container.PositionContainer;
-    :param primary_potential: float;
-    :param secondary_potential: float;
     :param on_copy: bool;
+    :return: container; elisa.sinary_system.container.PositionContainer;
     """
     if on_copy:
         system = system.copy()
     system = utils.flatt_it(system_container=system, components=['star'])
     system = utils.apply_rotation(system_container=system, components=['star'])
-    system.apply_darkside_filter()
+    system = utils.apply_darkside_filter(system_container=system, components=['star'])
     return system

@@ -29,7 +29,8 @@ from unittests.utils import (
 from elisa import (
     umpy as up,
     units,
-    const
+    const,
+    utils
 )
 from elisa.binary_system.curves import (
     lc,
@@ -78,7 +79,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         normals = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])
         normals = np.array([a / b for a, b in zip(normals, np.linalg.norm(normals, axis=1))])
         los = [1, 0, 0]
-        obtained = dynamic.darkside_filter(los, normals)
+        obtained = utils.darkside_filter(los, normals)
         expected = np.array([0, 1], dtype=int)
         self.assertTrue(np.all(obtained == expected))
 
@@ -268,7 +269,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         from_this = dict(binary_system=bs, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
         system = OrbitalPositionContainer.from_binary_system(**from_this)
         system.build(components_distance=1.0)
-        system.apply_darkside_filter()
+        system = utils.apply_darkside_filter(system_container=system, components=['primary', 'secondary'])
         self.assertTrue((not is_empty(system.primary.indices)) and (not is_empty(system.secondary.indices)))
 
 
