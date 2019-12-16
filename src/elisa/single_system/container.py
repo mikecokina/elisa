@@ -99,7 +99,6 @@ class SystemContainer(PositionContainer):
         return phase if phase is not None else self.position.phase
 
     def flatt_it(self):
-        # naive implementation of idempotence
         if self._flatten:
             return self
 
