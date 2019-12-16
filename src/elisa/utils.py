@@ -884,3 +884,27 @@ def flatt_it(system_container, components):
 
     system_container._flatten = True
     return system_container
+
+
+def apply_rotation(system_container, components):
+    """
+    Rotate quantities defined in __PROPERTIES__ in case of components defined in __PROPERTIES__.
+    Rotation is made in orbital plane and inclination around y axis.
+    Angles of rotation by defined in self.position and self.inclination.
+
+    :return:
+    """
+    __PROPERTIES__ = ["points", "normals"]
+
+    for component in components:
+        star_container = getattr(system_container, component)
+        for prop in __PROPERTIES__:
+            prop_value = getattr(star_container, prop)
+
+            args = (system_container.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
+            prop_value = around_axis_rotation(*args)
+
+            args = (const.HALF_PI - system_container.inclination, prop_value, "y", False, False)
+            prop_value = around_axis_rotation(*args)
+            setattr(star_container, prop, prop_value)
+    return system_container

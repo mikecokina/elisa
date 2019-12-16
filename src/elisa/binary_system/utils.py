@@ -174,7 +174,7 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
         system = system.copy()
     system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
     system = utils.flatt_it(system_container=system, components=['primary', 'secondary'])
-    system.apply_rotation()
+    system = utils.apply_rotation(system_container=system, components=['primary', 'secondary'])
     system.apply_darkside_filter()
     return system
 

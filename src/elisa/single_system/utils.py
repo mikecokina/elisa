@@ -23,6 +23,6 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
     if on_copy:
         system = system.copy()
     system = utils.flatt_it(system_container=system, components=['star'])
-    system.apply_rotation()
+    system = utils.apply_rotation(system_container=system, components=['star'])
     system.apply_darkside_filter()
     return system

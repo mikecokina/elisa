@@ -78,7 +78,6 @@ def integrate_eccentric_lc_exactly(*args):
         on_pos.secondary.surface_potential = potentials['secondary'][pos_idx]
         on_pos.build(components_distance=position.distance)
 
-        # todo: pulsations adjustment should come here
         normal_radiance, ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
         on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
         coverage, cosines = surface.coverage.calculate_coverage_with_cosines(on_pos, binary.semi_major_axis,
