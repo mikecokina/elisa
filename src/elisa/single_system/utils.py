@@ -21,5 +21,5 @@ def move_sys_onpos(system, on_copy=True):
         system = system.copy()
     system.flatt_it()
     system.apply_rotation()
-    system = utils.apply_darkside_filter(system_container=system, components=['star'])
+    system.apply_darkside_filter()
     return system
