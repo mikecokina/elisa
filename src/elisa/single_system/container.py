@@ -17,13 +17,11 @@ logger = getLogger("single-system-container-module")
 
 class SystemContainer(PositionContainer):
     def __init__(self, star: StarContainer, position, **properties):
-        super().__init__()
+        super().__init__(position=position)
         self._components = ['star']
         self.star = star
-        self.position = position
 
         # placeholder (set in loop below)
-        self.inclination = np.nan
         self.rotation_period = np.nan
 
         for key, val in properties.items():

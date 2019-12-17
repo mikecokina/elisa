@@ -1,6 +1,8 @@
 import numpy as np
 
 from abc import abstractmethod
+
+from elisa import const
 from ..logger import getLogger
 from copy import (
     deepcopy,
@@ -39,9 +41,11 @@ class SystemPropertiesContainer(PropertiesContainer):
 
 
 class PositionContainer(object):
-    def __init__(self):
+    def __init__(self, position):
         self._flatten = False
         self._components = list()
+        self.position = position
+        self.inclination = np.nan
 
     @abstractmethod
     def build(self, *args, **kwargs):
@@ -82,6 +86,28 @@ class PositionContainer(object):
                 star_container.flatt_it()
 
         self._flatten = True
+        return self
+
+    def apply_rotation(self):
+        """
+        Rotate quantities defined in __PROPERTIES__ in case of components defined in __PROPERTIES__.
+        Rotation is made in orbital plane and inclination direction in respective order.
+        Angle are defined in self.position and self.inclination.
+        :return: self;
+        """
+        __PROPERTIES__ = ["points", "normals"]
+
+        for component in self._components:
+            star_container = getattr(self, component)
+            for prop in __PROPERTIES__:
+                prop_value = getattr(star_container, prop)
+
+                args = (self.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
+                prop_value = utils.around_axis_rotation(*args)
+
+                args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
+                prop_value = utils.around_axis_rotation(*args)
+                setattr(star_container, prop, prop_value)
         return self
 
 

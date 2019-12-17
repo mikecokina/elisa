@@ -1,10 +1,8 @@
 import numpy as np
 
 from copy import deepcopy
-from elisa.binary_system import dynamic
 from elisa.logger import getLogger
 from elisa import (
-    const,
     utils
 )
 from elisa.base.container import (
@@ -23,14 +21,12 @@ logger = getLogger("binary_system.container")
 
 class OrbitalPositionContainer(PositionContainer):
     def __init__(self, primary: StarContainer, secondary, position, **properties):
-        super().__init__()
+        super().__init__(position=position)
         self._components = ['primary', 'secondary']
         self.primary = primary
         self.secondary = secondary
-        self.position = position
 
         # placeholder (set in loop below)
-        self.inclination = np.nan
         self.period = np.nan
 
         for key, val in properties.items():

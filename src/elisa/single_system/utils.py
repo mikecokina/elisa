@@ -19,7 +19,7 @@ def move_sys_onpos(system, on_copy=True):
     """
     if on_copy:
         system = system.copy()
-    system.flatt_it(system_container=system, components=['star'])
-    system = utils.apply_rotation(system_container=system, components=['star'])
+    system.flatt_it()
+    system.apply_rotation()
     system = utils.apply_darkside_filter(system_container=system, components=['star'])
     return system
