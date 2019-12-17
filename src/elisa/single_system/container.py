@@ -17,12 +17,13 @@ logger = getLogger("single-system-container-module")
 
 class SystemContainer(PositionContainer):
     def __init__(self, star: StarContainer, position, **properties):
+        super().__init__()
+        self._components = ['star']
         self.star = star
         self.position = position
 
         # placeholder (set in loop below)
         self.inclination = np.nan
-        self._flatten = False
         self.rotation_period = np.nan
 
         for key, val in properties.items():
@@ -49,7 +50,6 @@ class SystemContainer(PositionContainer):
             - build_surface_gravity
             - build_temperature_distribution
 
-        :param do_pulsations: bool; switch to incorporate pulsations
         :param phase: float; phase to build system on
         :param kwargs:
         :return: self;

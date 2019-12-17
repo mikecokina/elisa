@@ -39,6 +39,10 @@ class SystemPropertiesContainer(PropertiesContainer):
 
 
 class PositionContainer(object):
+    def __init__(self):
+        self._flatten = False
+        self._components = list()
+
     @abstractmethod
     def build(self, *args, **kwargs):
         pass
@@ -66,6 +70,19 @@ class PositionContainer(object):
     @abstractmethod
     def build_temperature_distribution(self, *args, **kwargs):
         pass
+
+    def flatt_it(self):
+        # naive implementation of idempotence
+        if self._flatten:
+            return self
+
+        for component in self._components:
+            star_container = getattr(self, component)
+            if star_container.has_spots() or star_container.has_pulsations():
+                star_container.flatt_it()
+
+        self._flatten = True
+        return self
 
 
 class StarContainer(object):

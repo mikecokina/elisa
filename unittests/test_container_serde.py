@@ -87,13 +87,13 @@ class IndempotenceTestCase(ElisaTestCase):
     def test_orbital_position_container_is_indempotent(self):
         system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)
-        flatt_1 = utils.flatt_it(system_container=system, components=['primary', 'secondary'])
-        flatt_2 = utils.flatt_it(system_container=system, components=['primary', 'secondary'])
+        flatt_1 = system.flatt_it()
+        flatt_2 = system.flatt_it()
         self.assertTrue(len(flatt_1.primary.points) == len(flatt_2.primary.points))
 
     def test_single_position_container_is_indempotent(self):
         system = SystemContainer.from_single_system(self.single, SinglePosition(0, 0.0, 0.0))
         system.build()
-        flatt_1 = utils.flatt_it(system_container=system, components=['star'])
-        flatt_2 = utils.flatt_it(system_container=system, components=['star'])
+        flatt_1 = system.flatt_it()
+        flatt_2 = system.flatt_it()
         self.assertTrue(len(flatt_1.star.points) == len(flatt_2.star.points))

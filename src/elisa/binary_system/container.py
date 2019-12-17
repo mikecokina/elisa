@@ -23,13 +23,14 @@ logger = getLogger("binary_system.container")
 
 class OrbitalPositionContainer(PositionContainer):
     def __init__(self, primary: StarContainer, secondary, position, **properties):
+        super().__init__()
+        self._components = ['primary', 'secondary']
         self.primary = primary
         self.secondary = secondary
         self.position = position
 
         # placeholder (set in loop below)
         self.inclination = np.nan
-        self._flatten = False
         self.period = np.nan
 
         for key, val in properties.items():
