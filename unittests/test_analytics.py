@@ -845,7 +845,7 @@ class ModelSimulator(object):
         add = self.rv_mean * self.error
         rv = {component: self.rv[component] + np.random.uniform(-add, +add, len(self.rv[component]))
               for component in BINARY_COUNTERPARTS}
-        return rv["primary"], rv["secondary"]
+        return rv
 
 
 class ConstraintsTestCase(ElisaTestCase):

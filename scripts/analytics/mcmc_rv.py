@@ -3,6 +3,7 @@ import numpy as np
 import os.path as op
 
 from elisa.analytics.binary.mcmc import central_rv
+from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.utils import random_sign
 
 
@@ -21,6 +22,7 @@ def main():
     rv = get_rv()
     u = np.random.uniform
     n = len(rv["primary"])
+    xs = {comp: phases for comp in BINARY_COUNTERPARTS}
 
     _max = np.max(list(rv.values()))
     bias = {"primary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)]),
@@ -61,11 +63,15 @@ def main():
             'fixed': False,
             'min': 10000.0,
             'max': 50000.0
+        },
+        {
+            'value': 4.5,
+            'param': 'period',
+            'fixed': True
         }
     ]
 
-    central_rv.fit(xs=phases, ys=rv, period=4.5, x0=rv_initial, nwalkers=20,
-                   nsteps=10000, nsteps_burn_in=1000, yerrs=None)
+    central_rv.fit(xs=xs, ys=rv, x0=rv_initial, nwalkers=20, nsteps=10000, nsteps_burn_in=1000, yerrs=None)
 
     result = central_rv.restore_flat_chain(central_rv.last_fname)
     central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])

@@ -238,7 +238,6 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         synthetic = models.central_rv_synthetic(*args, **kwargs)
         if self.on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
-        synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))

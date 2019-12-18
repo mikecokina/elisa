@@ -322,6 +322,7 @@ by parameters::
 
     def main():
         phases = np.arange(-0.6, 0.62, 0.02)
+        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
         rv = {'primary': [59290.08594439, 54914.25751111, 42736.77725629, 37525.38500226,..., -15569.43109441],
               'secondary': [-52146.12757077, -42053.17971052, -18724.62240468,..., 90020.23738585]}
 
@@ -357,19 +358,24 @@ by parameters::
                 'fixed': False,
                 'min': 10000.0,
                 'max': 50000.0
+            },
+            {
+                'value': 4.5,
+                'param': 'period',
+                'fixed': True
             }
         ]
 
-        result = central_rv.fit(xs=phases, ys=rv, period=4.5, x0=rv_initial, xtol=1e-10, yerrs=None)
+        result = central_rv.fit(xs=xs, ys=rv, x0=rv_initial, xtol=1e-10, yerrs=None)
 
     if __name__ == '__main__':
         main()
 
 
-
 Result of fitting procedure is displayed in the following format:
 
 .. code:: python
+
     [
         {
             "param": "asini",
@@ -397,6 +403,11 @@ Result of fitting procedure is displayed in the following format:
             "unit": "degrees"
         },
         {
+            "param": "period",
+            "value": 4.5,
+            "unit": "days"
+        },
+        {
             "r_squared": 0.998351027628904
         }
     ]
@@ -421,6 +432,8 @@ Following represents minimalistic base code which should explain how to use mcmc
 
     def main():
         phases = np.arange(-0.6, 0.62, 0.02)
+        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
+
         rv = {'primary': [59290.08594439, 54914.25751111, 42736.77725629, 37525.38500226,..., -15569.43109441]),
               'secondary': [-52146.12757077, -42053.17971052, -18724.62240468,..., 90020.23738585]}
 
@@ -458,11 +471,15 @@ Following represents minimalistic base code which should explain how to use mcmc
                 'fixed': False,
                 'min': 10000.0,
                 'max': 50000.0
+            },
+            {
+                'value': 4.5,
+                'param': 'period',
+                'fixed': True
             }
         ]
 
-        central_rv.fit(xs=phases, ys=rv, period=0.6, x0=rv_initial, nwalkers=20,
-                       nsteps=10000, nsteps_burn_in=1000, yerrs=None)
+        central_rv.fit(xs=xs, ys=rv, x0=rv_initial, nwalkers=20, nsteps=10000, nsteps_burn_in=1000, yerrs=None)
 
         result = central_rv.restore_flat_chain(central_rv.last_fname)
         central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
@@ -485,6 +502,78 @@ Object `central_rv` keep track of last executed mcmc "simulation" so you can wor
 
 The same information is stored in "elisa home" in json file, so you are able to access each
 previous run.
+
+
+Binary Stars Radial Curves Fitting - No Period
+----------------------------------------------
+
+Another story is, if we do not have enough information / measurements and we are not able determine period with
+desired accurance. Analytics modules of elisa are capable to handle such situation and gives you tools to fit
+period and primary minimum time as unknown parameters. In such case, `xs` values has to be supplied in form::
+
+    {
+        "primary": [jd0, jd1, ..., jdn],
+        "secondary": [jd0, jd1, ..., jdn],
+    }
+
+Based on primiary minimum time and period adjusted in fitting proces, JD times are transformed to phases within process
+itself.
+
+:warning: make sure you have reasonable boudaries set for `primary_minimum_time` and `period`
+
+Initial parameters for 'primary_minimum_time' and `period` fitting might looks like following::
+
+    [
+        {
+            'value': 0.0,
+            'param': 'eccentricity',
+            'fixed': True
+        },
+        {
+            'value': 15.0,
+            'param': 'asini',
+            'fixed': False,
+            'min': 10.0,
+            'max': 20.0
+
+        },
+        {
+            'value': 3,
+            'param': 'mass_ratio',
+            'fixed': False,
+            'min': 0,
+            'max': 10
+        },
+        {
+            'value': 0.0,
+            'param': 'argument_of_periastron',
+            'fixed': True
+        },
+        {
+            'value': 30000.0,
+            'param': 'gamma',
+            'fixed': False,
+            'min': 10000.0,
+            'max': 50000.0
+        },
+        {
+            'value': 4.4,
+            'param': 'period',
+            'fixed': False,
+            'min': 4.4,
+            'max': 4.6
+        },
+        {
+            'value': 11.1,
+            'param': 'primary_minimum_time',
+            'fixed': False,
+            'min': 11.1,
+            'max': 12.1
+        }
+    ]
+
+
+:note: values of *primary_minimum_time* are cut off to smaller numbers
 
 Binary Stars Light Curves Fitting
 ---------------------------------
@@ -563,7 +652,7 @@ This approach give us value ~ 8307K.
 :note: index `55` is used because we know that such index will give as flux on photometric phase :math:`\Phi=0.5`,
        where we eliminte impact of secondary component to result of primary component temperature.
 
-:note: we recomend you to set boundaries for temperature obtained from ballesteros formula at least in range +/-1000K.
+:note: we recomend you to set boundaries for temperature obtained from `bvi` module at least in range +/-500K.
 
 Lets create minimalistic code snippet which demonstrates least squares fitting method.
 
