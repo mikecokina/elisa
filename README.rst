@@ -575,6 +575,14 @@ Initial parameters for 'primary_minimum_time' and `period` fitting might looks l
 
 :note: values of *primary_minimum_time* are cut off to smaller numbers
 
+Corner plot of `mcmc` result for such approach is in figure bellow
+
+.. image:: ./docs/source/_static/readme/ mcmc_rv_corner_noperiod.svg
+  :width: 95%
+  :alt: mcmc_rv_corner_noperiod.svg
+  :align: center
+
+
 Binary Stars Light Curves Fitting
 ---------------------------------
 
