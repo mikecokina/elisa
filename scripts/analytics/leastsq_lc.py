@@ -36,29 +36,29 @@ def main():
             'value': 8307.0,
             'param': 'p__t_eff',
             'fixed': False,
-            'min': 7500.0,
-            'max': 8500.0
+            'min': 7800.0,
+            'max': 8800.0
         },
         {
-            'value': 6.5,
+            'value': 3.0,
             'param': 'p__surface_potential',
             'fixed': False,
             'min': 3,
-            'max': 10
+            'max': 5
         },
         {
-            'value': 5500.0,
+            'value': 4000.0,
             'param': 's__t_eff',
             'fixed': False,
             'min': 4000.0,
-            'max': 8000.0
+            'max': 7000.0
         },
         {
-            'value': 7,
+            'value': 5.0,
             'param': 's__surface_potential',
             'fixed': False,
-            'min': 4.0,
-            'max': 10.0
+            'min': 5.0,
+            'max': 7.0
         },
         {
             'value': 85.0,
@@ -104,7 +104,8 @@ def main():
         }
     ]
 
-    result = binary_detached.fit(xs=phases, ys=lc, period=4.5, discretization=5.0, x0=lc_initial, yerrs=None)
+    result = binary_detached.fit(xs=phases, ys=lc, period=4.5, discretization=5.0, x0=lc_initial,
+                                 yerrs=None, xtol=1e-10, diff_step=0.001)
     print(json.dumps(result, indent=4))
 
 
