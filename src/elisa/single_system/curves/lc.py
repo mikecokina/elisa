@@ -4,6 +4,7 @@ from elisa import (
     const,
     utils
 )
+from copy import copy
 from elisa.logger import getLogger
 from elisa.conf import config
 from elisa.single_system.container import SystemContainer
@@ -28,7 +29,7 @@ def compute_light_curve_without_pulsations(single, **kwargs):
             * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array];
     """
-    from_this = dict(binary_system=single, position=const.SinglePosition(0, 0.0, 0.0))
+    from_this = dict(single_system=single, position=const.SinglePosition(0, 0.0, 0.0))
     initial_system = SystemContainer.from_single_system(**from_this)
     initial_system.build()
 

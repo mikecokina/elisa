@@ -1,5 +1,7 @@
 import numpy as np
 
+from copy import deepcopy
+
 from elisa.base.container import (
     StarContainer,
     PositionContainer
@@ -34,6 +36,15 @@ class SystemContainer(PositionContainer):
     def from_single_system(cls, single_system, position):
         star = StarContainer.from_star_instance(single_system.star)
         return cls(star, position, **single_system.properties_serializer())
+
+    def copy(self):
+        return deepcopy(self)
+
+    def has_spots(self):
+        return self.star.has_spots()
+
+    def has_pulsations(self):
+        return self.star.has_pulsations()
 
     def build(self, phase=None, **kwargs):
         """

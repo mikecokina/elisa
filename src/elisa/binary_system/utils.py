@@ -196,7 +196,7 @@ def validate_binary_json(data):
     Validate input json to create binary instance from.
 
     :param data: Dict; json like object
-    :return bool; return True if valid schema, othervise raise error
+    :return bool; return True if valid schema, otherwise raise error
     :raise ValidationError;
     """
     schema_std = SCHEMA_REGISTRY.get_schema("binary_system_std")
