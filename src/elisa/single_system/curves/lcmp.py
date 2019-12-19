@@ -1,6 +1,7 @@
 import numpy as np
 
 from elisa.conf import config
+from elisa.single_system import utils as ssutils
 
 LD_LAW_CFS_COLUMNS = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
@@ -14,7 +15,7 @@ def compute_non_pulsating_lightcurve(*args):
     band_curves = {key: np.zeros(phase_batch.shape) for key in kwargs["passband"].keys()}
 
     for pos_idx, position in enumerate(rotational_motion):
-        # on_pos = bsutils.move_sys_onpos(initial_system, position)
+        on_pos = ssutils.move_sys_onpos(initial_system, position)
 
         pass
     
