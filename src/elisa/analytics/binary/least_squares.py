@@ -55,9 +55,11 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
 
         return residua
 
-    def fit(self, xs, ys, period, x0, discretization, xtol=1e-15, yerrs=None, max_nfev=None):
+    def fit(self, xs, ys, period, x0, discretization, yerrs=None, xtol=1e-8, ftol=1e-8, max_nfev=None,
+            diff_step=None, f_scale=1.0):
         """
         Fit method using non-linear least squares.
+        Based on https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
 
         :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
         :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
@@ -67,6 +69,15 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         :param xtol: float; relative tolerance to consider solution
         :param yerrs: Union[numpy.array, float]; errors for each point of observation
         :param max_nfev: int; maximal iteration
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param diff_step: Union[None, array];
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param f_scale: float; optional
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param ftol: float;
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param xtol: float; tolerance of error to consider hitted solution as exact
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :return: Dict;
         """
 
@@ -88,7 +99,8 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
 
         # evaluate least squares from scipy
         logger.info("fitting circular synchronous system...")
-        result = least_squares(self.model_to_fit, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol)
+        result = least_squares(self.model_to_fit, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol,
+                               ftol=ftol, diff_step=diff_step, f_scale=f_scale)
         logger.info("fitting finished")
 
         # put all together `floats`, `fixed` and `constraints`
@@ -135,19 +147,29 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         return np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                          / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS])
 
-    def fit(self, xs, ys, x0, yerrs=None, xtol=1e-10, max_nfev=None, on_normalized=False):
+    def fit(self, xs, ys, x0, yerrs=None, xtol=1e-8, ftol=1e-8, max_nfev=None, diff_step=None,
+            f_scale=1.0, on_normalized=False):
         """
         Method to provide fitting of radial velocities curves.
         It can handle standadrd physical parameters `M_1`, `M_2` or astro community parameters `asini` and `q`.
-        Based on non-linear least squares.
+        Based on non-linear least squares
+        [https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html]
 
         :param on_normalized: bool; if True, fitting is provided on normalized radial velocities curves
         :param xs: Iterable[float];
         :param ys: Dict;
         :param x0: List[Dict]; initial state (metadata included)
-        :param xtol: float; tolerance of error to consider hitted solution as exact
         :param yerrs: Union[numpy.array, float]; errors for each point of observation
         :param max_nfev: int; maximal iteration
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param diff_step: Union[None, array];
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param f_scale: float; optional
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param ftol: float;
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param xtol: float; tolerance of error to consider hitted solution as exact
+               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :return: Dict;
         """
         x0 = params.rv_initial_x0_validity_check(x0)
@@ -161,7 +183,8 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
 
         logger.info("fitting radial velocity light curve...")
         func = self.centarl_rv_model_to_fit
-        result = least_squares(func, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol)
+        result = least_squares(fun=func, x0=x0, bounds=(0, 1), max_nfev=max_nfev,
+                               xtol=xtol, ftol=ftol, diff_step=diff_step, f_scale=f_scale)
         logger.info("fitting finished")
 
         result = params.param_renormalizer(result.x, labels)

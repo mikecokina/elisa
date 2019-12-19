@@ -4,7 +4,6 @@ from astropy.time import Time
 from typing import List, Tuple, Dict
 
 from elisa import utils
-from elisa.binary_system import t_layer
 from ...atm import atm_file_prefix_to_quantity_list
 from ...base import error
 from ...binary_system.system import BinarySystem

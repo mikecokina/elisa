@@ -172,6 +172,8 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
             self.last_normalization: Dict; normalization map used during fitting
             self.last_fname: str; filename of last stored flatten emcee `sampler` with metadata
 
+        Based on https://emcee.readthedocs.io/en/stable/.
+
         :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
         :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
         :param period: float; sytem period
@@ -238,7 +240,6 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         synthetic = models.central_rv_synthetic(*args, **kwargs)
         if self.on_normalized:
             synthetic = analutils.normalize_rv_curve_to_max(synthetic)
-        synthetic = {"primary": synthetic[0], "secondary": synthetic[1]}
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))
@@ -252,6 +253,8 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
             self.last_sampler: emcee.EnsembleSampler
             self.last_normalization: Dict; normalization map used during fitting
             self.last_fname: str; filename of last stored flatten emcee `sampler` with metadata
+
+        Based on https://emcee.readthedocs.io/en/stable/.
 
         :param xs: Iterable[float];
         :param ys: Dict;

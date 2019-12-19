@@ -3,6 +3,7 @@ import numpy as np
 import os.path as op
 
 from elisa.analytics.binary.mcmc import central_rv
+from elisa.binary_system import t_layer
 from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.utils import random_sign
 
@@ -18,11 +19,13 @@ def get_rv():
 
 
 def main():
-    phases = np.arange(-0.6, 0.62, 0.02)
+    period, t0, phases = 4.5, 12.0, np.arange(-0.6, 0.62, 0.02)
+    jd = t_layer.phase_to_jd(t0, period, phases)
+    xs = {comp: jd for comp in BINARY_COUNTERPARTS}
+
     rv = get_rv()
     u = np.random.uniform
     n = len(rv["primary"])
-    xs = {comp: phases for comp in BINARY_COUNTERPARTS}
 
     _max = np.max(list(rv.values()))
     bias = {"primary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)]),
@@ -31,11 +34,9 @@ def main():
 
     rv_initial = [
         {
-            'value': 0.2,
+            'value': 0.0,
             'param': 'eccentricity',
-            'fixed': False,
-            'max': 0.0,
-            'min': 0.5
+            'fixed': True
         },
         {
             'value': 15.0,
@@ -65,9 +66,18 @@ def main():
             'max': 50000.0
         },
         {
-            'value': 4.5,
+            'value': 4.4,
             'param': 'period',
-            'fixed': True
+            'fixed': False,
+            'min': 4.4,
+            'max': 4.6
+        },
+        {
+            'value': 11.1,
+            'param': 'primary_minimum_time',
+            'fixed': False,
+            'min': 11.1,
+            'max': 12.1
         }
     ]
 
