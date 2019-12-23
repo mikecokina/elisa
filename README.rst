@@ -834,10 +834,64 @@ Such approach leads to solution shown bellow::
         }
     ]
 
-:warning: make sure all your light curve values are normalized by higher value from entire curves list
+:warning: make sure all your light curve values are normalized by highest value from whole set of
+          curves supplied to algorithm
 
 
 .. image:: ./docs/source/_static/readme/lc_fit.svg
   :width: 70%
   :alt: lc_fit.svg
+  :align: center
+
+
+
+``Elisa`` also provides lightcurves fitting method based on `Markov Chain Monte Carlo`. Read data output requires
+more analytics skills as well as in case of radial velocities fitting.
+
+Bellow you can see minimalistic base code which should demostrate how to use mcmc method and how to read outputs.
+
+
+.. code:: python
+
+    import numpy as np
+    from elisa.analytics.binary.mcmc import binary_detached
+
+    phases = {band: np.arange(-0.6, 0.62, 0.02) for band in lc}
+    lc = {
+            'Generic.Bessell.B': np.array([0.9790975 , 0.97725314, 0.97137167, ..., 0.97783875]),
+            'Generic.Bessell.V': np.array([0.84067043, 0.8366796 , ..., 0.8389709 ]),
+            'Generic.Bessell.R': np.array([0.64415833, 0.64173746, 0.63749762, ..., 0.64368843])
+         }
+
+    lc_initial = [
+        {
+            'value': 16.515,
+            'param': 'semi_major_axis',
+            'constraint': '16.515 / sin(radians({inclination}))'
+        },
+        {
+            'value': 8307.0,
+            'param': 'p__t_eff',
+            'fixed': False,
+            'min': 7800.0,
+            'max': 8800.0
+        },
+        ...
+    ]
+
+    binary_detached.fit(xs=phases, ys=lc, x0=lc_initial, period=4.5, discretization=5.0,
+                        nwalkers=20, nsteps=10000, nsteps_burn_in=1000, yerrs=None)
+    result = binary_detached.restore_flat_chain(binary_detached.last_fname)
+    binary_detached.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
+
+    if __name__ == '__main__':
+        main()
+
+:note: initial value are same as in case of least squares method base code demostration
+
+Corner plot of `mcmc` result for such approach is in figure bellow
+
+.. image:: ./docs/source/_static/readme/mcmc_lc_corner.svg
+  :width: 95%
+  :alt: mcmc_lc_corner.svg
   :align: center
