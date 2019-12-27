@@ -142,20 +142,17 @@ And finally install ``ELISa``::
 Minimal configuration
 ---------------------
 
-``ELISa`` require before first run minimal configuration provided by config file. Basically it is necessary to download
-atmospheres models, limbdarkening tables and configure path to directories where files will be stored.
-
-Where to find atmospheres and also atmospheres structure is explained in Atmospheres_
-as well as limb darkening in Limb-Darkening_.
+``ELISa`` requires minimal configuration before the first run provided by the config file. Initially, it is necessary to
+download Atmospheres_ models and Limb-Darkening_ tables.
 
 .. _Atmospheres: https://github.com/mikecokina/elisa/tree/dev/atmosphere
 .. _Limb-Darkening: https://github.com/mikecokina/elisa/tree/dev/limbdarkening
 
-Models might be stored on your machine in directory wherever you desire. For purpose of following guide, lets say you
-want ot use ``Castelli-Kurucz 2004`` models stored in directory ``/home/user/castelli_kurucz/ck04`` and Van Hamme
-limb darkening models in directory ``/home/user/van_hamme_ld/vh93``. You have to create configuration ``ini`` file where
-model and directories will be specified. Just assume, name of our configuration file is ``elisa_config.ini`` located in
-path ``/home/user/.elisa/``. Then content of your configuration file should be at least like following::
+Models can be stored on your machine in directory of your choosing. Lets say you want ot use ``Castelli-Kurucz 2004``
+models stored in directory ``/home/user/castelli_kurucz/ck04`` and Van Hamme limb darkening models in directory
+``/home/user/van_hamme_ld/vh93``. You have to create configuration ``ini`` file where
+model and directories will be specified. Now assume that name of our configuration file is ``elisa_config.ini`` located
+in path ``/home/user/.elisa/``. Then content of your configuration file should be at least like following::
 
     [support]
     van_hamme_ld_tables = /home/user/van_hamme_ld/vh93
@@ -166,7 +163,9 @@ Full content of configuration file with description might be found here, Elisa-C
 
 .. _Elisa-Configuration-File: https://github.com/mikecokina/elisa/blob/dev/src/elisa/conf/elisa_conf_docs.ini
 
-:warning: atmospheric models and limb darkening tables are not in native format as usually provided on web sites. Models have been altered to form required for elisa.
+:warning: atmospheric models and limb darkening tables for this package are stored in industry standard ''.csv'' files.
+          Therefore, their native format as usually provided on web sites is not suitable for Elisa and require
+          conversion to standard format. Models have been altered to form required for Elisa.
 
 Now, you have to tell ELISa, where to find configuration file. In environment you are using setup environment variable
 `ELISA_CONFIG` to full path to config file. In UNIX like operation systems it is doable by following command::
@@ -174,7 +173,8 @@ Now, you have to tell ELISa, where to find configuration file. In environment yo
     export ELISA_CONFIG=/home/user/.elisa/elisa_config.ini
 
 There is plenty ways how to setup environment variable which vary on operation system and also on tool (IDE)
-that you have in use.
+that you have in use. Optionally, you can use ''config.ini'' file located in ''ELISa_folder/src/elisa/conf/'' without
+any need for setting the enviromental variable.
 
 Now you are all setup and ready to code.
 
@@ -211,14 +211,15 @@ Available passbands
 Multiprocessing
 ---------------
 
-To speedup computaion of light curves, paralellization of processes has been implemented. Practically, computation
+To speedup computaion of light curves, paralellization of computations has been implemented. Computation
 of light curve points is separated to smaller batches and each batch is evaluated on separated CPU core. Paralellization
 necessarily bring some overhead to process and in some cases might cause even slower behavior of application.
 It is important to choose wisely when use it espeically in case of circular synchronous orbits which consist of
-spot-free components.
+spot-free components where multiprocessing is usually not as effective.
 
-Down below are shown some result of multiprocessor approach for different binary system type.
-
+Down below are shown some result of multiprocessor approach for different binary system type. Absolute time necessary
+for calculation of the light curve is highly dependent on the type of the system and hardaware. Therefore we have
+normalized the time axis according to maximum value in our datasets.
 
 .. figure:: ./docs/source/_static/readme/detached.circ.sync.svg
   :width: 70%
@@ -248,8 +249,9 @@ Down below are shown some result of multiprocessor approach for different binary
 Binary Stars Radial Curves Fitting
 ----------------------------------
 
-In current version of `ELISa`, you can use capability to fit curves of radial velocities obtained as velocities
-of centre of mass from primary and secondary component. An example of synthetic radial velocity curve is shown below.
+`ELISa` is capable to fit radial velocity curves to observed radial velocities.
+In current version of `ELISa`, the radial velocity curves are calculated from radial velocities of centre of mass of
+primary and secondary component. An example of synthetic radial velocity curve is shown below.
 
 .. image:: ./docs/source/_static/readme/rv_example.svg
   :width: 70%
@@ -293,12 +295,12 @@ or otherwise, in "community approach", you can use instead of ``p__mass``, ``s__
     * ``asini`` - in Solar radii
     * ``mass_ratio`` - mass ratio (M_2/M_1), also known as `q`
 
-There are already specified global minimal and maximal values for parameters, but user is free to adjust parameters
-which might work better for him.
+There are already specified global minimal and maximal values for parameters, but user is highly encouraged to adjust
+parameter boundaries which might work better for the particular case.
 
-Parameter set to be `fixed` is will not be fitted and its value will stay fixed during the fitting procedure. User can
-also setup `constraint` for any parameter. It is allowed to put bounds only on parameter using other free parameters,
-otherwise the parameter should stay fixed.
+Parameter set to be `fixed` will not be fitted and its value will stay fixed during the fitting procedure. User can
+also setup `constraint` for any parameter. (pod to by som dal priklad na constrained parameter) It is allowed to put bounds only on parameter using other free parameters,
+otherwise the parameter should stay fixed. (nechapem tuto vetu)
 
 In this part you can see minimal example of code providing fitting. Sample radial velocity curve was obtained
 by parameters::
@@ -418,11 +420,11 @@ Result of fitting procedure is displayed in the following format:
   :alt: rv_fit.svg
   :align: center
 
-Another approach is to use implemented fitting method based on `Markov Chain Monte Carlo`. Read data output requires
-more analytics skills, some minimal expirience with MCMC since output is not simple dictionary of values but
-it is basically descriptive set of parameters progress during evaluation of method.
+Another approach is to use implemented fitting method based on `Markov Chain Monte Carlo`. Reading data output requires
+minimal expirience with MCMC since output is not simple dictionary but a descriptive set of parameters progress during
+evaluation of method.
 
-Following represents minimalistic base code which should explain how to use mcmc method and how to read outputs.
+Following represents minimalistic code which should explain how to use mcmc method and how to read outputs.
 
 .. code:: python
 
@@ -504,11 +506,11 @@ The same information is stored in "elisa home" in json file, so you are able to 
 previous run.
 
 
-Binary Stars Radial Curves Fitting - No Period
+Binary Stars Radial Curves Fitting - No Ephemeris
 ----------------------------------------------
 
-Another story is, if we do not have enough information / measurements and we are not able determine period with
-desired accurance. Analytics modules of elisa are capable to handle such situation and gives you tools to fit
+In case we do not have enough information / measurements and we are not able determine ephemeris with
+desired accuracy, analytics modules of elisa are capable to handle such situation and gives you tools to fit
 period and primary minimum time as unknown parameters. In such case, `xs` values has to be supplied in form::
 
     {
@@ -519,7 +521,7 @@ period and primary minimum time as unknown parameters. In such case, `xs` values
 Based on primiary minimum time and period adjusted in fitting proces, JD times are transformed to phases within process
 itself.
 
-:warning: make sure you have reasonable boudaries set for `primary_minimum_time` and `period`
+:warning: make sure you have reasonable boundaries set for `primary_minimum_time` and `period`
 
 Initial parameters for 'primary_minimum_time' and `period` fitting might looks like following::
 
@@ -573,7 +575,7 @@ Initial parameters for 'primary_minimum_time' and `period` fitting might looks l
     ]
 
 
-:note: values of *primary_minimum_time* are cut off to smaller numbers
+:note: values of *primary_minimum_time* are cut off to smaller numbers (toto vysvetli lepsie)
 
 Corner plot of `mcmc` result for such approach is in figure bellow
 
@@ -586,9 +588,9 @@ Corner plot of `mcmc` result for such approach is in figure bellow
 Binary Stars Light Curves Fitting
 ---------------------------------
 
-Packgae `elisa` currently implements two approaches to be able provide very basic fitting of light curves.
-First method is standard approach which use `non-linear least squares` method algorithm and second rule
-Markov Chain Monte Carlo (`MCMC`) method.
+Packgae `elisa` currently implements two approaches that provides very basic capability to fit light light curves to
+observed photometric data. First method is standard approach which use `non-linear least squares` method algorithm and
+second approach uses Markov Chain Monte Carlo (`MCMC`) method.
 
 Following chapter is supposed to give you brief information about capabilities provided by `elisa`.
 Lets assume that we have a given light curve like shown below generated on parameters::
@@ -617,22 +619,24 @@ Lets assume that we have a given light curve like shown below generated on param
   :align: center
 
 
-Lets apply some fitting algorithm to demonstrate software capabilities. Fitting modules are stored in module path
+Lets apply some fitting algorithm to demonstrate the software capabilities. Fitting modules are stored in module path
 ``elisa.analytics.binary.least_squares`` and ``elisa.analytics.binary.mcmc``. It is up on the user what methods
-choose to use. In both cases, there is prepared instances for fitting, called ``binary_detached`` and ``binary_overcontact``.
-Difference is that ``binary_overcontact`` fitting module keeps surface potential of both binary components constrained
-to same value.
+choose to use. In both cases, there is prepared instances for fitting, called ``binary_detached`` and
+``binary_overcontact``. Difference is that ``binary_overcontact`` fitting module keeps surface potential of both binary
+components constrained to the same value.
 
-First, we elaborate algorithms based on `non-linear least squares` method. Binary system which can generate light curve
-shown above is with no doubt detached system, so it makes sence to use module ``binary_detached``.
+First, we describe the algorithm based on `non-linear least squares` method. Binary system which can generate light
+curve shown above is with high probability the detached system, therefore we will use module ``binary_detached``.
 
-:warning: Non-linear least squares method used in such complex problem as fitting of eclipsing binaries stars
-          light curves definitely is, might be insuficient in case of initial parametres which are too far from real
-          values and also too broad fitting boundaries.
+:warning: Non-linear least squares method used in such complex problem with many free parameters such as fitting light
+          curves of eclipsing binaries, might be insuficient in case of initial parametres being
+          too far from real values and also too broad fitting boundaries.
 
-Following minimalistic python snippet will show you, how to use ``binary_detached`` fitting module. Parameters of system
-are same as in case of radial velocities fiting demonstration. It is most likely sequence of steps from real
-life. First, you should solve radial velocities if available and fix parametres in light curve fitting. Since we were able
+Following minimalistic python snippet will show you, how to use ``binary_detached`` fitting module. System parameter
+definitions are the same as in case of radial velocities fiting. Following guide is appropriate sequence of steps for
+solving the binary system with available radial and photometric data.
+
+First, you should solve radial velocities if available and fix parametres in light curve fitting. Since we were able
 to obtain some basic information about our system, we should fix or efficiently truncate boundaries
 for following parameters::
 
@@ -660,9 +664,9 @@ This approach give us value ~ 8307K.
 :note: index `55` is used because we know that such index will give as flux on photometric phase :math:`\Phi=0.5`,
        where we eliminte impact of secondary component to result of primary component temperature.
 
-:note: we recomend you to set boundaries for temperature obtained from `bvi` module at least in range +/-500K.
+:note: we recommend you to set boundaries for temperature obtained from `bvi` module at least in range +/-500K.
 
-Lets create minimalistic code snippet which demonstrates least squares fitting method.
+Lets create minimalistic example for code which demonstrates least squares fitting method.
 
 .. code:: python
 
@@ -718,7 +722,7 @@ Lets create minimalistic code snippet which demonstrates least squares fitting m
             'max': 90
         },
         {
-            'value': 0.32,
+            'value': 1.0,
             'param': 'p__gravity_darkening',
             'fixed': True
         },
@@ -728,7 +732,7 @@ Lets create minimalistic code snippet which demonstrates least squares fitting m
             'fixed': True
         },
         {
-            'value': 0.6,
+            'value': 1.0,
             'param': 'p__albedo',
             'fixed': True
         },
@@ -834,7 +838,7 @@ Such approach leads to solution shown bellow::
         }
     ]
 
-:warning: make sure all your light curve values are normalized by highest value from whole set of
+:warning: make sure all your light curve values are normalized using the highest value from whole set of
           curves supplied to algorithm
 
 
@@ -845,10 +849,10 @@ Such approach leads to solution shown bellow::
 
 
 
-``Elisa`` also provides lightcurves fitting method based on `Markov Chain Monte Carlo`. Read data output requires
-more analytics skills as well as in case of radial velocities fitting.
+``Elisa`` also provides lightcurve fitting method based on `Markov Chain Monte Carlo`. Read data output requires
+the same level of knowledge necessary as in case of radial velocities fitting.
 
-Bellow you can see minimalistic base code which should demostrate how to use mcmc method and how to read outputs.
+Bellow you can see minimalistic base code which should demonstrate how to use MCMC method and how to read outputs.
 
 
 .. code:: python
@@ -887,9 +891,10 @@ Bellow you can see minimalistic base code which should demostrate how to use mcm
     if __name__ == '__main__':
         main()
 
-:note: initial value are same as in case of least squares method base code demostration
+:note: initial value are same as in case of least squares method base code demonstration
 
 Corner plot of `mcmc` result for such approach is in figure bellow
+(mozno by si este mohol dodat obrazok s nafitovanymi krivkami)
 
 .. image:: ./docs/source/_static/readme/mcmc_lc_corner.svg
   :width: 95%
