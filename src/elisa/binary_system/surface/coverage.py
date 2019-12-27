@@ -90,7 +90,7 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
         out_of_bound = np.ones(undercover_object_obs_visible_projection.shape[0], dtype=np.bool)
 
     undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
-    undercover_faces = np.array([const.FALSE_FACE_PLACEHOLDER] * np.shape(undercover_object.normals)[0])
+    undercover_faces = -1 * np.ones(np.shape(undercover_object.normals), dtype=int)
     undercover_faces[undercover_object.indices] = undercover_object.faces[undercover_object.indices]
     eclipse_faces_visibility = np.isin(undercover_faces, undercover_visible_point_indices)
 

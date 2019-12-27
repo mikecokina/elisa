@@ -16,6 +16,9 @@ def compute_non_pulsating_lightcurve(*args):
 
     for pos_idx, position in enumerate(rotational_motion):
         on_pos = ssutils.move_sys_onpos(initial_system, position)
+        star_container = on_pos.star
+        # dict of components
+        stars = {'star': getattr(on_pos, 'star')}
 
+        # visible_faces = np.unique(star_container.faces[star_container.indices])
         pass
-    
