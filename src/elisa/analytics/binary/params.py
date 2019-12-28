@@ -61,8 +61,8 @@ PARAMS_KEY_TEX_MAP = {
     's__metallicity': '$M/H_2$',
     's__synchronicity': '$F_2$',
     'asini': 'a$sin$(i)',
-    'period': '$days$',
-    'primary_minimum_time': '$days$'
+    'period': '$period$',
+    'primary_minimum_time': '$T_0$'
 }
 
 
