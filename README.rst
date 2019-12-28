@@ -22,9 +22,8 @@ surface features such as spots and pulsation (soon). Current capabilities includ
     - ``BinarySystem:`` class for modelling surfaces of detached, semi-detached and over-contact binaries
     - ``Observer:`` class for generating light curves (and in future other observables)
     - ``Spots:`` class for generating stellar spot with given longitude, latitude, radius and temperature factor
-    - ``Fitting methods`` provide capability to fit radial velocities curves and light curves via implementaion of
-      ``non-linear least squares`` method which also implements lightcurve fitting via ``Markov Chain Monte Carlo``
-      method.
+    - ``Fitting methods`` provide capabilities to fit radial velocities curves and light curves via implementaion of
+      ``non-linear least squares`` method and also via ``Markov Chain Monte Carlo`` method.
 
 **ELISa** is currently still under development. Following features are in progress:
 
@@ -35,7 +34,7 @@ surface features such as spots and pulsation (soon). Current capabilities includ
 We also plan to implement following features:
 
     - addition of radial velocity curves to Observer class with ``Rossiter-McLaughlin`` effect
-    - ``LC`` and ``RV`` fitting using various methods
+    - some extended ``LC`` and ``RV`` fitting using various additional methods and features like classification via ``neural-networks``
     - addition of synthetic spectral line modelling
 
 Requirements
@@ -161,7 +160,7 @@ in path ``/home/user/.elisa/``. Then content of your configuration file should b
 
 Full content of configuration file with description might be found here, Elisa-Configuration-File_
 
-.. _Elisa-Configuration-File: https://github.com/mikecokina/elisa/blob/dev/src/elisa/conf/elisa_conf_docs.ini
+.. _Elisa-Configuration-File: https://github.com/mikecokina/elisa/blob/master/src/elisa/conf/elisa_conf_docs.ini
 
 :warning: atmospheric models and limb darkening tables for this package are stored in industry standard ''.csv'' files.
           Therefore, their native format as usually provided on web sites is not suitable for Elisa and require
@@ -173,7 +172,7 @@ Now, you have to tell ELISa, where to find configuration file. In environment yo
     export ELISA_CONFIG=/home/user/.elisa/elisa_config.ini
 
 There is plenty ways how to setup environment variable which vary on operation system and also on tool (IDE)
-that you have in use. Optionally, you can use ''config.ini'' file located in ''ELISa_folder/src/elisa/conf/'' without
+that you have in use. Optionally, you can use ``config.ini`` file located in ``ELISa_folder/src/elisa/conf/`` without
 any need for setting the enviromental variable.
 
 Now you are all setup and ready to code.
@@ -211,13 +210,13 @@ Available passbands
 Multiprocessing
 ---------------
 
-To speedup computaion of light curves, paralellization of computations has been implemented. Computation
+To speedup computation of light curves, paralellization of computations has been implemented. Computation
 of light curve points is separated to smaller batches and each batch is evaluated on separated CPU core. Paralellization
-necessarily bring some overhead to process and in some cases might cause even slower behavior of application.
+necessarily brings some overhead to process and in some cases might cause even slower behavior of application.
 It is important to choose wisely when use it espeically in case of circular synchronous orbits which consist of
 spot-free components where multiprocessing is usually not as effective.
 
-Down below are shown some result of multiprocessor approach for different binary system type. Absolute time necessary
+Down below are shown some result of multiprocessor approach for different binary system types. Absolute time necessary
 for calculation of the light curve is highly dependent on the type of the system and hardaware. Therefore we have
 normalized the time axis according to maximum value in our datasets.
 
@@ -289,6 +288,8 @@ and require all params from the following list if you would like to try absolute
     * ``inclination`` - inclination of binary system in `degrees`
     * ``argument_of_periastron`` - argument of periastron in `degrees`
     * ``gamma`` - radial velocity of system center of mass in `m/s`
+    * ``period`` - period of binary system (in days), usually fixed parameters
+    * ``primary_minimum_time`` - numeric time of primary minimum (ny time units); used when exact period is unknown and fitting is required
 
 or otherwise, in "community approach", you can use instead of ``p__mass``, ``s__mass`` and ``inclination`` parameters:
 
@@ -299,8 +300,28 @@ There are already specified global minimal and maximal values for parameters, bu
 parameter boundaries which might work better for the particular case.
 
 Parameter set to be `fixed` will not be fitted and its value will stay fixed during the fitting procedure. User can
-also setup `constraint` for any parameter. (pod to by som dal priklad na constrained parameter) It is allowed to put bounds only on parameter using other free parameters,
-otherwise the parameter should stay fixed. (nechapem tuto vetu)
+also setup `constraint` for any parameter, e.g.::
+
+    {
+        'value': 16.515,
+        'param': 'semi_major_axis',
+        'constraint': '16.515 / sin(radians({inclination}))'
+    },
+
+It is allowed to put bounds (constraints) only on parameter using other free parameters, otherwise the parameter should stay fixed.
+For example, it makes no sense to set bound like this::
+
+    {
+        'value': 5000.0,
+        'param': 'p__temperature',
+        'fixed': True
+    },
+    {
+        'value': 10000.0,
+        'param': 's__temperature',
+        'constraint': '{p__temperature * 0.5}'
+    }
+
 
 In this part you can see minimal example of code providing fitting. Sample radial velocity curve was obtained
 by parameters::
@@ -507,7 +528,7 @@ previous run.
 
 
 Binary Stars Radial Curves Fitting - No Ephemeris
-----------------------------------------------
+-------------------------------------------------
 
 In case we do not have enough information / measurements and we are not able determine ephemeris with
 desired accuracy, analytics modules of elisa are capable to handle such situation and gives you tools to fit
@@ -523,7 +544,7 @@ itself.
 
 :warning: make sure you have reasonable boundaries set for `primary_minimum_time` and `period`
 
-Initial parameters for 'primary_minimum_time' and `period` fitting might looks like following::
+Initial parameters for ``primary_minimum_time`` and ``period`` fitting might looks like following::
 
     [
         {
@@ -588,7 +609,7 @@ Corner plot of `mcmc` result for such approach is in figure bellow
 Binary Stars Light Curves Fitting
 ---------------------------------
 
-Packgae `elisa` currently implements two approaches that provides very basic capability to fit light light curves to
+Package `elisa` currently implements two approaches that provides very basic capability to fit light curves to
 observed photometric data. First method is standard approach which use `non-linear least squares` method algorithm and
 second approach uses Markov Chain Monte Carlo (`MCMC`) method.
 
@@ -841,13 +862,12 @@ Such approach leads to solution shown bellow::
 :warning: make sure all your light curve values are normalized using the highest value from whole set of
           curves supplied to algorithm
 
+Visualization of fit is
 
 .. image:: ./docs/source/_static/readme/lc_fit.svg
   :width: 70%
   :alt: lc_fit.svg
   :align: center
-
-
 
 ``Elisa`` also provides lightcurve fitting method based on `Markov Chain Monte Carlo`. Read data output requires
 the same level of knowledge necessary as in case of radial velocities fitting.
@@ -894,9 +914,12 @@ Bellow you can see minimalistic base code which should demonstrate how to use MC
 :note: initial value are same as in case of least squares method base code demonstration
 
 Corner plot of `mcmc` result for such approach is in figure bellow
-(mozno by si este mohol dodat obrazok s nafitovanymi krivkami)
 
 .. image:: ./docs/source/_static/readme/mcmc_lc_corner.svg
   :width: 95%
   :alt: mcmc_lc_corner.svg
   :align: center
+
+.. _example_scripts: https://github.com/mikecokina/elisa/tree/master/scripts/analytics
+
+All example scripts can be found in example_scripts_
