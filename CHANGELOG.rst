@@ -35,7 +35,7 @@ v0.2_
 -----
 .. v0.2_: https://github.com/mikecokina/elisa/commits/release/0.2
 
-**Release date:** In progress
+**Release date:** 2019-12-29
 
 **Features**
 
