@@ -43,7 +43,7 @@ def lc_r_squared(synthetic, *args, **x):
 
     :param synthetic: callable; synthetic method
     :param args: Tuple;
-    :**args*::
+    :**args**:
         * **xs** * -- numpy.array; phases
         * **ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
         * **period** * -- float;
@@ -71,9 +71,10 @@ def lc_r_squared(synthetic, *args, **x):
 def rv_r_squared(synthetic, *args, **x):
     """
     Compute R^2 (coefficient of determination).
+
     :param synthetic: callable; synthetic method
     :param args: Tuple;
-    :**args*::
+    :**args**:
         * **xs** * -- numpy.array; phases
         * **ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
         * **period** * -- float;

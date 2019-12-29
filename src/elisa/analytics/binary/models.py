@@ -58,7 +58,7 @@ def prepare_binary(period, discretization, **kwargs):
     then `1.0` is used as their default value.
 
     :param period: float;
-    :param discretization; float;
+    :param discretization: float;
     :param kwargs: Dict;
     :**kwargs options**:
         * **argument_of_periastron** * -- float;
@@ -80,6 +80,7 @@ def prepare_binary(period, discretization, **kwargs):
         * **s__albedo** * -- float;
         * **s__metallicity** * -- float;
         * **s__synchronicity** * -- float;
+
     :return: elisa.binary_system.system.BinarySystem;
     """
 
@@ -126,8 +127,7 @@ def synthetic_binary(xs, period, discretization, morphology, observer, _raise_in
         * **s__synchronicity** * -- float;
         * **gamma** * -- float;
     :return: Tuple[numpy.array, str];
-
-    :raise: elisa.base.errors.MorphologyError
+    :raise: elisa.base.errors.MorphologyError;
     """
     binary = prepare_binary(period, discretization, **kwargs)
     observer._system = binary
@@ -160,6 +160,7 @@ def central_rv_synthetic(xs, observer, **kwargs):
         * **mass_ratio** * --float;
         * **primary_minimum_time** * -- float;
         * **period** * -- float;
+
     :return: Tuple;
     """
 

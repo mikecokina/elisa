@@ -49,7 +49,7 @@ class Plot(object):
         :param phases: numpy.array;
         :param radial_velocities: dict;
         :param unit: Union[None, astropy.units.quantity.Quantity]; unit of input 'radial_velocities', if they are not
-        supplied, values calculated in Observer instance are converted to `unit`
+                     supplied, values calculated in Observer instance are converted to `unit`
         :param legend: bool;
         :param legend_location: int;
         """

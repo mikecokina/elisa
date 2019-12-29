@@ -34,7 +34,6 @@ class RadialVelocitySystem(object):
     :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
     :param period: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; Orbital period of binary
                    star system. If unit is not specified, default period unit is assumed (days).
-    Output parameters (computed on init):
     """
 
     inclination = const.HALF_PI

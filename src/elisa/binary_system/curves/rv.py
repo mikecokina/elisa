@@ -12,7 +12,7 @@ def distance_to_center_of_mass(primary_mass, secondary_mass, positions):
     :param primary_mass: float
     :param secondary_mass: float
     :param positions: numpy.array
-    :return:
+    :return: Tuple
     """
     distance = positions[:, 1]
     mass = primary_mass + secondary_mass
@@ -27,7 +27,7 @@ def orbital_semi_major_axes(r, eccentricity, true_anomaly):
     :param r: float or numpy.array; distane from center of mass to object
     :param eccentricity: float or numpy.array; orbital eccentricity
     :param true_anomaly: float or numpy.array; true anomaly of orbital motion
-    :return: float or numpy.array
+    :return: Union[float, numpy.array]
     """
     return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
 
@@ -42,7 +42,7 @@ def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_per
     :param argument_of_periastron: float
     :param true_anomaly: float or numpy.array
     :param period: float
-    :return: float or numpy.array
+    :return: Union[float, numpy.array]
     """
     a = 2.0 * up.pi * semi_major_axis * up.sin(inclination)
     b = period * up.sqrt(1.0 - up.power(eccentricity, 2))
@@ -52,13 +52,14 @@ def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_per
 
 def radial_velocity(binary, **kwargs):
     """
-    calculates radial velocity curves of the `binary` system
+    Calculates radial velocity curves of the `binary` system.
+
     :param binary: elisa.binary_system.system.BinarySystem; binary system instance
     :param kwargs: dict;
     :**kwargs options**:
         * **position_method** * -- function that is used to calculate orbital motion
         * **phases** * -- phases in which to calculate
-    :return:
+    :return: Tuple
     """
     position_method = kwargs.pop("position_method")
     phases = kwargs.pop("phases")
