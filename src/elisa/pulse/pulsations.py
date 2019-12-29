@@ -1,15 +1,16 @@
 import numpy as np
 
 from elisa import utils, const, umpy as up
-
 from scipy.special import sph_harm, factorial
 
-"""file containing functions dealing with pulsations"""
+"""
+File containing functions dealing with pulsations.
+"""
 
 
 def phase_correction(phase):
     """
-    calculate phase correction for mode axis drift
+    Calculate phase correction for mode axis drift.
 
     :param phase: rotation phase of the star
     :return:
@@ -57,13 +58,13 @@ def incorporate_pulsations_to_mesh(star_container, com_x, phase, time):
 
 def tilt_mode_coordinates(points, spot_points, phi, theta):
     """
-    function tilts spherical coordinates to desired position described by `phi`, `theta`
+    Function tilts spherical coordinates to desired position described by `phi`, `theta`.
 
     :param points: numpy.array;
     :param spot_points: dict;
     :param phi: float; azimuthal coordinate of the new polar axis
     :param theta: float; latitude of the new polar axis
-    :return: tuple;
+    :return: Tuple;
     """
     if theta != 0 and phi != 0:
         tilted_phi, tilted_theta = utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
@@ -80,7 +81,7 @@ def tilt_mode_coordinates(points, spot_points, phi, theta):
 
 def generate_tilt_coordinates(star_container, phase):
     """
-    returns tilt coordinates of pulsation modes
+    Returns tilt coordinates of pulsation modes.
 
     :param star_container: StarContainer;
     :param phase: float; rotational orbital phase of the star
@@ -95,10 +96,10 @@ def generate_tilt_coordinates(star_container, phase):
 
 def assign_amplitudes(star_container, normalization_constant=1.0):
     """
-    assigns amplitude of radial and horizontal motion for given modes
+    Assigns amplitude of radial and horizontal motion for given modes.
 
     :param normalization_constant: factor to adjust amplitudes, in cas of Binary system it is semi major axis, in case
-    of single system it should stay 1.0
+                                   of single system it should stay 1.0
     :param star_container: StarContainer;
     :return:
     """
@@ -112,11 +113,11 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
 
 def calculate_radial_displacement(relative_amplitude, radii, rals):
     """
-    calculates radial displacement of surface points
+    Calculates radial displacement of surface points.
 
     :param rals: numpy.array;
     :param relative_amplitude: float; relative radial amplitude of the pulsation mode
-    see: PulsationMode.radial_relative_amplitude
+                               see: PulsationMode.radial_relative_amplitude
     :param radii: numpy.array;
     :return: numpy.array
     """
@@ -125,7 +126,7 @@ def calculate_radial_displacement(relative_amplitude, radii, rals):
 
 def calculate_phi_displacement(radial_amplitude, relative_amplitude, radii, thetas, m, rals):
     """
-    displacement of azimuthal coordinates
+    Displacement of azimuthal coordinates.
 
     :param radial_amplitude: float;
     :param relative_amplitude: float; relative amplitude of horizontal displacement
@@ -145,7 +146,7 @@ def calculate_phi_displacement(radial_amplitude, relative_amplitude, radii, thet
 
 def calculate_theta_displacement(radial_amplitude, relative_amplitude, radii, phis, thetas, l, m):
     """
-    displacement in latitude
+    Displacement in latitude.
 
     :param radial_amplitude: float;
     :param relative_amplitude: float; relative amplitude of horizontal displacement
@@ -177,7 +178,7 @@ def calculate_theta_displacement(radial_amplitude, relative_amplitude, radii, ph
 
 def calculate_mode_displacement(mode, points, rals):
     """
-    calculates surface displacement caused by given `mode`
+    Calculates surface displacement caused by given `mode`.
 
     :param mode: elisa.pulse.mode.Mode;
     :param points: numpy.array;
@@ -197,7 +198,7 @@ def calculate_mode_displacement(mode, points, rals):
 
 def incorporate_temperature_perturbations(star_container, com_x, phase, time):
     """
-    introduces temperature perturbations to star container
+    Introduces temperature perturbations to star container.
 
     :param star_container: elisa.base.container.StarContainer
     :param com_x: float; centre of mass
@@ -233,7 +234,7 @@ def incorporate_temperature_perturbations(star_container, com_x, phase, time):
 
 def calculate_temperature_perturbation(mode, temperatures, rals, adiabatic_gradient=None):
     """
-    calculates temperature perturbation caused by given `mode`
+    Calculates temperature perturbation caused by given `mode`.
 
     :param mode: elisa.pulse.mode.Mode;
     :param temperatures: numpy.array;

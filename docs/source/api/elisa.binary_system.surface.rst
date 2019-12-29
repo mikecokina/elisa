@@ -4,6 +4,14 @@ elisa.binary\_system.surface package
 Submodules
 ----------
 
+elisa.binary\_system.surface.coverage module
+--------------------------------------------
+
+.. automodule:: elisa.binary_system.surface.coverage
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.binary\_system.surface.faces module
 -----------------------------------------
 

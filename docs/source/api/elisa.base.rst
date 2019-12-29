@@ -1,6 +1,13 @@
 elisa.base package
 ==================
 
+Subpackages
+-----------
+
+.. toctree::
+
+   elisa.base.surface
+
 Submodules
 ----------
 

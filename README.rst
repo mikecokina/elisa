@@ -136,7 +136,23 @@ Now, when virtual environment is prepared, run::
 
 And finally install ``ELISa``::
 
-    pip install git+https://github.com/mikecokina/elisa.git@dev
+    pip install elisa
+
+
+How to build API docs
+=====================
+
+Use virtual environment created in previous steps and add following dependencies::
+
+    Sphinx==2.2.0
+    sphinx-rtd-theme==0.4.3
+
+.. _docs: https://github.com/mikecokina/elisa/tree/master/docs
+
+Change directory to cloned docs_ and use following command::
+
+    sphinx-build -W -b html -c .\source -d .\build\doctrees .\source\ .\build\
+
 
 Minimal configuration
 ---------------------
