@@ -1,7 +1,10 @@
 import numpy as np
 
 from elisa.conf import config
-from elisa.single_system import utils as ssutils
+from elisa.single_system import (
+    utils as ssutils,
+    surface
+)
 
 LD_LAW_CFS_COLUMNS = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
@@ -20,5 +23,5 @@ def compute_non_pulsating_lightcurve(*args):
         # dict of components
         stars = {'star': getattr(on_pos, 'star')}
 
-        # visible_faces = np.unique(star_container.faces[star_container.indices])
-        pass
+        # area of visible faces
+        coverage = surface.coverage.compute_surface_coverage(on_pos)

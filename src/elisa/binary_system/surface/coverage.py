@@ -11,7 +11,6 @@ from elisa import (
     utils,
     const
 )
-from time import time
 
 logger = getLogger('binary_system.curves.lcmp')
 
@@ -78,8 +77,8 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
     undercover_object = getattr(system, config.BINARY_COUNTERPARTS[cover_component])
     undercover_visible_point_indices = np.unique(undercover_object.faces[undercover_object.indices])
 
-    cover_object_obs_visible_projection = bsutils.get_visible_projection(cover_object)
-    undercover_object_obs_visible_projection = bsutils.get_visible_projection(undercover_object)
+    cover_object_obs_visible_projection = utils.get_visible_projection(cover_object)
+    undercover_object_obs_visible_projection = utils.get_visible_projection(undercover_object)
     # get matplotlib boudary path defined by hull of projection
     if in_eclipse:
         bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)

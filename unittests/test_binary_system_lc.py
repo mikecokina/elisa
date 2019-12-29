@@ -224,7 +224,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         obj.indices = np.array([0, 1])
         obj.points = np.array([[-1, -1, -2], [0., 1, 1], [1, 1, 2], [2, 3, 4]])
 
-        obtained = bsutils.get_visible_projection(obj)
+        obtained = utils.get_visible_projection(obj)
         expected = np.vstack((obj.points[:, 1], obj.points[:, 2])).T
         self.assertTrue(np.all(expected == obtained))
 

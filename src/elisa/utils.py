@@ -827,6 +827,20 @@ def plane_projection(points, plane, keep_3d=False):
     return in_plane
 
 
+def get_visible_projection(obj):
+    """
+    Returns yz projection of nearside points.
+
+    :param obj: instance;
+    :return: numpy.array
+    """
+    return plane_projection(
+        obj.points[
+            np.unique(obj.faces[obj.indices])
+        ], "yz"
+    )
+
+
 def split_to_batches(batch_size, array):
     """
     Split array to batches with size `batch_size`.

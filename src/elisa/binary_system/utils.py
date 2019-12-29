@@ -113,20 +113,6 @@ def component_to_list(component):
     return component
 
 
-def get_visible_projection(obj):
-    """
-    Returns yz projection of nearside points.
-
-    :param obj: instance;
-    :return: numpy.array
-    """
-    return utils.plane_projection(
-        obj.points[
-            np.unique(obj.faces[obj.indices])
-        ], "yz"
-    )
-
-
 def renormalize_async_result(result):
     """
     Renormalize multiprocessing output to native form.
