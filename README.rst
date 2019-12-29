@@ -442,7 +442,7 @@ Result of fitting procedure is displayed in the following format:
   :align: center
 
 Another approach is to use implemented fitting method based on `Markov Chain Monte Carlo`. Reading data output requires
-minimal expirience with MCMC since output is not simple dictionary but a descriptive set of parameters progress during
+an experience with MCMC since output is not simple dictionary but a descriptive set of parameters progress during
 evaluation of method.
 
 Following represents minimalistic code which should explain how to use mcmc method and how to read outputs.
@@ -641,15 +641,15 @@ Lets assume that we have a given light curve like shown below generated on param
 
 
 Lets apply some fitting algorithm to demonstrate the software capabilities. Fitting modules are stored in module path
-``elisa.analytics.binary.least_squares`` and ``elisa.analytics.binary.mcmc``. It is up on the user what methods
+``elisa.analytics.binary.least_squares`` and ``elisa.analytics.binary.mcmc``. It is up to the user what methods
 choose to use. In both cases, there is prepared instances for fitting, called ``binary_detached`` and
 ``binary_overcontact``. Difference is that ``binary_overcontact`` fitting module keeps surface potential of both binary
 components constrained to the same value.
 
 First, we describe the algorithm based on `non-linear least squares` method. Binary system which can generate light
-curve shown above is with high probability the detached system, therefore we will use module ``binary_detached``.
+curve shown above is the most probably the detached system, therefore we will use module ``binary_detached``.
 
-:warning: Non-linear least squares method used in such complex problem with many free parameters such as fitting light
+:warning: Non-linear least squares method used in such complex problem as fitting light
           curves of eclipsing binaries, might be insuficient in case of initial parametres being
           too far from real values and also too broad fitting boundaries.
 
@@ -687,7 +687,7 @@ This approach give us value ~ 8307K.
 
 :note: we recommend you to set boundaries for temperature obtained from `bvi` module at least in range +/-500K.
 
-Lets create minimalistic example for code which demonstrates least squares fitting method.
+Lets create an example for code which demonstrates least squares fitting method.
 
 .. code:: python
 
@@ -870,7 +870,7 @@ Visualization of fit is
   :align: center
 
 ``Elisa`` also provides lightcurve fitting method based on `Markov Chain Monte Carlo`. Read data output requires
-the same level of knowledge necessary as in case of radial velocities fitting.
+the same level of knowledge as in case of radial velocities fitting.
 
 Bellow you can see minimalistic base code which should demonstrate how to use MCMC method and how to read outputs.
 
