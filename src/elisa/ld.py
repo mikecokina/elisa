@@ -2,17 +2,17 @@ import os
 import numpy as np
 import pandas as pd
 
+from elisa.base.error import LimbDarkeningError
+from elisa.logger import getLogger
 from scipy import interpolate
 from elisa.conf import config
 from elisa import (
-    logger,
     utils,
     const,
     umpy as up
 )
 
-config.set_up_logging()
-__logger__ = logger.getLogger("limb-darkening-module")
+logger = getLogger(__name__)
 
 
 def get_metallicity_from_ld_table_filename(filename):
@@ -53,7 +53,7 @@ def get_van_hamme_ld_table(passband, metallicity, law=None):
     filename = get_van_hamme_ld_table_filename(passband, metallicity, law=law)
     path = os.path.join(config.VAN_HAMME_LD_TABLES, filename)
     if not os.path.isfile(path):
-        raise FileNotFoundError(f"there is no file like {path}")
+        raise FileNotFoundError(f"There is no file like {path}.")
     return pd.read_csv(path)
 
 
@@ -64,10 +64,10 @@ def get_van_hamme_ld_table_by_name(fname):
     :param fname: str;
     :return: pandas.DataFrame;
     """
-    __logger__.debug(f"accessing limb darkening file {fname}")
+    logger.debug(f"accessing limb darkening file {fname}")
     path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
     if not os.path.isfile(path):
-        raise FileNotFoundError(f"there is no file like {path}")
+        raise FileNotFoundError(f"There is no file like {path}.")
     return pd.read_csv(path)
 
 
@@ -104,7 +104,7 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
     log_g = utils.convert_gravity_acceleration_array(log_g, units='log_cgs')
 
     results = dict()
-    __logger__.debug('interpolating limb darkening coefficients')
+    logger.debug('interpolating limb darkening coefficients')
     for band in passband:
         relevant_tables = get_relevant_ld_tables(passband=band, metallicity=metallicity, law=config.LIMB_DARKENING_LAW)
         csv_columns = config.LD_LAW_COLS_ORDER[config.LIMB_DARKENING_LAW]
@@ -126,11 +126,11 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
 
         for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
             if np.any(up.isnan(vals)):
-                raise ValueError("Limb darkening interpolation lead to np.nan/None value.\n"
-                                 "It might be caused by definition of unphysical object on input.")
+                raise LimbDarkeningError("Limb darkening interpolation lead to numpy.nan/None value. "
+                                         "It might be caused by definition of unphysical object on input.")
             result_df[col] = vals
         results[band] = result_df
-    __logger__.debug('limb darkening coefficients interpolation finished')
+    logger.debug('limb darkening coefficients interpolation finished')
     return results
 
 
@@ -160,10 +160,10 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
     if line_of_sight is None and cos_theta is None:
         raise ValueError('Line of sight vector(s) was not supplied.')
     if coefficients is None:
-        raise ValueError('Limb darkening coefficients were not supplied.')
+        raise LimbDarkeningError('Limb darkening coefficients were not supplied.')
     if limb_darkening_law is None:
-        raise ValueError('Limb darkening rule was not supplied choose from: '
-                         '`linear` or `cosine`, `logarithmic`, `square_root`.')
+        raise LimbDarkeningError('Limb darkening rule was not supplied choose from: '
+                                 '`linear` or `cosine`, `logarithmic`, `square_root`.')
 
     if cos_theta is None:
         cos_theta = np.sum(normal_vector * line_of_sight, axis=-1)
@@ -189,7 +189,7 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
         retval = 1.0 - coefficients[:, :1] * (1 - cos_theta) - coefficients[:, 1:] * (1 - up.sqrt(cos_theta))
         retval[negative_cos_theta_test] = 0.0
     else:
-        raise ValueError("Invalid limb darkening")
+        raise LimbDarkeningError("Invalid limb darkening.")
     return retval[:, 0] if retval.shape[1] == 1 else retval
 
 
@@ -203,10 +203,10 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
     :return: np.array; - bolometric_limb_darkening_factor (scalar for the whole star)
     """
     if coefficients is None:
-        raise ValueError('Limb darkening coefficients were not supplied.')
+        raise LimbDarkeningError('Limb darkening coefficients were not supplied.')
     elif limb_darkening_law is None:
-        raise ValueError('Limb darkening rule was not supplied choose from: '
-                         '`linear` or `cosine`, `logarithmic`, `square_root`.')
+        raise LimbDarkeningError('Limb darkening rule was not supplied choose from: '
+                                 '`linear` or `cosine`, `logarithmic`, `square_root`.')
 
     if limb_darkening_law in ['linear', 'cosine']:
         return const.PI * (1 - coefficients[0, :] / 3)

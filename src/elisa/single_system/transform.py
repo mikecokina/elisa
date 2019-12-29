@@ -1,7 +1,4 @@
-import numpy as np
-
-from astropy import units as au
-from elisa import units, const
+from elisa import units
 from elisa.base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
 
 

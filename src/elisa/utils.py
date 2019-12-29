@@ -14,7 +14,7 @@ from copy import (
     copy,
     deepcopy
 )
-from elisa import (
+from . import (
     const,
     umpy as up
 )
@@ -111,13 +111,13 @@ def cartesian_to_spherical(points, degrees=False):
     points = np.expand_dims(points, axis=0) if len(np.shape(points)) == 1 else points
     r = np.linalg.norm(points, axis=1)
 
-    np.seterr(divide='ignore', invalid='ignore')
+    old_settings = np.seterr(divide='ignore', invalid='ignore')
     phi = up.arcsin(points[:, 1] / (np.linalg.norm(points[:, :2], axis=1)))  # vypocet azimutalneho (rovinneho) uhla
     phi[up.isnan(phi)] = 0
 
     theta = up.arccos(points[:, 2] / r)  # vypocet polarneho (elevacneho) uhla
     theta[up.isnan(theta)] = 0
-    np.seterr(divide='print', invalid='print')
+    np.seterr(**old_settings)
 
     signtest = points[:, 0] < 0
     phi[signtest] = (const.PI - phi[signtest])
@@ -784,7 +784,7 @@ def is_even(x):
 
 
 def convert_binary_orbital_motion_arr_to_positions(arr):
-    return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in arr]
+    return [const.Position(*p) for p in arr]
 
 
 def nested_dict_values(dictionary):
@@ -825,3 +825,40 @@ def plane_projection(points, plane, keep_3d=False):
     in_plane = deepcopy(points)
     in_plane[:, rm_index] = 0.0
     return in_plane
+
+
+def split_to_batches(batch_size, array):
+    """
+    Split array to batches with size `batch_size`.
+
+    :param batch_size: int;
+    :param array: Union[List, numpy.array];
+    :return: List;
+    """
+    chunks = lambda d: (d[i:i + batch_size] for i in range(0, len(d), batch_size))
+    return [chunk for chunk in chunks(array)]
+
+
+def random_sign():
+    """
+    Return random sign (-1 or 1)
+    """
+    random = np.random.randint(0, 2)
+    return 1 if random else -1
+
+
+def str_repalce(x, old, new):
+    """
+    Replace old values with new in strin `x`.
+
+    :param x: str;
+    :param old: Union[str, Iterable[str]];
+    :param new: Union[str, Iterable[str]];
+    :return: str;
+    """
+    old = [old] if isinstance(old, str) else old
+    new = [new] if isinstance(new, str) else new
+
+    for _old, _new in zip(old, new):
+        x = str(x).replace(_old, _new)
+    return x

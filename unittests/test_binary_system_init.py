@@ -1,6 +1,6 @@
-import numpy as np
-
 from copy import copy
+
+import numpy as np
 from astropy import units as u
 from numpy.testing import assert_array_equal
 
@@ -183,7 +183,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
 
 
 class ValidityTestCase(ElisaTestCase):
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'phase_shift']
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron']
 
     def setUp(self):
         self._initial_params = {
@@ -270,8 +270,7 @@ class ValidityTestCase(ElisaTestCase):
                               period=self._initial_params["period"],
                               eccentricity=self._initial_params["eccentricity"],
                               inclination=self._initial_params["inclination"],
-                              primary_minimum_time=self._initial_params["primary_minimum_time"],
-                              phase_shift=self._initial_params["phase_shift"])
+                              primary_minimum_time=self._initial_params["primary_minimum_time"])
 
         for kw in self.MANDATORY_KWARGS:
             kwargs = copy(initial_kwargs)
@@ -343,3 +342,91 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
         expected = ["semi_major_axis", "morphology", "mass_ratio"]
         for e in expected:
             self.assertTrue(e in obtained)
+
+    @staticmethod
+    def _get_std():
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0
+            },
+            "primary": {
+                "mass": 2.0,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            },
+            "secondary": {
+                "mass": 1.5,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            }
+        }
+        return BinarySystem.from_json(data)
+
+    @staticmethod
+    def _get_community():
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0,
+                "mass_ratio": 0.75,
+                "semi_major_axis": 29.854
+            },
+            "primary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            },
+            "secondary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            }
+        }
+
+        return BinarySystem.from_json(data, _kind_of='community')
+
+    @classmethod
+    def test_init_from_json_std(cls):
+        cls._get_std()
+
+    @classmethod
+    def test_init_from_json_community(cls):
+        cls._get_community()
+
+    def test_init_from_json_community_and_std_are_equivalent(self):
+        com = self._get_community()
+        std = self._get_std()
+
+        com_a1 = np.float64((com.semi_major_axis * units.m).to(units.solRad))
+        com_a2 = np.float64((std.semi_major_axis * units.m).to(units.solRad))
+        self.assertTrue(np.round(com_a1, 2) == np.round(com_a2, 2))
+        self.assertTrue(np.round(com.mass_ratio, 2) == np.round(std.mass_ratio, 2))

@@ -1,9 +1,17 @@
 import numpy as np
-from pypex.poly2d.polygon import Polygon
 
-from elisa.binary_system import model
-from elisa.utils import is_empty
-from elisa import (
+from pypex.poly2d.polygon import Polygon
+from jsonschema import (
+    validate,
+    ValidationError
+)
+
+from elisa import units, const
+from elisa.base.error import YouHaveNoIdeaError
+from ..conf.config import SCHEMA_REGISTRY
+from ..binary_system import model
+from ..utils import is_empty
+from .. import (
     umpy as up,
     utils
 )
@@ -117,3 +125,145 @@ def get_visible_projection(obj):
             np.unique(obj.faces[obj.indices])
         ], "yz"
     )
+
+
+def renormalize_async_result(result):
+    """
+    Renormalize multiprocessing output to native form.
+    Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
+    computaion require dict in form like::
+
+        [{'passband': [all fluxes]}]
+
+    instead::
+
+        [[{'passband': [fluxes in batch]}], [{'passband': [fluxes in batch]}], ...]
+
+    :param result: List;
+    :return: Dict[str; numpy.array]
+    """
+    # todo: come with something more sophisticated
+    placeholder = {key: np.array([]) for key in result[-1]}
+    for record in result:
+        for passband in placeholder:
+            placeholder[passband] = record[passband] if is_empty(placeholder[passband]) else np.hstack(
+                (placeholder[passband], record[passband]))
+    return placeholder
+
+
+def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_potential=None, on_copy=True):
+    """
+    Prepares a postion container for given orbital position.
+    Supplied `system` is not affected if `on_copy` is set to True.
+
+    Following methods are applied::
+
+        system.set_on_position_params()
+        system.flatt_it()
+        system.apply_rotation()
+        system.apply_darkside_filter()
+
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param orbital_position: collections.namedtuple; elisa.const.Position;
+    :return: container; elisa.binary_system.container.OrbitalPositionContainer;
+    :param primary_potential: float;
+    :param secondary_potential: float;
+    :param on_copy: bool;
+    """
+    if on_copy:
+        system = system.copy()
+    system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
+    system.flatt_it()
+    system.apply_rotation()
+    system.apply_darkside_filter()
+    return system
+
+
+def calculate_rotational_phase(system_container, component):
+    """
+    Returns rotational phase with in co-rotating frame of reference.
+
+    :param system_container: SystemContainer;
+    :param component: str; `primary` or `secondary`
+    :return: float;
+    """
+    star = getattr(system_container, component)
+    return (star.synchronicity - 1.0) * system_container.position.phase
+
+
+def validate_binary_json(data):
+    """
+    Validate input json to create binary instance from.
+
+    :param data: Dict; json like object
+    :return bool; return True if valid schema, othervise raise error
+    :raise ValidationError;
+    """
+    schema_std = SCHEMA_REGISTRY.get_schema("binary_system_std")
+    schema_community = SCHEMA_REGISTRY.get_schema("binary_system_community")
+    std_valid, community_valid = False, False
+
+    try:
+        validate(instance=data, schema=schema_std)
+        std_valid = True
+    except ValidationError:
+        pass
+
+    try:
+        validate(instance=data, schema=schema_community)
+        community_valid = True
+    except ValidationError:
+        pass
+
+    if (not community_valid) & (not std_valid):
+        raise ValidationError("BinarySystem cannot be created from supplied json schema.")
+
+    if community_valid & std_valid:
+        raise YouHaveNoIdeaError("You have no idea what is going on [M1, M2, q, a].")
+
+    return True
+
+
+def resolve_json_kind(data, _sin=False):
+    """
+    Resolve if json is `std` or `community`.
+
+    std - standard physical parameters (M1, M2)
+    community - astro community parameters (q, a)
+
+    :param data: Dict; json like
+    :param _sin: bool; if False, looking for `semi_major_axis` in given JSON, otherwise looking for `asini`
+    :return: str; `std` or `community`
+    """
+    lookup = "asini" if _sin else "semi_major_axis"
+    m1, m2 = data["primary"].get("mass"), data["secondary"].get("mass")
+    q, a = data["system"].get("mass_ratio"), data["system"].get(lookup)
+
+    if m1 and m2:
+        return "std"
+    if q and a:
+        return "community"
+    raise LookupError("It seems your JSON is invalid.")
+
+
+def transform_json_community_to_std(data):
+    """
+    Transform `community` input json to `std` json.
+    Compute `M1` and `M2` from `q` and `a`.
+
+    All units of values are expected to be default.
+
+    :param data: Dict;
+    :return: Dict;
+    """
+    q = data["system"].pop("mass_ratio")
+    a = np.float64((data["system"].pop("semi_major_axis") * units.solRad).to(units.m))
+    period = np.float64((data["system"]["period"] * units.PERIOD_UNIT).to(units.s))
+    m1 = ((4.0 * const.PI ** 2 * a ** 3) / (const.G * (1.0 + q) * period ** 2))
+    m1 = np.float64((m1 * units.kg).to(units.solMass))
+    m2 = q * m1
+
+    data["primary"].update({"mass": m1})
+    data["secondary"].update({"mass": m2})
+
+    return data

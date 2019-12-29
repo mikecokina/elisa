@@ -2,20 +2,20 @@
 import numpy as np
 
 from copy import copy
+from elisa.logger import getLogger
 from elisa.binary_system.surface import faces as bsfaces
 from elisa.binary_system import utils as bsutils
 from elisa.conf import config
 from elisa.utils import is_empty
 from elisa import (
     umpy as up,
-    logger,
     ld,
     utils
 )
+from elisa.base.surface import temperature as btemperature
 
 
-config.set_up_logging()
-__logger__ = logger.getLogger("binary-system-temperature-module")
+logger = getLogger("binary_system.surface.temperature")
 
 
 def redistribute_temperatures(in_system, temperatures):
@@ -48,11 +48,11 @@ def reflection_effect(system, components_distance, iterations):
     """
 
     if not config.REFLECTION_EFFECT:
-        __logger__.debug('reflection effect is switched off')
+        logger.debug('reflection effect is switched off')
         return system
     if iterations <= 0:
-        __logger__.debug('number of reflections in reflection effect was set to zero or negative; '
-                         'reflection effect will not be calculated')
+        logger.debug('number of reflections in reflection effect was set to zero or negative; '
+                     'reflection effect will not be calculated')
         return system
 
     components = bsutils.component_to_list(component='all')
@@ -260,44 +260,14 @@ def renormalize_temperatures(star):
             current_flux += np.sum(spot.areas * spot.temperatures)
 
     coefficient = up.power(desired_flux_value / current_flux, 0.25)
-    __logger__.debug(f'surface temperature map renormalized by a factor {coefficient}')
+    logger.debug(f'surface temperature map renormalized by a factor {coefficient}')
     star.temperatures *= coefficient
     if star.spots:
         for spot_index, spot in star.spots.items():
             spot.temperatures *= coefficient
 
 
-def calculate_polar_effective_temperature(star):
-    """
-    Returns polar effective temperature.
-
-    :return: float;
-    """
-    return star.t_eff * up.power(np.sum(star.areas) /
-                                           np.sum(star.areas * up.power(
-                                               star.potential_gradient_magnitudes /
-                                               star.polar_potential_gradient_magnitude,
-                                               star.gravity_darkening)),
-                                           0.25)
-
-
-def calculate_effective_temperatures(star, gradient_magnitudes):
-    """
-    Calculates effective temperatures for given gradient magnitudes.
-    If None is given, star surface t_effs are calculated.
-
-    :param star: elisa.base.container.StarContainer;
-    :param gradient_magnitudes: numpy.array;
-    :return: numpy.array;
-    """
-
-    t_eff_polar = calculate_polar_effective_temperature(star)
-    t_eff = t_eff_polar * up.power(gradient_magnitudes / star.polar_potential_gradient_magnitude,
-                                   0.25 * star.gravity_darkening)
-    return t_eff if star.spots else t_eff[star.face_symmetry_vector]
-
-
-def build_temperature_distribution(system, components_distance, component="all", do_pulsations=False, phase=None):
+def build_temperature_distribution(system, components_distance, component="all", phase=0):
     """
     Function calculates temperature distribution on across all faces.
     Value assigned to face is mean of values calculated in corners of given face.
@@ -305,40 +275,39 @@ def build_temperature_distribution(system, components_distance, component="all",
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param components_distance: str;
     :param component: `primary` or `secondary`
-    :param do_pulsations:
+    :param do_pulsations: bool;
     :param phase: float;
     :return: system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
-        __logger__.debug("no component set to build temperature distribution")
+        logger.debug("no component set to build temperature distribution")
         return system
 
-    phase = 0 if phase is None else phase
     components = bsutils.component_to_list(component)
 
     for component in components:
         star = getattr(system, component)
 
-        __logger__.debug(f'computing effective temperature distibution '
-                         f'on {component} component name: {star.name}')
+        logger.debug(f'computing effective temperature distribution '
+                     f'on {component} component name: {star.name}')
 
-        temperatures = calculate_effective_temperatures(star, star.potential_gradient_magnitudes)
+        temperatures = btemperature.calculate_effective_temperatures(star, star.potential_gradient_magnitudes)
         setattr(star, "temperatures", temperatures)
 
         if star.has_spots():
             for spot_index, spot in star.spots.items():
-                __logger__.debug(f'computing temperature distribution of spot {spot_index} / {component} component')
+                logger.debug(f'computing temperature distribution of spot {spot_index} / {component} component')
 
                 pgms = spot.potential_gradient_magnitudes
-                spot_temperatures = spot.temperature_factor * calculate_effective_temperatures(star, pgms)
+                spot_temperatures = spot.temperature_factor * btemperature.calculate_effective_temperatures(star, pgms)
                 setattr(spot, "temperatures", spot_temperatures)
 
-        __logger__.debug(f'renormalizing temperature of components due to '
-                         f'presence of spots in case of component {component}')
+        logger.debug(f'renormalizing temperature of components due to '
+                     f'presence of spots in case of component {component}')
         renormalize_temperatures(star)
 
     #     if star.has_pulsations() and do_pulsations:
-    #         __logger__.debug(f'adding pulsations to surface temperature distribution '
+    #         logger.debug(f'adding pulsations to surface temperature distribution '
     #                          f'of the component instance: {component}  / name: {star.name}')
     #
     #         com_x = 0 if component == 'primary' else components_distance
@@ -350,8 +319,8 @@ def build_temperature_distribution(system, components_distance, component="all",
     #                 spot.temperatures += temp_pert_spot[spot_idx]
 
     if 'primary' in components and 'secondary' in components:
-        __logger__.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
-                         f'iterations.')
+        logger.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
+                     f'iterations.')
         reflection_effect(system, components_distance, config.REFLECTION_EFFECT_ITERATIONS)
     return system
 

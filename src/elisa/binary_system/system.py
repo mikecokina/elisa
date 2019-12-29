@@ -3,15 +3,18 @@ import scipy
 
 from scipy import optimize
 
+from elisa.base.error import MorphologyError
 from elisa.binary_system.curves import lc, rv
 from elisa.base.container import SystemPropertiesContainer
 from elisa.base.system import System
+from elisa.base.star import Star
 from elisa.binary_system import graphic
 from elisa.binary_system.surface import mesh
 from elisa.binary_system.transform import BinarySystemProperties
 
 from elisa.conf import config
-from elisa.orbit import orbit
+from elisa.binary_system.orbit import orbit
+from elisa.logger import getLogger
 from elisa import (
     umpy as up,
     utils,
@@ -23,6 +26,8 @@ from elisa.binary_system import (
     radius as bsradius,
     model
 )
+
+logger = getLogger('binary_system.system')
 
 
 class BinarySystem(System):
@@ -37,6 +42,8 @@ class BinarySystem(System):
     :param secondary: elisa.base.star.Star; instance of secondary component
     :param eccentricity: Union[(numpy.)int, (numpy.)float];
     :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
+    :param period: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; Orbital period of binary
+                   star system. If unit is not specified, default period unit is assumed (days).
     :param phase_shift: float; Phase shift of the primary eclipse minimum with respect to ephemeris
                                true_phase is used during calculations, where: true_phase = phase + phase_shift.;
     :param primary_minimum_time: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
@@ -51,7 +58,7 @@ class BinarySystem(System):
     :morphology: str; morphology of current system
     """
 
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron', 'phase_shift']
+    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron']
     OPTIONAL_KWARGS = ['phase_shift', 'additional_light', 'primary_minimum_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
@@ -60,17 +67,17 @@ class BinarySystem(System):
     COMPONENT_OPTIONAL_KWARGS = []
     COMPONENT_ALL_KWARGS = COMPONENT_MANDATORY_KWARGS + COMPONENT_OPTIONAL_KWARGS
 
-    def __init__(self, primary, secondary, name=None, suppress_logger=False, **kwargs):
+    def __init__(self, primary, secondary, name=None, **kwargs):
         # initial validity checks
         utils.invalid_kwarg_checker(kwargs, BinarySystem.ALL_KWARGS, self.__class__)
         utils.check_missing_kwargs(BinarySystem.MANDATORY_KWARGS, kwargs, instance_of=BinarySystem)
         self.object_params_validity_check(dict(primary=primary, secondary=secondary), self.COMPONENT_MANDATORY_KWARGS)
         kwargs = self.transform_input(**kwargs)
 
-        super(BinarySystem, self).__init__(name, self.__class__.__name__, suppress_logger, **kwargs)
+        super(BinarySystem, self).__init__(name, **kwargs)
 
-        self._logger.info(f"initialising object {self.__class__.__name__}")
-        self._logger.debug(f"setting properties of components of class instance {self.__class__.__name__}")
+        logger.info(f"initialising object {self.__class__.__name__}")
+        logger.debug(f"setting properties of components of class instance {self.__class__.__name__}")
 
         self.plot = graphic.plot.Plot(self)
         self.animation = graphic.animation.Animation(self)
@@ -93,23 +100,171 @@ class BinarySystem(System):
         self.init_properties(**kwargs)
 
         # calculation of dependent parameters
-        self._logger.debug("computing semi-major axis")
+        logger.debug("computing semi-major axis")
         self.semi_major_axis = self.calculate_semi_major_axis()
 
         # orbit initialisation (initialise class Orbit from given BinarySystem parameters)
         self.init_orbit()
 
         # setup critical surface potentials in periastron
-        self._logger.debug("setting up critical surface potentials of components in periastron")
+        logger.debug("setting up critical surface potentials of components in periastron")
         self.setup_periastron_critical_potential()
 
-        self._logger.debug("setting up morphological classification of binary system")
+        logger.debug("setting up morphological classification of binary system")
         self.morphology = self.compute_morphology()
 
         self.setup_periastron_components_radii(components_distance=self.orbit.periastron_distance)
+        self.assign_pulsations_amplitudes(normalisation_constant=self.semi_major_axis)
 
         # adjust and setup discretization factor if necessary
         self.setup_discretisation_factor()
+
+    @classmethod
+    def from_json(cls, data, _verify=True, _kind_of=None):
+        """
+        Create instance of BinarySystem from JSON in form like::
+
+            {
+              "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0
+              },
+              "primary": {
+                "mass": 2.0,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              },
+              "secondary": {
+                "mass": 2.0,
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              }
+            }
+
+            or
+
+            {
+              "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0,
+                "semi_major_axis": 10.5,
+                "mass_ratio": 0.5
+              },
+              "primary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              },
+              "secondary": {
+                "surface_potential": 7.1,
+                "synchronicity": 1.0,
+                "t_eff": 6500.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+              }
+            }
+            
+        Currently, this approach require values in default units used in app.
+
+        Default units::
+
+             {
+                "inclination": [degrees],
+                "period": [days],
+                "argument_of_periastron": [degrees],
+                "gamma": [m/s],
+                "eccentricity": [dimensionless],
+                "primary_minimum_time": ,
+                "phase_shift": [dimensionless],
+                "mass": [solMass],
+                "surface_potential": [dimensionless],
+                "synchronicity": [dimensionless],
+                "t_eff": [K],
+                "gravity_darkening": [dimensionless],
+                "discretization_factor": [degrees],
+                "albedo": [dimensionless],
+                "metallicity": [dimensionless],
+
+                "semi_major_axis": [solRad],
+                "mass_ratio": [dimensionless]
+            }
+
+        :return: elisa.binary_system.system.BinarySystem
+        """
+        if _verify:
+            bsutils.validate_binary_json(data)
+
+        kind_of = _kind_of or bsutils.resolve_json_kind(data)
+        if kind_of in ["community"]:
+            data = bsutils.transform_json_community_to_std(data)
+
+        primary, secondary = Star(**data["primary"]), Star(**data["secondary"])
+        return cls(primary=primary, secondary=secondary, **data["system"])
+
+    def to_json(self):
+        """
+        Serialize BinarySystem instance to json.
+
+        :return: Dict; json like
+        """
+
+        return {
+            "system": {
+                "inclination":  (self.inclination * units.rad).to(units.deg).value,
+                "period": self.period,
+                "argument_of_periastron": (self.argument_of_periastron * units.rad).to(units.deg).value,
+                "gamma": self.gamma,
+                "eccentricity": self.eccentricity,
+                "primary_minimum_time": self.primary_minimum_time,
+                "phase_shift": self.phase_shift
+            },
+            "primary": {
+                "mass": (self.primary.mass * units.kg).to(units.solMass).value,
+                "surface_potential": self.primary.surface_potential,
+                "synchronicity": self.primary.synchronicity,
+                "t_eff": self.primary.t_eff,
+                "gravity_darkening": self.primary.gravity_darkening,
+                "discretization_factor": (self.primary.discretization_factor * units.rad).to(units.deg).value,
+                "albedo": self.primary.albedo,
+                "metallicity": self.primary.metallicity
+            },
+            "secondary": {
+                "mass": (self.secondary.mass * units.kg).to(units.solMass).value,
+                "surface_potential": self.secondary.surface_potential,
+                "synchronicity": self.secondary.synchronicity,
+                "t_eff": self.secondary.t_eff,
+                "gravity_darkening": self.primary.gravity_darkening,
+                "discretization_factor": (self.secondary.discretization_factor * units.rad).to(units.deg).value,
+                "albedo": self.secondary.albedo,
+                "metallicity": self.secondary.metallicity
+            },
+        }
 
     def init(self):
         """
@@ -153,13 +308,24 @@ class BinarySystem(System):
     def to_properties_container(self):
         return SystemPropertiesContainer(**self.properties_serializer())
 
+    def evaluate_stype(self):
+        pass
+
     def init_orbit(self):
         """
         Orbit class in binary system.
         """
-        self._logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
+        logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
-        self.orbit = orbit.Orbit(suppress_logger=self._suppress_logger, **orbit_kwargs)
+        self.orbit = orbit.Orbit(**orbit_kwargs)
+
+    def is_eccentric(self):
+        """
+        Resolve whether system is eccentri.
+
+        :return: bool;
+        """
+        return self.eccentricity > 0
 
     def is_synchronous(self):
         """
@@ -197,12 +363,13 @@ class BinarySystem(System):
 
             if ((1 > self.secondary.filling_factor > 0) or (1 > self.primary.filling_factor > 0)) and \
                     (abs(self.primary.filling_factor - self.secondary.filling_factor) > __PRECISSION__):
-                raise ValueError("Detected over-contact binary system, but potentials of components are not the same.")
+                msg = "Detected over-contact binary system, but potentials of components are not the same."
+                raise MorphologyError(msg)
             if self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
-                raise ValueError("Non-Physical system: primary_filling_factor or "
-                                 "secondary_filling_factor is greater then 1\n"
-                                 "Filling factor is obtained as following:"
-                                 "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
+                raise MorphologyError("Non-Physical system: primary_filling_factor or "
+                                      "secondary_filling_factor is greater then 1. "
+                                      "Filling factor is obtained as following:"
+                                      "(Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})")
 
             if (abs(self.primary.filling_factor) < __PRECISSION__ and self.secondary.filling_factor < 0) or \
                     (self.primary.filling_factor < 0 and abs(self.secondary.filling_factor) < __PRECISSION__) or \
@@ -214,7 +381,7 @@ class BinarySystem(System):
             elif 1 >= self.primary.filling_factor > 0:
                 __MORPHOLOGY__ = "over-contact"
             elif self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
-                raise ValueError("Non-Physical system: potential of components is to low.")
+                raise MorphologyError("Non-Physical system: potential of components is to low.")
 
         else:
             self.primary.filling_factor, self.secondary.filling_factor = None, None
@@ -236,20 +403,26 @@ class BinarySystem(System):
                 __MORPHOLOGY__ = "detached"
 
             else:
-                raise ValueError("Non-Physical system. Change stellar parameters.")
+                raise MorphologyError("Non-Physical system. Change stellar parameters.")
         return __MORPHOLOGY__
 
     def setup_discretisation_factor(self):
         """
         If secondary discretization factor was not set, it will be now with respect to primary component.
-        :return:
         """
         if not self.secondary.kwargs.get('discretization_factor'):
             self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
                                                     / self.secondary.polar_radius * units.rad).value
-            self._logger.info(f"setting discretization factor of secondary component to "
-                              f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
-                              f"according to discretization factor of the primary component ")
+
+            if self.secondary.discretization_factor > np.radians(config.MAX_DISCRETIZATION_FACTOR):
+                self.secondary.discretization_factor = np.radians(config.MAX_DISCRETIZATION_FACTOR)
+            if self.secondary.discretization_factor < np.radians(config.MIN_DISCRETIZATION_FACTOR):
+                self.secondary.discretization_factor = np.radians(config.MIN_DISCRETIZATION_FACTOR)
+
+            logger.info(f"setting discretization factor of secondary component to "
+                        f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
+                        f"according to discretization factor of the primary component and"
+                        f"configuration boundaries")
 
     def transform_input(self, **kwargs):
         """
@@ -365,11 +538,11 @@ class BinarySystem(System):
         for x_val in xs:
             try:
                 # if there is no valid value (in case close to x=0.0, potential_dx diverge)
-                np.seterr(divide='raise', invalid='raise')
+                old_settings = np.seterr(divide='raise', invalid='raise')
                 potential_dx(round(x_val, round_to), *args_val)
-                np.seterr(divide='print', invalid='print')
+                np.seterr(**old_settings)
             except Exception as e:
-                self._logger.debug(f"invalid value passed to potential, exception: {str(e)}")
+                logger.debug(f"invalid value passed to potential, exception: {str(e)}")
                 continue
 
             try:
@@ -381,7 +554,7 @@ class BinarySystem(System):
                             value_dx = abs(round(potential_dx(solution[0], *args_val), 4))
                             use = True if value_dx == 0 else False
                         except Exception as e:
-                            self._logger.debug(f"skipping sollution for x: {x_val} due to exception: {str(e)}")
+                            logger.debug(f"skipping sollution for x: {x_val} due to exception: {str(e)}")
                             use = False
 
                         if use:
@@ -390,7 +563,7 @@ class BinarySystem(System):
                             if len(lagrange) == 3:
                                 break
             except Exception as e:
-                self._logger.debug(f"solution for x: {x_val} lead to nowhere, exception: {str(e)}")
+                logger.debug(f"solution for x: {x_val} lead to nowhere, exception: {str(e)}")
                 continue
 
         return sorted(lagrange) if self.mass_ratio < 1.0 else sorted(lagrange, reverse=True)
@@ -462,7 +635,7 @@ class BinarySystem(System):
         """
         Return method to use for orbital motion computation.
 
-        :return: method;
+        :return: callable;
         """
         return self.calculate_orbital_motion
 
@@ -473,8 +646,8 @@ class BinarySystem(System):
         :param calculate_from: str; 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
         :param return_nparray: bool; if True positions in form of numpy arrays will be also returned
         :param input_argument: numpy.array;
-        :return: Tuple[List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER], List[Integer]] or
-                 List[NamedTuple: elisa.const.BINARY_POSITION_PLACEHOLDER]
+        :return: Tuple[List[NamedTuple: elisa.const.Position], List[Integer]] or
+                 List[NamedTuple: elisa.const.Position]
         """
         input_argument = np.array([input_argument]) if np.isscalar(input_argument) else input_argument
         orbital_motion = self.orbit.orbital_motion(phase=input_argument) if calculate_from == 'phase' \
@@ -485,7 +658,7 @@ class BinarySystem(System):
         if return_nparray:
             return positions
         else:
-            return [const.BINARY_POSITION_PLACEHOLDER(*p) for p in positions]
+            return [const.Position(*p) for p in positions]
 
     def setup_periastron_components_radii(self, components_distance):
         """
@@ -501,8 +674,8 @@ class BinarySystem(System):
         for component in components:
             component_instance = getattr(self, component)
             for fn in fns:
-                self._logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
-                                   f'for {component} component')
+                logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
+                             f'for {component} component')
 
                 param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
                 kwargs = dict(synchronicity=component_instance.synchronicity,
@@ -651,22 +824,14 @@ class BinarySystem(System):
         assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
 
         if is_circular:
-            if assynchronous_spotty_test:
-                self._logger.info('applying light curve generator function for asynchronous binary system with '
-                                  'circular orbit and spots.')
+            if assynchronous_spotty_test and not self.has_pulsations():
                 return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('applying light curve generator function for synchronous binary system with '
-                                  'circular orbit or circular assynchronous systems without spots.')
                 return self._compute_circular_synchronous_lightcurve(**kwargs)
         elif is_eccentric:
             if assynchronous_spotty_test:
-                self._logger.info('applying light curve generator function for asynchronous binary system with '
-                                  'eccentric orbit and spots.')
                 return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
             else:
-                self._logger.info('applying light curve generator function for eccentric orbit with synchronous '
-                                  'rotation of the components or assynchronous rotation without spots.')
                 return self._compute_eccentric_lightcurve(**kwargs)
 
         raise NotImplementedError("Orbit type not implemented or invalid")

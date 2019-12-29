@@ -1,3 +1,6 @@
+import builtins
+builtins._ASTROPY_SETUP_ = True
+
 from astropy import units as u
 
 # DO NOT CHANGE THIS!!!
@@ -25,3 +28,6 @@ W = u.W
 solRad = u.solRad
 K = u.K
 dimensionless_unscaled = u.dimensionless_unscaled
+kg = u.kg
+
+Quantity = u.quantity.Quantity

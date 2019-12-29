@@ -1,12 +1,18 @@
 import logging
 from elisa.conf import config
 
+config.set_up_logging()
+
 
 def getLogger(name, suppress=False):
     if config.SUPPRESS_LOGGER is not None:
         suppress = config.SUPPRESS_LOGGER
 
     return logging.getLogger(name=name) if not suppress else Logger(name)
+
+
+def getPersistentLogger(name):
+    return logging.getLogger(name=name)
 
 
 class Logger(object):

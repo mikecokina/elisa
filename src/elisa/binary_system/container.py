@@ -2,9 +2,8 @@ import numpy as np
 
 from copy import deepcopy
 from elisa.binary_system import dynamic
-from elisa.conf import config
+from elisa.logger import getLogger
 from elisa import (
-    logger,
     const,
     utils
 )
@@ -19,9 +18,7 @@ from elisa.binary_system.surface import (
     temperature
 )
 
-
-config.set_up_logging()
-__logger__ = logger.getLogger("binary-system-container-module")
+logger = getLogger("binary_system.container")
 
 
 class OrbitalPositionContainer(PositionContainer):
@@ -33,9 +30,13 @@ class OrbitalPositionContainer(PositionContainer):
         # placeholder (set in loop below)
         self.inclination = np.nan
         self._flatten = False
+        self.period = np.nan
 
         for key, val in properties.items():
             setattr(self, key, val)
+
+        # calculating a time that elapsed since t0
+        self.time = 86400 * self.period * self.position.phase
 
     def set_on_position_params(self, position, primary_potential=None, secondary_potential=None):
         setattr(self, "position", position)
@@ -60,7 +61,7 @@ class OrbitalPositionContainer(PositionContainer):
     def has_pulsations(self):
         return self.primary.has_pulsations() or self.secondary.has_pulsations()
 
-    def build(self, components_distance=None, component="all", do_pulsations=False, phase=None, **kwargs):
+    def build(self, components_distance=None, component="all", phase=None, **kwargs):
         """
         Main method to build binary star system from parameters given on init of BinaryStar.
 
@@ -74,7 +75,6 @@ class OrbitalPositionContainer(PositionContainer):
             - build_temperature_distribution
 
         :param phase: float; phase to build system on
-        :param do_pulsations: bool; switch to incorporate pulsations
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
         :return: self;
@@ -82,7 +82,7 @@ class OrbitalPositionContainer(PositionContainer):
 
         components_distance = self._components_distance(components_distance)
         self.build_mesh(components_distance, component)
-        self.build_from_points(components_distance, component, do_pulsations=do_pulsations, phase=phase)
+        self.build_from_points(components_distance, component, phase=phase)
         return self
 
     def build_mesh(self, components_distance=None, component="all"):
@@ -92,6 +92,9 @@ class OrbitalPositionContainer(PositionContainer):
     def build_faces(self, components_distance=None, component="all"):
         components_distance = self._components_distance(components_distance)
         return faces.build_faces(self, components_distance, component)
+
+    def build_pulsations_on_mesh(self, component, components_distance):
+        return mesh.build_pulsations_on_mesh(self, component, components_distance)
 
     def build_surface_areas(self, component="all"):
         return faces.compute_all_surface_areas(self, component)
@@ -104,26 +107,31 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return gravity.build_surface_gravity(self, components_distance, component)
 
-    def build_temperature_distribution(self, components_distance=None, component="all", do_pulsations=False, phase=None):
+    def build_temperature_distribution(self, components_distance=None, component="all", do_pulsations=False,
+                                       phase=None):
         components_distance = self._components_distance(components_distance)
-        return temperature.build_temperature_distribution(self, components_distance, component, do_pulsations, phase)
+        return temperature.build_temperature_distribution(self, components_distance, component, phase)
 
-    def build_from_points(self, components_distance=None, component="all", do_pulsations=False, phase=None):
+    def build_temperature_perturbations(self, components_distance, component):
+        return faces.build_temperature_perturbations(self, components_distance, component)
+
+    def build_from_points(self, components_distance=None, component="all", phase=None):
         """
-        Build binary system from preset surface points
+        Build binary system from present surface points.
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
-        :param do_pulsations: bool; switch to incorporate pulsations
         :param phase: float; phase to build system on
         :return: self;
         """
         components_distance = self._components_distance(components_distance)
         self.build_faces(components_distance, component)
+        self.build_pulsations_on_mesh(component, components_distance)
         self.build_surface_areas(component)
         self.build_faces_orientation(components_distance, component)
         self.build_surface_gravity(components_distance, component)
-        self.build_temperature_distribution(components_distance, component, do_pulsations=do_pulsations, phase=phase)
+        self.build_temperature_distribution(components_distance, component, phase=phase)
+        self.build_temperature_perturbations(components_distance, component)
         return self
 
     def apply_eclipse_filter(self):

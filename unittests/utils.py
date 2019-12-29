@@ -4,7 +4,6 @@ import os.path as op
 import unittest
 import numpy as np
 
-from importlib import reload
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -15,12 +14,11 @@ from elisa.base.star import Star
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
-from elisa.const import BINARY_POSITION_PLACEHOLDER
-from elisa.orbit import orbit
+from elisa.const import Position
+from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
 
 ax3 = Axes3D
-# ld =
 
 
 def reset_config():
@@ -130,11 +128,15 @@ def prepare_binary_system(params, spots_primary=None, spots_secondary=None):
                         phase_shift=params["phase_shift"])
 
 
+def prepare_star(star_params):
+    return Star(**star_params)
+
+
 def prepare_orbital_position_container(system):
     orbital_position_container = OrbitalPositionContainer(
         primary=StarContainer.from_properties_container(system.primary.to_properties_container()),
         secondary=StarContainer.from_properties_container(system.secondary.to_properties_container()),
-        position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+        position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
         **system.properties_serializer()
     )
     return orbital_position_container

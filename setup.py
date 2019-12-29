@@ -61,7 +61,8 @@ setup(
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
-    packages=find_packages(where='src', exclude=["single_system"]),
+    # packages=find_packages(where='src', exclude=["single_system"]),
+    packages=find_packages(where='src'),
 
     # Alternatively, if you want to distribute just a my_module.py, uncomment
     # this:
@@ -74,6 +75,8 @@ setup(
     install_requires=[
         'astropy==2.0.2',
         'cycler==0.10.0',
+        'corner==2.0.1',
+        'emcee==3.0.1',
         'matplotlib==2.1.0',
         'numpy==1.16.2',
         'pandas==0.24.0',
@@ -103,6 +106,8 @@ setup(
         'elisa': [
             'passband/*',
             'conf/*',
+            'schema_registry/*',
+            'schema_registry/schema_files/*'
         ],
     },
 

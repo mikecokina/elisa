@@ -2,7 +2,9 @@ import numpy as np
 
 from copy import copy
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.const import BINARY_POSITION_PLACEHOLDER
+from elisa.const import Position
+from elisa.logger import getLogger
+from elisa.graphic import graphics
 
 from elisa.binary_system import (
     utils as butils,
@@ -11,17 +13,16 @@ from elisa.binary_system import (
 from elisa import (
     umpy as up,
     utils,
-    logger,
-    graphics,
     const
 )
 
+logger = getLogger('binary_system.graphic.animation')
+
 
 class Animation(object):
-    defpos = BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0))
+    defpos = Position(*(0, 1.0, 0.0, 0.0, 0.0))
 
     def __init__(self, instance):
-        self._logger = logger.getLogger(name=self.__class__.__name__)
         self.binary = instance
 
     def orbital_motion(self, start_phase=-0.5, stop_phase=0.5, phase_step=0.01, units='cgs', scale='linear',
@@ -57,9 +58,10 @@ class Animation(object):
         # in case of assynchronous component rotation and spots, the positions of spots are recalculated
         spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phases, component="all")
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
-        self._logger.info('calculating surface parameters (points, faces, colormap)')
+        logger.info('calculating surface parameters (points, faces, colormap)')
         for idx, phase in enumerate(phases):
             # assigning new longitudes for each spot
+            orbital_position_container.time = 86400 * self.binary.period * phase
             dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=idx, component="both")
             orbital_position_container.build(components_distance=components_distance[idx], components='both')
 
@@ -102,6 +104,6 @@ class Animation(object):
             'savepath': savepath,
             'colormap': colormap,
         })
-        self._logger.debug('Passing parameters to graphics module')
+        logger.debug('Passing parameters to graphics module')
         graphics.binary_surface_anim(**anim_kwargs)
 

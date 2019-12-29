@@ -1,26 +1,16 @@
 import numpy as np
 
-from elisa.conf import config
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
+from elisa.logger import getLogger
+from elisa.base.surface import gravity as bgravity
 
 from elisa import (
     umpy as up,
-    logger,
     const
 )
 
-config.set_up_logging()
-__logger__ = logger.getLogger("binary-system-gravity-module")
-
-
-def eval_args_for_magnitude_gradient(star):
-    if star.spots:
-        points, faces = star.points, star.faces
-    else:
-        points = star.points[:star.base_symmetry_points_number]
-        faces = star.faces[:star.base_symmetry_faces_number]
-    return points, faces
+logger = getLogger("binary-system-gravity-module")
 
 
 def calculate_potential_gradient(components_distance, component, points, synchronicity, mass_ratio):
@@ -73,7 +63,6 @@ def calculate_face_magnitude_gradient(components_distance, component, points, fa
     :param face_symmetry_vector: Union[numpy.array, None];
     :return: numpy.array;
     """
-
     gradients = calculate_potential_gradient(components_distance, component, points, synchronicity, mass_ratio)
     domega_dx, domega_dy, domega_dz = gradients[:, 0], gradients[:, 1], gradients[:, 2]
     points_gradients = up.power(up.power(domega_dx, 2) + up.power(domega_dy, 2) + up.power(domega_dz, 2), 0.5)
@@ -143,7 +132,7 @@ def build_surface_gravity(system, components_distance, component="all"):
     :return: system: elisa.binary_system.container.OrbitalPositionContainer;;
     """
     if is_empty(component):
-        __logger__.debug("no component set to build surface gravity")
+        logger.debug("no component set to build surface gravity")
         return
 
     if is_empty(components_distance):
@@ -164,11 +153,11 @@ def build_surface_gravity(system, components_distance, component="all"):
         setattr(star, "polar_potential_gradient_magnitude", pgm)
         gravity_scalling_factor = polar_gravity / pgm
 
-        __logger__.debug(f'computing potential gradient magnitudes distribution of {component} component')
+        logger.debug(f'computing potential gradient magnitudes distribution of {component} component')
 
-        pgms_args = eval_args_for_magnitude_gradient(star) + (synchronicity, mass_ratio)
+        pgms_args = bgravity.eval_args_for_magnitude_gradient(star) + (synchronicity, mass_ratio)
         pgms_kwargs = dict(
-            **{"face_symmetry_vector": star.face_symmetry_vector} if not star.has_spots() else {})
+            **{"face_symmetry_vector": star.face_symmetry_vector} if star.symmetry_test() else {})
         pgms = calculate_face_magnitude_gradient(components_distance, component, *pgms_args, **pgms_kwargs)
         setattr(star, "potential_gradient_magnitudes", pgms)
 
@@ -177,9 +166,9 @@ def build_surface_gravity(system, components_distance, component="all"):
 
         if star.has_spots():
             for spot_index, spot in star.spots.items():
-                __logger__.debug(f'calculating surface SI unit gravity of {component} component / {spot_index} spot')
-                __logger__.debug(f'calculating distribution of potential gradient '
-                                 f'magnitudes of spot index: {spot_index} / {component} component')
+                logger.debug(f'calculating surface SI unit gravity of {component} component / {spot_index} spot')
+                logger.debug(f'calculating distribution of potential gradient '
+                             f'magnitudes of spot index: {spot_index} / {component} component')
 
                 spot_pgms = calculate_face_magnitude_gradient(components_distance, component, spot.points, spot.faces,
                                                               synchronicity, mass_ratio, face_symmetry_vector=None)

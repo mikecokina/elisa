@@ -393,3 +393,15 @@ class TestElisaEngineUtils(ElisaTestCase):
     def test_plane_projection_zz(self):
         expeceted = np.array([[1, 1], [0.3, -5], [-2, -4.1]])
         self._test_plane_projection(expected=expeceted, plane="zx")
+
+    def test_str_repalce_scalar(self):
+        string = 'Hello there, how are you.'
+        expected = 'Hello there, how are MIKE.'
+        obtained = utils.str_repalce(string, 'you', 'MIKE')
+        self.assertEqual(expected, obtained)
+
+    def test_str_repalce_vector(self):
+        string = 'Hello there, how are you.'
+        expected = 'Hi there, how are MIKE.'
+        obtained = utils.str_repalce(string, ['you', 'Hello'], ['MIKE', 'Hi'])
+        self.assertEqual(expected, obtained)

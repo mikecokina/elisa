@@ -1,20 +1,17 @@
 import numpy as np
 
 from abc import abstractmethod
+from ..logger import getLogger
 from copy import (
     deepcopy,
     copy
 )
-from elisa.conf import config
-from elisa import (
-    logger,
+from .. import (
     utils,
     umpy as up
 )
 
-
-config.set_up_logging()
-__logger__ = logger.getLogger("base-container-module")
+logger = getLogger("base.container")
 
 
 class PropertiesContainer(object):
@@ -240,6 +237,9 @@ class StarContainer(object):
     def has_pulsations(self):
         return len(self.pulsations) > 0
 
+    def symmetry_test(self):
+        return not self.has_spots() and not self.has_pulsations()
+
     def copy(self):
         """
         Return deepcopy of StarContainer instance.
@@ -300,7 +300,7 @@ class StarContainer(object):
         if len(self.faces) == 0 or len(self.points) == 0:
             raise ValueError('Faces or/and points of object {self.name} have not been set yet.\n'
                              'Run build method first.')
-        if not self.has_spots():  # temporary
+        if self.symmetry_test():
             base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
                                               self.points[:self.base_symmetry_points_number])
             return base_areas[self.face_symmetry_vector]
@@ -366,7 +366,8 @@ class StarContainer(object):
         faces = self.faces
         temperatures = self.temperatures
         log_g = self.log_g
-        rals = {mode_idx: mode.rals[0] for mode_idx, mode in self.pulsations.items()}
+        rals = {mode_idx: None for mode_idx, mode in self.pulsations.items()}
+        # rals = {mode_idx: mode.rals[0] for mode_idx, mode in self.pulsations.items()}
         centres = self.face_centres
 
         if isinstance(self.spots, (dict,)):
@@ -376,8 +377,8 @@ class StarContainer(object):
                 normals = up.concatenate((normals, spot.normals), axis=0)
                 temperatures = up.concatenate((temperatures, spot.temperatures), axis=0)
                 log_g = up.concatenate((log_g, spot.log_g), axis=0)
-                for mode_idx, mode in self.pulsations.items():
-                    rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
+                # for mode_idx, mode in self.pulsations.items():
+                #     rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
                 centres = up.concatenate((centres, spot.face_centres), axis=0)
 
         return points, normals, faces, temperatures, log_g, rals, centres
@@ -400,3 +401,29 @@ class StarContainer(object):
 
         self._flatten = True
         return self
+
+    def transform_points_to_spherical_coordinates(self, kind='points', com_x=0):
+        """
+        Transforming container cartesian variable to spherical coordinates in a frame of reference of given object.
+
+        :param kind: str; `points` or `face_centres` or other variable containing cartesian
+                          points in both star and spot containers
+        :param com_x: float;
+        :return: Tuple; spherical coordinates of star variable, dictionary of spherical coordinates of spot variable
+        """
+        # fixme: remove from container, make it static in surface.mehs or similar
+        # separating variables to convert
+        centres_cartesian = copy(getattr(self, kind))
+        centres_spot_cartesian = {spot_idx: copy(getattr(spot, kind)) for spot_idx, spot in self.spots.items()}
+
+        # transforming variables
+        centres_cartesian[:, 0] -= com_x
+        for spot_index, spot in self.spots.items():
+            centres_spot_cartesian[spot_index][:, 0] -= com_x
+
+        # conversion
+        centres = utils.cartesian_to_spherical(centres_cartesian)
+        centres_spot = {spot_idx: utils.cartesian_to_spherical(spot_centres) for spot_idx, spot_centres in
+                        centres_spot_cartesian.items()}
+
+        return centres, centres_spot

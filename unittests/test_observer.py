@@ -11,6 +11,7 @@ from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from elisa.binary_system.system import BinarySystem
+from elisa.single_system.system import SingleSystem
 from elisa.conf import config
 from elisa import umpy as up
 from elisa.observer.observer import PassbandContainer, Observer
@@ -168,6 +169,71 @@ class TestObserver(ElisaTestCase):
 
         assert_array_equal(np.round(expected_phases, 2), np.round(obtained_phases, 2))
 
+    def test_SingleSystem_phase_interval_on_clear_surface(self):
+        s = SingleSystemMock(p=False, s=False)
+        o = Observer(self._passband, s)
+        o._system_cls = SingleSystem
+
+        phases = np.array([-0.1, 0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 3.5])
+        obtained_ph, obtained_ri = o.phase_interval_reduce(phases)
+
+        expected_ph = [0.0]
+        expected_ri = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+        assert_array_equal(np.round(expected_ph, 2), np.round(obtained_ph, 2))
+        assert_array_equal(expected_ri, obtained_ri)
+
+        expected_phases = np.zeros(phases.shape)
+        obtained_phases = obtained_ph[obtained_ri]
+
+        assert_array_equal(np.round(expected_phases, 2), np.round(obtained_phases, 2))
+
+    def test_SingleSystem_phase_interval_reduce_with_spots_no_pulsation(self):
+        s = SingleSystemMock(p=False, s=True)
+        o = Observer(self._passband, s)
+        o._system_cls = SingleSystem
+
+        phases = np.array([-0.1, 0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 3.5])
+        obtained_ph, obtained_ri = o.phase_interval_reduce(phases)
+
+        expected_ph = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+        expected_ri = [9, 0, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 5]
+
+        assert_array_equal(np.round(expected_ph, 2), np.round(obtained_ph, 2))
+        assert_array_equal(expected_ri, obtained_ri)
+
+        expected_phases = np.array(phases) % 1
+        obtained_phases = obtained_ph[obtained_ri]
+
+        assert_array_equal(np.round(expected_phases, 2), np.round(obtained_phases, 2))
+
+    def test_BinarySystem_phase_interval_reduce_has_pulsation(self):
+        s1 = SingleSystemMock(p=True, s=True)
+        s2 = SingleSystemMock(p=True, s=False)
+        o1 = Observer(self._passband, s1)
+        o2 = Observer(self._passband, s2)
+        o1._system_cls = SingleSystem
+        o2._system_cls = SingleSystem
+
+        phases = np.array([-0.1, 0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 3.5])
+        obtained_ph1, obtained_ri1 = o1.phase_interval_reduce(phases)
+        obtained_ph2, obtained_ri2 = o2.phase_interval_reduce(phases)
+
+        expected_ph = phases
+        expected_ri = up.arange(0, 14, 1)
+
+        assert_array_equal(np.round(expected_ph, 2), np.round(obtained_ph1, 2))
+        assert_array_equal(np.round(expected_ph, 2), np.round(obtained_ph2, 2))
+        assert_array_equal(expected_ri, obtained_ri1)
+        assert_array_equal(expected_ri, obtained_ri2)
+
+        expected_phases = np.array(phases)
+        obtained_phases1 = obtained_ph1[obtained_ri1]
+        obtained_phases2 = obtained_ph2[obtained_ri2]
+
+        assert_array_equal(np.round(expected_phases, 2), np.round(obtained_phases1, 2))
+        assert_array_equal(np.round(expected_phases, 2), np.round(obtained_phases2, 2))
+
 
 class BinarySystemMock(object):
     class Star(object):
@@ -189,3 +255,19 @@ class BinarySystemMock(object):
     def __init__(self, pp=False, sp=False):
         self.primary = self.Star(pp)
         self.secondary = self.Star(sp)
+
+
+class SingleSystemMock(object):
+    class Star(object):
+        def __init__(self, p=False, s=False):
+            self.p = p
+            self.s = s
+
+        def has_pulsations(self):
+            return self.p
+
+        def has_spots(self):
+            return self.s
+
+    def __init__(self, p=False, s=False):
+        self.star = self.Star(p, s)

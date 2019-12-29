@@ -11,6 +11,8 @@ PLANCK_CONST = 6.626070150e-34
 C = 299792458
 BOLTZMAN_CONST = 1.380649e-23
 
+IDEAL_ADIABATIC_GRADIENT = 2.0 / 5.0
+
 # global SOLAR_RADIUS
 SOLAR_RADIUS = 6.955E8  # m
 
@@ -74,4 +76,5 @@ LINE_OF_SIGHT = np.array([1.0, 0.0, 0.0])
 FALSE_FACE_PLACEHOLDER = np.array([-1, -1, -1])
 
 
-BINARY_POSITION_PLACEHOLDER = namedtuple('Position', ['idx', 'distance', 'azimuth', 'true_anomaly', 'phase'])
+Position = namedtuple('Position', ['idx', 'distance', 'azimuth', 'true_anomaly', 'phase'])
+SinglePosition = namedtuple('SinglePosition', ['idx', 'azimuth', 'phase'])

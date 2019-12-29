@@ -1,7 +1,8 @@
-from elisa import logger
+from elisa.logger import getLogger
+
+logger = getLogger(__name__)
 
 
 class Animation(object):
     def __init__(self, instance):
-        self._logger = logger.getLogger(name=self.__class__.__name__)
         self._self = instance

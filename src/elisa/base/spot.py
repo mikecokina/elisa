@@ -2,18 +2,15 @@ import gc
 import numpy as np
 
 from copy import copy
-from elisa.base.transform import SpotProperties
-from elisa.conf import config
-from elisa.utils import is_empty
-from elisa import (
+from ..base.transform import SpotProperties
+from ..utils import is_empty
+from ..logger import getLogger
+from .. import (
     utils,
-    logger,
     umpy as up
 )
 
-
-config.set_up_logging()
-__logger__ = logger.getLogger("spots-module")
+logger = getLogger("base.spots")
 
 
 class Spot(object):
@@ -183,14 +180,14 @@ def incorporate_spots_mesh(to_container, component_com):
     Enum indices >= 0 means the same, but for Spot.
 
     :param to_container: Union; instace to incorporate spots into
-    :param component_com: float; center of mass of component
+    :param component_com: float; center of mass of component (it's x coordinate)
     :return: to_container: Union; instace to incorporate spots into
     """
     if not to_container.spots:
-        __logger__.debug(f"not spots found, skipping incorporating spots "
-                         f"to_container mesh on component {to_container.name}")
+        logger.debug(f"not spots found, skipping incorporating spots "
+                     f"to_container mesh on component {to_container.name}")
         return to_container
-    __logger__.debug(f"incorporating spot points to_container component {to_container.name} mesh")
+    logger.debug(f"incorporating spot points to_container component {to_container.name} mesh")
 
     vertices_map = [{"enum": -1} for _ in to_container.points]
     # `all_component_points` do not contain points of Any spot
@@ -258,11 +255,11 @@ def remap_surface_elements(on_container, mapper, points_to_remap):
     """
 
     # remapping points and faces of star
-    __logger__.debug(f"changing value of parameter points of component {on_container.name}")
+    logger.debug(f"changing value of parameter points of component {on_container.name}")
     indices = np.unique(mapper["object"])
     on_container.points = points_to_remap[indices]
 
-    __logger__.debug(f"changing value of parameter faces of component {on_container.name}")
+    logger.debug(f"changing value of parameter faces of component {on_container.name}")
 
     points_length = np.shape(points_to_remap)[0]
     remap_list = np.empty(points_length, dtype=int)
@@ -271,12 +268,12 @@ def remap_surface_elements(on_container, mapper, points_to_remap):
 
     # remapping points and faces of spots
     for spot_index, _ in list(on_container.spots.items()):
-        __logger__.debug(f"changing value of parameter points of spot {spot_index} / component {on_container.name}")
+        logger.debug(f"changing value of parameter points of spot {spot_index} / component {on_container.name}")
         # get points currently belong to the given spot
         indices = np.unique(mapper["spots"][spot_index])
         on_container.spots[spot_index].points = points_to_remap[indices]
 
-        __logger__.debug(f"changing value of parameter faces of spot {spot_index} / component {on_container.name}")
+        logger.debug(f"changing value of parameter faces of spot {spot_index} / component {on_container.name}")
 
         remap_list = np.empty(points_length, dtype=int)
         remap_list[indices] = up.arange(np.shape(indices)[0])
@@ -297,7 +294,8 @@ def remove_overlaped_spots_by_spot_index(from_container, keep_spot_indices, _rai
     """
     all_spot_indices = set([int(val) for val in from_container.spots.keys()])
     spot_indices_to_remove = all_spot_indices.difference(keep_spot_indices)
-    spots_meta = [from_container.spots[idx].kwargs_serializer() for idx in from_container.spots if idx in spot_indices_to_remove]
+    spots_meta = [from_container.spots[idx].kwargs_serializer()
+                  for idx in from_container.spots if idx in spot_indices_to_remove]
     spots_meta = '\n'.join([str(meta) for meta in spots_meta])
     if _raise and not is_empty(spot_indices_to_remove):
         raise ValueError(f"Spots {spots_meta} have no pointns to continue.\nPlease, specify spots wisely.")
@@ -319,8 +317,8 @@ def remove_overlaped_spots_by_vertex_map(from_container, vertices_map):
                                        if vertices_map[ix]["enum"] >= 0]))
     for spot_index, _ in list(from_container.spots.items()):
         if spot_index not in spots_instance_indices:
-            __logger__.warning(f"spot with index {spot_index} doesn't contain Any face "
-                               f"and will be removed from component {from_container.name} spot list")
+            logger.warning(f"spot with index {spot_index} doesn't contain Any face "
+                           f"and will be removed from component {from_container.name} spot list")
             from_container.remove_spot(spot_index=spot_index)
     gc.collect()
     return from_container

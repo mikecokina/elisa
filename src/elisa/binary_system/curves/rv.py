@@ -51,6 +51,15 @@ def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_per
 
 
 def radial_velocity(binary, **kwargs):
+    """
+    calculates radial velocity curves of the `binary` system
+    :param binary: elisa.binary_system.system.BinarySystem; binary system instance
+    :param kwargs: dict;
+    :**kwargs options**:
+        * **position_method** * -- function that is used to calculate orbital motion
+        * **phases** * -- phases in which to calculate
+    :return:
+    """
     position_method = kwargs.pop("position_method")
     phases = kwargs.pop("phases")
     orbital_motion = position_method(input_argument=phases, return_nparray=True, calculate_from='phase')
@@ -70,4 +79,5 @@ def radial_velocity(binary, **kwargs):
     rv_secondary = _radial_velocity(sma_secondary, binary.inclination, binary.eccentricity,
                                     binary.argument_of_periastron, period, orbital_motion[:, 3])
 
-    return orbital_motion[:, 4], rv_primary, rv_secondary
+    rvs = {'primary': rv_primary + binary.gamma, 'secondary': rv_secondary + binary.gamma}
+    return orbital_motion[:, 4], rvs

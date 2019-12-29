@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 from matplotlib import cm
-from astropy import units as au
 from elisa import (
     umpy as up,
     utils,
     units
 )
+from astropy import units as u
 
 
 def orbit(**kwargs):
@@ -27,7 +27,7 @@ def orbit(**kwargs):
         * **frame_of_reference** * -- str; `barycentric` or `primary`
     """
     unit = str(kwargs['axis_units'])
-    if kwargs['axis_units'] == au.dimensionless_unscaled:
+    if kwargs['axis_units'] == units.dimensionless_unscaled:
         x_label, y_label = 'x/[SMA]', 'y/[SMA]'
     else:
         x_label, y_label = r'x/' + unit, r'y/' + unit
@@ -216,24 +216,32 @@ def single_star_surface(**kwargs):
     ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
-    star_plot = ax.plot_trisurf(kwargs['mesh'][:, 0], kwargs['mesh'][:, 1], kwargs['mesh'][:, 2],
-                                triangles=kwargs['triangles'], antialiased=True, shade=False, alpha=1)
+    star_plot = ax.plot_trisurf(kwargs['points'][:, 0], kwargs['points'][:, 1], kwargs['points'][:, 2],
+                                triangles=kwargs['triangles'], antialiased=True, shade=False, color='g')
     if kwargs['edges']:
         star_plot.set_edgecolor('black')
 
     if kwargs['normals']:
-        arrows = ax.quiver(kwargs['centres'][:, 0], kwargs['centres'][:, 1], kwargs['centres'][:, 2],
-                           kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
-                           length=0.1 * kwargs['equatorial_radius'])
+        ax.quiver(kwargs['centres'][:, 0], kwargs['centres'][:, 1], kwargs['centres'][:, 2],
+                  kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
+                  length=0.1 * kwargs['equatorial_radius'])
 
     if kwargs.get('colormap', False):
-        star_plot.set_cmap(cmap=cm.jet_r)
-        star_plot.set_array(kwargs['cmap'])
-        colorbar = fig.colorbar(star_plot, shrink=0.7)
         if kwargs['colormap'] == 'temperature':
-            colorbar.set_label('T/[K]')
+            star_plot.set_cmap(cmap=cm.jet_r)
+            star_plot.set_array(kwargs['cmap'])
+            if kwargs['colorbar']:
+                colorbar = fig.colorbar(star_plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
+                set_t_colorbar_label(colorbar, kwargs['scale'])
+
         elif kwargs['colormap'] == 'gravity_acceleration':
-            set_g_colorbar_label(colorbar, kwargs['units'])
+            try:
+                star_plot.set_cmap(cmap=cm.jet_r)
+            except:
+                pass
+            star_plot.set_array(kwargs['cmap'])
+            colorbar = fig.colorbar(star_plot, shrink=0.7, orientation=kwargs['colorbar_orientation'])
+            set_g_colorbar_label(colorbar, kwargs['units'], kwargs['scale'])
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
@@ -385,27 +393,27 @@ def binary_surface(**kwargs):
             if kwargs['components_to_plot'] == 'primary':
                 plot.set_array(kwargs['primary_cmap'])
                 if kwargs['colorbar']:
-                    colorbar1 = fig.colorbar(plot, shrink=0.7)
+                    colorbar1 = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                     set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'])
             elif kwargs['components_to_plot'] == 'secondary':
                 plot.set_array(kwargs['secondary_cmap'])
                 if kwargs['colorbar']:
-                    colorbar1 = fig.colorbar(plot, shrink=0.7)
+                    colorbar1 = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                     set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'])
             elif kwargs['components_to_plot'] == 'both':
                 if kwargs['morphology'] == 'over-contact':
                     both_cmaps = up.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                     plot.set_array(both_cmaps)
                     if kwargs['colorbar']:
-                        colorbar = fig.colorbar(plot, shrink=0.7)
+                        colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                         set_g_colorbar_label(colorbar, kwargs['units'], kwargs['scale'])
                 else:
                     plot1.set_array(kwargs['primary_cmap'])
                     plot2.set_array(kwargs['secondary_cmap'])
                     if kwargs['colorbar']:
-                        colorbar1 = fig.colorbar(plot1, shrink=0.7)
+                        colorbar1 = fig.colorbar(plot1, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                         set_g_colorbar_label(colorbar1, kwargs['units'], kwargs['scale'], extra='primary')
-                        colorbar2 = fig.colorbar(plot2, shrink=0.7)
+                        colorbar2 = fig.colorbar(plot2, shrink=0.7, orientation=kwargs['colorbar_orientation'])
                         set_g_colorbar_label(colorbar2, kwargs['units'], kwargs['scale'], extra='secondary')
 
     x_min, x_max = 0, 0
@@ -426,7 +434,7 @@ def binary_surface(**kwargs):
 
     if kwargs['plot_axis']:
         unit = str(kwargs['axis_unit'])
-        if kwargs['axis_unit'] == au.dimensionless_unscaled:
+        if kwargs['axis_unit'] == units.dimensionless_unscaled:
             x_label, y_label, z_label = 'x', 'y', 'z'
         else:
             x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
@@ -654,13 +662,18 @@ def binary_surface_anim(**kwargs):
 
 def phase_curve(**kwargs):
     plt.figure(figsize=(8, 6))
+    if kwargs['unit'] in ['normalized', 'normalised']:
+        C = np.max([kwargs['fluxes'][item] for item in kwargs['fluxes']])
+    else:
+        C = 1
     for item in kwargs['fluxes']:
-        plt.plot(kwargs['phases'], kwargs['fluxes'][item], label=item)
+        plt.plot(kwargs['phases'], kwargs['fluxes'][item] / C, label=item)
         plt.legend()
 
     plt.xlabel('Phase')
-    if kwargs['flux_unit'] == units.W / units.m**2:
-        plt.ylabel(r'Flux/($W/m^{2}$)')
+    if isinstance(kwargs['unit'], type(u.W/u.m**2)):
+        uu = kwargs['unit']
+        plt.ylabel(f'Flux/({uu:latex})')
     else:
         plt.ylabel('Flux')
     if kwargs['legend']:
@@ -670,14 +683,15 @@ def phase_curve(**kwargs):
 
 def rv_curve(**kwargs):
     plt.figure(figsize=(8, 6))
-    phases, primary_rv, secondary_rv = kwargs["phases"], kwargs["primary_rv"], kwargs["secondary_rv"]
-    plt.plot(phases, primary_rv, label="primary")
-    plt.plot(phases, secondary_rv, label="secondary")
+    phases, rvs = kwargs["phases"], kwargs["rvs"]
+    for component in rvs.keys():
+        plt.plot(phases, rvs[component], label=component)
     plt.legend()
 
     plt.xlabel('Phase')
-    if kwargs['unit'] == units.m / units.s:
-        plt.ylabel(r'Radial Velocity/($m/s$)')
+    if isinstance(kwargs['unit'], type(u.m / u.s)):
+        uu = kwargs['unit']
+        plt.ylabel(f'Radial Velocity/({uu:latex})')
     else:
         plt.ylabel('Radial Velocity')
     if kwargs['legend']:

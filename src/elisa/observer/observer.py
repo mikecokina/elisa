@@ -3,18 +3,24 @@ import sys
 import numpy as np
 import pandas as pd
 
+from multiprocessing.pool import Pool
 from scipy import interpolate
-from astropy import units as u
 
 from elisa.binary_system.system import BinarySystem
+from elisa.single_system.system import SingleSystem
+from elisa.observer import mp
 from elisa.observer.plot import Plot
 from elisa.conf import config
 from elisa.utils import is_empty
+from elisa.logger import getLogger
+from elisa.binary_system import utils as bsutils
 from elisa import (
-    logger,
     units,
-    umpy as up
+    umpy as up,
+    utils
 )
+
+logger = getLogger('observer.observer')
 
 
 class PassbandContainer(object):
@@ -77,16 +83,14 @@ class Observables(object):
 
 
 class Observer(object):
-    def __init__(self, passband, system, suppress_logger=False):
+    def __init__(self, passband, system):
         """
         Initializer for observer class.
 
         :param passband: string; for valid filter name see config.py file
-        :param suppress_logger: bool;
         :param system: system instance (BinarySystem or SingleSystem)
         """
-        self._logger = logger.getLogger(self.__class__.__name__, suppress=suppress_logger)
-        self._logger.info("initialising Observer instance")
+        logger.info("initialising Observer instance")
         # specifying what kind of system is observed
         self._system = system
         self._system_cls = type(self._system)
@@ -101,7 +105,7 @@ class Observer(object):
         self.times = None
         self.fluxes = None
         self.fluxes_unit = None
-        self.radial_velocities = None
+        self.radial_velocities = dict()
         self.rv_unit = None
 
         self.plot = Plot(self)
@@ -183,7 +187,7 @@ class Observer(object):
 
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
         """
-        Method for observation simulation. Based on input parmeters and supplied Ob server system on initialization
+        Method for simulated observation. Based on input parmeters and supplied Observer system on initialization
         will compute lightcurve.
 
         :param normalize: bool;
@@ -194,7 +198,7 @@ class Observer(object):
         :return: Dict;
         """
 
-        if not phases and (from_phase is None or to_phase is None or phase_step is None):
+        if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
@@ -205,31 +209,34 @@ class Observer(object):
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
 
-        self._logger.info(f"observation is running")
+        logger.info(f"observation is running")
         # calculates lines of sight for corresponding phases
         position_method = self._system.get_positions_method()
 
-        curves = self._system.compute_lightcurve(
-                     **dict(
-                         passband=self.passband,
-                         left_bandwidth=self.left_bandwidth,
-                         right_bandwidth=self.right_bandwidth,
-                         atlas="ck04",
-                         phases=base_phases,
-                         position_method=position_method
-                     )
-                 )
+        lc_kwargs = dict(
+            passband=self.passband,
+            left_bandwidth=self.left_bandwidth,
+            right_bandwidth=self.right_bandwidth,
+            atlas="ck04",
+            phases=base_phases,
+            position_method=position_method
+        )
 
-        # pool = Pool(processes=config.NUMBER_OF_THREADS)
-        # res = [pool.apply_async(mp.observe_worker,
-        #                         (self._system.initial_kwargs, self._system_cls, _args)) for _args in args]
-        # pool.close()
-        # pool.join()
-        # result_list = [np.array(r.get()) for r in res]
-        #
-        # print(result_list)
-        # # r = np.array(sorted(result_list, key=lambda x: x[0])).T[1]
-        # # return utils.spherical_to_cartesian(np.column_stack((r, phi, theta)))
+        if config.NUMBER_OF_PROCESSES > 1 and self._system.is_eccentric():
+            batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
+            phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
+            func = self._system.compute_lightcurve
+
+            pool = Pool(processes=config.NUMBER_OF_PROCESSES)
+            result = [pool.apply_async(mp.observe_lc_worker, (func, batch_idx, batch, lc_kwargs))
+                      for batch_idx, batch in enumerate(phase_batches)]
+            pool.close()
+            pool.join()
+            # this will return output in same order as was given on apply_async init
+            result = [r.get() for r in result]
+            curves = bsutils.renormalize_async_result(result)
+        else:
+            curves = self._system.compute_lightcurve(**lc_kwargs)
 
         # remap unique phases back to original phase interval
         for items in curves:
@@ -241,11 +248,12 @@ class Observer(object):
 
         self.phases = phases
         if normalize:
-            self.fluxes_unit = u.dimensionless_unscaled
+            # TODO: here develop lc normalization method
+            self.fluxes_unit = units.dimensionless_unscaled
         else:
             self.fluxes = curves
             self.fluxes_unit = units.W / units.m**2
-        self._logger.info("observation finished")
+        logger.info("observation finished")
         return phases, curves
 
     def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
@@ -259,14 +267,13 @@ class Observer(object):
         :param phases: Iterable float;
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
-
-        if not phases and (from_phase is None or to_phase is None or phase_step is None):
+        if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
             phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
         phases = np.array(phases)
-        phases, primary_rv, secondary_rv = self._system.compute_rv(
+        self.phases, self.radial_velocities = self._system.compute_rv(
             **dict(
                 phases=phases,
                 position_method=self._system.get_positions_method()
@@ -275,12 +282,11 @@ class Observer(object):
 
         self.rv_unit = units.m / units.s
         if normalize:
-            self.rv_unit = u.dimensionless_unscaled
-            _max = np.max([primary_rv, secondary_rv])
-            primary_rv /= _max
-            secondary_rv /= _max
+            self.rv_unit = units.dimensionless_unscaled
+            _max = np.max([np.max(item) for item in self.radial_velocities.values()])
+            self.radial_velocities = {key: value/_max for key, value in self.radial_velocities.items()}
 
-        return phases, primary_rv, secondary_rv
+        return self.phases, self.radial_velocities
 
     def phase_interval_reduce(self, phases):
         """
@@ -294,7 +300,7 @@ class Observer(object):
             base_phases:  ndarray of unique phases between (0, 1)
             reverse_indices: ndarray mask applicable to `base_phases` which will reconstruct original `phases`
         """
-        if self._system_cls == BinarySystem:
+        if self._system_cls == BinarySystem or str(self._system_cls) == str(BinarySystem):
             # function shouldn't search for base phases if system has pulsations or is assynchronous with spots
             has_pulsation_test = self._system.primary.has_pulsations() | self._system.secondary.has_pulsations()
 
@@ -307,6 +313,20 @@ class Observer(object):
             else:
                 base_interval = np.round(phases % 1, 9)
                 return np.unique(base_interval, return_inverse=True)
+
+        elif self._system_cls == SingleSystem or str(self._system_cls) == str(SingleSystem):
+            has_pulsation_test = self._system.star.has_pulsations()
+            has_spot_test = self._system.star.has_spots()
+
+            # the most complex case, has to be solved for each phase
+            if has_pulsation_test:
+                return phases, up.arange(phases.shape[0])
+            # in case of just spots on surface, unique (0.1) phases are only needed
+            elif has_spot_test and not has_pulsation_test:
+                base_interval = np.round(phases % 1, 9)
+                return np.unique(base_interval, return_inverse=True)
+            # in case of clear surface wo pulsations and spots, only single observation is needed
+            else:
+                return np.zeros(1), np.zeros(phases.shape[0], dtype=int)
         else:
-            # implement for single system
-            pass
+            raise NotImplemented("not implemented")

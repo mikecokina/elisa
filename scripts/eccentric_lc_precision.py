@@ -1,11 +1,11 @@
 from elisa.binary_system.system import BinarySystem
-from elisa.base import Star
+from elisa.base.star import Star
 from astropy import units as u
 import numpy as np
 import matplotlib.pyplot as plt
 from time import time
 import logging
-from elisa.engine import Observer
+from elisa.observer.observer import Observer
 from elisa.conf import config
 import matplotlib.gridspec as gridspec
 
@@ -70,18 +70,18 @@ stop_phs = 0.6
 # step = 0.1
 step = 0.01
 config.POINTS_ON_ECC_ORBIT = 50
-curves_approx = o.observe(from_phase=start_phs,
-                          to_phase=stop_phs,
-                          phase_step=step,
-                         )
+curves_approx = o.lc(from_phase=start_phs,
+                     to_phase=stop_phs,
+                     phase_step=step,
+                     )
 
 print('Elapsed time for approx LC gen: {:.6f}'.format(time()-star_time))
 star_time = time()
 config.POINTS_ON_ECC_ORBIT = 9999
-curves_exact = o.observe(from_phase=start_phs,
-                         to_phase=stop_phs,
-                         phase_step=step,
-                         )
+curves_exact = o.lc(from_phase=start_phs,
+                    to_phase=stop_phs,
+                    phase_step=step,
+                    )
 print('Elapsed time for exact LC gen: {:.6f}'.format(time()-star_time))
 
 x = np.linspace(start_phs, stop_phs, int(round((stop_phs-start_phs)/step, 0)))
@@ -91,9 +91,9 @@ gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
 ax1 = fig.add_subplot(gs[0])
 ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
-for item in curves_approx:
-    y_approx = curves_approx[item]/max(curves_approx[item])
-    y_exact = curves_exact[item]/max(curves_exact[item])
+for item in curves_approx[1]:
+    y_approx = curves_approx[1][item]/max(curves_approx[1][item])
+    y_exact = curves_exact[1][item]/max(curves_exact[1][item])
     ax1.plot(x, y_approx, label=item + '_approx')
     ax1.plot(x, y_exact, label=item + '_exact')
     ax2.plot(x, y_exact-y_approx, label='exact - approximation')

@@ -1,17 +1,17 @@
 import numpy as np
 
-from astropy import units as au
+
+from elisa.base import transform
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.const import BINARY_POSITION_PLACEHOLDER
+from elisa.const import Position
 from elisa.binary_system import utils as butils, dynamic
 from elisa.utils import is_empty
-from elisa.base import transform
+from elisa.graphic import graphics
 
 from elisa import (
     umpy as up,
     utils,
     const,
-    graphics,
     units as eu
 )
 
@@ -29,7 +29,7 @@ class Plot(object):
         `surface` - plot stellar surfaces
     """
 
-    defpos = BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0))
+    defpos = Position(*(0, 1.0, 0.0, 0.0, 0.0))
 
     def __init__(self, instance):
         self.binary = instance
@@ -55,7 +55,7 @@ class Plot(object):
         ellipse = self.binary.orbit.orbital_motion(phase=phases)
 
         # if axis are without unit a = 1
-        if axis_units != au.dimensionless_unscaled:
+        if axis_units != eu.dimensionless_unscaled:
             a = self.binary.semi_major_axis * eu.DISTANCE_UNIT.to(axis_units)
             radius = a * ellipse[:, 0]
         else:
@@ -119,15 +119,17 @@ class Plot(object):
         """
 
         binary_mesh_kwargs = dict()
-        inclination = transform.deg_transform(inclination, au.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
 
-        azimuth = transform.deg_transform(azimuth, au.deg, when_float64=transform.WHEN_FLOAT64) \
+        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else up.degrees(azim) - 90
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         orbital_position_container.build_mesh(components_distance=components_distance)
+        orbital_position_container.build_pulsations_on_mesh(component=components_to_plot,
+                                                            components_distance=components_distance)
 
         if components_to_plot in ['primary', 'both']:
             binary_mesh_kwargs.update({
@@ -160,13 +162,18 @@ class Plot(object):
         """
 
         binary_wireframe_kwargs = dict()
-        inclination = transform.deg_transform(inclination, au.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
-        azimuth = transform.deg_transform(azimuth, au.deg, when_float64=transform.WHEN_FLOAT64) \
+        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else up.degrees(azim) - 90
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
+
+        # recalculating spot latitudes
+        spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phase, component="all")
+        dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=None, component="all")
+
         orbital_position_container.build_mesh(components_distance=components_distance)
         orbital_position_container.build_faces(components_distance=components_distance)
 
@@ -215,10 +222,10 @@ class Plot(object):
         """
         surface_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, au.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
-        azimuth = transform.deg_transform(azimuth, au.deg, when_float64=transform.WHEN_FLOAT64) \
+        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else up.degrees(azim) - 90
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
@@ -263,12 +270,13 @@ class Plot(object):
                     f'{component}_arrows': star.normals
                 })
 
-            if axis_unit != au.dimensionless_unscaled and axis_unit != 'SMA':
+            if axis_unit != eu.dimensionless_unscaled:
                 sma = (self.binary.semi_major_axis * eu.DISTANCE_UNIT).to(axis_unit).value
                 surface_kwargs[f'points_{component}'] *= sma
 
                 if normals:
                     surface_kwargs[f'{component}_centres'] *= sma
+                    surface_kwargs[f'{component}_arrows'] *= sma
 
         surface_kwargs.update({
             "phase": phase,

@@ -2,12 +2,12 @@ import json
 import logging
 import os
 import warnings
-
 import numpy as np
 
 from configparser import ConfigParser
 from logging import config as log_conf
 from os.path import dirname, isdir, pardir
+from ..schema_registry import registry
 
 
 c_parse = ConfigParser()
@@ -28,11 +28,15 @@ else:
                       "  - Set the environment variable ELISA_CONFIG, or \n "
                       "  - Add conf/elisa_conf.ini under your virtualenv root \n ")
 
+# schema registry
+SCHEMA_REGISTRY = registry.Registry()
+
 # basic app configuration
 CONFIG_FILE = config_file
 LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging.json')
 SUPPRESS_WARNINGS = False
 SUPPRESS_LOGGER = None
+HOME = os.path.expanduser(os.path.join("~", '.elisa'))
 
 # physics
 REFLECTION_EFFECT = True
@@ -41,7 +45,10 @@ LIMB_DARKENING_LAW = 'cosine'
 
 # computational
 MAX_DISCRETIZATION_FACTOR = 20
-NUMBER_OF_THREADS = 1  # int(os.cpu_count())
+MIN_DISCRETIZATION_FACTOR = 1
+NUMBER_OF_THREADS = 1
+NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
+NUMBER_OF_MCMC_PROCESSES = -1
 POINTS_ON_ECC_ORBIT = 99999
 MAX_RELATIVE_D_R_POINT = 0.0
 MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
@@ -50,9 +57,9 @@ MAX_SOLVER_ITERS = 100
 
 # support data
 PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")
-VAN_HAMME_LD_TABLES = os.path.expanduser(os.path.join("~", "limbdarkening", "vh"))
-CK04_ATM_TABLES = os.path.expanduser(os.path.join("~", "atmosphere", "ck04"))
-K93_ATM_TABLES = os.path.expanduser(os.path.join("~", "atmosphere", "k93"))
+VAN_HAMME_LD_TABLES = os.path.join(HOME, "limbdarkening", "vh")
+CK04_ATM_TABLES = os.path.join(HOME, "atmosphere", "ck04")
+K93_ATM_TABLES = os.path.join(HOME, "atmosphere", "k93")
 ATM_ATLAS = "ck04"
 ATLAS_TO_BASE_DIR = {
     "castelli": CK04_ATM_TABLES,
@@ -63,6 +70,10 @@ ATLAS_TO_BASE_DIR = {
     "k": K93_ATM_TABLES,
     "k93": K93_ATM_TABLES
 }
+
+
+def _create_home():
+    os.makedirs(HOME, exist_ok=True)
 
 
 def _update_atlas_to_base_dir():
@@ -101,6 +112,7 @@ def read_and_update_config(conf_path=None):
 
     c_parse.read(conf_path)
     update_config()
+    _create_home()
 
 
 def update_config():
@@ -117,6 +129,9 @@ def update_config():
 
         global SUPPRESS_LOGGER
         SUPPRESS_LOGGER = c_parse.getboolean('general', 'suppress_logger', fallback=SUPPRESS_LOGGER)
+
+        global HOME
+        HOME = c_parse.getboolean('general', 'home', fallback=HOME)
     # ******************************************************************************************************************
 
     if c_parse.has_section('physics'):
@@ -138,11 +153,27 @@ def update_config():
         global MAX_DISCRETIZATION_FACTOR
         MAX_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'max_discretization_factor',
                                                      fallback=MAX_DISCRETIZATION_FACTOR)
+        global MIN_DISCRETIZATION_FACTOR
+        MIN_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'min_discretization_factor',
+                                                     fallback=MIN_DISCRETIZATION_FACTOR)
 
         global NUMBER_OF_THREADS
         NUMBER_OF_THREADS = c_parse.getint('computational', 'number_of_threads', fallback=NUMBER_OF_THREADS)
         if NUMBER_OF_THREADS <= 0:
             raise ValueError("Invalid value for `number_of_threads`, allowed >= 1")
+
+        global NUMBER_OF_PROCESSES
+        NUMBER_OF_PROCESSES = c_parse.getint('computational', 'number_of_processes', fallback=NUMBER_OF_PROCESSES)
+        if NUMBER_OF_PROCESSES > os.cpu_count():
+            warnings.warn("argument number_of_processes is too big, fallback to number of machine cores")
+            NUMBER_OF_PROCESSES = int(os.cpu_count())
+
+        global NUMBER_OF_MCMC_PROCESSES
+        NUMBER_OF_MCMC_PROCESSES = c_parse.getint('computational', 'number_of_mcmc_processes',
+                                                  fallback=NUMBER_OF_MCMC_PROCESSES)
+        if NUMBER_OF_MCMC_PROCESSES > os.cpu_count():
+            warnings.warn("argument number_of_mcmc_processes is too big, fallback to number of machine cores")
+            NUMBER_OF_MCMC_PROCESSES = int(os.cpu_count())
 
         global POINTS_ON_ECC_ORBIT
         POINTS_ON_ECC_ORBIT = c_parse.getint('computational', 'points_on_ecc_orbit', fallback=POINTS_ON_ECC_ORBIT)
@@ -282,6 +313,9 @@ ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
     "metallicity": "METALLICITY_LIST_ATM"
 }
 
+DATETIME_MASK = '%Y-%m-%dT%H.%M.%S'
+DATE_MASK = '%Y-%m-%d'
 
 read_and_update_config()
 _update_atlas_to_base_dir()
+_create_home()

@@ -2,14 +2,20 @@ import itertools
 import os
 import sys
 import warnings
+import numpy as np
+import pandas as pd
 
 from queue import Queue
 from threading import Thread
 from typing import Iterable
-
-import numpy as np
-import pandas as pd
 from copy import deepcopy
+
+from elisa.logger import getLogger
+from elisa.base.error import (
+    AtmosphereError,
+    MetallicityError,
+    TemperatureError,
+    GravityError, ElisaError)
 from scipy import (
     integrate,
     interpolate
@@ -17,14 +23,11 @@ from scipy import (
 from elisa.conf import config
 from elisa import (
     umpy as up,
-    logger,
     utils,
     const
 )
 
-
-config.set_up_logging()
-__logger__ = logger.getLogger("atm-module")
+logger = getLogger(__name__)
 
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/const.PI)
@@ -244,7 +247,7 @@ class NaiveInterpolatedAtm(object):
             bottom_flux, top_flux = flux_matrix[:len(flux_matrix) // 2], flux_matrix[len(flux_matrix) // 2:]
             bottom_atm, top_atm = band_atm[:len(band_atm) // 2], band_atm[len(band_atm) // 2:]
 
-            __logger__.debug(f"computing atmosphere interpolation weights for band: {band}")
+            logger.debug(f"computing atmosphere interpolation weights for band: {band}")
             interpolation_weights = NaiveInterpolatedAtm.compute_interpolation_weights(temperature, top_atm, bottom_atm)
             flux = NaiveInterpolatedAtm.compute_unknown_intensity_from_surounded_flux_matrices(
                 interpolation_weights, top_flux, bottom_flux
@@ -461,8 +464,8 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
 
     # interpolating values precisely on the border of the filter(s) coverage
     on_border_flux = interpolator([left_bandwidth, right_bandwidth])
-    if np.isin(np.nan, on_border_flux):
-        raise ValueError('Interpolation on bandwidth boundaries led to NaN value.')
+    if np.isnan(on_border_flux).any():
+        raise AtmosphereError('Interpolation on bandwidth boundaries leed to NaN value.')
     df: pd.DataFrame = atm_container.model
 
     df.values[[0, -1], :] = np.array([[on_border_flux[0], left_bandwidth], [on_border_flux[1], right_bandwidth]])
@@ -482,8 +485,14 @@ def apply_passband(atm_containers, passband, **kwargs):
     :return: Dict[str, elisa.atm.AtmDataContainer];
     """
     passbanded_atm_containers = dict()
-    __logger__.debug("applying passband functions on given atmospheres")
+    logger.debug("applying passband functions on given atmospheres")
+
     for band, band_container in passband.items():
+
+        if band in ['bolometric']:
+            band_container.left_bandwidth = kwargs.get('global_left', band_container.left_bandwidth)
+            band_container.right_bandwidth = kwargs.get('global_right', band_container.right_bandwidth)
+
         passbanded_atm_containers[band] = list()
         for atm_container in atm_containers:
             # strip atm container on passband bandwidth (reason to do it is, that container
@@ -498,14 +507,14 @@ def apply_passband(atm_containers, passband, **kwargs):
             passband_df = pd.DataFrame(
                 {
                     config.PASSBAND_DATAFRAME_THROUGHPUT:
-                        band_container.akima(atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]),
+                        band_container.akima(atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE].values),
                     config.PASSBAND_DATAFRAME_WAVE: atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]
                 }
             )
             passband_df.fillna(0.0, inplace=True)
             atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX] *= passband_df[config.PASSBAND_DATAFRAME_THROUGHPUT]
             passbanded_atm_containers[band].append(atm_container)
-    __logger__.debug("passband application finished")
+    logger.debug("passband application finished")
     return passbanded_atm_containers
 
 
@@ -563,8 +572,8 @@ def validate_temperature(temperature, atlas, _raise=True):
     invalid = any([True if (allowed[-1] < t or t < allowed[0]) else False for t in temperature])
     if invalid:
         if _raise:
-            raise ValueError("any temperature in system atmosphere is out of bound; "
-                             "it is usually caused by invalid physical model")
+            msg = "Any temperature in system atmosphere is out of bound; it is usually caused by invalid physical model"
+            raise TemperatureError(msg)
         return False
     return True
 
@@ -584,9 +593,9 @@ def validate_metallicity(metallicity, atlas, _raise=True):
     out_of_bound = is_out_of_bound(allowed, metallicity, out_of_bound_tol)
     if any(out_of_bound):
         if _raise:
-            raise ValueError(f"any metallicity in system atmosphere is out of bound, allowed values "
-                             f"are in range <{min(allowed) - out_of_bound_tol}, {max(allowed) + out_of_bound_tol}>; "
-                             f"it is usually caused by invalid physical model")
+            raise MetallicityError(f"Any metallicity in system atmosphere is out of bound, allowed values "
+                                   f"are in range <{min(allowed) - out_of_bound_tol}, {max(allowed) + out_of_bound_tol}"
+                                   f">; it is usually caused by invalid physical model")
         return False
     return True
 
@@ -617,8 +626,8 @@ def _validate_logg(temperature, log_g, atlas, _raise=True):
                         ]["gravity"], [g], 0.1)[0] for t, g in zip(temperature, log_g)]
     if np.any(invalid):
         if _raise:
-            raise ValueError("Any gravity (log_g) in system atmosphere is out of bound; "
-                             "it is usually caused by invalid physical model")
+            raise GravityError("Any gravity (log_g) in system atmosphere is out of bound; "
+                               "it is usually caused by invalid physical model")
         return False
     return True
 
@@ -646,7 +655,7 @@ def validate_atm(temperature, log_g, metallicity, atlas, _raise=True):
         validate_temperature(temperature, atlas)
         validate_metallicity(metallicity, atlas)
         _validate_logg(temperature, log_g, atlas)
-    except ValueError:
+    except (ElisaError, ValueError):
         if not _raise:
             return False
         raise
@@ -835,14 +844,16 @@ def multithread_atm_tables_reader_runner(fpaths):
     try:
         for index, fpath in enumerate(fpaths):
             if not os.path.isfile(fpath):
-                __logger__.debug(f"accessing atmosphere file {fpath}")
-                raise FileNotFoundError(f"file {fpath} doesn't exist. it seems your model could be not physical")
+                logger.debug(f"accessing atmosphere file {fpath}")
+                raise FileNotFoundError(f"file {fpath} doesn't exist. Your atmosphere tables are either not properly "
+                                        f"installed or atmosphere parameters of your stellar model are not covered by "
+                                        f"the currently used table.")
             path_queue.put((index, fpath))
 
         for _ in range(n_threads):
             path_queue.put("TERMINATOR")
 
-        __logger__.debug("initialising multithread atm table reader")
+        logger.debug("initialising multithread atm table reader")
         for _ in range(n_threads):
             t = Thread(target=multithread_atm_tables_reader, args=(path_queue, error_queue, result_queue))
             threads.append(t)
@@ -851,7 +862,7 @@ def multithread_atm_tables_reader_runner(fpaths):
 
         for t in threads:
             t.join()
-        __logger__.debug("atm multithread reader finished all jobs")
+        logger.debug("atm multithread reader finished all jobs")
     except KeyboardInterrupt:
         raise
     finally:
@@ -890,7 +901,7 @@ def compute_normal_intensity(spectral_flux, wavelength, flux_mult=1.0, wave_mult
     :param wave_mult: float;
     :return: numpy.array;
     """
-    return const.PI * flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
+    return flux_mult * wave_mult * integrate.simps(spectral_flux, wavelength, axis=1)
 
 
 def compute_integral_si_intensity_from_passbanded_dict(passbaned_dict):
@@ -1015,7 +1026,7 @@ def find_atm_defined_wavelength(atm_containers):
     """
     for atm_container in atm_containers:
         return atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]
-    raise ValueError('No valid atmospheric container has been supplied to method.')
+    raise AtmosphereError('No valid atmospheric container has been supplied to method.')
 
 
 def remap_passbanded_unique_atms_to_matrix(passbanded_containers, fpaths_map):

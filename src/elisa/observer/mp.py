@@ -1,15 +1,13 @@
-from uuid import uuid4
+from elisa.logger import getLogger
+
+logger = getLogger('observer.mp')
 
 
-def observe_worker(*args):
-    class Self(object):
-        def __init__(self):
-            self.system = None
-    self = Self()
-
-    initial_sys_args, system_cls, xargs = args
-    self.system = system_cls(name=str(uuid4()), **initial_sys_args)
-
-    self.system.build_mesh(components_distance=1, suppress_parallelism=True)
-
+def observe_lc_worker(*args):
+    func, order, phase_batch, kwargs = args
+    logger.info(f'starting observation worker for batch index {order}')
+    kwargs.update({"phases": phase_batch})
+    result = func(**kwargs)
+    logger.info(f'observation worker for batch index {order} finished')
+    return result
 

@@ -85,7 +85,7 @@ def potential_value_primary(radius, *args):
     Calculates modified Kopal's potential from point of view of primary component.
 
     :param radius: (numpy.)float; spherical variable
-    :param args: tuple: (mass_ratio, B, C, D, E) such that: Psi1 = 1/r + q/sqrt(B+r^2+Cr) - D*r + E*x^2
+    :param args: tuple: (mass_ratio, B, C, D, E) such that: Psi1 = 1/r + q/sqrt(B+r^2+Cr) - D*r + E*r^2
     :return: (numpy.)float;
     """
     mass_ratio, b, c, d, e = args

@@ -1,191 +1,248 @@
 import numpy as np
 
-from elisa import utils, const, units
+from elisa import utils, const, umpy as up
 
-from scipy.special import sph_harm
-from astropy import units as u
-from copy import copy
+from scipy.special import sph_harm, factorial
 
 """file containing functions dealing with pulsations"""
 
 
-def set_ralp(self, com_x=None):
-    """
-    Function calculates and sets time independent, dimensionless part of the pulsation modes. They are calculated as
-    renormalized associated Legendre polynomials (rALP). This function needs to be evaluated only once except for the
-    case of assynchronously rotating component and missaligned mode (see `set_misaligned_rals()`).
-
-    :param com_x: float - centre of mass
-    :param self: Star instance
-    :return:
-    """
-    centres_cartesian = copy(self.face_centres)
-    centres_spot_cartesian = {spot_idx: spot.face_centres for spot_idx, spot in self.spots.items()}
-
-    # this is here to calculate surface centres in ref frame of the given component
-    if com_x is not None:
-        centres_cartesian[:, 0] -= com_x
-        for spot_index, spot in self.spots.items():
-            centres_spot_cartesian[spot_index][:, 0] -= com_x
-
-    # conversion to spherical system in which ALS works
-    centres = utils.cartesian_to_spherical(centres_cartesian)
-    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot_centres) for spot_idx, spot_centres in
-                    centres_spot_cartesian.items()}
-
-    for mode_index, mode in self.pulsations.items():
-        phi_spot, theta_spot = {}, {}
-        if mode.mode_axis_theta == 0.0:
-            # setting spherical variables in case the pulsation axis is parallel with orbital axis
-            phi, theta = centres[:, 1], centres[:, 2]
-            if self.has_spots():
-                for spot_idx, spot in self.spots.items():
-                    phi_spot[spot_idx] = centres_spot[spot_idx][:, 1]
-                    theta_spot[spot_idx] = centres_spot[spot_idx][:, 2]
-        else:
-            continue
-
-        # renormalization constant for this mode
-        constant = utils.spherical_harmonics_renormalization_constant(mode.l, mode.m)
-        mode.rals_constant = constant
-        # calculating rALS for surface faces
-        surface_rals = constant * sph_harm(mode.m, mode.l, phi, theta)
-        # calculating rALS for spots (complex values)
-        if self.has_spots():
-            spot_rals = {spot_idx: constant * sph_harm(mode.m, mode.l, phi_spot[spot_idx], theta_spot[spot_idx])
-                         for spot_idx, spot in self.spots.items()}
-            mode.rals = surface_rals, spot_rals
-        else:
-            mode.rals = surface_rals, {}
-
-
-def set_misaligned_ralp(star_instance, phase, com_x=None):
-    """
-    Function calculates and sets time independent, dimensionless part of the pulsation modes. They are calculated as
-    renormalized associated Legendre polynomials (rALP). This function deals with a case of assynchronously rotating
-    component and missaligned mode. In such case, during all phases, the drift of the mode axis needs to be taken
-    into account and rALS needs to be recalculated.
-
-    :param phase:
-    :param com_x: float - centre of mass
-    :type star_instance: Star instance
-    :return:
-    """
-    centres_cartesian = copy(star_instance.face_centres)
-    centres_spot_cartesian = {spot_idx: spot.face_centres for spot_idx, spot in star_instance.spots.items()}
-
-    # this is here to calculate surface centres in ref frame of the given component
-    if com_x is not None:
-        centres_cartesian[:, 0] -= com_x
-        for spot_index, spot in star_instance.spots.items():
-            centres_spot_cartesian[spot_index][:, 0] -= com_x
-
-    # conversion to spherical system in which ALS works
-    centres = utils.cartesian_to_spherical(centres_cartesian)
-    centres_spot = {spot_idx: utils.cartesian_to_spherical(spot_centres) for spot_idx, spot_centres in
-                    centres_spot_cartesian.items()}
-
-    for mode_index, mode in star_instance.pulsations.items():
-        phi_spot, theta_spot = {}, {}
-        if mode.mode_axis_theta == 0.0:
-            continue
-        else:
-            # this correction factor takes into account orbital/rotational phase when calculating drift of the mode
-            # axis
-            phi_corr = phase_correction(star_instance.synchronicity, phase)
-            # rotating spherical variable in case of misaligned mode
-            phi, theta = utils.rotation_in_spherical(centres[:, 1], centres[:, 2],
-                                                     mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
-            if star_instance.has_spots():
-                for spot_idx, spot in star_instance.spots.items():
-                    phi_spot[spot_idx], theta_spot[spot_idx] = \
-                        utils.rotation_in_spherical(centres_spot[spot_idx][:, 1], centres_spot[spot_idx][:, 2],
-                                                    mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
-
-        # renormalization constant for this mode
-        constant = utils.spherical_harmonics_renormalization_constant(mode.l, mode.m)
-        mode.rals_constant = constant
-        # calculating rALS for surface faces
-        surface_rals = constant * sph_harm(mode.m, mode.l, phi, theta)
-        # calculating rALS for spots (complex values)
-        if star_instance.has_spots():
-            spot_rals = {spot_idx: constant * sph_harm(mode.m, mode.l, phi_spot[spot_idx], theta[spot_idx])
-                         for spot_idx, spot in star_instance.spots.items()}
-            mode.rals = surface_rals, spot_rals
-        else:
-            mode.rals = surface_rals, {}
-
-
-def recalculate_rals(container, phi_corr, centres, mode, mode_index):
-    # this correction factor takes into account orbital/rotational phase when calculating drift of the mode
-    # axis
-    phi, theta = utils.rotation_in_spherical(centres[:, 1], centres[:, 2],
-                                             mode.mode_axis_phi + phi_corr, mode.mode_axis_theta)
-
-    container.rals[mode_index] = mode.rals_constant * sph_harm(mode.m, mode.l, phi, theta)
-
-
-def calc_temp_pert_on_container(star_instance, container, phase, rot_period, com_x=None):
-    """
-    calculate temperature perturbation on EasyContainer
-
-    :param com_x: float - centre of mass
-    :param star_instance:
-    :param container:
-    :param phase:
-    :param rot_period:
-    :return:
-    """
-    centres = utils.cartesian_to_spherical(container.face_centres)
-    # this is here to calculate surface centres in ref frame of the given component
-    if com_x is not None:
-        centres[:, 0] -= com_x
-    phi_corr = phase_correction(star_instance.synchronicity, phase)
-    temp_pert = np.zeros(np.shape(container.face_centres)[0])
-    for mode_index, mode in star_instance.pulsations.items():
-        if mode.mode_axis_theta != 0.0:
-            recalculate_rals(container, phi_corr, centres, mode, mode_index)
-
-        freq = (mode.frequency * units.FREQUENCY_UNIT).to(1/u.d).value
-        exponent = const.FULL_ARC * freq * rot_period * phase - mode.start_phase
-        exponential = np.exp(complex(0, -exponent))
-        temp_pert_cmplx = mode.amplitude * container.rals[mode_index] * exponential
-        temp_pert += temp_pert_cmplx.real
-    return temp_pert
-
-
-def calc_temp_pert(star_instance, phase, rot_period):
-    """
-    calculate temperature perturbation on star instance
-
-    :param star_instance:
-    :param phase:
-    :param rot_period:
-    :return:
-    """
-    temp_pert = np.zeros(np.shape(star_instance.face_centres)[0])
-    temp_pert_spot = {spot_idx: np.zeros(np.shape(spot.face_centres)[0])
-                      for spot_idx, spot in star_instance.spots.items()}
-
-    for mode_index, mode in star_instance.pulsations.items():
-        freq = (mode.frequency * units.FREQUENCY_UNIT).to(1 / u.d).value
-        exponent = const.FULL_ARC * freq * rot_period * phase - mode.start_phase
-        exponential = np.exp(complex(0, -exponent))
-        temp_pert_cmplx = mode.amplitude * mode.rals[0] * exponential
-        temp_pert += temp_pert_cmplx.real
-        if star_instance.has_spots():
-            for spot_idx, spot in star_instance.spots.items():
-                temp_pert_cmplx = mode.amplitude * mode.rals[1][spot_idx] * exponential
-                temp_pert_spot[spot_idx] += temp_pert_cmplx.real
-    return temp_pert, temp_pert_spot
-
-
-def phase_correction(synchronicity, phase):
+def phase_correction(phase):
     """
     calculate phase correction for mode axis drift
 
-    :param synchronicity: float
-    :param phase: orbital/rotation phase
+    :param phase: rotation phase of the star
     :return:
     """
-    return (synchronicity - 1) * phase * const.FULL_ARC if synchronicity is not np.nan else phase * const.FULL_ARC
+    # return (synchronicity - 1) * phase * const.FULL_ARC if synchronicity is not np.nan else phase * const.FULL_ARC
+    return phase * const.FULL_ARC
+
+
+def incorporate_pulsations_to_mesh(star_container, com_x, phase, time):
+    """
+    adds pulsation perturbation to the mesh
+
+    :param star_container: elisa.base.container.StarContainer;
+    :param com_x: float; centre of mass of the star
+    :param phase: float; rotational phase of the star
+    :param time: float; time elapsed since
+    :return: StarContainer;
+    """
+    points, points_spot = star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
+
+    tilt_phi, tilt_theta = generate_tilt_coordinates(star_container, phase)
+    tilted_points, tilted_points_spot = tilt_mode_coordinates(points, points_spot, tilt_phi, tilt_theta)
+
+    displacement = up.zeros(points.shape)
+    displacement_spots = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in points_spot.items()}
+
+    for mode_index, mode in star_container.pulsations.items():
+        exponent = mode.angular_frequency * time + mode.start_phase
+        exponential = up.exp(complex(0, -exponent))
+        rals = mode.renorm_const * sph_harm(mode.m, mode.l, tilted_points[:, 1], tilted_points[:, 2]) * exponential
+        rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2]) * exponential
+                      for spot_idx, spotp in tilted_points_spot.items()}
+
+        displacement += calculate_mode_displacement(mode, points, rals)
+        for spot_idx, spoints in points_spot.items():
+            displacement_spots[spot_idx] += calculate_mode_displacement(mode, spoints, rals_spots[spot_idx])
+
+    star_container.points = utils.spherical_to_cartesian(points + displacement)
+    star_container.points[:, 0] += com_x
+    for spot_idx, spot in star_container.spots.items():
+        spot.points = utils.spherical_to_cartesian(points_spot[spot_idx] + displacement_spots[spot_idx])
+        spot.points[:, 0] += com_x
+    return star_container
+
+
+def tilt_mode_coordinates(points, spot_points, phi, theta):
+    """
+    function tilts spherical coordinates to desired position described by `phi`, `theta`
+
+    :param points: numpy.array;
+    :param spot_points: dict;
+    :param phi: float; azimuthal coordinate of the new polar axis
+    :param theta: float; latitude of the new polar axis
+    :return: tuple;
+    """
+    if theta != 0 and phi != 0:
+        tilted_phi, tilted_theta = utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
+        ret_points = np.column_stack((points[:, 0], tilted_phi, tilted_theta))
+
+        ret_spot_points = dict()
+        for spot_idx, spoints in spot_points.items():
+            tilted_phi, tilted_theta = utils.rotation_in_spherical(spoints[:, 1], spoints[:, 2], phi, theta)
+            ret_spot_points[spot_idx] = np.column_stack((spoints[:, 0], tilted_phi, tilted_theta))
+        return ret_points, ret_spot_points
+    else:
+        return points, spot_points
+
+
+def generate_tilt_coordinates(star_container, phase):
+    """
+    returns tilt coordinates of pulsation modes
+
+    :param star_container: StarContainer;
+    :param phase: float; rotational orbital phase of the star
+    :return:
+    """
+    phi_corr = phase_correction(phase)
+    # we presume that all modes have the same tilt
+    phi = star_container.pulsations[0].mode_axis_phi + phi_corr
+    theta = star_container.pulsations[0].mode_axis_theta
+    return phi, theta
+
+
+def assign_amplitudes(star_container, normalization_constant=1.0):
+    """
+    assigns amplitude of radial and horizontal motion for given modes
+
+    :param normalization_constant: factor to adjust amplitudes, in cas of Binary system it is semi major axis, in case
+    of single system it should stay 1.0
+    :param star_container: StarContainer;
+    :return:
+    """
+    r_polar = star_container.polar_radius * normalization_constant
+    mult = const.G * star_container.mass / (r_polar)**3
+    for mode_index, mode in star_container.pulsations.items():
+        mode.radial_relative_amplitude = mode.amplitude / (r_polar * mode.angular_frequency)
+        mode.horizontal_relative_amplitude = \
+            np.sqrt(mode.l*(mode.l+1)) * mult / mode.angular_frequency**2
+
+
+def calculate_radial_displacement(relative_amplitude, radii, rals):
+    """
+    calculates radial displacement of surface points
+
+    :param rals: numpy.array;
+    :param relative_amplitude: float; relative radial amplitude of the pulsation mode
+    see: PulsationMode.radial_relative_amplitude
+    :param radii: numpy.array;
+    :return: numpy.array
+    """
+    return relative_amplitude * radii * np.real(rals)
+
+
+def calculate_phi_displacement(radial_amplitude, relative_amplitude, radii, thetas, m, rals):
+    """
+    displacement of azimuthal coordinates
+
+    :param radial_amplitude: float;
+    :param relative_amplitude: float; relative amplitude of horizontal displacement
+    :param radii: numpy.array;
+    :param thetas: numpy.array
+    :param m: int;
+    :param rals: numpy.array;
+    :return: numpy.array;
+    """
+    sin_thetas = np.sin(thetas)
+    sin_test = sin_thetas != 0.0
+    retval = np.zeros(radii.shape)
+    retval[sin_test] = \
+        radial_amplitude * relative_amplitude * radii[sin_test] * m * np.imag(- rals[sin_test]) / sin_thetas[sin_test]
+    return retval
+
+
+def calculate_theta_displacement(radial_amplitude, relative_amplitude, radii, phis, thetas, l, m):
+    """
+    displacement in latitude
+
+    :param radial_amplitude: float;
+    :param relative_amplitude: float; relative amplitude of horizontal displacement
+    :param radii: numpy.array;
+    :param thetas: numpy.array;
+    :param phis: numpy.array;
+    :param l: int;
+    :param m: int;
+    :return: numpy.array;
+    """
+    def alp_derivative(order):
+        """works for m > 0"""
+        derivative = \
+            0.5 * np.sqrt((l + order) * (l - order + 1)) * \
+            np.real(np.exp(1j*phis) * sph_harm(order-1, l, phis, thetas))
+        derivative += 0 if order == l else \
+            0.5 * np.sqrt((l - order) * (l + order + 1)) * \
+            np.real(np.exp(-1j*phis) * sph_harm(order+1, l, phis, thetas))
+        return derivative
+
+    if m > 0:
+        return radial_amplitude * relative_amplitude * radii * alp_derivative(m)
+    elif m == 0:
+        return - radial_amplitude * relative_amplitude * radii * np.real(sph_harm(1, l, phis, thetas))
+    elif m < 0:
+        coeff = np.power(-1, -m) * factorial(l+m) / factorial(l-m)
+        return radial_amplitude * relative_amplitude * radii * coeff * alp_derivative(-m)
+
+
+def calculate_mode_displacement(mode, points, rals):
+    """
+    calculates surface displacement caused by given `mode`
+
+    :param mode: elisa.pulse.mode.Mode;
+    :param points: numpy.array;
+    :param rals: numpy.array;
+    :return:
+    """
+    radial_displacement = calculate_radial_displacement(mode.radial_relative_amplitude, points[:, 0], rals)
+    phi_displacement = calculate_phi_displacement(mode.radial_relative_amplitude, mode.horizontal_relative_amplitude,
+                                                  points[:, 0], points[:, 2],
+                                                  mode.m, rals)
+    theta_displacement = calculate_theta_displacement(mode.radial_relative_amplitude,
+                                                      mode.horizontal_relative_amplitude,
+                                                      points[:, 0], points[:, 1], points[:, 2],
+                                                      mode.l, mode.m)
+    return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
+
+
+def incorporate_temperature_perturbations(star_container, com_x, phase, time):
+    """
+    introduces temperature perturbations to star container
+
+    :param star_container: elisa.base.container.StarContainer
+    :param com_x: float; centre of mass
+    :param phase: float;
+    :param time: float;
+    :return:
+    """
+    centres, spot_centres = star_container.transform_points_to_spherical_coordinates(kind='face_centres', com_x=com_x)
+
+    tilt_phi, tilt_theta = generate_tilt_coordinates(star_container, phase)
+    tilted_centres, tilted_spot_centres = tilt_mode_coordinates(centres, spot_centres, tilt_phi, tilt_theta)
+
+    t_pert = up.zeros(centres.shape[0])
+    t_pert_spots = {spot_idx: up.zeros(spot.shape[0]) for spot_idx, spot in spot_centres.items()}
+
+    for mode_index, mode in star_container.pulsations.items():
+        exponent = mode.angular_frequency * time + mode.start_phase + mode.temperature_perturbation_phase_shift
+        exponential = up.exp(complex(0, -exponent))
+        rals = mode.renorm_const * sph_harm(mode.m, mode.l, tilted_centres[:, 1], tilted_centres[:, 2]) * exponential
+        rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2]) * exponential
+                      for spot_idx, spotp in tilted_spot_centres.items()}
+
+        t_pert += calculate_temperature_perturbation(mode, star_container.temperatures, rals)
+        for spot_idx, t_s in t_pert_spots.items():
+            t_s += calculate_temperature_perturbation(mode, star_container.spots[spot_idx].temperatures,
+                                                      rals_spots[spot_idx])
+
+    star_container.temperatures = star_container.temperatures + t_pert
+    for spot_idx, spot in star_container.spots.items():
+        spot.temperatures = spot.temperatures[spot_idx] + t_pert_spots[spot_idx]
+    return star_container
+
+
+def calculate_temperature_perturbation(mode, temperatures, rals, adiabatic_gradient=None):
+    """
+    calculates temperature perturbation caused by given `mode`
+
+    :param mode: elisa.pulse.mode.Mode;
+    :param temperatures: numpy.array;
+    :param rals: numpy.array;
+    :param adiabatic_gradient: Union[None, float]; if None default value from constants is used
+    :return:
+    """
+    ad_g = const.IDEAL_ADIABATIC_GRADIENT if adiabatic_gradient is None else float(adiabatic_gradient)
+    l = mode.l
+    h, eps = mode.horizontal_relative_amplitude, mode.radial_relative_amplitude
+
+    return ad_g * temperatures * (h * l * (l + 1) - 4 - (1 / h)) * eps * np.real(rals)

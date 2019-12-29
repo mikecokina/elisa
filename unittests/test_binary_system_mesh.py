@@ -7,7 +7,7 @@ from elisa import umpy as up, const, units
 from elisa.base.container import StarContainer
 from elisa.binary_system import model
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.const import BINARY_POSITION_PLACEHOLDER
+from elisa.const import Position
 from elisa.utils import is_empty, find_nearest_dist_3d
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase, prepare_binary_system
@@ -23,7 +23,7 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
         orbital_position_container = OrbitalPositionContainer(
             primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
             secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
             **s.properties_serializer()
         )
         orbital_position_container.build_mesh(components_distance=1.0)
@@ -50,7 +50,7 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
             orbital_position_container = OrbitalPositionContainer(
                 primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
                 secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
-                position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+                position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
                 **s.properties_serializer()
             )
             orbital_position_container.build_mesh(components_distance=components_distance)
@@ -81,7 +81,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         orbital_position_container = OrbitalPositionContainer(
             primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
             secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
             **s.properties_serializer()
         )
         orbital_position_container.build_mesh(components_distance=1.0)
@@ -108,7 +108,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         orbital_position_container = OrbitalPositionContainer(
             primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
             secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
             **s.properties_serializer()
         )
         with self.assertRaises(Exception) as context:
@@ -124,7 +124,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         orbital_position_container = OrbitalPositionContainer(
             primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
             secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
             **s.properties_serializer()
         )
         orbital_position_container.build_mesh(components_distance=1.0)
@@ -140,7 +140,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         orbital_position_container = OrbitalPositionContainer(
             primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
             secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
-            position=BINARY_POSITION_PLACEHOLDER(*(0, 1.0, 0.0, 0.0, 0.0)),
+            position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
             **s.properties_serializer()
         )
         orbital_position_container.build_mesh(components_distance=1.0)

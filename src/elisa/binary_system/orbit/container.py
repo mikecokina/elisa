@@ -1,13 +1,13 @@
 import numpy as np
 
-from elisa import umpy as up, logger
-from elisa.conf import config
-from elisa.utils import is_empty, polar_to_cartesian
 from collections.abc import Sequence
 from matplotlib import pyplot as plt
 
-config.set_up_logging()
-__logger__ = logger.getLogger("orbit-container-module")
+from ...logger import getLogger
+from ... import umpy as up
+from ...utils import is_empty, polar_to_cartesian
+
+logger = getLogger("orbit.container")
 
 
 class OrbitalSupplements(Sequence):
