@@ -31,11 +31,11 @@ v0.1_
     - animations of orbital motions
 
 
-v0.2.dev0_
-----------
-.. v0.2.dev0_: https://github.com/mikecokina/elisa
+v0.2_
+-----
+.. v0.2_: https://github.com/mikecokina/elisa/commits/release/0.2
 
-**Release date:** In progress
+**Release date:** 2019-12-29
 
 **Features**
 
@@ -77,9 +77,9 @@ Future plans
 v0.3
 ----
     - pulsations
+    - single system
 
 v0.4
 ----
     - genetic algorithm
-    - single system
     - extended fitting methods

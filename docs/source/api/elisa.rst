@@ -10,10 +10,12 @@ Subpackages
    elisa.base
    elisa.binary_system
    elisa.conf
+   elisa.graphic
    elisa.observer
    elisa.opt
-   elisa.orbit
    elisa.pulse
+   elisa.schema_registry
+   elisa.single_system
 
 Submodules
 ----------
@@ -30,14 +32,6 @@ elisa.const module
 ------------------
 
 .. automodule:: elisa.const
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-elisa.graphics module
----------------------
-
-.. automodule:: elisa.graphics
    :members:
    :undoc-members:
    :show-inheritance:

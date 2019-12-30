@@ -5,23 +5,19 @@ from elisa.single_system.container import SystemContainer
 from elisa.const import SinglePosition
 from elisa.graphic import graphics
 
-from elisa import (
-    utils,
-    units as eu
-)
+from elisa import units as eu
 from elisa.utils import is_empty
 
 
 class Plot(object):
     """
-    universal plot interface for binary system class, more detailed documentation for each value of descriptor is
-    available in graphics library
+    Universal plot interface for binary system class, more detailed documentation for each value of descriptor is
+    available in graphics library::
 
-                        `orbit` - plots orbit in orbital plane
-                        `equipotential` - plots crossection of surface Hill planes in xz plane
-                        `mesh` - plot surface points
-                        `surface` - plot stellar surfaces
-    :return:
+        `orbit` - plots orbit in orbital plane
+        `equipotential` - plots crossection of surface Hill planes in xz plane
+        `mesh` - plot surface points
+        `surface` - plot stellar surfaces
     """
 
     defpos = SinglePosition(*(0, 0.0, 0.0))
@@ -31,9 +27,9 @@ class Plot(object):
 
     def equipotential(self, axis_unit=eu.solRad):
         """
-        Function for quick 2D plot of equipotential cross-section in xz plane
+        Function for quick 2D plot of equipotential cross-section in xz plane.
+
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
-        :return:
         """
         equipotential_kwargs = dict()
 
@@ -48,14 +44,13 @@ class Plot(object):
 
     def mesh(self, phase=0.0, plot_axis=True, axis_unit=eu.solRad, inclination=None, azimuth=None):
         """
-        Function plots 3D scatter plot of the surface points
+        Function plots 3D scatter plot of the surface points.
 
         :param phase: float;
         :param plot_axis: bool; switch the plot axis on/off
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param inclination: Union[float, astropy.Quantity]; in degree - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
-        :return:
         """
         single_mesh_kwargs = dict()
 
@@ -88,14 +83,13 @@ class Plot(object):
 
     def wireframe(self, phase=0.0, plot_axis=True, axis_unit=eu.solRad, inclination=None, azimuth=None):
         """
-        returns 3D wireframe of the object
+        Returns 3D wireframe of the object.
 
         :param phase: float;
         :param plot_axis: bool; switch the plot axis on/off
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param inclination: Union[float, astropy.Quantity]; in degree - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
-        :return:
         """
         wireframe_kwargs = dict()
 

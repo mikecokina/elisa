@@ -8,6 +8,7 @@ Subpackages
 
    elisa.binary_system.curves
    elisa.binary_system.graphic
+   elisa.binary_system.orbit
    elisa.binary_system.surface
 
 Submodules
@@ -37,14 +38,6 @@ elisa.binary\_system.model module
    :undoc-members:
    :show-inheritance:
 
-elisa.binary\_system.mp module
-------------------------------
-
-.. automodule:: elisa.binary_system.mp
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 elisa.binary\_system.radius module
 ----------------------------------
 
@@ -57,6 +50,14 @@ elisa.binary\_system.system module
 ----------------------------------
 
 .. automodule:: elisa.binary_system.system
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+elisa.binary\_system.t\_layer module
+------------------------------------
+
+.. automodule:: elisa.binary_system.t_layer
    :members:
    :undoc-members:
    :show-inheritance:
