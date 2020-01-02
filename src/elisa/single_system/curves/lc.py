@@ -47,6 +47,8 @@ def compute_light_curve_without_pulsations(single, **kwargs):
         args = (single, initial_system, phases, normal_radiance, ld_cfs, kwargs)
         band_curves = lcmp.compute_non_pulsating_lightcurve(*args)
 
+    return band_curves
+
 
 def compute_light_curve_with_pulsations(self, **kwargs):
     return NotImplementedError('Pulsations not yet fully implemented')

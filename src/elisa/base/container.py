@@ -120,29 +120,50 @@ class PositionContainer(object):
 
         for component in self._components:
             star_container = getattr(self, component)
-            normals = getattr(star_container, "normals")
-            valid_indices = self.darkside_filter(line_of_sight=const.LINE_OF_SIGHT, normals=normals)
+            cosines = getattr(star_container, "los_cosines")
+            valid_indices = self.darkside_filter(cosines=cosines)
             setattr(star_container, "indices", valid_indices)
         return self
 
+    def calculate_face_angles(self, line_of_sight):
+        """
+        calculates angles between normals and line_of_sight vector for all components of the system
+
+        :param line_of_sight: np.array;
+        :return:
+        """
+        for component in self._components:
+            star_container = getattr(self, component)
+            normals = getattr(star_container, "normals")
+            los_cosines = self.return_cosines(normals, line_of_sight=line_of_sight)
+            setattr(star_container, "los_cosines", los_cosines)
+
     @staticmethod
-    def darkside_filter(line_of_sight, normals):
+    def return_cosines(normals, line_of_sight):
+        """
+        returns angles between normals and line_of_sight vector
+
+        :param normals: numpy.array;
+        :param line_of_sight: numpy.array;
+        :return:
+        """
+        if (line_of_sight == np.array([1.0, 0.0, 0.0])).all():
+            return utils.calculate_cos_theta_los_x(normals=normals)
+        else:
+            return utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
+
+    @staticmethod
+    def darkside_filter(cosines):
         """
         Return indices for visible faces defined by given normals.
         Function assumes that `line_of_sight` ([1, 0, 0]) and `normals` are already normalized to one.
 
-        :param line_of_sight: numpy.array;
-        :param normals: numpy.array;
+        :param cosines: numpy.array;
         :return: numpy.array;
         """
         # todo: require to resolve self shadowing in case of W UMa, but probably not here
-        # calculating normals utilizing the fact that normals and line of sight vector [1, 0, 0] are already normalized
-        if (line_of_sight == np.array([1.0, 0.0, 0.0])).all():
-            cosines = utils.calculate_cos_theta_los_x(normals=normals)
-        else:
-            cosines = utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
         # recovering indices of points on near-side (from the point of view of observer)
-        return up.arange(np.shape(normals)[0])[cosines > 0]
+        return up.arange(np.shape(cosines)[0])[cosines > 0]
 
 
 class StarContainer(object):

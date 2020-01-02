@@ -12,6 +12,7 @@ from elisa.conf import config
 from elisa.observer.observer import Observer
 from elisa.binary_system.orbit.container import OrbitalSupplements
 from elisa.binary_system import surface
+from elisa.base import surface as basesurface
 from elisa.base.container import PositionContainer
 
 from elisa.binary_system import (
@@ -79,7 +80,8 @@ class SupportMethodsTestCase(ElisaTestCase):
         normals = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])
         normals = np.array([a / b for a, b in zip(normals, np.linalg.norm(normals, axis=1))])
         los = [1, 0, 0]
-        obtained = PositionContainer.darkside_filter(los, normals)
+        cosines = PositionContainer.return_cosines(normals=normals, line_of_sight=los)
+        obtained = PositionContainer.darkside_filter(cosines)
         expected = np.array([0, 1], dtype=int)
         self.assertTrue(np.all(obtained == expected))
 
@@ -114,7 +116,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         visible = [0, 2]
         coverage = [10, 20]
 
-        obtained = surface.coverage.surface_area_coverage(size, visible, coverage)
+        obtained = basesurface.coverage.surface_area_coverage(size, visible, coverage)
         expected = np.array([10., 0., 20., 0., 0.])
         self.assertTrue(np.all(obtained == expected))
 
@@ -125,7 +127,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         coverage = [10, 20]
         partial_coverage = [30]
 
-        obtained = surface.coverage.surface_area_coverage(size, visible, coverage, partial, partial_coverage)
+        obtained = basesurface.coverage.surface_area_coverage(size, visible, coverage, partial, partial_coverage)
         expected = np.array([10., 30., 20., 0., 0.])
         self.assertTrue(np.all(obtained == expected))
 
@@ -269,6 +271,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         from_this = dict(binary_system=bs, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
         system = OrbitalPositionContainer.from_binary_system(**from_this)
         system.build(components_distance=1.0)
+        system.calculate_face_angles(line_of_sight=const.LINE_OF_SIGHT)
         system.apply_darkside_filter()
         self.assertTrue((not is_empty(system.primary.indices)) and (not is_empty(system.secondary.indices)))
 

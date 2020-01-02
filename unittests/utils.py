@@ -111,12 +111,14 @@ def prepare_binary_system(params, spots_primary=None, spots_secondary=None):
     primary = Star(mass=params["primary_mass"], surface_potential=params["primary_surface_potential"],
                    synchronicity=params["primary_synchronicity"],
                    t_eff=params["primary_t_eff"], gravity_darkening=params["primary_gravity_darkening"],
-                   albedo=params['primary_albedo'], metallicity=0.0, spots=spots_primary)
+                   albedo=params['primary_albedo'],
+                   metallicity=0.0, spots=spots_primary)
 
     secondary = Star(mass=params["secondary_mass"], surface_potential=params["secondary_surface_potential"],
                      synchronicity=params["secondary_synchronicity"],
                      t_eff=params["secondary_t_eff"], gravity_darkening=params["secondary_gravity_darkening"],
-                     albedo=params['secondary_albedo'], metallicity=0.0, spots=spots_secondary)
+                     albedo=params['secondary_albedo'],
+                     metallicity=0.0, spots=spots_secondary)
 
     return BinarySystem(primary=primary,
                         secondary=secondary,
@@ -146,7 +148,9 @@ def prepare_orbital_position_container(system):
 def prepare_single_system(params, spots=None, pulsations=None):
     star = Star(mass=params['mass'], t_eff=params['t_eff'],
                 gravity_darkening=params['gravity_darkening'],
-                polar_log_g=params['polar_log_g'], spots=spots, pulsations=pulsations)
+                polar_log_g=params['polar_log_g'],
+                metallicity=0.0,
+                spots=spots, pulsations=pulsations)
 
     return SingleSystem(star=star,
                         gamma=params["gamma"],
@@ -220,7 +224,7 @@ BINARY_SYSTEM_PARAMS = {
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 0.6, "secondary_albedo": 0.6
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
     },  # close tidally deformed components with asynchronous rotation on eccentric orbit
 
     "over-contact": {
@@ -233,7 +237,7 @@ BINARY_SYSTEM_PARAMS = {
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 0.6, "secondary_albedo": 0.6
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
     },  # over-contact system
 
     "semi-detached": {
@@ -246,7 +250,7 @@ BINARY_SYSTEM_PARAMS = {
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 0.6, "secondary_albedo": 0.6
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
     }
 }
 
@@ -258,7 +262,7 @@ SINGLE_SYSTEM_PARAMS = {
         "polar_log_g": 4.1,
         "gamma": 0.0,
         "inclination": 90.0 * units.deg,
-        "rotation_period": 30*units.d
+        "rotation_period": 30*units.d,
     },
     "squashed":{
         "mass": 1.0,
@@ -267,7 +271,7 @@ SINGLE_SYSTEM_PARAMS = {
         "polar_log_g": 4.1,
         "gamma": 0.0,
         "inclination": 90.0 * units.deg,
-        "rotation_period": 0.3818*units.d
+        "rotation_period": 0.3818*units.d,
     },
 }
 

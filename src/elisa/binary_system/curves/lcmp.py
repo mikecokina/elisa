@@ -40,11 +40,11 @@ def compute_circular_synchronous_lightcurve(*args):
                                                              in_eclipse=in_eclipse[pos_idx])
 
         # calculating cosines between face normals and line of sight
-        cosines, visibility_test = dict(), dict()
+        cosines, visibility_indices = dict(), dict()
         for component, star in stars.items():
-            cosines[component] = utils.calculate_cos_theta_los_x(star.normals)
-            visibility_test[component] = cosines[component] > 0
-            cosines[component] = cosines[component][visibility_test[component]]
+            cosines[component] = star.los_cosines
+            visibility_indices[component] = star.indices
+            cosines[component] = cosines[component][visibility_indices[component]]
 
         # integrating resulting flux
         for band in kwargs["passband"].keys():
@@ -53,13 +53,13 @@ def compute_circular_synchronous_lightcurve(*args):
             for component_idx, component in enumerate(config.BINARY_COUNTERPARTS.keys()):
                 ld_cors[component] = \
                     ld.limb_darkening_factor(
-                        coefficients=ld_cfs[component][band][LD_LAW_CFS_COLUMNS].values[visibility_test[component]],
+                        coefficients=ld_cfs[component][band][LD_LAW_CFS_COLUMNS].values[visibility_indices[component]],
                         limb_darkening_law=config.LIMB_DARKENING_LAW,
                         cos_theta=cosines[component])
 
-                flux[component_idx] = np.sum(normal_radiance[component][band][visibility_test[component]] *
+                flux[component_idx] = np.sum(normal_radiance[component][band][visibility_indices[component]] *
                                              cosines[component] *
-                                             coverage[component][visibility_test[component]] *
+                                             coverage[component][visibility_indices[component]] *
                                              ld_cors[component])
             band_curves[band][pos_idx] = np.sum(flux)
 

@@ -161,6 +161,7 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
     system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
     system.flatt_it()
     system.apply_rotation()
+    system.calculate_face_angles(line_of_sight=const.LINE_OF_SIGHT)
     system.apply_darkside_filter()
     return system
 

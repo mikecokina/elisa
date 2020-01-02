@@ -5,6 +5,9 @@ from elisa.single_system import (
     utils as ssutils,
     surface
 )
+from elisa import (
+    ld
+)
 
 LD_LAW_CFS_COLUMNS = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
@@ -19,9 +22,23 @@ def compute_non_pulsating_lightcurve(*args):
 
     for pos_idx, position in enumerate(rotational_motion):
         on_pos = ssutils.move_sys_onpos(initial_system, position)
-        star_container = on_pos.star
-        # dict of components
-        stars = {'star': getattr(on_pos, 'star')}
+        star = on_pos.star
 
         # area of visible faces
         coverage = surface.coverage.compute_surface_coverage(on_pos)
+
+        cosines = star.los_cosines
+        visibility_indices = star.indices
+        cosines = cosines[visibility_indices]
+
+        # integrating resulting flux
+        for band in kwargs["passband"].keys():
+            ld_cors = ld.limb_darkening_factor(
+                coefficients=ld_cfs['star'][band][LD_LAW_CFS_COLUMNS].values[visibility_indices],
+                limb_darkening_law=config.LIMB_DARKENING_LAW,
+                cos_theta=cosines)
+
+            band_curves[band][pos_idx] = np.sum(normal_radiance['star'][band][visibility_indices] * cosines *
+                                                coverage['star'][visibility_indices] * ld_cors)
+
+    return band_curves

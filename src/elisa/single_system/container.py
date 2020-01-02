@@ -32,6 +32,10 @@ class SystemContainer(PositionContainer):
         # calculating a time that elapsed since t0
         self.time = 86400 * self.rotation_period * self.position.phase
 
+    def set_on_position_params(self, position):
+        setattr(self, "position", position)
+        return self
+
     @classmethod
     def from_single_system(cls, single_system, position):
         star = StarContainer.from_star_instance(single_system.star)
