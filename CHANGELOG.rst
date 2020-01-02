@@ -74,10 +74,23 @@ v0.2_
 Future plans
 ============
 
+**Release date:** ? - current (hopefully somewhat stable) version available in dev branch
+
 v0.3
 ----
+**Implemented features**
+
+* **single system**
+    - light curve calculation of single stars with spots (without pulsations)
+
+**Features in development**
+
     - pulsations
-    - single system
+
+**Fixes**
+
+- unifying extremely similar functions used both in single/binary system in order to remove code duplicity
+- calculating directional cosines and face visibility in binary system components only once per given orbital position
 
 v0.4
 ----
