@@ -46,6 +46,7 @@ def build_pulsations_on_mesh(system_container):
             pulsations.incorporate_pulsations_to_mesh(system_container.star, com_x=0.0,
                                                       phase=system_container.position.phase,
                                                       time=system_container.time)
+    return system_container
 
 
 def mesh(system_container, symmetry_output=False):

@@ -58,7 +58,7 @@ class OrbitalPositionContainer(PositionContainer):
     def has_pulsations(self):
         return self.primary.has_pulsations() or self.secondary.has_pulsations()
 
-    def build(self, components_distance=None, component="all", phase=None, **kwargs):
+    def build(self, components_distance=None, component="all", **kwargs):
         """
         Main method to build binary star system from parameters given on init of BinaryStar.
 
@@ -79,7 +79,7 @@ class OrbitalPositionContainer(PositionContainer):
 
         components_distance = self._components_distance(components_distance)
         self.build_mesh(components_distance, component)
-        self.build_from_points(components_distance, component, phase=phase)
+        self.build_from_points(components_distance, component)
         return self
 
     def build_mesh(self, components_distance=None, component="all"):
@@ -104,21 +104,19 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return gravity.build_surface_gravity(self, components_distance, component)
 
-    def build_temperature_distribution(self, components_distance=None, component="all", do_pulsations=False,
-                                       phase=None):
+    def build_temperature_distribution(self, components_distance=None, component="all", do_pulsations=False,):
         components_distance = self._components_distance(components_distance)
-        return temperature.build_temperature_distribution(self, components_distance, component, phase)
+        return temperature.build_temperature_distribution(self, components_distance, component)
 
     def build_temperature_perturbations(self, components_distance, component):
-        return faces.build_temperature_perturbations(self, components_distance, component)
+        return temperature.build_temperature_perturbations(self, components_distance, component)
 
-    def build_from_points(self, components_distance=None, component="all", phase=None):
+    def build_from_points(self, components_distance=None, component="all"):
         """
         Build binary system from present surface points.
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
-        :param phase: float; phase to build system on
         :return: self;
         """
         components_distance = self._components_distance(components_distance)
@@ -127,7 +125,7 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_surface_areas(component)
         self.build_faces_orientation(components_distance, component)
         self.build_surface_gravity(components_distance, component)
-        self.build_temperature_distribution(components_distance, component, phase=phase)
+        self.build_temperature_distribution(components_distance, component)
         self.build_temperature_perturbations(components_distance, component)
         return self
 

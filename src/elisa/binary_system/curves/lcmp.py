@@ -126,8 +126,7 @@ def compute_circular_spotty_asynchronous_lightcurve(*args):
         # build the spots points
         surface.mesh.add_spots_to_mesh(initial_system, orbital_position.distance, component=require_build)
         # build the rest of the surface based on preset surface points
-        initial_system.build_from_points(components_distance=orbital_position.distance,
-                                         phase=orbital_position.phase, component=require_build)
+        initial_system.build_from_points(components_distance=orbital_position.distance, component=require_build)
 
         on_pos = bsutils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
 

@@ -89,8 +89,11 @@ class SystemContainer(PositionContainer):
     def build_surface_gravity(self):
         return gravity.build_surface_gravity(self)
 
-    def build_temperature_distribution(self, phase=None):
-        return temperature.build_temperature_distribution(self, phase)
+    def build_temperature_distribution(self):
+        return temperature.build_temperature_distribution(self)
+
+    def build_temperature_perturbations(self):
+        return temperature.build_temperature_perturbations(self)
 
     def build_from_points(self, phase=None):
         """
@@ -100,11 +103,12 @@ class SystemContainer(PositionContainer):
         :return:
         """
         self.build_faces()
-        self.build_surface_areas()
         self.build_pulsations_on_mesh()
+        self.build_surface_areas()
         self.build_faces_orientation()
         self.build_surface_gravity()
-        self.build_temperature_distribution(phase)
+        self.build_temperature_distribution()
+        self.build_temperature_perturbations()
         return self
 
     def _phase(self, phase):

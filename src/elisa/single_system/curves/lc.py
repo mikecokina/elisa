@@ -50,5 +50,11 @@ def compute_light_curve_without_pulsations(single, **kwargs):
     return band_curves
 
 
-def compute_light_curve_with_pulsations(self, **kwargs):
-    return NotImplementedError('Pulsations not yet fully implemented')
+def compute_light_curve_with_pulsations(single, **kwargs):
+    from_this = dict(single_system=single, position=const.SinglePosition(0, 0.0, 0.0))
+    initial_system = SystemContainer.from_single_system(**from_this)
+    initial_system.build_mesh()
+
+    phases = kwargs.pop("phases")
+
+    # return NotImplementedError('Pulsations not yet fully implemented')
