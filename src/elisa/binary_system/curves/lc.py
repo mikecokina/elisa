@@ -15,6 +15,7 @@ from ...binary_system import radius as bsradius
 from ...binary_system.orbit.container import OrbitalSupplements
 from ...binary_system.surface.coverage import calculate_coverage_with_cosines
 from ...binary_system.curves import lcmp, shared
+from elisa.observer.mp import manage_observations
 
 from ... import (
     umpy as up,
@@ -260,23 +261,11 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
     normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
-    if config.NUMBER_OF_PROCESSES > 1:
-        logger.info("starting multiprocessor workers")
-        batch_size = int(np.ceil(len(unique_phase_interval) / config.NUMBER_OF_PROCESSES))
-        phase_batches = utils.split_to_batches(batch_size=batch_size, array=unique_phase_interval)
-        func = lcmp.compute_circular_synchronous_lightcurve
-        pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-
-        result = [pool.apply_async(func, (binary, initial_system, batch, normal_radiance, ld_cfs, kwargs))
-                  for batch in phase_batches]
-        pool.close()
-        pool.join()
-        # this will return output in same order as was given on apply_async init
-        result = [r.get() for r in result]
-        band_curves = bsutils.renormalize_async_result(result)
-    else:
-        args = (binary, initial_system, unique_phase_interval, normal_radiance, ld_cfs, kwargs)
-        band_curves = lcmp.compute_circular_synchronous_lightcurve(*args)
+    fn_args = (binary, initial_system, normal_radiance, ld_cfs)
+    band_curves = manage_observations(fn=lcmp.compute_circular_synchronous_lightcurve,
+                                      fn_args=fn_args,
+                                      position=unique_phase_interval,
+                                      **kwargs)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
     return band_curves
@@ -518,23 +507,11 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
         setattr(star, "base_symmetry_points_number", _c)
         setattr(star, "inverse_point_symmetry_matrix", _d)
 
-    if config.NUMBER_OF_PROCESSES > 1:
-        logger.info("starting multiprocessor workers")
-        batch_size = int(np.ceil(len(orbital_motion) / config.NUMBER_OF_PROCESSES))
-        phase_batches = utils.split_to_batches(batch_size=batch_size, array=orbital_motion)
-        func = lcmp.compute_circular_spotty_asynchronous_lightcurve
-        pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-
-        result = [pool.apply_async(func, (binary, initial_system, batch, points, ecl_boundaries, kwargs))
-                  for batch in phase_batches]
-        pool.close()
-        pool.join()
-        # this will return output in same order as was given on apply_async init
-        result = [r.get() for r in result]
-        band_curves = bsutils.renormalize_async_result(result)
-    else:
-        args = (binary, initial_system, orbital_motion, points, ecl_boundaries, kwargs)
-        band_curves = lcmp.compute_circular_spotty_asynchronous_lightcurve(*args)
+    fn_args = binary, initial_system, points, ecl_boundaries
+    band_curves = manage_observations(fn=lcmp.compute_circular_spotty_asynchronous_lightcurve,
+                                      fn_args=fn_args,
+                                      position=orbital_motion,
+                                      **kwargs)
 
     return band_curves
 

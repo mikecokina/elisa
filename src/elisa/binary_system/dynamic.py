@@ -158,8 +158,9 @@ def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, res
     elif utils.is_empty(rel_d) and resolve == "spot":
         # if `rel_d` is empty and resolve is equal to `spot` it means given component has no spots
         # and does require build only on first position
-        # fixme: do it better, this is really ugly way
-        return np.array([True] + [False] * (size - 1), dtype=np.bool)
+        arr = up.zeros(size, dtype=np.bool)
+        arr[0] = True
+        return arr
 
     require_new_geo = np.ones(size, dtype=np.bool)
 
@@ -189,7 +190,6 @@ def phase_crv_symmetry(self, phase):
     phase = phase.copy()
     if (not self.has_pulsations()) & (not self.has_spots()):
         symmetrical_counterpart = phase > 0.5
-        # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
         phase[symmetrical_counterpart] = np.round(1.0 - phase[symmetrical_counterpart], 9)
         res_phases, reverse_idx = np.unique(phase, return_inverse=True)
         return res_phases, reverse_idx

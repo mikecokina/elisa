@@ -4,13 +4,12 @@ from elisa import (
     const,
     utils
 )
-from copy import copy
 from elisa.logger import getLogger
 from elisa.conf import config
 from elisa.single_system.container import SystemContainer
 from elisa.single_system.curves import shared, lcmp
 from elisa.single_system import utils
-# from elisa.single_system
+from elisa.observer.mp import manage_observations
 
 
 logger = getLogger('single_system.curves.lc')
@@ -36,16 +35,11 @@ def compute_light_curve_without_pulsations(single, **kwargs):
     phases = kwargs.pop("phases")
     normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
-    if (config.NUMBER_OF_PROCESSES > 1) and (len(phases) >= config.NUMBER_OF_PROCESSES):
-        logger.info("starting multiprocessor workers")
-        batch_size = int(np.ceil(len(phases) / config.NUMBER_OF_PROCESSES))
-        phase_batches = utils.split_to_batches(batch_size=batch_size, array=phases)
-
-        raise NotImplementedError('Multiprocessing in non-pulsating case is not not implemented')
-
-    else:
-        args = (single, initial_system, phases, normal_radiance, ld_cfs, kwargs)
-        band_curves = lcmp.compute_non_pulsating_lightcurve(*args)
+    fn_args = (single, initial_system, normal_radiance, ld_cfs)
+    band_curves = manage_observations(fn=lcmp. compute_non_pulsating_lightcurve,
+                                      fn_args=fn_args,
+                                      position=phases,
+                                      **kwargs)
 
     return band_curves
 

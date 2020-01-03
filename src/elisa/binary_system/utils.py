@@ -113,30 +113,6 @@ def component_to_list(component):
     return component
 
 
-def renormalize_async_result(result):
-    """
-    Renormalize multiprocessing output to native form.
-    Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
-    computaion require dict in form like::
-
-        [{'passband': [all fluxes]}]
-
-    instead::
-
-        [[{'passband': [fluxes in batch]}], [{'passband': [fluxes in batch]}], ...]
-
-    :param result: List;
-    :return: Dict[str; numpy.array]
-    """
-    # todo: come with something more sophisticated
-    placeholder = {key: np.array([]) for key in result[-1]}
-    for record in result:
-        for passband in placeholder:
-            placeholder[passband] = record[passband] if is_empty(placeholder[passband]) else np.hstack(
-                (placeholder[passband], record[passband]))
-    return placeholder
-
-
 def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_potential=None, on_copy=True):
     """
     Prepares a postion container for given orbital position.

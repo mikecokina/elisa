@@ -321,7 +321,7 @@ class BinarySystem(System):
 
     def is_eccentric(self):
         """
-        Resolve whether system is eccentri.
+        Resolve whether system is eccentric.
 
         :return: bool;
         """

@@ -234,7 +234,7 @@ class Observer(object):
             pool.join()
             # this will return output in same order as was given on apply_async init
             result = [r.get() for r in result]
-            curves = bsutils.renormalize_async_result(result)
+            curves = utils.renormalize_async_result(result)
         else:
             curves = self._system.compute_lightcurve(**lc_kwargs)
 

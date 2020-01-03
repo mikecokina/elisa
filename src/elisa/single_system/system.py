@@ -129,6 +129,15 @@ class SingleSystem(System):
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
         self.orbit = orbit.Orbit(**orbit_kwargs)
 
+    @staticmethod
+    def is_eccentric():
+        """
+        Resolve whether system is eccentric.
+
+        :return: bool;
+        """
+        return False
+
     def setup_radii(self):
         """
         auxiliary function for calculation of important radii
