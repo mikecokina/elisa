@@ -89,9 +89,6 @@ v0.3
 
 **Fixes**
 
-- unifying extremely similar functions used both in single/binary system in order to remove code duplicity
-- calculating directional cosines and face visibility in binary system components only once per given orbital position
-
 v0.4
 ----
     - genetic algorithm
