@@ -1,14 +1,11 @@
 import numpy as np
 
 from elisa import (
-    const,
-    utils
+    const
 )
 from elisa.logger import getLogger
-from elisa.conf import config
 from elisa.single_system.container import SystemContainer
 from elisa.single_system.curves import shared, lcmp
-from elisa.single_system import utils
 from elisa.observer.mp import manage_observations
 
 
@@ -36,7 +33,7 @@ def compute_light_curve_without_pulsations(single, **kwargs):
     normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
     fn_args = (single, initial_system, normal_radiance, ld_cfs)
-    band_curves = manage_observations(fn=lcmp. compute_non_pulsating_lightcurve,
+    band_curves = manage_observations(fn=lcmp.compute_non_pulsating_lightcurve,
                                       fn_args=fn_args,
                                       position=phases,
                                       **kwargs)
@@ -51,4 +48,10 @@ def compute_light_curve_with_pulsations(single, **kwargs):
 
     phases = kwargs.pop("phases")
 
-    # return NotImplementedError('Pulsations not yet fully implemented')
+    fn_args = single, initial_system
+    band_curves = manage_observations(fn=lcmp.compute_pulsating_light_curve,
+                                      fn_args=fn_args,
+                                      position=phases,
+                                      **kwargs)
+
+    return band_curves

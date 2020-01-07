@@ -18,13 +18,10 @@ def prep_surface_params(system, **kwargs):
     :return:
     """
 
-    if not system.has_pulsations():
-        # compute normal radiance for each face and each component
-        normal_radiance = get_normal_radiance(system, **kwargs)
-        # obtain limb darkening factor for each face
-        ld_cfs = get_limbdarkening_cfs(system, **kwargs)
-    else:
-        raise NotImplemented("Pulsations are not fully implemented")
+    # compute normal radiance for each face and each component
+    normal_radiance = get_normal_radiance(system, **kwargs)
+    # obtain limb darkening factor for each face
+    ld_cfs = get_limbdarkening_cfs(system, **kwargs)
     return normal_radiance, ld_cfs
 
 
@@ -41,17 +38,34 @@ def get_normal_radiance(system, **kwargs):
         * ** atlas ** * - str
     :return: Dict[String, numpy.array]
     """
-    star_container = system.star
-    return {
+    star = system.star
+    symmetry_test = not system.has_spots() and not system.has_pulsations()
+    # symmetry_test = False
+
+    # utilizing surface symmetry in case of a clear surface
+    if symmetry_test:
+        temperatures = star.temperatures[:star.base_symmetry_faces_number]
+        log_g = star.log_g[:star.base_symmetry_faces_number]
+    else:
+        temperatures = star.temperatures
+        log_g = star.log_g
+
+    retval = {
         'star': atm.NaiveInterpolatedAtm.radiance(
                     **dict(
-                        temperature=star_container.temperatures,
-                        log_g=star_container.log_g,
-                        metallicity=star_container.metallicity,
+                        temperature=temperatures,
+                        log_g=log_g,
+                        metallicity=star.metallicity,
                         **kwargs
                     )
                 )
     }
+
+    if symmetry_test:
+        retval['star'] = {filter: vals[star.face_symmetry_vector] for
+                          filter, vals in retval['star'].items()}
+
+    return retval
 
 
 def get_limbdarkening_cfs(system, **kwargs):

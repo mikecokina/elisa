@@ -30,7 +30,7 @@ def manage_observations(fn, fn_args, position, **kwargs):
     :return: dict; calculated LCs in different passbands
     """
     args = fn_args + (kwargs, )
-    if config.NUMBER_OF_PROCESSES > 1:
+    if len(position) >= config.NUMBER_OF_PROCESSES > 1:
         logger.info("starting multiprocessor workers")
         batch_size = int(up.ceil(len(position) / config.NUMBER_OF_PROCESSES))
         phase_batches = utils.split_to_batches(batch_size=batch_size, array=position)

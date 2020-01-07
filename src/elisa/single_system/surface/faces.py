@@ -6,6 +6,10 @@ from elisa.base.surface import faces as bfaces
 from elisa.pulse import pulsations
 from elisa.logger import getLogger
 
+from elisa.base.surface.faces import (
+    set_all_surface_centres,
+)
+
 logger = getLogger("single_system.surface.faces")
 
 
@@ -117,12 +121,10 @@ def compute_all_surface_areas(system_container):
 def build_faces_orientation(system_container):
     com_x = 0.0
 
-    star_container = system_container.star
-    bfaces.set_all_surface_centres(star_container)
-    set_all_normals(star_container, com=com_x)
+    star = system_container.star
+    set_all_surface_centres(star)
+    set_all_normals(star, com=com_x)
 
-    if star_container.has_pulsations():
-        pulsations.set_ralp(star_container, com_x=com_x, phase=system_container.position.phase)
     return system_container
 
 
