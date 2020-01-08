@@ -81,7 +81,7 @@ v0.3
 **Implemented features**
 
 * **single system**
-    - light curve calculation of single stars with spots (without pulsations)
+    - light curve calculation of single stars with spots with and without pulsations
 
 **Features in development**
 
