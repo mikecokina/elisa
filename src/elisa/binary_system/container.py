@@ -33,7 +33,7 @@ class OrbitalPositionContainer(PositionContainer):
             setattr(self, key, val)
 
         # calculating a time that elapsed since t0
-        self.time = 86400 * self.period * self.position.phase
+        self.time = self.set_time()
 
     def set_on_position_params(self, position, primary_potential=None, secondary_potential=None):
         setattr(self, "position", position)
@@ -42,6 +42,9 @@ class OrbitalPositionContainer(PositionContainer):
         if not utils.is_empty(secondary_potential):
             setattr(self.secondary, "surface_potential", secondary_potential)
         return self
+
+    def set_time(self):
+        return 86400 * self.period * self.position.phase
 
     @classmethod
     def from_binary_system(cls, binary_system, position):
@@ -71,7 +74,6 @@ class OrbitalPositionContainer(PositionContainer):
             - build_surface_gravity
             - build_temperature_distribution
 
-        :param phase: float; phase to build system on
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
         :return: self;

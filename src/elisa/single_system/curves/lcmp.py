@@ -58,7 +58,7 @@ def compute_non_pulsating_lightcurve(*args):
 
 
 def compute_pulsating_light_curve(*args):
-    single, initial_system, phase_batch, kwargs = args
+    single, system_container, phase_batch, kwargs = args
 
     position_method = kwargs.pop("position_method")
 
@@ -66,8 +66,11 @@ def compute_pulsating_light_curve(*args):
     band_curves = {key: np.zeros(phase_batch.shape) for key in kwargs["passband"].keys()}
 
     for pos_idx, position in enumerate(rotational_motion):
+        initial_system = system_container.copy()
         initial_system.set_on_position_params(position=position)
+        initial_system.time = initial_system.set_time()
         initial_system.build_from_points()
+
         on_pos = ssutils.move_sys_onpos(initial_system, position)
         normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 

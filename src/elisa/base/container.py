@@ -46,6 +46,7 @@ class PositionContainer(object):
         self._components = list()
         self.position = position
         self.inclination = np.nan
+        self.period = np.nan
 
     @abstractmethod
     def build(self, *args, **kwargs):

@@ -30,11 +30,14 @@ class SystemContainer(PositionContainer):
             setattr(self, key, val)
 
         # calculating a time that elapsed since t0
-        self.time = 86400 * self.rotation_period * self.position.phase
+        self.time = self.set_time()
 
     def set_on_position_params(self, position):
         setattr(self, "position", position)
         return self
+
+    def set_time(self):
+        return 86400 * self.rotation_period * self.position.phase
 
     @classmethod
     def from_single_system(cls, single_system, position):
@@ -67,6 +70,7 @@ class SystemContainer(PositionContainer):
         :return: self;
         """
         self.build_mesh()
+        self.build_faces()
         self.build_from_points()
         return self
 
@@ -100,7 +104,6 @@ class SystemContainer(PositionContainer):
 
         :return:
         """
-        self.build_faces()
         self.build_pulsations_on_mesh()
         self.build_surface_areas()
         self.build_faces_orientation()

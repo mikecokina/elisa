@@ -37,7 +37,6 @@ def compute_light_curve_without_pulsations(single, **kwargs):
                                       fn_args=fn_args,
                                       position=phases,
                                       **kwargs)
-
     return band_curves
 
 
@@ -45,6 +44,7 @@ def compute_light_curve_with_pulsations(single, **kwargs):
     from_this = dict(single_system=single, position=const.SinglePosition(0, 0.0, 0.0))
     initial_system = SystemContainer.from_single_system(**from_this)
     initial_system.build_mesh()
+    initial_system.build_faces()
 
     phases = kwargs.pop("phases")
 
