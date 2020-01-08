@@ -106,6 +106,7 @@ def resolve_spots_geometry_update(spots_longitudes, max_allowed_difference=None)
     Evaluate where on orbital position is necessary to fully update geometry.
     Evaluation depends on difference of spots longitudes between upcomming orbital positions.
     """
+    # TODO: here implement the case with pulsations where geometry will always be recalculated
     slp, sls = spots_longitudes["primary"], spots_longitudes["secondary"]
 
     reference_long_p = list(utils.nested_dict_values(slp))[0] if not utils.is_empty(slp) else np.array([])
