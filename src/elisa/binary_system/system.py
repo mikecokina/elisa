@@ -824,14 +824,21 @@ class BinarySystem(System):
         assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
 
         if is_circular:
-            if assynchronous_spotty_test and not self.has_pulsations():
-                return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
-            else:
+            if not assynchronous_spotty_test and not self.has_pulsations():
+                logger.debug('Calculating lightcurve for circular binary system without pulsations and without '
+                             'assynchronous spotty components.')
                 return self._compute_circular_synchronous_lightcurve(**kwargs)
+            else:
+                logger.debug('Calculating lightcurve for circular binary system with pulsations or with assynchronous '
+                             'spotty components.')
+                return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
         elif is_eccentric:
             if assynchronous_spotty_test:
+                logger.debug('Calculating lightcurve for eccentric binary system with assynchronous spotty components.')
                 return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
             else:
+                logger.debug('Calculating lightcurve for eccentric binary system without assynchronous spotty '
+                             'components.')
                 return self._compute_eccentric_lightcurve(**kwargs)
 
         raise NotImplementedError("Orbit type not implemented or invalid")

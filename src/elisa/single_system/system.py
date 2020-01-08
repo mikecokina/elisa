@@ -286,8 +286,10 @@ class SingleSystem(System):
         :return: Dict
         """
         if self.star.has_pulsations():
+            logger.debug('Calculating light curve for a non pulsating single star system.')
             return self._compute_light_curve_with_pulsations(**kwargs)
         else:
+            logger.debug('Calculating light curve for star system with pulsations.')
             return self._compute_light_curve_without_pulsations(**kwargs)
 
     def _compute_light_curve_with_pulsations(self, **kwargs):
