@@ -497,8 +497,15 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
-    initial_system.build_mesh()
-    points = {component: getattr(initial_system, component).points for component in config.BINARY_COUNTERPARTS}
+    points = dict()
+    for component in config.BINARY_COUNTERPARTS:
+        star = getattr(initial_system, component)
+        _a, _b, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
+        points[component] = _a
+        setattr(star, "points", copy(_a))
+        setattr(star, "point_symmetry_vector", _b)
+        setattr(star, "base_symmetry_points_number", _c)
+        setattr(star, "inverse_point_symmetry_matrix", _d)
 
     fn_args = binary, initial_system, points, ecl_boundaries
     band_curves = manage_observations(fn=lcmp.compute_circular_spotty_asynchronous_lightcurve,
