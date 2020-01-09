@@ -95,13 +95,18 @@ def compute_circular_spotty_asynchronous_lightcurve(*args):
     phases = np.array([val.phase for val in motion_batch])
     in_eclipse = dynamic.in_eclipse_test([position.azimuth for position in motion_batch], ecl_boundaries)
     spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all")
-    primary_reducer, secondary_reducer = dynamic.resolve_spots_geometry_update(spots_longitudes)
+    pulsation_tests = {'primary': binary.primary.has_pulsations(),
+                       'secondary': binary.secondary.has_pulsations()}
+    primary_reducer, secondary_reducer = \
+        dynamic.resolve_spots_geometry_update(spots_longitudes, len(phases), pulsation_tests)
     combined_reducer = primary_reducer & secondary_reducer
 
     normal_radiance, ld_cfs = dict(), dict()
     # calculating lc with spots gradually shifting their positions in each phase
     band_curves = {key: np.empty(len(motion_batch)) for key in kwargs["passband"]}
     for pos_idx, orbital_position in enumerate(motion_batch):
+        initial_system.set_on_position_params(position=orbital_position)
+        initial_system.time = initial_system.set_time()
         # setup component necessary to build/rebuild
 
         require_build = "all" if combined_reducer[pos_idx] \

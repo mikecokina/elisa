@@ -252,7 +252,8 @@ class SupportMethodsTestCase(ElisaTestCase):
             'secondary': {}
         }
 
-        obtained = np.array(dynamic.resolve_spots_geometry_update(spots_longitudes), dtype=bool)
+        pulsation_tests = {'primary': False, 'secondary': False}
+        obtained = np.array(dynamic.resolve_spots_geometry_update(spots_longitudes, 6, pulsation_tests), dtype=bool)
         expected = np.array([[True, False, True, True, False, False], [True] + [False] * 5], dtype=bool)
         assert_array_equal(expected, obtained)
 

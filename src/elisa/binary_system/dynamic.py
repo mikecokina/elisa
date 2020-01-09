@@ -101,41 +101,34 @@ def resolve_object_geometry_update(has_spots, size, rel_d, max_allowed_differenc
                                     max_allowed_difference=max_allowed_difference or config.MAX_RELATIVE_D_R_POINT)
 
 
-def resolve_spots_geometry_update(spots_longitudes, max_allowed_difference=None):
+def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
+                                  max_allowed_difference=None):
     """
     Evaluate where on orbital position is necessary to fully update geometry.
     Evaluation depends on difference of spots longitudes between upcomming orbital positions.
     """
-    # TODO: here implement the case with pulsations where geometry will always be recalculated
-    slp, sls = spots_longitudes["primary"], spots_longitudes["secondary"]
+    reducer = {}
+    for component in config.BINARY_COUNTERPARTS.keys():
+        if pulsations_tests[component]:
+            # in case of pulsations, the geometry is recalculated always
+            reducer[component] = np.ones(size, dtype=np.bool)
+            continue
 
-    reference_long_p = list(utils.nested_dict_values(slp))[0] if not utils.is_empty(slp) else np.array([])
-    reference_long_s = list(utils.nested_dict_values(sls))[0] if not utils.is_empty(sls) else np.array([])
+        # longitude of all spots stored in array (longitudes of the first spot are enough)
+        longitude_array = np.array(list(utils.nested_dict_values(spots_longitudes[component]))[0]) if \
+            not utils.is_empty(spots_longitudes[component]) else np.array([])
 
-    # compute longitudes differences, slice according to shift (zero value is difference agains last)
-    # and setup shape compatible with `_resolve_geometry_update` method
-    d_long_p = abs(reference_long_p - np.roll(reference_long_p, shift=1))
-    d_long_p = np.array([d_long_p[1:]] * 2)
+        d_long = np.abs(longitude_array - np.roll(longitude_array, shift=1))[1:]
+        # creating 2*n array due to compatibility with new geometry assessment based on change in forward radius where
+        # both components are evaluated at once
+        d_long = np.row_stack((d_long, d_long))
 
-    d_long_s = abs(reference_long_s - np.roll(reference_long_s, shift=1))
-    d_long_s = np.array([d_long_s[1:]] * 2)
-
-    # this will find an array of longitudes of any spot and len basically defines how many
-    size = len(list(utils.nested_dict_values(spots_longitudes))[0])
-    if size <= 0:
-        raise ValueError("Unexpected value, at least single spot should be detected if this method is called")
-
-    primary_reducer = _resolve_geometry_update(
-        has_spots=True, size=size, rel_d=d_long_p, resolve="spot",
+        reducer[component] = _resolve_geometry_update(
+        has_spots=True, size=size, rel_d=d_long, resolve="spot",
         max_allowed_difference=max_allowed_difference or config.MAX_SPOT_D_LONGITUDE
-    )
+        )
 
-    secondary_reducer = _resolve_geometry_update(
-        has_spots=True, size=size, rel_d=d_long_s, resolve="spot",
-        max_allowed_difference=max_allowed_difference or config.MAX_SPOT_D_LONGITUDE
-    )
-
-    return primary_reducer, secondary_reducer
+    return reducer['primary'], reducer['secondary']
 
 
 def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, resolve="object"):
