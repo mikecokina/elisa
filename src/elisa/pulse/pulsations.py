@@ -233,9 +233,9 @@ def incorporate_temperature_perturbations(star_container, com_x, phase, time):
             t_s += calculate_temperature_perturbation(mode, star_container.spots[spot_idx].temperatures,
                                                       rals_spots[spot_idx])
 
-    star_container.temperatures = star_container.temperatures + t_pert
+    star_container.temperatures += t_pert
     for spot_idx, spot in star_container.spots.items():
-        spot.temperatures = spot.temperatures[spot_idx] + t_pert_spots[spot_idx]
+        spot.temperatures += t_pert_spots[spot_idx]
     return star_container
 
 
