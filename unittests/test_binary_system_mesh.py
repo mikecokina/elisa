@@ -16,7 +16,7 @@ from unittests.utils import ElisaTestCase, prepare_binary_system
 class BuildMeshSpotsFreeTestCase(ElisaTestCase):
     @staticmethod
     def generator_test_mesh(key, d, length):
-        s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])
+        s = prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])
         s.primary.discretization_factor = d
         s.secondary.discretization_factor = d
 
@@ -41,10 +41,12 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
     def test_build_mesh_semi_detached(self):
         self.generator_test_mesh(key="semi-detached", d=up.radians(10), length=[426, 426])
 
-    @skip
     def test_mesh_for_duplicate_points(self):
         for params in testutils.BINARY_SYSTEM_PARAMS.values():
-            s = testutils.prepare_binary_system(params)
+            s = prepare_binary_system(params)
+            # reducing runtime of the test
+            s.primary.discretization_factor = up.radians(7)
+            s.init()
             components_distance = s.orbit.orbital_motion(phase=0.0)[0][0]
 
             orbital_position_container = OrbitalPositionContainer(
@@ -53,22 +55,22 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
                 position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
                 **s.properties_serializer()
             )
+
             orbital_position_container.build_mesh(components_distance=components_distance)
 
-            distance1 = round(find_nearest_dist_3d(list(orbital_position_container.primary.points)), 10)
-            distance2 = round(find_nearest_dist_3d(list(orbital_position_container.secondary.points)), 10)
+            for component in ['primary', 'secondary']:
+                component_instance = getattr(orbital_position_container, component)
+                distance = round(find_nearest_dist_3d(list(component_instance.points)), 10)
 
-            if distance1 < 1e-10:
-                bad_points = []
-                for i, point in enumerate(orbital_position_container.primary.points):
-                    for j, xx in enumerate(orbital_position_container.primary.points[i + 1:]):
-                        dist = np.linalg.norm(point - xx)
-                        if dist <= 1e-10:
-                            print(f'Match: {point}, {i}, {j}')
-                            bad_points.append(point)
-
-            self.assertFalse(distance1 < 1e-10)
-            self.assertFalse(distance2 < 1e-10)
+                if distance < 1e-10:
+                    bad_points = []
+                    for i, point in enumerate(component_instance.points):
+                        for j, xx in enumerate(component_instance.points[i + 1:]):
+                            dist = np.linalg.norm(point - xx)
+                            if dist <= 1e-10:
+                                print(f'Match: {point}, {i}, {j}')
+                                bad_points.append(point)
+                self.assertFalse(distance < 1e-10)
 
 
 class BuildSpottyMeshTestCase(ElisaTestCase):

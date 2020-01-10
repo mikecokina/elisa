@@ -256,7 +256,7 @@ normalized the time axis according to maximum value in our datasets.
   :alt: detached.ecc.sync.svg
   :align: center
 
-  Paralellization benchmark for ``detached eccentric synchronous`` star system.
+  Paralellization benchmark for ``eccentric synchronous`` star system.
 
 :note: outliers in charts are caused by curve symetrization process
 

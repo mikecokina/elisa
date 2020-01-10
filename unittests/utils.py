@@ -295,13 +295,13 @@ SPOTS_META = {
 
 SPOTS_OVERLAPPED = [
     {"longitude": 90,
-     "latitude": 58,
+     "latitude": 60,
      "angular_radius": 15,
-     "temperature_factor": 0.95},
+     "temperature_factor": 0.98},
     {"longitude": 90,
      "latitude": 58,
      "angular_radius": 25,
-     "temperature_factor": 0.95},
+     "temperature_factor": 0.99},
 ]
 
 SPOT_TO_RAISE = [
