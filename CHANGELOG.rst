@@ -83,9 +83,9 @@ v0.3
 * **single system**
     - light curve calculation of single stars with spots with and without pulsations
 
-**Features in development**
-
-    - pulsations
+* **single system**
+    - introduction of pulsations modelled as a perturbations of surface geometry and surface effective temperature
+    distribution based on spherical harmonics
 
 **Fixes**
 
