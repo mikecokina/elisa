@@ -94,5 +94,5 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
     def test_normals_direction_spherical(self):
         self.generator_test_face_orientaion('spherical', 'direction')
 
-    def test_normals_direction_squashed(self):
-        self.generator_test_face_orientaion('squashed', 'direction')
+    # def test_normals_direction_squashed(self):
+    #     self.generator_test_face_orientaion('squashed', 'direction')
