@@ -10,7 +10,7 @@ from unittests.utils import ElisaTestCase
 
 class BuildFacesSpotsFreeTestCase(ElisaTestCase):
     @staticmethod
-    def generator_test_faces(key, d, length):
+    def build_system(key, d):
         s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])
         s.primary.discretization_factor = d
         s.secondary.discretization_factor = d
@@ -18,6 +18,10 @@ class BuildFacesSpotsFreeTestCase(ElisaTestCase):
         orbital_position_container = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
         orbital_position_container.build_faces(components_distance=1.0)
+        return orbital_position_container
+
+    def generator_test_faces(self, key, d, length):
+        orbital_position_container = self.build_system(key, d)
 
         assert_array_equal([len(orbital_position_container.primary.faces),
                             len(orbital_position_container.secondary.faces)], length)
@@ -31,8 +35,57 @@ class BuildFacesSpotsFreeTestCase(ElisaTestCase):
     def test_build_faces_semi_detached(self):
         self.generator_test_faces('semi-detached', up.radians(10), [848, 848])
 
+    def test_closed_surface_detached(self):
+        orbital_position_container = self.build_system('detached', up.radians(10))
+        self.assertTrue(testutils.surface_closed(faces=orbital_position_container.primary.faces,
+                                                 points=orbital_position_container.primary.points))
+
+    def test_closed_surface_semi_detached(self):
+        orbital_position_container = self.build_system('semi-detached', up.radians(10))
+        self.assertTrue(testutils.surface_closed(faces=orbital_position_container.primary.faces,
+                                                 points=orbital_position_container.primary.points))
+
+    def test_closed_surface_over_contact(self):
+        s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['over-contact'])
+        s.primary.discretization_factor = up.radians(10)
+        s.init()
+
+        orbital_position_container = testutils.prepare_orbital_position_container(s)
+        orbital_position_container.build_mesh(components_distance=1.0)
+        orbital_position_container.build_faces(components_distance=1.0)
+
+        points = np.concatenate((orbital_position_container.primary.points,
+                                 orbital_position_container.secondary.points))
+        faces = np.concatenate((orbital_position_container.primary.faces,
+                                orbital_position_container.secondary.faces +
+                                np.shape(orbital_position_container.primary.points)[0]))
+        self.assertTrue(testutils.surface_closed(faces=faces, points=points))
+
 
 class BuildSpottyFacesTestCase(ElisaTestCase):
+    @staticmethod
+    def build_system(key, d):
+        s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key],
+                                            spots_primary=testutils.SPOTS_META["primary"],
+                                            spots_secondary=testutils.SPOTS_META["secondary"])
+        s.primary.discretization_factor = d
+        s.secondary.discretization_factor = d
+
+        orbital_position_container = testutils.prepare_orbital_position_container(s)
+        orbital_position_container.build_mesh(components_distance=1.0)
+        orbital_position_container.build_faces(components_distance=1.0)
+        for component in ['primary', 'secondary']:
+            instance = getattr(orbital_position_container, component)
+            points = instance.points
+            faces = instance.faces
+            if isinstance(instance.spots, (dict,)):
+                for idx, spot in instance.spots.items():
+                    faces = up.concatenate((faces, spot.faces + len(points)), axis=0)
+                    points = up.concatenate((points, spot.points), axis=0)
+            setattr(instance, 'points', points)
+            setattr(instance, 'faces', faces)
+        return orbital_position_container
+
     @staticmethod
     def generator_test_faces(key, d, length):
         s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key],
@@ -57,6 +110,44 @@ class BuildSpottyFacesTestCase(ElisaTestCase):
 
     def test_build_faces_semi_detached(self):
         self.generator_test_faces('semi-detached', up.radians(10), [849, 858, 1049, 618])
+
+    def test_closed_surface_detached(self):
+        orbital_position_container = self.build_system('detached', up.radians(10))
+        self.assertTrue(testutils.surface_closed(faces=orbital_position_container.primary.faces,
+                                                 points=orbital_position_container.primary.points))
+
+    def test_closed_surface_semi_detached(self):
+        orbital_position_container = self.build_system('semi-detached', up.radians(10))
+        self.assertTrue(testutils.surface_closed(faces=orbital_position_container.primary.faces,
+                                                 points=orbital_position_container.primary.points))
+
+    def test_closed_surface_over_contact(self):
+        s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['over-contact'],
+                                            spots_primary=testutils.SPOTS_META["primary"],
+                                            spots_secondary=testutils.SPOTS_META["secondary"])
+        s.primary.discretization_factor = up.radians(7)
+        s.init()
+
+        orbital_position_container = testutils.prepare_orbital_position_container(s)
+        orbital_position_container.build_mesh(components_distance=1.0)
+        orbital_position_container.build_faces(components_distance=1.0)
+        for component in ['primary', 'secondary']:
+            instance = getattr(orbital_position_container, component)
+            points = instance.points
+            faces = instance.faces
+            if isinstance(instance.spots, (dict,)):
+                for idx, spot in instance.spots.items():
+                    faces = up.concatenate((faces, spot.faces + len(points)), axis=0)
+                    points = up.concatenate((points, spot.points), axis=0)
+            setattr(instance, 'points', points)
+            setattr(instance, 'faces', faces)
+
+        points = np.concatenate((orbital_position_container.primary.points,
+                                 orbital_position_container.secondary.points))
+        faces = np.concatenate((orbital_position_container.primary.faces,
+                                orbital_position_container.secondary.faces +
+                                np.shape(orbital_position_container.primary.points)[0]))
+        self.assertTrue(testutils.surface_closed(faces=faces, points=points))
 
 
 class BuildSurfaceAreasTestCase(ElisaTestCase):
