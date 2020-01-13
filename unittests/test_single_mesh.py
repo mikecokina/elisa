@@ -21,11 +21,7 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
             s.star.discretization_factor = up.radians(7)
             s.init()
 
-            system_container = SystemContainer(
-                star=StarContainer.from_properties_container(s.star.to_properties_container()),
-                position=SinglePosition(*(0, 0.0, 0.0)),
-                **s.properties_serializer()
-            )
+            system_container = testutils.prepare_single_system_container(s)
 
             system_container.build_mesh()
 
@@ -49,12 +45,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         s = prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS[key],
                                   spots=testutils.SPOTS_META["primary"])
         s.star.discretization_factor = d
-        system_container = SystemContainer(
-            star=StarContainer.from_properties_container(s.star.to_properties_container()),
-            position=SinglePosition(*(0, 0.0, 0.0)),
-            **s.properties_serializer()
-        )
-
+        system_container = testutils.prepare_single_system_container(s)
         system_container.build_mesh()
 
         self.assertTrue(len(system_container.star.spots) == 1)
@@ -69,11 +60,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         s = prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
                                   spots=list(reversed(testutils.SPOTS_OVERLAPPED)))
         s.star.discretization_factor = up.radians(5)
-        system_container = SystemContainer(
-            star=StarContainer.from_properties_container(s.star.to_properties_container()),
-            position=SinglePosition(*(0, 0.0, 0.0)),
-            **s.properties_serializer()
-        )
+        system_container = testutils.prepare_single_system_container(s)
         system_container.build_mesh()
 
 

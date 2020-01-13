@@ -208,7 +208,7 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
         orbital_position_container.build_surface_areas()
         orbital_position_container.build_faces_orientation(components_distance=1.0)
 
-        if kind == 'presented':
+        if kind == 'present':
             self.assertTrue(not is_empty(orbital_position_container.primary.normals))
             self.assertTrue(not is_empty(orbital_position_container.secondary.normals))
 
@@ -219,23 +219,24 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
             o = orbital_position_container
             t = 1e-5
             _assert = self.assertTrue
-            _assert(np.all(o.primary.normals[o.primary.points[o.primary.faces][:, 0][:, 0] > t][:, 0] > 0))
-            _assert(np.all(o.secondary.normals[o.secondary.points[o.secondary.faces][:, 0][:, 0] < t][:, 0] < 0))
+            # TODO: finish this for all axis and spots
+            _assert(np.all(o.primary.normals[o.primary.points[o.primary.faces][:, 0, 0] > t][:, 0] > 0))
+            _assert(np.all(o.secondary.normals[o.secondary.points[o.secondary.faces][:, 0, 0] < t][:, 0] < 0))
 
-    def test_build_face_orientation_detached(self):
-        self.generator_test_face_orientaion('detached', 'presented')
+    def test_if_normals_present_detached(self):
+        self.generator_test_face_orientaion('detached', 'present')
 
-    def test_build_face_orientation_semi_detached(self):
-        self.generator_test_face_orientaion('semi-detached', 'presented')
+    def test_if_normals_present_semi_detached(self):
+        self.generator_test_face_orientaion('semi-detached', 'present')
 
-    def test_build_face_orientation_overcontact(self):
-        self.generator_test_face_orientaion('over-contact', 'presented')
+    def test_if_normals_present_overcontact(self):
+        self.generator_test_face_orientaion('over-contact', 'present')
 
-    def test_build_face_orientation_detached_direction(self):
+    def test_normals_direction_detached(self):
         self.generator_test_face_orientaion('detached', 'direction')
 
-    def test_build_face_orientation_semi_detached_direction(self):
+    def test_normals_direction_semi_detached(self):
         self.generator_test_face_orientaion('semi-detached', 'direction')
 
-    def test_build_face_orientation_overcontact_direction(self):
+    def test_normals_direction_overcontact(self):
         self.generator_test_face_orientaion('over-contact', 'direction')

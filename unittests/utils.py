@@ -12,10 +12,11 @@ from elisa import umpy as up
 from elisa.base.container import StarContainer
 from elisa.base.star import Star
 from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.single_system.container import SystemContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.single_system.system import SingleSystem
 from elisa.conf import config
-from elisa.const import Position
+from elisa.const import Position, SinglePosition
 from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
 
@@ -156,6 +157,15 @@ def prepare_single_system(params, spots=None, pulsations=None):
                         gamma=params["gamma"],
                         inclination=params["inclination"],
                         rotation_period=params['rotation_period'])
+
+
+def prepare_single_system_container(system):
+    system_container = SystemContainer(
+        star=StarContainer.from_properties_container(system.star.to_properties_container()),
+        position=SinglePosition(*(0, 0.0, 0.0)),
+        **system.properties_serializer()
+    )
+    return system_container
 
 
 def normalize_lc_for_unittests(flux_arr):
