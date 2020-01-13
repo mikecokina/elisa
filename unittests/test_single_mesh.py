@@ -7,6 +7,7 @@ from unittests.utils import ElisaTestCase, prepare_single_system
 
 from elisa.base.container import StarContainer
 from elisa.single_system.container import SystemContainer
+from elisa.single_system import model
 from elisa.const import SinglePosition
 from elisa.utils import is_empty, find_nearest_dist_3d
 from elisa import umpy as up, units
@@ -91,9 +92,45 @@ class MeshUtilsTestCase(ElisaTestCase):
             },
         ]
 
-        self._binaries = self.prepare_systems()
+        self._singles = self.prepare_systems()
 
     def prepare_systems(self):
         return [prepare_single_system(combo) for combo in self.params_combination]
 
-    # TODO: continue with tests on surface generating functions
+    def test_surface_potential_from_polar_log_g(self):
+        expected = np.round(np.array([-1.90691272573e+12]), -7)
+        obtained = list()
+
+        for ss in self._singles:
+            obtained.append(model.surface_potential_from_polar_log_g(ss.star.polar_log_g, ss.star.mass))
+
+        obtained = np.round(np.array(obtained), -7)
+        assert_array_equal(expected, obtained)
+
+    def test_potential(self):
+        expected = np.round(np.array([-190761017680.0]), -7)
+        obtained = list()
+        radii = [695700000]
+
+        for ii, ss in enumerate(self._singles):
+            p_args = (ss.star.mass, ss.angular_velocity, 0.0)
+            args = model.pre_calculate_for_potential_value(*p_args)
+            obtained.append(model.potential(radii[ii], *args))
+
+        obtained = np.round(np.array(obtained), -7)
+        assert_array_equal(expected, obtained)
+
+    def test_radial_potential_derivative(self):
+        expected = np.round(np.array([274.200111657]), 3)  # this value should be always true for solar model since it
+        # is surface gravity acceleration
+        obtained = list()
+        radii = [695700000]
+
+        for ii, ss in enumerate(self._singles):
+            p_args = (ss.star.mass, ss.angular_velocity, 0.0)
+            args = (model.pre_calculate_for_potential_value(*p_args),)
+            obtained.append(model.radial_potential_derivative(radii[ii], *args))
+
+        obtained = np.round(np.array(obtained), 3)
+        assert_array_equal(expected, obtained)
+
