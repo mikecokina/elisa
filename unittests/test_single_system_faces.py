@@ -86,17 +86,17 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
             average_point_vector = np.mean(o.star.points[o.star.faces], axis=1)
             face_points = o.star.points[o.star.faces]
             # x axis
-            all_positive = (face_points[:, :, 0] >= 0).all(axis=1)
+            # all_positive = (face_points[:, :, 0] >= 0).all(axis=1)
             # _assert(np.all(o.star.normals[all_positive][:, 0] > 0))
             _assert(np.all(o.star.normals[average_point_vector[:, 0] > t][:, 0] > 0))
             # _assert(np.all(o.star.normals[average_point_vector[:, 0] < t][:, 0] < 0))
 
             # y axis
-            all_positive = (face_points[:, :, 1] >= 0).all(axis=1)
+            # all_positive = (face_points[:, :, 1] >= 0).all(axis=1)
             _assert(np.all(o.star.normals[average_point_vector[:, 1] > t][:, 1] > 0))
 
             # z axis
-            all_positive = (face_points[:, :, 2] >= 0).all(axis=1)
+            # all_positive = (face_points[:, :, 2] >= 0).all(axis=1)
             _assert(np.all(o.star.normals[average_point_vector[:, 2] > t][:, 2] > 0))
 
     def test_if_normals_present_spherical(self):
