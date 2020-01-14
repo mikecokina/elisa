@@ -67,6 +67,7 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
                                             spots=testutils.SPOTS_META["primary"],
                                             )
         s.star.discretization_factor = up.radians(7)
+        s.star.spots = testutils.SPOTS_META["primary"]
         position_container = testutils.prepare_single_system_container(s)
         position_container.build_mesh()
         position_container.build_faces()
@@ -105,8 +106,8 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
     def test_if_normals_present_squashed(self):
         self.generator_test_face_orientaion('squashed', 'present')
 
-    # def test_normals_direction_spherical(self):
-    #     self.generator_test_face_orientaion('spherical', 'direction')
-    #
-    # def test_normals_direction_squashed(self):
-    #     self.generator_test_face_orientaion('squashed', 'direction')
+    def test_normals_direction_spherical(self):
+        self.generator_test_face_orientaion('spherical', 'direction')
+
+    def test_normals_direction_squashed(self):
+        self.generator_test_face_orientaion('squashed', 'direction')

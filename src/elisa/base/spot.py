@@ -161,7 +161,7 @@ def setup_body_points(on_container, points):
         on_container.spots[int(spot_index)].points = points[spot_index]
 
 
-def incorporate_spots_mesh(to_container, component_com):
+def incorporate_spots_mesh(to_container, component_com, neck=None):
     """
     Based on spots definitions, evaluate spot points on Star surface and remove those points of Star itself
     which are inside of any spots. Do the same operation with spot to each other.
@@ -189,10 +189,13 @@ def incorporate_spots_mesh(to_container, component_com):
         return to_container
     logger.debug(f"incorporating spot points to_container component {to_container.name} mesh")
 
+    neck = np.max(np.abs(to_container.points[:, 0])) if neck is None else neck - component_com
+
     vertices_map = [{"enum": -1} for _ in to_container.points]
     # `all_component_points` do not contain points of Any spot
     all_component_points = copy(to_container.points)
-    neck = np.min(all_component_points[:to_container.base_symmetry_points_number, 0])
+    # neck = np.min(all_component_points[:to_container.base_symmetry_points_number, 0])
+    neck = np.min(all_component_points[:, 0])
 
     for spot_index, spot in to_container.spots.items():
         # average spacing in spot points

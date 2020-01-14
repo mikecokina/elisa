@@ -202,6 +202,7 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
                                             spots_secondary=testutils.SPOTS_META["secondary"])
         s.primary.discretization_factor = up.radians(10)
         s.secondary.discretization_factor = up.radians(10)
+        s.init()
         orbital_position_container: OrbitalPositionContainer = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
         orbital_position_container.build_faces(components_distance=1.0)
@@ -225,7 +226,7 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
             _assert(np.all(o.primary.normals[average_point_vector_primary[:, 0] > t][:, 0] > 0))
             _assert(np.all(o.secondary.normals[average_point_vector_secondary[:, 0] < t][:, 0] < 0))
 
-            # _assert(np.all(o.primary.normals[average_point_vector_primary[:, 0] < t][:, 0] < 0))
+            _assert(np.all(o.primary.normals[average_point_vector_primary[:, 0] < t][:, 0] < 0))
             # _assert(np.all(o.secondary.normals[average_point_vector_secondary[:, 0] > t][:, 0] < 0))
 
     def test_if_normals_present_detached(self):
@@ -237,11 +238,11 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
     def test_if_normals_present_overcontact(self):
         self.generator_test_face_orientaion('over-contact', 'present')
 
-    # def test_normals_direction_detached(self):
-    #     self.generator_test_face_orientaion('detached', 'direction')
-    #
-    # def test_normals_direction_semi_detached(self):
-    #     self.generator_test_face_orientaion('semi-detached', 'direction')
-    #
-    # def test_normals_direction_overcontact(self):
-    #     self.generator_test_face_orientaion('over-contact', 'direction')
+    def test_normals_direction_detached(self):
+        self.generator_test_face_orientaion('detached', 'direction')
+
+    def test_normals_direction_semi_detached(self):
+        self.generator_test_face_orientaion('semi-detached', 'direction')
+
+    def test_normals_direction_overcontact(self):
+        self.generator_test_face_orientaion('over-contact', 'direction')
