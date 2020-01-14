@@ -334,7 +334,7 @@ SINGLE_SYSTEM_PARAMS = {
         "inclination": 90.0 * units.deg,
         "rotation_period": 30*units.d,
     },
-    "squashed":{
+    "squashed": {
         "mass": 1.0,
         "t_eff": 5774*units.K,
         "gravity_darkening": 0.32,

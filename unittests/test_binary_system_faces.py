@@ -219,9 +219,14 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
             o = orbital_position_container
             t = 1e-5
             _assert = self.assertTrue
+            average_point_vector_primary = np.mean(o.primary.points[o.primary.faces], axis=1)
+            average_point_vector_secondary = np.mean(o.secondary.points[o.secondary.faces], axis=1)
             # TODO: finish this for all axis and spots
-            _assert(np.all(o.primary.normals[o.primary.points[o.primary.faces][:, 0, 0] > t][:, 0] > 0))
-            _assert(np.all(o.secondary.normals[o.secondary.points[o.secondary.faces][:, 0, 0] < t][:, 0] < 0))
+            _assert(np.all(o.primary.normals[average_point_vector_primary[:, 0] > t][:, 0] > 0))
+            _assert(np.all(o.secondary.normals[average_point_vector_secondary[:, 0] < t][:, 0] < 0))
+
+            # _assert(np.all(o.primary.normals[average_point_vector_primary[:, 0] < t][:, 0] < 0))
+            # _assert(np.all(o.secondary.normals[average_point_vector_secondary[:, 0] > t][:, 0] < 0))
 
     def test_if_normals_present_detached(self):
         self.generator_test_face_orientaion('detached', 'present')
