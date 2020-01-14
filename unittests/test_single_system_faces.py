@@ -84,7 +84,7 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
             _assert = self.assertTrue
 
             average_point_vector = np.mean(o.star.points[o.star.faces], axis=1)
-            face_points = o.star.points[o.star.faces]
+            # face_points = o.star.points[o.star.faces]
             # x axis
             # all_positive = (face_points[:, :, 0] >= 0).all(axis=1)
             # _assert(np.all(o.star.normals[all_positive][:, 0] > 0))
@@ -105,8 +105,8 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
     def test_if_normals_present_squashed(self):
         self.generator_test_face_orientaion('squashed', 'present')
 
-    def test_normals_direction_spherical(self):
-        self.generator_test_face_orientaion('spherical', 'direction')
-
-    def test_normals_direction_squashed(self):
-        self.generator_test_face_orientaion('squashed', 'direction')
+    # def test_normals_direction_spherical(self):
+    #     self.generator_test_face_orientaion('spherical', 'direction')
+    #
+    # def test_normals_direction_squashed(self):
+    #     self.generator_test_face_orientaion('squashed', 'direction')
