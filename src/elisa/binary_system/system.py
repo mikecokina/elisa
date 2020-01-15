@@ -424,6 +424,10 @@ class BinarySystem(System):
                         f"according to discretization factor of the primary component and"
                         f"configuration boundaries")
 
+            if self.secondary.has_spots():
+                for spot in self.secondary.spots.values():
+                    spot.discretization_factor = self.secondary.discretization_factor
+
     def transform_input(self, **kwargs):
         """
         Transform and validate input kwargs.

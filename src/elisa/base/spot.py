@@ -206,12 +206,12 @@ def incorporate_spots_mesh(to_container, component_com, neck=None):
         # removing star points in spot
         # all component points means just points of component NOT merged points + spots
         for ix, pt in enumerate(all_component_points):
-            surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
+            surface_point = pt - np.array([component_com, 0., 0.])
             cos_angle = \
                 up.inner(spot_center, surface_point) / (
                     np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
             # skip all points of object outside of spot
-            if cos_angle < cos_max_angle_point or np.linalg.norm(pt[0] - neck) < 1e-9:
+            if cos_angle < cos_max_angle_point or np.abs(pt[0]) - neck < 1e-9:
                 continue
             # mark component point (NOT point of spot) for removal if is within the spot
             vertices_to_remove.append(ix)
