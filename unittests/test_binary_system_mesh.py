@@ -152,6 +152,42 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         self.assertTrue(is_empty(s.primary.spots[0].faces))
         self.assertTrue(is_empty(s.secondary.spots[0].faces))
 
+    def test_make_sure_invalid_spots_are_deleted_in_overcontact(self):
+        spot_meta = {
+            "primary":
+                [
+                    {"longitude": 0,
+                     "latitude": 43,
+                     "angular_radius": 30,
+                     "temperature_factor": 1.1,
+                     },
+                ],
+            "secondary":
+                [
+                    {"longitude": 0,
+                     "latitude": 37,
+                     "angular_radius": 30,
+                     "temperature_factor": 1.1,
+                     },
+                ]
+        }
+        s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS["over-contact"],
+                                            spots_primary=spot_meta["primary"],
+                                            spots_secondary=spot_meta["secondary"]
+                                            )
+        s.primary.discretization_factor = up.radians(6)
+        s.init()
+
+        orbital_position_container = OrbitalPositionContainer(
+            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
+            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+            position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
+            **s.properties_serializer()
+        )
+        orbital_position_container.build_mesh(components_distance=1.0)
+        self.assertTrue(len(orbital_position_container.primary.spots) == 0)
+        self.assertTrue(len(orbital_position_container.secondary.spots) == 0)
+
 
 class MeshUtilsTestCase(ElisaTestCase):
     def setUp(self):
@@ -184,7 +220,7 @@ class MeshUtilsTestCase(ElisaTestCase):
 
     def prepare_systems(self):
         return [prepare_binary_system(combo) for combo in self.params_combination]
-    
+
     def test_primary_potential_derivative_x(self):
         d, x = 1.1, 0.13
         expected = np.round(np.array([-58.8584146731, -58.6146646731]), 4)
