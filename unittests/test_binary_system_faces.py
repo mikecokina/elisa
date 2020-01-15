@@ -200,8 +200,7 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
         s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key],
                                             spots_primary=testutils.SPOTS_META["primary"],
                                             spots_secondary=testutils.SPOTS_META["secondary"])
-        s.primary.discretization_factor = up.radians(10)
-        s.secondary.discretization_factor = up.radians(10)
+        s.primary.discretization_factor = up.radians(7)
         s.init()
         orbital_position_container: OrbitalPositionContainer = testutils.prepare_orbital_position_container(s)
         orbital_position_container.build_mesh(components_distance=1.0)
@@ -216,18 +215,64 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
             self.assertTrue(not is_empty(orbital_position_container.primary.spots[0].normals))
             self.assertTrue(not is_empty(orbital_position_container.secondary.spots[0].normals))
 
+        _assert = self.assertTrue
         if kind == 'direction':
             o = orbital_position_container
-            t = 1e-5
-            _assert = self.assertTrue
-            average_point_vector_primary = np.mean(o.primary.points[o.primary.faces], axis=1)
-            average_point_vector_secondary = np.mean(o.secondary.points[o.secondary.faces], axis=1)
-            # TODO: finish this for all axis and spots
-            _assert(np.all(o.primary.normals[average_point_vector_primary[:, 0] > t][:, 0] > 0))
-            _assert(np.all(o.secondary.normals[average_point_vector_secondary[:, 0] < t][:, 0] < 0))
 
-            _assert(np.all(o.primary.normals[average_point_vector_primary[:, 0] < t][:, 0] < 0))
-            # _assert(np.all(o.secondary.normals[average_point_vector_secondary[:, 0] > t][:, 0] < 0))
+            for component in ['primary', 'secondary']:
+                star = getattr(o, component)
+
+                face_points = star.points[star.faces]
+                spot_face_points = star.spots[0].points[star.spots[0].faces]
+
+                face_points[:, :, 0] = face_points[:, :, 0] - 1 if component == 'secondary' else face_points[:, :, 0]
+                spot_face_points[:, :, 0] = spot_face_points[:, :, 0] - 1 if component == 'secondary' else \
+                    spot_face_points[:, :, 0]
+
+                # x axis
+                all_positive = (face_points[:, :, 0] > 0).all(axis=1)
+                _assert(np.all(star.normals[all_positive][:, 0] > 0))
+                all_negative = (face_points[:, :, 0] < 0).all(axis=1)
+                _assert(np.all(star.normals[all_negative][:, 0] < 0))
+
+                all_positive = (spot_face_points[:, :, 0] > 0).all(axis=1)
+                _assert(np.all(star.spots[0].normals[all_positive][:, 0] > 0))
+                all_negative = (spot_face_points[:, :, 0] <= 0).all(axis=1)
+                _assert(np.all(star.spots[0].normals[all_negative][:, 0] < 0))
+
+                # y axis
+                all_positive = (face_points[:, :, 1] > 0).all(axis=1)
+                _assert(np.all(star.normals[all_positive][:, 1] > 0))
+                all_negative = (face_points[:, :, 1] < 0).all(axis=1)
+                _assert(np.all(star.normals[all_negative][:, 1] < 0))
+
+                all_positive = (spot_face_points[:, :, 1] > 0).all(axis=1)
+                _assert(np.all(star.spots[0].normals[all_positive][:, 1] > 0))
+                all_negative = (spot_face_points[:, :, 1] < 0).all(axis=1)
+                _assert(np.all(star.spots[0].normals[all_negative][:, 1] < 0))
+
+                # z axis
+                all_positive = (face_points[:, :, 2] > 0).all(axis=1)
+                _assert(np.all(star.normals[all_positive][:, 2] > 0))
+                all_negative = (face_points[:, :, 2] < 0).all(axis=1)
+                _assert(np.all(star.normals[all_negative][:, 2] < 0))
+
+                all_positive = (spot_face_points[:, :, 2] > 0).all(axis=1)
+                _assert(np.all(star.spots[0].normals[all_positive][:, 2] > 0))
+                all_negative = (spot_face_points[:, :, 2] < 0).all(axis=1)
+                _assert(np.all(star.spots[0].normals[all_negative][:, 2] < 0))
+
+        if kind == 'size':
+            o = orbital_position_container
+
+            for component in ['primary', 'secondary']:
+                star = getattr(o, component)
+
+                normals_size = np.linalg.norm(star.normals, axis=1)
+                _assert((np.round(normals_size, 5) == 1).all())
+
+                spot_normals_size = np.linalg.norm(star.spots[0].normals, axis=1)
+                _assert((np.round(spot_normals_size, 5) == 1).all())
 
     def test_if_normals_present_detached(self):
         self.generator_test_face_orientaion('detached', 'present')
@@ -238,11 +283,20 @@ class BuildSpottyFacesOrientationTestCase(ElisaTestCase):
     def test_if_normals_present_overcontact(self):
         self.generator_test_face_orientaion('over-contact', 'present')
 
-    # def test_normals_direction_detached(self):
-    #     self.generator_test_face_orientaion('detached', 'direction')
-    #
-    # def test_normals_direction_semi_detached(self):
-    #     self.generator_test_face_orientaion('semi-detached', 'direction')
-    #
-    # def test_normals_direction_overcontact(self):
-    #     self.generator_test_face_orientaion('over-contact', 'direction')
+    def test_normals_direction_detached(self):
+        self.generator_test_face_orientaion('detached', 'direction')
+
+    def test_normals_direction_semi_detached(self):
+        self.generator_test_face_orientaion('semi-detached', 'direction')
+
+    def test_normals_direction_overcontact(self):
+        self.generator_test_face_orientaion('over-contact', 'direction')
+
+    def test_normals_size_detached(self):
+        self.generator_test_face_orientaion('detached', 'size')
+
+    def test_normals_size_semi_detached(self):
+        self.generator_test_face_orientaion('semi-detached', 'size')
+
+    def test_normals_size_overcontact(self):
+        self.generator_test_face_orientaion('over-contact', 'size')
