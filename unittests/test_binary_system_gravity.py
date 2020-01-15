@@ -21,17 +21,17 @@ class BuildSpotlessGravityTestCase(ElisaTestCase):
         orbital_position_container.build_faces_orientation(components_distance=1.0)
         orbital_position_container.build_surface_gravity(components_distance=1.0)
 
-        self.assertTrue(np.all(orbital_position_container.primary.log_g > over[0]))
-        self.assertTrue(np.all(orbital_position_container.secondary.log_g > over[1]))
+        self.assertTrue(np.all(orbital_position_container.primary.log_g > over))
+        self.assertTrue(np.all(orbital_position_container.secondary.log_g > over))
 
     def test_build_gravity_detached(self):
-        self.generator_test_gravity('detached', over=[5.1, 5.4])
+        self.generator_test_gravity('detached', over=0.0)
 
     def test_build_gravity_semi_detached(self):
-        self.generator_test_gravity('semi-detached', over=[1.2, 1.2])
+        self.generator_test_gravity('semi-detached', over=0.0)
 
     def test_build_gravity_overcontact(self):
-        self.generator_test_gravity('over-contact', over=[1.4, 1.3])
+        self.generator_test_gravity('over-contact', over=0.0)
 
 
 class BuildSpotGravityTestCase(ElisaTestCase):

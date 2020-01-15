@@ -52,7 +52,7 @@ class Spot(object):
     def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.ALL_KWARGS, instance=Spot)
         utils.check_missing_kwargs(Spot.MANDATORY_KWARGS, kwargs, instance_of=Spot)
-        kwargs = self.transform_input(**kwargs)
+        self.kwargs = self.transform_input(**kwargs)
 
         # supplied parameters
         self.discretization_factor = np.nan
@@ -76,7 +76,7 @@ class Spot(object):
         self.temperatures = np.array([])
         self.log_g = np.array([])
 
-        self.init_properties(**kwargs)
+        self.init_properties(**self.kwargs)
 
     @staticmethod
     def transform_input(**kwargs):

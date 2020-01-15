@@ -750,13 +750,14 @@ def mesh_spots(system, components_distance, component="all"):
                 component_instance.remove_spot(spot_index=spot_index)
                 continue
 
-            validity_test = (spot_points[:, 0] <= neck_position).all() if component == 'primary' else \
-                (spot_points[:, 0] <= (1 - neck_position)).all()
-            if not validity_test:
-                logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
-                               f"doesn't satisfy reasonable conditions and entire spot will be omitted")
-                component_instance.remove_spot(spot_index=spot_index)
-                continue
+            if getattr(system, "morphology") == "over-contact":
+                validity_test = (spot_points[:, 0] <= neck_position).all() if component == 'primary' else \
+                    (spot_points[:, 0] <= (1 - neck_position)).all()
+                if not validity_test:
+                    logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
+                                   f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                    component_instance.remove_spot(spot_index=spot_index)
+                    continue
 
             boundary_points = spot_points[-len(deltas[-1]):]
 

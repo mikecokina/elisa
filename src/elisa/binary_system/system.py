@@ -424,9 +424,12 @@ class BinarySystem(System):
                         f"according to discretization factor of the primary component and"
                         f"configuration boundaries")
 
-            if self.secondary.has_spots():
-                for spot in self.secondary.spots.values():
-                    spot.discretization_factor = self.secondary.discretization_factor
+        for component in config.BINARY_COUNTERPARTS.keys():
+            instance = getattr(self, component)
+            if instance.has_spots():
+                for spot in instance.spots.values():
+                    if not spot.kwargs.get('discretization_factor'):
+                        spot.discretization_factor = instance.discretization_factor
 
     def transform_input(self, **kwargs):
         """
@@ -440,7 +443,7 @@ class BinarySystem(System):
     def setup_periastron_critical_potential(self):
         """
         Compute and set critical surface potential for both components.
-        Critical surface potential is for componetn defined as potential when component fill its Roche lobe.
+        Critical surface potential is for component defined as potential when component fill its Roche lobe.
         """
         for component in config.BINARY_COUNTERPARTS:
             setattr(

@@ -78,6 +78,7 @@ class SingleSystem(System):
         # this is also check if star surface is closed
         self.setup_radii()
         self.assign_pulsations_amplitudes()
+        self.setup_discretisation_factor()
 
     @classmethod
     def is_property(cls, kwargs):
@@ -128,6 +129,12 @@ class SingleSystem(System):
         logger.debug(f"re/initializing orbit in class instance {self.__class__.__name__} / {self.name}")
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
         self.orbit = orbit.Orbit(**orbit_kwargs)
+
+    def setup_discretisation_factor(self):
+        if self.star.has_spots():
+            for spot in self.star.spots.values():
+                if not spot.kwargs.get('discretization_factor'):
+                    spot.discretization_factor = self.star.discretization_factor
 
     @staticmethod
     def is_eccentric():

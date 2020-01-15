@@ -265,7 +265,7 @@ BINARY_SYSTEM_PARAMS = {
         "primary_mass": 2.0, "secondary_mass": 1.0,
         "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
         "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 8,
         "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
