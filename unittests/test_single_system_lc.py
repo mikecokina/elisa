@@ -16,8 +16,7 @@ from elisa import (
     umpy as up,
 )
 from elisa.single_system.curves import (
-    lc,
-    lcmp
+    lc
 )
 
 TOL = 5e-3
@@ -25,7 +24,7 @@ TOL = 5e-3
 
 class ComputeLightCurvesTestCase(ElisaTestCase):
     PARAMS = {
-        'solar' :
+        'solar':
         {
             "mass": 1.0,
             "t_eff": 5772 * units.K,

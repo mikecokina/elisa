@@ -6,7 +6,8 @@ from elisa.single_system import (
     surface
 )
 from elisa import (
-    ld
+    ld,
+    const as c
 )
 from elisa.single_system.curves import shared
 
@@ -51,8 +52,9 @@ def compute_non_pulsating_lightcurve(*args):
                 limb_darkening_law=config.LIMB_DARKENING_LAW,
                 cos_theta=cosines)
 
+            # parameter 1 / PI converts to astrophysical flux
             band_curves[band][pos_idx] = np.sum(normal_radiance['star'][band][visibility_indices] * cosines *
-                                                coverage['star'][visibility_indices] * ld_cors)
+                                                coverage['star'][visibility_indices] * ld_cors) / c.PI
 
     return band_curves
 

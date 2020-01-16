@@ -1058,5 +1058,13 @@ def remap_passbanded_unique_atm_to_matrix(atm_containers, fpaths_map):
     return models_matrix
 
 
+# def correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs):
+#     for star, lds in normal_radiance.items():
+#         for
+#     if config.LIMB_DARKENING_LAW in ['linear', 'cosine']:
+#         normal_radiance /= 1 - ld_cfs
+#     return normal_radiance
+
+
 if __name__ == "__main__":
     pass

@@ -335,22 +335,33 @@ BINARY_SYSTEM_PARAMS = {
 SINGLE_SYSTEM_PARAMS = {
     "spherical": {
         "mass": 1.0,
-        "t_eff": 5774*units.K,
+        "t_eff": 5774 * units.K,
         "gravity_darkening": 0.32,
         "polar_log_g": 4.1,
         "gamma": 0.0,
         "inclination": 90.0 * units.deg,
-        "rotation_period": 30*units.d,
+        "rotation_period": 30 * units.d,
     },
     "squashed": {
         "mass": 1.0,
-        "t_eff": 5774*units.K,
+        "t_eff": 5774 * units.K,
         "gravity_darkening": 0.32,
         "polar_log_g": 4.1,
         "gamma": 0.0,
         "inclination": 90.0 * units.deg,
-        "rotation_period": 0.3818*units.d,
+        "rotation_period": 0.3818 * units.d,
     },
+}
+
+SOLAR_MODEL = {
+    "mass": 1.0,
+    "t_eff": 5772 * units.K,
+    "gravity_darkening": 0.32,
+    "polar_log_g": 4.43775 * units.dex(units.cm / units.s ** 2),
+    "gamma": 0.0,
+    # "inclination": 82.5 * units.deg,
+    "inclination": 90.0 * units.deg,
+    "rotation_period": 25.38 * units.d,
 }
 
 SPOTS_META = {

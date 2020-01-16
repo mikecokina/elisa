@@ -17,11 +17,11 @@ def prep_surface_params(system, **kwargs):
         * ** atlas ** * - str
     :return:
     """
+    # obtain limb darkening factor for each face
+    ld_cfs = get_limbdarkening_cfs(system, **kwargs)
 
     # compute normal radiance for each face and each component
     normal_radiance = get_normal_radiance(system, **kwargs)
-    # obtain limb darkening factor for each face
-    ld_cfs = get_limbdarkening_cfs(system, **kwargs)
     return normal_radiance, ld_cfs
 
 

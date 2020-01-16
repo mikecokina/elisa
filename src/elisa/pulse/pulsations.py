@@ -141,8 +141,6 @@ def calculate_phi_displacement(radial_amplitude, relative_amplitude, radii, thet
     sin_thetas = np.sin(thetas)
     sin_test = sin_thetas != 0.0
     retval = np.zeros(radii.shape)
-    # retval[sin_test] = \
-    #     radial_amplitude * relative_amplitude * radii[sin_test] * m * np.imag(- rals[sin_test]) / sin_thetas[sin_test]
     retval[sin_test] = \
         radial_amplitude * relative_amplitude * m * np.imag(- rals[sin_test]) / sin_thetas[sin_test]
     return retval
@@ -172,14 +170,11 @@ def calculate_theta_displacement(radial_amplitude, relative_amplitude, radii, ph
         return derivative
 
     if m > 0:
-        # return radial_amplitude * relative_amplitude * radii * alp_derivative(m)
         return radial_amplitude * relative_amplitude * alp_derivative(m)
     elif m == 0:
-        # return - radial_amplitude * relative_amplitude * radii * np.real(sph_harm(1, l, phis, thetas))
         return - radial_amplitude * relative_amplitude * np.real(sph_harm(1, l, phis, thetas))
     elif m < 0:
         coeff = np.power(-1, -m) * factorial(l+m) / factorial(l-m)
-        # return radial_amplitude * relative_amplitude * radii * coeff * alp_derivative(-m)
         return radial_amplitude * relative_amplitude * coeff * alp_derivative(-m)
 
 
