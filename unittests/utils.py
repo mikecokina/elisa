@@ -179,6 +179,14 @@ def normalize_lv_for_unittests(primary, secondary):
     return primary, secondary
 
 
+def dump_observation_to_json(observation, filename):
+    observation = list(observation)
+    observation[0] = observation[0].tolist()
+    observation[1] = {filter: item.tolist() for filter, item in observation[1].items()}
+    with open(filename, 'w') as outfile:
+        json.dump(observation, outfile)
+
+
 def load_light_curve(filename):
     path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "curves", filename)
     with open(path, "r") as f:

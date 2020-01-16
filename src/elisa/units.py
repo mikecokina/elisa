@@ -22,6 +22,7 @@ km = u.km
 solMass = u.solMass
 deg_C = u.deg_C
 m = u.m
+cm = u.cm
 d = u.d
 s = u.s
 W = u.W
@@ -29,5 +30,6 @@ solRad = u.solRad
 K = u.K
 dimensionless_unscaled = u.dimensionless_unscaled
 kg = u.kg
+dex = u.dex
 
 Quantity = u.quantity.Quantity
