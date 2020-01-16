@@ -869,5 +869,4 @@ def add_spots_to_mesh(system, components_distance, component="all"):
     for component in components:
         star = getattr(system, component)
         mesh_spots(system, components_distance=components_distance, component=component)
-        neck = np.max(star.points[:, 0]) if component == 'primary' else np.min(star.points[:, 0])
-        incorporate_spots_mesh(star, component_com=component_com[component], neck=neck)
+        incorporate_spots_mesh(star, component_com=component_com[component])
