@@ -14,7 +14,7 @@ from elisa.single_system.surface import (
 )
 from elisa.logger import getLogger
 
-logger = getLogger("single-system-container-module")
+logger = getLogger("single_system.container")
 
 
 class SystemContainer(PositionContainer):
@@ -55,16 +55,18 @@ class SystemContainer(PositionContainer):
 
     def build(self, **kwargs):
         """
-        Main method to build binary star system from parameters given on init of BinaryStar.
+        Main method to build binary star system from parameters given on init of SingleStar.
 
         called following methods::
 
             - build_mesh
             - build_faces
-            - build_surface_areas
-            - build_faces_orientation
-            - build_surface_gravity
-            - build_temperature_distribution
+            - self.build_pulsations_on_mesh
+            - self.build_surface_areas
+            - self.build_faces_orientation
+            - self.build_surface_gravity
+            - self.build_temperature_distribution
+            - self.build_temperature_perturbations
 
         :param kwargs:
         :return: self;

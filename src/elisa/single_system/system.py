@@ -147,24 +147,21 @@ class SingleSystem(System):
 
     def setup_radii(self):
         """
-        auxiliary function for calculation of important radii
-        :return:
+        Auxiliary function for calculation of important radii.
         """
         fns = [sradius.calculate_polar_radius, sradius.calculate_equatorial_radius]
-        star = self.star
         for fn in fns:
-            logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
-                               f'for the star')
+            logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} for the star')
             param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
-            kwargs = dict(mass=star.mass,
+            kwargs = dict(mass=self.star.mass,
                           angular_velocity=self.angular_velocity,
-                          surface_potential=star.surface_potential)
+                          surface_potential=self.star.surface_potential)
             try:
                 r = fn(**kwargs)
-            except:
+            except Exception as e:
                 raise ValueError(f'Function {fn.__name__} was not able to calculate its radius. '
-                                 f'Your system is not physical')
-            setattr(star, param, r)
+                                 f'Your system is not physical. Exception: {str(e)}')
+            setattr(self.star, param, r)
 
     @property
     def components(self):
@@ -232,7 +229,7 @@ class SingleSystem(System):
     def calculate_critical_potential(self):
         """
         Compute and set critical surface potential.
-        Critical surface potential is for component defined as potential when component fill its Roche lobe.
+        Critical surface potential is potential when component is stable for give mass and rotaion period.
         """
         precalc_args = self.star.mass, self.angular_velocity, c.HALF_PI
         args = (model.pre_calculate_for_potential_value(*precalc_args), 0.0)
@@ -247,8 +244,7 @@ class SingleSystem(System):
 
     def check_stability(self):
         """
-        checks if star is rotationally stable
-        :return:
+        Checks if star is rotationally stable.
         """
         if self.star.critical_surface_potential < self.star.surface_potential:
             raise ValueError('Non-physical system. Star rotation is above critical break-up velocity.')
@@ -258,7 +254,7 @@ class SingleSystem(System):
 
     def calculate_lines_of_sight(self, input_argument=None, return_nparray=False, calculate_from='phase'):
         """
-        returns vector oriented in direction star - observer
+        Returns vector oriented in direction star - observer.
 
         :param calculate_from: str; 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
         :param return_nparray: bool; if True positions in form of numpy arrays will be also returned
@@ -293,10 +289,10 @@ class SingleSystem(System):
         :return: Dict
         """
         if self.star.has_pulsations():
-            logger.debug('Calculating light curve for a non pulsating single star system.')
+            logger.debug('calculating light curve for a non pulsating single star system')
             return self._compute_light_curve_with_pulsations(**kwargs)
         else:
-            logger.debug('Calculating light curve for star system with pulsations.')
+            logger.debug('calculating light curve for star system with pulsations')
             return self._compute_light_curve_without_pulsations(**kwargs)
 
     def _compute_light_curve_with_pulsations(self, **kwargs):

@@ -14,24 +14,29 @@ logger = getLogger('single_system.orbit.orbit')
 
 def angular_velocity(rotation_period):
     """
-    rotational angular velocity of the star
+    Rotational angular velocity of the star.
 
     :param rotation_period: float;
-    :return:
+    :return: float;
     """
     return c.FULL_ARC / (rotation_period * units.PERIOD_UNIT).to(units.s).value
 
 
 def true_phase_to_azimuth(phase):
     """
-    calculates observer azimuths for single star system
-    :param phase:
-    :return: numpy.array;
+    Calculates observer azimuths for single star system.
+
+    :param phase: Union[numpy.array, float];
+    :return: Union[numpy.array, float];
     """
     return c.FULL_ARC * phase
 
 
 def azimuth_to_true_phase(azimuth):
+    """
+    :param azimuth: Union[numpy.array, float];
+    :return: Union[numpy.array, float];
+    """
     return azimuth / c.FULL_ARC
 
 

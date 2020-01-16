@@ -51,25 +51,26 @@ def build_mesh(system, components_distance, component="all"):
 
     add_spots_to_mesh(system, components_distance, component="all")
 
+    return system
 
-def build_pulsations_on_mesh(system_container, component, components_distance):
+
+def build_pulsations_on_mesh(system, component, components_distance):
     """
     adds position perturbations to container mesh
 
-    :param system_container: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     :param component: Union[str, None];
     :param components_distance: float;
     :return: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     components = bsutils.component_to_list(component)
     for component in components:
-        star = getattr(system_container, component)
+        star = getattr(system, component)
         if star.has_pulsations():
-            phase = butils.calculate_rotational_phase(system_container, component)
+            phase = butils.calculate_rotational_phase(system, component)
             com_x = 0 if component == 'primary' else components_distance
-            star = pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, phase=phase,
-                                                             time=system_container.time)
-    return system_container
+            star = pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, phase=phase, time=system.time)
+    return system
 
 
 def pre_calc_azimuths_for_detached_points(discretization):
