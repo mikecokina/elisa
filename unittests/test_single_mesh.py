@@ -97,7 +97,7 @@ class MeshUtilsTestCase(ElisaTestCase):
     def test_potential(self):
         expected = np.round(np.array([-190761017680.0]), -7)
         obtained = list()
-        radii = [695700000]
+        radii = [695700000.0]
 
         for ii, ss in enumerate(self._singles):
             p_args = (ss.star.mass, ss.angular_velocity, 0.0)
@@ -111,7 +111,7 @@ class MeshUtilsTestCase(ElisaTestCase):
         expected = np.round(np.array([274.200111657]), 3)  # this value should be always true for solar model since it
         # is surface gravity acceleration
         obtained = list()
-        radii = [695700000]
+        radii = [695700000.0]
 
         for ii, ss in enumerate(self._singles):
             p_args = (ss.star.mass, ss.angular_velocity, 0.0)
