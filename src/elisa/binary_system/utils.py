@@ -142,16 +142,16 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
     return system
 
 
-def calculate_rotational_phase(system_container, component):
+def calculate_rotational_phase(system, component):
     """
     Returns rotational phase with in co-rotating frame of reference.
 
-    :param system_container: SystemContainer;
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     :param component: str; `primary` or `secondary`
     :return: float;
     """
-    star = getattr(system_container, component)
-    return (star.synchronicity - 1.0) * system_container.position.phase
+    star = getattr(system, component)
+    return (star.synchronicity - 1.0) * system.position.phase
 
 
 def validate_binary_json(data):

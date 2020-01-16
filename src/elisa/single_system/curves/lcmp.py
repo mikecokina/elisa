@@ -15,10 +15,10 @@ LD_LAW_CFS_COLUMNS = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
 def compute_non_pulsating_lightcurve(*args):
     """
-    calculates LC for single system without pulsations (surface geometry is not changed)
+    Calculates LC for single system without pulsations (surface geometry is not changed).
 
-    :param args: tuple;
-    :**kwargs options**:
+    :param args: Tuple;
+    :**args options**:
         * ** single_system ** * - elisa.single_system.system.SingleSystem
         * ** system_container ** * - elisa.single_system.container.SystemContainer
         * ** phases ** * - array; phases in which to calculate LC
