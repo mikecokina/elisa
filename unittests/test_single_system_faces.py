@@ -34,6 +34,7 @@ class BuildSpottyFacesTestCase(ElisaTestCase):
         s = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS[key],
                                             spots=testutils.SPOTS_META["primary"])
         s.star.discretization_factor = d
+        s.init()
 
         position_container = testutils.prepare_single_system_container(s)
         position_container.build_mesh()
