@@ -50,13 +50,13 @@ class BuildSpottyFacesTestCase(ElisaTestCase):
                             len(orbital_position_container.secondary.spots[0].faces)], length)
 
     def test_build_faces_detached(self):
-        self.generator_test_faces('detached', up.radians(10), [849, 858, 1049, 618])
+        self.generator_test_faces('detached', up.radians(10), [843, 825, 893, 153])
 
     def test_build_faces_over_contact(self):
-        self.generator_test_faces('over-contact', up.radians(10), [821, 804, 1049, 618])
+        self.generator_test_faces('over-contact', up.radians(10), [815, 783, 893, 301])
 
     def test_build_faces_semi_detached(self):
-        self.generator_test_faces('semi-detached', up.radians(10), [849, 858, 1049, 618])
+        self.generator_test_faces('semi-detached', up.radians(10), [843, 837, 893, 301])
 
 
 class BuildSurfaceAreasTestCase(ElisaTestCase):
@@ -95,13 +95,13 @@ class BuildSurfaceAreasTestCase(ElisaTestCase):
         self.generator_test_surface_areas('semi-detached', up.radians(10), kind="contain")
 
     def test_build_surface_areas_detached_size(self):
-        self.generator_test_surface_areas('detached', up.radians(10), kind="size", less=[2e-6, 5e-7, 2e-7, 4e-8])
+        self.generator_test_surface_areas('detached', up.radians(10), kind="size", less=[2e-6, 5e-7, 1.5e-7, 1.4e-7])
 
     def test_build_surface_areas_over_contact_size(self):
-        self.generator_test_surface_areas('over-contact', up.radians(10), kind="size", less=[6e-3, 3e-3, 3e-4, 2e-4])
+        self.generator_test_surface_areas('over-contact', up.radians(10), kind="size", less=[6e-3, 3e-3, 4e-4, 4e-4])
 
     def test_build_surface_areas_semi_detached_size(self):
-        self.generator_test_surface_areas('semi-detached', up.radians(10), kind="size", less=[6e-3, 3e-3, 3e-4, 2e-4])
+        self.generator_test_surface_areas('semi-detached', up.radians(10), kind="size", less=[6e-3, 3e-3, 3e-4, 3e-4])
 
 
 class BuildSpottyFacesOrientationTestCase(ElisaTestCase):

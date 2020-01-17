@@ -321,7 +321,7 @@ class BinarySystem(System):
 
     def is_eccentric(self):
         """
-        Resolve whether system is eccentri.
+        Resolve whether system is eccentric.
 
         :return: bool;
         """
@@ -424,6 +424,13 @@ class BinarySystem(System):
                         f"according to discretization factor of the primary component and"
                         f"configuration boundaries")
 
+        for component in config.BINARY_COUNTERPARTS:
+            instance = getattr(self, component)
+            if instance.has_spots():
+                for spot in instance.spots.values():
+                    if not spot.kwargs.get('discretization_factor'):
+                        spot.discretization_factor = instance.discretization_factor
+
     def transform_input(self, **kwargs):
         """
         Transform and validate input kwargs.
@@ -436,7 +443,7 @@ class BinarySystem(System):
     def setup_periastron_critical_potential(self):
         """
         Compute and set critical surface potential for both components.
-        Critical surface potential is for componetn defined as potential when component fill its Roche lobe.
+        Critical surface potential is for component defined as potential when component fill its Roche lobe.
         """
         for component in config.BINARY_COUNTERPARTS:
             setattr(

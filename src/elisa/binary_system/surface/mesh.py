@@ -290,6 +290,8 @@ def get_surface_points(*args):
     x0 = x0 * np.ones(phi.shape)
     radius_kwargs = dict(fprime=fprime, maxiter=max_iter, args=((q, ) + precalc_vals, potential), rtol=1e-10)
     radius = opt.newton.newton(potential_fn, x0, **radius_kwargs)
+    if (radius < 0.0).any():
+        raise ValueError('Solver found at least one point in the opposite direction. Check you points. ')
     return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
 
@@ -741,11 +743,20 @@ def mesh_spots(system, components_distance, component="all"):
                 potential_fn, fprime, potential, mass_ratio, synchronicity
             try:
                 spot_points = get_surface_points(*args)
-            except MaxIterationError:
+            except (MaxIterationError, ValueError) as e:
                 logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
                                f"doesn't satisfy reasonable conditions and entire spot will be omitted")
                 component_instance.remove_spot(spot_index=spot_index)
                 continue
+
+            if getattr(system, "morphology") == "over-contact":
+                validity_test = (spot_points[:, 0] <= neck_position).all() if component == 'primary' else \
+                    (spot_points[:, 0] <= (1 - neck_position)).all()
+                if not validity_test:
+                    logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
+                                   f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                    component_instance.remove_spot(spot_index=spot_index)
+                    continue
 
             boundary_points = spot_points[-len(deltas[-1]):]
 
