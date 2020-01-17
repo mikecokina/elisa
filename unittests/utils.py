@@ -178,6 +178,66 @@ def load_radial_curve(filename):
         return json.loads(content)
 
 
+def find_indices_of_duplicates(records_array):
+    """
+    returns duplicate values and indices of duplicates
+    :param records_array: np.array;
+    :return: tuple; duplicit values, corresponding indices (iterator)
+    """
+    idx_sort = np.argsort(records_array)
+    sorted_records_array = records_array[idx_sort]
+    vals, idx_start, count = np.unique(sorted_records_array, return_counts=True,
+                                       return_index=True)
+
+    # sets of indices
+    res = np.split(idx_sort, idx_start[1:])
+    # filter them with respect to their size, keeping only items occurring more than once
+
+    vals = vals[count > 1]
+    res = filter(lambda x: x.size > 1, res)
+    return vals, res
+
+
+def surface_closed(faces, points):
+    """
+    tests if surface given by `points` and `faces` contains all points, is closed, and without overlaps
+
+    :param faces: np.array;
+    :param points: np.array
+    :return: bool;
+    """
+    # removing duplicite points on borders between components and/or spots
+    unique_face_vertices, inverse_face_indices = np.unique(faces, return_inverse=True)
+    # if this will not pass, there are points not included in surface
+    if (unique_face_vertices != np.arange(unique_face_vertices.shape[0])).all():
+        return False
+    points_from_uniq_vertices = points[unique_face_vertices]
+    # renormalizing unique surface points so we can round them to specific precision
+    points_from_uniq_vertices = np.round(points_from_uniq_vertices / np.max(np.abs(points_from_uniq_vertices)), 6)
+    # filtering out duplicit points on borders
+    _, inverse_point_indices = np.unique(points_from_uniq_vertices, return_inverse=True, axis=0)
+
+    # re-routing indices of duplicit vertices to index of unique point so the code below will work properly
+    vals, duplicit_idx_iterator = find_indices_of_duplicates(inverse_point_indices)
+    for duplicit_idx in duplicit_idx_iterator:
+        unique_face_vertices[duplicit_idx] = unique_face_vertices[duplicit_idx[0]]
+
+    faces = unique_face_vertices[inverse_face_indices].reshape(faces.shape)
+
+    edges = np.row_stack((np.column_stack((faces[:, 0], faces[:, 1])),
+                          np.column_stack((faces[:, 1], faces[:, 2])),
+                          np.column_stack((faces[:, 2], faces[:, 0]))))
+    for edge in edges:
+        in_array = np.isin(element=faces, test_elements=edge)
+        occurences = np.sum(in_array, axis=1)  # searching for particular edge
+        edge_is_in_count = np.sum(occurences == 2)
+        # every edge should belong to exactly two faces
+        if edge_is_in_count != 2:
+            return False
+
+    return True
+
+
 class ElisaTestCase(unittest.TestCase):
     def setUpClass(*args, **kwargs):
         reset_config()
