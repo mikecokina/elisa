@@ -8,15 +8,14 @@ from elisa.conf import config
 from elisa import (
     umpy as up,
     utils,
-    ld
+    ld,
+    const as c,
 )
 from elisa.binary_system import (
     utils as bsutils,
     dynamic,
     surface
 )
-
-LD_LAW_CFS_COLUMNS = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
 
 
 def compute_circular_synchronous_lightcurve(*args):
@@ -48,12 +47,13 @@ def compute_circular_synchronous_lightcurve(*args):
 
         # integrating resulting flux
         for band in kwargs["passband"].keys():
+            ld_law_cfs_column = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
             flux, ld_cors = np.empty(2), dict()
 
             for component_idx, component in enumerate(config.BINARY_COUNTERPARTS.keys()):
                 ld_cors[component] = \
                     ld.limb_darkening_factor(
-                        coefficients=ld_cfs[component][band][LD_LAW_CFS_COLUMNS].values[visibility_indices[component]],
+                        coefficients=ld_cfs[component][band][ld_law_cfs_column].values[visibility_indices[component]],
                         limb_darkening_law=config.LIMB_DARKENING_LAW,
                         cos_theta=cosines[component])
 
@@ -61,7 +61,9 @@ def compute_circular_synchronous_lightcurve(*args):
                                              cosines[component] *
                                              coverage[component][visibility_indices[component]] *
                                              ld_cors[component])
-            band_curves[band][pos_idx] = np.sum(flux)
+
+            # parameter 1 / PI converts to astrophysical flux
+            band_curves[band][pos_idx] = np.sum(flux) / c.PI
 
     return band_curves
 

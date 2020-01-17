@@ -1058,12 +1058,26 @@ def remap_passbanded_unique_atm_to_matrix(atm_containers, fpaths_map):
     return models_matrix
 
 
-# def correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs):
-#     for star, lds in normal_radiance.items():
-#         for
-#     if config.LIMB_DARKENING_LAW in ['linear', 'cosine']:
-#         normal_radiance /= 1 - ld_cfs
-#     return normal_radiance
+def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
+    """
+    Correcting normal radiance values by increment that will correct inacuracy caused by using too shallow optical depth
+    for the middle of the disk. Correction was derived analytically from spherical model.
+
+    :param normal_radiances: dict; dict(component: dict(filter: normal radiances for each face))
+    :param ld_cfs: dict; dict(component: dict(filter: limb darkening coefficients for each face))
+    :return: dict;
+    """
+    for star, component_normal_radiances in normal_radiances.items():
+        for filter, normal_radiance in component_normal_radiances.items():
+            ld_coefficients = ld_cfs[star][filter][config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].values
+            if config.LIMB_DARKENING_LAW in ['linear', 'cosine']:
+                normal_radiance /= 1 - ld_coefficients[:, 0] / 3
+            elif config.LIMB_DARKENING_LAW in ['logarithmic']:
+                normal_radiance /= 1 - ld_coefficients[:, 0] / 3 + 2 * ld_coefficients[:, 1] / 9
+            elif config.LIMB_DARKENING_LAW in ['square_root']:
+                normal_radiance /= 1 - ld_coefficients[:, 0] / 3 - ld_coefficients[:, 1] / 5
+
+    return normal_radiances
 
 
 if __name__ == "__main__":

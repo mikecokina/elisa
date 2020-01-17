@@ -10,10 +10,12 @@ from unittests.utils import (
     prepare_single_system,
     load_light_curve,
     normalize_lc_for_unittests,
+    SOLAR_MODEL
 )
 from elisa import (
     units,
     umpy as up,
+const as c
 )
 from elisa.single_system.curves import (
     lc
@@ -104,3 +106,19 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         self.assertTrue(np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
         self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
+
+    def test_solar_constant(self):
+        config.LIMB_DARKENING_LAW = "linear"
+        reload(lc)
+
+        s = prepare_single_system(SOLAR_MODEL)
+        o = Observer(passband=['bolometric'], system=s)
+
+        start_phs, stop_phs, step = 0.0, 0.1, 0.1
+
+        expected = 1361.0
+
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained_flux = obtained[1]["bolometric"][0] / np.power(c.AU, 2)
+
+        np.testing.assert_almost_equal(obtained_flux, expected, decimal=0)

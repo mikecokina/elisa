@@ -108,10 +108,12 @@ def prep_surface_params(system, **kwargs):
         * ** atlas ** * - str
     :return:
     """
-    # compute normal radiance for each face and each component
-    normal_radiance = get_normal_radiance(system, **kwargs)
     # obtain limb darkening factor for each face
     ld_cfs = get_limbdarkening_cfs(system, **kwargs)
+    # compute normal radiance for each face and each component
+    normal_radiance = get_normal_radiance(system, **kwargs)
+
+    normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
     return normal_radiance, ld_cfs
 
 
@@ -138,5 +140,7 @@ def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
             np.sum(normal_radiance[component][band] * cosines[component] * coverage[component] * ld_cors[component])
         for component in config.BINARY_COUNTERPARTS
     }
-    flux = flux['primary'] + flux['secondary']
+
+    # parameter 1 / PI converts to astrophysical flux
+    flux = (flux['primary'] + flux['secondary']) / const.PI
     return flux

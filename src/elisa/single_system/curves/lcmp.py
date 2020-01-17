@@ -11,8 +11,6 @@ from elisa import (
 )
 from elisa.single_system.curves import shared
 
-LD_LAW_CFS_COLUMNS = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-
 
 def compute_non_pulsating_lightcurve(*args):
     """
@@ -47,8 +45,9 @@ def compute_non_pulsating_lightcurve(*args):
 
         # integrating resulting flux
         for band in kwargs["passband"].keys():
+            ld_law_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
             ld_cors = ld.limb_darkening_factor(
-                coefficients=ld_cfs['star'][band][LD_LAW_CFS_COLUMNS].values[visibility_indices],
+                coefficients=ld_cfs['star'][band][ld_law_columns].values[visibility_indices],
                 limb_darkening_law=config.LIMB_DARKENING_LAW,
                 cos_theta=cosines)
 
@@ -87,12 +86,14 @@ def compute_pulsating_light_curve(*args):
 
         # integrating resulting flux
         for band in kwargs["passband"].keys():
+            ld_law_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
             ld_cors = ld.limb_darkening_factor(
-                coefficients=ld_cfs['star'][band][LD_LAW_CFS_COLUMNS].values[visibility_indices],
+                coefficients=ld_cfs['star'][band][ld_law_columns].values[visibility_indices],
                 limb_darkening_law=config.LIMB_DARKENING_LAW,
                 cos_theta=cosines)
 
+            # parameter 1 / PI converts to astrophysical flux
             band_curves[band][pos_idx] = np.sum(normal_radiance['star'][band][visibility_indices] * cosines *
-                                                coverage['star'][visibility_indices] * ld_cors)
+                                                coverage['star'][visibility_indices] * ld_cors) / c.PI
 
     return band_curves

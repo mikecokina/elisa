@@ -22,6 +22,8 @@ def prep_surface_params(system, **kwargs):
 
     # compute normal radiance for each face and each component
     normal_radiance = get_normal_radiance(system, **kwargs)
+
+    normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
     return normal_radiance, ld_cfs
 
 
