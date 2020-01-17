@@ -72,7 +72,7 @@ v0.2_
 
 
 v0.2.1_
------
+-------
 .. v0.2.1_: https://github.com/mikecokina/elisa/commits/release/0.2.1
 
 **Fixes**
