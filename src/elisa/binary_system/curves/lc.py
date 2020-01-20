@@ -16,6 +16,7 @@ from ...binary_system.orbit.container import OrbitalSupplements
 from ...binary_system.surface.coverage import calculate_coverage_with_cosines
 from ...binary_system.curves import lcmp, shared
 from elisa.observer.mp import manage_observations
+from elisa import atm
 
 from ... import (
     umpy as up,
@@ -363,8 +364,9 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
         on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos)
         on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos)
 
-        normal_radiance = shared.get_normal_radiance(on_pos_body, **kwargs)
         ld_cfs = shared.get_limbdarkening_cfs(on_pos_body, **kwargs)
+        normal_radiance = shared.get_normal_radiance(on_pos_body, **kwargs)
+        normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
 
         coverage_b, cosines_b = calculate_coverage_with_cosines(on_pos_body, binary.semi_major_axis, in_eclipse=True)
         coverage_m, cosines_m = calculate_coverage_with_cosines(on_pos_mirror, binary.semi_major_axis, in_eclipse=True)
@@ -419,8 +421,11 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         :param on_pos: elisa.binary_system.container.OrbitalPositionContainer;
         :return: Tuple;
         """
-        _normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
+
         _ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
+        _normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
+        _normal_radiance = atm.correct_normal_radiance_to_optical_depth(_normal_radiance, _ld_cfs)
+
         _coverage, _cosines = calculate_coverage_with_cosines(on_pos, on_pos.semi_major_axis, in_eclipse=True)
         return _normal_radiance, _ld_cfs, _coverage, _cosines
 
@@ -547,6 +552,7 @@ def compute_eccentric_spotty_asynchronous_lightcurve(binary, **kwargs):
                                         potentials["secondary"][pos_idx], on_copy=False)
         normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
         ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
+        normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
 
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
 
