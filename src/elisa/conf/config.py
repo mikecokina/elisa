@@ -42,6 +42,7 @@ HOME = os.path.expanduser(os.path.join("~", '.elisa'))
 REFLECTION_EFFECT = True
 REFLECTION_EFFECT_ITERATIONS = 2
 LIMB_DARKENING_LAW = 'cosine'
+DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 2.0
 
 # computational
 MAX_DISCRETIZATION_FACTOR = 20
@@ -147,6 +148,11 @@ def update_config():
         if LIMB_DARKENING_LAW not in ['linear', 'cosine', 'logarithmic', 'square_root']:
             raise ValueError(f'{LIMB_DARKENING_LAW} is not valid name of limb darkening law. '
                              f'Available limb darkening laws are: `linear` or `cosine`, `logarithmic`, `square_root`')
+
+        global DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT
+        DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = \
+            c_parse.getfloat('physics', 'default_temperature_perturbation_phase_shift',
+                             fallback=DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT)
     # ******************************************************************************************************************
 
     if c_parse.has_section('computational'):

@@ -2,6 +2,7 @@ import numpy as np
 from elisa import utils, const as c
 from elisa.logger import getLogger
 from elisa.pulse.transform import PulsationModeProperties
+from elisa.conf import config
 
 logger = getLogger('pulse.mode')
 
@@ -32,16 +33,18 @@ class PulsationMode(object):
         self.start_phase = 0
         self.mode_axis_theta = 0
         self.mode_axis_phi = 0
+        self.temperature_perturbation_phase_shift = config.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT
+        # phase shift in radians between surface geometry
+        # perturbation and temperature perturbations
 
         # here the time-independent, renormalized associated Legendree polynomial is stored
         self.rals = None
+
         self.radial_relative_amplitude = None
         self.horizontal_relative_amplitude = None
 
         self.init_properties(**kwargs)
 
-        self.temperature_perturbation_phase_shift = c.HALF_PI  # phase shift in radians between surface geometry
-        # perturbation and temperature perturbations
         self.angular_frequency = c.FULL_ARC * self.frequency
         self.renorm_const = utils.spherical_harmonics_renormalization_constant(self.l, self.m)
 
