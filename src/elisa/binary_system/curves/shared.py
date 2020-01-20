@@ -7,6 +7,7 @@ from elisa import (
     const
 )
 from elisa.binary_system import utils as butils
+from elisa.observer.utils import init_bolometric_passband
 
 
 def get_limbdarkening_cfs(system, component="all", **kwargs):
@@ -113,7 +114,21 @@ def prep_surface_params(system, **kwargs):
     # compute normal radiance for each face and each component
     normal_radiance = get_normal_radiance(system, **kwargs)
 
-    normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
+    # checking if `bolometric`filter is already used
+    if 'bolometric' in ld_cfs['primary'].keys():
+        bol_ld_cfs = {component: {'bolometric': ld_cfs[component]['bolometric']} for component in
+                      config.BINARY_COUNTERPARTS.keys()}
+    else:
+        passband, left_bandwidth, right_bandwidth = init_bolometric_passband()
+        bol_kwargs = {
+            'passband': {'bolometric': passband},
+            'left_bandwidth': left_bandwidth,
+            'right_bandwith': right_bandwidth,
+            'atlas': 'whatever'
+        }
+        bol_ld_cfs = get_limbdarkening_cfs(system, **bol_kwargs)
+
+    normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, bol_ld_cfs)
     return normal_radiance, ld_cfs
 
 

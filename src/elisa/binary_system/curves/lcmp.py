@@ -139,8 +139,7 @@ def compute_circular_spotty_asynchronous_lightcurve(*args):
 
         # if None of components has to be rebuilded, use previously compyted radiances and limbdarkening when available
         if utils.is_empty(normal_radiance) or not utils.is_empty(require_build):
-            normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
-            ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
+            normal_radiance, ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
 
         coverage, cosines = surface.coverage.calculate_coverage_with_cosines(
             on_pos, on_pos.semi_major_axis, in_eclipse=in_eclipse[pos_idx])

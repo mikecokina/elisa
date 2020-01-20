@@ -4,16 +4,19 @@ import numpy as np
 import pandas as pd
 
 from multiprocessing.pool import Pool
-from scipy import interpolate
+# from scipy import interpolate
 
 from elisa.binary_system.system import BinarySystem
 from elisa.single_system.system import SingleSystem
-from elisa.observer import mp
+from elisa.observer import (
+    mp,
+    utils as outils,
+)
 from elisa.observer.plot import Plot
+from elisa.observer.passband import PassbandContainer
 from elisa.conf import config
 from elisa.utils import is_empty
 from elisa.logger import getLogger
-from elisa.binary_system import utils as bsutils
 from elisa import (
     units,
     umpy as up,
@@ -21,54 +24,6 @@ from elisa import (
 )
 
 logger = getLogger('observer.observer')
-
-
-class PassbandContainer(object):
-    def __init__(self, table, passband):
-        """
-        Setup PassbandContainier object. It carres dependedncies of throughputs on wavelengths for given passband.
-
-        :param table: pandads.DataFrame;
-        :param passband: str;
-        """
-        self.left_bandwidth = np.nan
-        self.right_bandwidth = np.nan
-        self.akima = None
-        self._table = pd.DataFrame({})
-        self.wave_unit = "angstrom"
-        self.passband = passband
-        # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
-        self.wave_to_si_mult = 1e-10
-
-        setattr(self, 'table', table)
-
-    @property
-    def table(self):
-        """
-        Return pandas dataframe which represent pasband table as dependecy of throughput on wavelength.
-
-        :return: pandas.DataFrame;
-        """
-        return self._table
-
-    @table.setter
-    def table(self, df):
-        """
-        Setter for passband table.
-        It precompute left and right bandwidth for given table and also interpolation function placeholder.
-        Akima1DInterpolator is used. If `bolometric` passband is used then interpolation function is like::
-
-            lambda x: 1.0
-
-
-        :param df: pandas.DataFrame;
-        """
-        self._table = df
-        self.akima = Observer.bolometric if (self.passband.lower() in ['bolometric']) else \
-            interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
-                                            df[config.PASSBAND_DATAFRAME_THROUGHPUT])
-        self.left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
-        self.right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
 
 
 class Observables(object):
@@ -111,21 +66,6 @@ class Observer(object):
         self.plot = Plot(self)
         self.observe = Observables(self)
 
-    @staticmethod
-    def bolometric(x):
-        """
-        Bolometric passband interpolation function in way of lambda x: 1.0
-
-        :param x:
-        :return: float or numpy.array; 1.0s in shape of x
-        """
-        if isinstance(x, (float, int)):
-            return 1.0
-        if isinstance(x, list):
-            return [1.0] * len(x)
-        if isinstance(x, np.ndarray):
-            return np.array([1.0] * len(x))
-
     def init_passband(self, passband):
         """
         Passband initializing method for Observer instance.
@@ -142,18 +82,15 @@ class Observer(object):
         passband = [passband] if isinstance(passband, str) else passband
         for band in passband:
             if band in ['bolometric']:
-                df = pd.DataFrame(
-                    {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
-                     config.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
-                right_bandwidth = sys.float_info.max
-                left_bandwidth = 0.0
+                psbnd, right_bandwidth, left_bandwidth = outils.init_bolometric_passband()
             else:
                 df = self.get_passband_df(band)
                 left_bandwidth = df[config.PASSBAND_DATAFRAME_WAVE].min()
                 right_bandwidth = df[config.PASSBAND_DATAFRAME_WAVE].max()
+                psbnd = PassbandContainer(table=df, passband=band)
 
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
-            self.passband[band] = PassbandContainer(table=df, passband=band)
+            self.passband[band] = psbnd
 
     def setup_bandwidth(self, left_bandwidth, right_bandwidth):
         """

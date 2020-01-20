@@ -6,7 +6,7 @@ from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from elisa.conf import config
-from elisa.observer.observer import PassbandContainer
+from elisa.observer.passband import PassbandContainer
 from unittests.utils import ElisaTestCase
 from elisa import (
     umpy as up,

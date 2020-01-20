@@ -364,9 +364,7 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
         on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos)
         on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos)
 
-        ld_cfs = shared.get_limbdarkening_cfs(on_pos_body, **kwargs)
-        normal_radiance = shared.get_normal_radiance(on_pos_body, **kwargs)
-        normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
+        normal_radiance, ld_cfs = shared.prep_surface_params(on_pos_body, **kwargs)
 
         coverage_b, cosines_b = calculate_coverage_with_cosines(on_pos_body, binary.semi_major_axis, in_eclipse=True)
         coverage_m, cosines_m = calculate_coverage_with_cosines(on_pos_mirror, binary.semi_major_axis, in_eclipse=True)
@@ -421,10 +419,7 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         :param on_pos: elisa.binary_system.container.OrbitalPositionContainer;
         :return: Tuple;
         """
-
-        _ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
-        _normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
-        _normal_radiance = atm.correct_normal_radiance_to_optical_depth(_normal_radiance, _ld_cfs)
+        _normal_radiance, _ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
 
         _coverage, _cosines = calculate_coverage_with_cosines(on_pos, on_pos.semi_major_axis, in_eclipse=True)
         return _normal_radiance, _ld_cfs, _coverage, _cosines
@@ -550,9 +545,7 @@ def compute_eccentric_spotty_asynchronous_lightcurve(binary, **kwargs):
         on_pos.build(components_distance=position.distance)
         on_pos = bsutils.move_sys_onpos(on_pos, position, potentials["primary"][pos_idx],
                                         potentials["secondary"][pos_idx], on_copy=False)
-        normal_radiance = shared.get_normal_radiance(on_pos, **kwargs)
-        ld_cfs = shared.get_limbdarkening_cfs(on_pos, **kwargs)
-        normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, ld_cfs)
+        normal_radiance, ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
 
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
 

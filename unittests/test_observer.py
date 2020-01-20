@@ -14,7 +14,9 @@ from elisa.binary_system.system import BinarySystem
 from elisa.single_system.system import SingleSystem
 from elisa.conf import config
 from elisa import umpy as up
-from elisa.observer.observer import PassbandContainer, Observer
+from elisa.observer.observer import Observer
+from elisa.observer.passband import PassbandContainer
+from elisa.observer.utils import bolometric
 from unittests.utils import ElisaTestCase
 
 
@@ -82,9 +84,9 @@ class TestObserver(ElisaTestCase):
         expected = [1.0, [1.0, 1.0, 1.0], np.array([1.0, 1.0, 1.0])]
         obtained = [
 
-            Observer.bolometric(r(m)),
-            Observer.bolometric([r(m) for _ in range(3)]),
-            Observer.bolometric(np.array([r(m) for _ in range(3)]))
+            bolometric(r(m)),
+            bolometric([r(m) for _ in range(3)]),
+            bolometric(np.array([r(m) for _ in range(3)]))
         ]
 
         for e, o in zip(expected, obtained):
