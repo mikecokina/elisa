@@ -188,6 +188,54 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         self.assertTrue(len(orbital_position_container.primary.spots) == 0)
         self.assertTrue(len(orbital_position_container.secondary.spots) == 0)
 
+    def test_spotty_mesh_for_duplicate_points(self):
+        for params in testutils.BINARY_SYSTEM_PARAMS.values():
+            s = testutils.prepare_binary_system(params,
+                                                spots_primary=testutils.SPOTS_META["primary"],
+                                                spots_secondary=testutils.SPOTS_META["secondary"]
+                                                )
+            # reducing runtime of the test
+            s.primary.discretization_factor = up.radians(7)
+            s.init()
+            components_distance = s.orbit.orbital_motion(phase=0.0)[0][0]
+
+            orbital_position_container = OrbitalPositionContainer(
+                primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
+                secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+                position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
+                **s.properties_serializer()
+            )
+
+            orbital_position_container.build_mesh(components_distance=components_distance)
+
+            for component in ['primary', 'secondary']:
+                component_instance = getattr(orbital_position_container, component)
+                distance = round(find_nearest_dist_3d(list(component_instance.points)), 10)
+
+                if distance < 1e-10:
+                    bad_points = []
+                    for i, point in enumerate(component_instance.points):
+                        for j, xx in enumerate(component_instance.points[i + 1:]):
+                            dist = np.linalg.norm(point - xx)
+                            if dist <= 1e-10:
+                                print(f'Match: {point}, {i}, {j}')
+                                bad_points.append(point)
+
+                self.assertFalse(distance < 1e-10)
+
+                spot_distance = round(find_nearest_dist_3d(list(component_instance.spots[0].points)), 10)
+
+                if spot_distance < 1e-10:
+                    bad_points = []
+                    for i, point in enumerate(component_instance.spots[0].points):
+                        for j, xx in enumerate(component_instance.spots[0].points[i + 1:]):
+                            dist = np.linalg.norm(point - xx)
+                            if dist <= 1e-10:
+                                print(f'Match: {point}, {i}, {j}')
+                                bad_points.append(point)
+
+                self.assertFalse(spot_distance < 1e-10)
+
 
 class MeshUtilsTestCase(ElisaTestCase):
     def setUp(self):
