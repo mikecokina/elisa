@@ -64,7 +64,6 @@ and potentially also **python-tk** package or equivalent for matplotlib package 
 
 :note: although python distribution and package versions are specified precisely, that does not mean that the package will not work with higher versions, only that it was not tested with higher versions of packages. However we highly recommend to stick with python distribution and package versions listed above.
 
-
 Install
 -------
 
@@ -163,18 +162,33 @@ download Atmospheres_ models and Limb-Darkening_ tables.
 .. _Atmospheres: https://github.com/mikecokina/elisa/tree/dev/atmosphere
 .. _Limb-Darkening: https://github.com/mikecokina/elisa/tree/dev/limbdarkening
 
-Models can be stored on your machine in directory of your choosing. Lets say you want ot use ``Castelli-Kurucz 2004``
+Default tables location
+~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, the Elisa will search for atmosphere and limb darkening tables in:
+
+ - atmospheres: $HOME/.elisa/atmosphere/
+ - limb darkening: $HOME/.elisa/limb_darkening/
+
+therefore, atmosphere and limb darkening tables stored at those locations will be used by elisa by default.
+
+Custom tables location
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Models can be stored on your machine in directory of your choosing as well. Lets say you want ot use ``Castelli-Kurucz 2004``
 models stored in directory ``/home/user/castelli_kurucz/ck04`` and Van Hamme limb darkening models in directory
-``/home/user/van_hamme_ld/vh93``. You have to create configuration ``ini`` file where
+``/home/user/van_hamme_ld/vh16``. You have to create configuration ``ini`` file where
 model and directories will be specified. Now assume that name of our configuration file is ``elisa_config.ini`` located
-in path ``/home/user/.elisa/``. Then content of your configuration file should be at least like following::
+in path ``/home/user/.elisa/``. Then content of your configuration file should at least look like this following
+example::
 
     [support]
-    van_hamme_ld_tables = /home/user/van_hamme_ld/vh93
+    van_hamme_ld_tables = /home/user/van_hamme_ld/vh16
     castelli_kurucz_04_atm_tables = /home/user/castelli_kurucz/ck04
     atlas = ck04
 
-Full content of configuration file with description might be found here, Elisa-Configuration-File_
+This configuration file is used for adjusting Full content of configuration file with description might be found here,
+Elisa-Configuration-File_
 
 .. _Elisa-Configuration-File: https://github.com/mikecokina/elisa/blob/master/src/elisa/conf/elisa_conf_docs.ini
 
@@ -183,13 +197,14 @@ Full content of configuration file with description might be found here, Elisa-C
           conversion to standard format. Models have been altered to form required for Elisa.
 
 Now, you have to tell ELISa, where to find configuration file. In environment you are using setup environment variable
-`ELISA_CONFIG` to full path to config file. In UNIX like operation systems it is doable by following command::
+`ELISA_CONFIG` to full path to config file. In UNIX like operation systems it is done by following command::
 
     export ELISA_CONFIG=/home/user/.elisa/elisa_config.ini
 
 There is plenty ways how to setup environment variable which vary on operation system and also on tool (IDE)
-that you have in use. Optionally, you can use ``config.ini`` file located in ``ELISa_folder/src/elisa/conf/`` without
-any need for setting the enviromental variable.
+that you have in use. On linux, as an example, you can copy the previous command to #HOME/.bashrc (depends on terminal
+type). Optionally, you can use ``config.ini`` file located in ``ELISa_folder/src/elisa/conf/`` without
+any need for setting an enviromental variable.
 
 Now you are all setup and ready to code.
 
