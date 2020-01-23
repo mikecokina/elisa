@@ -38,13 +38,15 @@ class Observables(object):
 
 
 class Observer(object):
-    def __init__(self, passband, system):
+    def __init__(self, passband=[], system=None):
         """
         Initializer for observer class.
 
         :param passband: string; for valid filter name see config.py file
         :param system: system instance (BinarySystem or SingleSystem)
         """
+        if passband is None:
+            passband = list()
         logger.info("initialising Observer instance")
         # specifying what kind of system is observed
         self._system = system
