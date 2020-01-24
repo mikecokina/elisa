@@ -322,6 +322,9 @@ ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
 DATETIME_MASK = '%Y-%m-%dT%H.%M.%S'
 DATE_MASK = '%Y-%m-%d'
 
+DATASET_MANDATORY_KWARGS = ['type', 'x_data', 'y_data']
+DATASET_OPTIONAL_KWARGS = ['yerr', 'x_unit', 'y_unit']
+
 read_and_update_config()
 _update_atlas_to_base_dir()
 _create_home()

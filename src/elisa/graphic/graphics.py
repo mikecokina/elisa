@@ -691,9 +691,9 @@ def rv_curve(**kwargs):
     plt.xlabel('Phase')
     if isinstance(kwargs['unit'], type(u.m / u.s)):
         uu = kwargs['unit']
-        plt.ylabel(f'Radial Velocity/({uu:latex})')
+        plt.ylabel(f'Radial velocity/({uu:latex})')
     else:
-        plt.ylabel('Radial Velocity')
+        plt.ylabel('Radial velocity')
     if kwargs['legend']:
         plt.legend(loc=kwargs['legend_location'])
     plt.show()

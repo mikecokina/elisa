@@ -47,7 +47,7 @@ def serialize_primary_kwargs(**kwargs):
     return _serialize_star_kwargs(component='p', **kwargs)
 
 
-def serialize_seondary_kwargs(**kwargs):
+def serialize_secondary_kwargs(**kwargs):
     return _serialize_star_kwargs(component='s', **kwargs)
 
 
@@ -86,7 +86,7 @@ def prepare_binary(period, discretization, **kwargs):
 
     kwargs.update({"p__discretization_factor": discretization, "period": period})
     primary_kwargs = serialize_primary_kwargs(**kwargs)
-    secondary_kwargs = serialize_seondary_kwargs(**kwargs)
+    secondary_kwargs = serialize_secondary_kwargs(**kwargs)
     system_kwargs = serialize_system_kwargs(**kwargs)
     json = {
         "primary": dict(**primary_kwargs),
@@ -175,7 +175,7 @@ def central_rv_synthetic(xs, observer, **kwargs):
 
     xs, kwargs = rvt_layer_resolver(xs, **kwargs)
     primary_kwargs = serialize_primary_kwargs(**kwargs)
-    secondary_kwargs = serialize_seondary_kwargs(**kwargs)
+    secondary_kwargs = serialize_secondary_kwargs(**kwargs)
     system_kwargs = serialize_system_kwargs(**kwargs)
 
     json = {
