@@ -1,7 +1,7 @@
 import numpy as np
 import astropy.units as u
 
-from elisa.analytics.dataset.transform import RVdataProperties
+from elisa.analytics.dataset.transform import RVdataProperties, LCdataProperties
 from elisa.logger import getLogger
 from elisa import utils, units
 from elisa.conf import config
@@ -141,6 +141,53 @@ class RVdata(Dataset):
 
         # converting y-axis
         kwargs['y_data'] = convert_data(kwargs['y_data'], kwargs['y_unit'], units.VELOCITY_UNIT)
+
+        # convert errors
+        if 'yerr' in kwargs.keys():
+            kwargs['yerr'] = convert_data(kwargs['yerr'], kwargs['y_unit'], units.VELOCITY_UNIT)
+        kwargs['y_unit'] = convert_unit(kwargs['y_unit'], units.VELOCITY_UNIT)
+
+        return kwargs
+
+
+class LCdata(Dataset):
+    MANDATORY_KWARGS = config.DATASET_MANDATORY_KWARGS
+    OPTIONAL_KWARGS = config.DATASET_OPTIONAL_KWARGS
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
+
+    def __init__(self, name=None, **kwargs):
+        utils.invalid_kwarg_checker(kwargs, RVdata.ALL_KWARGS, RVdata)
+        super(LCdata, self).__init__(name, **kwargs)
+        kwargs = self.transform_input(**kwargs)
+
+        # conversion to base units
+        kwargs = self.convert_arrays(**kwargs)
+        self.check_data_validity(**kwargs)
+
+        self.init_parameters(**kwargs)
+
+    def transform_input(self, **kwargs):
+        """
+        Transform and validate input kwargs.
+
+        :param kwargs: Dict;
+        :return: Dict;
+        """
+        return LCdataProperties.transform_input(**kwargs)
+
+    @staticmethod
+    def convert_arrays(**kwargs):
+        """
+        converting data and units to its base counterparts or keeping them dimensionless
+        :param kwargs:
+        :return:
+        """
+        # converting x-axis
+        kwargs['x_data'] = convert_data(kwargs['x_data'], kwargs['x_unit'], units.PERIOD_UNIT)
+        kwargs['x_unit'] = convert_unit(kwargs['x_unit'], units.PERIOD_UNIT)
+
+        # converting y-axis
+        kwargs['y_data'] = convert_data(kwargs['y_data'], kwargs['y_unit'], units.FLUX_UNIT)
 
         # convert errors
         if 'yerr' in kwargs.keys():

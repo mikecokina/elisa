@@ -54,3 +54,5 @@ class RVdataProperties(DatasetProperties):
     @staticmethod
     def y_unit(value):
         return unit_transform(value, (units.VELOCITY_UNIT,))
+
+class LCdataProperties(DatasetProperties):
