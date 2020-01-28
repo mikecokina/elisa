@@ -5,10 +5,7 @@ from numpy.testing import assert_array_equal
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase, prepare_single_system
 
-from elisa.base.container import StarContainer
-from elisa.single_system.container import SystemContainer
 from elisa.single_system import model
-from elisa.const import SinglePosition
 from elisa.utils import is_empty, find_nearest_dist_3d
 from elisa import umpy as up, units
 
