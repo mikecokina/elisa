@@ -18,6 +18,7 @@ from elisa.base.error import InitialParamsError
 from elisa.binary_system import t_layer
 from elisa.conf.config import BINARY_COUNTERPARTS
 from unittests.utils import ElisaTestCase
+from elisa import const
 
 TOL = 1e-5
 
@@ -97,19 +98,27 @@ class TestParamsTestCase(ElisaTestCase):
         self.assertTrue(np.all(np.abs(expected - obtained) < TOL))
 
     def test_extend_result_with_units(self):
-        result = [
-            {
+        result = {
+            'p__mass': {
                 'value': 2.0,
-                'param': 'p__mass'
             },
-            {
+            'p__t_eff': {
                 'value': 4000.0,
-                'param': 'p__t_eff'
-            }]
+            }
+        }
+
+        expected = {
+            'p__mass': {
+                'value': 2.0,
+                'unit': 'solMass',
+            },
+            'p__t_eff': {
+                'value': 4000.0,
+                'unit': 'K',
+            }
+        }
 
         obtained = params.extend_result_with_units(result)
-        expected = [{'value': 2.0, 'param': 'p__mass', 'unit': 'solMass'},
-                    {'value': 4000.0, 'param': 'p__t_eff', 'unit': 'K'}]
         assert_array_equal(expected, obtained)
 
     def test_is_overcontact(self):
@@ -386,7 +395,7 @@ class McMcLCTestCase(AbstractFitTestCase):
 
 
 class RVTestCase(ElisaTestCase):
-    rv = {'primary': np.array([111221.02018955, 102589.40515112, 92675.34114568,
+    rv = {'primary': -1 * np.array([111221.02018955, 102589.40515112, 92675.34114568,
                                81521.98280508, 69189.28515476, 55758.52165462,
                                41337.34984718, 26065.23187763, 10118.86370365,
                                -6282.93249474, -22875.63138097, -39347.75579673,
@@ -407,7 +416,7 @@ class RVTestCase(ElisaTestCase):
                                69189.28515476, 55758.52165462, 41337.34984718,
                                26065.23187763, 10118.86370365, -6282.93249474,
                                -22875.63138097]),
-          'secondary': np.array([-144197.83633559, -128660.92926642, -110815.61405663,
+          'secondary': -1 * np.array([-144197.83633559, -128660.92926642, -110815.61405663,
                                  -90739.56904355, -68540.71327298, -44365.33897272,
                                  -18407.22971932, 9082.58262586, 37786.04533903,
                                  67309.27849613, 97176.13649135, 126825.96043971,
@@ -540,7 +549,7 @@ class LeastSqaureRVTestCase(RVTestCase):
         ]
 
         result = central_rv.fit(xs=xs, ys=self.rv, x0=copy(initial_parameters))
-        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
 
     def test_least_squares_rv_fit_std_params(self):
         """
@@ -594,7 +603,7 @@ class LeastSqaureRVTestCase(RVTestCase):
         ]
 
         result = central_rv.fit(xs=xs, ys=self.rv, x0=copy(initial_parameters))
-        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
 
     def test_least_squares_rv_fit_community_params(self):
         phases = np.arange(-0.6, 0.62, 0.02)
@@ -622,6 +631,7 @@ class LeastSqaureRVTestCase(RVTestCase):
                 'max': 2
             },
             {
+                # 'value': const.PI,
                 'value': 0.0,
                 'param': 'argument_of_periastron',
                 'fixed': True
@@ -639,7 +649,7 @@ class LeastSqaureRVTestCase(RVTestCase):
         ]
 
         result = central_rv.fit(xs=xs, ys=self.rv, x0=copy(initial_parameters))
-        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
 
 
 class LeastSqaureLCTestCase(AbstractFitTestCase):
@@ -688,7 +698,7 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
 
         with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.lc_generator):
             result = ls_binary_detached.fit(self.phases, self.flux, period=3.0, discretization=5, x0=dinit, xtol=1e-5)
-        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
 
     def test_least_squares_lc_fit_community_params(self):
         dinit = [
@@ -739,7 +749,7 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
         ]
         with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.lc_generator):
             result = ls_binary_detached.fit(self.phases, self.flux, period=3.0, discretization=5, x0=dinit, xtol=1e-5)
-        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
 
 
 class ModelSimulator(object):

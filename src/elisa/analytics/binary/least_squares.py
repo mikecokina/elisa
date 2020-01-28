@@ -108,12 +108,14 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         result_dict = dict(zip(labels, result))
         result_dict.update(self.fixed)
         result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
-        result = [{"param": key, "value": val} for key, val in result_dict.items()]
+        # result = [{"param": key, "value": val} for key, val in result_dict.items()]
 
         # compute r_squared and append to result
         r_squared_args = self.xs, self.ys, period, self.passband, discretization, self.morphology, self.xs_reverser
         r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **result_dict)
-        result.append({"r_squared": r_squared_result})
+
+        result = {key: {"value": val} for key, val in result_dict.items()}
+        result["r_squared"] = {'value': r_squared_result}
 
         return params.extend_result_with_units(result)
 
@@ -195,7 +197,6 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         r_squared_args = self.xs, self.ys, on_normalized, self.xs_reverser
         r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **result_dict)
 
-        # result = [{"param": key, "value": val} for key, val in result_dict.items()]
         result = {key: {"value": val} for key, val in result_dict.items()}
         result["r_squared"] = {'value': r_squared_result}
         return params.extend_result_with_units(result)

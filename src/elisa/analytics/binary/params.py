@@ -427,10 +427,6 @@ def extend_result_with_units(result):
     :param result: List[Dict];
     :return: List[Dict];
     """
-    # for res in result:
-    #     key = res.get('param')
-    #     if key in PARAMS_UNITS_MAP:
-    #         res['unit'] = PARAMS_UNITS_MAP[key]
     for key, value in result.items():
         if key in PARAMS_UNITS_MAP:
             value['unit'] = PARAMS_UNITS_MAP[key]

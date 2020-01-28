@@ -47,7 +47,7 @@ def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_per
     a = 2.0 * up.pi * semi_major_axis * up.sin(inclination)
     b = period * up.sqrt(1.0 - up.power(eccentricity, 2))
     c = up.cos(true_anomaly + argument_of_periastron) + (eccentricity * up.cos(argument_of_periastron))
-    return a * c / b
+    return - a * c / b
 
 
 def radial_velocity(binary, **kwargs):
