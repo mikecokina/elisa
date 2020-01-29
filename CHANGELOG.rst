@@ -80,6 +80,16 @@ v0.2.1_
 - spots discretization managed by parent object if not specified otherwise
 - valid detection of spots on over-contact neck
 
+v0.2.2_
+-------
+.. v0.2.2_: https://github.com/mikecokina/elisa/commits/release/0.2.2
+
+**Fixes**
+
+- radial velocity curves orientation
+- fixed requirements in setupy.py
+- fixed requirements in docs
+
 Future plans
 ============
 
