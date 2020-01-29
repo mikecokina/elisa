@@ -25,7 +25,7 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
         obtained_rvp, obtained_rvs = normalize_lv_for_unittests(rvdict['primary'], rvdict['secondary'])
         expected = load_radial_curve("detahed.circ.json")
 
-        expected_rvp, expected_rvs = expected["primary"], expected["secondary"]
+        expected_rvp, expected_rvs = - np.array(expected["primary"]), - np.array(expected["secondary"])
         expected_rvp, expected_rvs = normalize_lv_for_unittests(expected_rvp, expected_rvs)
 
         assert_array_equal(np.round(expected_rvp, 4), np.round(obtained_rvp, 4))
@@ -37,7 +37,7 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
         obtained_rvp, obtained_rvs = normalize_lv_for_unittests(rvdict['primary'], rvdict['secondary'])
         expected = load_radial_curve("detahed.ecc.json")
 
-        expected_rvp, expected_rvs = expected["primary"], expected["secondary"]
+        expected_rvp, expected_rvs = - np.array(expected["primary"]), - np.array(expected["secondary"])
         expected_rvp, expected_rvs = normalize_lv_for_unittests(expected_rvp, expected_rvs)
 
         assert_array_equal(np.round(expected_rvp, 4), np.round(obtained_rvp, 4))

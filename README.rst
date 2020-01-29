@@ -3,7 +3,7 @@
 .. |Travis build| image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
     :target: https://travis-ci.org/mikecokina/elisa
 
-.. |GitHub version| image:: https://img.shields.io/badge/version-0.2-yellow.svg
+.. |GitHub version| image:: https://img.shields.io/badge/version-0.2.2-yellow.svg
    :target: https://github.com/Naereen/StrapDown.js
 
 .. |Licence GPLv2| image:: https://img.shields.io/badge/License-GNU/GPLv2-blue.svg
@@ -377,8 +377,8 @@ by parameters::
     def main():
         phases = np.arange(-0.6, 0.62, 0.02)
         xs = {comp: phases for comp in BINARY_COUNTERPARTS}
-        rv = {'primary': [59290.08594439, 54914.25751111, 42736.77725629, 37525.38500226,..., -15569.43109441],
-              'secondary': [-52146.12757077, -42053.17971052, -18724.62240468,..., 90020.23738585]}
+        rv = {'primary': [-16302.55206979, -9753.87315904, -2735.95789431, 4640.51700842, ..., 56302.55204598],
+              'secondary': [92605.10413957, 79507.74631807, 65471.91578862, 50718.96598315, ..., -52605.10409197]}
 
         rv_initial = [
             {
@@ -488,8 +488,8 @@ Following represents minimalistic code which should explain how to use mcmc meth
         phases = np.arange(-0.6, 0.62, 0.02)
         xs = {comp: phases for comp in BINARY_COUNTERPARTS}
 
-        rv = {'primary': [59290.08594439, 54914.25751111, 42736.77725629, 37525.38500226,..., -15569.43109441]),
-              'secondary': [-52146.12757077, -42053.17971052, -18724.62240468,..., 90020.23738585]}
+        rv = {'primary': [-16302.55206979, -9753.87315904, -2735.95789431, 4640.51700842, ..., 56302.55204598],
+              'secondary': [92605.10413957, 79507.74631807, 65471.91578862, 50718.96598315, ..., -52605.10409197]}
 
         rv_initial = [
             {

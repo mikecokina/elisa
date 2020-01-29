@@ -88,7 +88,7 @@ setup(
         'pytz==2017.2',
         'scipy==1.0.0',
         'six==1.11.0',
-        'jsonschema==3.2.0'
+        'jsonschema==3.2.0',
     ],
 
     # List additional groups of dependencies here (e.g. development
