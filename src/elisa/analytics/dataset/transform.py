@@ -2,11 +2,12 @@ import numpy as np
 
 from astropy import units as u
 
-from elisa.base.transform import TransformProperties
+from elisa.base.transform import TransformProperties, quantity_transform
 from elisa import units
 
 
 WHEN_ARRAY = (list, np.ndarray, tuple)
+WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np.float64)
 
 
 def array_transform(value, when_array):
@@ -46,7 +47,7 @@ class DatasetProperties(TransformProperties):
         return array_transform(value, WHEN_ARRAY)
 
 
-class RVdataProperties(DatasetProperties):
+class RVDataProperties(DatasetProperties):
     @staticmethod
     def x_unit(value):
         return unit_transform(value, (u.dimensionless_unscaled, units.TIME_UNIT))
@@ -55,4 +56,24 @@ class RVdataProperties(DatasetProperties):
     def y_unit(value):
         return unit_transform(value, (units.VELOCITY_UNIT,))
 
-class LCdataProperties(DatasetProperties):
+
+class LCDataProperties(DatasetProperties):
+    @staticmethod
+    def x_unit(value):
+        return unit_transform(value, (u.dimensionless_unscaled, units.TIME_UNIT))
+
+    @staticmethod
+    def y_unit(value):
+        return unit_transform(value, (u.dimensionless_unscaled, u.mag))
+
+    @staticmethod
+    def zero_magnitude(value):
+        if isinstance(value, units.Quantity):
+            value.is_equivalent(u.mag)
+            value = np.float64(value.to(u.mag))
+        elif isinstance(value, WHEN_FLOAT64):
+            value = np.float64(value)
+        else:
+            raise TypeError('Input of variable is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance.')
+        return value
