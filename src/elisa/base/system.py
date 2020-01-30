@@ -33,7 +33,6 @@ class System(metaclass=ABCMeta):
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
-
         # default params
         self.inclination = np.nan
         self.period = np.nan
