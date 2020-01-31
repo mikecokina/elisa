@@ -13,7 +13,7 @@ def validate_pirmary_minimum_time(t0):
         raise error.ValidationError("Primary minimum time has to be > 0.")
 
 
-def jd_to_phase(t0, period, jd):
+def jd_to_phase(t0, period, jd, centre=0.5):
     """
     Convert JD time to phase from -1 to 1
 
@@ -27,7 +27,8 @@ def jd_to_phase(t0, period, jd):
 
     if isinstance(jd, list):
         jd = np.array(jd)
-    return ((jd - t0) / period) % 1.0
+    shift = centre - 0.5
+    return (((jd - t0) / period) - shift) % 1.0 + shift
 
 
 def phase_to_jd(t0, period, phases):

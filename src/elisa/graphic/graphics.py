@@ -1,8 +1,10 @@
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as axes3d
 
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.gridspec as gridspec
 
 from matplotlib import cm
 from elisa import (
@@ -696,4 +698,49 @@ def rv_curve(**kwargs):
         plt.ylabel('Radial velocity')
     if kwargs['legend']:
         plt.legend(loc=kwargs['legend_location'])
+    plt.show()
+
+
+def binary_rv_fit_plot(**kwargs):
+    """
+    Plots the model and residuals described by fit params or calculated by last run of fitting procedure.
+
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **fit_params** * -- dict; {fit_parameter: {value: float, unit: astropy.unit.Unit}
+        * **start_phase** * -- float;
+        * **stop_phase** * -- float;
+        * **number_of_points** * -- int;
+        * **y_axis_unit** * -- astropy.unit.Unit;
+    :return:
+    """
+    matplotlib.rcParams.update({'errorbar.capsize': 2})
+    fig = plt.figure(figsize=(8, 6))
+
+    gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1], sharex=ax1)
+
+    ax1.plot(kwargs['synth_phases'], kwargs['rv_fit']['primary'], label='primary RV fit', color='cornflowerblue')
+    ax1.plot(kwargs['synth_phases'], kwargs['rv_fit']['secondary'], label='secondary RV fit', color='firebrick',
+             ls='dashed')
+    ax1.errorbar(kwargs['x_data']['primary'], kwargs['y_data']['primary'], yerr=kwargs['yerr']['primary'],
+                 linestyle='none', marker='o', color='blue', markersize=3, label='primary')
+    ax1.errorbar(kwargs['x_data']['secondary'], kwargs['y_data']['secondary'], yerr=kwargs['yerr']['secondary'],
+                 linestyle='none', marker='x', color='red',
+                 markersize=3, label='secondary')
+    ax1.legend()
+    unit = kwargs['y_unit']
+    ax1.set_ylabel(f'Radial velocity/[{unit}]')
+
+    ax2.axhline(0, ls='dashed', c='black', lw=0.5)
+    ax2.errorbar(kwargs['x_data']['primary'], kwargs['residuals']['primary'], yerr=kwargs['yerr']['primary'],
+                 linestyle='none', marker='o', color='blue', markersize=3, label='primary')
+    ax2.errorbar(kwargs['x_data']['secondary'], kwargs['residuals']['secondary'], yerr=kwargs['yerr']['secondary'],
+                 linestyle='none', marker='x', color='red',
+                 markersize=3, label='secondary')
+    ax2.set_xlabel('Phase')
+    ax2.set_ylabel('Residuals')
+
+    plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
     plt.show()

@@ -149,7 +149,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         return np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                          / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS])
 
-    def fit(self, xs, ys, x0, yerrs=None, xtol=1e-8, ftol=1e-8, max_nfev=None, diff_step=None,
+    def fit(self, xs, ys, x0, yerr=None, xtol=1e-8, ftol=1e-8, max_nfev=None, diff_step=None,
             f_scale=1.0, on_normalized=False):
         """
         Method to provide fitting of radial velocities curves.
@@ -161,7 +161,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         :param xs: Iterable[float];
         :param ys: Dict;
         :param x0: List[Dict]; initial state (metadata included)
-        :param yerrs: Union[numpy.array, float]; errors for each point of observation
+        :param yerr: Union[numpy.array, float]; errors for each point of observation
         :param max_nfev: int; maximal iteration
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :param diff_step: Union[None, array];
@@ -174,8 +174,9 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :return: Dict;
         """
+
         x0 = params.rv_initial_x0_validity_check(x0)
-        yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
+        yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerr is None else yerr
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)

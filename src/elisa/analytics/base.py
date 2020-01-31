@@ -4,8 +4,8 @@ from elisa.logger import getLogger
 from elisa import (
     utils
 )
-from elisa.conf import config
 from elisa.analytics.transform import AnalyticsProperties
+from elisa.analytics.binary_fit import rv_fit
 
 logger = getLogger('analytics.base')
 
@@ -74,8 +74,13 @@ class BinarySystemFittingTask(FittingTask):
 
         super(BinarySystemFittingTask, self).__init__(name, **kwargs)
 
-        # self.plot = graphic.plot.Plot(self)
-
         self.init_properties(**kwargs)
+        if 'radial_velocities' in kwargs:
+            self.init_rv_fit()
 
-    # def
+    def init_rv_fit(self):
+        logger.debug(f'Initializing radial velocity fitting module in class instance {self.__class__.__name__} / '
+                     f'{self.name}.')
+        rv_fit_kwargs = {key: getattr(self, key) for key in rv_fit.RVFit.ALL_KWARGS}
+        self.rv_fit = rv_fit.RVFit(**rv_fit_kwargs)
+

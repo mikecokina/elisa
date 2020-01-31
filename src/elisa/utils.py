@@ -900,3 +900,7 @@ def str_repalce(x, old, new):
     for _old, _new in zip(old, new):
         x = str(x).replace(_old, _new)
     return x
+
+
+def query_dict(dict, key):
+    return dict[key] if key in dict.keys() else None
