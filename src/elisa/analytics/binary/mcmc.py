@@ -30,16 +30,29 @@ logger = getPersistentLogger('analytics.binary.mcmc')
 
 class McMcMixin(object):
     @staticmethod
-    def resolve_mcmc_result(sampler, labels, discard=False, thin=1, quantiles=None):
+    def resolve_mcmc_result(sampler, labels, discard=False, thin=1, percentiles=None):
+        """
+        Function process EnsembleSampler (output from McMcFit._fit) and produces dictionary with results.
+
+        :param sampler: emcee.ensemble.EnsembleSampler
+        :param labels: list; list with names of variable fit parameters in correct order
+        (output of params.x0_to_variable_kwargs)
+        :param discard:
+        :param thin:
+        :param percentiles: list; [percentile for left side error estimation, percentile of the centre,
+        percentile for right side error estimation]
+        :return:
+        """
         flat_samples = sampler.get_chain(discard=discard, thin=thin, flat=True)
-        quantiles = [16, 50, 84] if quantiles is None else quantiles
-        result = list()
+        percentiles = [16, 50, 84] if percentiles is None else percentiles
+        result = dict()
         for idx, key in enumerate(labels):
-            mcmc = np.percentile(flat_samples[:, idx], quantiles)
+            mcmc = np.percentile(flat_samples[:, idx], percentiles)
             val = params.param_renormalizer((mcmc[1],), (key,))[0]
             q = np.diff(params.param_renormalizer(mcmc, np.repeat(key, len(mcmc))))
-            result.append({"param": key, "value": val, "min": val - q[0], "max": val + q[1], "fixed": False})
-        return result
+            result[key] = {"value": val, "min": val - q[0], "max": val + q[1], "fixed": False}
+
+        return params.extend_result_with_units(result)
 
     @staticmethod
     def _store_flat_chain(flat_chain: np.array, labels: Iterable[str], norm: Dict):
@@ -67,7 +80,7 @@ class McMcMixin(object):
         }
         with open(fpath, "w") as f:
             f.write(json.dumps(data, indent=4))
-
+        logger.info(f'MCMC chain, variable`s labels and normalization constants were stored in: {fpath}')
         return fname[:-5]
 
     @staticmethod
@@ -245,7 +258,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
                                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))
         return lhood
 
-    def fit(self, xs, ys, x0, nwalkers, nsteps, p0=None, yerrs=None, nsteps_burn_in=10):
+    def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, p0=None, yerr=None, nsteps_burn_in=None):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
@@ -262,23 +275,30 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         :param nwalkers: int; number of walkers
         :param nsteps: int; number of steps in mcmc eval
         :param p0: numpy.array; inital priors for mcmc
-        :param yerrs: Union[numpy.array, float]; errors for each point of observation
+        :param yerr: Union[numpy.array, float]; errors for each point of observation
         :param nsteps_burn_in: int; numer of steps for mcmc to explore parameters
         :return: emcee.EnsembleSampler; sampler instance
         """
+        nsteps_burn_in = int(nsteps / 10) if nsteps_burn_in is None else nsteps_burn_in
+        nwalkers = 2*len(x0) if nwalkers is None else nwalkers
 
         x0 = params.rv_initial_x0_validity_check(x0)
-        yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerrs is None else yerrs
-        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
+        yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerr is None else yerr
+        x0, labels, fixed, constrained, observer = params.fit_data_initializer(x0)
         ndim = len(x0)
+
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.ys, self.yerrs = ys, yerrs
         self.labels, self.observer = labels, observer
-        self.fixed, self.constraint = fixed, constraint
+        self.fixed, self.constraint = fixed, constrained
 
-        return self._fit(x0, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)
+        sampler = self._fit(x0, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)
+        result_dict = McMcMixin.resolve_mcmc_result(sampler=sampler, labels=self.labels)
+        result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
+        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
+        return params.extend_result_with_units(result_dict)
 
 
 binary_detached = DetachedLightCurveFit()

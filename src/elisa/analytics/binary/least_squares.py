@@ -8,7 +8,7 @@ from ...conf.config import BINARY_COUNTERPARTS
 from ...logger import getPersistentLogger
 from ..binary import params
 from ..binary import (
-    utils as analutils,
+    utils as autils,
     models,
     shared
 )
@@ -44,7 +44,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         args = self.xs, self.period, self.discretization, self.morphology, self.observer, False
         try:
             synthetic = logger_decorator()(fn)(*args, **kwargs)
-            synthetic = analutils.normalize_lightcurve_to_max(synthetic)
+            synthetic = autils.normalize_lightcurve_to_max(synthetic)
 
         except Exception as e:
             logger.error(f'your initial parmeters lead during fitting to invalid binary system')
@@ -83,7 +83,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
 
         passband = list(ys.keys())
         # compute yerrs if not supplied
-        yerrs = {band: analutils.lightcurves_mean_error(ys) for band in passband} if yerrs is None else yerrs
+        yerrs = {band: autils.lightcurves_mean_error(ys) for band in passband} if yerrs is None else yerrs
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.ys, self.yerrs = ys, yerrs
@@ -145,9 +145,9 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         fn = models.central_rv_synthetic
         synthetic = logger_decorator()(fn)(self.xs, self.observer, **kwargs)
         if self.on_normalized:
-            synthetic = analutils.normalize_rv_curve_to_max(synthetic)
+            synthetic = autils.normalize_rv_curve_to_max(synthetic)
         return np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
-                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS])
+                                         / self.yerrs[comp], 2)) for comp in synthetic.keys()])
 
     def fit(self, xs, ys, x0, yerr=None, xtol=1e-8, ftol=1e-8, max_nfev=None, diff_step=None,
             f_scale=1.0, on_normalized=False):
@@ -176,7 +176,8 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         """
 
         x0 = params.rv_initial_x0_validity_check(x0)
-        yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerr is None else yerr
+        yerrs = {c: autils.radialcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
+                 for c in xs.keys()}
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)

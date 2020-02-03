@@ -95,7 +95,7 @@ class DataSet(metaclass=ABCMeta):
         # initializing parmas to default values
         self.x_data = np.ndarray(0)
         self.y_data = np.ndarray(0)
-        self.yerr = np.ndarray(0)
+        self.yerr = None
         self.x_unit = None
         self.y_unit = None
 

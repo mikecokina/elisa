@@ -225,7 +225,7 @@ class TestParamsTestCase(ElisaTestCase):
                 "constraint": "2.0 * {p__mass}"
             }
         ]
-        x0c = params.x0_to_constraints_kwargs(x0)
+        x0c = params.x0_to_constrained_kwargs(x0)
         vectorized, labels = params.x0_vectorize(x0)
         x0v = {key: val for key, val in zip(labels, vectorized)}
 
@@ -925,8 +925,8 @@ class ConstraintsTestCase(ElisaTestCase):
 
     def test_constraints_evaluator_basic(self):
         expected = {'c1': 100, 'c2': 4, 'c3': 52, 'c4': 104.0}
-        floats = params.x0_to_floats_kwargs(self.basic_x0)
-        constraints = params.x0_to_constraints_kwargs(self.basic_x0)
+        floats = params.x0_to_variable_kwargs(self.basic_x0)
+        constraints = params.x0_to_constrained_kwargs(self.basic_x0)
         obtained = params.constraints_evaluator(floats, constraints)
         self.assertDictEqual(expected, obtained)
 
@@ -935,8 +935,8 @@ class ConstraintsTestCase(ElisaTestCase):
 
     def test_constraints_evaluator_extended(self):
         expected = {'c1': np.round(45.46487134128409, 3), 'c2': np.round(15.05149978319906, 3)}
-        floats = params.x0_to_floats_kwargs(self.extended_x0)
-        constraints = params.x0_to_constraints_kwargs(self.extended_x0)
+        floats = params.x0_to_variable_kwargs(self.extended_x0)
+        constraints = params.x0_to_constrained_kwargs(self.extended_x0)
         obtained = params.constraints_evaluator(floats, constraints)
         obtained = {key: np.round(val, 3) for key, val in obtained.items()}
         self.assertDictEqual(expected, obtained)

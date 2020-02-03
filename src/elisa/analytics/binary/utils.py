@@ -27,4 +27,4 @@ def lightcurves_mean_error(lc):
 
 
 def radialcurves_mean_error(rv):
-    return np.mean(list(rv.values())) * 0.05
+    return np.mean(rv) * 0.05

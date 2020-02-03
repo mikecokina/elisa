@@ -30,7 +30,7 @@ class Plot(object):
         :param plot_datapoints: bool;
         :param quantiles: Union[List, numpy.array];
         :param renorm: Dict[str, Tuple(float, float)];
-        :param truths: List[float], real value to be ploted
+        :param truths: List[float], real value to be plotted
         """
         flat_chain = Plot._renormalize_flat_chain(flat_chain, labels, renorm)
         quantiles = [0.16, 0.5, 0.84] if quantiles is None else quantiles

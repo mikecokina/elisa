@@ -174,7 +174,7 @@ def x0_vectorize(x0) -> Tuple:
     :return: Tuple;
     """
 
-    floats = x0_to_floats_kwargs(x0)
+    floats = x0_to_variable_kwargs(x0)
     return list(floats.values()), list(floats.keys())
 
 
@@ -208,7 +208,7 @@ def x0_to_fixed_kwargs(x0):
     return {record['param']: record['value'] for record in x0 if record.get('fixed', False)}
 
 
-def x0_to_constraints_kwargs(x0):
+def x0_to_constrained_kwargs(x0):
     """
     Transform native JSON input form to `key, value` form, but select `constraint` parametres only::
 
@@ -223,7 +223,7 @@ def x0_to_constraints_kwargs(x0):
     return {record['param']: record['constraint'] for record in x0 if record.get('constraint', False)}
 
 
-def x0_to_floats_kwargs(x0):
+def x0_to_variable_kwargs(x0):
     """
     Transform native JSON input form to `key, value` form, but select `floats` parameters
     (as in not fixed or constrained)::
@@ -298,7 +298,7 @@ def fit_data_initializer(x0, passband=None):
     update_normalization_map(boundaries)
 
     fixed = x0_to_fixed_kwargs(x0)
-    constraint = x0_to_constraints_kwargs(x0)
+    constraint = x0_to_constrained_kwargs(x0)
     x0_vectorized, labels = x0_vectorize(x0)
     x0 = param_normalizer(x0_vectorized, labels)
 
@@ -451,8 +451,8 @@ def constraints_validator(x0):
     allowed_methods = bonds.ALLOWED_CONSTRAINT_METHODS
     allowed_chars = bonds.ALLOWED_CONSTRAINT_CHARS
 
-    x0c = x0_to_constraints_kwargs(x0)
-    x0v = x0_to_floats_kwargs(x0)
+    x0c = x0_to_constrained_kwargs(x0)
+    x0v = x0_to_variable_kwargs(x0)
     x0c = {key: utils.str_repalce(val, allowed_methods, [''] * len(allowed_methods)) for key, val in x0c.items()}
 
     try:
