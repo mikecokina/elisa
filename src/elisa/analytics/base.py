@@ -10,7 +10,7 @@ from elisa.analytics.binary_fit import rv_fit
 logger = getLogger('analytics.base')
 
 
-class FittingTask(metaclass=ABCMeta):
+class AnalyticsTask(metaclass=ABCMeta):
     """
     Abstract class defining fitting task. This structure aims to provide a framework for solving inverse problem inside
     one object that embeds observed data and fitting methods and provides unified output from fitting methods along with
@@ -34,7 +34,7 @@ class FittingTask(metaclass=ABCMeta):
         self.lc_fit = None
 
         if utils.is_empty(name):
-            self.name = str(FittingTask.ID)
+            self.name = str(AnalyticsTask.ID)
             logger.debug(f"name of class instance {self.__class__.__name__} set to {self.name}")
             self.__class__.ID += 1
         else:
@@ -61,18 +61,18 @@ class FittingTask(metaclass=ABCMeta):
             setattr(self, kwarg, kwargs[kwarg])
 
 
-class BinarySystemFittingTask(FittingTask):
+class BinarySystemAnalyticsTask(AnalyticsTask):
     MANDATORY_KWARGS = []
     OPTIONAL_KWARGS = ['radial_velocities', 'light_curves']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
         # initial validity checks
-        utils.invalid_kwarg_checker(kwargs, BinarySystemFittingTask.ALL_KWARGS, self.__class__)
-        utils.check_missing_kwargs(BinarySystemFittingTask.MANDATORY_KWARGS, kwargs, instance_of=FittingTask)
+        utils.invalid_kwarg_checker(kwargs, BinarySystemAnalyticsTask.ALL_KWARGS, self.__class__)
+        utils.check_missing_kwargs(BinarySystemAnalyticsTask.MANDATORY_KWARGS, kwargs, instance_of=AnalyticsTask)
         kwargs = self.transform_input(**kwargs)
 
-        super(BinarySystemFittingTask, self).__init__(name, **kwargs)
+        super(BinarySystemAnalyticsTask, self).__init__(name, **kwargs)
 
         self.init_properties(**kwargs)
         if 'radial_velocities' in kwargs:

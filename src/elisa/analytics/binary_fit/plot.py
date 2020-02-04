@@ -5,6 +5,7 @@ from scipy.interpolate import interp1d
 from elisa.binary_system import t_layer
 from elisa import units as eu
 from elisa.analytics.binary.models import central_rv_synthetic
+from elisa.graphic.mcmc_graphics import Plot as MCMCPlot
 from elisa.observer.observer import Observer
 from elisa.graphic import graphics
 
@@ -21,7 +22,7 @@ class RVPlot(object):
         """
         prepares data for plotting the model described by fit params or calculated by last run of fitting procedure
 
-        :param fit_params: dict; {fit_parameter: {value: float, unit: astropy.unit.Unit}
+        :param fit_params: dict; {fit_parameter: {value: float, unit: astropy.unit.Unit, ...(fitting method dependent)}
         :param start_phase: float;
         :param stop_phase: float;
         :param number_of_points: int;
@@ -30,6 +31,9 @@ class RVPlot(object):
         """
         plot_result_kwargs = dict()
         fit_params = self.rv_fit.rv_fit_params if fit_params is None else fit_params
+
+        if fit_params is None:
+            raise ValueError('')
 
         # converting to phase space
         x_data, y_data, yerr = dict(), dict(), dict()
@@ -67,3 +71,43 @@ class RVPlot(object):
         })
 
         graphics.binary_rv_fit_plot(**plot_result_kwargs)
+
+    def corner(self, flat_chain=None, variable_labels=None, normalization=None, quantiles=None, truths=False, **kwargs):
+        """
+        Plots complete correlation plot from supplied parameters. Usefull only for MCMC method
+
+        :param truths: Union[bool, list]; if true, fit results are used to indicate position of found values. If False,
+        none are shown. If list is supplied, it functions the same as in corner.corner function.
+        :param flat_chain: numpy.ndarray; flattened chain of all parameters
+        :param variable_labels: list; list of variables during a MCMC run, which is used to identify columns in
+        `flat_chain`
+        :param quantiles: iterable; A list of fractional quantiles to show on the 1-D histograms as vertical dashed
+        lines.
+        :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
+        of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`
+        :return:
+        """
+        flat_chain = self.rv_fit.flat_chain if flat_chain is None else flat_chain
+        variable_labels = self.rv_fit.variable_labels if variable_labels is None else variable_labels
+        normalization = self.rv_fit.normalization if normalization is None else normalization
+
+        truths = [self.rv_fit.fit_params[lbl]['value'] for lbl in variable_labels] if truths is True else None
+
+        MCMCPlot.corner(flat_chain=flat_chain, labels=variable_labels, renorm=normalization, quantiles=quantiles,
+                        truths=truths, **kwargs)
+
+    def traces(self, traces_to_plot=None, flat_chain=None, variable_labels=None, normalization=None):
+        flat_chain = self.rv_fit.flat_chain if flat_chain is None else flat_chain
+        variable_labels = self.rv_fit.variable_labels if variable_labels is None else variable_labels
+        normalization = self.rv_fit.normalization if normalization is None else normalization
+
+        traces_to_plot = variable_labels if traces_to_plot is None else traces_to_plot
+
+        MCMCPlot.paramtrace(traces_to_show=traces_to_plot, flat_chain=flat_chain, variable_labels=variable_labels,
+                            normalization=normalization)
+
+
+
+
+
+

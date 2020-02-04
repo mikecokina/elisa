@@ -1,3 +1,4 @@
+import numpy as np
 from ...logger import getLogger
 from ... import (
     utils,
@@ -23,7 +24,12 @@ class RVFit(object):
         # kwargs = RVFit.transform_input(**kwargs)
 
         self.radial_velocities = None
-        self.rv_fit_params = None
+        self.fit_params = None
+
+        # MCMC specific variables
+        self.flat_chain = None
+        self.normalization = None
+        self.variable_labels = None
 
         self.plot = RVPlot(self)
 
@@ -47,17 +53,34 @@ class RVFit(object):
             yerr[component] = data.yerr
 
         if method == 'least_squares':
-            self.rv_fit_params = lstsqr_central_rv.fit(xs=x_data, ys=y_data, x0=X0, yerr=yerr, **kwargs)
+            self.fit_params = lstsqr_central_rv.fit(xs=x_data, ys=y_data, x0=X0, yerr=yerr, **kwargs)
 
         elif method == 'mcmc':
-            self.rv_fit_params = mcmc_central_rv.fit(xs=x_data, ys=y_data, x0=X0, yerr=yerr, **kwargs)
+            self.fit_params = mcmc_central_rv.fit(xs=x_data, ys=y_data, x0=X0, yerr=yerr, **kwargs)
+            self.flat_chain = mcmc_central_rv.last_sampler.get_chain(flat=True)
+            self.normalization = mcmc_central_rv.last_normalization
+            self.variable_labels = mcmc_central_rv.labels
 
-            # filtering for free variable names
-            # xfree = params.x0_to_variable_kwargs(X0)
-            # result = McMcMixin.resolve_mcmc_result(sampler=sampler, labels=xfree)
-            # # adding fixed and constrained values to the result dictionary
-            # result.update()
-            # self.rv_fit_params = result
+        return self.fit_params
 
-        return self.rv_fit_params
+    def load_chain(self, filename):
+        """
+        Function loads MCMC chain along with auxiliary data from json file created after each MCMC run
+
+        :param filename: str; full name of the json file
+        :return: Tuple[numpy.ndarray, list, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
+        {var_name: (min_boundary, max_boundary), ...} dictionary of boundaries defined by user for each variable needed
+        to reconstruct real values from normalized `flat_chain` array
+        """
+        filename = filename[:-5] if filename[-5:] == '.json' else filename
+        data = McMcMixin.restore_flat_chain(fname=filename)
+        self.flat_chain = np.array(data['flat_chain'])
+        self.variable_labels = data['labels']
+        self.normalization = data['normalization']
+
+        # reproducing results from chain
+        params.update_normalization_map(self.normalization)
+        self.fit_params = McMcMixin.resolve_mcmc_result(flat_chain=self.flat_chain, labels=self.variable_labels)
+
+        return self.flat_chain, self.variable_labels, self.normalization
 

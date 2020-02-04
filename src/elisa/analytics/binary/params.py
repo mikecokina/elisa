@@ -125,7 +125,8 @@ NORMALIZATION_MAP = {
 
 def renormalize_value(val, _min, _max):
     """
-    Renormalize value `val` to value from interval specific for given parameter defined my `_min` and `_max`.
+    Renormalize value `val` to value from interval specific for given parameter defined my `_min` and `_max`. Inverse
+    function to `normalize_value`.
 
     :param val: float;
     :param _min: float;
@@ -145,6 +146,15 @@ def normalize_value(val, _min, _max):
     :return: float;
     """
     return (val - _min) / (_max - _min)
+
+
+def renormalize_flat_chain(flat_chain, labels, renorm=None):
+    """
+    Renormalize values in chain if renormalization Dict is supplied.
+    """
+    if renorm is not None:
+        return np.array([[renormalize_value(val, renorm[key][0], renorm[key][1])
+                          for key, val in zip(labels, sample)] for sample in flat_chain])
 
 
 def x0_vectorize(x0) -> Tuple:

@@ -9,17 +9,17 @@ from multiprocessing import Pool
 from typing import Iterable, Dict
 from datetime import datetime
 
-from ...conf.config import BINARY_COUNTERPARTS
-from ..binary.plot import Plot
-from ...conf import config
-from ...logger import getPersistentLogger
-from ...base.error import ElisaError
-from ..binary import (
-    utils as analutils,
+from elisa.conf.config import BINARY_COUNTERPARTS
+from elisa.graphic.mcmc_graphics import Plot
+from elisa.conf import config
+from elisa.logger import getPersistentLogger
+from elisa.base.error import ElisaError
+from elisa.analytics.binary import (
+    utils as autils,
     params,
     models
 )
-from ...analytics.binary.shared import (
+from elisa.analytics.binary.shared import (
     AbstractLightCurveDataMixin,
     AbstractCentralRadialVelocityDataMixin,
     AbstractFit
@@ -30,24 +30,23 @@ logger = getPersistentLogger('analytics.binary.mcmc')
 
 class McMcMixin(object):
     @staticmethod
-    def resolve_mcmc_result(sampler, labels, discard=False, thin=1, percentiles=None):
+    def resolve_mcmc_result(flat_chain, labels, percentiles=None):
         """
-        Function process EnsembleSampler (output from McMcFit._fit) and produces dictionary with results.
+        Function process flat chain (output from McMcFit._fit.get_chain(flat=True)) and produces dictionary with
+        results.
 
-        :param sampler: emcee.ensemble.EnsembleSampler
+        :param flat_chain: emcee.ensemble.EnsembleSampler.get_chain(flat=True);
         :param labels: list; list with names of variable fit parameters in correct order
         (output of params.x0_to_variable_kwargs)
-        :param discard:
-        :param thin:
         :param percentiles: list; [percentile for left side error estimation, percentile of the centre,
         percentile for right side error estimation]
         :return:
         """
-        flat_samples = sampler.get_chain(discard=discard, thin=thin, flat=True)
+        # flat_chain = sampler.get_chain(discard=discard, thin=thin, flat=True)
         percentiles = [16, 50, 84] if percentiles is None else percentiles
         result = dict()
         for idx, key in enumerate(labels):
-            mcmc = np.percentile(flat_samples[:, idx], percentiles)
+            mcmc = np.percentile(flat_chain[:, idx], percentiles)
             val = params.param_renormalizer((mcmc[1],), (key,))[0]
             q = np.diff(params.param_renormalizer(mcmc, np.repeat(key, len(mcmc))))
             result[key] = {"value": val, "min": val - q[0], "max": val + q[1], "fixed": False}
@@ -169,7 +168,7 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
 
         args = self.xs, self.period, self.discretization, self.morphology, self.observer, True
         synthetic = models.synthetic_binary(*args, **kwargs)
-        synthetic = analutils.normalize_lightcurve_to_max(synthetic)
+        synthetic = autils.normalize_lightcurve_to_max(synthetic)
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band][self.xs_reverser[band]] - self.ys[band])
                                                         / self.yerrs[band], 2)) for band in synthetic]))
@@ -203,7 +202,7 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         """
 
         self.passband = list(ys.keys())
-        yerrs = {band: analutils.lightcurves_mean_error(ys) for band in self.passband} if yerrs is None else yerrs
+        yerrs = {band: autils.lightcurves_mean_error(ys) for band in self.passband} if yerrs is None else yerrs
         x0 = params.lc_initial_x0_validity_check(x0, self.morphology)
         x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=self.passband)
         ndim = len(x0)
@@ -252,7 +251,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         args = self.xs, self.observer
         synthetic = models.central_rv_synthetic(*args, **kwargs)
         if self.on_normalized:
-            synthetic = analutils.normalize_rv_curve_to_max(synthetic)
+            synthetic = autils.normalize_rv_curve_to_max(synthetic)
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))
@@ -283,7 +282,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         nwalkers = 2*len(x0) if nwalkers is None else nwalkers
 
         x0 = params.rv_initial_x0_validity_check(x0)
-        yerrs = {c: analutils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerr is None else yerr
+        yerrs = {c: autils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerr is None else yerr
         x0, labels, fixed, constrained, observer = params.fit_data_initializer(x0)
         ndim = len(x0)
 
@@ -295,7 +294,10 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         self.fixed, self.constraint = fixed, constrained
 
         sampler = self._fit(x0, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)
-        result_dict = McMcMixin.resolve_mcmc_result(sampler=sampler, labels=self.labels)
+
+        # extracting fit results from MCMC sampler
+        flat_chain = sampler.get_chain(flat=True)
+        result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
         result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
         result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
         return params.extend_result_with_units(result_dict)
