@@ -1,6 +1,7 @@
 import numpy as np
 from astropy import units as u
 from scipy.interpolate import interp1d
+from copy import copy, deepcopy
 
 from elisa.binary_system import t_layer
 from elisa import units as eu
@@ -8,6 +9,10 @@ from elisa.analytics.binary.models import central_rv_synthetic
 from elisa.graphic.mcmc_graphics import Plot as MCMCPlot
 from elisa.observer.observer import Observer
 from elisa.graphic import graphics
+from elisa.analytics.binary import params
+
+
+PLOT_UNITS = {'asini': u.solRad, 'argument_of_periastron': u.degree, 'gamma': u.km/u.s, 'primary_minimum_time': u.d}
 
 
 class RVPlot(object):
@@ -72,39 +77,113 @@ class RVPlot(object):
 
         graphics.binary_rv_fit_plot(**plot_result_kwargs)
 
-    def corner(self, flat_chain=None, variable_labels=None, normalization=None, quantiles=None, truths=False, **kwargs):
+    def corner(self, flat_chain=None, variable_labels=None, normalization=None, quantiles=None, truths=False,
+               show_titles=True, plot_units=None, **kwargs):
         """
         Plots complete correlation plot from supplied parameters. Usefull only for MCMC method
 
+        :param flat_chain: numpy.ndarray; flattened chain of all parameters, use only if you want display your own chain
+        :param variable_labels: list; list of variables during a MCMC run, which is used to identify columns in
+        `flat_chain`, , use only if you want display your own chain
+        :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
+        of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`,
+        use only if you want display your own chain
+        :param quantiles: iterable; A list of fractional quantiles to show on the 1-D histograms as vertical dashed
+        lines.
         :param truths: Union[bool, list]; if true, fit results are used to indicate position of found values. If False,
         none are shown. If list is supplied, it functions the same as in corner.corner function.
+        :param show_titles: bool; If True, labels above histogram with name of the variable, value, errorss and units
+        are displayed
+        :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
+        :return:
+        """
+        corner_plot_kwargs = dict()
+
+        flat_chain = copy(self.rv_fit.flat_chain) if flat_chain is None else copy(flat_chain)
+        variable_labels = self.rv_fit.variable_labels if variable_labels is None else variable_labels
+        labels = [params.PARAMS_KEY_TEX_MAP[label] for label in variable_labels]
+        normalization = self.rv_fit.normalization if normalization is None else normalization
+        quantiles = [0.16, 0.5, 0.84] if quantiles is None else quantiles
+
+        # renormalizing flat chain to meaningful values
+        flat_chain = params.renormalize_flat_chain(flat_chain, variable_labels, normalization)
+
+        # transforming units
+        fit_params = deepcopy(self.rv_fit.fit_params)
+        plot_units = PLOT_UNITS if plot_units is None else plot_units
+        for ii, lbl in enumerate(variable_labels):
+            if lbl in plot_units.keys():
+                unt = u.Unit(fit_params[lbl]['unit'])
+                flat_chain[:, ii] = (flat_chain[:, ii] * unt).to(plot_units[lbl]).value
+                fit_params[lbl]['value'] = (fit_params[lbl]['value'] * unt).to(plot_units[lbl]).value
+                fit_params[lbl]['min'] = (fit_params[lbl]['min'] * unt).to(plot_units[lbl]).value
+                fit_params[lbl]['max'] = (fit_params[lbl]['max'] * unt).to(plot_units[lbl]).value
+                fit_params[lbl]['unit'] = plot_units[lbl].to_string()
+
+        truths = [fit_params[lbl]['value'] for lbl in variable_labels] if truths is True else None
+
+        corner_plot_kwargs.update({
+            'flat_chain': flat_chain,
+            'truths': truths,
+            'variable_labels': variable_labels,
+            'labels': labels,
+            'quantiles': quantiles,
+            'show_titles': show_titles,
+            'fit_params': fit_params
+        })
+        corner_plot_kwargs.update(**kwargs)
+
+        MCMCPlot.corner(**corner_plot_kwargs)
+
+    def traces(self, traces_to_plot=None, flat_chain=None, variable_labels=None, normalization=None, plot_units=None,
+               truths=False):
+        """
+        Plots traces of defined parameters.
+
+        :param traces_to_plot: list; names of variables which traces will be displayed
         :param flat_chain: numpy.ndarray; flattened chain of all parameters
         :param variable_labels: list; list of variables during a MCMC run, which is used to identify columns in
         `flat_chain`
-        :param quantiles: iterable; A list of fractional quantiles to show on the 1-D histograms as vertical dashed
-        lines.
         :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
-        of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`
+        of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`,
+        use only if you want display your own chain
+        :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
+        :param truths: bool; if true, fit results are used to indicate position of found values. If False,
+        none are shown. It will not work with a
+        custom chain. (if `flat_chain` is not None).
         :return:
         """
-        flat_chain = self.rv_fit.flat_chain if flat_chain is None else flat_chain
+        traces_plot_kwargs = dict()
+
+        flat_chain = copy(self.rv_fit.flat_chain) if flat_chain is None else copy(flat_chain)
         variable_labels = self.rv_fit.variable_labels if variable_labels is None else variable_labels
         normalization = self.rv_fit.normalization if normalization is None else normalization
 
-        truths = [self.rv_fit.fit_params[lbl]['value'] for lbl in variable_labels] if truths is True else None
+        flat_chain = params.renormalize_flat_chain(flat_chain, variable_labels, normalization)
 
-        MCMCPlot.corner(flat_chain=flat_chain, labels=variable_labels, renorm=normalization, quantiles=quantiles,
-                        truths=truths, **kwargs)
-
-    def traces(self, traces_to_plot=None, flat_chain=None, variable_labels=None, normalization=None):
-        flat_chain = self.rv_fit.flat_chain if flat_chain is None else flat_chain
-        variable_labels = self.rv_fit.variable_labels if variable_labels is None else variable_labels
-        normalization = self.rv_fit.normalization if normalization is None else normalization
+        # transforming units
+        fit_params = deepcopy(self.rv_fit.fit_params)
+        plot_units = PLOT_UNITS if plot_units is None else plot_units
+        for ii, lbl in enumerate(variable_labels):
+            if lbl in plot_units.keys():
+                unt = u.Unit(fit_params[lbl]['unit'])
+                flat_chain[:, ii] = (flat_chain[:, ii] * unt).to(plot_units[lbl]).value
+                fit_params[lbl]['value'] = (fit_params[lbl]['value'] * unt).to(plot_units[lbl]).value
+                fit_params[lbl]['min'] = (fit_params[lbl]['min'] * unt).to(plot_units[lbl]).value
+                fit_params[lbl]['max'] = (fit_params[lbl]['max'] * unt).to(plot_units[lbl]).value
+                fit_params[lbl]['unit'] = plot_units[lbl].to_string()
 
         traces_to_plot = variable_labels if traces_to_plot is None else traces_to_plot
 
-        MCMCPlot.paramtrace(traces_to_show=traces_to_plot, flat_chain=flat_chain, variable_labels=variable_labels,
-                            normalization=normalization)
+        traces_plot_kwargs.update({
+            'traces_to_plot': traces_to_plot,
+            'flat_chain': flat_chain,
+            'variable_labels': variable_labels,
+            'fit_params': fit_params,
+            'truths': truths,
+        })
+
+        MCMCPlot.paramtrace(**traces_plot_kwargs)
 
 
 

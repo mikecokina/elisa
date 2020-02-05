@@ -47,9 +47,8 @@ class McMcMixin(object):
         result = dict()
         for idx, key in enumerate(labels):
             mcmc = np.percentile(flat_chain[:, idx], percentiles)
-            val = params.param_renormalizer((mcmc[1],), (key,))[0]
-            q = np.diff(params.param_renormalizer(mcmc, np.repeat(key, len(mcmc))))
-            result[key] = {"value": val, "min": val - q[0], "max": val + q[1], "fixed": False}
+            vals = params.param_renormalizer(mcmc, np.repeat(key, len(mcmc)))
+            result[key] = {"value": vals[1], "min": min(vals), "max": max(vals), "fixed": False}
 
         return params.extend_result_with_units(result)
 

@@ -69,7 +69,7 @@ PARAMS_KEY_TEX_MAP = {
 PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['i']: 'degrees',
     PARAMS_KEY_MAP['e']: 'dimensionless',
-    PARAMS_KEY_MAP['omega']: 'degrees',
+    PARAMS_KEY_MAP['omega']: 'rad',
     PARAMS_KEY_MAP['gamma']: 'm/s',
     PARAMS_KEY_MAP['M1']: 'solMass',
     PARAMS_KEY_MAP['M2']: 'solMass',
@@ -88,8 +88,8 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['q']: 'dimensionless',
     PARAMS_KEY_MAP['a']: 'solRad',
     PARAMS_KEY_MAP['asini']: 'solRad',
-    PARAMS_KEY_MAP['P']: 'days',
-    PARAMS_KEY_MAP['T0']: 'days',
+    PARAMS_KEY_MAP['P']: 'd',
+    PARAMS_KEY_MAP['T0']: 'd',
 }
 
 
