@@ -96,8 +96,6 @@ class DataSet(metaclass=ABCMeta):
         self.x_data = np.ndarray(0)
         self.y_data = np.ndarray(0)
         self.yerr = None
-        self.x_unit = None
-        self.y_unit = None
 
         self.check_data_validity(**kwargs)
 
@@ -143,7 +141,9 @@ class RVData(DataSet):
 
     def __init__(self, name=None, **kwargs):
         utils.invalid_kwarg_checker(kwargs, RVData.ALL_KWARGS, RVData)
+        utils.check_missing_kwargs(RVData.MANDATORY_KWARGS, kwargs, instance_of=RVData)
         super(RVData, self).__init__(name, **kwargs)
+
         kwargs = self.transform_input(**kwargs)
 
         # conversion to base units
@@ -208,6 +208,7 @@ class LCData(DataSet):
 
     def __init__(self, name=None, **kwargs):
         utils.invalid_kwarg_checker(kwargs, LCData.ALL_KWARGS, LCData)
+        utils.check_missing_kwargs(LCData.MANDATORY_KWARGS, kwargs, instance_of=LCData)
         super(LCData, self).__init__(name, **kwargs)
         kwargs = self.transform_input(**kwargs)
 

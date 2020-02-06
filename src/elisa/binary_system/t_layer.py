@@ -13,10 +13,25 @@ def validate_pirmary_minimum_time(t0):
         raise error.ValidationError("Primary minimum time has to be > 0.")
 
 
+def adjust_phases(phases, centre=0.5):
+    """
+    shift phases to centre them on given value
+
+    :param phases: Union[float, numpy.array];
+    :param centre: float; centre around which phases will be calculated (+-0.5 around `centre` value)
+    :return:
+    """
+    if isinstance(phases, list):
+        phases = np.array(phases)
+    shift = centre - 0.5
+    return (phases - shift) % 1.0 + shift
+
+
 def jd_to_phase(t0, period, jd, centre=0.5):
     """
-    Convert JD time to phase from -1 to 1
+    Convert JD time to phase
 
+    :param centre: float; centre around which phases will be calculated (+-0.5 around `centre` value)
     :param t0: float; reference primary minimum time
     :param period: float; period of binary system
     :param jd: Union[float, numpy.array]; measurement JD times

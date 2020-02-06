@@ -3,6 +3,7 @@ from copy import copy
 from unittest import (
     mock
 )
+import astropy.units as u
 
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -18,7 +19,8 @@ from elisa.base.error import InitialParamsError
 from elisa.binary_system import t_layer
 from elisa.conf.config import BINARY_COUNTERPARTS
 from unittests.utils import ElisaTestCase
-from elisa import const
+from elisa.analytics.dataset.base import RVData
+from elisa.analytics.base import BinarySystemAnalyticsTask
 
 TOL = 1e-5
 
@@ -442,7 +444,25 @@ class RVTestCase(ElisaTestCase):
 class McMcRVTestCase(RVTestCase):
     def test_mcmc_rv_fit_community_params(self):
         phases = np.arange(-0.6, 0.62, 0.02)
-        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
+
+        model_generator = ModelSimulator()
+        model_generator.keep_out = True
+        rvs = model_generator.rv_generator()
+
+        rv_primary = RVData(
+            x_data=phases,
+            y_data=rvs['primary'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m/u.s
+        )
+
+        rv_secondary = RVData(
+            x_data=phases,
+            y_data=rvs['secondary'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m/u.s
+        )
+
         initial_parameters = [
             {
                 'value': 0.1,
@@ -471,7 +491,7 @@ class McMcRVTestCase(RVTestCase):
                 'fixed': True
             },
             {
-                'value': 20000.0,
+                'value': -20000.0,
                 'param': 'gamma',
                 'fixed': True
             },
@@ -482,12 +502,9 @@ class McMcRVTestCase(RVTestCase):
             }
         ]
 
-        model_generator = ModelSimulator()
-        model_generator.keep_out = True
-        with mock.patch("elisa.analytics.binary.models.central_rv_synthetic", model_generator.rv_generator):
-            mc_central_rv.fit(xs=xs, ys=self.rv, x0=initial_parameters, nwalkers=4, nsteps=5)
-        # result = central_rv.fit(xs=phases, ys=self.rv, period=0.6, x0=copy(initial_parameters))
-        # self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+        task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
+        fit_params = task.rv_fit.fit(X0=initial_parameters, method='mcmc', nsteps=100)
+        self.assertTrue(1.0 > fit_params["r_squared"]['value'] > 0.9)
 
 
 class LeastSqaureRVTestCase(RVTestCase):
@@ -496,6 +513,24 @@ class LeastSqaureRVTestCase(RVTestCase):
         phases = np.arange(-0.6, 0.62, 0.02)
         jd = t_layer.phase_to_jd(t0, period, phases)
         xs = {comp: jd for comp in BINARY_COUNTERPARTS}
+
+        model_generator = ModelSimulator()
+        model_generator.keep_out = True
+        rvs = model_generator.rv_generator()
+
+        rv_primary = RVData(
+            x_data=xs['primary'],
+            y_data=rvs['primary'],
+            x_unit=u.d,
+            y_unit=u.m / u.s
+        )
+
+        rv_secondary = RVData(
+            x_data=xs['secondary'],
+            y_data=rvs['secondary'],
+            x_unit=u.d,
+            y_unit=u.m / u.s
+        )
 
         initial_parameters = [
             {
@@ -526,11 +561,11 @@ class LeastSqaureRVTestCase(RVTestCase):
                 'fixed': True
             },
             {
-                'value': 30000.0,  # 20000.0 is real
+                'value': -30000.0,  # 20000.0 is real
                 'param': 'gamma',
                 'fixed': False,
-                'min': 20000,
-                'max': 40000
+                'min': -10000,
+                'max': -40000
             },
             {
                 'value': 0.65,  # 0.6 isreal
@@ -548,8 +583,9 @@ class LeastSqaureRVTestCase(RVTestCase):
             }
         ]
 
-        result = central_rv.fit(xs=xs, ys=self.rv, x0=copy(initial_parameters))
-        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
+        task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
+        result = task.rv_fit.fit(X0=copy(initial_parameters), method='least_squares')
+        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.95)
 
     def test_least_squares_rv_fit_std_params(self):
         """
@@ -557,7 +593,25 @@ class LeastSqaureRVTestCase(RVTestCase):
         real period = 0.6d
         """
         phases = np.arange(-0.6, 0.62, 0.02)
-        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
+
+        model_generator = ModelSimulator()
+        model_generator.keep_out = True
+        rvs = model_generator.rv_generator()
+
+        rv_primary = RVData(
+            x_data=phases,
+            y_data=rvs['primary'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
+        )
+
+        rv_secondary = RVData(
+            x_data=phases,
+            y_data=rvs['secondary'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
+        )
+
         initial_parameters = [
             {
                 'value': 0.1,
@@ -589,11 +643,11 @@ class LeastSqaureRVTestCase(RVTestCase):
                 'fixed': True
             },
             {
-                'value': 30000.0,  # 20000.0 is real
+                'value': -30000.0,  # 20000.0 is real
                 'param': 'gamma',
                 'fixed': False,
-                'min': 20000,
-                'max': 40000
+                'min': -10000,
+                'max': -40000
             },
             {
                 'value': 0.6,
@@ -602,12 +656,31 @@ class LeastSqaureRVTestCase(RVTestCase):
             }
         ]
 
-        result = central_rv.fit(xs=xs, ys=self.rv, x0=copy(initial_parameters))
-        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
+        task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
+        result = task.rv_fit.fit(X0=copy(initial_parameters), method='least_squares')
+        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.95)
 
     def test_least_squares_rv_fit_community_params(self):
         phases = np.arange(-0.6, 0.62, 0.02)
-        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
+
+        model_generator = ModelSimulator()
+        model_generator.keep_out = True
+        rvs = model_generator.rv_generator()
+
+        rv_primary = RVData(
+            x_data=phases,
+            y_data=rvs['primary'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
+        )
+
+        rv_secondary = RVData(
+            x_data=phases,
+            y_data=rvs['secondary'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
+        )
+
         initial_parameters = [
             {
                 'value': 0.1,
@@ -637,7 +710,7 @@ class LeastSqaureRVTestCase(RVTestCase):
                 'fixed': True
             },
             {
-                'value': 20000.0,
+                'value': -20000.0,
                 'param': 'gamma',
                 'fixed': True
             },
@@ -648,8 +721,10 @@ class LeastSqaureRVTestCase(RVTestCase):
             }
         ]
 
-        result = central_rv.fit(xs=xs, ys=self.rv, x0=copy(initial_parameters))
-        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
+        task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
+        result = task.rv_fit.fit(X0=copy(initial_parameters), method='least_squares')
+
+        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.95)
 
 
 class LeastSqaureLCTestCase(AbstractFitTestCase):
@@ -780,7 +855,7 @@ class ModelSimulator(object):
                                            0.17384023, 0.2294959, 0.60603475, 0.80604709, 0.80729325,
                                            0.80924345])}
 
-    rv = {'primary': np.array([111221.02018955, 102589.40515112, 92675.34114568,
+    rv = {'primary': -1 * np.array([111221.02018955, 102589.40515112, 92675.34114568,
                                81521.98280508, 69189.28515476, 55758.52165462,
                                41337.34984718, 26065.23187763, 10118.86370365,
                                -6282.93249474, -22875.63138097, -39347.75579673,
@@ -801,7 +876,7 @@ class ModelSimulator(object):
                                69189.28515476, 55758.52165462, 41337.34984718,
                                26065.23187763, 10118.86370365, -6282.93249474,
                                -22875.63138097]),
-          'secondary': np.array([-144197.83633559, -128660.92926642, -110815.61405663,
+          'secondary': -1 * np.array([-144197.83633559, -128660.92926642, -110815.61405663,
                                  -90739.56904355, -68540.71327298, -44365.33897272,
                                  -18407.22971932, 9082.58262586, 37786.04533903,
                                  67309.27849613, 97176.13649135, 126825.96043971,
@@ -823,37 +898,23 @@ class ModelSimulator(object):
                                  9082.58262586, 37786.04533903, 67309.27849613,
                                  97176.13649135])}
 
-    lc_mean = np.mean(list(flux.values()))
-    rv_mean = np.mean(list(rv.values()))
+    lc_mean = np.mean(np.abs(list(flux.values())))
+    rv_mean = np.mean(np.abs(list(rv.values())))
 
-    def __init__(self, keep_out=False):
+    def __init__(self):
         self.error = 0.1
         self.step = 1
         self.args = []
-        self.keep_out = keep_out
 
-    def _prepare(self, *args, **kwargs):
-        np.random.seed(1)
-        self.args.append({"args": args, "kwargs": kwargs})
-        self.error = np.exp(-(self.step * 0.25) ** 2)
-
-        if self.keep_out:
-            np.random.seed(int(time.time()))
-            self.error = np.random.rand()
-
-        self.step += 1
-
-    def lc_generator(self, *args, **kwargs):
-        self._prepare(*args, **kwargs)
+    def lc_generator(self):
         add = self.lc_mean * self.error
-        flux = {band: self.flux[band] + np.random.uniform(-add, +add, len(self.flux[band]))
+        flux = {band: self.flux[band] + np.random.normal(0, add, len(self.flux[band]))
                 for band in self.flux}
         return flux
 
-    def rv_generator(self, *args, **kwargs):
-        self._prepare(*args, **kwargs)
+    def rv_generator(self):
         add = self.rv_mean * self.error
-        rv = {component: self.rv[component] + np.random.uniform(-add, +add, len(self.rv[component]))
+        rv = {component: self.rv[component] + np.random.normal(0, add, len(self.rv[component]))
               for component in BINARY_COUNTERPARTS}
         return rv
 

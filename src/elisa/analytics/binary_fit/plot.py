@@ -35,7 +35,7 @@ class RVPlot(object):
         :return:
         """
         plot_result_kwargs = dict()
-        fit_params = self.rv_fit.rv_fit_params if fit_params is None else fit_params
+        fit_params = self.rv_fit.fit_params if fit_params is None else fit_params
 
         if fit_params is None:
             raise ValueError('')
@@ -43,7 +43,8 @@ class RVPlot(object):
         # converting to phase space
         x_data, y_data, yerr = dict(), dict(), dict()
         for component, data in self.rv_fit.radial_velocities.items():
-            x_data[component] = data.x_data if data.x_unit is u.dimensionless_unscaled else \
+            x_data[component] = t_layer.adjust_phases(phases=data.x_data, centre=0.0) \
+                if data.x_unit is u.dimensionless_unscaled else \
                 t_layer.jd_to_phase(fit_params['primary_minimum_time']['value'], fit_params['period']['value'],
                                     data.x_data, centre=0.0)
             y_data[component] = (data.y_data * data.y_unit).to(y_axis_unit).value
@@ -59,7 +60,8 @@ class RVPlot(object):
         for key, val in fit_params.items():
             kwargs_to_replot[key] = val['value']
 
-        del kwargs_to_replot['primary_minimum_time']
+        if 'primary_minimum_time' in kwargs_to_replot.keys():
+            del kwargs_to_replot['primary_minimum_time']
         synth_phases = np.linspace(start_phase, stop_phase, number_of_points)
         rv_fit = central_rv_synthetic(synth_phases, Observer(), **kwargs_to_replot)
         rv_fit = {component: (data * eu.VELOCITY_UNIT).to(y_axis_unit).value for component, data in rv_fit.items()}
@@ -100,6 +102,11 @@ class RVPlot(object):
         corner_plot_kwargs = dict()
 
         flat_chain = copy(self.rv_fit.flat_chain) if flat_chain is None else copy(flat_chain)
+
+        if flat_chain is None:
+            raise ValueError('You can use corner plot only in case of mcmc method or for some reason the flat chain was'
+                             ' not found.')
+
         variable_labels = self.rv_fit.variable_labels if variable_labels is None else variable_labels
         labels = [params.PARAMS_KEY_TEX_MAP[label] for label in variable_labels]
         normalization = self.rv_fit.normalization if normalization is None else normalization
@@ -156,6 +163,11 @@ class RVPlot(object):
         traces_plot_kwargs = dict()
 
         flat_chain = copy(self.rv_fit.flat_chain) if flat_chain is None else copy(flat_chain)
+
+        if flat_chain is None:
+            raise ValueError('You can use trace plot only in case of mcmc method or for some reason the flat chain was '
+                             'not found.')
+
         variable_labels = self.rv_fit.variable_labels if variable_labels is None else variable_labels
         normalization = self.rv_fit.normalization if normalization is None else normalization
 

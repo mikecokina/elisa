@@ -17,12 +17,13 @@ from elisa.base.error import ElisaError
 from elisa.analytics.binary import (
     utils as autils,
     params,
-    models
+    models,
 )
 from elisa.analytics.binary.shared import (
     AbstractLightCurveDataMixin,
     AbstractCentralRadialVelocityDataMixin,
-    AbstractFit
+    AbstractFit,
+    rv_r_squared
 )
 
 logger = getPersistentLogger('analytics.binary.mcmc')
@@ -281,7 +282,8 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         nwalkers = 2*len(x0) if nwalkers is None else nwalkers
 
         x0 = params.rv_initial_x0_validity_check(x0)
-        yerrs = {c: autils.radialcurves_mean_error(ys) for c in BINARY_COUNTERPARTS} if yerr is None else yerr
+        yerrs = {c: autils.radialcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
+                 for c in xs.keys()}
         x0, labels, fixed, constrained, observer = params.fit_data_initializer(x0)
         ndim = len(x0)
 
@@ -299,6 +301,12 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
         result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
         result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
+
+        r_squared_args = self.xs, self.ys, False, self.xs_reverser
+        r_dict = {key: value['value'] for key, value in result_dict.items()}
+        r_squared_result = rv_r_squared(models.central_rv_synthetic, *r_squared_args, **r_dict)
+        result_dict["r_squared"] = {'value': r_squared_result}
+
         return params.extend_result_with_units(result_dict)
 
 

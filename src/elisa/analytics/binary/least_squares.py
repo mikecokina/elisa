@@ -133,21 +133,36 @@ class DetachedLightCurveFit(LightCurveFit):
 
 
 class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
-    def centarl_rv_model_to_fit(self, xn):
-        """
-        Residual function.
-
-        :param xn: numpy.array; current vector
-        :return: numpy.array;
-        """
+    def prep_params(self, xn):
         xn = params.param_renormalizer(xn, self.labels)
         kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
         fn = models.central_rv_synthetic
         synthetic = logger_decorator()(fn)(self.xs, self.observer, **kwargs)
         if self.on_normalized:
             synthetic = autils.normalize_rv_curve_to_max(synthetic)
+        return synthetic
+
+    def central_rv_model_to_fit(self, xn):
+        """
+        Residual function.
+
+        :param xn: numpy.array; current vector
+        :return: numpy.array;
+        """
+        synthetic = self.prep_params(xn)
         return np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                          / self.yerrs[comp], 2)) for comp in synthetic.keys()])
+
+    def centrall_rv_model_to_fit_wo_errors(self, xn):
+        """
+        Residual function.
+
+        :param xn: numpy.array; current vector
+        :return: numpy.array;
+        """
+        synthetic = self.prep_params(xn)
+        return np.array([np.sum(np.power(synthetic[comp][self.xs_reverser[comp]] - self.ys[comp]))
+                         for comp in synthetic.keys()])
 
     def fit(self, xs, ys, x0, yerr=None, xtol=1e-8, ftol=1e-8, max_nfev=None, diff_step=None,
             f_scale=1.0, on_normalized=False):
@@ -186,7 +201,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         self.fixed, self.constraint = fixed, constraint
 
         logger.info("fitting radial velocity light curve...")
-        func = self.centarl_rv_model_to_fit
+        func = self.central_rv_model_to_fit
         result = least_squares(fun=func, x0=x0, bounds=(0, 1), max_nfev=max_nfev,
                                xtol=xtol, ftol=ftol, diff_step=diff_step, f_scale=f_scale)
         logger.info("fitting finished")
