@@ -121,21 +121,6 @@ class DataSet(metaclass=ABCMeta):
             if np.isnan(kwargs['yerr']).any():
                 raise ValueError('`yerr` contains NaN')
 
-    @staticmethod
-    def load_from_file(filename, x_unit=None, y_unit=None, data_columns=None):
-        data_columns = (0, 1, 2) if data_columns is None else data_columns
-
-        data = np.loadtxt(filename)
-        try:
-            errs = data[:, data_columns[2]]
-        except IndexError:
-            errs = None
-        return RVData(x_data=data[:, data_columns[0]],
-                      y_data=data[:, data_columns[1]],
-                      yerr=errs,
-                      x_unit=x_unit,
-                      y_unit=y_unit)
-
 
 class RVData(DataSet):
     """
@@ -203,6 +188,30 @@ class RVData(DataSet):
         kwargs['y_unit'] = convert_unit(kwargs['y_unit'], units.VELOCITY_UNIT)
 
         return kwargs
+
+    @staticmethod
+    def load_from_file(filename, x_unit=None, y_unit=None, data_columns=None):
+        """
+        Function loads a RV measurements from text file.
+
+        :param filename: str; name of the file
+        :param x_unit: astropy.unit.Unit;
+        :param y_unit: astropy.unit.Unit;
+        :param data_columns: tuple, ordered tuple with column indices of x_data, y_data, y_errors
+        :return: RVData;
+        """
+        data_columns = (0, 1, 2) if data_columns is None else data_columns
+
+        data = np.loadtxt(filename)
+        try:
+            errs = data[:, data_columns[2]]
+        except IndexError:
+            errs = None
+        return RVData(x_data=data[:, data_columns[0]],
+                      y_data=data[:, data_columns[1]],
+                      yerr=errs,
+                      x_unit=x_unit,
+                      y_unit=y_unit)
 
 
 class LCData(DataSet):
@@ -276,3 +285,29 @@ class LCData(DataSet):
         kwargs['y_unit'] = convert_unit(kwargs['y_unit'], units.dimensionless_unscaled)
 
         return kwargs
+
+    @staticmethod
+    def load_from_file(filename, x_unit=None, y_unit=None, data_columns=None, reference_magnitude=None):
+        """
+        Function loads a RV measurements from text file.
+
+        :param filename: str;
+        :param x_unit: astropy.unit.Unit;
+        :param y_unit: astropy.unit.Unit;
+        :param data_columns: tuple, ordered tuple with column indices of x_data, y_data, y_errors
+        :param reference_magnitude: float; zero point for magnitude conversion
+        :return:
+        """
+        data_columns = (0, 1, 2) if data_columns is None else data_columns
+
+        data = np.loadtxt(filename)
+        try:
+            errs = data[:, data_columns[2]]
+        except IndexError:
+            errs = None
+        return RVData(x_data=data[:, data_columns[0]],
+                      y_data=data[:, data_columns[1]],
+                      yerr=errs,
+                      x_unit=x_unit,
+                      y_unit=y_unit,
+                      reference_magnitude=reference_magnitude)
