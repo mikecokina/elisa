@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from ...logger import getLogger
 from ... import (
@@ -9,6 +10,7 @@ from elisa.analytics.binary.mcmc import central_rv as mcmc_central_rv
 from elisa.analytics.binary_fit.plot import RVPlot
 from elisa.analytics.binary.mcmc import McMcMixin
 from elisa.analytics.binary import params
+from elisa.analytics import utils as autils
 
 logger = getLogger('analytics.binary_fit.rv_fit')
 
@@ -18,6 +20,10 @@ class RVFit(object):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
+    MANDATORY_FIT_PARAMS = ['eccentricity', 'asini', 'mass_ratio', 'argument_of_periastron', 'gamma']
+    OPTIONAL_FIT_PARAMS = ['period', 'primary_minimum_time']
+    ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
+
     def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs, RVFit.ALL_KWARGS, RVFit)
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
@@ -25,6 +31,7 @@ class RVFit(object):
 
         self.radial_velocities = None
         self.fit_params = None
+        self.ranges = None
 
         # MCMC specific variables
         self.flat_chain = None
@@ -46,6 +53,13 @@ class RVFit(object):
         :param kwargs: dict;
         :return: dict: fit_params
         """
+        X0 = autils.transform_initial_values(X0)
+        X0 = autils.convert_dict_to_json_format(X0)
+
+        param_names = {item['param']: item['value'] for item in X0}
+        utils.invalid_kwarg_checker(param_names, RVFit.ALL_FIT_PARAMS, RVFit)
+        utils.check_missing_kwargs(RVFit.MANDATORY_FIT_PARAMS, param_names, instance_of=RVFit)
+
         x_data, y_data, yerr = dict(), dict(), dict()
         for component, data in self.radial_velocities.items():
             x_data[component] = data.x_data
@@ -83,4 +97,11 @@ class RVFit(object):
         self.fit_params = McMcMixin.resolve_mcmc_result(flat_chain=self.flat_chain, labels=self.variable_labels)
 
         return self.flat_chain, self.variable_labels, self.normalization
+
+    def store_parameters(self, params=None, filename=None):
+        params = self.fit_params if params is None else params
+
+        json_params = autils.convert_dict_to_json_format(params)
+        with open(filename, 'w') as fl:
+            json.dump(json_params, fl)
 

@@ -183,7 +183,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :param f_scale: float; optional
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param ftol: float;
+        :param ftol: float;Najlepsie by proste bolo aby si im to proste ohlasit fotenie na jeden den a bolo by.
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :param xtol: float; tolerance of error to consider hitted solution as exact
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
