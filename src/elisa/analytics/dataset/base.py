@@ -1,5 +1,6 @@
 import numpy as np
 import astropy.units as u
+from numpy import loadtxt
 
 from elisa.analytics.dataset.transform import RVDataProperties, LCDataProperties
 from elisa.logger import getLogger
@@ -119,6 +120,21 @@ class DataSet(metaclass=ABCMeta):
         if 'yerr' in kwargs.keys():
             if np.isnan(kwargs['yerr']).any():
                 raise ValueError('`yerr` contains NaN')
+
+    @staticmethod
+    def load_from_file(filename, x_unit=None, y_unit=None, data_columns=None):
+        data_columns = (0, 1, 2) if data_columns is None else data_columns
+
+        data = np.loadtxt(filename)
+        try:
+            errs = data[:, data_columns[2]]
+        except IndexError:
+            errs = None
+        return RVData(x_data=data[:, data_columns[0]],
+                      y_data=data[:, data_columns[1]],
+                      yerr=errs,
+                      x_unit=x_unit,
+                      y_unit=y_unit)
 
 
 class RVData(DataSet):
