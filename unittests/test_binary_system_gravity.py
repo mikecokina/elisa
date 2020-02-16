@@ -152,20 +152,25 @@ class GravityUtilsTestCase(ElisaTestCase):
         self.assertEqual(round(expected_g_cgs_primary, 4), round(obtained_g_cgs_primary, 4))
         self.assertEqual(round(expected_g_cgs_secondary, 4), round(obtained_g_cgs_secondary, 4))
 
+    def test_calculate_polar_gravity_acceleration_eccentric(self):
+        bs = self._binaries[1]
+        distance = bs.orbit.orbital_motion([0.34])[0][0]
+        orbital_position_container = testutils.prepare_orbital_position_container(bs)
 
-    # @skip("requires attention - why this doesn't work for eccentric orbit")
-    # def test_calculate_polar_gravity_acceleration_eccentric(self):
-    #     bs = self._binaries[1]
-    #     distance = bs.orbit.orbital_motion([0.34])[0][0]
-    #
-    #     expected_g_cgs_primary = polar_gravity_acceleration(bs, ["primary"], distance)
-    #     expected_g_cgs_secondary = polar_gravity_acceleration(bs, ["secondary"], distance)
-    #
-    #     obtained_g_cgs_primary = gravity.calculate_polar_gravity_acceleration("primary", distance, logg=False) * 100
-    #     obtained_g_cgs_secondary = gravity.calculate_polar_gravity_acceleration("secondary", distance, logg=False) * 100
-    #
-    #     print(expected_g_cgs_primary, obtained_g_cgs_primary)
-    #     print(expected_g_cgs_secondary, obtained_g_cgs_secondary)
-    #     print(distance)
-    #
-    #     raise Exception("Unfinished test")
+        expected_g_cgs_primary = polar_gravity_acceleration(bs, ["primary"], distance)
+        expected_g_cgs_secondary = polar_gravity_acceleration(bs, ["secondary"], distance)
+
+        obtained_g_cgs_primary = gravity.calculate_polar_gravity_acceleration(orbital_position_container.primary,
+                                                                              distance, bs.mass_ratio,
+                                                                              "primary", bs.semi_major_axis,
+                                                                              logg=False) * 100.0
+        obtained_g_cgs_secondary = gravity.calculate_polar_gravity_acceleration(orbital_position_container.secondary,
+                                                                                distance, bs.mass_ratio,
+                                                                                "secondary", bs.semi_major_axis,
+                                                                                logg=False) * 100.0
+
+        print(expected_g_cgs_primary, obtained_g_cgs_primary)
+        print(expected_g_cgs_secondary, obtained_g_cgs_secondary)
+        print(distance)
+
+        # raise Exception("Unfinished test")

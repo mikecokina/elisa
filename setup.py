@@ -73,12 +73,12 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'astropy==2.0.2',
+        'astropy>=2.0.2',
         'cycler==0.10.0',
         'corner==2.0.1',
         'emcee==3.0.1',
         'matplotlib==2.1.0',
-        'numpy==1.16.2',
+        'numpy>=1.16.2',
         'pandas==0.24.0',
         'py==1.4.34',
         'pyparsing==2.2.0',
@@ -86,9 +86,9 @@ setup(
         'pytest==3.2.3',
         'python-dateutil==2.6.1',
         'pytz==2017.2',
-        'scipy==1.0.0',
-        'six==1.11.0',
-        'jsonschema==3.2.0',
+        'scipy>=1.0.0',
+        'six>=1.11.0',
+        'jsonschema>=3.2.0',
     ],
 
     # List additional groups of dependencies here (e.g. development
