@@ -904,3 +904,19 @@ def str_repalce(x, old, new):
 
 def query_dict(dict, key):
     return dict[key] if key in dict.keys() else None
+
+
+def magnitude_to_flux(data, zero_point):
+    return np.power(10, (zero_point - data) / 2.5)
+
+
+def magnitude_error_to_flux_error(data, error, zero_point):
+    np.power(10, (zero_point - data) / 2.5) * (np.power(10, error / 2.5) - 1)
+
+
+def flux_to_magnitude(data, zero_point):
+    return -2.5*np.log10(data) + zero_point
+
+
+def flux_error_to_magnitude_error(data, error):
+    return 2.5 * np.log10(1 + (error / data))

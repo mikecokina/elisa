@@ -744,3 +744,33 @@ def binary_rv_fit_plot(**kwargs):
 
     plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
     plt.show()
+
+
+def binary_lc_fit_plot(**kwargs):
+    matplotlib.rcParams.update({'errorbar.capsize': 2})
+    fig = plt.figure(figsize=(8, 6))
+
+    gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1], sharex=ax1)
+
+    for filter, curve in kwargs['lcs'].items():
+        ax1.plot(kwargs['synth_phases'], curve, label=filter+' synthetic')
+        ax1.errorbar(kwargs['x_data'][filter], kwargs['y_data'][filter], yerr=kwargs['yerr'][filter],
+                     linestyle='none', markersize=3, label=filter+' observed')
+
+        ax2.errorbar(kwargs['x_data'][filter], kwargs['residuals'][filter], yerr=kwargs['yerr'][filter],
+                     linestyle='none', markersize=3, label=filter+' residual')
+
+    ax2.axhline(0, ls='dashed', c='black', lw=0.5)
+
+    ax1.legend()
+    ax2.legend()
+
+    ax1.set_ylabel(f'Normalized flux')
+
+    ax2.set_xlabel('Phase')
+    ax2.set_ylabel('Residuals')
+
+    plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
+    plt.show()

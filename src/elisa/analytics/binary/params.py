@@ -36,7 +36,8 @@ PARAMS_KEY_MAP = {
     'F2': 's__synchronicity',
     'asini': 'asini',
     'P': 'period',
-    'T0': 'primary_minimum_time'
+    'T0': 'primary_minimum_time',
+    'l_add': 'additional_light',
 }
 
 PARAMS_KEY_TEX_MAP = {
@@ -62,34 +63,36 @@ PARAMS_KEY_TEX_MAP = {
     's__synchronicity': '$F_2$',
     'asini': 'a$sin$(i)',
     'period': '$period$',
-    'primary_minimum_time': '$T_0$'
+    'primary_minimum_time': '$T_0$',
+    'additional_light': '$l_{add}$',
 }
 
 
 PARAMS_UNITS_MAP = {
-    PARAMS_KEY_MAP['i']: 'degrees',
-    PARAMS_KEY_MAP['e']: 'dimensionless',
-    PARAMS_KEY_MAP['omega']: 'rad',
+    PARAMS_KEY_MAP['i']: 'degree',
+    PARAMS_KEY_MAP['e']: '',
+    PARAMS_KEY_MAP['omega']: 'degree',
     PARAMS_KEY_MAP['gamma']: 'm/s',
     PARAMS_KEY_MAP['M1']: 'solMass',
     PARAMS_KEY_MAP['M2']: 'solMass',
     PARAMS_KEY_MAP['T1']: 'K',
     PARAMS_KEY_MAP['T2']: 'K',
-    PARAMS_KEY_MAP['MH1']: 'dimensionless',
-    PARAMS_KEY_MAP['MH2']: 'dimensionless',
-    PARAMS_KEY_MAP['Omega1']: 'dimensionless',
-    PARAMS_KEY_MAP['Omega2']: 'dimensionless',
-    PARAMS_KEY_MAP['A1']: 'dimensionless',
-    PARAMS_KEY_MAP['A2']: 'dimensionless',
-    PARAMS_KEY_MAP['beta1']: 'dimensionless',
-    PARAMS_KEY_MAP['beta2']: 'dimensionless',
-    PARAMS_KEY_MAP['F1']: 'dimensionless',
-    PARAMS_KEY_MAP['F2']: 'dimensionless',
-    PARAMS_KEY_MAP['q']: 'dimensionless',
+    PARAMS_KEY_MAP['MH1']: '',
+    PARAMS_KEY_MAP['MH2']: '',
+    PARAMS_KEY_MAP['Omega1']: '',
+    PARAMS_KEY_MAP['Omega2']: '',
+    PARAMS_KEY_MAP['A1']: '',
+    PARAMS_KEY_MAP['A2']: '',
+    PARAMS_KEY_MAP['beta1']: '',
+    PARAMS_KEY_MAP['beta2']: '',
+    PARAMS_KEY_MAP['F1']: '',
+    PARAMS_KEY_MAP['F2']: '',
+    PARAMS_KEY_MAP['q']: '',
     PARAMS_KEY_MAP['a']: 'solRad',
     PARAMS_KEY_MAP['asini']: 'solRad',
     PARAMS_KEY_MAP['P']: 'd',
     PARAMS_KEY_MAP['T0']: 'd',
+    PARAMS_KEY_MAP['l_add']: '',
 }
 
 
@@ -119,6 +122,7 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['a']: (0, 100),
     PARAMS_KEY_MAP['asini']: (0, 100),
     PARAMS_KEY_MAP['P']: (0, 100),
+    PARAMS_KEY_MAP['l_add']: (0, 1.0),
     PARAMS_KEY_MAP['T0']: (Time.now().jd - 365.0, Time.now().jd),
 }
 
@@ -159,18 +163,18 @@ def renormalize_flat_chain(flat_chain, labels, renorm=None):
 
 def x0_vectorize(x0) -> Tuple:
     """
-    Transform native JSON form of initial parameters to Tuple.
+    Transform native dict form of initial parameters to Tuple.
     JSON form::
 
-        [
-            {
+        {
+            'p__mass': {
                 'value': 2.0,
                 'param': 'p__mass',
                 'fixed': False,
                 'min': 1.0,
                 'max': 3.0
             },
-            {
+            'p__t_eff': {
                 'value': 4000.0,
                 'param': 'p__t_eff',
                 'fixed': True,
@@ -178,14 +182,15 @@ def x0_vectorize(x0) -> Tuple:
                 'max': 4500.0
             },
             ...
-        ]
+        }
 
-    :param x0: List[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
+    :param x0: Dict[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Tuple;
     """
-
-    floats = x0_to_variable_kwargs(x0)
-    return list(floats.values()), list(floats.keys())
+    keys = [key for key, val in x0.items() if not val.get('fixed', False) and not val.get('constraint', False)]
+    values = [val['value'] for key, val in x0.items() if not val.get('fixed', False)
+              and not val.get('constraint', False)]
+    return values, keys
 
 
 def x0_to_kwargs(x0):
@@ -205,37 +210,37 @@ def x0_to_kwargs(x0):
 
 def x0_to_fixed_kwargs(x0):
     """
-    Transform native JSON input form to `key, value` form, but select `fixed` parametres only::
+    Transform native dict input form to `key, value` form, but select `fixed` parametres only::
 
         {
             key: value,
             ...
         }
 
-    :param x0: List[Dict[str, Union[float, str, bool]]];
+    :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {record['param']: record['value'] for record in x0 if record.get('fixed', False)}
+    return {key: value['value'] for key, value in x0.items() if value.get('fixed', False)}
 
 
 def x0_to_constrained_kwargs(x0):
     """
-    Transform native JSON input form to `key, value` form, but select `constraint` parametres only::
+    Transform native dict input form to `key, value` form, but select `constraint` parameters only::
 
         {
             key: value,
             ...
         }
 
-    :param x0: List[Dict[str, Union[float, str, bool]]];
+    :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {record['param']: record['constraint'] for record in x0 if record.get('constraint', False)}
+    return {key: value['constraint'] for key, value in x0.items() if value.get('constraint', False)}
 
 
 def x0_to_variable_kwargs(x0):
     """
-    Transform native JSON input form to `key, value` form, but select `floats` parameters
+    Transform native dict input form to `key, value` form, but select `floats` parameters
     (as in not fixed or constrained)::
 
         {
@@ -243,11 +248,11 @@ def x0_to_variable_kwargs(x0):
             ...
         }
 
-    :param x0: List[Dict[str, Union[float, str, bool]]];
+    :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {record['param']: record['value'] for record in x0
-            if not record.get('fixed', False) and not record.get('constraint', False)}
+    return {key: value['value'] for key, value in x0.items()
+            if not value.get('fixed', False) and not value.get('constraint', False)}
 
 
 def update_normalization_map(update):
@@ -295,12 +300,12 @@ def serialize_param_boundaries(x0):
     """
     Serialize boundaries of parameters if exists and parameter is not fixed.
 
-    :param x0: List[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
+    :param x0: Dict[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Dict[str, Tuple[float, float]]
     """
-    return {record['param']: (record.get('min', NORMALIZATION_MAP[record['param']][0]),
-                              record.get('max', NORMALIZATION_MAP[record['param']][1]))
-            for record in x0 if not record.get('fixed', False) and not record.get('constraint', False)}
+    return {key: (value.get('min', NORMALIZATION_MAP[key][0]),
+                  value.get('max', NORMALIZATION_MAP[key][1]))
+            for key, value in x0.items() if not value.get('fixed', False) and not value.get('constraint', False)}
 
 
 def fit_data_initializer(x0, passband=None):
@@ -318,7 +323,7 @@ def fit_data_initializer(x0, passband=None):
     return x0, labels, fixed, constraint, observer
 
 
-def lc_initial_x0_validity_check(x0: List[Dict], morphology):
+def lc_initial_x0_validity_check(x0, morphology):
     """
     Validate parameters for light curve fitting.
 
@@ -327,7 +332,7 @@ def lc_initial_x0_validity_check(x0: List[Dict], morphology):
     # Valid input requires either both potentials fixed on same values or non-of them fixed.
     # When non of them are fixed, internaly is fixed secondary and its value is keep same as primary.
 
-    :param x0: List[Dict];
+    :param x0: Dict[Dict];
     :param morphology: str;
     :return: List[Dict];
     """
@@ -336,25 +341,24 @@ def lc_initial_x0_validity_check(x0: List[Dict], morphology):
     constraints_validator(x0)
 
     # invalidate fixed and constraints for same value
-    for record in x0:
+    for record in x0.values():
         if 'fixed' in record and 'constraint' in record:
             msg = f'It is not allowed for record {record} to contain fixed and constraint.'
             raise error.InitialParamsError(msg)
 
-    hash_map = {val['param']: idx for idx, val in enumerate(x0)}
     is_oc = is_overcontact(morphology)
-    are_same = x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['value'] == x0[hash_map[PARAMS_KEY_MAP['Omega2']]]['value']
+    are_same = x0[PARAMS_KEY_MAP['Omega1']]['value'] == x0[PARAMS_KEY_MAP['Omega2']]['value']
 
-    omega_1 = x0[hash_map[PARAMS_KEY_MAP['Omega1']]].get('fixed', False)
-    omega_2 = x0[hash_map[PARAMS_KEY_MAP['Omega2']]].get('fixed', False)
+    omega_1 = x0[PARAMS_KEY_MAP['Omega1']].get('fixed', False)
+    omega_2 = x0[PARAMS_KEY_MAP['Omega2']].get('fixed', False)
 
     any_fixed = omega_1 | omega_2
     all_fixed = omega_1 & omega_2
 
-    for x in x0:
-        _min, _max = x.get('min', NORMALIZATION_MAP[x['param']][0]), x.get('max', NORMALIZATION_MAP[x['param']][1])
-        if not (_min <= x['value'] <= _max):
-            msg = f'Initial parametres are not fisible. Invalid bounds NOT: {_min} <= {x["param"]} <= {_max}'
+    for key, val in x0.items():
+        _min, _max = val.get('min', NORMALIZATION_MAP[key][0]), val.get('max', NORMALIZATION_MAP[key][1])
+        if not (_min <= val['value'] <= _max):
+            msg = f'Initial parameters are not valid. Invalid bounds NOT: {_min} <= {x["param"]} <= {_max}'
             raise error.InitialParamsError(msg)
 
     if is_oc and all_fixed and are_same:
@@ -367,9 +371,9 @@ def lc_initial_x0_validity_check(x0: List[Dict], morphology):
         raise error.InitialParamsError(msg)
     if is_oc:
         # if is overcontact, add constraint for secondary pontetial
-        _min, _max = x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['min'], x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['max']
-        x0[hash_map[PARAMS_KEY_MAP['Omega2']]] = {
-            "value": x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['value'],
+        _min, _max = x0[PARAMS_KEY_MAP['Omega1']]['min'], x0[PARAMS_KEY_MAP['Omega1']]['max']
+        x0[PARAMS_KEY_MAP['Omega2']] = {
+            "value": x0[PARAMS_KEY_MAP['Omega1']]['value'],
             "constraint": "{p__surface_potential}",
             "min": _min,
             "max": _max,
@@ -379,14 +383,14 @@ def lc_initial_x0_validity_check(x0: List[Dict], morphology):
     return x0
 
 
-def rv_initial_x0_validity_check(x0: List[Dict]):
+def rv_initial_x0_validity_check(x0: Dict):
     """
     Validate parameters for radial velocities curve fitting.
 
     :param x0: List[Dict];
     :return: List[Dict];
     """
-    labels = [val["param"] for val in x0]
+    labels = x0.keys()
     has_t0, has_period = 'primary_minimum_time' in labels, 'period' in labels
 
     if has_t0:
@@ -454,7 +458,7 @@ def constraints_validator(x0):
 
         '(', ')', '+', '-', '*', '/', '.'
 
-    :param x0: List[Dict]; initial values
+    :param x0: Dict[Dict]; initial values
     :raise: elisa.base.error.InitialParamsError;
     """
     x0 = x0.copy()

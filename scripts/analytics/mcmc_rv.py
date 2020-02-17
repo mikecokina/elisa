@@ -71,7 +71,7 @@ def main():
         }
     ]
 
-    central_rv.fit(xs=xs, ys=rv, x0=rv_initial, nwalkers=20, nsteps=10000, nsteps_burn_in=1000, yerrs=None)
+    central_rv.fit(xs=xs, ys=rv, x0=rv_initial, nwalkers=20, nsteps=10000, burn_in=1000, yerrs=None)
 
     result = central_rv.restore_flat_chain(central_rv.last_fname)
     central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])

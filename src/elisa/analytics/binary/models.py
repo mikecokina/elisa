@@ -39,7 +39,8 @@ def serialize_system_kwargs(**kwargs):
         primary_minimum_time=0.0,
         **{"semi_major_axis": kwargs["semi_major_axis"]} if kwargs.get("semi_major_axis") else {},
         **{"mass_ratio": kwargs["mass_ratio"]} if kwargs.get("mass_ratio") else {},
-        **{"asini": kwargs["asini"]} if kwargs.get("asini") else {}
+        **{"asini": kwargs["asini"]} if kwargs.get("asini") else {},
+        **{"additional_light": kwargs["additional_light"]} if kwargs.get("additional_light") else {}
     )
 
 
@@ -51,7 +52,7 @@ def serialize_secondary_kwargs(**kwargs):
     return _serialize_star_kwargs(component='s', **kwargs)
 
 
-def prepare_binary(period, discretization, **kwargs):
+def prepare_binary(period=None, discretization=3, **kwargs):
     """
     Setup binary system.
     If `beta` (gravity darkening factor), `albedo`, `metallicity` or `synchronicity` is not supplied,
@@ -80,10 +81,12 @@ def prepare_binary(period, discretization, **kwargs):
         * **s__albedo** * -- float;
         * **s__metallicity** * -- float;
         * **s__synchronicity** * -- float;
+        * **additional_light** * -- float;
 
     :return: elisa.binary_system.system.BinarySystem;
     """
-
+    if period is None:
+        ValueError('Missing argument `period`.')
     kwargs.update({"p__discretization_factor": discretization, "period": period})
     primary_kwargs = serialize_primary_kwargs(**kwargs)
     secondary_kwargs = serialize_secondary_kwargs(**kwargs)
@@ -174,6 +177,7 @@ def central_rv_synthetic(xs, observer, **kwargs):
     })
 
     xs, kwargs = rvt_layer_resolver(xs, **kwargs)
+
     primary_kwargs = serialize_primary_kwargs(**kwargs)
     secondary_kwargs = serialize_secondary_kwargs(**kwargs)
     system_kwargs = serialize_system_kwargs(**kwargs)
@@ -194,15 +198,35 @@ def central_rv_synthetic(xs, observer, **kwargs):
 
 def rvt_layer_resolver(xs, **kwargs):
     """
-    If kwargs contain `peridod` and `primary_minimum_time`, then xs is expected to be JD time not phases.
+    If kwargs contain `period` and `primary_minimum_time`, then xs is expected to be JD time not phases.
     Then, xs has to be converted to phases.
 
-    :param xs: Union[List, bumpy.array];
-    :param kwargs:
+    :param xs: Union[List, numpy.array];
+    :param kwargs: dict;
     :return:
     """
+
     if params.is_time_dependent(list(kwargs.keys())):
         t0 = kwargs.pop('primary_minimum_time')
         period = kwargs['period']
         xs = t_layer.jd_to_phase(t0, period, xs)
     return xs, kwargs
+
+
+def time_layer_resolver(xs, x0):
+    """
+    If `x0' contain `period` and `primary_minimum_time`, then xs is expected to be JD time not phases.
+    Then, xs has to be converted to phases.
+
+    :param xs: Union[Dict, numpy.array];
+    :param x0: dict;
+    :return:
+    """
+
+    if params.is_time_dependent(x0.keys()):
+        t0 = x0['primary_minimum_time']['value']
+        period = x0['period']['value']
+        xs = t_layer.jd_to_phase(t0, period, xs)
+    return xs, x0
+
+

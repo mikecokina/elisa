@@ -1,12 +1,10 @@
 import json
 import numpy as np
 from ...logger import getLogger
-from ... import (
-    utils,
-)
+
+from ... import utils
 from elisa.analytics.binary.least_squares import central_rv as lstsqr_central_rv
 from elisa.analytics.binary.mcmc import central_rv as mcmc_central_rv
-
 from elisa.analytics.binary_fit.plot import RVPlot
 from elisa.analytics.binary.mcmc import McMcMixin
 from elisa.analytics.binary import params
@@ -20,14 +18,13 @@ class RVFit(object):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    MANDATORY_FIT_PARAMS = ['eccentricity', 'asini', 'mass_ratio', 'argument_of_periastron', 'gamma']
-    OPTIONAL_FIT_PARAMS = ['period', 'primary_minimum_time']
+    MANDATORY_FIT_PARAMS = ['eccentricity', 'argument_of_periastron', 'gamma']
+    OPTIONAL_FIT_PARAMS = ['period', 'primary_minimum_time', 'p__mass', 's__mass', 'inclination', 'asini', 'mass_ratio']
     ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
 
     def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs, RVFit.ALL_KWARGS, RVFit)
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
-        # kwargs = RVFit.transform_input(**kwargs)
 
         self.radial_velocities = None
         self.fit_params = None
@@ -41,7 +38,7 @@ class RVFit(object):
         self.plot = RVPlot(self)
 
         # values of properties
-        logger.debug(f"setting properties of orbit")
+        logger.debug(f"setting properties of RVFit")
         for kwarg in kwargs:
             setattr(self, kwarg, kwargs[kwarg])
 
@@ -54,9 +51,8 @@ class RVFit(object):
         :return: dict: fit_params
         """
         X0 = autils.transform_initial_values(X0)
-        X0 = autils.convert_dict_to_json_format(X0)
 
-        param_names = {item['param']: item['value'] for item in X0}
+        param_names = {key: value['value'] for key, value in X0.items()}
         utils.invalid_kwarg_checker(param_names, RVFit.ALL_FIT_PARAMS, RVFit)
         utils.check_missing_kwargs(RVFit.MANDATORY_FIT_PARAMS, param_names, instance_of=RVFit)
 
@@ -94,7 +90,7 @@ class RVFit(object):
 
         # reproducing results from chain
         params.update_normalization_map(self.normalization)
-        self.fit_params = McMcMixin.resolve_mcmc_result(flat_chain=self.flat_chain, labels=self.variable_labels)
+        self.fit_params.update(McMcMixin.resolve_mcmc_result(flat_chain=self.flat_chain, labels=self.variable_labels))
 
         return self.flat_chain, self.variable_labels, self.normalization
 

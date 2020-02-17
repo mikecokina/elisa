@@ -1,5 +1,6 @@
 import functools
 import numpy as np
+from scipy import interpolate
 
 from abc import ABCMeta
 from scipy.optimize import least_squares
@@ -8,13 +9,16 @@ from ...conf.config import BINARY_COUNTERPARTS
 from ...logger import getPersistentLogger
 from ..binary import params
 from ..binary import (
-    utils as autils,
+    utils as butils,
     models,
     shared
 )
+from elisa.analytics import utils as autils
 from elisa.analytics.binary.shared import (
     AbstractCentralRadialVelocityDataMixin,
     AbstractLightCurveDataMixin)
+
+from elisa.conf import config
 
 logger = getPersistentLogger('analytics.binary.fit')
 
@@ -41,30 +45,38 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         xn = params.param_renormalizer(xn, self.labels)
         kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
         fn = models.synthetic_binary
-        args = self.xs, self.period, self.discretization, self.morphology, self.observer, False
+        args = self.fit_xs, self.period, self.discretization, self.morphology, self.observer, False
         try:
             synthetic = logger_decorator()(fn)(*args, **kwargs)
-            synthetic = autils.normalize_lightcurve_to_max(synthetic)
+            synthetic = butils.normalize_lightcurve_to_max(synthetic)
 
         except Exception as e:
             logger.error(f'your initial parmeters lead during fitting to invalid binary system')
             raise RuntimeError(f'your initial parmeters lead during fitting to invalid binary system: {str(e)}')
 
-        residua = np.array([np.sum(np.power(synthetic[band][self.xs_reverser[band]] - self.ys[band], 2)
-                                   / self.yerrs[band]) for band in synthetic])
+        if np.shape(self.fit_xs) != np.shape(self.xs):
+            new_synthetic = dict()
+            for fltr, curve in synthetic.items():
+                f = interpolate.interp1d(self.fit_xs, curve, kind='cubic')
+                new_synthetic[fltr] = f(self.xs)
+            synthetic = new_synthetic
 
-        return residua
+        residuals = np.array([np.sum(np.power(synthetic[band][self.xs_reverser[band]] - self.ys[band], 2)
+                              / self.yerrs[band]) for band in synthetic])
 
-    def fit(self, xs, ys, period, x0, discretization, yerrs=None, xtol=1e-8, ftol=1e-8, max_nfev=None,
-            diff_step=None, f_scale=1.0):
+        return residuals
+
+    def fit(self, xs, ys, period, x0, discretization, yerr=None, xtol=1e-8, ftol=1e-8, max_nfev=None,
+            diff_step=None, f_scale=1.0, interp_treshold=None):
         """
         Fit method using non-linear least squares.
         Based on https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
 
+        :param interp_treshold: int; data binning treshold
         :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
         :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
         :param period: float; sytem period
-        :param x0: List[Dict]; initial state (metadata included)
+        :param x0: Dict[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
         :param xtol: float; relative tolerance to consider solution
         :param yerrs: Union[numpy.array, float]; errors for each point of observation
@@ -80,16 +92,16 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :return: Dict;
         """
-
         passband = list(ys.keys())
         # compute yerrs if not supplied
-        yerrs = {band: autils.lightcurves_mean_error(ys) for band in passband} if yerrs is None else yerrs
+        yerrs = {c: butils.lightcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
+                 for c in xs.keys()}
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.ys, self.yerrs = ys, yerrs
 
         x0 = params.lc_initial_x0_validity_check(x0, self.morphology)
-        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
+        x0_vector, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
 
         self.period = period
         self.discretization = discretization
@@ -97,9 +109,15 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         self.labels, self.fixed, self.constraint = labels, fixed, constraint
         self.observer = observer
 
+        self.xs, x0 = models.time_layer_resolver(self.xs, x0)
+        interp_treshold = config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold
+        diff = 1.0 / interp_treshold
+        self.fit_xs = np.linspace(np.min(self.xs)-diff, np.max(self.xs)+diff, num=interp_treshold+2) \
+            if np.shape(self.xs)[0] > interp_treshold else self.xs
+
         # evaluate least squares from scipy
-        logger.info("fitting circular synchronous system...")
-        result = least_squares(self.model_to_fit, x0, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol,
+        logger.info("fitting started...")
+        result = least_squares(self.model_to_fit, x0_vector, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol,
                                ftol=ftol, diff_step=diff_step, f_scale=f_scale)
         logger.info("fitting finished")
 
@@ -139,7 +157,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         fn = models.central_rv_synthetic
         synthetic = logger_decorator()(fn)(self.xs, self.observer, **kwargs)
         if self.on_normalized:
-            synthetic = autils.normalize_rv_curve_to_max(synthetic)
+            synthetic = butils.normalize_rv_curve_to_max(synthetic)
         return synthetic
 
     def central_rv_model_to_fit(self, xn):
@@ -153,17 +171,6 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         return np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                          / self.yerrs[comp], 2)) for comp in synthetic.keys()])
 
-    def centrall_rv_model_to_fit_wo_errors(self, xn):
-        """
-        Residual function.
-
-        :param xn: numpy.array; current vector
-        :return: numpy.array;
-        """
-        synthetic = self.prep_params(xn)
-        return np.array([np.sum(np.power(synthetic[comp][self.xs_reverser[comp]] - self.ys[comp]))
-                         for comp in synthetic.keys()])
-
     def fit(self, xs, ys, x0, yerr=None, xtol=1e-8, ftol=1e-8, max_nfev=None, diff_step=None,
             f_scale=1.0, on_normalized=False):
         """
@@ -175,7 +182,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         :param on_normalized: bool; if True, fitting is provided on normalized radial velocities curves
         :param xs: Iterable[float];
         :param ys: Dict;
-        :param x0: List[Dict]; initial state (metadata included)
+        :param x0: Dict; initial state (metadata included)
         :param yerr: Union[numpy.array, float]; errors for each point of observation
         :param max_nfev: int; maximal iteration
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
@@ -183,26 +190,27 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :param f_scale: float; optional
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param ftol: float;Najlepsie by proste bolo aby si im to proste ohlasit fotenie na jeden den a bolo by.
+        :param ftol: float;
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :param xtol: float; tolerance of error to consider hitted solution as exact
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :return: Dict;
         """
-
         x0 = params.rv_initial_x0_validity_check(x0)
-        yerrs = {c: autils.radialcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
+        yerrs = {c: butils.radialcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
                  for c in xs.keys()}
-        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
+        x0_vector, labels, fixed, constraint, observer = params.fit_data_initializer(x0)
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.ys, self.yerrs = ys, yerrs
         self.labels, self.observer = labels, observer
         self.fixed, self.constraint = fixed, constraint
 
+        # self.xs, x0 = models.rvt_layer_resolver(self.xs, x0)
+
         logger.info("fitting radial velocity light curve...")
         func = self.central_rv_model_to_fit
-        result = least_squares(fun=func, x0=x0, bounds=(0, 1), max_nfev=max_nfev,
+        result = least_squares(fun=func, x0=x0_vector, bounds=(0, 1), max_nfev=max_nfev,
                                xtol=xtol, ftol=ftol, diff_step=diff_step, f_scale=f_scale)
         logger.info("fitting finished")
 

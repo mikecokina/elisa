@@ -50,11 +50,12 @@ MIN_DISCRETIZATION_FACTOR = 1
 NUMBER_OF_THREADS = 1
 NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
 NUMBER_OF_MCMC_PROCESSES = -1
-POINTS_ON_ECC_ORBIT = 99999
-MAX_RELATIVE_D_R_POINT = 0.0
+POINTS_ON_ECC_ORBIT = 200
+MAX_RELATIVE_D_R_POINT = 1e-3
 MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
 MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
 MAX_SOLVER_ITERS = 100
+MAX_CURVE_DATA_POINTS = 300
 
 # support data
 PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")
@@ -197,6 +198,10 @@ def update_config():
 
         global MAX_SOLVER_ITERS
         MAX_SOLVER_ITERS = c_parse.getfloat('computational', 'max_solver_iters', fallback=MAX_SOLVER_ITERS)
+
+        global MAX_CURVE_DATA_POINTS
+        MAX_CURVE_DATA_POINTS = c_parse.getfloat('computational', 'max_curve_datapoints',
+                                                 fallback=MAX_CURVE_DATA_POINTS)
     # ******************************************************************************************************************
 
     if c_parse.has_section('support'):

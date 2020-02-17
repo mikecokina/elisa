@@ -23,7 +23,7 @@ def normalize_rv_curve_to_max(rv):
 
 
 def lightcurves_mean_error(lc):
-    return np.mean(list(lc.values())) * 0.05
+    return np.mean(lc) * 0.05
 
 
 def radialcurves_mean_error(rv):

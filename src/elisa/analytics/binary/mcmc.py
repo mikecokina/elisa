@@ -3,6 +3,7 @@ import numpy as np
 import os
 import os.path as op
 import json
+from scipy import interpolate
 
 from abc import ABCMeta, abstractmethod
 from multiprocessing import Pool
@@ -15,7 +16,7 @@ from elisa.conf import config
 from elisa.logger import getPersistentLogger
 from elisa.base.error import ElisaError
 from elisa.analytics.binary import (
-    utils as autils,
+    utils as butils,
     params,
     models,
 )
@@ -23,8 +24,11 @@ from elisa.analytics.binary.shared import (
     AbstractLightCurveDataMixin,
     AbstractCentralRadialVelocityDataMixin,
     AbstractFit,
+    lc_r_squared,
     rv_r_squared
 )
+from elisa.analytics import utils as autils
+
 
 logger = getPersistentLogger('analytics.binary.mcmc')
 
@@ -166,16 +170,23 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         xn = params.param_renormalizer(xn, self.labels)
         kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
 
-        args = self.xs, self.period, self.discretization, self.morphology, self.observer, True
+        args = self.fit_xs, self.period, self.discretization, self.morphology, self.observer, True
         synthetic = models.synthetic_binary(*args, **kwargs)
-        synthetic = autils.normalize_lightcurve_to_max(synthetic)
+        synthetic = butils.normalize_lightcurve_to_max(synthetic)
+
+        if np.shape(self.fit_xs) != np.shape(self.xs):
+            new_synthetic = dict()
+            for filter, curve in synthetic.items():
+                f = interpolate.interp1d(self.fit_xs, curve, kind='cubic')
+                new_synthetic[filter] = f(self.xs)
+            synthetic = new_synthetic
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band][self.xs_reverser[band]] - self.ys[band])
                                                         / self.yerrs[band], 2)) for band in synthetic]))
         return lhood
 
-    def fit(self, xs, ys, period, x0, discretization, nwalkers, nsteps,
-            p0=None, yerrs=None, nsteps_burn_in=10, quantiles=None, discard=False):
+    def fit(self, xs, ys, period, x0, discretization, nwalkers=None, nsteps=1000,
+            p0=None, yerr=None, burn_in=None, quantiles=None, discard=False, interp_treshold=None):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
@@ -194,27 +205,50 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         :param nwalkers: int; number of walkers
         :param nsteps: int; number of steps in mcmc eval
         :param p0: numpy.array; inital priors for mcmc
-        :param yerrs: Union[numpy.array, float]; errors for each point of observation
-        :param nsteps_burn_in: int; numer of steps for mcmc to explore parameters
+        :param yerr: Union[numpy.array, float]; errors for each point of observation
+        :param burn_in: int; numer of steps for mcmc to explore parameters
         :param quantiles: List[int];
         :param discard: Union[int, bool]; how many values of result discard when looking for solution
+        :param interp_treshold: int; data binning treshold
         :return: emcee.EnsembleSampler; sampler instance
         """
+        burn_in = int(nsteps / 10) if burn_in is None else burn_in
 
         self.passband = list(ys.keys())
-        yerrs = {band: autils.lightcurves_mean_error(ys) for band in self.passband} if yerrs is None else yerrs
+        yerrs = {c: butils.lightcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c] for c in xs.keys()}
         x0 = params.lc_initial_x0_validity_check(x0, self.morphology)
-        x0, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=self.passband)
-        ndim = len(x0)
+        x0_vector, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=self.passband)
+        ndim = len(x0_vector)
+        nwalkers = 2 * len(labels) if nwalkers is None else nwalkers
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.labels, self.observer, self.period = labels, observer, period
         self.fixed, self.constraint = fixed, constraint
         self.ys, self.yerrs = ys, yerrs
+        self.period = period
         self.discretization = discretization
 
-        return self._fit(x0, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)
+        self.xs, x0 = models.time_layer_resolver(self.xs, x0)
+        interp_treshold = config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold
+        diff = 1.0 / interp_treshold
+        self.fit_xs = np.linspace(np.min(self.xs) - diff, np.max(self.xs) + diff, num=interp_treshold + 2) \
+            if np.shape(self.xs)[0] > interp_treshold else self.xs
+
+        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, p0)
+
+        # extracting fit results from MCMC sampler
+        flat_chain = sampler.get_chain(flat=True)
+        result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
+        result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
+        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
+
+        r_squared_args = self.xs, self.ys, self.period, self.passband, discretization, self.morphology, self.xs_reverser
+        r_dict = {key: value['value'] for key, value in result_dict.items()}
+        r_squared_result = lc_r_squared(models.synthetic_binary, *r_squared_args, **r_dict)
+        result_dict["r_squared"] = {'value': r_squared_result}
+
+        return params.extend_result_with_units(result_dict)
 
 
 class OvercontactLightCurveFit(LightCurveFit):
@@ -251,17 +285,30 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         args = self.xs, self.observer
         synthetic = models.central_rv_synthetic(*args, **kwargs)
         if self.on_normalized:
-            synthetic = autils.normalize_rv_curve_to_max(synthetic)
+            synthetic = butils.normalize_rv_curve_to_max(synthetic)
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))
         return lhood
 
-    def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, p0=None, yerr=None, nsteps_burn_in=None):
+    def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, p0=None, yerr=None, burn_in=None):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
+        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)
 
+        # extracting fit results from MCMC sampler
+        flat_chain = sampler.get_chain(flat=True)
+        result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
+        result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
+        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
+
+        r_squared_args = self.xs, self.ys, False, self.xs_reverser
+        r_dict = {key: value['value'] for key, value in result_dict.items()}
+        r_squared_result = rv_r_squared(models.central_rv_synthetic, *r_squared_args, **r_dict)
+        result_dict["r_squared"] = {'value': r_squared_result}
+
+        return params.extend_result_with_units(result_dict)
             self.last_sampler: emcee.EnsembleSampler
             self.last_normalization: Dict; normalization map used during fitting
             self.last_fname: str; filename of last stored flatten emcee `sampler` with metadata
@@ -275,17 +322,17 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         :param nsteps: int; number of steps in mcmc eval
         :param p0: numpy.array; inital priors for mcmc
         :param yerr: Union[numpy.array, float]; errors for each point of observation
-        :param nsteps_burn_in: int; numer of steps for mcmc to explore parameters
+        :param burn_in: int; numer of steps for mcmc to explore parameters
         :return: emcee.EnsembleSampler; sampler instance
         """
-        nsteps_burn_in = int(nsteps / 10) if nsteps_burn_in is None else nsteps_burn_in
+        burn_in = int(nsteps / 10) if burn_in is None else burn_in
         nwalkers = 2*len(x0) if nwalkers is None else nwalkers
 
         x0 = params.rv_initial_x0_validity_check(x0)
-        yerrs = {c: autils.radialcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
+        yerrs = {c: butils.radialcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
                  for c in xs.keys()}
-        x0, labels, fixed, constrained, observer = params.fit_data_initializer(x0)
-        ndim = len(x0)
+        x0_vector, labels, fixed, constrained, observer = params.fit_data_initializer(x0)
+        ndim = len(x0_vector)
 
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
@@ -294,7 +341,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         self.labels, self.observer = labels, observer
         self.fixed, self.constraint = fixed, constrained
 
-        sampler = self._fit(x0, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)
+        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, p0)
 
         # extracting fit results from MCMC sampler
         flat_chain = sampler.get_chain(flat=True)

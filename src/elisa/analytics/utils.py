@@ -1,3 +1,6 @@
+from copy import copy
+from astropy import units as u
+
 from elisa.analytics.binary import params
 
 
@@ -15,17 +18,17 @@ def convert_dict_to_json_format(dictionary):
     return retval
 
 
-def convert_json_to_dict_format(dictionary):
+def convert_json_to_dict_format(json):
     """
     Converts initial vector to JSON compatibile format
 
-    :param dictionary: dict; vector of initial parameters {`paramname`:{`value`: value, `min`: ...}, ...}
+    :param json: list; vector of initial parameters {`paramname`:{`value`: value, `min`: ...}, ...}
     :return: list; [{`param`: paramname, `value`: value, ...}, ...]
     """
-    retval = list()
-    for key, val in dictionary.items():
-        val.update({'param': key})
-        retval.append(val)
+    retval = dict()
+    for item in json:
+        param = copy(item).pop('param')
+        retval.update({param: item, })
     return retval
 
 
@@ -38,6 +41,7 @@ def transform_initial_values(X0):
     """
     for key, val in X0.items():
         if 'unit' in val.keys():
+            val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
             if 'value' in val.keys():
                 val['value'] = (val['value'] * val['unit']).to(params.PARAMS_UNITS_MAP[key]).value
             if 'min' in val.items():

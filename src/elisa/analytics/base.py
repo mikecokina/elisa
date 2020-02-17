@@ -5,7 +5,7 @@ from elisa import (
     utils
 )
 from elisa.analytics.transform import AnalyticsProperties
-from elisa.analytics.binary_fit import rv_fit
+from elisa.analytics.binary_fit import rv_fit, lc_fit
 
 logger = getLogger('analytics.base')
 
@@ -77,10 +77,18 @@ class BinarySystemAnalyticsTask(AnalyticsTask):
         self.init_properties(**kwargs)
         if 'radial_velocities' in kwargs:
             self.init_rv_fit()
+        if 'light_curves' in kwargs:
+            self.init_lc_fit()
 
     def init_rv_fit(self):
         logger.debug(f'Initializing radial velocity fitting module in class instance {self.__class__.__name__} / '
                      f'{self.name}.')
         rv_fit_kwargs = {key: getattr(self, key) for key in rv_fit.RVFit.ALL_KWARGS}
         self.rv_fit = rv_fit.RVFit(**rv_fit_kwargs)
+
+    def init_lc_fit(self):
+        logger.debug(f'Initializing light curve fitting module in class instance {self.__class__.__name__} / '
+                     f'{self.name}.')
+        lc_fit_kwargs = {key: getattr(self, key) for key in lc_fit.LCFit.ALL_KWARGS}
+        self.lc_fit = lc_fit.LCFit(**lc_fit_kwargs)
 

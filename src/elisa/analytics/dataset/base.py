@@ -42,7 +42,7 @@ def convert_flux(data, unit, zero_point=None):
             raise ValueError('You supplied your data in magnitudes. Please also specify a zero point using keyword '
                              'argument `reference_magnitude`.')
         else:
-            data = np.power(10, (zero_point - data) / 2.5)
+            data = utils.magnitude_to_flux(data, zero_point)
 
     return data
 
@@ -305,7 +305,7 @@ class LCData(DataSet):
             errs = data[:, data_columns[2]]
         except IndexError:
             errs = None
-        return RVData(x_data=data[:, data_columns[0]],
+        return LCData(x_data=data[:, data_columns[0]],
                       y_data=data[:, data_columns[1]],
                       yerr=errs,
                       x_unit=x_unit,

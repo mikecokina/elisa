@@ -105,7 +105,7 @@ def main():
     ]
 
     binary_detached.fit(xs=phases, ys=lc, x0=lc_initial, period=4.5, discretization=5.0,
-                        nwalkers=20, nsteps=10000, nsteps_burn_in=1000, yerrs=None)
+                        nwalkers=20, nsteps=10000, burn_in=1000, yerrs=None)
 
     result = binary_detached.restore_flat_chain(binary_detached.last_fname)
     binary_detached.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
