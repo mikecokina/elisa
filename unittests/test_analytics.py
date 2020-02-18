@@ -362,8 +362,10 @@ class McMcLCTestCase(AbstractFitTestCase):
             y_unit=u.dimensionless_unscaled
         )
 
-        task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
-        result = task.lc_fit.fit(X0=copy(dinit), method='mcmc', nsteps=10, discretization=20)
+        self.model_generator.keep_out = True
+        with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.lc_generator):
+            task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
+            result = task.lc_fit.fit(X0=copy(dinit), method='mcmc', nsteps=10, discretization=20)
 
     def test_mcmc_lc_fit_community_params_detached(self):
         dinit = {
@@ -427,11 +429,16 @@ class McMcLCTestCase(AbstractFitTestCase):
             y_unit=u.dimensionless_unscaled
         )
 
-        task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
-        result = task.lc_fit.fit(X0=copy(dinit), method='mcmc', nsteps=10, discretization=20)
+        self.model_generator.keep_out = True
+        with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.lc_generator):
+            task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
+            result = task.lc_fit.fit(X0=copy(dinit), method='mcmc', nsteps=10, discretization=20)
 
 
 class RVTestCase(ElisaTestCase):
+    def setUp(self):
+        self.model_generator = ModelSimulator()
+
     rv = {'primary': -1 * np.array([111221.02018955, 102589.40515112, 92675.34114568,
                                     81521.98280508, 69189.28515476, 55758.52165462,
                                     41337.34984718, 26065.23187763, 10118.86370365,
@@ -480,20 +487,16 @@ class McMcRVTestCase(RVTestCase):
     def test_mcmc_rv_fit_community_params(self):
         phases = np.arange(-0.6, 0.62, 0.02)
 
-        model_generator = ModelSimulator()
-        model_generator.keep_out = True
-        rvs = model_generator.rv_generator()
-
         rv_primary = RVData(
             x_data=phases,
-            y_data=rvs['primary'],
+            y_data=self.rv['primary'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.m / u.s
         )
 
         rv_secondary = RVData(
             x_data=phases,
-            y_data=rvs['secondary'],
+            y_data=self.rv['secondary'],
             x_unit=u.dimensionless_unscaled,
             y_unit=u.m / u.s
         )
@@ -530,8 +533,11 @@ class McMcRVTestCase(RVTestCase):
                 }
             }
 
-        task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
-        fit_params = task.rv_fit.fit(X0=initial_parameters, method='mcmc', nsteps=100)
+        self.model_generator.keep_out = True
+        with mock.patch("elisa.analytics.binary.models.central_rv_synthetic", self.model_generator.rv_generator):
+            task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
+            fit_params = task.rv_fit.fit(X0=initial_parameters, method='mcmc', nsteps=100)
+
         self.assertTrue(1.0 > fit_params["r_squared"]['value'] > 0.9)
 
 
@@ -602,8 +608,10 @@ class LeastSqaureRVTestCase(RVTestCase):
                 }
             }
 
-        task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
-        result = task.rv_fit.fit(X0=copy(initial_parameters), method='least_squares')
+        self.model_generator.keep_out = True
+        with mock.patch("elisa.analytics.binary.models.central_rv_synthetic", self.model_generator.rv_generator):
+            task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
+            result = task.rv_fit.fit(X0=copy(initial_parameters), method='least_squares')
         self.assertTrue(1.0 > result["r_squared"]['value'] > 0.90)
 
     def test_least_squares_rv_fit_std_params(self):
@@ -665,9 +673,11 @@ class LeastSqaureRVTestCase(RVTestCase):
                 'fixed': True
             }
         }
+        self.model_generator.keep_out = True
+        with mock.patch("elisa.analytics.binary.models.central_rv_synthetic", self.model_generator.rv_generator):
+            task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
+            result = task.rv_fit.fit(X0=copy(initial_parameters), method='least_squares')
 
-        task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
-        result = task.rv_fit.fit(X0=copy(initial_parameters), method='least_squares')
         self.assertTrue(1.0 > result["r_squared"]['value'] > 0.95)
 
     def test_least_squares_rv_fit_community_params(self):
@@ -722,8 +732,10 @@ class LeastSqaureRVTestCase(RVTestCase):
             }
         }
 
-        task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
-        result = task.rv_fit.fit(X0=copy(initial_parameters), method='least_squares')
+        self.model_generator.keep_out = True
+        with mock.patch("elisa.analytics.binary.models.central_rv_synthetic", self.model_generator.rv_generator):
+            task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
+            result = task.rv_fit.fit(X0=copy(initial_parameters), method='least_squares')
 
         self.assertTrue(1.0 > result["r_squared"]['value'] > 0.95)
 
@@ -790,9 +802,10 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
             x_unit=u.dimensionless_unscaled,
             y_unit=u.dimensionless_unscaled
         )
-
-        task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
-        result = task.lc_fit.fit(X0=copy(dinit), method='least_squares', discretization=10)
+        self.model_generator.keep_out = True
+        with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.lc_generator):
+            task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
+            result = task.lc_fit.fit(X0=copy(dinit), method='least_squares', discretization=10)
 
         self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
 
@@ -858,8 +871,9 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
             y_unit=u.dimensionless_unscaled
         )
 
-        task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
-        result = task.lc_fit.fit(X0=copy(dinit), method='least_squares', discretization=10)
+        with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.lc_generator):
+            task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
+            result = task.lc_fit.fit(X0=copy(dinit), method='least_squares', discretization=10)
 
         self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
 
@@ -939,17 +953,17 @@ class ModelSimulator(object):
     rv_mean = np.mean(np.abs(list(rv.values())))
 
     def __init__(self):
-        self.error = 0.1
+        self.error = 0.05
         self.step = 1
         self.args = []
 
-    def lc_generator(self):
+    def lc_generator(self, *args, **kwargs):
         add = self.lc_mean * self.error
         flux = {band: self.flux[band] + np.random.normal(0, add, len(self.flux[band]))
                 for band in self.flux}
         return flux
 
-    def rv_generator(self):
+    def rv_generator(self, *args, **kwargs):
         add = self.rv_mean * self.error
         rv = {component: self.rv[component] + np.random.normal(0, add, len(self.rv[component]))
               for component in BINARY_COUNTERPARTS}

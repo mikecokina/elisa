@@ -65,7 +65,7 @@ class RVFit(object):
         if method == 'least_squares':
             self.fit_params = lstsqr_central_rv.fit(xs=x_data, ys=y_data, x0=X0, yerr=yerr, **kwargs)
 
-        elif method == 'mcmc':
+        elif str(method).lower() in ['mcmc']:
             self.fit_params = mcmc_central_rv.fit(xs=x_data, ys=y_data, x0=X0, yerr=yerr, **kwargs)
             self.flat_chain = mcmc_central_rv.last_sampler.get_chain(flat=True)
             self.normalization = mcmc_central_rv.last_normalization
@@ -94,10 +94,10 @@ class RVFit(object):
 
         return self.flat_chain, self.variable_labels, self.normalization
 
-    def store_parameters(self, params=None, filename=None):
-        params = self.fit_params if params is None else params
+    def store_parameters(self, parameters=None, filename=None):
+        parameters = self.fit_params if parameters is None else parameters
 
-        json_params = autils.convert_dict_to_json_format(params)
+        json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as fl:
             json.dump(json_params, fl)
 

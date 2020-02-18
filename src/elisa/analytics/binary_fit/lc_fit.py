@@ -78,7 +78,7 @@ class LCFit(object):
             self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, period=period_dict['value'], x0=X0, yerr=yerr,
                                          discretization=discretization, **kwargs)
 
-        elif method == 'mcmc' or 'MCMC':
+        elif str(method).lower() in ['mcmc']:
             fit_fn = mcmc_detached_fit if morphology == 'detached' else mcmc_over_contact_fit
             self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, period=period_dict['value'], x0=X0, yerr=yerr,
                                          discretization=discretization, **kwargs)
@@ -92,16 +92,16 @@ class LCFit(object):
         self.fit_params.update({'period': {'value': self.period, 'unit': params.PARAMS_UNITS_MAP['period']}})
         return self.fit_params
 
-    def store_parameters(self, params=None, filename=None):
-        params = copy(self.fit_params) if params is None else params
-        params.update({'period': {'value': self.period, 'unit': units.PERIOD_UNIT}})
+    def store_parameters(self, parameters=None, filename=None):
+        parameters = copy(self.fit_params) if parameters is None else parameters
+        parameters.update({'period': {'value': self.period, 'unit': units.PERIOD_UNIT}})
 
-        for key, val in params.items():
+        for key, val in parameters.items():
             if 'unit' in val.keys():
                 val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
                 val['unit'] = val['unit'].to_string()
 
-        json_params = autils.convert_dict_to_json_format(params)
+        json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as fl:
             json.dump(json_params, fl)
 

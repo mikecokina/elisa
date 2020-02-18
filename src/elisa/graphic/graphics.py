@@ -724,21 +724,35 @@ def binary_rv_fit_plot(**kwargs):
     ax1.plot(kwargs['synth_phases'], kwargs['rv_fit']['primary'], label='primary RV fit', color='cornflowerblue')
     ax1.plot(kwargs['synth_phases'], kwargs['rv_fit']['secondary'], label='secondary RV fit', color='firebrick',
              ls='dashed')
-    ax1.errorbar(kwargs['x_data']['primary'], kwargs['y_data']['primary'], yerr=kwargs['yerr']['primary'],
-                 linestyle='none', marker='o', color='blue', markersize=3, label='primary')
-    ax1.errorbar(kwargs['x_data']['secondary'], kwargs['y_data']['secondary'], yerr=kwargs['yerr']['secondary'],
-                 linestyle='none', marker='x', color='red',
-                 markersize=3, label='secondary')
+    if kwargs['yerr']['primary'] is None:
+        ax1.scatter(kwargs['x_data']['primary'], kwargs['y_data']['primary'],
+                    marker='o', color='blue', s=3, label='primary')
+        ax2.scatter(kwargs['x_data']['primary'], kwargs['residuals']['primary'],
+                     marker='o', color='blue', s=3, label='primary')
+    else:
+        ax1.errorbar(kwargs['x_data']['primary'], kwargs['y_data']['primary'], yerr=kwargs['yerr']['primary'],
+                     linestyle='none', marker='o', color='blue', markersize=3, label='primary')
+        ax2.errorbar(kwargs['x_data']['primary'], kwargs['residuals']['primary'], yerr=kwargs['yerr']['primary'],
+                     linestyle='none', marker='o', color='blue', markersize=3, label='primary')
+
+    if kwargs['yerr']['secondary'] is None:
+        ax1.scatter(kwargs['x_data']['secondary'], kwargs['y_data']['secondary'],
+                    marker='x', color='red', s=3, label='secondary')
+        ax2.scatter(kwargs['x_data']['secondary'], kwargs['residuals']['secondary'],
+                    marker='x', color='red', s=3, label='secondary')
+    else:
+        ax1.errorbar(kwargs['x_data']['secondary'], kwargs['y_data']['secondary'], yerr=kwargs['yerr']['secondary'],
+                     linestyle='none', marker='x', color='red',
+                     markersize=3, label='secondary')
+        ax2.errorbar(kwargs['x_data']['secondary'], kwargs['residuals']['secondary'], yerr=kwargs['yerr']['secondary'],
+                     linestyle='none', marker='x', color='red',
+                     markersize=3, label='secondary')
     ax1.legend()
     unit = kwargs['y_unit']
     ax1.set_ylabel(f'Radial velocity/[{unit}]')
 
     ax2.axhline(0, ls='dashed', c='black', lw=0.5)
-    ax2.errorbar(kwargs['x_data']['primary'], kwargs['residuals']['primary'], yerr=kwargs['yerr']['primary'],
-                 linestyle='none', marker='o', color='blue', markersize=3, label='primary')
-    ax2.errorbar(kwargs['x_data']['secondary'], kwargs['residuals']['secondary'], yerr=kwargs['yerr']['secondary'],
-                 linestyle='none', marker='x', color='red',
-                 markersize=3, label='secondary')
+
     ax2.set_xlabel('Phase')
     ax2.set_ylabel('Residuals')
 
@@ -754,13 +768,19 @@ def binary_lc_fit_plot(**kwargs):
     ax1 = fig.add_subplot(gs[0])
     ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
-    for filter, curve in kwargs['lcs'].items():
-        ax1.plot(kwargs['synth_phases'], curve, label=filter+' synthetic')
-        ax1.errorbar(kwargs['x_data'][filter], kwargs['y_data'][filter], yerr=kwargs['yerr'][filter],
-                     linestyle='none', markersize=3, label=filter+' observed')
+    for fltr, curve in kwargs['lcs'].items():
+        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic')
 
-        ax2.errorbar(kwargs['x_data'][filter], kwargs['residuals'][filter], yerr=kwargs['yerr'][filter],
-                     linestyle='none', markersize=3, label=filter+' residual')
+        if kwargs['yerr'][fltr] is None:
+            ax1.scatter(kwargs['x_data'][fltr], kwargs['y_data'][fltr], s=3, label=fltr + ' observed')
+
+            ax2.scatter(kwargs['x_data'][fltr], kwargs['residuals'][fltr], s=3, label=fltr + ' residual')
+        else:
+            ax1.errorbar(kwargs['x_data'][fltr], kwargs['y_data'][fltr], yerr=kwargs['yerr'][fltr],
+                         linestyle='none', markersize=3, label=fltr + ' observed')
+
+            ax2.errorbar(kwargs['x_data'][fltr], kwargs['residuals'][fltr], yerr=kwargs['yerr'][fltr],
+                         linestyle='none', markersize=3, label=fltr + ' residual')
 
     ax2.axhline(0, ls='dashed', c='black', lw=0.5)
 

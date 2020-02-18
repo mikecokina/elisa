@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def normalize_lightcurve_to_max(lc):
+def normalize_lightcurve_to_max(lc, globaly=True):
     """
     Normalize light-curve dict to maximal value.
     Require light-curve in following shape::
@@ -13,8 +13,12 @@ def normalize_lightcurve_to_max(lc):
     :param lc: Dict[str, numpy.array(float)];
     :return: Dict[str, numpy.array(float)];
     """
-    _max = np.max(list(lc.values()))
-    return {key: np.array(val)/_max for key, val in lc.items()}
+    if globaly:
+        _max = np.max(list(lc.values()))
+        return {key: np.array(val)/_max for key, val in lc.items()}
+    else:
+        _max = {key: np.max(val) for key, val in lc.items()}
+        return {key: np.array(val) / _max[key] for key, val in lc.items()}
 
 
 def normalize_rv_curve_to_max(rv):
