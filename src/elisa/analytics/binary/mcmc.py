@@ -27,7 +27,6 @@ from elisa.analytics.binary.shared import (
     lc_r_squared,
     rv_r_squared
 )
-from elisa.analytics import utils as autils
 
 
 logger = getPersistentLogger('analytics.binary.mcmc')

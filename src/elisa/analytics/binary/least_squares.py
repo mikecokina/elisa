@@ -5,7 +5,6 @@ from scipy import interpolate
 from abc import ABCMeta
 from scipy.optimize import least_squares
 
-from ...conf.config import BINARY_COUNTERPARTS
 from ...logger import getPersistentLogger
 from ..binary import params
 from ..binary import (
@@ -13,7 +12,7 @@ from ..binary import (
     models,
     shared
 )
-from elisa.analytics import utils as autils
+
 from elisa.analytics.binary.shared import (
     AbstractCentralRadialVelocityDataMixin,
     AbstractLightCurveDataMixin)

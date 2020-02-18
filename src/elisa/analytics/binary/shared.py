@@ -2,7 +2,6 @@ import numpy as np
 
 from abc import ABCMeta, abstractmethod
 from ...binary_system.system import BinarySystem
-from ...conf.config import BINARY_COUNTERPARTS
 from ...observer.observer import Observer
 from ...analytics.binary import (
     utils as analutils
@@ -49,6 +48,7 @@ def lc_r_squared(synthetic, *args, **x):
         * **ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
         * **period** * -- float;
         * **passband** * -- Union[str, List[str]];
+from ...conf.config import BINARY_COUNTERPARTS
         * **discretization** * -- flaot;
     :param x: Dict;
     :** x options**: kwargs of current parameters to compute binary system
