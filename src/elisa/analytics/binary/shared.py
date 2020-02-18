@@ -48,7 +48,6 @@ def lc_r_squared(synthetic, *args, **x):
         * **ys** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
         * **period** * -- float;
         * **passband** * -- Union[str, List[str]];
-from ...conf.config import BINARY_COUNTERPARTS
         * **discretization** * -- flaot;
     :param x: Dict;
     :** x options**: kwargs of current parameters to compute binary system
