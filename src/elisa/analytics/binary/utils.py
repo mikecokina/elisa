@@ -1,24 +1,34 @@
 import numpy as np
 
 
-def normalize_lightcurve_to_max(lc, globaly=True):
+def normalize_light_curve(lc, kind='global_maximum'):
     """
-    Normalize light-curve dict to maximal value.
-    Require light-curve in following shape::
+    Function normalizes light by a method defined by `kind` argument.
 
-        {
-            <passband>: numpy.array(<flux>)
-        }
-
-    :param lc: Dict[str, numpy.array(float)];
-    :return: Dict[str, numpy.array(float)];
+    :param lc: dict; dictionary containing curves, {filter: np.ndarray, ...}
+    :param kind: str; specifies kind of normalization
+    :**`kind` options**:
+        * ** `average` ** * -- each curve is normalized to its average
+        * ** `global_average` ** * -- curves are normalized to their global average
+        * ** `maximum` ** * -- each curve is normalized to its own maximum
+        * ** `global_maximum` -- curves are normalized to their global maximum
+    :return:
     """
-    if globaly:
-        _max = np.max(list(lc.values()))
-        return {key: np.array(val)/_max for key, val in lc.items()}
+    valid_arguments = ['average', 'global_average', 'maximum', 'global_maximum']
+    if kind == valid_arguments[0]:  # each curve is normalized to its average
+        coeff = {key: np.mean(val) for key, val in lc.items()}
+    elif kind == valid_arguments[1]:  # curves are normalized to their global average
+        c = np.mean(list(lc.values()))
+        coeff = {key: c for key, val in lc.items()}
+    elif kind == valid_arguments[2]:  # each curve is normalized to its own maximum
+        coeff = {key: np.max(val) for key, val in lc.items()}
+    elif kind == valid_arguments[3]:  # curves are normalized to their global maximum
+        c = np.max(list(lc.values()))
+        coeff = {key: c for key, val in lc.items()}
     else:
-        _max = {key: np.max(val) for key, val in lc.items()}
-        return {key: np.array(val) / _max[key] for key, val in lc.items()}
+        raise ValueError(f'Argument `kind` = {kind} is not one of the valid arguments {valid_arguments}')
+
+    return {key: np.array(val) / coeff[key] for key, val in lc.items()}
 
 
 def normalize_rv_curve_to_max(rv):

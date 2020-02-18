@@ -47,7 +47,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         args = self.fit_xs, self.period, self.discretization, self.morphology, self.observer, False
         try:
             synthetic = logger_decorator()(fn)(*args, **kwargs)
-            synthetic = butils.normalize_lightcurve_to_max(synthetic)
+            synthetic = butils.normalize_light_curve(synthetic, kind='average')
 
         except Exception as e:
             logger.error(f'your initial parmeters lead during fitting to invalid binary system')
@@ -62,6 +62,10 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
 
         residuals = np.array([np.sum(np.power(synthetic[band][self.xs_reverser[band]] - self.ys[band], 2)
                               / self.yerrs[band]) for band in synthetic])
+
+        variability = np.sum([np.sum(np.power(crv - np.mean(crv), 2)) for band, crv in self.ys.items()])
+        r2 = 1-residuals/variability
+        logger.info(f'current R2: {r2[0]}')
 
         return residuals
 
@@ -96,6 +100,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         yerrs = {c: butils.lightcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
                  for c in xs.keys()}
 
+        ys = butils.normalize_light_curve(ys, kind='average')
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.ys, self.yerrs = ys, yerrs
 

@@ -176,7 +176,7 @@ class LCPlot(object):
 
             yerr[filter] = utils.flux_error_to_magnitude_error(curve.yerr, curve.reference_magnitude) \
                 if y_axis_unit == u.mag else curve.yerr
-        y_data = butils.normalize_lightcurve_to_max(y_data)
+        y_data = butils.normalize_light_curve(y_data, kind='global_maximum')
 
         plot_result_kwargs.update({
             'x_data': x_data,
@@ -205,7 +205,7 @@ class LCPlot(object):
                                                    observer=observer,
                                                    _raise_invalid_morphology=False,
                                                    **system_kwargs)
-        synthetic_curves = butils.normalize_lightcurve_to_max(synthetic_curves)
+        synthetic_curves = butils.normalize_light_curve(synthetic_curves, kind='global_maximum')
 
         interp_fn = {component: interp1d(synth_phases, synthetic_curves[component])
                      for component in self.lc_fit.light_curves.keys()}

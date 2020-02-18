@@ -63,7 +63,7 @@ def lc_r_squared(synthetic, *args, **x):
     synthetic = synthetic(xs, period, discretization, morphology, observer, False, **x)
     synthetic = {band: synthetic[band][xs_reverser[band]] for band in synthetic}
 
-    synthetic = analutils.normalize_lightcurve_to_max(synthetic)
+    synthetic = analutils.normalize_light_curve(synthetic, kind='average')
     residual = np.sum([np.sum(np.power(synthetic[band] - ys[band], 2)) for band in ys])
     return 1.0 - (residual / variability)
 

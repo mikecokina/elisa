@@ -171,13 +171,13 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
 
         args = self.fit_xs, self.period, self.discretization, self.morphology, self.observer, True
         synthetic = models.synthetic_binary(*args, **kwargs)
-        synthetic = butils.normalize_lightcurve_to_max(synthetic)
+        synthetic = butils.normalize_light_curve(synthetic, kind='average')
 
         if np.shape(self.fit_xs) != np.shape(self.xs):
             new_synthetic = dict()
-            for filter, curve in synthetic.items():
+            for fltr, curve in synthetic.items():
                 f = interpolate.interp1d(self.fit_xs, curve, kind='cubic')
-                new_synthetic[filter] = f(self.xs)
+                new_synthetic[fltr] = f(self.xs)
             synthetic = new_synthetic
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band][self.xs_reverser[band]] - self.ys[band])
@@ -198,14 +198,14 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
 
         :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
         :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
-        :param period: float; sytem period
+        :param period: float; system period
         :param x0: List[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
         :param nwalkers: int; number of walkers
         :param nsteps: int; number of steps in mcmc eval
         :param p0: numpy.array; inital priors for mcmc
         :param yerr: Union[numpy.array, float]; errors for each point of observation
-        :param burn_in: int; numer of steps for mcmc to explore parameters
+        :param burn_in: int; number of steps for mcmc to explore parameters
         :param quantiles: List[int];
         :param discard: Union[int, bool]; how many values of result discard when looking for solution
         :param interp_treshold: int; data binning treshold
