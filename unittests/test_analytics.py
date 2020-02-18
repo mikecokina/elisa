@@ -365,7 +365,6 @@ class McMcLCTestCase(AbstractFitTestCase):
         task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
         result = task.lc_fit.fit(X0=copy(dinit), method='mcmc', nsteps=10, discretization=20)
 
-    @skip('I don`t get a purpose of this test')
     def test_mcmc_lc_fit_community_params_detached(self):
         dinit = {
             'semi_major_axis': {
@@ -386,10 +385,6 @@ class McMcLCTestCase(AbstractFitTestCase):
             },
             'p__surface_potential': {
                 'value': 5.0,
-                'fixed': True
-            },
-            's__mass': {
-                'value': 1.0,
                 'fixed': True
             },
             's__t_eff': {
@@ -962,66 +957,51 @@ class ModelSimulator(object):
 
 
 class ConstraintsTestCase(ElisaTestCase):
-    basic_x0 = [
-        {
-            "param": "a",
+    basic_x0 = {
+        'a': {
             "value": 50
         },
-        {
-            "param": "b",
+        "b": {
             "value": 2
         },
-        {
-            "param": "c",
+        "c": {
             "value": 1.25
         },
-        {
-            "param": "c1",
+        "c1": {
             "value": 0,
             "constraint": "2 * {a}"
         },
-        {
-            "param": "c2",
+        "c2": {
             "value": 0,
             "constraint": "2 + {b}"
         },
-        {
-            "param": "c3",
+        "c3": {
             "value": 0,
             "constraint": "{a} + {b}"
         },
-        {
-            "param": "c4",
+        "c4": {
             "value": 0,
             "constraint": "({a} + {b}) * 2.0"
         }
-    ]
+    }
 
-    extended_x0 = [
-        {
-            "param": "a",
+    extended_x0 = {
+        "a": {
             "value": 50
         },
-        {
+        "b": {
             "param": "b",
             "value": 2
         },
-        {
-            "param": "c1",
+        "c1": {
             "value": 0,
             "constraint": "{a} * sin({b})"
         },
-        {
-            "param": "c2",
-            "value": 0,
-            "constraint": "{a} * log({b})"
-        },
-        {
-            "param": "c2",
+        "c2": {
             "value": 0,
             "constraint": "{a} * log10({b})"
         }
-    ]
+    }
 
     def test_constraints_validator_basic(self):
         params.constraints_validator(self.basic_x0)
