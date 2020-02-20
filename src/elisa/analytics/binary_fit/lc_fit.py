@@ -30,7 +30,7 @@ class LCFit(object):
     OPTIONAL_FIT_PARAMS = ['period', 'primary_minimum_time', 'p__mass', 's__mass', 'semi_major_axis',
                            'asini', 'mass_ratio', 'p__t_eff', 's__t_eff', 'p__surface_potential',
                            's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
-                           's__albedo', 'additional_light']
+                           's__albedo', 'additional_light', 'phase_shift']
     ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
 
     def __init__(self, **kwargs):
@@ -103,7 +103,7 @@ class LCFit(object):
 
         json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as fl:
-            json.dump(json_params, fl, separators=(',\n', ':'))
+            json.dump(json_params, fl, separators=(',\n', ': '))
 
     def load_parameters(self, filename=None):
         with open(filename, 'r') as fl:

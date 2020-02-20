@@ -102,7 +102,7 @@ class RVFit(object):
 
         json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as fl:
-            json.dump(json_params, fl, separators=(',\n', ':'))
+            json.dump(json_params, fl, separators=(',\n', ': '))
 
     def load_parameters(self, filename=None):
         with open(filename, 'r') as fl:

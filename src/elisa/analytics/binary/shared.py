@@ -54,8 +54,6 @@ def lc_r_squared(synthetic, *args, **x):
     :return: float;
     """
     xs, ys, period, passband, discretization, morphology, xs_reverser = args
-    observed_means = np.array([np.repeat(np.mean(ys[band]), len(ys[band])) for band in ys])
-    variability = np.sum([np.sum(np.power(ys[band] - observed_means, 2)) for band in ys])
 
     observer = Observer(passband=passband, system=None)
     observer._system_cls = BinarySystem
@@ -64,8 +62,7 @@ def lc_r_squared(synthetic, *args, **x):
     synthetic = {band: synthetic[band][xs_reverser[band]] for band in synthetic}
 
     synthetic = analutils.normalize_light_curve(synthetic, kind='average')
-    residual = np.sum([np.sum(np.power(synthetic[band] - ys[band], 2)) for band in ys])
-    return 1.0 - (residual / variability)
+    return r_squared(synthetic, ys)
 
 
 def rv_r_squared(synthetic, *args, **x):
@@ -84,8 +81,6 @@ def rv_r_squared(synthetic, *args, **x):
     :return: float;
     """
     xs, ys, on_normalized, xs_reverser = args
-    observed_means = np.array([np.repeat(np.mean(ys[comp]), len(ys[comp])) for comp in ys.keys()])
-    variability = np.sum([np.sum(np.power(ys[comp] - observed_means, 2)) for comp in ys.keys()])
 
     observer = Observer(passband='bolometric', system=None)
     observer._system_cls = BinarySystem
@@ -95,5 +90,11 @@ def rv_r_squared(synthetic, *args, **x):
     if on_normalized:
         synthetic = analutils.normalize_rv_curve_to_max(synthetic)
 
-    residual = np.sum([np.sum(np.power(synthetic[comp] - ys[comp], 2)) for comp in ys.keys()])
-    return 1.0 - (residual / variability)
+    return r_squared(synthetic, ys)
+
+
+def r_squared(synthetic, observed):
+    variability = np.sum([np.sum(np.power(observed[item] - np.mean(observed[item]), 2)) for item in observed])
+    residual = np.sum([np.sum(np.power(synthetic[item] - observed[item], 2)) for item in observed])
+
+    return 1 - (residual / variability)

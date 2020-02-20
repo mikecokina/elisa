@@ -38,6 +38,7 @@ PARAMS_KEY_MAP = {
     'P': 'period',
     'T0': 'primary_minimum_time',
     'l_add': 'additional_light',
+    'phase_shift': 'phase_shift'
 }
 
 PARAMS_KEY_TEX_MAP = {
@@ -65,6 +66,7 @@ PARAMS_KEY_TEX_MAP = {
     'period': '$period$',
     'primary_minimum_time': '$T_0$',
     'additional_light': '$l_{add}$',
+    'phase_shift': 'phase shift$',
 }
 
 
@@ -93,6 +95,7 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['P']: 'd',
     PARAMS_KEY_MAP['T0']: 'd',
     PARAMS_KEY_MAP['l_add']: '',
+    PARAMS_KEY_MAP['phase_shift']: '',
 }
 
 
@@ -123,6 +126,7 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['asini']: (0, 100),
     PARAMS_KEY_MAP['P']: (0, 100),
     PARAMS_KEY_MAP['l_add']: (0, 1.0),
+    PARAMS_KEY_MAP['phase_shift']: (-0.8, 0.8),
     PARAMS_KEY_MAP['T0']: (Time.now().jd - 365.0, Time.now().jd),
 }
 
@@ -358,7 +362,7 @@ def lc_initial_x0_validity_check(x0, morphology):
     for key, val in x0.items():
         _min, _max = val.get('min', NORMALIZATION_MAP[key][0]), val.get('max', NORMALIZATION_MAP[key][1])
         if not (_min <= val['value'] <= _max):
-            msg = f'Initial parameters are not valid. Invalid bounds NOT: {_min} <= {x["param"]} <= {_max}'
+            msg = f'Initial parameters are not valid. Invalid bounds: {_min} <= {val["param"]} <= {_max}'
             raise error.InitialParamsError(msg)
 
     if is_oc and all_fixed and are_same:

@@ -63,9 +63,8 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         residuals = np.array([np.sum(np.power(synthetic[band][self.xs_reverser[band]] - self.ys[band], 2)
                               / self.yerrs[band]) for band in synthetic])
 
-        variability = np.sum([np.sum(np.power(crv - np.mean(crv), 2)) for band, crv in self.ys.items()])
-        r2 = 1-residuals/variability
-        logger.info(f'current R2: {r2[0]}')
+        r2 = shared.r_squared(synthetic, self.ys)
+        logger.info(f'current R2: {r2}')
 
         return residuals
 

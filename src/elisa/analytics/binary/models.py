@@ -40,7 +40,8 @@ def serialize_system_kwargs(**kwargs):
         **{"semi_major_axis": kwargs["semi_major_axis"]} if kwargs.get("semi_major_axis") else {},
         **{"mass_ratio": kwargs["mass_ratio"]} if kwargs.get("mass_ratio") else {},
         **{"asini": kwargs["asini"]} if kwargs.get("asini") else {},
-        **{"additional_light": kwargs["additional_light"]} if kwargs.get("additional_light") else {}
+        **{"additional_light": kwargs["additional_light"]} if kwargs.get("additional_light") else {},
+        **{"phase_shift": kwargs["phase_shift"]} if kwargs.get("phase_shift") else {},
     )
 
 
@@ -82,6 +83,7 @@ def prepare_binary(period=None, discretization=3, **kwargs):
         * **s__metallicity** * -- float;
         * **s__synchronicity** * -- float;
         * **additional_light** * -- float;
+        * **phase_shift** * -- float;
 
     :return: elisa.binary_system.system.BinarySystem;
     """
@@ -114,6 +116,8 @@ def synthetic_binary(xs, period, discretization, morphology, observer, _raise_in
         * **inclination** * -- float;
         * **mass_ratio** * -- float; parameter has to be paired with `semi_major_axis`
         * **semi_major_axis** * -- float;
+        * **additional_light** * -- float;
+        * **phase_shift** * -- float;
         * **p__mass** * -- float;
         * **p__t_eff** * -- float;
         * **p__surface_potential** * -- float;
