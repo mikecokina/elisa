@@ -207,7 +207,7 @@ class LCPlot(object):
                                                    **system_kwargs)
         synthetic_curves = butils.normalize_light_curve(synthetic_curves, kind='global_maximum')
 
-        interp_fn = {component: interp1d(synth_phases, synthetic_curves[component])
+        interp_fn = {component: interp1d(synth_phases, synthetic_curves[component], kind='cubic')
                      for component in self.lc_fit.light_curves.keys()}
         residuals = {component: y_data[component] - interp_fn[component](x_data[component])
                      for component in self.lc_fit.light_curves.keys()}

@@ -96,12 +96,12 @@ class Orbit(object):
         if isinstance(phase, (int, np.int, float, np.float)):
             phase = np.array([np.float(phase)])
 
-        true_phase = self.phase(true_phase=phase, phase_shift=self.phase_shift)
-        azimuth_angle = true_phase_to_azimuth(phase=true_phase)
+        azimuth_angle = true_phase_to_azimuth(phase=phase)
 
         return np.column_stack((azimuth_angle, phase))
 
-    def rotational_motion_from_azimuths(self, azimuth):
+    @staticmethod
+    def rotational_motion_from_azimuths(azimuth):
         """
         return rotational motion derived from known azimuths
 
@@ -118,5 +118,4 @@ class Orbit(object):
 
         """
         true_phase = azimuth_to_true_phase(azimuth)
-        phase = self.phase(true_phase=true_phase, phase_shift=-self.phase_shift)
-        return np.column_stack((azimuth, phase))
+        return np.column_stack((azimuth, true_phase))

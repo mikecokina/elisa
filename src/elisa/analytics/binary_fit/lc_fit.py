@@ -103,14 +103,14 @@ class LCFit(object):
 
         json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as fl:
-            json.dump(json_params, fl)
+            json.dump(json_params, fl, separators=(',\n', ':'))
 
     def load_parameters(self, filename=None):
         with open(filename, 'r') as fl:
-            params = json.load(fl)
+            prms = json.load(fl)
 
-        params = autils.convert_json_to_dict_format(params)
-        self.period = params['period']['value']
-        self.fit_params = params
+        prms = autils.convert_json_to_dict_format(prms)
+        self.period = prms['period']['value']
+        self.fit_params = prms
 
-        return params
+        return prms

@@ -1,6 +1,7 @@
 import json
 import numpy as np
 from ...logger import getLogger
+from copy import copy
 
 from ... import utils
 from elisa.analytics.binary.least_squares import central_rv as lstsqr_central_rv
@@ -29,6 +30,7 @@ class RVFit(object):
         self.radial_velocities = None
         self.fit_params = None
         self.ranges = None
+        self.period = None
 
         # MCMC specific variables
         self.flat_chain = None
@@ -95,9 +97,19 @@ class RVFit(object):
         return self.flat_chain, self.variable_labels, self.normalization
 
     def store_parameters(self, parameters=None, filename=None):
+        parameters = copy(self.fit_params) if parameters is None else parameters
         parameters = self.fit_params if parameters is None else parameters
 
         json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as fl:
-            json.dump(json_params, fl)
+            json.dump(json_params, fl, separators=(',\n', ':'))
 
+    def load_parameters(self, filename=None):
+        with open(filename, 'r') as fl:
+            prms = json.load(fl)
+
+        prms = autils.convert_json_to_dict_format(prms)
+        self.period = prms['period']['value']
+        self.fit_params = prms
+
+        return prms

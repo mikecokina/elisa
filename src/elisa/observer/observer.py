@@ -136,14 +136,13 @@ class Observer(object):
         :param phases: Iterable float;
         :return: Dict;
         """
-
         if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
             phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
 
-        phases = np.array(phases)
+        phases = np.array(phases) - self._system.phase_shift
 
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
@@ -185,7 +184,7 @@ class Observer(object):
             correction = np.mean(curves[items]) * self._system.additional_light / (1.0 - self._system.additional_light)
             curves[items] += correction
 
-        self.phases = phases
+        self.phases = phases + self._system.phase_shift
         if normalize:
             # TODO: here develop lc normalization method
             self.fluxes_unit = units.dimensionless_unscaled
@@ -193,7 +192,7 @@ class Observer(object):
             self.fluxes = curves
             self.fluxes_unit = units.W / units.m**2
         logger.info("observation finished")
-        return phases, curves
+        return self.phases, curves
 
     def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
         """
@@ -211,14 +210,15 @@ class Observer(object):
 
         if is_empty(phases):
             phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
-        phases = np.array(phases)
-        self.phases, self.radial_velocities = self._system.compute_rv(
+        phases = np.array(phases) - self._system.phase_shift
+        phases, self.radial_velocities = self._system.compute_rv(
             **dict(
                 phases=phases,
                 position_method=self._system.get_positions_method()
             )
         )
 
+        self.phases = phases + self._system.phase_shift
         self.rv_unit = units.m / units.s
         if normalize:
             self.rv_unit = units.dimensionless_unscaled
