@@ -100,12 +100,12 @@ class McMcMixin(object):
             return json.loads(f.read())
 
     @staticmethod
-    def worker(sampler, p0, nsteps, nsteps_burn_in):
+    def worker(sampler, p0, nsteps, nsteps_burn_in, progress=False):
         logger.info("running burn-in...")
-        p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in if nsteps > nsteps_burn_in else nsteps)
+        p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in if nsteps > nsteps_burn_in else nsteps, progress=progress)
         sampler.reset()
         logger.info("running production...")
-        _, _, _ = sampler.run_mcmc(p0, nsteps)
+        _, _, _ = sampler.run_mcmc(p0, nsteps, progress=progress)
 
 
 class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
@@ -114,6 +114,8 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
         self.last_sampler = emcee.EnsembleSampler
         self.last_normalization = dict()
         self.last_fname = ''
+
+        # self.eval_counter = 0
 
     @staticmethod
     def ln_prior(xn):
@@ -133,7 +135,7 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
             return -10.0 * np.finfo(float).eps * np.sum(xn)
         return likelihood
 
-    def _fit(self, x0, labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None):
+    def _fit(self, x0, labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False):
 
         p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
         # assign intial value
@@ -144,11 +146,11 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
             with Pool(processes=config.NUMBER_OF_MCMC_PROCESSES) as pool:
                 logger.info('starting parallel mcmc')
                 sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf, pool=pool)
-                self.worker(sampler, p0, nsteps, nsteps_burn_in)
+                self.worker(sampler, p0, nsteps, nsteps_burn_in, progress=progress)
         else:
             logger.info('starting singlecore mcmc')
             sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf)
-            self.worker(sampler, p0, nsteps, nsteps_burn_in)
+            self.worker(sampler, p0, nsteps, nsteps_burn_in, progress=progress)
 
         self.last_sampler = sampler
         self.last_normalization = params.NORMALIZATION_MAP.copy()
@@ -182,10 +184,13 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band][self.xs_reverser[band]] - self.ys[band])
                                                         / self.yerrs[band], 2)) for band in synthetic]))
+        # lhood = -1
+        # self.eval_counter += 1
+        # logger.info(f'_________________eval counter = {self.eval_counter}')
         return lhood
 
     def fit(self, xs, ys, period, x0, discretization, nwalkers=None, nsteps=1000,
-            p0=None, yerr=None, burn_in=None, quantiles=None, discard=False, interp_treshold=None):
+            p0=None, yerr=None, burn_in=None, quantiles=None, discard=False, interp_treshold=None, progress=False):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
@@ -196,6 +201,7 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
 
         Based on https://emcee.readthedocs.io/en/stable/.
 
+        :param progress: bool; visualize progress of the sampling
         :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
         :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
         :param period: float; system period
@@ -234,7 +240,7 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         self.fit_xs = np.linspace(np.min(self.xs) - diff, np.max(self.xs) + diff, num=interp_treshold + 2) \
             if np.shape(self.xs)[0] > interp_treshold else self.xs
 
-        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, p0)
+        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, p0, progress=progress)
 
         # extracting fit results from MCMC sampler
         flat_chain = sampler.get_chain(flat=True)
@@ -290,7 +296,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
                                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))
         return lhood
 
-    def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, p0=None, yerr=None, burn_in=None):
+    def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, p0=None, yerr=None, burn_in=None, progress=False):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
@@ -314,6 +320,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
 
         Based on https://emcee.readthedocs.io/en/stable/.
 
+        :param progress: bool; visualize progress of the sampling
         :param xs: Iterable[float];
         :param ys: Dict;
         :param x0: List[Dict]; initial state (metadata included)
@@ -340,7 +347,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         self.labels, self.observer = labels, observer
         self.fixed, self.constraint = fixed, constrained
 
-        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, p0)
+        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, p0, progress=progress)
 
         # extracting fit results from MCMC sampler
         flat_chain = sampler.get_chain(flat=True)

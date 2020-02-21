@@ -77,7 +77,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         :param interp_treshold: int; data binning treshold
         :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
         :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
-        :param period: float; sytem period
+        :param period: float; system period
         :param x0: Dict[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
         :param xtol: float; relative tolerance to consider solution

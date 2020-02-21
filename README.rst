@@ -58,6 +58,7 @@ Requirements
     pytz==2017.2
     scipy==1.0.0
     six==1.11.0
+    tdqm==4.43.0
 
 
 and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
