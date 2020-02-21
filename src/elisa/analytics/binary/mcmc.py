@@ -115,7 +115,7 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
         self.last_normalization = dict()
         self.last_fname = ''
 
-        # self.eval_counter = 0
+        self.eval_counter = 0
 
     @staticmethod
     def ln_prior(xn):
@@ -124,6 +124,13 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
     @abstractmethod
     def likelihood(self, xn):
         pass
+
+    def lhood(self, synthetic):
+        sn2 = {item: np.power(self.yerrs[item], 2) + np.power(value[self.xs_reverser[item]], 2)
+               for item, value in synthetic.items()}
+        lh = - 0.5 * np.sum([(np.power(self.ys[item] - synthetic[item][self.xs_reverser[item]], 2) / sn2[item]) +
+                              np.log(sn2[item]) for item, value in synthetic.items()])
+        return lh
 
     def ln_probability(self, xn):
         if not self.ln_prior(xn):
@@ -182,11 +189,10 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
                 new_synthetic[fltr] = f(self.xs)
             synthetic = new_synthetic
 
-        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band][self.xs_reverser[band]] - self.ys[band])
-                                                        / self.yerrs[band], 2)) for band in synthetic]))
-        # lhood = -1
-        # self.eval_counter += 1
-        # logger.info(f'_________________eval counter = {self.eval_counter}')
+        lhood = self.lhood(synthetic)
+
+        self.eval_counter += 1
+        logger.info(f'eval counter = {self.eval_counter}, likehood = {lhood}')
         return lhood
 
     def fit(self, xs, ys, period, x0, discretization, nwalkers=None, nsteps=1000,
@@ -292,8 +298,10 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         if self.on_normalized:
             synthetic = butils.normalize_rv_curve_to_max(synthetic)
 
-        lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
-                                                        / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))
+        lhood = self.lhood(synthetic)
+
+        self.eval_counter += 1
+        logger.info(f'eval counter = {self.eval_counter}, likehood = {lhood}')
         return lhood
 
     def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, p0=None, yerr=None, burn_in=None, progress=False):
@@ -332,13 +340,13 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         :return: emcee.EnsembleSampler; sampler instance
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
-        nwalkers = 2*len(x0) if nwalkers is None else nwalkers
 
         x0 = params.rv_initial_x0_validity_check(x0)
         yerrs = {c: butils.radialcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
                  for c in xs.keys()}
         x0_vector, labels, fixed, constrained, observer = params.fit_data_initializer(x0)
         ndim = len(x0_vector)
+        nwalkers = 2*len(x0_vector) if nwalkers is None else nwalkers
 
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 

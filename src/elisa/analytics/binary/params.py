@@ -488,7 +488,7 @@ def constraints_validator(x0):
 
 def constraints_evaluator(floats, constraints):
     """
-    Substitute variables in constraint with values and evalaute to number.
+    Substitute variables in constraint with values and evaluate to number.
 
     :param floats: Dict[str, float]; non-fixed values (xn vector in dict form {label: xn_i})
     :param constraints: Dict[str, float]; values estimated as constraintes in form {label: constraint_string}
