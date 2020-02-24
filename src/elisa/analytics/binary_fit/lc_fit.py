@@ -17,6 +17,7 @@ from elisa.analytics.binary.mcmc import (
     binary_overcontact as mcmc_over_contact_fit
 )
 from elisa import units
+from elisa.analytics.binary_fit import shared
 
 logger = getLogger('analytics.binary_fit.rv_fit')
 
@@ -91,6 +92,17 @@ class LCFit(object):
 
         self.fit_params.update({'period': {'value': self.period, 'unit': params.PARAMS_UNITS_MAP['period']}})
         return self.fit_params
+
+    def load_chain(self, filename):
+        """
+        Function loads MCMC chain along with auxiliary data from json file created after each MCMC run
+
+        :param filename: str; full name of the json file
+        :return: Tuple[numpy.ndarray, list, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
+        {var_name: (min_boundary, max_boundary), ...} dictionary of boundaries defined by user for each variable needed
+        to reconstruct real values from normalized `flat_chain` array
+        """
+        return shared.load_mcmc_chain(self, filename)
 
     def store_parameters(self, parameters=None, filename=None):
         """

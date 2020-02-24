@@ -7,9 +7,8 @@ from ... import utils
 from elisa.analytics.binary.least_squares import central_rv as lstsqr_central_rv
 from elisa.analytics.binary.mcmc import central_rv as mcmc_central_rv
 from elisa.analytics.binary_fit.plot import RVPlot
-from elisa.analytics.binary.mcmc import McMcMixin
-from elisa.analytics.binary import params
 from elisa.analytics import utils as autils
+from elisa.analytics.binary_fit import shared
 
 logger = getLogger('analytics.binary_fit.rv_fit')
 
@@ -84,17 +83,7 @@ class RVFit(object):
         {var_name: (min_boundary, max_boundary), ...} dictionary of boundaries defined by user for each variable needed
         to reconstruct real values from normalized `flat_chain` array
         """
-        filename = filename[:-5] if filename[-5:] == '.json' else filename
-        data = McMcMixin.restore_flat_chain(fname=filename)
-        self.flat_chain = np.array(data['flat_chain'])
-        self.variable_labels = data['labels']
-        self.normalization = data['normalization']
-
-        # reproducing results from chain
-        params.update_normalization_map(self.normalization)
-        self.fit_params.update(McMcMixin.resolve_mcmc_result(flat_chain=self.flat_chain, labels=self.variable_labels))
-
-        return self.flat_chain, self.variable_labels, self.normalization
+        return shared.load_mcmc_chain(self, filename)
 
     def store_parameters(self, parameters=None, filename=None):
         """
