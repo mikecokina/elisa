@@ -93,6 +93,13 @@ class LCFit(object):
         return self.fit_params
 
     def store_parameters(self, parameters=None, filename=None):
+        """
+        Function converts model parameters to json compatibile format and stores model parameters.
+
+        :param parameters: dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
+        :param filename: str;
+        :return:
+        """
         parameters = copy(self.fit_params) if parameters is None else parameters
         parameters.update({'period': {'value': self.period, 'unit': units.PERIOD_UNIT}})
 
@@ -106,6 +113,12 @@ class LCFit(object):
             json.dump(json_params, fl, separators=(',\n', ': '))
 
     def load_parameters(self, filename=None):
+        """
+        Function loads fitted parameters of given model.
+
+        :param filename: str;
+        :return: dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
+        """
         with open(filename, 'r') as fl:
             prms = json.load(fl)
 

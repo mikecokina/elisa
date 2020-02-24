@@ -126,10 +126,14 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
         pass
 
     def lhood(self, synthetic):
-        sn2 = {item: np.power(self.yerrs[item], 2) + np.power(value[self.xs_reverser[item]], 2)
-               for item, value in synthetic.items()}
-        lh = - 0.5 * np.sum([(np.power(self.ys[item] - synthetic[item][self.xs_reverser[item]], 2) / sn2[item]) +
-                              np.log(sn2[item]) for item, value in synthetic.items()])
+        """
+        Calculates likelihood function value for a synthetic model to be a correct model for given observational data.
+
+        :param synthetic: dict; {'dataset_name': numpy.ndarray, }
+        :return:
+        """
+        lh = - 0.5 * np.sum([np.power((self.ys[item] - synthetic[item][self.xs_reverser[item]]) / self.yerrs[item], 2)
+                             for item, value in synthetic.items()])
         return lh
 
     def ln_probability(self, xn):
@@ -141,6 +145,19 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
             logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
             return -10.0 * np.finfo(float).eps * np.sum(xn)
         return likelihood
+
+    def eval_constraints_after_mcmc(self, result_dict, constraints):
+        """
+        Function adds constrained parameters into the resulting dictionary
+
+        :param constraints: dict; contains constrained parameters
+        :param result_dict: dict; {'name': {'value': value, 'unit': unit, ...}
+        :return: dict; {'name': {'value': value, 'unit': unit, ...}
+        """
+        res_val_dict = {key: val['value'] for key, val in result_dict.items()}
+        constrained_values = params.constraints_evaluator(res_val_dict, constraints)
+        result_dict.update({key: {'value': val} for key, val in constrained_values.items()})
+        return result_dict
 
     def _fit(self, x0, labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False):
 
@@ -252,7 +269,8 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         flat_chain = sampler.get_chain(flat=True)
         result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
         result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
-        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
+
+        result_dict = self.eval_constraints_after_mcmc(result_dict, self.constraint)
 
         r_squared_args = self.xs, self.ys, self.period, self.passband, discretization, self.morphology, self.xs_reverser
         r_dict = {key: value['value'] for key, value in result_dict.items()}
@@ -361,7 +379,8 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         flat_chain = sampler.get_chain(flat=True)
         result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
         result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
-        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
+
+        result_dict = self.eval_constraints_after_mcmc(result_dict, self.constraint)
 
         r_squared_args = self.xs, self.ys, False, self.xs_reverser
         r_dict = {key: value['value'] for key, value in result_dict.items()}

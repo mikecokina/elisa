@@ -97,6 +97,13 @@ class RVFit(object):
         return self.flat_chain, self.variable_labels, self.normalization
 
     def store_parameters(self, parameters=None, filename=None):
+        """
+        Function converts model parameters to json compatibile format and stores model parameters.
+
+        :param parameters: dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
+        :param filename: str;
+        :return:
+        """
         parameters = copy(self.fit_params) if parameters is None else parameters
         parameters = self.fit_params if parameters is None else parameters
 
