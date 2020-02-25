@@ -102,7 +102,7 @@ class McMcMixin(object):
     @staticmethod
     def worker(sampler, p0, nsteps, nsteps_burn_in, progress=False):
         logger.info("running burn-in...")
-        p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in if nsteps > nsteps_burn_in else nsteps, progress=progress)
+        p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in, progress=progress)
         sampler.reset()
         logger.info("running production...")
         _, _, _ = sampler.run_mcmc(p0, nsteps, progress=progress)
@@ -209,7 +209,7 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
         lhood = self.lhood(synthetic)
 
         self.eval_counter += 1
-        logger.info(f'eval counter = {self.eval_counter}, likehood = {lhood}')
+        logger.info(f'eval counter = {self.eval_counter}, likelihood = {lhood}')
         return lhood
 
     def fit(self, xs, ys, period, x0, discretization, nwalkers=None, nsteps=1000,
