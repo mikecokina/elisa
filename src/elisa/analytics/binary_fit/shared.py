@@ -13,7 +13,12 @@ def load_mcmc_chain(fit_instance, filename):
 
     # reproducing results from chain
     params.update_normalization_map(fit_instance.normalization)
-    fit_instance.fit_params.update(McMcMixin.resolve_mcmc_result(flat_chain=fit_instance.flat_chain,
-                                                                 labels=fit_instance.variable_labels))
+    dict_to_add = McMcMixin.resolve_mcmc_result(flat_chain=fit_instance.flat_chain,
+                                                labels=fit_instance.variable_labels)
+    if fit_instance.fit_params is not None:
+        fit_instance.fit_params.update(dict_to_add)
+    else:
+        raise ValueError('Load fit parameters before loading the chain. '
+                         'For eg. by `fit_instance.fit_parameters = your_X0`.')
 
     return fit_instance.flat_chain, fit_instance.variable_labels, fit_instance.normalization

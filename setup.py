@@ -89,7 +89,7 @@ setup(
         'scipy>=1.0.0',
         'six>=1.11.0',
         'jsonschema>=3.2.0',
-        'tdqm>=4.43.0'
+        'tqdm>=4.43.0'
     ],
 
     # List additional groups of dependencies here (e.g. development
