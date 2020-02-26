@@ -75,6 +75,8 @@ v0.2.1_
 -------
 .. v0.2.1_: https://github.com/mikecokina/elisa/commits/release/0.2.1
 
+**Release date:** 2020 2020-01-17
+
 **Fixes**
 
 - spots discretization managed by parent object if not specified otherwise
@@ -83,6 +85,8 @@ v0.2.1_
 v0.2.2_
 -------
 .. v0.2.2_: https://github.com/mikecokina/elisa/commits/release/0.2.2
+
+**Release date:** 2020-01-29
 
 **Fixes**
 
@@ -97,7 +101,7 @@ Future plans
 
 v0.3
 ----
-**Implemented features**
+**Features**
 
 * **single system**
     - light curve calculation of single stars with spots and pulsations

@@ -6,10 +6,20 @@ from elisa.analytics.binary import params
 
 def convert_dict_to_json_format(dictionary):
     """
-    Converts initial vector to JSON compatibile format
+    Converts initial vector to JSON compatibile format.
 
-    :param dictionary: dict; vector of initial parameters {`paramname`:{`value`: value, `min`: ...}, ...}
-    :return: list; [{`param`: paramname, `value`: value, ...}, ...]
+    :param dictionary: Dict; vector of initial parameters
+
+    ::
+
+        {
+            paramname: {
+                            value: value,
+                            min: ...
+                       }, ...
+        }
+
+    :return: List; [{param: paramname, value: value, ...}, ...]
     """
     retval = list()
     for key, val in dictionary.items():
@@ -20,10 +30,10 @@ def convert_dict_to_json_format(dictionary):
 
 def convert_json_to_dict_format(json):
     """
-    Converts initial vector to JSON compatibile format
+    Converts initial vector to JSON compatibile format.
 
-    :param json: list; vector of initial parameters {`paramname`:{`value`: value, `min`: ...}, ...}
-    :return: list; [{`param`: paramname, `value`: value, ...}, ...]
+    :param json: List; vector of initial parameters {paramname:{value: value, min: ...}, ...}
+    :return: List; [{param: paramname, value: value, ...}, ...]
     """
     retval = dict()
     for item in json:
@@ -32,14 +42,14 @@ def convert_json_to_dict_format(json):
     return retval
 
 
-def transform_initial_values(X0):
+def transform_initial_values(x0):
     """
-    transforms initial vector to base units-
+    Transforms initial vector to base units.
 
-    :param X0: dict; initial vector, {`param_name: {`value`:value, `unit`: astropy.unit...}, ...}
-    :return:
+    :param x0: Dict; initial vector, {param_name: {value: value, unit: astropy.unit...}, ...}
+    :return: Dict;
     """
-    for key, val in X0.items():
+    for key, val in x0.items():
         if 'unit' in val.keys():
             val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
             if 'value' in val.keys():
@@ -49,5 +59,4 @@ def transform_initial_values(X0):
             if 'max' in val.items():
                 val['max'] = (val['max'] * val['unit']).to(params.PARAMS_UNITS_MAP[key]).value
             val['unit'] = params.PARAMS_UNITS_MAP[key]
-    return X0
-
+    return x0

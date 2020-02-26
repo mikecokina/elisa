@@ -1,8 +1,7 @@
 import numpy as np
 
 from astropy import units as u
-
-from elisa.base.transform import TransformProperties, quantity_transform
+from elisa.base.transform import TransformProperties
 from elisa import units
 
 
@@ -12,10 +11,11 @@ WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np
 
 def array_transform(value, when_array):
     """
-    check whether `value` is array like and then transforms it to numpy array
+    Check whether `value` is array like and then transforms it to numpy.array.
+
     :param value: Union[(numpy.)array, list, tuple];
     :param when_array: Tuple(Types);
-    :return:
+    :return: numpy.array;
     """
     if isinstance(value, when_array):
         return np.array(value, dtype=np.float)

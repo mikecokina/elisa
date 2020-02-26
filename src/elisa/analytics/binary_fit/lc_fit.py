@@ -19,7 +19,7 @@ from elisa.analytics.binary.mcmc import (
 from elisa import units
 from elisa.analytics.binary_fit import shared
 
-logger = getLogger('analytics.binary_fit.rv_fit')
+logger = getLogger('analytics.binary_fit.lc_fit')
 
 
 class LCFit(object):
@@ -55,17 +55,17 @@ class LCFit(object):
         for kwarg in kwargs:
             setattr(self, kwarg, kwargs[kwarg])
 
-    def fit(self, X0, morphology='detached', method='least_squares', discretization=3, **kwargs):
-        X0 = autils.transform_initial_values(X0)
+    def fit(self, x0, morphology='detached', method='least_squares', discretization=3, **kwargs):
+        x0 = autils.transform_initial_values(x0)
 
-        param_names = {key: value['value'] for key, value in X0.items()}
+        param_names = {key: value['value'] for key, value in x0.items()}
         utils.invalid_kwarg_checker(param_names, LCFit.ALL_FIT_PARAMS, LCFit)
         utils.check_missing_kwargs(LCFit.MANDATORY_FIT_PARAMS, param_names, instance_of=LCFit)
 
-        if X0['period']['fixed'] is not True:
+        if x0['period']['fixed'] is not True:
             logger.warning('Orbital period is expected to be known apriori the fit and thus it is considered fixed')
-        period_dict = X0.pop('period')
-        # period_dict = X0['period']
+        period_dict = x0.pop('period')
+        # period_dict = x0['period']
         self.period = period_dict['value']
 
         x_data, y_data, yerr = dict(), dict(), dict()
@@ -76,12 +76,12 @@ class LCFit(object):
 
         if method == 'least_squares':
             fit_fn = lst_detached_fit if morphology == 'detached' else lst_over_contact_fit
-            self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, period=period_dict['value'], x0=X0, yerr=yerr,
+            self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, period=period_dict['value'], x0=x0, yerr=yerr,
                                          discretization=discretization, **kwargs)
 
         elif str(method).lower() in ['mcmc']:
             fit_fn = mcmc_detached_fit if morphology == 'detached' else mcmc_over_contact_fit
-            self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, period=period_dict['value'], x0=X0, yerr=yerr,
+            self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, period=period_dict['value'], x0=x0, yerr=yerr,
                                          discretization=discretization, **kwargs)
             self.flat_chain = fit_fn.last_sampler.get_chain(flat=True)
             self.normalization = fit_fn.last_normalization
@@ -95,12 +95,13 @@ class LCFit(object):
 
     def load_chain(self, filename):
         """
-        Function loads MCMC chain along with auxiliary data from json file created after each MCMC run
+        Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
 
         :param filename: str; full name of the json file
         :return: Tuple[numpy.ndarray, list, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
-        {var_name: (min_boundary, max_boundary), ...} dictionary of boundaries defined by user for each variable needed
-        to reconstruct real values from normalized `flat_chain` array
+                                                   {var_name: (min_boundary, max_boundary), ...} dictionary of
+                                                   boundaries defined by user for each variable needed
+                                                   to reconstruct real values from normalized `flat_chain` array
         """
         return shared.load_mcmc_chain(self, filename)
 
@@ -110,7 +111,6 @@ class LCFit(object):
 
         :param parameters: dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
         :param filename: str;
-        :return:
         """
         parameters = copy(self.fit_params) if parameters is None else parameters
         parameters.update({'period': {'value': self.period, 'unit': units.PERIOD_UNIT}})
@@ -129,7 +129,7 @@ class LCFit(object):
         Function loads fitted parameters of given model.
 
         :param filename: str;
-        :return: dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
+        :return: Dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
         """
         with open(filename, 'r') as fl:
             prms = json.load(fl)

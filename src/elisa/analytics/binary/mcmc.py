@@ -10,7 +10,6 @@ from multiprocessing import Pool
 from typing import Iterable, Dict
 from datetime import datetime
 
-from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.graphic.mcmc_graphics import Plot
 from elisa.conf import config
 from elisa.logger import getPersistentLogger
@@ -40,11 +39,11 @@ class McMcMixin(object):
         results.
 
         :param flat_chain: emcee.ensemble.EnsembleSampler.get_chain(flat=True);
-        :param labels: list; list with names of variable fit parameters in correct order
-        (output of params.x0_to_variable_kwargs)
-        :param percentiles: list; [percentile for left side error estimation, percentile of the centre,
-        percentile for right side error estimation]
-        :return:
+        :param labels: List; list with names of variable fit parameters in correct order
+                             (output of params.x0_to_variable_kwargs)
+        :param percentiles: List; [percentile for left side error estimation, percentile of the centre,
+                                  percentile for right side error estimation]
+        :return: Dict;
         """
         # flat_chain = sampler.get_chain(discard=discard, thin=thin, flat=True)
         percentiles = [16, 50, 84] if percentiles is None else percentiles
@@ -108,7 +107,7 @@ class McMcMixin(object):
         _, _, _ = sampler.run_mcmc(p0, nsteps, progress=progress)
 
 
-class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
+class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABCMeta):
     def __init__(self):
         self.plot = Plot()
         self.last_sampler = emcee.EnsembleSampler
@@ -129,8 +128,8 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
         """
         Calculates likelihood function value for a synthetic model to be a correct model for given observational data.
 
-        :param synthetic: dict; {'dataset_name': numpy.ndarray, }
-        :return:
+        :param synthetic: Dict; {'dataset_name': numpy.array, }
+        :return: float;
         """
         lh = - 0.5 * np.sum([np.power((self.ys[item] - synthetic[item][self.xs_reverser[item]]) / self.yerrs[item], 2)
                              for item, value in synthetic.items()])
@@ -146,13 +145,14 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
             return -10.0 * np.finfo(float).eps * np.sum(xn)
         return likelihood
 
-    def eval_constraints_after_mcmc(self, result_dict, constraints):
+    @staticmethod
+    def eval_constraints_after_mcmc(result_dict, constraints):
         """
-        Function adds constrained parameters into the resulting dictionary
+        Function adds constrained parameters into the resulting dictionary.
 
-        :param constraints: dict; contains constrained parameters
-        :param result_dict: dict; {'name': {'value': value, 'unit': unit, ...}
-        :return: dict; {'name': {'value': value, 'unit': unit, ...}
+        :param constraints: Dict; contains constrained parameters
+        :param result_dict: Dict; {'name': {'value': value, 'unit': unit, ...}
+        :return: Dict; {'name': {'value': value, 'unit': unit, ...}
         """
         res_val_dict = {key: val['value'] for key, val in result_dict.items()}
         constrained_values = params.constraints_evaluator(res_val_dict, constraints)
@@ -183,7 +183,7 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
         return sampler
 
 
-class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
+class LightCurveFit(McMcFit):
     def likelihood(self, xn):
         """
         Liklehood function which defines goodnes of current `xn` vector to be fit of given model.
@@ -328,21 +328,22 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         Once simulation is done, following valeus are stored and can be used for further evaluation::
         sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0)
 
-        # extracting fit results from MCMC sampler
-        flat_chain = sampler.get_chain(flat=True)
-        result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
-        result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
-        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
+        # extracting fit results from MCMC sampler::
 
-        r_squared_args = self.xs, self.ys, False, self.xs_reverser
-        r_dict = {key: value['value'] for key, value in result_dict.items()}
-        r_squared_result = rv_r_squared(models.central_rv_synthetic, *r_squared_args, **r_dict)
-        result_dict["r_squared"] = {'value': r_squared_result}
+            flat_chain = sampler.get_chain(flat=True)
+            result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
+            result_dict.update({param: {value: value} for param, value in self.fixed.items()})
+            result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
 
-        return params.extend_result_with_units(result_dict)
-            self.last_sampler: emcee.EnsembleSampler
-            self.last_normalization: Dict; normalization map used during fitting
-            self.last_fname: str; filename of last stored flatten emcee `sampler` with metadata
+            r_squared_args = self.xs, self.ys, False, self.xs_reverser
+            r_dict = {key: value['value'] for key, value in result_dict.items()}
+            r_squared_result = rv_r_squared(models.central_rv_synthetic, *r_squared_args, **r_dict)
+            result_dict["r_squared"] = {value: r_squared_result}
+
+            return params.extend_result_with_units(result_dict)
+                self.last_sampler: emcee.EnsembleSampler
+                self.last_normalization: Dict; normalization map used during fitting
+                self.last_fname: str; filename of last stored flatten emcee `sampler` with metadata
 
         Based on https://emcee.readthedocs.io/en/stable/.
 
@@ -355,7 +356,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         :param p0: numpy.array; inital priors for mcmc
         :param yerr: Union[numpy.array, float]; errors for each point of observation
         :param burn_in: int; numer of steps for mcmc to explore parameters
-        :return: emcee.EnsembleSampler; sampler instance
+        :return: emcee.EnsembleSampler; sampler instancea
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
 

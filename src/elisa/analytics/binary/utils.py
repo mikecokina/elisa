@@ -5,14 +5,14 @@ def normalize_light_curve(lc, kind='global_maximum'):
     """
     Function normalizes light by a method defined by `kind` argument.
 
-    :param lc: dict; dictionary containing curves, {filter: np.ndarray, ...}
+    :param lc: Dict; dictionary containing curves, {filter: np.ndarray, ...}
     :param kind: str; specifies kind of normalization
-    :**`kind` options**:
-        * ** `average` ** * -- each curve is normalized to its average
-        * ** `global_average` ** * -- curves are normalized to their global average
-        * ** `maximum` ** * -- each curve is normalized to its own maximum
-        * ** `global_maximum` -- curves are normalized to their global maximum
-    :return:
+    :**kind options**:
+        * ** average ** * -- each curve is normalized to its average
+        * ** global_average ** * -- curves are normalized to their global average
+        * ** maximum ** * -- each curve is normalized to its own maximum
+        * ** global_maximum -- curves are normalized to their global maximum
+    :return: Dict;
     """
     valid_arguments = ['average', 'global_average', 'maximum', 'global_maximum']
     if kind == valid_arguments[0]:  # each curve is normalized to its average

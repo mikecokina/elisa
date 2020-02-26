@@ -3,9 +3,7 @@ import numpy as np
 from abc import ABCMeta, abstractmethod
 from ...binary_system.system import BinarySystem
 from ...observer.observer import Observer
-from ...analytics.binary import (
-    utils as analutils
-)
+from ...analytics.binary import utils as analutils
 
 
 class AbstractFit(metaclass=ABCMeta):

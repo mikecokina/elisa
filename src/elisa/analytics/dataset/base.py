@@ -18,12 +18,12 @@ logger = getLogger('analytics.dataset.base')
 
 def convert_data(data, unit, to_unit):
     """
-    converts data to desired format or leaves it dimensionless
+    Converts data to desired format or leaves it dimensionless.
 
-    :param data: np.ndarray;
+    :param data: numpy.array;
     :param unit: astropy.unit;
     :param to_unit: astropy.unit;
-    :return: np.ndarray;
+    :return: numpy.array;
     """
     return data if unit == u.dimensionless_unscaled else (data * unit).to(to_unit).value
 
@@ -32,10 +32,10 @@ def convert_flux(data, unit, zero_point=None):
     """
     If data are in magnitudes, they are converted to normalized flux.
 
-    :param data: numpy.ndarray;
+    :param data: numpy.array;
     :param unit: astropy.unit.Unit;
     :param zero_point: float;
-    :return: numpy.ndarray;
+    :return: numpy.array;
     """
     if unit == u.mag:
         if zero_point is None:
@@ -51,11 +51,11 @@ def convert_flux_error(data, error, unit, zero_point=None):
     """
     If data an its errors are in magnitudes, they are converted to normalized flux.
 
-    :param error: numpy.ndarray;
-    :param data: numpy.ndarray;
+    :param error: numpy.array;
+    :param data: numpy.array;
     :param unit: astropy.unit.Unit;
     :param zero_point: float;
-    :return: numpy.ndarray;
+    :return: numpy.array;
     """
     if unit == u.mag:
         if zero_point is None:
@@ -69,7 +69,7 @@ def convert_flux_error(data, error, unit, zero_point=None):
 
 def convert_unit(unit, to_unit):
     """
-    converts to desired unit  or leaves it dimensionless
+    Converts to desired unit  or leaves it dimensionless.
 
     :param unit: astropy.unit;
     :param to_unit: astropy.unit;
@@ -128,11 +128,12 @@ class RVData(DataSet):
 
     Input parameters:
 
-    :param x_data: numpy.ndarray; time or observed phases
-    :param y_data: numpy.ndarray; radial velocities
-    :param yerr: numpy.ndarray; radial velocity errors - optional
-    :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given, the `x_data are regarded
-    as phases, otherwise if unit is convertible to days, the `x_data` are regarded to be in JD
+    :param x_data: numpy.array; time or observed phases
+    :param y_data: numpy.array; radial velocities
+    :param yerr: numpy.array; radial velocity errors - optional
+    :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given,
+                                      the `x_data are regarded as phases, otherwise if unit is convertible
+                                      to days, the `x_data` are regarded to be in JD
     :param y_unit: astropy.unit.Unit; velocity unit of the observed radial velocities and its errors
     """
 
@@ -171,9 +172,10 @@ class RVData(DataSet):
     @staticmethod
     def convert_arrays(**kwargs):
         """
-        converting data and units to its base counterparts or keeping them dimensionless
-        :param kwargs:
-        :return:
+        Converting data and units to its base counterparts or keeping them dimensionless.
+
+        :param kwargs: Dict;
+        :return: Dict;
         """
         # converting x-axis
         kwargs['x_data'] = convert_data(kwargs['x_data'], kwargs['x_unit'], units.PERIOD_UNIT)
@@ -197,7 +199,7 @@ class RVData(DataSet):
         :param filename: str; name of the file
         :param x_unit: astropy.unit.Unit;
         :param y_unit: astropy.unit.Unit;
-        :param data_columns: tuple, ordered tuple with column indices of x_data, y_data, y_errors
+        :param data_columns: Tuple, ordered tuple with column indices of x_data, y_data, y_errors
         :return: RVData;
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
@@ -220,11 +222,12 @@ class LCData(DataSet):
 
         Input parameters:
 
-        :param x_data: numpy.ndarray; time or observed phases
-        :param y_data: numpy.ndarray; light curves
-        :param yerr: numpy.ndarray; light curve errors - optional
-        :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given, the `x_data are
-        regarded as phases, otherwise if unit is convertible to days, the `x_data` are regarded to be in JD
+        :param x_data: numpy.array; time or observed phases
+        :param y_data: numpy.array; light curves
+        :param yerr: numpy.array; light curve errors - optional
+        :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given,
+                                          the `x_data are regarded as phases, otherwise if unit is convertible
+                                          to days, the `x_data` are regarded to be in JD
         :param y_unit: astropy.unit.Unit; velocity unit of the observed flux and its errors
     """
     MANDATORY_KWARGS = config.DATASET_MANDATORY_KWARGS
@@ -263,9 +266,10 @@ class LCData(DataSet):
     @staticmethod
     def convert_arrays(**kwargs):
         """
-        converting data and units to its base counterparts or keeping them dimensionless
-        :param kwargs:
-        :return:
+        Converting data and units to its base counterparts or keeping them dimensionless.
+
+        :param kwargs: Dict;
+        :return: Dict;
         """
         # converting x-axis
         kwargs['x_data'] = convert_data(kwargs['x_data'], kwargs['x_unit'], units.PERIOD_UNIT)
@@ -294,9 +298,9 @@ class LCData(DataSet):
         :param filename: str;
         :param x_unit: astropy.unit.Unit;
         :param y_unit: astropy.unit.Unit;
-        :param data_columns: tuple, ordered tuple with column indices of x_data, y_data, y_errors
+        :param data_columns: Tuple, ordered tuple with column indices of x_data, y_data, y_errors
         :param reference_magnitude: float; zero point for magnitude conversion
-        :return:
+        :return: LCData;
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
 

@@ -4,6 +4,14 @@ elisa.base.surface package
 Submodules
 ----------
 
+elisa.base.surface.coverage module
+----------------------------------
+
+.. automodule:: elisa.base.surface.coverage
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.base.surface.faces module
 -------------------------------
 

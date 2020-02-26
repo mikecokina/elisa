@@ -18,6 +18,7 @@ ANGULAR_FREQUENCY_UNIT = u.rad / u.s
 
 # astropy units to avoid annoying undefined warning accross basecode
 deg = u.deg
+degree = u.degree
 rad = u.rad
 km = u.km
 solMass = u.solMass
