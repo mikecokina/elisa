@@ -21,6 +21,13 @@ class RVFit(object):
     OPTIONAL_FIT_PARAMS = ['period', 'primary_minimum_time', 'p__mass', 's__mass', 'inclination', 'asini', 'mass_ratio']
     ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
 
+    FIT_PARAMS_COMBINATIONS = {
+        'standard': ['p__mass', 's__mass', 'inclination', 'eccentricity', 'argument_of_periastron', 'gamma', 'period',
+                     'primary_minimum_time'],
+        'community': ['mass_ratio', 'asini', 'eccentricity', 'argument_of_periastron', 'gamma', 'period',
+                      'primary_minimum_time']
+    }
+
     def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs, RVFit.ALL_KWARGS, RVFit)
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
