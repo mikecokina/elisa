@@ -12,13 +12,18 @@ from elisa.graphic import graphics
 from elisa.analytics.binary import (
     params,
     models,
-    utils as butils
+    utils as bsutils
 )
 from elisa.analytics import utils as autils
 from elisa import utils
 
 
-PLOT_UNITS = {'asini': u.solRad, 'argument_of_periastron': u.degree, 'gamma': u.km/u.s, 'primary_minimum_time': u.d}
+PLOT_UNITS = {
+    'asini': eu.solRad, 
+    'argument_of_periastron': eu.degree, 
+    'gamma': eu.km/eu.s, 
+    'primary_minimum_time': eu.d
+}
 
 
 class RVPlot(object):
@@ -31,14 +36,13 @@ class RVPlot(object):
     def model(self, fit_params=None, start_phase=-0.6, stop_phase=0.6, number_of_points=300,
               y_axis_unit=eu.km / eu.s):
         """
-        prepares data for plotting the model described by fit params or calculated by last run of fitting procedure
+        Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
-        :param fit_params: dict; {fit_parameter: {value: float, unit: astropy.unit.Unit, ...(fitting method dependent)}
+        :param fit_params: Dict; {fit_parameter: {value: float, unit: astropy.unit.Unit, ...(fitting method dependent)}
         :param start_phase: float;
         :param stop_phase: float;
         :param number_of_points: int;
         :param y_axis_unit: astropy.unit.Unit;
-        :return:
         """
         plot_result_kwargs = dict()
         fit_params = self.rv_fit.fit_params if fit_params is None else fit_params
@@ -91,22 +95,23 @@ class RVPlot(object):
     def corner(self, flat_chain=None, variable_labels=None, normalization=None, quantiles=None, truths=False,
                show_titles=True, plot_units=None, **kwargs):
         """
-        Plots complete correlation plot from supplied parameters. Usefull only for MCMC method
+        Plots complete correlation plot from supplied parameters. Usefull only for MCMC method.
 
-        :param flat_chain: numpy.ndarray; flattened chain of all parameters, use only if you want display your own chain
-        :param variable_labels: list; list of variables during a MCMC run, which is used to identify columns in
-        `flat_chain`, , use only if you want display your own chain
+        :param flat_chain: numpy.array; flattened chain of all parameters, use only if you want display your own chain
+        :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
+                                     `flat_chain`, use only if you want display your own chain
         :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
-        of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`,
-        use only if you want display your own chain
-        :param quantiles: iterable; A list of fractional quantiles to show on the 1-D histograms as vertical dashed
-        lines.
-        :param truths: Union[bool, list]; if true, fit results are used to indicate position of found values. If False,
-        none are shown. If list is supplied, it functions the same as in corner.corner function.
+                                                              of boundaries defined by user for each variable needed
+                                                              to reconstruct real values from normalized `flat_chain`,
+                                                              use only if you want display your own chain
+        :param quantiles: Iterable; A list of fractional quantiles to show on the 1-D histograms as vertical dashed
+                                   lines.
+        :param truths: Union[bool, List]; if True, fit results are used to indicate position of found values. If False,
+                                          none are shown. If list is supplied, it functions the same
+                                          as in corner.corner function
         :param show_titles: bool; If True, labels above histogram with name of the variable, value, errorss and units
-        are displayed
-        :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
-        :return:
+                                  are displayed
+        :param plot_units: Dict; Units in which to display the output {variable_name: unit, ...}
         """
         corner(self.rv_fit, flat_chain=flat_chain, variable_labels=variable_labels, normalization=normalization,
                quantiles=quantiles, truths=truths, show_titles=show_titles, plot_units=plot_units, **kwargs)
@@ -116,18 +121,17 @@ class RVPlot(object):
         """
         Plots traces of defined parameters.
 
-        :param traces_to_plot: list; names of variables which traces will be displayed
-        :param flat_chain: numpy.ndarray; flattened chain of all parameters
-        :param variable_labels: list; list of variables during a MCMC run, which is used to identify columns in
-        `flat_chain`
+        :param traces_to_plot: List; names of variables which traces will be displayed
+        :param flat_chain: numpy.array; flattened chain of all parameters
+        :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
+                                     `flat_chain`
         :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
-        of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`,
-        use only if you want display your own chain
-        :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
-        :param truths: bool; if true, fit results are used to indicate position of found values. If False,
-        none are shown. It will not work with a
-        custom chain. (if `flat_cha   in` is not None).
-        :return:
+                                                              of boundaries defined by user for each variable
+                                                              needed to reconstruct real values from normalized
+                                                              `flat_chain`, use only if you want display your own chain
+        :param plot_units: Dict; Units in which to display the output {variable_name: unit, ...}
+        :param truths: bool; if True, fit results are used to indicate position of found values. If False,
+                             none are shown. It will not work with a custom chain. (if `flat_chain` is not None).
         """
         traces(self.rv_fit, traces_to_plot=traces_to_plot, flat_chain=flat_chain, variable_labels=variable_labels,
                normalization=normalization, plot_units=plot_units, truths=truths)
@@ -135,8 +139,8 @@ class RVPlot(object):
 
 class LCPlot(object):
     """
-        Universal plot interface for LCFit class.
-        """
+    Universal plot interface for LCFit class.
+    """
 
     def __init__(self, instance):
         self.lc_fit = instance
@@ -144,7 +148,7 @@ class LCPlot(object):
     def model(self, fit_params=None, start_phase=-0.6, stop_phase=0.6, number_of_points=300,
               y_axis_unit=u.dimensionless_unscaled, discretization=3):
         """
-        Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure
+        Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
         :param fit_params: dict; {fit_parameter: {value: float, unit: astropy.unit.Unit, ...(fitting method dependent)}
         :param start_phase: float;
@@ -152,7 +156,6 @@ class LCPlot(object):
         :param number_of_points: int;
         :param y_axis_unit: astropy.unit.Unit;
         :param discretization: unit
-        :return:
         """
         plot_result_kwargs = dict()
         fit_params = self.lc_fit.fit_params if fit_params is None else fit_params
@@ -176,7 +179,7 @@ class LCPlot(object):
 
             yerr[filter] = utils.flux_error_to_magnitude_error(curve.yerr, curve.reference_magnitude) \
                 if y_axis_unit == u.mag else curve.yerr
-        y_data = butils.normalize_light_curve(y_data, kind='global_maximum')
+        y_data = bsutils.normalize_light_curve(y_data, kind='global_maximum')
 
         plot_result_kwargs.update({
             'x_data': x_data,
@@ -205,7 +208,7 @@ class LCPlot(object):
                                                    observer=observer,
                                                    _raise_invalid_morphology=False,
                                                    **system_kwargs)
-        synthetic_curves = butils.normalize_light_curve(synthetic_curves, kind='global_maximum')
+        synthetic_curves = bsutils.normalize_light_curve(synthetic_curves, kind='global_maximum')
 
         interp_fn = {component: interp1d(synth_phases, synthetic_curves[component], kind='cubic')
                      for component in self.lc_fit.light_curves.keys()}
@@ -224,22 +227,23 @@ class LCPlot(object):
     def corner(self, flat_chain=None, variable_labels=None, normalization=None, quantiles=None, truths=False,
                show_titles=True, plot_units=None, **kwargs):
         """
-        Plots complete correlation plot from supplied parameters. Usefull only for MCMC method
+        Plots complete correlation plot from supplied parameters. Usefull only for MCMC method.
 
-        :param flat_chain: numpy.ndarray; flattened chain of all parameters, use only if you want display your own chain
-        :param variable_labels: list; list of variables during a MCMC run, which is used to identify columns in
-        `flat_chain`, , use only if you want display your own chain
+        :param flat_chain: numpy.array; flattened chain of all parameters, use only if you want display your own chain
+        :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
+                                      `flat_chain`, , use only if you want display your own chain
         :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
-        of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`,
-        use only if you want display your own chain
-        :param quantiles: iterable; A list of fractional quantiles to show on the 1-D histograms as vertical dashed
-        lines.
+                                                              of boundaries defined by user for each variable needed
+                                                              to reconstruct real values from normalized `flat_chain`,
+                                                              use only if you want display your own chain
+        :param quantiles: Iterable; A list of fractional quantiles to show on the 1-D histograms
+                                    as vertical dashed lines.
         :param truths: Union[bool, list]; if true, fit results are used to indicate position of found values. If False,
-        none are shown. If list is supplied, it functions the same as in corner.corner function.
+                                          none are shown. If list is supplied, it functions
+                                          the same as in corner.corner function.
         :param show_titles: bool; If True, labels above histogram with name of the variable, value, errorss and units
-        are displayed
+                                  are displayed
         :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
-        :return:
         """
         corner(self.lc_fit, flat_chain=flat_chain, variable_labels=variable_labels, normalization=normalization,
                quantiles=quantiles, truths=truths, show_titles=show_titles, plot_units=plot_units, **kwargs)
@@ -249,18 +253,17 @@ class LCPlot(object):
         """
         Plots traces of defined parameters.
 
-        :param traces_to_plot: list; names of variables which traces will be displayed
-        :param flat_chain: numpy.ndarray; flattened chain of all parameters
-        :param variable_labels: list; list of variables during a MCMC run, which is used to identify columns in
-        `flat_chain`
+        :param traces_to_plot: List; names of variables which traces will be displayed
+        :param flat_chain: numpy.array; flattened chain of all parameters
+        :param variable_labels: List; list of variables during a MCMC run, which is used to
+                                      identify columns in `flat_chain`
         :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
-        of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`,
-        use only if you want display your own chain
+                                                              of boundaries defined by user for each variable needed
+                                                              to reconstruct real values from normalized `flat_chain`,
+                                                              use only if you want display your own chain
         :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
-        :param truths: bool; if true, fit results are used to indicate position of found values. If False,
-        none are shown. It will not work with a
-        custom chain. (if `flat_cha   in` is not None).
-        :return:
+        :param truths: bool; if True, fit results are used to indicate position of found values. If False,
+                             none are shown. It will not work with a custom chain. (if `flat_chain` is not None).
         """
         traces(self.lc_fit, traces_to_plot=traces_to_plot, flat_chain=flat_chain, variable_labels=variable_labels,
                normalization=normalization, plot_units=plot_units, truths=truths)
@@ -272,20 +275,21 @@ def corner(fit_instance, flat_chain=None, variable_labels=None, normalization=No
     Plots complete correlation plot from supplied parameters. Usefull only for MCMC method
 
     :param fit_instance: Union[elisa.analytics.binary_fit.lc_fit.LCFit, elisa.analytics.binary_fit.rv_fit.RVFit];
-    :param flat_chain: numpy.ndarray; flattened chain of all parameters, use only if you want display your own chain
-    :param variable_labels: list; list of variables during a MCMC run, which is used to identify columns in
-    `flat_chain`, , use only if you want display your own chain
+    :param flat_chain: numpy.array; flattened chain of all parameters, use only if you want display your own chain
+    :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
+                                 `flat_chain`, use only if you want display your own chain
     :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
-    of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`,
-    use only if you want display your own chain
-    :param quantiles: iterable; A list of fractional quantiles to show on the 1-D histograms as vertical dashed
-    lines.
-    :param truths: Union[bool, list]; if true, fit results are used to indicate position of found values. If False,
-    none are shown. If list is supplied, it functions the same as in corner.corner function.
-    :param show_titles: bool; If True, labels above histogram with name of the variable, value, errorss and units
-    are displayed
+                                                          of boundaries defined by user for each variable needed to
+                                                          reconstruct real values from normalized `flat_chain`,
+                                                          use only if you want display your own chain
+    :param quantiles: Iterable; A list of fractional quantiles to show on the 1-D histograms
+                                as vertical dashed lines.
+    :param truths: Union[bool, list]; if True, fit results are used to indicate position of found values. If False,
+                                      none are shown. If list is supplied, it functions
+                                      the same as in corner.corner function.
+    :param show_titles: bool; If True, labels above histogram with name of the variable, value,
+                              errors and units are displayed
     :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
-    :return:
     """
     flat_chain = copy(fit_instance.flat_chain) if flat_chain is None else copy(flat_chain)
 
@@ -337,18 +341,17 @@ def traces(fit_instance, traces_to_plot=None, flat_chain=None, variable_labels=N
     Plots traces of defined parameters.
 
     :param fit_instance: Union[elisa.analytics.binary_fit.lc_fit.LCFit, elisa.analytics.binary_fit.rv_fit.RVFit];
-    :param traces_to_plot: list; names of variables which traces will be displayed
-    :param flat_chain: numpy.ndarray; flattened chain of all parameters
-    :param variable_labels: list; list of variables during a MCMC run, which is used to identify columns in
-    `flat_chain`
+    :param traces_to_plot: List; names of variables which traces will be displayed
+    :param flat_chain: numpy.array; flattened chain of all parameters
+    :param variable_labels: List; list of variables during a MCMC run, which is used
+                                  to identify columns in `flat_chain`
     :param normalization: Dict[str, Tuple(float, float)]; {var_name: (min_boundary, max_boundary), ...} dictionary
-    of boundaries defined by user for each variable needed to reconstruct real values from normalized `flat_chain`,
-    use only if you want display your own chain
-    :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
-    :param truths: bool; if true, fit results are used to indicate position of found values. If False,
-    none are shown. It will not work with a
-    custom chain. (if `flat_cha   in` is not None).
-    :return:
+                                                          of boundaries defined by user for each variable needed to
+                                                          reconstruct real values from normalized `flat_chain`,
+                                                          use only if you want display your own chain
+    :param plot_units: Dict; Units in which to display the output {variable_name: unit, ...}
+    :param truths: bool; if True, fit results are used to indicate position of found values. If False,
+                         none are shown. It will not work with a custom chain. (if `flat_chain` is not None).
     """
     traces_plot_kwargs = dict()
 

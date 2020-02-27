@@ -12,6 +12,14 @@ elisa.single\_system.curves.lc module
    :undoc-members:
    :show-inheritance:
 
+elisa.single\_system.curves.lcmp module
+---------------------------------------
+
+.. automodule:: elisa.single_system.curves.lcmp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.single\_system.curves.shared module
 -----------------------------------------
 

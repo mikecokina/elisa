@@ -1,5 +1,4 @@
 import json
-import numpy as np
 from ...logger import getLogger
 from copy import copy
 
@@ -43,17 +42,18 @@ class RVFit(object):
         for kwarg in kwargs:
             setattr(self, kwarg, kwargs[kwarg])
 
-    def fit(self, X0, method='least_squares', **kwargs):
+    def fit(self, x0, method='least_squares', **kwargs):
         """
-        Function encapsulates various fitting functions for fitting radial velocities
-        :param X0: dict; starting values of the fit
+        Function encapsulates various fitting functions for fitting radial velocities.
+        
+        :param x0: Dict; starting values of the fit
         :param method: string;
-        :param kwargs: dict;
+        :param kwargs: Dict;
         :return: dict: fit_params
         """
-        X0 = autils.transform_initial_values(X0)
+        x0 = autils.transform_initial_values(x0)
 
-        param_names = {key: value['value'] for key, value in X0.items()}
+        param_names = {key: value['value'] for key, value in x0.items()}
         utils.invalid_kwarg_checker(param_names, RVFit.ALL_FIT_PARAMS, RVFit)
         utils.check_missing_kwargs(RVFit.MANDATORY_FIT_PARAMS, param_names, instance_of=RVFit)
 
@@ -64,10 +64,10 @@ class RVFit(object):
             yerr[component] = data.yerr
 
         if method == 'least_squares':
-            self.fit_params = lstsqr_central_rv.fit(xs=x_data, ys=y_data, x0=X0, yerr=yerr, **kwargs)
+            self.fit_params = lstsqr_central_rv.fit(xs=x_data, ys=y_data, x0=x0, yerr=yerr, **kwargs)
 
         elif str(method).lower() in ['mcmc']:
-            self.fit_params = mcmc_central_rv.fit(xs=x_data, ys=y_data, x0=X0, yerr=yerr, **kwargs)
+            self.fit_params = mcmc_central_rv.fit(xs=x_data, ys=y_data, x0=x0, yerr=yerr, **kwargs)
             self.flat_chain = mcmc_central_rv.last_sampler.get_chain(flat=True)
             self.normalization = mcmc_central_rv.last_normalization
             self.variable_labels = mcmc_central_rv.labels
@@ -76,12 +76,13 @@ class RVFit(object):
 
     def load_chain(self, filename):
         """
-        Function loads MCMC chain along with auxiliary data from json file created after each MCMC run
+        Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
 
         :param filename: str; full name of the json file
         :return: Tuple[numpy.ndarray, list, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
-        {var_name: (min_boundary, max_boundary), ...} dictionary of boundaries defined by user for each variable needed
-        to reconstruct real values from normalized `flat_chain` array
+                                                  {var_name: (min_boundary, max_boundary), ...} dictionary of
+                                                  boundaries defined by user for each variable needed
+                                                  to reconstruct real values from normalized `flat_chain` array
         """
         return shared.load_mcmc_chain(self, filename)
 
@@ -89,7 +90,7 @@ class RVFit(object):
         """
         Function converts model parameters to json compatibile format and stores model parameters.
 
-        :param parameters: dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
+        :param parameters: Dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
         :param filename: str;
         :return:
         """
@@ -99,12 +100,12 @@ class RVFit(object):
         parameters = autils.unify_unit_string_representation(parameters)
 
         json_params = autils.convert_dict_to_json_format(parameters)
-        with open(filename, 'w') as fl:
-            json.dump(json_params, fl, separators=(',\n', ': '))
+        with open(filename, 'w') as f:
+            json.dump(json_params, f, separators=(',\n', ': '))
 
     def load_parameters(self, filename=None):
-        with open(filename, 'r') as fl:
-            prms = json.load(fl)
+        with open(filename, 'r') as f:
+            prms = json.load(f)
 
         prms = autils.convert_json_to_dict_format(prms)
         self.period = prms['period']['value']

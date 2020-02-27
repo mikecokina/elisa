@@ -15,11 +15,11 @@ from ..binary import (
 
 from elisa.analytics.binary.shared import (
     AbstractCentralRadialVelocityDataMixin,
-    AbstractLightCurveDataMixin)
+    AbstractLightCurveDataMixin, AbstractFit)
 
 from elisa.conf import config
 
-logger = getPersistentLogger('analytics.binary.fit')
+logger = getPersistentLogger('analytics.binary.least_squares')
 
 
 def logger_decorator(suppress_logger=False):
@@ -33,7 +33,7 @@ def logger_decorator(suppress_logger=False):
     return do
 
 
-class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
+class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta):
     def model_to_fit(self, xn):
         """
         Model to find minimum.
@@ -81,7 +81,7 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         :param x0: Dict[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
         :param xtol: float; relative tolerance to consider solution
-        :param yerrs: Union[numpy.array, float]; errors for each point of observation
+        :param yerr: Union[numpy.array, float]; errors for each point of observation
         :param max_nfev: int; maximal iteration
                https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
         :param diff_step: Union[None, array];

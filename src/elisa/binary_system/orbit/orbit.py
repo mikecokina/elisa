@@ -263,8 +263,8 @@ class Orbit(object):
         positions of the secondary component in the frame of reference of primary component.
 
         :param azimuth: Union[numpy.array, float];
-        :return: numpy.ndarray; matrix consisting of column stacked vectors distance, azimut angle, true anomaly and
-        phase
+        :return: numpy.array; matrix consisting of column stacked vectors distance,
+                              azimut angle, true anomaly and phase
 
         ::
 

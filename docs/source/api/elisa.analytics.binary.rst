@@ -12,14 +12,6 @@ elisa.analytics.binary.bonds module
    :undoc-members:
    :show-inheritance:
 
-elisa.analytics.binary.hybrid module
-------------------------------------
-
-.. automodule:: elisa.analytics.binary.hybrid
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 elisa.analytics.binary.least\_squares module
 --------------------------------------------
 
@@ -48,14 +40,6 @@ elisa.analytics.binary.params module
 ------------------------------------
 
 .. automodule:: elisa.analytics.binary.params
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-elisa.analytics.binary.plot module
-----------------------------------
-
-.. automodule:: elisa.analytics.binary.plot
    :members:
    :undoc-members:
    :show-inheritance:

@@ -232,5 +232,3 @@ def time_layer_resolver(xs, x0):
         period = x0['period']['value']
         xs = t_layer.jd_to_phase(t0, period, xs)
     return xs, x0
-
-
