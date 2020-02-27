@@ -44,10 +44,25 @@ def transform_initial_values(X0):
             val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
             if 'value' in val.keys():
                 val['value'] = (val['value'] * val['unit']).to(params.PARAMS_UNITS_MAP[key]).value
-            if 'min' in val.items():
+            if 'min' in val.keys():
                 val['min'] = (val['min'] * val['unit']).to(params.PARAMS_UNITS_MAP[key]).value
-            if 'max' in val.items():
+            if 'max' in val.keys():
                 val['max'] = (val['max'] * val['unit']).to(params.PARAMS_UNITS_MAP[key]).value
             val['unit'] = params.PARAMS_UNITS_MAP[key]
     return X0
+
+
+def unify_unit_string_representation(dictionary):
+    """
+    transform user units to unified format
+
+    :param dictionary: dict; model parameter
+    :return: dict; model parameter
+    """
+    for key, val in dictionary.items():
+        if 'unit' in val.keys():
+            val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
+            val['unit'] = val['unit'].to_string()
+
+    return dictionary
 

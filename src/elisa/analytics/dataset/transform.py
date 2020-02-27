@@ -24,7 +24,7 @@ def array_transform(value, when_array):
 
 
 def unit_transform(value, base_units):
-    if value is None:
+    if value is None or value.to_string() == '':
         value = u.dimensionless_unscaled
 
     if value.is_equivalent(base_units):

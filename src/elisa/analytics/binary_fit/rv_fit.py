@@ -96,6 +96,8 @@ class RVFit(object):
         parameters = copy(self.fit_params) if parameters is None else parameters
         parameters = self.fit_params if parameters is None else parameters
 
+        parameters = autils.unify_unit_string_representation(parameters)
+
         json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as fl:
             json.dump(json_params, fl, separators=(',\n', ': '))

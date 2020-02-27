@@ -199,7 +199,7 @@ class LCPlot(object):
         system = models.prepare_binary(period=period, discretization=discretization, **system_kwargs)
         observer = Observer(passband=self.lc_fit.light_curves.keys(), system=system)
         synthetic_curves = models.synthetic_binary(synth_phases,
-                                                   self.lc_fit.period,
+                                                   period,
                                                    discretization=discretization,
                                                    morphology=None,
                                                    observer=observer,
@@ -296,8 +296,7 @@ def corner(fit_instance, flat_chain=None, variable_labels=None, normalization=No
 
     corner_plot_kwargs = dict()
     if flat_chain is None:
-        raise ValueError('You can use corner plot only after running mcmc method or the flat chain was'
-                         ' not found.')
+        raise ValueError('You can use corner plot after running mcmc method or after loading the flat chain.')
 
     labels = [params.PARAMS_KEY_TEX_MAP[label] for label in variable_labels]
     quantiles = [0.16, 0.5, 0.84] if quantiles is None else quantiles

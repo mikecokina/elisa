@@ -115,10 +115,7 @@ class LCFit(object):
         parameters = copy(self.fit_params) if parameters is None else parameters
         parameters.update({'period': {'value': self.period, 'unit': units.PERIOD_UNIT}})
 
-        for key, val in parameters.items():
-            if 'unit' in val.keys():
-                val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
-                val['unit'] = val['unit'].to_string()
+        parameters = autils.unify_unit_string_representation(parameters)
 
         json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as fl:
