@@ -27,7 +27,7 @@ def logger_decorator(suppress_logger=False):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if not suppress_logger:
-                logger.info(f'current xn value: {kwargs}')
+                logger.debug(f'current xn value: {kwargs}')
             return func(*args, **kwargs)
         return wrapper
     return do
@@ -215,7 +215,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         func = self.central_rv_model_to_fit
         result = least_squares(fun=func, x0=x0_vector, bounds=(0, 1), max_nfev=max_nfev,
                                xtol=xtol, ftol=ftol, diff_step=diff_step, f_scale=f_scale)
-        logger.info("fitting finished")
+        logger.info("fitting finished...")
 
         result = params.param_renormalizer(result.x, labels)
         result_dict = dict(zip(labels, result))

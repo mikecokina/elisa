@@ -113,6 +113,17 @@ You will probably also need to install::
 
     apt install -y python3-tk
 
+if you would like to have a look at the jupyter notebooks covering the basic usage of this package, you should install
+jupyterlab inside the virtual environment::
+
+    pip3 install jupyterlab
+
+followed by installing of ipython kernel::
+
+    python3 -m pip install ipykernel
+
+Now you should be able to launch jupyter notebooks and run the tutorials stored in <elisa_dir>/jupyter_tutorials.
+
 
 Windows
 ~~~~~~~

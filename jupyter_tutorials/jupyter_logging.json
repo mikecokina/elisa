@@ -29,18 +29,23 @@
     "loggers": {
         "main": {
             "level": "INFO",
-            "handlers": ["console", "file_handler"],
+            "handlers": ["console"],
             "propagate": 0
         },
-        "HttpImporter": {
+        "BinarySystem": {
             "level": "INFO",
-            "handlers": ["console", "file_handler"],
+            "handlers": ["console"],
+            "propagate": 0
+        },
+        "observer.observer": {
+            "level": "WARNING",
+            "handlers": ["console"],
             "propagate": 0
         }
     },
 
     "root": {
-        "level": "INFO",
-        "handlers": ["console", "file_handler"]
+        "level": "DEBUG",
+        "handlers": ["console"]
     }
 }

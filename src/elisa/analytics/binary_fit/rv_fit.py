@@ -79,6 +79,8 @@ class RVFit(object):
             self.normalization = mcmc_central_rv.last_normalization
             self.variable_labels = mcmc_central_rv.labels
 
+        logger.info('Fitting and processing of results succesfully finished.')
+
         return self.fit_params
 
     def load_chain(self, filename):
