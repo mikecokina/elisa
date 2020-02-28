@@ -39,7 +39,7 @@ class Plot(object):
     @staticmethod
     def paramtrace(**kwargs):
         """
-        Show value of parameter in mcmc chain.
+        Show traces of mcmc chain.
         """
         hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) if label in
                     kwargs['traces_to_plot']}
@@ -69,4 +69,30 @@ class Plot(object):
         plt.subplots_adjust(right=1.0, top=1.0, hspace=0)
         plt.show()
 
-    trace = paramtrace
+    @staticmethod
+    def autocorr(**kwargs):
+        """
+        Show autocorrelation function.
+        """
+        hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) if label in
+                    kwargs['correlations_to_plot']}
+
+        height = len(kwargs['correlations_to_plot'])
+        fig = plt.figure(figsize=(8, 2.5 * height))
+
+        gs = gridspec.GridSpec(height, 1)
+        ax = []
+        labels = [params.PARAMS_KEY_TEX_MAP[label] for label in kwargs['correlations_to_plot']]
+        for idx, label in enumerate(kwargs['correlations_to_plot']):
+            ax.append(fig.add_subplot(gs[idx]))
+            lbl = r'$\tau_{{0}} = {{1}}$'.format(labels[idx], kwargs['autocorr_time'])
+            ax[-1].scatter(np.arange(kwargs['autocorr_fns'].shape[0]), kwargs['autocorr_fns'][:, hash_map[label]],
+                           label=lbl, s=0.2)
+            ax[-1].set_ylabel(f'{labels[idx]}')
+            ax[-1].legend()
+
+        ax[-1].set_xlabel('N')
+
+        plt.subplots_adjust(right=1.0, top=1.0, hspace=0)
+        plt.show()
+

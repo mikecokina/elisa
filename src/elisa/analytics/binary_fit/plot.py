@@ -2,6 +2,7 @@ import numpy as np
 from astropy import units as u
 from scipy.interpolate import interp1d
 from copy import copy, deepcopy
+from emcee.autocorr import integrated_time, function_1d
 
 from elisa.binary_system import t_layer
 from elisa import units as eu
@@ -135,6 +136,17 @@ class RVPlot(object):
         """
         traces(self.rv_fit, traces_to_plot=traces_to_plot, flat_chain=flat_chain, variable_labels=variable_labels,
                normalization=normalization, plot_units=plot_units, truths=truths)
+
+    def autocorrelation(self, correlations_to_plot=None, flat_chain=None, variable_labels=None):
+        """
+        Plots correlation function of defined parameters.
+
+        :param correlations_to_plot: List; names of variables which autocorrelation function will be displayed
+        :param flat_chain: numpy.array; flattened chain of all parameters
+        :param variable_labels: List; list of variables during a MCMC run, which is used
+                                      to identify columns in `flat_chain`
+        """
+        autocorrelation(self.rv_fit, correlations_to_plot, flat_chain, variable_labels)
 
 
 class LCPlot(object):
@@ -389,3 +401,41 @@ def traces(fit_instance, traces_to_plot=None, flat_chain=None, variable_labels=N
     })
 
     MCMCPlot.paramtrace(**traces_plot_kwargs)
+
+
+def autocorrelation(fit_instance, correlations_to_plot=None, flat_chain=None, variable_labels=None):
+    """
+    Plots correlation function of defined parameters.
+
+    :param fit_instance: Union[elisa.analytics.binary_fit.lc_fit.LCFit, elisa.analytics.binary_fit.rv_fit.RVFit];
+    :param correlations_to_plot: List; names of variables which autocorrelation function will be displayed
+    :param flat_chain: numpy.array; flattened chain of all parameters
+    :param variable_labels: List; list of variables during a MCMC run, which is used
+                                  to identify columns in `flat_chain`
+    """
+    autocorr_plot_kwargs = dict()
+
+    flat_chain = copy(fit_instance.flat_chain) if flat_chain is None else copy(flat_chain)
+
+    if flat_chain is None:
+        raise ValueError('You can use trace plot only in case of mcmc method or for some reason the flat chain was '
+                         'not found.')
+
+    variable_labels = fit_instance.variable_labels if variable_labels is None else variable_labels
+
+    autocorr_fns = np.empty((flat_chain.shape[0], len(variable_labels)))
+    autocorr_time = np.empty((flat_chain.shape[0], len(variable_labels)))
+    for ii, lbl in enumerate(variable_labels):
+        autocorr_fns[:, ii] = function_1d(flat_chain[:, ii])
+        autocorr_time[:, ii] = integrated_time(flat_chain[:, ii], quiet=True)
+
+    correlations_to_plot = variable_labels if correlations_to_plot is None else correlations_to_plot
+
+    autocorr_plot_kwargs.update({
+        'correlations_to_plot': correlations_to_plot,
+        'autocorr_fns': autocorr_fns,
+        'autocorr_time': autocorr_time,
+        'variable_labels': variable_labels,
+    })
+
+    MCMCPlot.autocorr(**autocorr_plot_kwargs)

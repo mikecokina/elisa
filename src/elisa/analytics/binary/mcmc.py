@@ -101,7 +101,7 @@ class McMcMixin(object):
     @staticmethod
     def worker(sampler, p0, nsteps, nsteps_burn_in, progress=False):
         logger.info("running burn-in...")
-        p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in, progress=progress)
+        p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in, progress=progress) if nsteps_burn_in > 0 else p0, None, None
         sampler.reset()
         logger.info("running production...")
         _, _, _ = sampler.run_mcmc(p0, nsteps, progress=progress)
