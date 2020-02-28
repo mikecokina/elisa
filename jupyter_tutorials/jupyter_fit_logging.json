@@ -33,11 +33,16 @@
             "propagate": 0
         },
         "BinarySystem": {
-            "level": "INFO",
+            "level": "WARNING",
             "handlers": ["console"],
             "propagate": 0
         },
         "observer.observer": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": 0
+        },
+        "binary_system.system": {
             "level": "WARNING",
             "handlers": ["console"],
             "propagate": 0

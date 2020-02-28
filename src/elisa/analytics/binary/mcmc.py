@@ -209,7 +209,7 @@ class LightCurveFit(McMcFit):
         lhood = self.lhood(synthetic)
 
         self.eval_counter += 1
-        logger.info(f'eval counter = {self.eval_counter}, likelihood = {lhood}')
+        logger.debug(f'eval counter = {self.eval_counter}, likelihood = {lhood}')
         return lhood
 
     def fit(self, xs, ys, period, x0, discretization, nwalkers=None, nsteps=1000,
@@ -319,7 +319,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         lhood = self.lhood(synthetic)
 
         self.eval_counter += 1
-        logger.info(f'eval counter = {self.eval_counter}, likehood = {lhood}')
+        logger.debug(f'eval counter = {self.eval_counter}, likehood = {lhood}')
         return lhood
 
     def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, p0=None, yerr=None, burn_in=None, progress=False):
