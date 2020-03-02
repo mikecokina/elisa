@@ -34,6 +34,17 @@ class LCFit(object):
                            's__albedo', 'additional_light', 'phase_shift']
     ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
 
+    FIT_PARAMS_COMBINATIONS = {
+        'standard': ['p__mass', 's__mass', 'inclination', 'eccentricity', 'argument_of_periastron', 'period',
+                     'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
+                     's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
+                     's__albedo', 'additional_light', 'phase_shift'],
+        'community': ['mass_ratio', 'semi_major_axis', 'inclination', 'eccentricity', 'argument_of_periastron', 'period',
+                      'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
+                      's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
+                      's__albedo', 'additional_light', 'phase_shift']
+    }
+
     def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs, LCFit.ALL_KWARGS, LCFit)
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
