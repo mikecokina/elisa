@@ -2,6 +2,10 @@ from copy import copy
 from astropy import units as u
 
 from elisa.analytics.binary import params
+from elisa.logger import getPersistentLogger
+
+
+logger = getPersistentLogger('analytics.utils')
 
 
 def convert_dict_to_json_format(dictionary):
@@ -61,6 +65,7 @@ def transform_initial_values(x0):
             val['unit'] = params.PARAMS_UNITS_MAP[key]
     return x0
 
+
 def unify_unit_string_representation(dictionary):
     """
     transform user units to unified format
@@ -75,3 +80,17 @@ def unify_unit_string_representation(dictionary):
 
     return dictionary
 
+
+def prep_constrained_params(x0):
+    """
+    Function treats constrained parameters by assingning None to `value`
+    :param x0: dict;
+    :return: dict;
+    """
+    for key, val in x0.items():
+        if 'constraint' in val.keys():
+            if 'value' in val.keys():
+                logger.warning(f'Parameter `value` is meaningless and will not be used in case of contrained parameter '
+                               '{key}.')
+            val['value'] = None
+    return x0

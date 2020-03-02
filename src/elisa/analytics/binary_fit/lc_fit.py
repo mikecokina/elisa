@@ -67,6 +67,9 @@ class LCFit(object):
             setattr(self, kwarg, kwargs[kwarg])
 
     def fit(self, x0, morphology='detached', method='least_squares', discretization=3, **kwargs):
+        # treating a lack of `value` key in constrained parameters
+        x0 = autils.prep_constrained_params(x0)
+        # transforming initial parameters to base units
         x0 = autils.transform_initial_values(x0)
 
         param_names = {key: value['value'] for key, value in x0.items()}
