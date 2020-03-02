@@ -94,7 +94,7 @@ class Plot(object):
             lbl = 'corr_time = {0:.2f}'.format(kwargs['autocorr_time'][idx])
             ax[-1].scatter(np.arange(kwargs['autocorr_fns'].shape[0]), kwargs['autocorr_fns'][:, hash_map[label]],
                            label=lbl, s=0.2)
-            ax[-1].set_ylabel(f'{labels[idx]} correlation')
+            ax[-1].set_ylabel(f'{labels[idx]} correlation fn')
             ax[-1].legend()
 
         ax[-1].set_xlabel('N')

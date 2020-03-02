@@ -82,7 +82,7 @@ class McMcMixin(object):
         with open(fpath, "w") as f:
             f.write(json.dumps(data, indent=4))
         logger.info(f'MCMC chain, variable`s labels and normalization constants were stored in: {fpath}')
-        return fname[:-5]
+        return fpath[:-5]
 
     @staticmethod
     def restore_flat_chain(fname):

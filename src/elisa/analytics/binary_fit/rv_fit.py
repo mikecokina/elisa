@@ -39,6 +39,7 @@ class RVFit(object):
 
         # MCMC specific variables
         self.flat_chain = None
+        self.flat_chain_path = None
         self.normalization = None
         self.variable_labels = None
 
@@ -76,6 +77,7 @@ class RVFit(object):
         elif str(method).lower() in ['mcmc']:
             self.fit_params = mcmc_central_rv.fit(xs=x_data, ys=y_data, x0=x0, yerr=yerr, **kwargs)
             self.flat_chain = mcmc_central_rv.last_sampler.get_chain(flat=True)
+            self.flat_chain_path = mcmc_central_rv.last_fname
             self.normalization = mcmc_central_rv.last_normalization
             self.variable_labels = mcmc_central_rv.labels
 
