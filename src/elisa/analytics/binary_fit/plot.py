@@ -280,6 +280,17 @@ class LCPlot(object):
         traces(self.lc_fit, traces_to_plot=traces_to_plot, flat_chain=flat_chain, variable_labels=variable_labels,
                normalization=normalization, plot_units=plot_units, truths=truths)
 
+    def autocorrelation(self, correlations_to_plot=None, flat_chain=None, variable_labels=None):
+        """
+        Plots correlation function of defined parameters.
+
+        :param correlations_to_plot: List; names of variables which autocorrelation function will be displayed
+        :param flat_chain: numpy.array; flattened chain of all parameters
+        :param variable_labels: List; list of variables during a MCMC run, which is used
+                                      to identify columns in `flat_chain`
+        """
+        autocorrelation(self.lc_fit, correlations_to_plot, flat_chain, variable_labels)
+
 
 def corner(fit_instance, flat_chain=None, variable_labels=None, normalization=None, quantiles=None, truths=False,
            show_titles=True, plot_units=None, **kwargs):
@@ -424,10 +435,11 @@ def autocorrelation(fit_instance, correlations_to_plot=None, flat_chain=None, va
     variable_labels = fit_instance.variable_labels if variable_labels is None else variable_labels
 
     autocorr_fns = np.empty((flat_chain.shape[0], len(variable_labels)))
-    autocorr_time = np.empty((flat_chain.shape[0], len(variable_labels)))
+    autocorr_time = np.empty((flat_chain.shape[0]))
     for ii, lbl in enumerate(variable_labels):
         autocorr_fns[:, ii] = function_1d(flat_chain[:, ii])
-        autocorr_time[:, ii] = integrated_time(flat_chain[:, ii], quiet=True)
+        # autocorr_time[ii] = integrated_time(flat_chain[:, ii])
+        autocorr_time[ii] = integrated_time(flat_chain[:, ii], quiet=True)
 
     correlations_to_plot = variable_labels if correlations_to_plot is None else correlations_to_plot
 
