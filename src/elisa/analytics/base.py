@@ -4,6 +4,7 @@ from elisa.logger import getLogger
 from elisa import utils
 from elisa.analytics.transform import AnalyticsProperties
 from elisa.analytics.binary_fit import rv_fit, lc_fit
+from elisa.analytics.binary import bonds
 
 logger = getLogger('analytics.base')
 
@@ -63,6 +64,8 @@ class BinarySystemAnalyticsTask(AnalyticsTask):
     MANDATORY_KWARGS = []
     OPTIONAL_KWARGS = ['radial_velocities', 'light_curves']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
+
+    CONSTARAINT_OPERATORS = bonds.ALLOWED_CONSTRAINT_METHODS + bonds.ALLOWED_CONSTRAINT_CHARS
 
     def __init__(self, name=None, **kwargs):
         # initial validity checks
