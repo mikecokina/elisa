@@ -193,6 +193,15 @@ class LCPlot(object):
                 if y_axis_unit == u.mag else curve.yerr
         y_data = bsutils.normalize_light_curve(y_data, kind='global_maximum')
 
+        # extending observations to desired phase interval
+        for filter, curve in self.lc_fit.light_curves.items():
+            phases_extended = np.concatenate((x_data[filter] - 1.0, x_data[filter], x_data[filter] + 1.0))
+            phases_extended_filter = np.logical_and(start_phase < phases_extended,  phases_extended < stop_phase)
+            x_data[filter] = phases_extended[phases_extended_filter]
+
+            y_data[filter] = np.tile(y_data[filter], 3)[phases_extended_filter]
+            yerr[filter] = np.tile(yerr[filter], 3)[phases_extended_filter]
+
         plot_result_kwargs.update({
             'x_data': x_data,
             'y_data': y_data,
@@ -222,8 +231,11 @@ class LCPlot(object):
                                                    **system_kwargs)
         synthetic_curves = bsutils.normalize_light_curve(synthetic_curves, kind='global_maximum')
 
+        # interpolating synthetic curves to observations and its residuals
         interp_fn = {component: interp1d(synth_phases, synthetic_curves[component], kind='cubic')
                      for component in self.lc_fit.light_curves.keys()}
+        # synthetic_curves_interp = {component: interp_fn[component](x_data[component])
+        #                            for component in self.lc_fit.light_curves.keys()}
         residuals = {component: y_data[component] - interp_fn[component](x_data[component])
                      for component in self.lc_fit.light_curves.keys()}
 

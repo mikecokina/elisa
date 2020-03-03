@@ -769,8 +769,6 @@ def binary_lc_fit_plot(**kwargs):
     ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
     for fltr, curve in kwargs['lcs'].items():
-        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic')
-
         if kwargs['yerr'][fltr] is None:
             ax1.scatter(kwargs['x_data'][fltr], kwargs['y_data'][fltr], s=3, label=fltr + ' observed')
 
@@ -781,6 +779,8 @@ def binary_lc_fit_plot(**kwargs):
 
             ax2.errorbar(kwargs['x_data'][fltr], kwargs['residuals'][fltr], yerr=kwargs['yerr'][fltr],
                          linestyle='none', markersize=3, label=fltr + ' residual')
+
+        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic')
 
     ax2.axhline(0, ls='dashed', c='black', lw=0.5)
 
