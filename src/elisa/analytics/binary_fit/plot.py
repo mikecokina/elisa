@@ -234,7 +234,9 @@ class LCPlot(object):
         # interpolating synthetic curves to observations and its residuals
         interp_fn = {component: interp1d(synth_phases, synthetic_curves[component], kind='cubic')
                      for component in self.lc_fit.light_curves.keys()}
-        residuals = {component: y_data[component] - interp_fn[component](x_data[component])
+        residuals = {component: y_data[component] - np.mean(y_data[component]) -
+                                interp_fn[component](x_data[component]) +
+                                np.mean(interp_fn[component](x_data[component]))
                      for component in self.lc_fit.light_curves.keys()}
 
         plot_result_kwargs.update({
