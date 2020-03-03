@@ -65,7 +65,7 @@ class BinarySystemAnalyticsTask(AnalyticsTask):
     OPTIONAL_KWARGS = ['radial_velocities', 'light_curves']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    CONSTARAINT_OPERATORS = bonds.ALLOWED_CONSTRAINT_METHODS + bonds.ALLOWED_CONSTRAINT_CHARS
+    CONSTRAINT_OPERATORS = bonds.ALLOWED_CONSTRAINT_METHODS + bonds.ALLOWED_CONSTRAINT_CHARS
 
     def __init__(self, name=None, **kwargs):
         # initial validity checks
