@@ -68,13 +68,17 @@ class LCFit(object):
 
     def fit(self, x0, morphology='detached', method='least_squares', discretization=3, **kwargs):
         """
+        Function solves an inverse task of inferring parameters of the eclipsing binary from the observed light curve.
 
-        :param x0:
-        :param morphology:
-        :param method:
-        :param discretization:
-        :param kwargs:
-        :return:
+        :param x0: Dict; initial state (metadata included) {param_name: {`value`: value, `unit`: astropy.unit, ...}, ...}
+        :param morphology: str; `detached` (default) or `over-contact`
+        :param method: str; 'least_squares` (default) or `mcmc`
+        :param discretization: Union[int, float]; discretization factor of the primary component, default value: 3
+        :param kwargs: dict; method-dependent
+        :**kwargs options for least_squares**: passes arguments of scipy.optimize.least_squares method except
+                                               `fun`, `x0` and `bounds`
+        :**kwargs options for mcmc**:
+        :return: dict; resulting parameters {param_name: {`value`: value, `unit`: astropy.unit, ...}, ...}
         """
         # treating a lack of `value` key in constrained parameters
         x0 = autils.prep_constrained_params(x0)
@@ -88,7 +92,6 @@ class LCFit(object):
         if x0['period']['fixed'] is not True:
             logger.warning('Orbital period is expected to be known apriori the fit and thus it is considered fixed')
         period_dict = x0.pop('period')
-        # period_dict = x0['period']
         self.period = period_dict['value']
 
         x_data, y_data, yerr = dict(), dict(), dict()

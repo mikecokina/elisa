@@ -56,8 +56,10 @@ class RVFit(object):
         
         :param x0: Dict; starting values of the fit
         :param method: string;
-        :param kwargs: Dict;
-        :return: dict: fit_params
+        :param kwargs: dict; method-dependent
+        :**kwargs options for least_squares**: passes arguments of scipy.optimize.least_squares method except
+                                               `fun`, `x0` and `bounds`
+        :return: dict; fit_params
         """
         # treating a lack of `value` key in constrained parameters
         x0 = autils.prep_constrained_params(x0)

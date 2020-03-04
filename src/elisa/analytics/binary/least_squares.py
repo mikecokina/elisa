@@ -68,8 +68,7 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
 
         return residuals
 
-    def fit(self, xs, ys, period, x0, discretization, yerr=None, xtol=1e-8, ftol=1e-8, max_nfev=None,
-            diff_step=None, f_scale=1.0, interp_treshold=None):
+    def fit(self, xs, ys, period, x0, discretization, yerr=None, interp_treshold=None, **kwargs):
         """
         Fit method using non-linear least squares.
         Based on https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
@@ -80,18 +79,9 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         :param period: float; system period
         :param x0: Dict[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
-        :param xtol: float; relative tolerance to consider solution
         :param yerr: Union[numpy.array, float]; errors for each point of observation
-        :param max_nfev: int; maximal iteration
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param diff_step: Union[None, array];
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param f_scale: float; optional
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param ftol: float;
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param xtol: float; tolerance of error to consider hitted solution as exact
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param kwargs: optional arguments for least_squares function (see documentation for
+                       scipy.optimize.least_squares method)
         :return: Dict;
         """
         passband = list(ys.keys())
@@ -120,8 +110,15 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
 
         # evaluate least squares from scipy
         logger.info("fitting started...")
-        result = least_squares(self.model_to_fit, x0_vector, bounds=(0, 1), max_nfev=max_nfev, xtol=xtol,
-                               ftol=ftol, diff_step=diff_step, f_scale=f_scale)
+        result = least_squares(self.model_to_fit, x0_vector, jac=kwargs.get('jac', '2-point'), bounds=(0, 1),
+                               method=kwargs.get('method', 'trf'), ftol=kwargs.get('ftol', 1e-8),
+                               xtol=kwargs.get('xtol', 1e-8), gtol=kwargs.get('gtol', 1e-8),
+                               x_scale=kwargs.get('x_scale', 1.0), loss=kwargs.get('loss', 'linear'),
+                               f_scale=kwargs.get('f_scale', 1.0), diff_step=kwargs.get('diff_step', None),
+                               tr_solver=kwargs.get('tr_solver', None), tr_options=kwargs.get('tr_options', {}),
+                               jac_sparsity=kwargs.get('jac_sparsity', None), max_nfev=kwargs.get('max_nfev', None),
+                               verbose=kwargs.get('verbose', 2), args=kwargs.get('args', ()),
+                               kwargs=kwargs.get('kwargs', {}))
         logger.info("fitting finished")
 
         # put all together `floats`, `fixed` and `constraints`
@@ -129,7 +126,6 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         result_dict = dict(zip(labels, result))
         result_dict.update(self.fixed)
         result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
-        # result = [{"param": key, "value": val} for key, val in result_dict.items()]
 
         # compute r_squared and append to result
         r_squared_args = self.xs, self.ys, period, self.passband, discretization, self.morphology, self.xs_reverser
@@ -174,8 +170,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         return np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                          / self.yerrs[comp], 2)) for comp in synthetic.keys()])
 
-    def fit(self, xs, ys, x0, yerr=None, xtol=1e-8, ftol=1e-8, max_nfev=None, diff_step=None,
-            f_scale=1.0, on_normalized=False):
+    def fit(self, xs, ys, x0, yerr=None, on_normalized=False, **kwargs):
         """
         Method to provide fitting of radial velocities curves.
         It can handle standadrd physical parameters `M_1`, `M_2` or astro community parameters `asini` and `q`.
@@ -184,19 +179,11 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
 
         :param on_normalized: bool; if True, fitting is provided on normalized radial velocities curves
         :param xs: Iterable[float];
-        :param ys: Dict;
+        :param ys: Dict; {'primary': np.array(), 'secondary': np.array()}
         :param x0: Dict; initial state (metadata included)
         :param yerr: Union[numpy.array, float]; errors for each point of observation
-        :param max_nfev: int; maximal iteration
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param diff_step: Union[None, array];
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param f_scale: float; optional
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param ftol: float;
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        :param xtol: float; tolerance of error to consider hitted solution as exact
-               https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
+        :param kwargs: optional arguments for least_squares function (see documentation for
+                       scipy.optimize.least_squares method)
         :return: Dict;
         """
         x0 = params.rv_initial_x0_validity_check(x0)
@@ -209,12 +196,17 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         self.labels, self.observer = labels, observer
         self.fixed, self.constraint = fixed, constraint
 
-        # self.xs, x0 = models.rvt_layer_resolver(self.xs, x0)
-
         logger.info("fitting radial velocity light curve...")
         func = self.central_rv_model_to_fit
-        result = least_squares(fun=func, x0=x0_vector, bounds=(0, 1), max_nfev=max_nfev,
-                               xtol=xtol, ftol=ftol, diff_step=diff_step, f_scale=f_scale)
+        result = least_squares(func, x0_vector, jac=kwargs.get('jac', '2-point'), bounds=(0, 1),
+                               method=kwargs.get('method', 'trf'), ftol=kwargs.get('ftol', 1e-8),
+                               xtol=kwargs.get('xtol', 1e-8), gtol=kwargs.get('gtol', 1e-8),
+                               x_scale=kwargs.get('x_scale', 1.0), loss=kwargs.get('loss', 'linear'),
+                               f_scale=kwargs.get('f_scale', 1.0), diff_step=kwargs.get('diff_step', None),
+                               tr_solver=kwargs.get('tr_solver', None), tr_options=kwargs.get('tr_options', {}),
+                               jac_sparsity=kwargs.get('jac_sparsity', None), max_nfev=kwargs.get('max_nfev', None),
+                               verbose=kwargs.get('verbose', 0), args=kwargs.get('args', ()),
+                               kwargs=kwargs.get('kwargs', {}))
         logger.info("fitting finished...")
 
         result = params.param_renormalizer(result.x, labels)
