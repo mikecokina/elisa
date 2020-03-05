@@ -59,6 +59,18 @@ class RVFit(object):
         :param kwargs: dict; method-dependent
         :**kwargs options for least_squares**: passes arguments of scipy.optimize.least_squares method except
                                                `fun`, `x0` and `bounds`
+        :**kwargs options for mcmc**:
+            * ** nwalkers (int) ** * - The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
+            * ** nsteps (int) ** * - The number of steps to run. Default is 1000.
+            * ** initial_state (numpy.ndarray) ** * - The initial state or position vector made of free parameters with
+                    shape (nwalkers, number of free parameters). The order of the parameters is specified by their order
+                    in `x0`. Be aware that initial states should be supplied in normalized form (0, 1). For example, 0
+                    means value of the parameter at `min` and 1.0 at `max` value in `x0`. By default, they are generated
+                    randomly uniform distribution.
+            * ** burn_in ** * - The number of steps to run to achieve equilibrium where useful sampling can start.
+                    Default value is nsteps / 10.
+            * ** percentiles ** * - List of percentiles used to create error results and confidence interval from MCMC
+                    chain. Default value is [16, 50, 84] (1-sigma confidence interval)
         :return: dict; fit_params
         """
         # treating a lack of `value` key in constrained parameters
@@ -90,17 +102,18 @@ class RVFit(object):
 
         return self.fit_params
 
-    def load_chain(self, filename):
+    def load_chain(self, filename, discard=0):
         """
         Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
 
+        :param discard: int; Discard the first discard steps in the chain as burn-in. (default: 0)
         :param filename: str; full name of the json file
         :return: Tuple[numpy.ndarray, list, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
                                                   {var_name: (min_boundary, max_boundary), ...} dictionary of
                                                   boundaries defined by user for each variable needed
                                                   to reconstruct real values from normalized `flat_chain` array
         """
-        return shared.load_mcmc_chain(self, filename)
+        return shared.load_mcmc_chain(self, filename, discard=discard)
 
     def store_parameters(self, parameters=None, filename=None):
         """

@@ -45,7 +45,6 @@ class McMcMixin(object):
                                   percentile for right side error estimation]
         :return: Dict;
         """
-        # flat_chain = sampler.get_chain(discard=discard, thin=thin, flat=True)
         percentiles = [16, 50, 84] if percentiles is None else percentiles
         result = dict()
         for idx, key in enumerate(labels):
@@ -160,12 +159,10 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
         return result_dict
 
     def _fit(self, x0, labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False):
-
-        p0 = p0 if p0 is not None else np.random.uniform(0.0, 1.0, (nwalkers, ndim))
-        # assign intial value
-        p0[0] = x0
+        p0 = self.generate_initial_states(p0, labels, nwalkers, ndim, x0_vector=x0)
 
         lnf = self.ln_probability
+        logger.info('starting mcmc')
         if config.NUMBER_OF_MCMC_PROCESSES > 1:
             with Pool(processes=config.NUMBER_OF_MCMC_PROCESSES) as pool:
                 logger.info('starting parallel mcmc')
@@ -181,6 +178,30 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
         self.last_fname = self._store_flat_chain(sampler.get_chain(flat=True), labels, self.last_normalization)
 
         return sampler
+
+    def generate_initial_states(self, initial_state, labels, nwalkers, ndim, x0_vector=None):
+        """
+        Function transforms user initial state to normalized format suitable for our mcmc chain, where all vales are in
+        interval (0, 1).
+
+        :param initial_state: numpy.ndarray; initial state matrix before normalization
+        :param labels: list; list of variable names
+        :param nwalkers: int;
+        :param ndim: int;
+        :param x0_vector: np.array; initial stat based on the firs value
+        :return: initial_state: numpy.ndarray; initial state matrix after normalization
+        """
+        if initial_state is None:
+            retval = np.random.uniform(0.0, 1.0, (nwalkers, ndim))
+            retval[0] = x0_vector if x0_vector is not None else retval[0]
+            return retval
+        else:
+            if initial_state.shape != (nwalkers, ndim):
+                raise ValueError(f'your initial values for sampler do not have the correct shape ({nwalkers}, {ndim}). '
+                                 f'Shape of your initial state matrix is {initial_state.shape}')
+            initial_state[initial_state < 0] = 0.0
+            initial_state[initial_state > 1] = 1.0
+            return initial_state
 
 
 class LightCurveFit(McMcFit):
@@ -213,7 +234,7 @@ class LightCurveFit(McMcFit):
         return lhood
 
     def fit(self, xs, ys, period, x0, discretization, nwalkers=None, nsteps=1000,
-            p0=None, yerr=None, burn_in=None, quantiles=None, discard=False, interp_treshold=None, progress=False):
+            initial_state=None, yerr=None, burn_in=None, percentiles=None, interp_treshold=None, progress=False):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
@@ -230,14 +251,14 @@ class LightCurveFit(McMcFit):
         :param period: float; system period
         :param x0: List[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
-        :param nwalkers: int; number of walkers
-        :param nsteps: int; number of steps in mcmc eval
-        :param p0: numpy.array; inital priors for mcmc
+        :param interp_treshold: int; data binning treshold
+        :param nwalkers: int; The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
+        :param nsteps: int; The number of steps to run.
+        :param initial_state: numpy.array; initial priors for mcmc
         :param yerr: Union[numpy.array, float]; errors for each point of observation
         :param burn_in: int; number of steps for mcmc to explore parameters
-        :param quantiles: List[int];
-        :param discard: Union[int, bool]; how many values of result discard when looking for solution
-        :param interp_treshold: int; data binning treshold
+        :param percentiles: List; [percentile for left side error estimation, percentile of the centre,
+                                   percentile for right side error estimation]
         :return: emcee.EnsembleSampler; sampler instance
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
@@ -263,11 +284,11 @@ class LightCurveFit(McMcFit):
         self.fit_xs = np.linspace(np.min(self.xs) - diff, np.max(self.xs) + diff, num=interp_treshold + 2) \
             if np.shape(self.xs)[0] > interp_treshold else self.xs
 
-        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, p0, progress=progress)
+        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, initial_state, progress=progress)
 
         # extracting fit results from MCMC sampler
         flat_chain = sampler.get_chain(flat=True)
-        result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
+        result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels, percentiles=percentiles)
         result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
 
         result_dict = self.eval_constraints_after_mcmc(result_dict, self.constraint)
@@ -322,7 +343,8 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         logger.debug(f'eval counter = {self.eval_counter}, likehood = {lhood}')
         return lhood
 
-    def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, p0=None, yerr=None, burn_in=None, progress=False):
+    def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, initial_state=None, yerr=None, burn_in=None, percentiles=None,
+            progress=False):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
@@ -351,12 +373,14 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         :param xs: Iterable[float];
         :param ys: Dict;
         :param x0: List[Dict]; initial state (metadata included)
-        :param nwalkers: int; number of walkers
-        :param nsteps: int; number of steps in mcmc eval
-        :param p0: numpy.array; inital priors for mcmc
+        :param nwalkers: int; The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
+        :param nsteps: int; The number of steps to run.
+        :param initial_state: numpy.array; initial priors for mcmc
         :param yerr: Union[numpy.array, float]; errors for each point of observation
         :param burn_in: int; numer of steps for mcmc to explore parameters
-        :return: emcee.EnsembleSampler; sampler instancea
+        :param percentiles: List[int]; [percentile for left side error estimation, percentile of the centre,
+                                        percentile for right side error estimation]
+        :return: dict; fit results
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
 
@@ -374,11 +398,11 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         self.labels, self.observer = labels, observer
         self.fixed, self.constraint = fixed, constrained
 
-        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, p0, progress=progress)
+        sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, initial_state, progress=progress)
 
         # extracting fit results from MCMC sampler
         flat_chain = sampler.get_chain(flat=True)
-        result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels)
+        result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels, percentiles=percentiles)
         result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
 
         result_dict = self.eval_constraints_after_mcmc(result_dict, self.constraint)

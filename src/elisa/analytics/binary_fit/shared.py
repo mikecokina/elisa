@@ -4,10 +4,10 @@ from elisa.analytics.binary.mcmc import McMcMixin
 from elisa.analytics.binary import params
 
 
-def load_mcmc_chain(fit_instance, filename):
+def load_mcmc_chain(fit_instance, filename, discard=0):
     filename = filename[:-5] if filename[-5:] == '.json' else filename
     data = McMcMixin.restore_flat_chain(fname=filename)
-    fit_instance.flat_chain = np.array(data['flat_chain'])
+    fit_instance.flat_chain = np.array(data['flat_chain'])[discard:, :]
     fit_instance.variable_labels = data['labels']
     fit_instance.normalization = data['normalization']
 

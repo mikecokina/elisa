@@ -73,13 +73,13 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         Fit method using non-linear least squares.
         Based on https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
 
-        :param interp_treshold: int; data binning treshold
         :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
         :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
         :param period: float; system period
         :param x0: Dict[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
         :param yerr: Union[numpy.array, float]; errors for each point of observation
+        :param interp_treshold: int; data binning treshold
         :param kwargs: optional arguments for least_squares function (see documentation for
                        scipy.optimize.least_squares method)
         :return: Dict;
