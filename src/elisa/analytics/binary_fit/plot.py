@@ -168,16 +168,16 @@ class LCPlot(object):
 
         # converting to phase space
         x_data, y_data, yerr = dict(), dict(), dict()
-        for filter, curve in self.lc_fit.light_curves.items():
-            x_data[filter] = t_layer.adjust_phases(phases=curve.x_data, centre=0.0) \
+        for _filter, curve in self.lc_fit.light_curves.items():
+            x_data[_filter] = t_layer.adjust_phases(phases=curve.x_data, centre=0.0) \
                 if curve.x_unit is u.dimensionless_unscaled else \
                 t_layer.jd_to_phase(fit_params['primary_minimum_time']['value'], fit_params['period']['value'],
                                     curve.x_data, centre=0.0)
 
-            y_data[filter] = utils.flux_to_magnitude(curve.y_data, curve.yerr) if y_axis_unit == u.mag \
+            y_data[_filter] = utils.flux_to_magnitude(curve.y_data, curve.yerr) if y_axis_unit == u.mag \
                 else curve.y_data
 
-            yerr[filter] = utils.flux_error_to_magnitude_error(curve.yerr, curve.reference_magnitude) \
+            yerr[_filter] = utils.flux_error_to_magnitude_error(curve.yerr, curve.reference_magnitude) \
                 if y_axis_unit == u.mag else curve.yerr
         y_data = bsutils.normalize_light_curve(y_data, kind='global_maximum')
 
@@ -336,8 +336,8 @@ def corner(fit_instance, flat_chain=None, variable_labels=None, normalization=No
     MCMCPlot.corner(**corner_plot_kwargs)
 
 
-def traces(fit_instance, traces_to_plot=None, flat_chain=None, variable_labels=None, normalization=None, plot_units=None,
-               truths=False):
+def traces(fit_instance, traces_to_plot=None, flat_chain=None, variable_labels=None,
+           normalization=None, plot_units=None, truths=False):
     """
     Plots traces of defined parameters.
 

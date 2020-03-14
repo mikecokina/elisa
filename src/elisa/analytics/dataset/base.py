@@ -1,6 +1,5 @@
 import numpy as np
 import astropy.units as u
-from numpy import loadtxt
 
 from elisa.analytics.dataset.transform import RVDataProperties, LCDataProperties
 from elisa.logger import getLogger
