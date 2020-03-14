@@ -39,7 +39,7 @@ class Plot(object):
     @staticmethod
     def paramtrace(**kwargs):
         """
-        Show value of parameter in mcmc chain.
+        Show traces of mcmc chain.
         """
         hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) if label in
                     kwargs['traces_to_plot']}
@@ -50,8 +50,10 @@ class Plot(object):
         gs = gridspec.GridSpec(height, 1)
         ax = []
         labels = [params.PARAMS_KEY_TEX_MAP[label] for label in kwargs['traces_to_plot']]
-        for idx, label in enumerate(kwargs['traces_to_plot']):
-            ax.append(fig.add_subplot(gs[idx]))
+        for idx, label in enumerate(kwargs['variable_labels']):
+            if label not in kwargs['traces_to_plot']:
+                continue
+            ax.append(fig.add_subplot(gs[idx])) if idx == 0 else ax.append(fig.add_subplot(gs[idx], sharex=ax[0]))
             ax[-1].scatter(np.arange(kwargs['flat_chain'].shape[0]), kwargs['flat_chain'][:, hash_map[label]],
                            label=labels[idx], s=0.2)
             ax[-1].legend(loc=1)
@@ -69,4 +71,34 @@ class Plot(object):
         plt.subplots_adjust(right=1.0, top=1.0, hspace=0)
         plt.show()
 
-    trace = paramtrace
+    @staticmethod
+    def autocorr(**kwargs):
+        """
+        Show autocorrelation function.
+        """
+        hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) if label in
+                    kwargs['correlations_to_plot']}
+
+        height = len(kwargs['correlations_to_plot'])
+        fig = plt.figure(figsize=(8, 2.5 * height))
+
+        gs = gridspec.GridSpec(height, 1)
+        ax = []
+        labels = [params.PARAMS_KEY_TEX_MAP[label] for label in kwargs['correlations_to_plot']]
+        for idx, label in enumerate(kwargs['variable_labels']):
+            if label not in kwargs['correlations_to_plot']:
+                continue
+
+            ax.append(fig.add_subplot(gs[idx])) if idx == 0 else ax.append(fig.add_subplot(gs[idx], sharex=ax[0]))
+
+            lbl = 'corr_time = {0:.2f}'.format(kwargs['autocorr_time'][idx])
+            ax[-1].scatter(np.arange(kwargs['autocorr_fns'].shape[0]), kwargs['autocorr_fns'][:, hash_map[label]],
+                           label=lbl, s=0.2)
+            ax[-1].set_ylabel(f'{labels[idx]} correlation fn')
+            ax[-1].legend()
+
+        ax[-1].set_xlabel('N')
+
+        plt.subplots_adjust(right=1.0, top=1.0, hspace=0)
+        plt.show()
+

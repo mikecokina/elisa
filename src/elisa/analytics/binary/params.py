@@ -361,6 +361,8 @@ def lc_initial_x0_validity_check(x0, morphology):
 
     for key, val in x0.items():
         _min, _max = val.get('min', NORMALIZATION_MAP[key][0]), val.get('max', NORMALIZATION_MAP[key][1])
+        if 'constraint' in val.keys():
+            continue
         if not (_min <= val['value'] <= _max):
             msg = f'Initial parameters are not valid. Invalid bounds: {_min} <= {val["param"]} <= {_max}'
             raise error.InitialParamsError(msg)

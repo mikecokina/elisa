@@ -2,6 +2,7 @@ import numpy as np
 from astropy import units as u
 from scipy.interpolate import interp1d
 from copy import copy, deepcopy
+from emcee.autocorr import integrated_time, function_1d
 
 from elisa.binary_system import t_layer
 from elisa import units as eu
@@ -136,6 +137,17 @@ class RVPlot(object):
         traces(self.rv_fit, traces_to_plot=traces_to_plot, flat_chain=flat_chain, variable_labels=variable_labels,
                normalization=normalization, plot_units=plot_units, truths=truths)
 
+    def autocorrelation(self, correlations_to_plot=None, flat_chain=None, variable_labels=None):
+        """
+        Plots correlation function of defined parameters.
+
+        :param correlations_to_plot: List; names of variables which autocorrelation function will be displayed
+        :param flat_chain: numpy.array; flattened chain of all parameters
+        :param variable_labels: List; list of variables during a MCMC run, which is used
+                                      to identify columns in `flat_chain`
+        """
+        autocorrelation(self.rv_fit, correlations_to_plot, flat_chain, variable_labels)
+
 
 class LCPlot(object):
     """
@@ -181,6 +193,15 @@ class LCPlot(object):
                 if y_axis_unit == u.mag else curve.yerr
         y_data = bsutils.normalize_light_curve(y_data, kind='global_maximum')
 
+        # extending observations to desired phase interval
+        for filter, curve in self.lc_fit.light_curves.items():
+            phases_extended = np.concatenate((x_data[filter] - 1.0, x_data[filter], x_data[filter] + 1.0))
+            phases_extended_filter = np.logical_and(start_phase < phases_extended,  phases_extended < stop_phase)
+            x_data[filter] = phases_extended[phases_extended_filter]
+
+            y_data[filter] = np.tile(y_data[filter], 3)[phases_extended_filter]
+            yerr[filter] = np.tile(yerr[filter], 3)[phases_extended_filter]
+
         plot_result_kwargs.update({
             'x_data': x_data,
             'y_data': y_data,
@@ -202,7 +223,7 @@ class LCPlot(object):
         system = models.prepare_binary(period=period, discretization=discretization, **system_kwargs)
         observer = Observer(passband=self.lc_fit.light_curves.keys(), system=system)
         synthetic_curves = models.synthetic_binary(synth_phases,
-                                                   self.lc_fit.period,
+                                                   period,
                                                    discretization=discretization,
                                                    morphology=None,
                                                    observer=observer,
@@ -210,9 +231,12 @@ class LCPlot(object):
                                                    **system_kwargs)
         synthetic_curves = bsutils.normalize_light_curve(synthetic_curves, kind='global_maximum')
 
+        # interpolating synthetic curves to observations and its residuals
         interp_fn = {component: interp1d(synth_phases, synthetic_curves[component], kind='cubic')
                      for component in self.lc_fit.light_curves.keys()}
-        residuals = {component: y_data[component] - interp_fn[component](x_data[component])
+        residuals = {component: y_data[component] - np.mean(y_data[component]) -
+                                interp_fn[component](x_data[component]) +
+                                np.mean(interp_fn[component](x_data[component]))
                      for component in self.lc_fit.light_curves.keys()}
 
         plot_result_kwargs.update({
@@ -268,6 +292,17 @@ class LCPlot(object):
         traces(self.lc_fit, traces_to_plot=traces_to_plot, flat_chain=flat_chain, variable_labels=variable_labels,
                normalization=normalization, plot_units=plot_units, truths=truths)
 
+    def autocorrelation(self, correlations_to_plot=None, flat_chain=None, variable_labels=None):
+        """
+        Plots correlation function of defined parameters.
+
+        :param correlations_to_plot: List; names of variables which autocorrelation function will be displayed
+        :param flat_chain: numpy.array; flattened chain of all parameters
+        :param variable_labels: List; list of variables during a MCMC run, which is used
+                                      to identify columns in `flat_chain`
+        """
+        autocorrelation(self.lc_fit, correlations_to_plot, flat_chain, variable_labels)
+
 
 def corner(fit_instance, flat_chain=None, variable_labels=None, normalization=None, quantiles=None, truths=False,
            show_titles=True, plot_units=None, **kwargs):
@@ -300,8 +335,7 @@ def corner(fit_instance, flat_chain=None, variable_labels=None, normalization=No
 
     corner_plot_kwargs = dict()
     if flat_chain is None:
-        raise ValueError('You can use corner plot only after running mcmc method or the flat chain was'
-                         ' not found.')
+        raise ValueError('You can use corner plot after running mcmc method or after loading the flat chain.')
 
     labels = [params.PARAMS_KEY_TEX_MAP[label] for label in variable_labels]
     quantiles = [0.16, 0.5, 0.84] if quantiles is None else quantiles
@@ -390,3 +424,42 @@ def traces(fit_instance, traces_to_plot=None, flat_chain=None, variable_labels=N
     })
 
     MCMCPlot.paramtrace(**traces_plot_kwargs)
+
+
+def autocorrelation(fit_instance, correlations_to_plot=None, flat_chain=None, variable_labels=None):
+    """
+    Plots correlation function of defined parameters.
+
+    :param fit_instance: Union[elisa.analytics.binary_fit.lc_fit.LCFit, elisa.analytics.binary_fit.rv_fit.RVFit];
+    :param correlations_to_plot: List; names of variables which autocorrelation function will be displayed
+    :param flat_chain: numpy.array; flattened chain of all parameters
+    :param variable_labels: List; list of variables during a MCMC run, which is used
+                                  to identify columns in `flat_chain`
+    """
+    autocorr_plot_kwargs = dict()
+
+    flat_chain = copy(fit_instance.flat_chain) if flat_chain is None else copy(flat_chain)
+
+    if flat_chain is None:
+        raise ValueError('You can use trace plot only in case of mcmc method or for some reason the flat chain was '
+                         'not found.')
+
+    variable_labels = fit_instance.variable_labels if variable_labels is None else variable_labels
+
+    autocorr_fns = np.empty((flat_chain.shape[0], len(variable_labels)))
+    autocorr_time = np.empty((flat_chain.shape[0]))
+    for ii, lbl in enumerate(variable_labels):
+        autocorr_fns[:, ii] = function_1d(flat_chain[:, ii])
+        # autocorr_time[ii] = integrated_time(flat_chain[:, ii])
+        autocorr_time[ii] = integrated_time(flat_chain[:, ii], quiet=True)
+
+    correlations_to_plot = variable_labels if correlations_to_plot is None else correlations_to_plot
+
+    autocorr_plot_kwargs.update({
+        'correlations_to_plot': correlations_to_plot,
+        'autocorr_fns': autocorr_fns,
+        'autocorr_time': autocorr_time,
+        'variable_labels': variable_labels,
+    })
+
+    MCMCPlot.autocorr(**autocorr_plot_kwargs)

@@ -21,6 +21,13 @@ class RVFit(object):
     OPTIONAL_FIT_PARAMS = ['period', 'primary_minimum_time', 'p__mass', 's__mass', 'inclination', 'asini', 'mass_ratio']
     ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
 
+    FIT_PARAMS_COMBINATIONS = {
+        'standard': ['p__mass', 's__mass', 'inclination', 'eccentricity', 'argument_of_periastron', 'gamma', 'period',
+                     'primary_minimum_time'],
+        'community': ['mass_ratio', 'asini', 'eccentricity', 'argument_of_periastron', 'gamma', 'period',
+                      'primary_minimum_time']
+    }
+
     def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs, RVFit.ALL_KWARGS, RVFit)
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
@@ -32,6 +39,7 @@ class RVFit(object):
 
         # MCMC specific variables
         self.flat_chain = None
+        self.flat_chain_path = None
         self.normalization = None
         self.variable_labels = None
 
@@ -48,9 +56,26 @@ class RVFit(object):
         
         :param x0: Dict; starting values of the fit
         :param method: string;
-        :param kwargs: Dict;
-        :return: dict: fit_params
+        :param kwargs: dict; method-dependent
+        :**kwargs options for least_squares**: passes arguments of scipy.optimize.least_squares method except
+                                               `fun`, `x0` and `bounds`
+        :**kwargs options for mcmc**:
+            * ** nwalkers (int) ** * - The number of walkers in the ensemble. Minimum is 2 * number of free parameters.
+            * ** nsteps (int) ** * - The number of steps to run. Default is 1000.
+            * ** initial_state (numpy.ndarray) ** * - The initial state or position vector made of free parameters with
+                    shape (nwalkers, number of free parameters). The order of the parameters is specified by their order
+                    in `x0`. Be aware that initial states should be supplied in normalized form (0, 1). For example, 0
+                    means value of the parameter at `min` and 1.0 at `max` value in `x0`. By default, they are generated
+                    randomly uniform distribution.
+            * ** burn_in ** * - The number of steps to run to achieve equilibrium where useful sampling can start.
+                    Default value is nsteps / 10.
+            * ** percentiles ** * - List of percentiles used to create error results and confidence interval from MCMC
+                    chain. Default value is [16, 50, 84] (1-sigma confidence interval)
+        :return: dict; fit_params
         """
+        # treating a lack of `value` key in constrained parameters
+        x0 = autils.prep_constrained_params(x0)
+        # transforming initial parameters to base units
         x0 = autils.transform_initial_values(x0)
 
         param_names = {key: value['value'] for key, value in x0.items()}
@@ -69,22 +94,26 @@ class RVFit(object):
         elif str(method).lower() in ['mcmc']:
             self.fit_params = mcmc_central_rv.fit(xs=x_data, ys=y_data, x0=x0, yerr=yerr, **kwargs)
             self.flat_chain = mcmc_central_rv.last_sampler.get_chain(flat=True)
+            self.flat_chain_path = mcmc_central_rv.last_fname
             self.normalization = mcmc_central_rv.last_normalization
             self.variable_labels = mcmc_central_rv.labels
 
+        logger.info('Fitting and processing of results finished successfully.')
+
         return self.fit_params
 
-    def load_chain(self, filename):
+    def load_chain(self, filename, discard=0):
         """
         Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
 
+        :param discard: int; Discard the first discard steps in the chain as burn-in. (default: 0)
         :param filename: str; full name of the json file
         :return: Tuple[numpy.ndarray, list, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
                                                   {var_name: (min_boundary, max_boundary), ...} dictionary of
                                                   boundaries defined by user for each variable needed
                                                   to reconstruct real values from normalized `flat_chain` array
         """
-        return shared.load_mcmc_chain(self, filename)
+        return shared.load_mcmc_chain(self, filename, discard=discard)
 
     def store_parameters(self, parameters=None, filename=None):
         """
@@ -96,6 +125,8 @@ class RVFit(object):
         """
         parameters = copy(self.fit_params) if parameters is None else parameters
         parameters = self.fit_params if parameters is None else parameters
+
+        parameters = autils.unify_unit_string_representation(parameters)
 
         json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as f:

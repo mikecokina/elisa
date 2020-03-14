@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def normalize_light_curve(lc, kind='global_maximum'):
+def normalize_light_curve(lc, kind='global_maximum', top_fraction_to_average=0.1):
     """
     Function normalizes light by a method defined by `kind` argument.
 
@@ -20,10 +20,13 @@ def normalize_light_curve(lc, kind='global_maximum'):
     elif kind == valid_arguments[1]:  # curves are normalized to their global average
         c = np.mean(list(lc.values()))
         coeff = {key: c for key, val in lc.items()}
-    elif kind == valid_arguments[2]:  # each curve is normalized to its own maximum
-        coeff = {key: np.max(val) for key, val in lc.items()}
+    elif kind == valid_arguments[2]:  # each curve is normalized to its own average of the top fraction
+        n = {key: int(top_fraction_to_average * len(val)) for key, val in lc.items()}
+        coeff = {key: np.average(val[np.argsort(val)[-n[key]:]]) for key, val in lc.items()}
     elif kind == valid_arguments[3]:  # curves are normalized to their global maximum
-        c = np.max(list(lc.values()))
+        vals = np.array(list(lc.values())).flatten()
+        n = int(top_fraction_to_average * len(vals) / len(lc))
+        c = np.average(vals[np.argsort(vals)[-n:]])
         coeff = {key: c for key, val in lc.items()}
     else:
         raise ValueError(f'Argument `kind` = {kind} is not one of the valid arguments {valid_arguments}')
