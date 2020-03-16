@@ -33,6 +33,19 @@ from ...binary_system import (
 logger = getLogger('binary_system.curves.lc')
 
 
+def _onpos_params(on_pos, **kwargs):
+    """
+    Helper function.
+
+    :param on_pos: elisa.binary_system.container.OrbitalPositionContainer;
+    :return: Tuple;
+    """
+    _normal_radiance, _ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
+
+    _coverage, _cosines = calculate_coverage_with_cosines(on_pos, on_pos.semi_major_axis, in_eclipse=True)
+    return _normal_radiance, _ld_cfs, _coverage, _cosines
+
+
 def _update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
     """
     Function decides how to update surface properties with respect to the degree of change
@@ -212,7 +225,7 @@ def _resolve_ecc_approximation_method(binary, phases, position_method, try_to_fi
                                                                    all_orbital_pos_arr.shape[0], rel_d_radii)
         approx_three = not (~new_geometry_mask).all()
         if approx_three:
-            return 'three', lambda: _integrate_eccentric_lc_appx_three(binary, phases, orbital_supplements,
+            return 'three', lambda: _integrate_eccentric_lc_appx_three(binary, phases, all_orbital_pos,
                                                                        new_geometry_mask, **kwargs)
 
     # APPX ONE *********************************************************************************************************
@@ -309,7 +322,8 @@ def compute_eccentric_lightcurve(binary, **kwargs):
         'one': 'one half of the points on LC on the one side of the apsidal line will be interpolated',
         'two': 'geometry of the stellar surface on one half of the apsidal '
                'line will be copied from their symmetrical counterparts',
-        'three': 'geometry will not be recalculated every phase'
+        'three': 'surface geometry at some orbital positions will not be recalculated due to similarity with previous '
+                 'orbital position'
     }
     logger.info(logger_messages.get(appx_uid))
     return run()
@@ -425,22 +439,9 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
             * ** atlas ** * - str
     :return: Dict[str, numpy.array];
     """
-
-    def _onpos_params(on_pos):
+    def _produce_lc_point(orbital_position, n_radiance, ldc, cvrg, csns):
         """
-        Helper function.
-
-        :param on_pos: elisa.binary_system.container.OrbitalPositionContainer;
-        :return: Tuple;
-        """
-        _normal_radiance, _ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
-
-        _coverage, _cosines = calculate_coverage_with_cosines(on_pos, on_pos.semi_major_axis, in_eclipse=True)
-        return _normal_radiance, _ld_cfs, _coverage, _cosines
-
-    def _incont_lc_point(orbital_position, n_radiance, ldc, cvrg, csns):
-        """
-        Helper function.
+        Returns lightcurve point for each passband on given orbital position.
 
         :param orbital_position: collections.tamedtuple; elisa.const.Position;
         :param ldc: Dict[str, Dict[str, pandas.DataFrame]];
@@ -452,14 +453,13 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         for band in kwargs["passband"]:
             band_curves[band][int(orbital_position.idx)] = shared.calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
 
-    # this array `used_phases` is used to check, whether flux on given phase was already computed
-    # it is necessary to do it due to orbital supplementes tolarance what can leads
-    # to several same phases in bodies but still different phases in mirrors
+    # array `used_phases` is used to check, whether flux on given phase was already computed
+    # orbital supplementes tolarance test can lead
+    # to same phases in templates or mirrors
     used_phases = []
     band_curves = {key: up.zeros(phases.shape) for key in kwargs["passband"]}
 
     # surface potentials with constant volume of components
-    # todo: compute only correction on distances.body[:, 4][new_geometry_mask] and repopulate array
     phases_to_correct = orbital_supplements.body[:, 4]
     potentials = binary.correct_potentials(phases_to_correct, component="all", iterations=2)
 
@@ -477,21 +477,57 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
 
         if body_orb_pos.phase not in used_phases:
             on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos, on_copy=True)
-            _args = _onpos_params(on_pos_body)
-            _incont_lc_point(body_orb_pos, *_args)
+            _args = _onpos_params(on_pos_body, **kwargs)
+            _produce_lc_point(body_orb_pos, *_args)
             used_phases += [body_orb_pos.phase]
 
         if (not OrbitalSupplements.is_empty(mirror)) and (mirror_orb_pos.phase not in used_phases):
             on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, on_copy=True)
-            _args = _onpos_params(on_pos_mirror)
-            _incont_lc_point(mirror_orb_pos, *_args)
+            _args = _onpos_params(on_pos_mirror, **kwargs)
+            _produce_lc_point(mirror_orb_pos, *_args)
             used_phases += [mirror_orb_pos.phase]
 
     return band_curves
 
 
-def _integrate_eccentric_lc_appx_three(binary, phases, orbital_supplements, new_geometry_mask, **kwargs):
-    pass
+def _integrate_eccentric_lc_appx_three(binary, phases, orbital_positions, new_geometry_mask, **kwargs):
+    """
+    Function calculates light curves for eccentric binary orbits where phase span condition was not met and approx two
+    could not be used. Usefull when calculating light curve using multiprocessing.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param phases: numpy.array;
+    :param orbital_positions: list; list of OrbitalPositions
+    :param new_geometry_mask: numpy.array;
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+    :return: Dict[str, numpy.array];
+    """
+    band_curves = {key: up.zeros(phases.shape) for key in kwargs["passband"]}
+
+    # surface potentials with constant volume of components
+    potentials = binary.correct_potentials(phases, component="all", iterations=2)
+
+    # prepare initial orbital position container
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
+    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
+
+    for idx, orbital_position in enumerate(orbital_positions):
+        require_geometry_rebuild = new_geometry_mask[idx]
+
+        initial_system.set_on_position_params(orbital_position, potentials['primary'][idx],
+                                              potentials['secondary'][idx])
+        initial_system = _update_surface_in_ecc_orbits(initial_system, orbital_position, require_geometry_rebuild)
+
+        on_pos_body = bsutils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
+        n_radiance, ldc, cvrg, csns = _onpos_params(on_pos_body, **kwargs)
+        for band in kwargs["passband"]:
+            band_curves[band][int(orbital_position.idx)] = shared.calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
+
+    return band_curves
 
 
 def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):

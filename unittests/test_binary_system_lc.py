@@ -480,6 +480,31 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
         # plt.show()
 
+    def test_eccentric_synchronous_detached_system_approximation_three(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.05
+        reload(lc)
+
+        bs = prepare_binary_system(self.params["eccentric"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+
+        start_phs, stop_phs, step = -0.0, 0.01, 0.002
+
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained_phases = obtained[0]
+        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+
+        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.appx_three.json")
+        expected_phases = expected[0]
+        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(np.round(obtained_phases, 3) - np.round(expected_phases, 3) < TOL))
+        self.assertTrue(np.all(np.round(obtained_flux, 3) - np.round(expected_flux, 3) < TOL))
+
+        # from matplotlib import pyplot as plt
+        # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
+        # plt.show()
+
     def test_eccentric_asynchronous_detached_system(self):
         config.LIMB_DARKENING_LAW = "linear"
         reload(lc)
