@@ -322,8 +322,8 @@ def compute_eccentric_lightcurve(binary, **kwargs):
         'one': 'one half of the points on LC on the one side of the apsidal line will be interpolated',
         'two': 'geometry of the stellar surface on one half of the apsidal '
                'line will be copied from their symmetrical counterparts',
-        'three': 'surface geometry at some orbital positions will not be recalculated due to similarity with previous '
-                 'orbital position'
+        'three': 'surface geometry at some orbital positions will not be recalculated due to similarities to previous '
+                 'orbital positions'
     }
     logger.info(logger_messages.get(appx_uid))
     return run()
