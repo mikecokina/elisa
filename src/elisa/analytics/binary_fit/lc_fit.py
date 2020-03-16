@@ -142,7 +142,7 @@ class LCFit(object):
         :param discard: Discard the first `discard` steps in the chain as burn-in. (default: 0)
         :param filename: str; full name of the json file
         :return: Tuple[numpy.ndarray, list, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
-                                                   {var_name: (min_boundary, max_boundary), ...} dictionary of
+                                                   {var_name: (min_boundary, max_boundary), ...} dictionary of 
                                                    boundaries defined by user for each variable needed
                                                    to reconstruct real values from normalized `flat_chain` array
         """
@@ -152,7 +152,7 @@ class LCFit(object):
         """
         Function converts model parameters to json compatibile format and stores model parameters.
 
-        :param parameters: dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
+        :param parameters: Dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
         :param filename: str;
         """
         parameters = copy(self.fit_params) if parameters is None else parameters
@@ -161,8 +161,8 @@ class LCFit(object):
         parameters = autils.unify_unit_string_representation(parameters)
 
         json_params = autils.convert_dict_to_json_format(parameters)
-        with open(filename, 'w') as fl:
-            json.dump(json_params, fl, separators=(',\n', ': '))
+        with open(filename, 'w') as f:
+            json.dump(json_params, f, separators=(',\n', ': '))
 
     def load_parameters(self, filename=None):
         """
@@ -171,8 +171,8 @@ class LCFit(object):
         :param filename: str;
         :return: Dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
         """
-        with open(filename, 'r') as fl:
-            prms = json.load(fl)
+        with open(filename, 'r') as f:
+            prms = json.load(f)
 
         prms = autils.convert_json_to_dict_format(prms)
         self.period = prms['period']['value']

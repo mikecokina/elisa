@@ -12,7 +12,7 @@ class AnalyticsProperties(TransformProperties):
     def radial_velocities(value):
         if isinstance(value, dict):
             for key, val in value.items():
-                if key not in config.BINARY_COUNTERPARTS.keys():
+                if key not in config.BINARY_COUNTERPARTS:
                     ValueError(f'{key} is invalid designation for radial velocity dataset. Please choose from '
                                f'{config.BINARY_COUNTERPARTS.keys()}')
                 elif isinstance(val, RVData):
