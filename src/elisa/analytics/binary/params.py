@@ -361,6 +361,7 @@ def lc_initial_x0_validity_check(x0: List[Dict], morphology):
         x0[hash_map[PARAMS_KEY_MAP['Omega2']]] = {
             "value": x0[hash_map[PARAMS_KEY_MAP['Omega1']]]['value'],
             "constraint": "{p__surface_potential}",
+            "param": "s__surface_potential",
             "min": _min,
             "max": _max,
         }
