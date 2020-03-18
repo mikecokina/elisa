@@ -54,18 +54,23 @@ def main():
     xs["primary"] = t_layer.jd_to_phase(T0, P, xs["primary"])
     xs["secondary"] = t_layer.jd_to_phase(T0, P, xs["secondary"])
 
-    xs_syn = np.arange(min(xs["primary"]), max(xs["primary"]), 0.005)
+    xs_syn = np.arange(0.0, 1.5, 0.005)
     rv = rv_sys(e=0.0324, omega=226.7555, p=P, q=1.073, asini=11.52, gamma=-24016.3067, xs=xs_syn)
 
-    plt.scatter(xs["primary"], ys["primary"], c="g", label="observation")
-    plt.scatter(xs["primary"], ys["secondary"], c="g")
+    plt.scatter(xs["primary"], ys["primary"] / 1e3, c="g", label="observation")
+    plt.scatter(xs["primary"], ys["secondary"] / 1e3, c="g")
 
-    plt.plot(xs_syn, rv["primary"], c="r", label="fit")
-    plt.plot(xs_syn, rv["secondary"], c="r", )
+    phase_mask = xs["primary"] <= 0.5
+
+    plt.scatter(xs["primary"][phase_mask] + 1, ys["primary"][phase_mask] / 1e3, c="g")
+    plt.scatter(xs["primary"][phase_mask] + 1, ys["secondary"][phase_mask] / 1e3, c="g")
+
+    plt.plot(xs_syn, rv["primary"] / 1e3, c="r", label="fit")
+    plt.plot(xs_syn, rv["secondary"] / 1e3, c="r", )
 
     plt.xlabel('Phase')
-    plt.ylabel(r'Radial Velocity/($m/s$)')
-    plt.legend()
+    plt.ylabel(r'Radial Velocity/($km/s$)')
+    plt.legend(loc="upper left", bbox_to_anchor=(0.0, 1.0))
     plt.show()
 
 
