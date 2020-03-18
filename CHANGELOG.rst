@@ -75,6 +75,8 @@ v0.2.1_
 -------
 .. v0.2.1_: https://github.com/mikecokina/elisa/commits/release/0.2.1
 
+**Release date:** 2020 2020-01-17
+
 **Fixes**
 
 - spots discretization managed by parent object if not specified otherwise
@@ -84,11 +86,21 @@ v0.2.2_
 -------
 .. v0.2.2_: https://github.com/mikecokina/elisa/commits/release/0.2.2
 
+**Release date:** 2020-01-29
+
 **Fixes**
 
 - radial velocity curves orientation
 - fixed requirements in setupy.py
 - fixed requirements in docs
+
+v0.2.3_
+-------
+.. v0.2.3_: https://github.com/mikecokina/elisa/commits/release/0.2.3
+
+**Fixes**
+
+- fitting light curves of over-contact binaries won't crash with missing `param` error due to invalid constraint setting on backend
 
 Future plans
 ============
