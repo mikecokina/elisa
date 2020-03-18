@@ -94,6 +94,14 @@ v0.2.2_
 - fixed requirements in setupy.py
 - fixed requirements in docs
 
+v0.2.3_
+-------
+.. v0.2.3_: https://github.com/mikecokina/elisa/commits/release/0.2.3
+
+**Fixes**
+
+- fitting light curves of over-contact binaries won't crash with missing `param` error due to invalid constraint setting on backend
+
 Future plans
 ============
 
