@@ -155,7 +155,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         mock_supplements = OrbitalSupplements([[1., 10.]], [[1., 10.]])
         expected = np.array([[0.1111, 0.0625, 0.4118, 0.4333], [0.0909, 0.1579, 0.525, 0.2121]])
         with mock.patch('elisa.binary_system.radius.calculate_forward_radii', MockSelf.calculate_forward_radii):
-            obtained = np.round(lc._compute_rel_d_radii(MockSelf, mock_supplements), 4)
+            obtained = np.round(lc._compute_rel_d_radii(MockSelf, mock_supplements.body[:, 1]), 4)
         self.assertTrue(np.all(expected == obtained))
 
     def _test_find_apsidally_corresponding_positions(self, arr1, arr2, expected, tol=1e-10):
@@ -475,6 +475,31 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_exact = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
         expected_flux_exact = normalize_lc_for_unittests(expected_exact[1]["Generic.Bessell.V"])
         self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux_exact, 3)) < 5e-3))
+
+        # from matplotlib import pyplot as plt
+        # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
+        # plt.show()
+
+    def test_eccentric_synchronous_detached_system_approximation_three(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.05
+        reload(lc)
+
+        bs = prepare_binary_system(self.params["eccentric"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+
+        start_phs, stop_phs, step = -0.0, 0.01, 0.002
+
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained_phases = obtained[0]
+        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+
+        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.appx_three.json")
+        expected_phases = expected[0]
+        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(np.round(obtained_phases, 3) - np.round(expected_phases, 3) < TOL))
+        self.assertTrue(np.all(np.round(obtained_flux, 3) - np.round(expected_flux, 3) < TOL))
 
         # from matplotlib import pyplot as plt
         # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
