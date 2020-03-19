@@ -12,6 +12,13 @@ from ...observer.observer import Observer
 from ...analytics.binary import bonds
 
 
+COMPOSITE_PARAMS = [
+    'p__spots',
+    's__spots',
+    'p__pulsations',
+    's__pulsations',
+]
+
 # DO NOT CHANGE KEYS - NEVER EVER
 PARAMS_KEY_MAP = {
     'omega': 'argument_of_periastron',
@@ -38,7 +45,28 @@ PARAMS_KEY_MAP = {
     'P': 'period',
     'T0': 'primary_minimum_time',
     'l_add': 'additional_light',
-    'phase_shift': 'phase_shift'
+    'phase_shift': 'phase_shift',
+    'primary_spots': 'p__spots',
+    'secondary_spots': 's__spots',
+    'primary_pulsations': 'p__pulsations',
+    'secondary_pulsations': 's__pulsations',
+}
+
+SPOTS_KEY_MAP = {
+    'phi': 'longitude',
+    'theta': 'latitude',
+    'radius': 'angular_radius',
+    't_factor': 'temperature_factor'
+}
+
+PULSATIONS_KEY_MAP = {
+    'l': 'l',
+    'm': 'm',
+    'amplitude': 'amplitude',
+    'frequency': 'frequency',
+    'start_phase': 'start_phase',
+    'mode_axis_phi': 'mode_axis_phi',
+    'mode_axis_theta': 'mode_axis_theta',
 }
 
 PARAMS_KEY_TEX_MAP = {
@@ -69,6 +97,22 @@ PARAMS_KEY_TEX_MAP = {
     'phase_shift': 'phase shift$',
 }
 
+SPOTS_KEY_TEX_MAP = {
+    'longitude': '$\phi$',
+    'latitude': '$\\theta$',
+    'angular_radius': '$r$',
+    'temperature_factor': '$T_{spot}/T_{eff}$'
+}
+
+PULSATIONS_KEY_TEX_MAP = {
+    'l': '$\\ell$',
+    'm': '$m$',
+    'amplitude': '$A$',
+    'frequency': '$f$',
+    'start_phase': '$\\Phi_0$',
+    'mode_axis_phi': '$\\phi_{mode}$',
+    'mode_axis_theta': '$\\theta_{mode}$',
+}
 
 PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['i']: 'degree',
@@ -96,6 +140,23 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['T0']: 'd',
     PARAMS_KEY_MAP['l_add']: '',
     PARAMS_KEY_MAP['phase_shift']: '',
+}
+
+SPOTS_UNITS_MAP = {
+    SPOTS_KEY_MAP['phi']: 'degree',
+    SPOTS_KEY_MAP['theta']: 'degree',
+    SPOTS_KEY_MAP['radius']: 'degree',
+    SPOTS_KEY_MAP['t_factor']: ''
+}
+
+PULSATIONS_UNITS_MAP = {
+    PULSATIONS_KEY_MAP['l']: '',
+    PULSATIONS_KEY_MAP['m']: '',
+    PULSATIONS_KEY_MAP['amplitude']: 'm/s',
+    PULSATIONS_KEY_MAP['frequency']: '1/d',
+    PULSATIONS_KEY_MAP['start_phase']: 'degree',
+    PULSATIONS_KEY_MAP['mode_axis_theta']: 'degree',
+    PULSATIONS_KEY_MAP['mode_axis_phi']: 'degree',
 }
 
 
@@ -128,6 +189,23 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['l_add']: (0, 1.0),
     PARAMS_KEY_MAP['phase_shift']: (-0.8, 0.8),
     PARAMS_KEY_MAP['T0']: (Time.now().jd - 365.0, Time.now().jd),
+}
+
+SPOT_NORMALIZATION_MAP = {
+    SPOTS_KEY_MAP['phi']: (0, 360),
+    SPOTS_KEY_MAP['theta']: (0, 180),
+    SPOTS_KEY_MAP['radius']: (0, 90),
+    SPOTS_KEY_MAP['t_factor']: (0.1, 3)
+}
+
+PULSATIONS_NORMALIZATION_MAP = {
+    PULSATIONS_KEY_MAP['l']: (0, 10),
+    PULSATIONS_KEY_MAP['m']: (-10, 10),
+    PULSATIONS_KEY_MAP['amplitude']: (0, 5000),
+    PULSATIONS_KEY_MAP['frequency']: (0.01, 40),
+    PULSATIONS_KEY_MAP['start_phase']: (0, 360),
+    PULSATIONS_KEY_MAP['mode_axis_theta']: (0, 180),
+    PULSATIONS_KEY_MAP['mode_axis_phi']: (0, 360),
 }
 
 
