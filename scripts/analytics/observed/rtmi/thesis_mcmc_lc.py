@@ -99,25 +99,25 @@ def main():
             'max': 7500.0
         },
         {
-            'value': 3.0,
+            'value': 2.55,
             'param': 'p__surface_potential',
             'fixed': False,
             'min': 1.0,
-            'max': 6.0
+            'max': 3.0
         },
         {
-            'value': 3.0,
+            'value': 2.55,
             'param': 's__surface_potential',
             'fixed': False,
             'min': 1.0,
-            'max': 6.0
+            'max': 3.0
         },
         {
-            'value': 4000.0,
+            'value': 6500.0,
             'param': 's__t_eff',
             'fixed': False,
-            'min': 4000.0,
-            'max': 6500.0
+            'min': 5500.0,
+            'max': 7500.0
         },
         {
             'value': 85.0,
