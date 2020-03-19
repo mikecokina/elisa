@@ -19,6 +19,16 @@ COMPOSITE_PARAMS = [
     's__pulsations',
 ]
 
+SPOT_PARAMS = [
+    'p__spots',
+    's__spots',
+]
+
+PULSATIONS_PARAMS = [
+    'p__pulsations',
+    's__pulsations',
+]
+
 # DO NOT CHANGE KEYS - NEVER EVER
 PARAMS_KEY_MAP = {
     'omega': 'argument_of_periastron',

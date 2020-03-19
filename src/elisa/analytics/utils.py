@@ -87,10 +87,20 @@ def prep_constrained_params(x0):
     :param x0: dict;
     :return: dict;
     """
-    for key, val in x0.items():
-        if 'constraint' in val.keys():
-            if 'value' in val.keys():
-                logger.warning(f'Parameter `value` is meaningless and will not be used in case of contrained parameter '
-                               '{key}.')
-            val['value'] = None
+    def check_value_in_constrained(item):
+        if 'constraint' in item.keys():
+            if 'value' in item.keys():
+                logger.warning(
+                    f'Parameter `value` is meaningless and will not be used in case of contrained parameter '
+                    '{key}.')
+            item['value'] = None
+
+    for system_key, system_val in x0.items():
+        if system_key in params.COMPOSITE_PARAMS:  # testing if item are spots or pulsations
+            for composite_item in system_val.values():  # particular spot or pulsation mode
+                # iterating over params of the spot or pulsation mode
+                for composite_item_val in composite_item.values():
+                    check_value_in_constrained(composite_item_val)
+        else:
+            check_value_in_constrained(system_val)
     return x0
