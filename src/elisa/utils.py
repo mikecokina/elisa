@@ -50,6 +50,20 @@ def invalid_kwarg_checker(kwargs, kwarglist, instance):
                          f'List of available parameters: {", ".join(kwarglist)}')
 
 
+def invalid_param_checker(kwargs, kwarglist, message):
+    """
+
+    :param kwargs: Dict; kwargs to evaluate if are in kwarg list
+    :param kwarglist: Dict;
+    :param instance: Any class
+    """
+    invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
+    if len(invalid_kwargs) > 0:
+        raise ValueError(f'Invalid keyword argument(s): {", ".join(invalid_kwargs)} '
+                         f'in fitting parameter {message}.\n '
+                         f'List of available parameters: {", ".join(kwarglist)}')
+
+
 def is_plane(given, expected):
     """
     Find out whether `given` plane definition of 2d plane is `expected` one. E.g. if `yx` is `yx` or `xy`
@@ -419,6 +433,21 @@ def check_missing_kwargs(mandatory_kwargs, supplied_kwargs, instance_of):
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in class instance {instance_of.__name__}')
+
+
+def check_missing_params(mandatory_kwargs, supplied_kwargs, obj):
+    """
+    Checks if all `kwargs` are all in parameter `obj` .
+    If missing raise ValuerError with missing `kwargs`.
+
+    :param mandatory_kwargs: List[str]
+    :param supplied_kwargs: List[str]
+    :param object: class
+    :return:
+    """
+    missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
+    if len(missing_kwargs) > 0:
+        raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in object {obj}')
 
 
 def numeric_logg_to_string(logg):

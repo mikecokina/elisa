@@ -75,12 +75,11 @@ class RVFit(object):
         """
         # treating a lack of `value` key in constrained parameters
         x0 = autils.prep_constrained_params(x0)
+
+        shared.check_initial_param_validity(x0, RVFit.ALL_FIT_PARAMS, RVFit.MANDATORY_FIT_PARAMS)
+
         # transforming initial parameters to base units
         x0 = autils.transform_initial_values(x0)
-
-        param_names = {key: value['value'] for key, value in x0.items()}
-        utils.invalid_kwarg_checker(param_names, RVFit.ALL_FIT_PARAMS, RVFit)
-        utils.check_missing_kwargs(RVFit.MANDATORY_FIT_PARAMS, param_names, instance_of=RVFit)
 
         x_data, y_data, yerr = dict(), dict(), dict()
         for component, data in self.radial_velocities.items():

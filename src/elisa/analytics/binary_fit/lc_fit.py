@@ -31,18 +31,21 @@ class LCFit(object):
     OPTIONAL_FIT_PARAMS = ['period', 'primary_minimum_time', 'p__mass', 's__mass', 'semi_major_axis',
                            'asini', 'mass_ratio', 'p__t_eff', 's__t_eff', 'p__surface_potential',
                            's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
-                           's__albedo', 'additional_light', 'phase_shift']
+                           's__albedo', 'additional_light', 'phase_shift', 'p__spots', 's__spots', 'p__pulsations',
+                           's__pulsations']
     ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
 
     FIT_PARAMS_COMBINATIONS = {
         'standard': ['p__mass', 's__mass', 'inclination', 'eccentricity', 'argument_of_periastron', 'period',
                      'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
                      's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
-                     's__albedo', 'additional_light', 'phase_shift'],
+                     's__albedo', 'additional_light', 'phase_shift', 'p__spots', 's__spots', 'p__pulsations',
+                           's__pulsations'],
         'community': ['mass_ratio', 'semi_major_axis', 'inclination', 'eccentricity', 'argument_of_periastron', 'period',
                       'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
                       's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
-                      's__albedo', 'additional_light', 'phase_shift']
+                      's__albedo', 'additional_light', 'phase_shift', 'p__spots', 's__spots', 'p__pulsations',
+                           's__pulsations']
     }
 
     def __init__(self, **kwargs):
@@ -98,12 +101,11 @@ class LCFit(object):
         """
         # treating a lack of `value` key in constrained parameters
         x0 = autils.prep_constrained_params(x0)
+
+        shared.check_initial_param_validity(x0, LCFit.ALL_FIT_PARAMS, LCFit.MANDATORY_FIT_PARAMS)
+
         # transforming initial parameters to base units
         x0 = autils.transform_initial_values(x0)
-
-        param_names = {key: value['value'] for key, value in x0.items()}
-        utils.invalid_kwarg_checker(param_names, LCFit.ALL_FIT_PARAMS, LCFit)
-        utils.check_missing_kwargs(LCFit.MANDATORY_FIT_PARAMS, param_names, instance_of=LCFit)
 
         if x0['period']['fixed'] is not True:
             logger.warning('Orbital period is expected to be known apriori the fit and thus it is considered fixed')
