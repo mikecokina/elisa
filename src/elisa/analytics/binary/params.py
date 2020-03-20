@@ -150,16 +150,12 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['T0']: 'd',
     PARAMS_KEY_MAP['l_add']: '',
     PARAMS_KEY_MAP['phase_shift']: '',
-}
-
-SPOTS_UNITS_MAP = {
+    # SPOTS
     SPOTS_KEY_MAP['phi']: 'degree',
     SPOTS_KEY_MAP['theta']: 'degree',
     SPOTS_KEY_MAP['radius']: 'degree',
-    SPOTS_KEY_MAP['t_factor']: ''
-}
-
-PULSATIONS_UNITS_MAP = {
+    SPOTS_KEY_MAP['t_factor']: '',
+    # PULSATIONS
     PULSATIONS_KEY_MAP['l']: '',
     PULSATIONS_KEY_MAP['m']: '',
     PULSATIONS_KEY_MAP['amplitude']: 'm/s',
