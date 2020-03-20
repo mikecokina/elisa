@@ -115,9 +115,7 @@ def main():
         {
             'value': 6500.0,
             'param': 's__t_eff',
-            'fixed': False,
-            'min': 5500.0,
-            'max': 7500.0
+            'constraint': '{p__t_eff}',
         },
         {
             'value': 85.0,
