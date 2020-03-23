@@ -323,13 +323,19 @@ def x0_to_constrained_kwargs(x0):
     :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {key: value['constraint'] for key, value in x0.items() if value.get('constraint', False)}
+    ret_dict = {key: value['constraint'] for key, value in x0.items() if value.get('constraint', False)}
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_value in composite_params.values():
+        for key, value in composite_value.items():
+            ret_dict.update({'.'.join([key, param_name]): item['constraint'] for param_name, item in value.items()
+            if item.get('constraint', False)})
+    return ret_dict
 
 
 def x0_to_variable_kwargs(x0):
     """
-    Transform native dict input form to `key, value` form, but select `floats` parameters
-    (as in not fixed or constrained)::
+    Transform native dict input form to `key, value` form, but select variable parameters
+    (not fixed or constrained)::
 
         {
             key: value,
@@ -424,7 +430,6 @@ def lc_initial_x0_validity_check(x0, morphology):
     :param morphology: str;
     :return: List[Dict];
     """
-
     # first valdiate constraints
     constraints_validator(x0)
 
@@ -480,6 +485,9 @@ def rv_initial_x0_validity_check(x0: Dict):
     :param x0: List[Dict];
     :return: List[Dict];
     """
+    # first valdiate constraints
+    constraints_validator(x0)
+
     labels = x0.keys()
     has_t0, has_period = 'primary_minimum_time' in labels, 'period' in labels
 
