@@ -43,17 +43,29 @@ def check_initial_param_validity(x0, all_fit_params, mandatory_fit_params):
 
     # checking validiti of spot parameters
     spots = {key: value for key, value in x0.items() if key in params.SPOT_PARAMS}
+    spot_names = []
     for spot_object in spots.values():
         for spot_name, spot in spot_object.items():
-            spot_names = {key: value['value'] for key, value in spot.items()}
-            utils.invalid_param_checker(spot_names, params.SPOTS_KEY_MAP.values(), spot_name)
-            utils.check_missing_params(params.SPOTS_KEY_MAP.values(), spot_names, spot_name)
+            # checking for duplicate names
+            if spot_name in spot_names:
+                raise NameError(f'Spot name `{spot_name}` is duplicate.')
+            spot_names.append(spot_name)
+
+            spot_condensed = {key: value['value'] for key, value in spot.items()}
+            utils.invalid_param_checker(spot_condensed, params.SPOTS_KEY_MAP.values(), spot_name)
+            utils.check_missing_params(params.SPOTS_KEY_MAP.values(), spot_condensed, spot_name)
 
     # checking validiti of pulsation mode parameters
     pulsations = {key: value for key, value in x0.items() if key in params.PULSATIONS_PARAMS}
+    pulsation_names = []
     for pulsation_object in pulsations.values():
         for pulsation_name, pulsation in pulsation_object.items():
-            pulsation_names = {key: value['value'] for key, value in pulsation.items()}
-            utils.invalid_param_checker(pulsation_names, params.PULSATIONS_KEY_MAP.values(), pulsation_name)
-            utils.check_missing_params(params.PULSATIONS_KEY_MAP.values(), pulsation_names, pulsation_name)
+            # checking for duplicate names
+            if pulsation_name in pulsation_names:
+                raise NameError(f'Pulsations mode name `{pulsation_name}` is duplicate.')
+            pulsation_names.append(pulsation_name)
+
+            pulsation_condensed = {key: value['value'] for key, value in pulsation.items()}
+            utils.invalid_param_checker(pulsation_condensed, params.PULSATIONS_KEY_MAP.values(), pulsation_name)
+            utils.check_missing_params(params.PULSATIONS_KEY_MAP.values(), pulsation_condensed, pulsation_name)
 
