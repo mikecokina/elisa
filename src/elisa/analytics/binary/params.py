@@ -248,7 +248,7 @@ def renormalize_flat_chain(flat_chain, labels, renorm=None):
                           for key, val in zip(labels, sample)] for sample in flat_chain])
 
 
-def x0_vectorize(x0) -> Tuple:
+def x0_vectorize(x0):
     """
     Transform native dict form of initial parameters to Tuple.
     JSON form::
@@ -274,9 +274,18 @@ def x0_vectorize(x0) -> Tuple:
     :param x0: Dict[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Tuple;
     """
-    keys = [key for key, val in x0.items() if not val.get('fixed', False) and not val.get('constraint', False)]
+    keys = [key for key, val in x0.items() if not val.get('fixed', False) and not val.get('constraint', False)
+            and key not in COMPOSITE_PARAMS]
     values = [val['value'] for key, val in x0.items() if not val.get('fixed', False)
-              and not val.get('constraint', False)]
+              and not val.get('constraint', False) and key not in COMPOSITE_PARAMS]
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_value in composite_params.values():
+        for key, value in composite_value.items():
+            keys += [PARAM_PARSER.join([key, param_name]) for param_name, item in value.items()
+                         if not item.get('fixed', False) and not item.get('constraint', False)]
+            values += [item['value'] for item in value.values()
+                       if not item.get('fixed', False) and not item.get('constraint', False)]
     return values, keys
 
 
@@ -336,8 +345,7 @@ def x0_to_constrained_kwargs(x0):
     for composite_value in composite_params.values():
         for key, value in composite_value.items():
             ret_dict.update({PARAM_PARSER.join([key, param_name]): item['constraint']
-                             for param_name, item in value.items()
-            if item.get('constraint', False)})
+                             for param_name, item in value.items() if item.get('constraint', False)})
     return ret_dict
 
 
