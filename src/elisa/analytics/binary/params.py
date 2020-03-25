@@ -307,7 +307,15 @@ def x0_to_fixed_kwargs(x0):
     :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {key: value['value'] for key, value in x0.items() if value.get('fixed', False)}
+    ret_dict = {key: value['value'] for key, value in x0.items() if value.get('fixed', False)
+                and key not in COMPOSITE_PARAMS}
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_value in composite_params.values():
+        for key, value in composite_value.items():
+            ret_dict.update({PARAM_PARSER.join([key, param_name]): item['value']
+                             for param_name, item in value.items() if item.get('fixed', False)})
+    return ret_dict
 
 
 def x0_to_constrained_kwargs(x0):
