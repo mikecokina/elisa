@@ -10,7 +10,7 @@ DATA = op.join(op.abspath(op.dirname(__file__)), "data")
 
 
 def get_lc():
-    fpath = op.join(DATA, "lc.json")
+    fpath = op.join(DATA, "lc_no_shift.json")
     with open(fpath, "r") as f:
         return json.loads(f.read())
 
