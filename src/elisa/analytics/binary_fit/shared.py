@@ -41,7 +41,7 @@ def check_initial_param_validity(x0, all_fit_params, mandatory_fit_params):
     utils.invalid_param_checker(param_names, all_fit_params, 'x0')
     utils.check_missing_params(mandatory_fit_params, param_names, 'x0')
 
-    # checking validiti of spot parameters
+    # checking validity of spot parameters
     spots = {key: value for key, value in x0.items() if key in params.SPOT_PARAMS}
     spot_names = []
     for spot_object in spots.values():
@@ -55,7 +55,7 @@ def check_initial_param_validity(x0, all_fit_params, mandatory_fit_params):
             utils.invalid_param_checker(spot_condensed, params.SPOTS_KEY_MAP.values(), spot_name)
             utils.check_missing_params(params.SPOTS_KEY_MAP.values(), spot_condensed, spot_name)
 
-    # checking validiti of pulsation mode parameters
+    # checking validity of pulsation mode parameters
     pulsations = {key: value for key, value in x0.items() if key in params.PULSATIONS_PARAMS}
     pulsation_names = []
     for pulsation_object in pulsations.values():

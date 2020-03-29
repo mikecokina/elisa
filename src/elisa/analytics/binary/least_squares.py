@@ -133,7 +133,7 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
 
         result = {key: {"value": val} for key, val in result_dict.items()}
         result["r_squared"] = {'value': r_squared_result}
-
+        result = params.dict_to_user_format(result)
         return params.extend_result_with_units(result)
 
 
@@ -210,6 +210,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         logger.info("fitting finished...")
 
         result = params.param_renormalizer(result.x, labels)
+
         result_dict = dict(zip(labels, result))
         result_dict.update(self.fixed)
         result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
@@ -219,6 +220,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
 
         result = {key: {"value": val} for key, val in result_dict.items()}
         result["r_squared"] = {'value': r_squared_result}
+        result = params.dict_to_user_format(result)
         return params.extend_result_with_units(result)
 
 

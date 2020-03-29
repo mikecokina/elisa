@@ -206,7 +206,7 @@ class TestParamsTestCase(ElisaTestCase):
 
         with self.assertRaises(InitialParamsError) as context:
             params.lc_initial_x0_validity_check(xn, morphology='detached')
-        self.assertTrue("to contain fixed and constraint" in str(context.exception).lower())
+        self.assertTrue("to contain `fixed` and `constraint`" in str(context.exception).lower())
 
     def test_constraints(self):
         x0 = [

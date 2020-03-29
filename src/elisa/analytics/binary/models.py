@@ -16,6 +16,41 @@ def _serialize_star_kwargs(component, **kwargs):
     """
 
     no_prefix = {str(k)[3:]: v for k, v in kwargs.items() if str(k).startswith(component)}
+
+    # sorting pulsations and spots back to their respective hierarchies for easier access
+    params_tree = {'spots': {}, 'pulsations': {}}
+    for param_name, param_val in no_prefix.items():
+        if params.PARAM_PARSER not in param_name:
+            continue
+
+        identificators = param_name.split(params.PARAM_PARSER)
+
+        if identificators[1] not in params_tree[identificators[0]].keys():
+            params_tree[identificators[0]][identificators[1]] = {}
+
+        params_tree[identificators[0]][identificators[1]][identificators[2]] = param_val
+
+    spot_names = params_tree['spots'].keys()
+    spots = [
+        {
+            'longitude': params_tree['spots'][key]['longitude'],
+            'latitude': params_tree['spots'][key]['latitude'],
+            'angular_radius': params_tree['spots'][key]['angular_radius'],
+            'temperature_factor': params_tree['spots'][key]['temperature_factor']
+        } for key in spot_names] if len(spot_names) > 0 else None
+
+    pulsation_names = params_tree['pulsations'].keys()
+    pulsations = [
+        {
+            'l': params_tree['pulsations'][key]['l'],
+            'm': params_tree['pulsations'][key]['m'],
+            'amplitude': params_tree['pulsations'][key]['amplitude'],
+            'frequency': params_tree['pulsations'][key]['frequency'],
+            'start_phase': params_tree['pulsations'][key]['start_phase'],
+            'mode_axis_phi': params_tree['pulsations'][key].get('mode_axis_phi', 0),
+            'mode_axis_theta': params_tree['pulsations'][key].get('mode_axis_theta', 0)
+        } for key in pulsation_names] if len(pulsation_names) > 0 else None
+
     return dict(
         surface_potential=no_prefix['surface_potential'],
         synchronicity=no_prefix.get('synchronicity', 1.0),
@@ -23,9 +58,11 @@ def _serialize_star_kwargs(component, **kwargs):
         gravity_darkening=no_prefix.get('gravity_darkening', 1.0),
         albedo=no_prefix.get('albedo', 1.0),
         metallicity=no_prefix.get('metallicity', 0.0),
+        spots=spots,
+        pulsations=pulsations,
         **{"discretization_factor": no_prefix["discretization_factor"]}
         if no_prefix.get("discretization_factor") else {},
-        **{"mass": no_prefix["mass"]} if no_prefix.get("mass") else {}
+        **{"mass": no_prefix["mass"]} if no_prefix.get("mass") else {},
     )
 
 
@@ -46,11 +83,11 @@ def serialize_system_kwargs(**kwargs):
 
 
 def serialize_primary_kwargs(**kwargs):
-    return _serialize_star_kwargs(component='p', **kwargs)
+    return _serialize_star_kwargs(component='p__', **kwargs)
 
 
 def serialize_secondary_kwargs(**kwargs):
-    return _serialize_star_kwargs(component='s', **kwargs)
+    return _serialize_star_kwargs(component='s__', **kwargs)
 
 
 def prepare_binary(period=None, discretization=3, **kwargs):
@@ -226,7 +263,6 @@ def time_layer_resolver(xs, x0):
     :param x0: dict;
     :return:
     """
-
     if params.is_time_dependent(x0.keys()):
         t0 = x0['primary_minimum_time']['value']
         period = x0['period']['value']

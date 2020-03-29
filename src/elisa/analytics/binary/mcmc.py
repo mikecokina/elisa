@@ -298,6 +298,7 @@ class LightCurveFit(McMcFit):
         r_squared_result = lc_r_squared(models.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result}
 
+        result_dict = params.dict_to_user_format(result_dict)
         return params.extend_result_with_units(result_dict)
 
 
@@ -412,6 +413,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         r_squared_result = rv_r_squared(models.central_rv_synthetic, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result}
 
+        result_dict = params.dict_to_user_format(result_dict)
         return params.extend_result_with_units(result_dict)
 
 

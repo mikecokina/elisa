@@ -32,7 +32,7 @@ class LCFit(object):
                            'asini', 'mass_ratio', 'p__t_eff', 's__t_eff', 'p__surface_potential',
                            's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
                            's__albedo', 'additional_light', 'phase_shift', 'p__spots', 's__spots', 'p__pulsations',
-                           's__pulsations']
+                           's__pulsations', 'p__synchronicity', 's__synchronicity']
     ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
 
     FIT_PARAMS_COMBINATIONS = {
@@ -40,12 +40,12 @@ class LCFit(object):
                      'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
                      's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
                      's__albedo', 'additional_light', 'phase_shift', 'p__spots', 's__spots', 'p__pulsations',
-                           's__pulsations'],
-        'community': ['mass_ratio', 'semi_major_axis', 'inclination', 'eccentricity', 'argument_of_periastron', 'period',
-                      'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
+                     's__pulsations', 'p__synchronicity', 's__synchronicity'],
+        'community': ['mass_ratio', 'semi_major_axis', 'inclination', 'eccentricity', 'argument_of_periastron',
+                      'period', 'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
                       's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
                       's__albedo', 'additional_light', 'phase_shift', 'p__spots', 's__spots', 'p__pulsations',
-                           's__pulsations']
+                      's__pulsations', 'p__synchronicity', 's__synchronicity']
     }
 
     def __init__(self, **kwargs):
