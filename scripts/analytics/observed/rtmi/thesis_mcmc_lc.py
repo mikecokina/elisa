@@ -8,7 +8,7 @@ import builtins
 from matplotlib import pyplot as plt
 from elisa.analytics.binary.mcmc import binary_overcontact
 from elisa.binary_system import t_layer
-from elisa.analytics.bvi import elisa_bv_temperature, pogsons_formula
+from elisa.analytics.bvi import elisa_bv_temperature
 from scipy.interpolate import Akima1DInterpolator
 
 builtins._ASTROPY_SETUP_ = True
@@ -46,15 +46,20 @@ def phase_filter(phases, threshold=0.05):
     return phase_mask
 
 
+def mag_to_flx(ys):
+    m2, f2 = 0.0, 10e10
+    return {band: f2 * np.power(10, ((m2 - ys[band]) / 2.5)) for band in passbands}
+
+
 def temperature_estimation(xs, ys):
 
     interp_b = Akima1DInterpolator(xs['Generic.Bessell.B'], ys['Generic.Bessell.B'])
     interp_v = Akima1DInterpolator(xs['Generic.Bessell.V'], ys['Generic.Bessell.V'])
 
-    b_flux = np.array([interp_b(0.25), interp_b(0.75)])
-    v_flux = np.array([interp_v(0.25), interp_v(0.75)])
+    b_mag = np.array([interp_b(0.25), interp_b(0.75)])
+    v_mag = np.array([interp_v(0.25), interp_v(0.75)])
 
-    bv = pogsons_formula(b_flux, v_flux)
+    bv = b_mag - v_mag
     t1, t2 = elisa_bv_temperature(bv, morphology="over-contact")
     return t1, t2
 
@@ -62,24 +67,35 @@ def temperature_estimation(xs, ys):
 def main():
     lc = get_lc()
 
-    ys_min = min([min(np.array(lc[band]["mag"])) for band in passbands])
-
     xs = {band: t_layer.jd_to_phase(t0, P, np.array(lc[band]["jd"])) for band in passbands}
     xs_argsort = {band: np.argsort(xs[band]) for band in passbands}
     xs = {band: xs[band][xs_argsort[band]] for band in passbands}
 
-    ys = {band: np.array(2 + (-np.array(lc[band]["mag"]) / ys_min))[xs_argsort[band]] for band in passbands}
-    yerrs = {band: np.array(np.array(lc[band]["err"]) / ys_min)[xs_argsort[band]] for band in passbands}
-
+    ys_mag = {band: np.array(lc[band]["mag"])[xs_argsort[band]] for band in passbands}
     phase_mask = phase_filter(xs, threshold=0.01)
 
-    temperature = temperature_estimation(xs, ys)
+    temperature = temperature_estimation(xs, ys_mag)
     print(temperature)
+
+    ys_flx = mag_to_flx(ys_mag)
+    ys_max = {band: max(np.array(ys_flx[band])) for band in passbands}
+    ys = {band: ys_flx[band] / ys_max[band] for band in passbands}
 
     if do_plot:
         for band in passbands:
             plt.scatter(xs[band][phase_mask[band]], y=ys[band][phase_mask[band]], c=color_map[band])
         plt.show()
+
+    yerrs_mag = {band: np.array(np.array(lc[band]["err"]))[xs_argsort[band]] for band in passbands}
+
+    ys_mag_max = {band: ys_mag[band] - yerrs_mag[band] for band in passbands}
+    ys_mag_min = {band: ys_mag[band] + yerrs_mag[band] for band in passbands}
+
+    ys_flx_max = mag_to_flx(ys_mag_max)
+    ys_flx_min = mag_to_flx(ys_mag_min)
+
+    yerrs = {band: (ys_flx_max[band] - ys_flx_min[band]) / (2. * ys_max[band])
+             for band in passbands}
 
     xs = {band: xs[band][phase_mask[band]] for band in passbands}
     ys = {band: ys[band][phase_mask[band]] for band in passbands}
@@ -92,11 +108,11 @@ def main():
             'constraint': '2.63 / sin(radians({inclination}))'
         },
         {
-            'value': 6500.0,
+            'value': 5000.0,
             'param': 'p__t_eff',
             'fixed': False,
-            'min': 5500.0,
-            'max': 7500.0
+            'min': 4000.0,
+            'max': 7000.0
         },
         {
             'value': 2.55,
@@ -113,7 +129,7 @@ def main():
             'max': 3.0
         },
         {
-            'value': 6500.0,
+            'value': 5000.0,
             'param': 's__t_eff',
             'constraint': '{p__t_eff}',
         },
@@ -163,6 +179,9 @@ def main():
 
     binary_overcontact.fit(xs=xs, ys=ys, x0=lc_initial, period=P, discretization=5.0,
                            nwalkers=20, nsteps=20000, nsteps_burn_in=3000, yerrs=yerrs)
+
+    # result = binary_overcontact.restore_flat_chain("2020-03-27T18.26.59")
+    # binary_overcontact.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
 
 
 if __name__ == '__main__':
