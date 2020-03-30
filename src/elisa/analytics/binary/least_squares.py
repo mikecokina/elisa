@@ -128,7 +128,8 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
 
         # compute r_squared and append to result
-        r_squared_args = self.xs, self.ys, period, self.passband, discretization, self.morphology, self.xs_reverser
+        r_squared_args = self.xs, self.ys, period, self.passband, discretization, self.morphology, self.xs_reverser, \
+                         self.fit_xs
         r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **result_dict)
 
         result = {key: {"value": val} for key, val in result_dict.items()}

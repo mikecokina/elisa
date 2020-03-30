@@ -302,7 +302,14 @@ def x0_to_kwargs(x0):
     :param x0: List[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {record['param']: record['value'] for record in x0}
+    ret_dict = {key: value['value'] for key, value in x0.items() if key not in COMPOSITE_PARAMS}
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_name, composite_value in composite_params.items():
+        for key, value in composite_value.items():
+            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]): item['value']
+                             for param_name, item in value.items()})
+    return ret_dict
 
 
 def x0_to_fixed_kwargs(x0):
@@ -489,7 +496,7 @@ def _check_param_borders(key, val):
         return _min, _max
     if not (_min <= val['value'] <= _max):
         raise error.InitialParamsError(f'Initial parameters in parameter `{key}` are not valid. Invalid bounds: '
-                                       f'{_min} <= {val["param"]} <= {_max}')
+                                       f'{_min} <= {val["value"]} <= {_max}')
     return _min, _max
 
 
@@ -651,6 +658,9 @@ def constraints_validator(x0):
     x0v = x0_to_variable_kwargs(x0)
     x0c = {key: utils.str_repalce(val, allowed_methods, [''] * len(allowed_methods)) for key, val in x0c.items()}
 
+    if len(x0v) == 0:
+        raise IndexError('There are no variable parameters to fit.')
+
     try:
         subst = {key: val.replace(USER_PARAM_PARSER, PARAM_PARSER).format(**x0v).replace(' ', '')
                  for key, val in x0c.items()}
@@ -752,4 +762,20 @@ def dict_to_user_format(dictionary):
     :param labels: list; list of labels
     :return: list; user formatted list of parameter labels
     """
-    return {key.replace(PARAM_PARSER, USER_PARAM_PARSER): val for key, val in dictionary.items()}
+    ret_dict = {}
+    for param_name, param_val in dictionary.items():
+        if PARAM_PARSER not in param_name:
+            ret_dict[param_name] = param_val
+            continue
+
+        identificators = param_name.split(PARAM_PARSER)
+
+        if identificators[0] not in ret_dict.keys():
+            ret_dict[identificators[0]] = {}
+
+        if identificators[1] not in ret_dict[identificators[0]].keys():
+            ret_dict[identificators[0]][identificators[1]] = {}
+
+        ret_dict[identificators[0]][identificators[1]][identificators[2]] = param_val
+
+    return ret_dict

@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import interpolate
 
 from abc import ABCMeta, abstractmethod
 from ...binary_system.system import BinarySystem
@@ -51,12 +52,20 @@ def lc_r_squared(synthetic, *args, **x):
     :** x options**: kwargs of current parameters to compute binary system
     :return: float;
     """
-    xs, ys, period, passband, discretization, morphology, xs_reverser = args
+    xs, ys, period, passband, discretization, morphology, xs_reverser, fit_xs = args
 
     observer = Observer(passband=passband, system=None)
     observer._system_cls = BinarySystem
 
-    synthetic = synthetic(xs, period, discretization, morphology, observer, False, **x)
+    synthetic = synthetic(fit_xs, period, discretization, morphology, observer, False, **x)
+
+    if np.shape(fit_xs) != np.shape(xs):
+        new_synthetic = dict()
+        for fltr, curve in synthetic.items():
+            f = interpolate.interp1d(fit_xs, curve, kind='cubic')
+            new_synthetic[fltr] = f(xs)
+        synthetic = new_synthetic
+
     synthetic = {band: synthetic[band][xs_reverser[band]] for band in synthetic}
 
     synthetic = analutils.normalize_light_curve(synthetic, kind='average')

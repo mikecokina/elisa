@@ -70,9 +70,7 @@ class RVPlot(object):
             'y_unit': y_axis_unit,
         })
 
-        kwargs_to_replot = {}
-        for key, val in fit_params.items():
-            kwargs_to_replot[key] = val['value']
+        kwargs_to_replot = params.x0_to_kwargs(fit_params)
 
         if 'primary_minimum_time' in kwargs_to_replot.keys():
             del kwargs_to_replot['primary_minimum_time']
@@ -209,16 +207,10 @@ class LCPlot(object):
             'y_unit': y_axis_unit,
         })
 
-        kwargs_to_replot = {}
-        for key, val in fit_params.items():
-            kwargs_to_replot[key] = val['value']
-
-        if 'primary_minimum_time' in kwargs_to_replot.keys():
-            del kwargs_to_replot['primary_minimum_time']
         synth_phases = np.linspace(start_phase, stop_phase, number_of_points)
 
         # system_kwargs = params.prepare_kwargs()
-        system_kwargs = {key: val['value'] for key, val in fit_params.items()}
+        system_kwargs = params.x0_to_kwargs(fit_params)
         period = system_kwargs.pop('period')
         system = models.prepare_binary(period=period, discretization=discretization, **system_kwargs)
         observer = Observer(passband=self.lc_fit.light_curves.keys(), system=system)

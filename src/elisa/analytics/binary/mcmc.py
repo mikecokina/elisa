@@ -293,7 +293,8 @@ class LightCurveFit(McMcFit):
 
         result_dict = self.eval_constraints_after_mcmc(result_dict, self.constraint)
 
-        r_squared_args = self.xs, self.ys, self.period, self.passband, discretization, self.morphology, self.xs_reverser
+        r_squared_args = self.xs, self.ys, self.period, self.passband, discretization, self.morphology, \
+                         self.xs_reverser, self.fit_xs
         r_dict = {key: value['value'] for key, value in result_dict.items()}
         r_squared_result = lc_r_squared(models.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result}
