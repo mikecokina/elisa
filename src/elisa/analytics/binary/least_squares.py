@@ -43,8 +43,13 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         """
         xn = params.param_renormalizer(xn, self.labels)
         kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
+
+        phases, kwargs = models.rvt_layer_resolver(self.xs, **kwargs)
+        fit_xs = np.linspace(np.min(phases) - self.diff, np.max(phases) + self.diff, num=self.interp_treshold + 2) \
+            if np.shape(phases)[0] > self.interp_treshold else phases
+
         fn = models.synthetic_binary
-        args = self.fit_xs, self.period, self.discretization, self.morphology, self.observer, False
+        args = fit_xs, self.discretization, self.morphology, self.observer, False
         try:
             synthetic = logger_decorator()(fn)(*args, **kwargs)
             synthetic = butils.normalize_light_curve(synthetic, kind='average')
@@ -53,11 +58,11 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
             logger.error(f'your initial parmeters lead during fitting to invalid binary system')
             raise RuntimeError(f'your initial parmeters lead during fitting to invalid binary system: {str(e)}')
 
-        if np.shape(self.fit_xs) != np.shape(self.xs):
+        if np.shape(fit_xs) != np.shape(phases):
             new_synthetic = dict()
             for fltr, curve in synthetic.items():
-                f = interpolate.interp1d(self.fit_xs, curve, kind='cubic')
-                new_synthetic[fltr] = f(self.xs)
+                f = interpolate.interp1d(fit_xs, curve, kind='cubic')
+                new_synthetic[fltr] = f(phases)
             synthetic = new_synthetic
 
         residuals = np.array([np.sum(np.power(synthetic[band][self.xs_reverser[band]] - self.ys[band], 2)
@@ -68,14 +73,13 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
 
         return residuals
 
-    def fit(self, xs, ys, period, x0, discretization, yerr=None, interp_treshold=None, **kwargs):
+    def fit(self, xs, ys, x0, discretization, yerr=None, interp_treshold=None, **kwargs):
         """
         Fit method using non-linear least squares.
         Based on https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
 
         :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
         :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
-        :param period: float; system period
         :param x0: Dict[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
         :param yerr: Union[numpy.array, float]; errors for each point of observation
@@ -96,17 +100,13 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         x0 = params.lc_initial_x0_validity_check(x0, self.morphology)
         x0_vector, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
 
-        self.period = period
         self.discretization = discretization
         self.passband = passband
         self.labels, self.fixed, self.constraint = labels, fixed, constraint
         self.observer = observer
 
-        self.xs, x0 = models.time_layer_resolver(self.xs, x0)
-        interp_treshold = config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold
-        diff = 1.0 / interp_treshold
-        self.fit_xs = np.linspace(np.min(self.xs)-diff, np.max(self.xs)+diff, num=interp_treshold+2) \
-            if np.shape(self.xs)[0] > interp_treshold else self.xs
+        self.interp_treshold = config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold
+        self.diff = 1.0 / self.interp_treshold
 
         # evaluate least squares from scipy
         logger.info("fitting started...")
@@ -127,12 +127,13 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         result_dict.update(self.fixed)
         result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
 
+        result = {key: {"value": val} for key, val in result_dict.items()}
+
         # compute r_squared and append to result
-        r_squared_args = self.xs, self.ys, period, self.passband, discretization, self.morphology, self.xs_reverser, \
-                         self.fit_xs
+        r_squared_args = self.xs, self.ys, self.passband, discretization, self.morphology, self.xs_reverser, \
+                         self.diff, self.interp_treshold
         r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **result_dict)
 
-        result = {key: {"value": val} for key, val in result_dict.items()}
         result["r_squared"] = {'value': r_squared_result}
         result = params.dict_to_user_format(result)
         return params.extend_result_with_units(result)

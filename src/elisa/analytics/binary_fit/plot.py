@@ -211,11 +211,9 @@ class LCPlot(object):
 
         # system_kwargs = params.prepare_kwargs()
         system_kwargs = params.x0_to_kwargs(fit_params)
-        period = system_kwargs.pop('period')
-        system = models.prepare_binary(period=period, discretization=discretization, **system_kwargs)
+        system = models.prepare_binary(discretization=discretization, **system_kwargs)
         observer = Observer(passband=self.lc_fit.light_curves.keys(), system=system)
         synthetic_curves = models.synthetic_binary(synth_phases,
-                                                   period,
                                                    discretization=discretization,
                                                    morphology=None,
                                                    observer=observer,

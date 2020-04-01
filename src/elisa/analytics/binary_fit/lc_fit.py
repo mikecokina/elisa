@@ -107,11 +107,6 @@ class LCFit(object):
         # transforming initial parameters to base units
         x0 = autils.transform_initial_values(x0)
 
-        if x0['period']['fixed'] is not True:
-            logger.warning('Orbital period is expected to be known apriori the fit and thus it is considered fixed')
-        period_dict = x0.pop('period')
-        self.period = period_dict['value']
-
         x_data, y_data, yerr = dict(), dict(), dict()
         for fltr, data in self.light_curves.items():
             x_data[fltr] = data.x_data
@@ -120,12 +115,12 @@ class LCFit(object):
 
         if method == 'least_squares':
             fit_fn = lst_detached_fit if morphology == 'detached' else lst_over_contact_fit
-            self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, period=period_dict['value'], x0=x0, yerr=yerr,
+            self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, x0=x0, yerr=yerr,
                                          discretization=discretization, interp_treshold=interp_treshold, **kwargs)
 
         elif str(method).lower() in ['mcmc']:
             fit_fn = mcmc_detached_fit if morphology == 'detached' else mcmc_over_contact_fit
-            self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, period=period_dict['value'], x0=x0, yerr=yerr,
+            self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, x0=x0, yerr=yerr,
                                          discretization=discretization, interp_treshold=interp_treshold, **kwargs)
             self.flat_chain = fit_fn.last_sampler.get_chain(flat=True)
             self.normalization = fit_fn.last_normalization

@@ -90,13 +90,12 @@ def serialize_secondary_kwargs(**kwargs):
     return _serialize_star_kwargs(component='s__', **kwargs)
 
 
-def prepare_binary(period=None, discretization=3, **kwargs):
+def prepare_binary(discretization=3, **kwargs):
     """
     Setup binary system.
     If `beta` (gravity darkening factor), `albedo`, `metallicity` or `synchronicity` is not supplied,
     then `1.0` is used as their default value.
 
-    :param period: float;
     :param discretization: float;
     :param kwargs: Dict;
     :**kwargs options**:
@@ -124,9 +123,7 @@ def prepare_binary(period=None, discretization=3, **kwargs):
 
     :return: elisa.binary_system.system.BinarySystem;
     """
-    if period is None:
-        ValueError('Missing argument `period`.')
-    kwargs.update({"p__discretization_factor": discretization, "period": period})
+    kwargs.update({"p__discretization_factor": discretization})
     primary_kwargs = serialize_primary_kwargs(**kwargs)
     secondary_kwargs = serialize_secondary_kwargs(**kwargs)
     system_kwargs = serialize_system_kwargs(**kwargs)
@@ -138,11 +135,10 @@ def prepare_binary(period=None, discretization=3, **kwargs):
     return BinarySystem.from_json(json, _verify=False)
 
 
-def synthetic_binary(xs, period, discretization, morphology, observer, _raise_invalid_morphology, **kwargs):
+def synthetic_binary(xs, discretization, morphology, observer, _raise_invalid_morphology, **kwargs):
     """
     :param _raise_invalid_morphology: bool; if morphology of system is different as expected, raise MorphologyError
     :param xs: Union[List, numpy.array];
-    :param period: float;
     :param discretization: float;
     :param morphology: str;
     :param observer: elisa.observer.observer.Observer; instance
@@ -173,7 +169,7 @@ def synthetic_binary(xs, period, discretization, morphology, observer, _raise_in
     :return: Tuple[numpy.array, str];
     :raise: elisa.base.errors.MorphologyError;
     """
-    binary = prepare_binary(period, discretization, **kwargs)
+    binary = prepare_binary(discretization, **kwargs)
     observer._system = binary
 
     if params.is_overcontact(morphology) and not params.is_overcontact(binary.morphology) and _raise_invalid_morphology:

@@ -64,6 +64,7 @@ PARAMS_KEY_MAP = {
     'secondary_spots': 's__spots',
     'primary_pulsations': 'p__pulsations',
     'secondary_pulsations': 's__pulsations',
+    'period': 'period'
 }
 
 SPOTS_KEY_MAP = {
@@ -154,6 +155,7 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['T0']: 'd',
     PARAMS_KEY_MAP['l_add']: '',
     PARAMS_KEY_MAP['phase_shift']: '',
+    PARAMS_KEY_MAP['period']: 'd',
     # SPOTS
     SPOTS_KEY_MAP['phi']: 'degree',
     SPOTS_KEY_MAP['theta']: 'degree',
@@ -199,6 +201,7 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['l_add']: (0, 1.0),
     PARAMS_KEY_MAP['phase_shift']: (-0.8, 0.8),
     PARAMS_KEY_MAP['T0']: (Time.now().jd - 365.0, Time.now().jd),
+    PARAMS_KEY_MAP['period']: (0.05, 1000),
     # SPOTS
     SPOTS_KEY_MAP['phi']: (0, 360),
     SPOTS_KEY_MAP['theta']: (0, 180),
@@ -292,14 +295,14 @@ def x0_vectorize(x0):
 
 def x0_to_kwargs(x0):
     """
-    Transform native JSON input form to `key, value` form::
+    Transform native input form to `key, value` form::
 
         {
             key: value,
             ...
         }
 
-    :param x0: List[Dict[str, Union[float, str, bool]]];
+    :param x0: Dict[str, Union[float, str, bool]];
     :return: Dict[str, float];
     """
     ret_dict = {key: value['value'] for key, value in x0.items() if key not in COMPOSITE_PARAMS}
@@ -541,11 +544,13 @@ def lc_initial_x0_validity_check(x0, morphology):
 
     for key, val in x0.items():
         if key not in COMPOSITE_PARAMS:
-            _min, _max = _check_param_borders(key, val)
+            variable_test = 'fixed' in val.keys() and val['fixed'] is False
+            _min, _max = _check_param_borders(key, val) if variable_test else None, None
         else:
             for composite_item_key, composite_item in record.items():
                 for param_key, param_val in composite_item.items():
-                    _min, _max = _check_param_borders(param_key, param_val)
+                    variable_test = 'fixed' in param_val.keys() and param_val['fixed'] is False
+                    _min, _max = _check_param_borders(param_key, param_val) if variable_test else None, None
 
     if is_oc and all_fixed and are_same:
         return x0
