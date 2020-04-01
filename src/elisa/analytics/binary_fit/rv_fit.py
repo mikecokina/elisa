@@ -87,7 +87,7 @@ class RVFit(object):
             y_data[component] = data.y_data
             yerr[component] = data.yerr
 
-        if method == 'least_squares':
+        if str(method).lower() == 'least_squares':
             self.fit_params = lstsqr_central_rv.fit(xs=x_data, ys=y_data, x0=x0, yerr=yerr, **kwargs)
 
         elif str(method).lower() in ['mcmc']:

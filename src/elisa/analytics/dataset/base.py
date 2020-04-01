@@ -101,7 +101,7 @@ def read_data_file(filename, data_columns):
             for ii in range(len(data_columns)):
                 data[ii].append(data_to_append[ii])
 
-    return np.array(data)
+    return np.array(data).T
 
 
 class DataSet(metaclass=ABCMeta):
@@ -232,11 +232,11 @@ class RVData(DataSet):
 
         data = read_data_file(filename, data_columns)
         try:
-            errs = data[:, data_columns[2]]
+            errs = data[:, 2]
         except IndexError:
             errs = None
-        return RVData(x_data=data[:, data_columns[0]],
-                      y_data=data[:, data_columns[1]],
+        return RVData(x_data=data[:, 0],
+                      y_data=data[:, 1],
                       yerr=errs,
                       x_unit=x_unit,
                       y_unit=y_unit)
@@ -330,13 +330,13 @@ class LCData(DataSet):
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
 
-        data = data = read_data_file(filename, data_columns)
+        data = read_data_file(filename, data_columns)
         try:
-            errs = data[:, data_columns[2]]
+            errs = data[:, 2]
         except IndexError:
             errs = None
-        return LCData(x_data=data[:, data_columns[0]],
-                      y_data=data[:, data_columns[1]],
+        return LCData(x_data=data[:, 0],
+                      y_data=data[:, 1],
                       yerr=errs,
                       x_unit=x_unit,
                       y_unit=y_unit,

@@ -130,8 +130,9 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
         :param synthetic: Dict; {'dataset_name': numpy.array, }
         :return: float;
         """
-        lh = - 0.5 * np.sum([np.power((self.ys[item] - synthetic[item][self.xs_reverser[item]]) / self.yerrs[item], 2)
-                             for item, value in synthetic.items()])
+        lh = - 0.5 * np.sum([np.sum(
+            np.power((self.ys[item] - synthetic[item][self.xs_reverser[item]]) / self.yerrs[item], 2))
+            for item, value in synthetic.items()])
         return lh
 
     def ln_probability(self, xn):
