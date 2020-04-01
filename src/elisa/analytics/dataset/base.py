@@ -77,6 +77,33 @@ def convert_unit(unit, to_unit):
     return unit if unit == u.dimensionless_unscaled else to_unit
 
 
+def read_data_file(filename, data_columns):
+    """
+    Function loads observation datafile. Rows with column names and comments should start with `#`.
+    It deals with missing data by omitting given line
+
+    :param filename: str;
+    :param data_columns: tuple;
+    :return: numpy.array;
+    """
+    data = [[] for _ in data_columns]
+    with open(filename) as f:
+        for line in f:
+            if line.startswith('#'):
+                continue
+
+            items = [float(xx.strip()) for xx in line.split()]
+            try:
+                data_to_append = [items[ii] for ii in data_columns]
+            except IndexError:
+                continue
+
+            for ii in range(len(data_columns)):
+                data[ii].append(data_to_append[ii])
+
+    return np.array(data)
+
+
 class DataSet(metaclass=ABCMeta):
 
     ID = 1
@@ -203,7 +230,7 @@ class RVData(DataSet):
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
 
-        data = np.loadtxt(filename)
+        data = read_data_file(filename, data_columns)
         try:
             errs = data[:, data_columns[2]]
         except IndexError:
@@ -303,7 +330,7 @@ class LCData(DataSet):
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
 
-        data = np.loadtxt(filename)
+        data = data = read_data_file(filename, data_columns)
         try:
             errs = data[:, data_columns[2]]
         except IndexError:

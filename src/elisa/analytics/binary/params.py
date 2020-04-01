@@ -581,7 +581,7 @@ def rv_initial_x0_validity_check(x0: Dict):
     :param x0: List[Dict];
     :return: List[Dict];
     """
-    # first valdiate constraints
+    # validating constraints
     constraints_validator(x0)
 
     labels = x0.keys()
