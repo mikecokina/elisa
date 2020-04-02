@@ -761,6 +761,45 @@ def binary_rv_fit_plot(**kwargs):
 
 
 def binary_lc_fit_plot(**kwargs):
+    synthetic_clrs = {
+        'bolometric': 'black',
+        'Generic.Bessell.U': '#ff00bf',
+        'Generic.Bessell.B': '#0000E5',
+        'Generic.Bessell.V': '#00cc00',
+        'Generic.Bessell.R': '#fd2b2b',
+        'Generic.Bessell.I': '#b30000',
+        'SLOAN.SDSS.u': '#0000ff',
+        'SLOAN.SDSS.g': '#00cc00',
+        'SLOAN.SDSS.r': '#ff1a1a',
+        'SLOAN.SDSS.i': '#cc00cc',
+        'SLOAN.SDSS.z': '#00ffff',
+        'Generic.Stromgren.u': '#cc00cc',
+        'Generic.Stromgren.v': '#ff00ff',
+        'Generic.Stromgren.b': '#3333ff',
+        'Generic.Stromgren.y': '#00e600',
+        'Kepler': '#E50000',
+        'GaiaDR2': 'black',
+    }
+    datapoint_clrs = {
+        'bolometric': 'gray',
+        'Generic.Bessell.U': '#cc0099',
+        'Generic.Bessell.B': '#00007F',
+        'Generic.Bessell.V': '#008000',
+        'Generic.Bessell.R': '#ff0000',
+        'Generic.Bessell.I': '#800000',
+        'SLOAN.SDSS.u': '#000099',
+        'SLOAN.SDSS.g': '#009900',
+        'SLOAN.SDSS.r': '#e60000',
+        'SLOAN.SDSS.i': '#800080',
+        'SLOAN.SDSS.z': '#00cccc',
+        'Generic.Stromgren.u': '#990099',
+        'Generic.Stromgren.v': '#cc00cc',
+        'Generic.Stromgren.b': '#0000cc',
+        'Generic.Stromgren.y': '#00b300',
+        'Kepler': '#890000',
+        'GaiaDR2': 'gray',
+    }
+
     matplotlib.rcParams.update({'errorbar.capsize': 2})
     fig = plt.figure(figsize=(8, 6))
 
@@ -770,17 +809,19 @@ def binary_lc_fit_plot(**kwargs):
 
     for fltr, curve in kwargs['lcs'].items():
         if kwargs['yerr'][fltr] is None:
-            ax1.scatter(kwargs['x_data'][fltr], kwargs['y_data'][fltr], s=3, label=fltr + ' observed')
+            ax1.scatter(kwargs['x_data'][fltr], kwargs['y_data'][fltr], s=3, label=fltr + ' observed',
+                        color=datapoint_clrs[fltr])
 
-            ax2.scatter(kwargs['x_data'][fltr], kwargs['residuals'][fltr], s=3, label=fltr + ' residual')
+            ax2.scatter(kwargs['x_data'][fltr], kwargs['residuals'][fltr], s=3, label=fltr + ' residual',
+                        color=datapoint_clrs[fltr])
         else:
             ax1.errorbar(kwargs['x_data'][fltr], kwargs['y_data'][fltr], yerr=kwargs['yerr'][fltr],
-                         linestyle='none', markersize=3, label=fltr + ' observed')
+                         linestyle='none', markersize=3, label=fltr + ' observed', color=datapoint_clrs[fltr])
 
             ax2.errorbar(kwargs['x_data'][fltr], kwargs['residuals'][fltr], yerr=kwargs['yerr'][fltr],
-                         linestyle='none', markersize=3, label=fltr + ' residual')
+                         linestyle='none', markersize=3, label=fltr + ' residual', color=datapoint_clrs[fltr])
 
-        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic')
+        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic', color=synthetic_clrs[fltr])
 
     ax2.axhline(0, ls='dashed', c='black', lw=0.5)
 
