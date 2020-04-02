@@ -64,7 +64,6 @@ PARAMS_KEY_MAP = {
     'secondary_spots': 's__spots',
     'primary_pulsations': 'p__pulsations',
     'secondary_pulsations': 's__pulsations',
-    'period': 'period'
 }
 
 SPOTS_KEY_MAP = {
@@ -155,7 +154,6 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['T0']: 'd',
     PARAMS_KEY_MAP['l_add']: '',
     PARAMS_KEY_MAP['phase_shift']: '',
-    PARAMS_KEY_MAP['period']: 'd',
     # SPOTS
     SPOTS_KEY_MAP['phi']: 'degree',
     SPOTS_KEY_MAP['theta']: 'degree',
@@ -201,7 +199,6 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['l_add']: (0, 1.0),
     PARAMS_KEY_MAP['phase_shift']: (-0.8, 0.8),
     PARAMS_KEY_MAP['T0']: (Time.now().jd - 365.0, Time.now().jd),
-    PARAMS_KEY_MAP['period']: (0.05, 1000),
     # SPOTS
     SPOTS_KEY_MAP['phi']: (0, 360),
     SPOTS_KEY_MAP['theta']: (0, 180),

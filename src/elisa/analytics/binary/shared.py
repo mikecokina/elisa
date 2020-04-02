@@ -60,7 +60,7 @@ def lc_r_squared(synthetic, *args, **x):
     """
     xs, ys, passband, discretization, morphology, xs_reverser, diff, interp_treshold = args
 
-    xs, kwargs = models.time_layer_resolver(xs, x)
+    xs, kwargs = models.rvt_layer_resolver(xs, **x)
     fit_xs = np.linspace(np.min(xs) - diff, np.max(xs) + diff, num=interp_treshold + 2) \
         if np.shape(xs)[0] > interp_treshold else xs
 

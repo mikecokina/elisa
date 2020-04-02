@@ -209,11 +209,14 @@ class LCPlot(object):
 
         synth_phases = np.linspace(start_phase, stop_phase, number_of_points)
 
-        x0_vector, labels, fixed, constraint, observer = params.fit_data_initializer(fit_params)
-        renormalized = params.param_renormalizer(x0_vector, labels)
+        # x0_vector, labels, fixed, constraint, observer = params.fit_data_initializer(fit_params)
+        # renormalized = params.param_renormalizer(x0_vector, labels)
 
-        system_kwargs = params.prepare_kwargs(renormalized, labels, constraint, fixed)
-        # system_kwargs = params.x0_to_kwargs(system_kwargs)
+        fixed = params.x0_to_fixed_kwargs(fit_params)
+        constraint = params.x0_to_constrained_kwargs(fit_params)
+        param_vectorized, labels = params.x0_vectorize(fit_params)
+
+        system_kwargs = params.prepare_kwargs(param_vectorized, labels, constraint, fixed)
         system = models.prepare_binary(discretization=discretization, **system_kwargs)
         observer = Observer(passband=self.lc_fit.light_curves.keys(), system=system)
         synthetic_curves = models.synthetic_binary(synth_phases,

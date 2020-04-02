@@ -129,7 +129,6 @@ class LCFit(object):
         else:
             raise ValueError('Method name not recognised. Available methods `least_squares`, `mcmc` or `MCMC`.')
 
-        self.fit_params.update({'period': {'value': self.period, 'unit': params.PARAMS_UNITS_MAP['period']}})
         return self.fit_params
 
     def load_chain(self, filename, discard=0):

@@ -61,7 +61,7 @@ def convert_flux_error(data, error, unit, zero_point=None):
             raise ValueError('You supplied your data in magnitudes. Please also specify a zero point using keyword '
                              'argument `reference_magnitude`.')
         else:
-            error = np.power(10, (zero_point - data) / 2.5) * (np.power(10, error / 2.5) - 1)
+            error = np.power(10, error / 2.5) - 1
 
     return error
 

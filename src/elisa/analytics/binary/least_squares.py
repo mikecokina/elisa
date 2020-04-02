@@ -62,10 +62,12 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
             new_synthetic = dict()
             for fltr, curve in synthetic.items():
                 f = interpolate.interp1d(fit_xs, curve, kind='cubic')
-                new_synthetic[fltr] = f(phases)
+                new_synthetic[fltr] = f(phases[self.xs_reverser[fltr]])
             synthetic = new_synthetic
+        else:
+            synthetic = {band: val[self.xs_reverser[band]] for band, val in synthetic.items()}
 
-        residuals = np.array([np.sum(np.power(synthetic[band][self.xs_reverser[band]] - self.ys[band], 2)
+        residuals = np.array([np.sum(np.power(synthetic[band] - self.ys[band], 2)
                               / self.yerrs[band]) for band in synthetic])
 
         r2 = shared.r_squared(synthetic, self.ys)
