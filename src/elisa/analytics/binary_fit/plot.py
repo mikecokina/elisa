@@ -155,16 +155,16 @@ class LCPlot(object):
     def __init__(self, instance):
         self.lc_fit = instance
 
-    def model(self, fit_params=None, start_phase=-0.6, stop_phase=0.6, number_of_points=300,
-              y_axis_unit=u.dimensionless_unscaled, discretization=3):
+    def model(self, fit_params=None, start_phase=-0.6, stop_phase=0.6, number_of_points=300, discretization=3,
+              separation=0.1):
         """
         Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
+        :param separation: float; separation between different filters
         :param fit_params: dict; {fit_parameter: {value: float, unit: astropy.unit.Unit, ...(fitting method dependent)}
         :param start_phase: float;
         :param stop_phase: float;
         :param number_of_points: int;
-        :param y_axis_unit: astropy.unit.Unit;
         :param discretization: unit
         """
         plot_result_kwargs = dict()
@@ -184,12 +184,16 @@ class LCPlot(object):
                 t_layer.jd_to_phase(fit_params['primary_minimum_time']['value'], fit_params['period']['value'],
                                     curve.x_data, centre=0.0)
 
-            y_data[_filter] = utils.flux_to_magnitude(curve.y_data, curve.yerr) if y_axis_unit == u.mag \
-                else curve.y_data
+            y_data[_filter] = curve.y_data
 
-            yerr[_filter] = utils.flux_error_to_magnitude_error(curve.yerr, curve.reference_magnitude) \
-                if y_axis_unit == u.mag else curve.yerr
-        y_data = bsutils.normalize_light_curve(y_data, kind='global_maximum')
+            yerr[_filter] = curve.yerr
+
+        # y_data = bsutils.normalize_light_curve(y_data, kind='global_maximum') if y_axis_unit != u.mag else y_data
+        y_data = bsutils.normalize_light_curve(y_data, kind='maximum')
+        ii, L = 0, len(y_data)
+        for fltr, curve in y_data.items():
+            curve -= separation * (ii - int(L/2))
+            ii += 1
 
         # extending observations to desired phase interval
         for filter, curve in self.lc_fit.light_curves.items():
@@ -204,13 +208,9 @@ class LCPlot(object):
             'x_data': x_data,
             'y_data': y_data,
             'yerr': yerr,
-            'y_unit': y_axis_unit,
         })
 
         synth_phases = np.linspace(start_phase, stop_phase, number_of_points)
-
-        # x0_vector, labels, fixed, constraint, observer = params.fit_data_initializer(fit_params)
-        # renormalized = params.param_renormalizer(x0_vector, labels)
 
         fixed = params.x0_to_fixed_kwargs(fit_params)
         constraint = params.x0_to_constrained_kwargs(fit_params)
@@ -225,7 +225,13 @@ class LCPlot(object):
                                                    observer=observer,
                                                    _raise_invalid_morphology=False,
                                                    **system_kwargs)
-        synthetic_curves = bsutils.normalize_light_curve(synthetic_curves, kind='global_maximum')
+
+        # synthetic_curves = bsutils.normalize_light_curve(synthetic_curves, kind='global_maximum')
+        synthetic_curves = bsutils.normalize_light_curve(synthetic_curves, kind='maximum')
+        ii = 0
+        for fltr, curve in synthetic_curves.items():
+            curve -= separation * (ii - int(L/2))
+            ii += 1
 
         # interpolating synthetic curves to observations and its residuals
         interp_fn = {component: interp1d(synth_phases, synthetic_curves[component], kind='cubic')
@@ -239,7 +245,6 @@ class LCPlot(object):
             'synth_phases': synth_phases,
             'lcs': synthetic_curves,
             'residuals': residuals,
-            'y_unit': y_axis_unit
         })
 
         graphics.binary_lc_fit_plot(**plot_result_kwargs)

@@ -172,8 +172,8 @@ def synthetic_binary(xs, discretization, morphology, observer, _raise_invalid_mo
     binary = prepare_binary(discretization, **kwargs)
     observer._system = binary
 
-    if params.is_overcontact(morphology) and not params.is_overcontact(binary.morphology) and _raise_invalid_morphology:
-        raise error.MorphologyError(f'Expected morphology is {morphology} but obtained is {binary.morphology}')
+    # if params.is_overcontact(morphology) and not params.is_overcontact(binary.morphology) and _raise_invalid_morphology:
+    #     raise error.MorphologyError(f'Expected morphology is {morphology} but obtained is {binary.morphology}')
 
     lc = observer.observe.lc(phases=xs, normalize=True)
     return lc[1]

@@ -59,6 +59,7 @@ class LCFit(object):
 
         # MCMC specific variables
         self.flat_chain = None
+        self.flat_chain_path = None
         self.normalization = None
         self.variable_labels = None
 
@@ -123,6 +124,7 @@ class LCFit(object):
             self.fit_params = fit_fn.fit(xs=x_data, ys=y_data, x0=x0, yerr=yerr,
                                          discretization=discretization, interp_treshold=interp_treshold, **kwargs)
             self.flat_chain = fit_fn.last_sampler.get_chain(flat=True)
+            self.flat_chain_path = fit_fn.last_fname
             self.normalization = fit_fn.last_normalization
             self.variable_labels = fit_fn.labels
 

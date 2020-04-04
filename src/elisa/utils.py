@@ -939,8 +939,8 @@ def magnitude_to_flux(data, zero_point):
     return np.power(10, (zero_point - data) / 2.5)
 
 
-def magnitude_error_to_flux_error(data, error, zero_point):
-    np.power(10, (zero_point - data) / 2.5) * (np.power(10, error / 2.5) - 1)
+def magnitude_error_to_flux_error(error):
+    return np.power(10, error / 2.5) - 1.0
 
 
 def flux_to_magnitude(data, zero_point):

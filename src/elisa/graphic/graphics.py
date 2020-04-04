@@ -808,20 +808,22 @@ def binary_lc_fit_plot(**kwargs):
     ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
     for fltr, curve in kwargs['lcs'].items():
+        (dt_clr, clr) = (datapoint_clrs[fltr], datapoint_clrs[fltr]) if len(kwargs['lcs']) > 1 else ('blue', 'red')
+
         if kwargs['yerr'][fltr] is None:
             ax1.scatter(kwargs['x_data'][fltr], kwargs['y_data'][fltr], s=3, label=fltr + ' observed',
-                        color=datapoint_clrs[fltr])
+                        color=dt_clr)
 
             ax2.scatter(kwargs['x_data'][fltr], kwargs['residuals'][fltr], s=3, label=fltr + ' residual',
-                        color=datapoint_clrs[fltr])
+                        color=dt_clr)
         else:
             ax1.errorbar(kwargs['x_data'][fltr], kwargs['y_data'][fltr], yerr=kwargs['yerr'][fltr],
-                         linestyle='none', markersize=3, label=fltr + ' observed', color=datapoint_clrs[fltr])
+                         linestyle='none', markersize=3, label=fltr + ' observed', color=dt_clr)
 
             ax2.errorbar(kwargs['x_data'][fltr], kwargs['residuals'][fltr], yerr=kwargs['yerr'][fltr],
-                         linestyle='none', markersize=3, label=fltr + ' residual', color=datapoint_clrs[fltr])
+                         linestyle='none', markersize=3, label=fltr + ' residual', color=dt_clr)
 
-        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic', color=synthetic_clrs[fltr])
+        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic', color=clr)
 
     ax2.axhline(0, ls='dashed', c='black', lw=0.5)
 

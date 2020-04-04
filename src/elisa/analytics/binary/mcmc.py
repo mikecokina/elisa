@@ -91,9 +91,9 @@ class McMcMixin(object):
         :param fname: str; base filename of stored state
         :return: Dict;
         """
-        fdir = fname[:len(config.DATE_MASK) + 2]
+        fdir = fname[:len(config.DATE_MASK) + 2] if '/' not in fname else fname
         fname = f'{fname}.json'
-        fpath = op.join(config.HOME, fdir, fname)
+        fpath = op.join(config.HOME, fdir, fname) if '/' not in fname else fname
         with open(fpath, "r") as f:
             return json.loads(f.read())
 

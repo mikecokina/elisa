@@ -46,11 +46,10 @@ def convert_flux(data, unit, zero_point=None):
     return data
 
 
-def convert_flux_error(data, error, unit, zero_point=None):
+def convert_flux_error(error, unit, zero_point=None):
     """
     If data an its errors are in magnitudes, they are converted to normalized flux.
 
-    :param error: numpy.array;
     :param data: numpy.array;
     :param unit: astropy.unit.Unit;
     :param zero_point: float;
@@ -61,7 +60,7 @@ def convert_flux_error(data, error, unit, zero_point=None):
             raise ValueError('You supplied your data in magnitudes. Please also specify a zero point using keyword '
                              'argument `reference_magnitude`.')
         else:
-            error = np.power(10, error / 2.5) - 1
+            error = utils.magnitude_error_to_flux_error(error)
 
     return error
 
@@ -306,7 +305,7 @@ class LCData(DataSet):
 
         # convert errors
         if 'yerr' in kwargs.keys():
-            kwargs['yerr'] = convert_flux_error(kwargs['y_data'], kwargs['yerr'], kwargs['y_unit'],
+            kwargs['yerr'] = convert_flux_error(kwargs['yerr'], kwargs['y_unit'],
                                                 zero_point=kwargs['reference_magnitude'])
 
         # converting y-axis
