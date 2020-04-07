@@ -69,3 +69,40 @@ def check_initial_param_validity(x0, all_fit_params, mandatory_fit_params):
             utils.invalid_param_checker(pulsation_condensed, params.PULSATIONS_KEY_MAP.values(), pulsation_name)
             utils.check_missing_params(params.PULSATIONS_KEY_MAP.values(), pulsation_condensed, pulsation_name)
 
+
+def write_ln(fit_instance, param_name, designation, write_fn, line_sep):
+    """
+    Auxiliary function to the fit_summary functions, produces one line in output for given parameter that is present
+    in `fit_params`.
+
+    :param fit_instance: Union[LCFit, RVFit];
+    :param param_name: str; name os the parameter in `fit_params`
+    :param designation: str; displayed name of the parameter
+    :param write_fn: function used to write into console or to the file
+    :param line_sep: str; symbols to finish the line
+    :return:
+    """
+    params = fit_instance.fit_params
+    if 'min' in params[param_name].keys() and 'max' in params[param_name].keys():
+        bot = params[param_name]['min'] - params[param_name]['value']
+        top = params[param_name]['max'] - params[param_name]['value']
+        sig_figures = -int(np.log10(np.min(np.abs([bot, top])))//1) + 1
+        bot = round(bot, sig_figures)
+        top = round(top, sig_figures)
+    else:
+        bot, top = '', '',
+        sig_figures = 10
+
+    status = 'not recognized'
+    if 'fixed' in params[param_name].keys():
+        status = 'Fixed' if params[param_name]['fixed'] else 'Variable'
+    elif 'constraint' in params[param_name].keys():
+        status = params[param_name]['constraint']
+
+    return write_fn(f"{designation:<35} "
+                    f"{round(params[param_name]['value'], sig_figures):>20}"
+                    f"{bot:>20}"
+                    f"{top:>20}"
+                    f"{params[param_name]['unit']:>20}    "
+                    f"{status:<50}{line_sep}")
+

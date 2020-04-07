@@ -125,20 +125,23 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
 
         # put all together `floats`, `fixed` and `constraints`
         result = params.param_renormalizer(result.x, labels)
-        result_dict = dict(zip(labels, result))
-        result_dict.update(self.fixed)
-        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
 
-        result = {key: {"value": val} for key, val in result_dict.items()}
+        result_dict = {labels[ii]: {'value': result[ii], 'fixed': False} for ii in range(len(labels))}
+        result_dict.update({lbl: {'value': val, 'fixed': True} for lbl, val in self.fixed.items()})
 
+        results = {lbl: val['value'] for lbl, val in result_dict.items()}
+        constraint_dict = params.constraints_evaluator(results, self.constraint)
+        result_dict.update({lbl: {'value': val, 'constraint': self.constraint[val]} for lbl, val in constraint_dict})
+
+        results = {lbl: val['value'] for lbl, val in result_dict.items()}
         # compute r_squared and append to result
         r_squared_args = self.xs, self.ys, self.passband, discretization, self.morphology, self.xs_reverser, \
                          self.diff, self.interp_treshold
-        r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **result_dict)
+        r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **results)
 
-        result["r_squared"] = {'value': r_squared_result}
-        result = params.dict_to_user_format(result)
-        return params.extend_result_with_units(result)
+        result_dict["r_squared"] = {'value': r_squared_result}
+        result_dict = params.dict_to_user_format(result_dict)
+        return params.extend_result_with_units(result_dict)
 
 
 class OvercontactLightCurveFit(LightCurveFit):
@@ -215,17 +218,20 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
 
         result = params.param_renormalizer(result.x, labels)
 
-        result_dict = dict(zip(labels, result))
-        result_dict.update(self.fixed)
-        result_dict.update(params.constraints_evaluator(result_dict, self.constraint))
+        result_dict = {labels[ii]: {'value': result[ii], 'fixed': False} for ii in range(len(labels))}
+        result_dict.update({lbl: {'value': val, 'fixed': True} for lbl, val in self.fixed.items()})
 
+        results = {lbl: val['value'] for lbl, val in result_dict.items()}
+        constraint_dict = params.constraints_evaluator(results, self.constraint)
+        result_dict.update({lbl: {'value': val, 'constraint': self.constraint[val]} for lbl, val in constraint_dict})
+
+        results = {lbl: val['value'] for lbl, val in result_dict.items()}
         r_squared_args = self.xs, self.ys, on_normalized, self.xs_reverser
-        r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **result_dict)
+        r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **results)
 
-        result = {key: {"value": val} for key, val in result_dict.items()}
-        result["r_squared"] = {'value': r_squared_result}
-        result = params.dict_to_user_format(result)
-        return params.extend_result_with_units(result)
+        result_dict["r_squared"] = {'value': r_squared_result}
+        result_dict = params.dict_to_user_format(result_dict)
+        return params.extend_result_with_units(result_dict)
 
 
 binary_detached = DetachedLightCurveFit()

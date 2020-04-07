@@ -156,7 +156,8 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
         """
         res_val_dict = {key: val['value'] for key, val in result_dict.items()}
         constrained_values = params.constraints_evaluator(res_val_dict, constraints)
-        result_dict.update({key: {'value': val} for key, val in constrained_values.items()})
+        result_dict.update({key: {'value': val, 'constraint': constraints[key]}
+                            for key, val in constrained_values.items()})
         return result_dict
 
     def _fit(self, x0, labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False):
@@ -290,7 +291,7 @@ class LightCurveFit(McMcFit):
         # extracting fit results from MCMC sampler
         flat_chain = sampler.get_chain(flat=True)
         result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels, percentiles=percentiles)
-        result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
+        result_dict.update({lbl: {'value': val, 'fixed': True} for lbl, val in self.fixed.items()})
 
         result_dict = self.eval_constraints_after_mcmc(result_dict, self.constraint)
 
@@ -406,7 +407,8 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         # extracting fit results from MCMC sampler
         flat_chain = sampler.get_chain(flat=True)
         result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels, percentiles=percentiles)
-        result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
+
+        result_dict.update({lbl: {'value': val, 'fixed': True} for lbl, val in self.fixed.items()})
 
         result_dict = self.eval_constraints_after_mcmc(result_dict, self.constraint)
 

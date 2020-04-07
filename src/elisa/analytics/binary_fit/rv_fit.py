@@ -1,6 +1,7 @@
 import json
 from ...logger import getLogger
 from copy import copy
+import numpy as np
 
 from ... import utils
 from elisa.analytics.binary.least_squares import central_rv as lstsqr_central_rv
@@ -98,7 +99,7 @@ class RVFit(object):
             self.variable_labels = mcmc_central_rv.labels
 
         logger.info('Fitting and processing of results finished successfully.')
-
+        self.fit_summary()
         return self.fit_params
 
     def load_chain(self, filename, discard=0):
@@ -140,3 +141,33 @@ class RVFit(object):
         self.fit_params = prms
 
         return prms
+
+    def fit_summary(self, filename=None):
+        """
+        Producing a summary of the fit in more human readable form.
+
+        :param filename: Union[str, None]; if not None, summary is stored in file, otherwise it is printed into console
+        :return:
+        """
+        if filename is not None:
+            f = open(filename, 'w')
+            write_fn = f.write
+            line_sep = '\n'
+        else:
+            write_fn = print
+            line_sep = ''
+
+        write_fn(f"{'# Parameter':<35}{'value':>20}{'-1 sigma':>20}{'+1 sigma':>20}{'unit':>20}    "
+                 f"{'status':<50}{line_sep}")
+        write_fn(f"#{'-'*123}{line_sep}")
+        shared.write_ln(self, 'mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep)
+        shared.write_ln(self, 'asini', 'a*sin(i):', write_fn, line_sep)
+        shared.write_ln(self, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep)
+        shared.write_ln(self, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn, line_sep)
+        shared.write_ln(self, 'gamma', 'Centre of mass velocity (gamma):', write_fn, line_sep)
+        shared.write_ln(self, 'period', 'Orbital period (P):', write_fn, line_sep)
+        if 'primary_minimum_time' in self.fit_params.keys():
+            shared.write_ln(self, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn, line_sep)
+
+        if filename is not None:
+            f.close()
