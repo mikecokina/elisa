@@ -99,7 +99,7 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
         self.last_sampler = emcee.EnsembleSampler
         self.last_normalization = dict()
         self.last_fname = ''
-        self._last_known_lhood = np.finfo(float).max * np.finfo(float).eps
+        self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
 
     @staticmethod
     def ln_prior(xn):
