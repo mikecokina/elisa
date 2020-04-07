@@ -99,7 +99,7 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
         self.last_sampler = emcee.EnsembleSampler
         self.last_normalization = dict()
         self.last_fname = ''
-        self._last_known_lhood = -np.inf
+        self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
 
     @staticmethod
     def ln_prior(xn):
@@ -116,7 +116,7 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
             likelihood = self.likelihood(xn)
         except (ElisaError, ValueError) as e:
             logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
-            return self._last_known_lhood * 1e6
+            return self._last_known_lhood * 1e3
         return likelihood
 
     def _fit(self, x0, labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None):
