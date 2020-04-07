@@ -11,7 +11,7 @@ def get_params(filename):
 
 
 data = get_params('data/wide_binary.json')
-surface_discredizations = [10, 5, 3]
+surface_discredizations = [10, 5, 3, 2, 1]
 
 curves = [None for _ in surface_discredizations]
 phases = None

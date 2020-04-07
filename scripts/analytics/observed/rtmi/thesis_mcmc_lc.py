@@ -168,7 +168,9 @@ def main():
         {
             'value': 0.35,
             'param': 'mass_ratio',
-            'fixed': True
+            'fixed': False,
+            'min': 0.33,
+            'max': 0.37
         },
         {
             'value': 0.0,

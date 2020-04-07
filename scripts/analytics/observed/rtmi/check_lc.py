@@ -2,7 +2,9 @@ import json
 import numpy as np
 import os.path as op
 
+from elisa.analytics.binary import params
 from elisa.analytics.binary.models import synthetic_binary
+from elisa.analytics.binary.utils import normalize_lightcurve_to_max
 from elisa.binary_system import t_layer
 from elisa.observer.observer import Observer
 from matplotlib import pyplot as plt
@@ -83,20 +85,40 @@ def main():
     xs_argsort = {band: np.argsort(xs[band]) for band in passbands}
     xs = {band: xs[band][xs_argsort[band]] for band in passbands}
 
-    ys = {band: np.array(lc[band]["mag"])[xs_argsort[band]] for band in passbands}
+    ys_mag = {band: np.array(lc[band]["mag"])[xs_argsort[band]] for band in passbands}
     phase_mask = phase_filter(xs, threshold=0.01)
 
-    xs_syn = np.arange(0.0, 1.0, 0.01)
-    ys_syn = lc_sys(xs_syn,
-                    p=P, a=2.6440, i=84.10, q=0.37, t1=4400, t2=4500, omega_1=2.568,
-                    omega_2=2.568, a_1=0.6, a_2=0.6, g_1=0.32, g_2=0.32)
+    # mag to flux ######################################################################################################
+    ys_flx = mag_to_flx(ys_mag)
+    ys_max = {band: max(np.array(ys_flx[band])) for band in passbands}
+    ys = {band: ys_flx[band] / ys_max[band] for band in passbands}
+    # ##################################################################################################################
 
-    ys_syn_max = {band: max(np.array(ys_syn[band])) for band in passbands}
-    ys_syn = {band: ys_syn[band] / ys_syn_max[band] for band in passbands}
+    # error ############################################################################################################
+    yerrs_mag = {band: np.array(np.array(lc[band]["err"]))[xs_argsort[band]] for band in passbands}
 
-    ys = mag_to_flx(ys)
-    ys_max = {band: max(np.array(ys[band])) for band in passbands}
-    ys = {band: ys[band] / ys_max[band] for band in passbands}
+    ys_mag_max = {band: ys_mag[band] - yerrs_mag[band] for band in passbands}
+    ys_mag_min = {band: ys_mag[band] + yerrs_mag[band] for band in passbands}
+
+    ys_flx_max = mag_to_flx(ys_mag_max)
+    ys_flx_min = mag_to_flx(ys_mag_min)
+
+    yerrs = {band: (ys_flx_max[band] - ys_flx_min[band]) / (2. * ys_max[band]) for band in passbands}
+    # ##################################################################################################################
+
+    # phase mask #######################################################################################################
+    xs = {band: xs[band][phase_mask[band]] for band in passbands}
+    ys = {band: ys[band][phase_mask[band]] for band in passbands}
+    yerrs = {band: yerrs[band][phase_mask[band]] for band in passbands}
+    # ##################################################################################################################
+
+    xs_syn, xs_reverser = params.xs_reducer(xs)
+
+    p = dict(p=P, a=2.6440, i=84.10, q=0.35, t1=4400, t2=4500, omega_1=2.568,
+             omega_2=2.568, a_1=0.5, a_2=0.5, g_1=0.32, g_2=0.32)
+
+    ys_syn = lc_sys(xs_syn, **p)
+    ys_syn = normalize_lightcurve_to_max(ys_syn)
 
     for band in passbands:
         plt.scatter(xs[band] - 0.01, y=ys[band] - ys_shift[band], c=color_map[band])
@@ -106,44 +128,9 @@ def main():
     plt.ylabel('Flux')
     plt.show()
 
-
-
-    # xs = {
-    #     "primary": np.array(rv["primary"]["jd"]),
-    #     "secondary": np.array(rv["secondary"]["jd"]),
-    # }
-    #
-    # ys = {
-    #     "primary": np.array(rv["primary"]["vr"]) * 1e3,
-    #     "secondary": np.array(rv["secondary"]["vr"]) * 1e3,
-    # }
-    #
-    # yerr = {
-    #     "primary": np.array(rv["primary"]["err"]) * 1e3,
-    #     "secondary": np.array(rv["secondary"]["err"]) * 1e3,
-    # }
-    #
-    # xs["primary"] = t_layer.jd_to_phase(T0, P, xs["primary"])
-    # xs["secondary"] = t_layer.jd_to_phase(T0, P, xs["secondary"])
-    #
-    # xs_syn = np.arange(0.0, 1.5, 0.005)
-    # rv = lc_sys(e=0.0, omega=0.0, p=P, q=0.35, asini=2.63, gamma=-14718.46, xs=xs_syn)
-    #
-    # plt.scatter(xs["primary"], ys["primary"] / 1e3, c="g", label="observation")
-    # plt.scatter(xs["primary"], ys["secondary"] / 1e3, c="g")
-    #
-    # phase_mask = xs["primary"] <= 0.5
-    #
-    # plt.scatter(xs["primary"][phase_mask] + 1, ys["primary"][phase_mask] / 1e3, c="g")
-    # plt.scatter(xs["primary"][phase_mask] + 1, ys["secondary"][phase_mask] / 1e3, c="g")
-    #
-    # plt.plot(xs_syn, rv["primary"] / 1e3, c="r", label="fit")
-    # plt.plot(xs_syn, rv["secondary"] / 1e3, c="r", )
-    #
-    # plt.xlabel('Phase')
-    # plt.ylabel(r'Radial Velocity/($km/s$)')
-    # plt.legend(loc="upper left", bbox_to_anchor=(0.0, 1.0))
-    # plt.show()
+    lhood = -0.5 * np.sum(np.array([np.sum(np.power((ys_syn[band][xs_reverser[band]] - ys[band])
+                                                    / yerrs[band], 2)) for band in ys_syn]))
+    print(lhood)
 
 
 if __name__ == '__main__':
