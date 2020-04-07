@@ -101,6 +101,8 @@ v0.2.3_
 **Fixes**
 
 - fitting light curves of over-contact binaries won't crash with missing `param` error due to invalid constraint setting on backend
+- normalize lightcurves (during fitting procedure) each on its max values instead of normalization on global maximum
+- MCMC penalisation in case of invalid binary system return big negative number instead of value near to 0.0
 
 Future plans
 ============

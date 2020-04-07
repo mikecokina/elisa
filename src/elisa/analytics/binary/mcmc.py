@@ -99,6 +99,7 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
         self.last_sampler = emcee.EnsembleSampler
         self.last_normalization = dict()
         self.last_fname = ''
+        self._last_known_lhood = -np.inf
 
     @staticmethod
     def ln_prior(xn):
@@ -115,7 +116,7 @@ class McMcFit(AbstractFit, McMcMixin, metaclass=ABCMeta):
             likelihood = self.likelihood(xn)
         except (ElisaError, ValueError) as e:
             logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
-            return -10.0 * np.finfo(float).eps * np.sum(xn)
+            return self._last_known_lhood * 1e6
         return likelihood
 
     def _fit(self, x0, labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None):
@@ -160,6 +161,7 @@ class LightCurveFit(McMcFit, AbstractLightCurveDataMixin):
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[band][self.xs_reverser[band]] - self.ys[band])
                                                         / self.yerrs[band], 2)) for band in synthetic]))
+        self._last_known_lhood = lhood if lhood < self._last_known_lhood else self._last_known_lhood
         return lhood
 
     def fit(self, xs, ys, period, x0, discretization, nwalkers, nsteps,
@@ -243,6 +245,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
 
         lhood = -0.5 * np.sum(np.array([np.sum(np.power((synthetic[comp][self.xs_reverser[comp]] - self.ys[comp])
                                                         / self.yerrs[comp], 2)) for comp in BINARY_COUNTERPARTS]))
+        self._last_known_lhood = lhood if lhood < self._last_known_lhood else self._last_known_lhood
         return lhood
 
     def fit(self, xs, ys, x0, nwalkers, nsteps, p0=None, yerrs=None, nsteps_burn_in=10):
