@@ -118,14 +118,14 @@ def main():
             'value': 2.55,
             'param': 'p__surface_potential',
             'fixed': False,
-            'min': 1.0,
+            'min': 2.0,
             'max': 3.0
         },
         {
             'value': 2.55,
             'param': 's__surface_potential',
             'fixed': False,
-            'min': 1.0,
+            'min': 2.0,
             'max': 3.0
         },
         {
