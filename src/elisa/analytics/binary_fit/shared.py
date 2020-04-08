@@ -70,7 +70,7 @@ def check_initial_param_validity(x0, all_fit_params, mandatory_fit_params):
             utils.check_missing_params(params.PULSATIONS_KEY_MAP.values(), pulsation_condensed, pulsation_name)
 
 
-def write_ln(fit_instance, param_name, designation, write_fn, line_sep):
+def write_param_ln(fit_instance, param_name, designation, write_fn, line_sep):
     """
     Auxiliary function to the fit_summary functions, produces one line in output for given parameter that is present
     in `fit_params`.
@@ -99,10 +99,17 @@ def write_ln(fit_instance, param_name, designation, write_fn, line_sep):
     elif 'constraint' in params[param_name].keys():
         status = params[param_name]['constraint']
 
+    return write_ln(write_fn,
+                    designation,
+                    round(params[param_name]['value'], sig_figures),
+                    bot, top, params[param_name]['unit'],
+                    status, line_sep)
+
+
+def write_ln(write_fn, designation, value, bot, top, unit, status, line_sep):
     return write_fn(f"{designation:<35} "
-                    f"{round(params[param_name]['value'], sig_figures):>20}"
+                    f"{value:>20}"
                     f"{bot:>20}"
                     f"{top:>20}"
-                    f"{params[param_name]['unit']:>20}    "
+                    f"{unit:>20}    "
                     f"{status:<50}{line_sep}")
-

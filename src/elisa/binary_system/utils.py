@@ -178,11 +178,21 @@ def validate_binary_json(data):
     except ValidationError:
         pass
 
+    # previous code cannot catch error when user inputs only one argument from the other parameter input format
+    if ('mass_ratio' in data['system'].keys() or 'semi_major_axis' in data['system'].keys()) and std_valid is True:
+        raise ValidationError("You probably tried to input your parameters in `standard` format but your "
+                              "parameters include `mass ratio` or `semi_major_axis` (use either (M1, M2) or  (q, a)).")
+
+    if ('mass' in data['primary'].keys() or 'mass' in data['secondary'].keys()) and community_valid is True:
+        raise ValidationError("You probably tried to input your parameters in `community` format but your "
+                              "parameters include masses of the components (useeither (M1, M2) or  (q, a)).")
+
     if (not community_valid) & (not std_valid):
-        raise ValidationError("BinarySystem cannot be created from supplied json schema.")
+        raise ValidationError("BinarySystem cannot be created from supplied json schema. ")
 
     if community_valid & std_valid:
-        raise YouHaveNoIdeaError("You have no idea what is going on [M1, M2, q, a].")
+        raise YouHaveNoIdeaError("Make sure that list of fitted parameters contain only `standard` or `community` "
+                                 "combination of parameter (either (M1, M2) or  (q, a)).")
 
     return True
 

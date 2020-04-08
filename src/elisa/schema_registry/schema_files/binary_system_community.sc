@@ -93,48 +93,48 @@
           "type": "number"
         }
       }
-    }
-  },
-  "secondary": {
-    "type": "object",
-    "required": [
-      "surface_potential",
-      "synchronicity",
-      "t_eff",
-      "gravity_darkening",
-      "albedo",
-      "metallicity"
-    ],
-    "properties": {
-      "surface_potential": {
-        "type": "number",
-        "minimum": 0.0
-      },
-      "synchronicity": {
-        "type": "number",
-        "minimum": 0.0
-      },
-      "t_eff": {
-        "type": "number",
-        "minimum": 3500.0,
-        "maximum": 50000.0
-      },
-      "gravity_darkening": {
-        "type": "number",
-        "minimum": 0.0,
-        "maximum": 1.0
-      },
-      "discretization_factor": {
-        "type": "number",
-        "minimum": 0.0
-      },
-      "albedo": {
-        "type": "number",
-        "minimum": 0.0,
-        "maximum": 1.0
-      },
-      "metallicity": {
-        "type": "number"
+    },
+    "secondary": {
+      "type": "object",
+      "required": [
+        "surface_potential",
+        "synchronicity",
+        "t_eff",
+        "gravity_darkening",
+        "albedo",
+        "metallicity"
+      ],
+      "properties": {
+        "surface_potential": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "synchronicity": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "t_eff": {
+          "type": "number",
+          "minimum": 3500.0,
+          "maximum": 50000.0
+        },
+        "gravity_darkening": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "discretization_factor": {
+          "type": "number",
+          "minimum": 0.0
+        },
+        "albedo": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "metallicity": {
+          "type": "number"
+        }
       }
     }
   }

@@ -18,6 +18,7 @@ from elisa.analytics.binary.mcmc import (
 )
 from elisa import units
 from elisa.analytics.binary_fit import shared
+from elisa.analytics.binary.models import prepare_binary
 
 logger = getLogger('analytics.binary_fit.lc_fit')
 
@@ -27,25 +28,27 @@ class LCFit(object):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    MANDATORY_FIT_PARAMS = ['eccentricity', 'argument_of_periastron', 'period', 'inclination']
-    OPTIONAL_FIT_PARAMS = ['period', 'primary_minimum_time', 'p__mass', 's__mass', 'semi_major_axis',
-                           'asini', 'mass_ratio', 'p__t_eff', 's__t_eff', 'p__surface_potential',
-                           's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
-                           's__albedo', 'additional_light', 'phase_shift', 'p__synchronicity', 's__synchronicity',
-                           'p__metallicity', 's__metallicity', 'p__spots', 's__spots', 'p__pulsations', 's__pulsations']
+    MANDATORY_FIT_PARAMS = ['eccentricity', 'argument_of_periastron', 'period', 'inclination', 'p__t_eff', 's__t_eff',
+                            'p__surface_potential', 's__surface_potential', 'p__gravity_darkening',
+                            's__gravity_darkening', 'p__albedo', 's__albedo', 'period']
+    OPTIONAL_FIT_PARAMS = ['primary_minimum_time', 'p__mass', 's__mass', 'semi_major_axis',
+                           'asini', 'mass_ratio', 'additional_light', 'phase_shift', 'p__synchronicity',
+                           's__synchronicity', 'p__metallicity', 's__metallicity', 'p__spots', 's__spots',
+                           'p__pulsations', 's__pulsations']
     ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
 
     FIT_PARAMS_COMBINATIONS = {
         'standard': ['p__mass', 's__mass', 'inclination', 'eccentricity', 'argument_of_periastron', 'period',
                      'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
                      's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
-                     's__albedo', 'additional_light', 'phase_shift', 'p__spots', 's__spots', 'p__pulsations',
-                     's__pulsations', 'p__synchronicity', 's__synchronicity'],
+                     's__albedo', 'additional_light', 'phase_shift', 'p__synchronicity', 's__synchronicity',
+                     'p__metallicity', 's__metallicity', 'p__spots', 's__spots', 'p__pulsations', 's__pulsations'],
         'community': ['mass_ratio', 'semi_major_axis', 'inclination', 'eccentricity', 'argument_of_periastron',
                       'period', 'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
                       's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
-                      's__albedo', 'additional_light', 'phase_shift', 'p__spots', 's__spots', 'p__pulsations',
-                      's__pulsations', 'p__synchronicity', 's__synchronicity']
+                      's__albedo', 'additional_light', 'phase_shift', 'p__synchronicity', 's__synchronicity',
+                      'p__metallicity', 's__metallicity', 'p__spots', 's__spots', 'p__pulsations',
+                      's__pulsations']
     }
 
     def __init__(self, **kwargs):
@@ -185,6 +188,10 @@ class LCFit(object):
         :param filename: Union[str, None]; if not None, summary is stored in file, otherwise it is printed into console
         :return:
         """
+        # preparing binary instance to calculate derived values
+        b_kwargs = {lbl: val['value'] for lbl, val in self.fit_params.items()}
+        binary_instance = prepare_binary(verify=True, **b_kwargs)
+
         if filename is not None:
             f = open(filename, 'w')
             write_fn = f.write
@@ -194,29 +201,39 @@ class LCFit(object):
             line_sep = ''
 
         write_fn(f"# BINARY SYSTEM{line_sep}")
-        write_fn(f"{'# Parameter':<35}{'value':>20}{'-1 sigma':>20}{'+1 sigma':>20}{'unit':>20}{'status':<50}{line_sep}")
-        write_fn(f"#{'-'*115}{line_sep}")
+        shared.write_ln(write_fn, '# Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
+        write_fn(f"#{'-'*125}{line_sep}")
+
         if 'mass_ratio' in self.fit_params.keys():
-            shared.write_ln(self, 'mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep)
-            shared.write_ln(self, 'semi_major_axis', 'Semi major axis (a):', write_fn, line_sep)
-        shared.write_ln(self, 'inclination', 'Inclination (i):', write_fn, line_sep)
-        shared.write_ln(self, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep)
-        shared.write_ln(self, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn, line_sep)
-        shared.write_ln(self, 'period', 'Orbital period (P):', write_fn, line_sep)
+            shared.write_param_ln(self, 'mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep)
+            shared.write_param_ln(self, 'semi_major_axis', 'Semi major axis (a):', write_fn, line_sep)
+        else:
+            shared.write_ln(write_fn, 'Mass ratio (q=M_2/M_1):', binary_instance.mass_ratio, '', '', '', 'derived',
+                            line_sep)
+            sma = (binary_instance.semi_major_axis * units.DISTANCE_UNIT).to(u.solRad).value
+            shared.write_ln(write_fn, 'Semi major axis (a):', sma, '', '', 'AU', 'derived', line_sep)
+
+        shared.write_param_ln(self, 'inclination', 'Inclination (i):', write_fn, line_sep)
+        shared.write_param_ln(self, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep)
+        shared.write_param_ln(self, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn, line_sep)
+        shared.write_param_ln(self, 'period', 'Orbital period (P):', write_fn, line_sep)
         if 'primary_minimum_time' in self.fit_params.keys():
-            shared.write_ln(self, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn, line_sep)
-        shared.write_ln(self, 'additional_light', 'Additional light (l_3):', write_fn, line_sep)
-        shared.write_ln(self, 'phase_shift', 'Phase shift:', write_fn, line_sep)
+            shared.write_param_ln(self, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn, line_sep)
+        shared.write_param_ln(self, 'additional_light', 'Additional light (l_3):', write_fn, line_sep)
+        if 'phase_shift' in self.fit_params.keys():
+            shared.write_param_ln(self, 'phase_shift', 'Phase shift:', write_fn, line_sep)
+        else:
+            shared.write_ln(write_fn, 'Phase shift:', 0.0, '', '', '', 'Fixed', line_sep)
 
-        write_fn(f"#{'-'*115}{line_sep}")
+        write_fn(f"#{'-'*125}{line_sep}")
         write_fn(f"# PRIMARY COMPONENT{line_sep}")
-        write_fn(f"{'# Parameter':<35}{'value':>20}{'-1 sigma':>20}{'+1 sigma':>20}{'unit':>20}{line_sep}")
-        write_fn(f"#{'-'*115}{line_sep}")
+        write_fn(f"#{'-'*125}{line_sep}")
+        shared.write_param_ln(self, 'p__t_eff', 'Effective temperature (T_eff):', write_fn, line_sep)
 
-        write_fn(f"#{'-'*115}{line_sep}")
+        write_fn(f"#{'-'*125}{line_sep}")
         write_fn(f"# SECONDARY COMPONENT{line_sep}")
-        write_fn(f"{'# Parameter':<35}{'value':>20}{'-1 sigma':>20}{'+1 sigma':>20}{'unit':>20}{line_sep}")
-        write_fn(f"#{'-'*115}{line_sep}")
+        write_fn(f"#{'-'*125}{line_sep}")
+        shared.write_param_ln(self, 's__t_eff', 'Effective temperature (T_eff):', write_fn, line_sep)
 
         if filename is not None:
             f.close()

@@ -157,17 +157,16 @@ class RVFit(object):
             write_fn = print
             line_sep = ''
 
-        write_fn(f"{'# Parameter':<35}{'value':>20}{'-1 sigma':>20}{'+1 sigma':>20}{'unit':>20}    "
-                 f"{'status':<50}{line_sep}")
+        shared.write_ln(write_fn, '# Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
         write_fn(f"#{'-'*123}{line_sep}")
-        shared.write_ln(self, 'mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep)
-        shared.write_ln(self, 'asini', 'a*sin(i):', write_fn, line_sep)
-        shared.write_ln(self, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep)
-        shared.write_ln(self, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn, line_sep)
-        shared.write_ln(self, 'gamma', 'Centre of mass velocity (gamma):', write_fn, line_sep)
-        shared.write_ln(self, 'period', 'Orbital period (P):', write_fn, line_sep)
+        shared.write_param_ln(self, 'mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep)
+        shared.write_param_ln(self, 'asini', 'a*sin(i):', write_fn, line_sep)
+        shared.write_param_ln(self, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep)
+        shared.write_param_ln(self, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn, line_sep)
+        shared.write_param_ln(self, 'gamma', 'Centre of mass velocity (gamma):', write_fn, line_sep)
+        shared.write_param_ln(self, 'period', 'Orbital period (P):', write_fn, line_sep)
         if 'primary_minimum_time' in self.fit_params.keys():
-            shared.write_ln(self, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn, line_sep)
+            shared.write_param_ln(self, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn, line_sep)
 
         if filename is not None:
             f.close()

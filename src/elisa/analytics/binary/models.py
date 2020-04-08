@@ -90,7 +90,7 @@ def serialize_secondary_kwargs(**kwargs):
     return _serialize_star_kwargs(component='s__', **kwargs)
 
 
-def prepare_binary(discretization=3, **kwargs):
+def prepare_binary(discretization=3, verify=False, **kwargs):
     """
     Setup binary system.
     If `beta` (gravity darkening factor), `albedo`, `metallicity` or `synchronicity` is not supplied,
@@ -132,7 +132,7 @@ def prepare_binary(discretization=3, **kwargs):
         "secondary": dict(**secondary_kwargs),
         "system": dict(**system_kwargs)
     }
-    return BinarySystem.from_json(json, _verify=False)
+    return BinarySystem.from_json(json, _verify=verify)
 
 
 def synthetic_binary(xs, discretization, morphology, observer, _raise_invalid_morphology, **kwargs):
