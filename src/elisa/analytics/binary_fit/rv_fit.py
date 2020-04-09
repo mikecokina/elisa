@@ -1,6 +1,7 @@
 import json
 from ...logger import getLogger
 from copy import copy
+import numpy as np
 
 from ... import utils
 from elisa.analytics.binary.least_squares import central_rv as lstsqr_central_rv
@@ -75,12 +76,11 @@ class RVFit(object):
         """
         # treating a lack of `value` key in constrained parameters
         x0 = autils.prep_constrained_params(x0)
+
+        shared.check_initial_param_validity(x0, RVFit.ALL_FIT_PARAMS, RVFit.MANDATORY_FIT_PARAMS)
+
         # transforming initial parameters to base units
         x0 = autils.transform_initial_values(x0)
-
-        param_names = {key: value['value'] for key, value in x0.items()}
-        utils.invalid_kwarg_checker(param_names, RVFit.ALL_FIT_PARAMS, RVFit)
-        utils.check_missing_kwargs(RVFit.MANDATORY_FIT_PARAMS, param_names, instance_of=RVFit)
 
         x_data, y_data, yerr = dict(), dict(), dict()
         for component, data in self.radial_velocities.items():
@@ -88,7 +88,7 @@ class RVFit(object):
             y_data[component] = data.y_data
             yerr[component] = data.yerr
 
-        if method == 'least_squares':
+        if str(method).lower() == 'least_squares':
             self.fit_params = lstsqr_central_rv.fit(xs=x_data, ys=y_data, x0=x0, yerr=yerr, **kwargs)
 
         elif str(method).lower() in ['mcmc']:
@@ -99,7 +99,7 @@ class RVFit(object):
             self.variable_labels = mcmc_central_rv.labels
 
         logger.info('Fitting and processing of results finished successfully.')
-
+        self.fit_summary()
         return self.fit_params
 
     def load_chain(self, filename, discard=0):
@@ -141,3 +141,39 @@ class RVFit(object):
         self.fit_params = prms
 
         return prms
+
+    def fit_summary(self, filename=None):
+        """
+        Producing a summary of the fit in more human readable form.
+
+        :param filename: Union[str, None]; if not None, summary is stored in file, otherwise it is printed into console
+        :return:
+        """
+        if filename is not None:
+            f = open(filename, 'w')
+            write_fn = f.write
+            line_sep = '\n'
+        else:
+            write_fn = print
+            line_sep = ''
+
+        shared.write_ln(write_fn, '# Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
+        write_fn(f"#{'-'*123}{line_sep}")
+        if 'mass_ratio' in self.fit_params.keys():
+            shared.write_param_ln(self.fit_params, 'mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep, 3)
+            shared.write_param_ln(self.fit_params, 'asini', 'a*sin(i):', write_fn, line_sep, 2)
+        else:
+            shared.write_param_ln(self.fit_params, 'p__mass', 'Primary mass:', write_fn, line_sep, 3)
+            shared.write_param_ln(self.fit_params, 's__mass', 'Secondary mass:', write_fn, line_sep, 3)
+            shared.write_param_ln(self.fit_params, 'inclination', 'Inclination(i):', write_fn, line_sep, 3)
+        shared.write_param_ln(self.fit_params, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep)
+        shared.write_param_ln(self.fit_params, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn,
+                              line_sep)
+        shared.write_param_ln(self.fit_params, 'gamma', 'Centre of mass velocity (gamma):', write_fn, line_sep)
+        shared.write_param_ln(self.fit_params, 'period', 'Orbital period (P):', write_fn, line_sep)
+        if 'primary_minimum_time' in self.fit_params.keys():
+            shared.write_param_ln(self.fit_params, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn,
+                                  line_sep)
+
+        if filename is not None:
+            f.close()

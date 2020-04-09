@@ -1,9 +1,12 @@
 import numpy as np
+from scipy import interpolate
 
 from abc import ABCMeta, abstractmethod
 from ...binary_system.system import BinarySystem
 from ...observer.observer import Observer
 from ...analytics.binary import utils as analutils
+
+from ..binary import models
 
 
 class AbstractFit(metaclass=ABCMeta):
@@ -21,7 +24,8 @@ class AbstractFitDataMixin(object):
     labels = list()
     observer = None
     xs_reverser = list()
-    fit_xs = np.ndarray
+    diff = None
+    interp_treshold = None
 
 
 class AbstractCentralRadialVelocityDataMixin(AbstractFitDataMixin):
@@ -47,16 +51,31 @@ def lc_r_squared(synthetic, *args, **x):
         * **period** * -- float;
         * **passband** * -- Union[str, List[str]];
         * **discretization** * -- flaot;
+        * **diff** * -- flaot; auxiliary parameter for interpolation defining spacing between evaluation phases if
+        interpolation is active
+        * **interp_treshold** * - int; number of points
     :param x: Dict;
     :** x options**: kwargs of current parameters to compute binary system
     :return: float;
     """
-    xs, ys, period, passband, discretization, morphology, xs_reverser = args
+    xs, ys, passband, discretization, morphology, xs_reverser, diff, interp_treshold = args
+
+    xs, kwargs = models.rvt_layer_resolver(xs, **x)
+    fit_xs = np.linspace(np.min(xs) - diff, np.max(xs) + diff, num=interp_treshold + 2) \
+        if np.shape(xs)[0] > interp_treshold else xs
 
     observer = Observer(passband=passband, system=None)
     observer._system_cls = BinarySystem
 
-    synthetic = synthetic(xs, period, discretization, morphology, observer, False, **x)
+    synthetic = synthetic(fit_xs, discretization, morphology, observer, False, **x)
+
+    if np.shape(fit_xs) != np.shape(xs):
+        new_synthetic = dict()
+        for fltr, curve in synthetic.items():
+            f = interpolate.interp1d(fit_xs, curve, kind='cubic')
+            new_synthetic[fltr] = f(xs)
+        synthetic = new_synthetic
+
     synthetic = {band: synthetic[band][xs_reverser[band]] for band in synthetic}
 
     synthetic = analutils.normalize_light_curve(synthetic, kind='average')

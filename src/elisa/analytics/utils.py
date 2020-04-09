@@ -53,16 +53,26 @@ def transform_initial_values(x0):
     :param x0: Dict; initial vector, {param_name: {value: value, unit: astropy.unit...}, ...}
     :return: Dict;
     """
-    for key, val in x0.items():
-        if 'unit' in val.keys():
-            val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
-            if 'value' in val.keys():
-                val['value'] = (val['value'] * val['unit']).to(params.PARAMS_UNITS_MAP[key]).value
-            if 'min' in val.keys():
-                val['min'] = (val['min'] * val['unit']).to(params.PARAMS_UNITS_MAP[key]).value
-            if 'max' in val.keys():
-                val['max'] = (val['max'] * val['unit']).to(params.PARAMS_UNITS_MAP[key]).value
-            val['unit'] = params.PARAMS_UNITS_MAP[key]
+    def transform_variable(key, item):
+        if 'unit' in item.keys():
+            item['unit'] = u.Unit(item['unit']) if isinstance(item['unit'], str) else item['unit']
+            if 'value' in item.keys():
+                item['value'] = (item['value'] * item['unit']).to(
+                    params.PARAMS_UNITS_MAP[key]).value
+            if 'min' in item.keys():
+                item['min'] = (item['min'] * item['unit']).to(params.PARAMS_UNITS_MAP[key]).value
+            if 'max' in item.keys():
+                item['max'] = (item['max'] * item['unit']).to(params.PARAMS_UNITS_MAP[key]).value
+            item['unit'] = params.PARAMS_UNITS_MAP[key]
+
+    for system_key, system_val in x0.items():
+        if system_key in params.COMPOSITE_PARAMS:  # testing if item are spots or pulsations
+            for composite_item in system_val.values():  # particular spot or pulsation mode
+                # iterating over params of the spot or pulsation mode
+                for composite_item_key, composite_item_val in composite_item.items():
+                    transform_variable(composite_item_key, composite_item_val)
+
+        transform_variable(system_key, system_val)
     return x0
 
 
@@ -87,10 +97,20 @@ def prep_constrained_params(x0):
     :param x0: dict;
     :return: dict;
     """
-    for key, val in x0.items():
-        if 'constraint' in val.keys():
-            if 'value' in val.keys():
-                logger.warning(f'Parameter `value` is meaningless and will not be used in case of contrained parameter '
-                               '{key}.')
-            val['value'] = None
+    def check_value_in_constrained(item):
+        if 'constraint' in item.keys():
+            if 'value' in item.keys():
+                logger.warning(
+                    f'Parameter `value` is meaningless and will not be used in case of contrained parameter '
+                    '{key}.')
+            item['value'] = None
+
+    for system_key, system_val in x0.items():
+        if system_key in params.COMPOSITE_PARAMS:  # testing if item are spots or pulsations
+            for composite_item in system_val.values():  # particular spot or pulsation mode
+                # iterating over params of the spot or pulsation mode
+                for composite_item_val in composite_item.values():
+                    check_value_in_constrained(composite_item_val)
+        else:
+            check_value_in_constrained(system_val)
     return x0

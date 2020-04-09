@@ -420,9 +420,8 @@ class BinarySystem(System):
                 self.secondary.discretization_factor = np.radians(config.MIN_DISCRETIZATION_FACTOR)
 
             logger.info(f"setting discretization factor of secondary component to "
-                        f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
-                        f"according to discretization factor of the primary component and"
-                        f"configuration boundaries")
+                        f"{up.degrees(self.secondary.discretization_factor):.2f} "
+                        f"according to discretization factor of the primary component.")
 
         for component in config.BINARY_COUNTERPARTS.keys():
             instance = getattr(self, component)

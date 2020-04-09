@@ -91,6 +91,6 @@ class LCDatasetTestCase(ElisaTestCase):
         )
 
         expected_times = [0.2, 0.5]
-        expected_lc_err = [0.09648, 9.64782]
+        expected_lc_err = [0.09648, 0.09648]
         assert_array_equal(np.round(expected_times, 10), np.round(lc_dataset.x_data, 10))
         assert_array_equal(np.round(expected_lc_err, 5), np.round(lc_dataset.yerr, 5))

@@ -12,6 +12,27 @@ from ...observer.observer import Observer
 from ...analytics.binary import bonds
 
 
+# for parsing params inside spots or pulsation modes
+PARAM_PARSER = '@'
+USER_PARAM_PARSER = '.'
+
+COMPOSITE_PARAMS = [
+    'p__spots',
+    's__spots',
+    'p__pulsations',
+    's__pulsations',
+]
+
+SPOT_PARAMS = [
+    'p__spots',
+    's__spots',
+]
+
+PULSATIONS_PARAMS = [
+    'p__pulsations',
+    's__pulsations',
+]
+
 # DO NOT CHANGE KEYS - NEVER EVER
 PARAMS_KEY_MAP = {
     'omega': 'argument_of_periastron',
@@ -38,7 +59,28 @@ PARAMS_KEY_MAP = {
     'P': 'period',
     'T0': 'primary_minimum_time',
     'l_add': 'additional_light',
-    'phase_shift': 'phase_shift'
+    'phase_shift': 'phase_shift',
+    'primary_spots': 'p__spots',
+    'secondary_spots': 's__spots',
+    'primary_pulsations': 'p__pulsations',
+    'secondary_pulsations': 's__pulsations',
+}
+
+SPOTS_KEY_MAP = {
+    'phi': 'longitude',
+    'theta': 'latitude',
+    'radius': 'angular_radius',
+    't_factor': 'temperature_factor'
+}
+
+PULSATIONS_KEY_MAP = {
+    'l': 'l',
+    'm': 'm',
+    'amplitude': 'amplitude',
+    'frequency': 'frequency',
+    'start_phase': 'start_phase',
+    'mode_axis_phi': 'mode_axis_phi',
+    'mode_axis_theta': 'mode_axis_theta',
 }
 
 PARAMS_KEY_TEX_MAP = {
@@ -69,6 +111,22 @@ PARAMS_KEY_TEX_MAP = {
     'phase_shift': 'phase shift$',
 }
 
+SPOTS_KEY_TEX_MAP = {
+    'longitude': '$\phi$',
+    'latitude': '$\\theta$',
+    'angular_radius': '$r$',
+    'temperature_factor': '$T_{spot}/T_{eff}$'
+}
+
+PULSATIONS_KEY_TEX_MAP = {
+    'l': '$\\ell$',
+    'm': '$m$',
+    'amplitude': '$A$',
+    'frequency': '$f$',
+    'start_phase': '$\\Phi_0$',
+    'mode_axis_phi': '$\\phi_{mode}$',
+    'mode_axis_theta': '$\\theta_{mode}$',
+}
 
 PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['i']: 'degree',
@@ -96,6 +154,19 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['T0']: 'd',
     PARAMS_KEY_MAP['l_add']: '',
     PARAMS_KEY_MAP['phase_shift']: '',
+    # SPOTS
+    SPOTS_KEY_MAP['phi']: 'degree',
+    SPOTS_KEY_MAP['theta']: 'degree',
+    SPOTS_KEY_MAP['radius']: 'degree',
+    SPOTS_KEY_MAP['t_factor']: '',
+    # PULSATIONS
+    PULSATIONS_KEY_MAP['l']: '',
+    PULSATIONS_KEY_MAP['m']: '',
+    PULSATIONS_KEY_MAP['amplitude']: 'm/s',
+    PULSATIONS_KEY_MAP['frequency']: '1/d',
+    PULSATIONS_KEY_MAP['start_phase']: 'degree',
+    PULSATIONS_KEY_MAP['mode_axis_theta']: 'degree',
+    PULSATIONS_KEY_MAP['mode_axis_phi']: 'degree',
 }
 
 
@@ -128,6 +199,19 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['l_add']: (0, 1.0),
     PARAMS_KEY_MAP['phase_shift']: (-0.8, 0.8),
     PARAMS_KEY_MAP['T0']: (Time.now().jd - 365.0, Time.now().jd),
+    # SPOTS
+    SPOTS_KEY_MAP['phi']: (0, 360),
+    SPOTS_KEY_MAP['theta']: (0, 180),
+    SPOTS_KEY_MAP['radius']: (0, 90),
+    SPOTS_KEY_MAP['t_factor']: (0.1, 3),
+    # PULSATIONS
+    PULSATIONS_KEY_MAP['l']: (0, 10),
+    PULSATIONS_KEY_MAP['m']: (-10, 10),
+    PULSATIONS_KEY_MAP['amplitude']: (0, 5000),
+    PULSATIONS_KEY_MAP['frequency']: (0.01, 40),
+    PULSATIONS_KEY_MAP['start_phase']: (0, 360),
+    PULSATIONS_KEY_MAP['mode_axis_theta']: (0, 180),
+    PULSATIONS_KEY_MAP['mode_axis_phi']: (0, 360),
 }
 
 
@@ -165,7 +249,7 @@ def renormalize_flat_chain(flat_chain, labels, renorm=None):
                           for key, val in zip(labels, sample)] for sample in flat_chain])
 
 
-def x0_vectorize(x0) -> Tuple:
+def x0_vectorize(x0):
     """
     Transform native dict form of initial parameters to Tuple.
     JSON form::
@@ -191,25 +275,41 @@ def x0_vectorize(x0) -> Tuple:
     :param x0: Dict[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Tuple;
     """
-    keys = [key for key, val in x0.items() if not val.get('fixed', False) and not val.get('constraint', False)]
+    keys = [key for key, val in x0.items() if not val.get('fixed', False) and not val.get('constraint', False)
+            and key not in COMPOSITE_PARAMS]
     values = [val['value'] for key, val in x0.items() if not val.get('fixed', False)
-              and not val.get('constraint', False)]
+              and not val.get('constraint', False) and key not in COMPOSITE_PARAMS]
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_name, composite_value in composite_params.items():
+        for key, value in composite_value.items():
+            keys += [PARAM_PARSER.join([composite_name, key, param_name]) for param_name, item in value.items()
+                         if not item.get('fixed', False) and not item.get('constraint', False)]
+            values += [item['value'] for item in value.values()
+                       if not item.get('fixed', False) and not item.get('constraint', False)]
     return values, keys
 
 
 def x0_to_kwargs(x0):
     """
-    Transform native JSON input form to `key, value` form::
+    Transform native input form to `key, value` form::
 
         {
             key: value,
             ...
         }
 
-    :param x0: List[Dict[str, Union[float, str, bool]]];
+    :param x0: Dict[str, Union[float, str, bool]];
     :return: Dict[str, float];
     """
-    return {record['param']: record['value'] for record in x0}
+    ret_dict = {key: value['value'] for key, value in x0.items() if key not in COMPOSITE_PARAMS}
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_name, composite_value in composite_params.items():
+        for key, value in composite_value.items():
+            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]): item['value']
+                             for param_name, item in value.items()})
+    return ret_dict
 
 
 def x0_to_fixed_kwargs(x0):
@@ -224,7 +324,15 @@ def x0_to_fixed_kwargs(x0):
     :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {key: value['value'] for key, value in x0.items() if value.get('fixed', False)}
+    ret_dict = {key: value['value'] for key, value in x0.items() if value.get('fixed', False)
+                and key not in COMPOSITE_PARAMS}
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_name, composite_value in composite_params.items():
+        for key, value in composite_value.items():
+            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]): item['value']
+                             for param_name, item in value.items() if item.get('fixed', False)})
+    return ret_dict
 
 
 def x0_to_constrained_kwargs(x0):
@@ -239,13 +347,41 @@ def x0_to_constrained_kwargs(x0):
     :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {key: value['constraint'] for key, value in x0.items() if value.get('constraint', False)}
+    def _replace_parser(string, old_separator, new_separator):
+        """
+        replacing old separator (normally dot `.`) only when it is used as a parameter separator not in case of float
+        numbers
+        :param string: str; constraint
+        :param old_separator: str; old separator (`.`)
+        :param new_separator: str; new separator
+        :return: str; updated constraint
+        """
+        test_string = [' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        components = string.split(old_separator)
+        ret_val = components[0]
+        for ii in range(1, len(components)):
+            if ret_val[-1] in test_string and components[ii][0] in test_string:
+                ret_val = old_separator.join([ret_val, components[ii]])
+            else:
+                ret_val = new_separator.join([ret_val, components[ii]])
+        return ret_val
+
+    ret_dict = {key: _replace_parser(value['constraint'], USER_PARAM_PARSER, PARAM_PARSER) for key, value in x0.items()
+                if value.get('constraint', False)}
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_name, composite_value in composite_params.items():
+        for key, value in composite_value.items():
+            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]):
+                                 _replace_parser(item['constraint'], USER_PARAM_PARSER, PARAM_PARSER)
+                             for param_name, item in value.items() if item.get('constraint', False)})
+    return ret_dict
 
 
 def x0_to_variable_kwargs(x0):
     """
-    Transform native dict input form to `key, value` form, but select `floats` parameters
-    (as in not fixed or constrained)::
+    Transform native dict input form to `key, value` form, but select variable parameters
+    (not fixed or constrained)::
 
         {
             key: value,
@@ -255,8 +391,16 @@ def x0_to_variable_kwargs(x0):
     :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    return {key: value['value'] for key, value in x0.items()
-            if not value.get('fixed', False) and not value.get('constraint', False)}
+    ret_dict = {key: value['value'] for key, value in x0.items()
+                if not value.get('fixed', False) and not value.get('constraint', False) and key not in COMPOSITE_PARAMS}
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_value in composite_params.values():
+        for key, value in composite_value.items():
+            ret_dict.update({PARAM_PARSER.join([key, param_name]): item['value'] for param_name, item in value.items()
+                             if not value.get('fixed', False) and not value.get('constraint', False)})
+
+    return ret_dict
 
 
 def update_normalization_map(update):
@@ -307,9 +451,21 @@ def serialize_param_boundaries(x0):
     :param x0: Dict[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Dict[str, Tuple[float, float]]
     """
-    return {key: (value.get('min', NORMALIZATION_MAP[key][0]),
-                  value.get('max', NORMALIZATION_MAP[key][1]))
-            for key, value in x0.items() if not value.get('fixed', False) and not value.get('constraint', False)}
+    ret_dict = {key: (value.get('min', NORMALIZATION_MAP[key][0]),
+                      value.get('max', NORMALIZATION_MAP[key][1]))
+                for key, value in x0.items() if not value.get('fixed', False) and not value.get('constraint', False)
+                and key not in COMPOSITE_PARAMS}
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_name, composite_value in composite_params.items():
+        for key, value in composite_value.items():
+            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]):
+                                 (item.get('min', NORMALIZATION_MAP[param_name][0]),
+                                  item.get('max', NORMALIZATION_MAP[param_name][1]))
+                             for param_name, item in value.items()
+                             if not item.get('fixed', False) and not item.get('constraint', False)})
+
+    return ret_dict
 
 
 def fit_data_initializer(x0, passband=None):
@@ -327,6 +483,23 @@ def fit_data_initializer(x0, passband=None):
     return x0, labels, fixed, constraint, observer
 
 
+def _check_param_borders(key, val):
+    """
+    Function checks that given parameter value is within borders.
+
+    :param key: str; name of the parameter
+    :param val: dict; parameter attributes
+    :return: tuple, parameter borders
+    """
+    _min, _max = val.get('min', NORMALIZATION_MAP[key][0]), val.get('max', NORMALIZATION_MAP[key][1])
+    if 'constraint' in val.keys():
+        return _min, _max
+    if not (_min <= val['value'] <= _max):
+        raise error.InitialParamsError(f'Initial parameters in parameter `{key}` are not valid. Invalid bounds: '
+                                       f'{_min} <= {val["value"]} <= {_max}')
+    return _min, _max
+
+
 def lc_initial_x0_validity_check(x0, morphology):
     """
     Validate parameters for light curve fitting.
@@ -340,15 +513,22 @@ def lc_initial_x0_validity_check(x0, morphology):
     :param morphology: str;
     :return: List[Dict];
     """
-
     # first valdiate constraints
     constraints_validator(x0)
 
     # invalidate fixed and constraints for same value
-    for record in x0.values():
-        if 'fixed' in record and 'constraint' in record:
-            msg = f'It is not allowed for record {record} to contain fixed and constraint.'
-            raise error.InitialParamsError(msg)
+    for key, record in x0.items():
+        if key not in COMPOSITE_PARAMS:
+            if 'fixed' in record and 'constraint' in record:
+                raise error.InitialParamsError(f'It is not allowed for `{key}` to contain `fixed` and `constraint` '
+                                               f'parameter.')
+
+        else:
+            for composite_item_key, composite_item in record.items():
+                for param_key, param_val in composite_item.items():
+                    if 'fixed' in param_val and 'constraint' in param_val:
+                        raise error.InitialParamsError(f'It is not allowed for `{param_key}` in `{composite_item_key}` '
+                                                       f'to contain `fixed` and `constraint` parameter.')
 
     is_oc = is_overcontact(morphology)
     are_same = x0[PARAMS_KEY_MAP['Omega1']]['value'] == x0[PARAMS_KEY_MAP['Omega2']]['value']
@@ -360,12 +540,14 @@ def lc_initial_x0_validity_check(x0, morphology):
     all_fixed = omega_1 & omega_2
 
     for key, val in x0.items():
-        _min, _max = val.get('min', NORMALIZATION_MAP[key][0]), val.get('max', NORMALIZATION_MAP[key][1])
-        if 'constraint' in val.keys():
-            continue
-        if not (_min <= val['value'] <= _max):
-            msg = f'Initial parameters are not valid. Invalid bounds: {_min} <= {val["param"]} <= {_max}'
-            raise error.InitialParamsError(msg)
+        if key not in COMPOSITE_PARAMS:
+            variable_test = 'fixed' in val.keys() and val['fixed'] is False
+            _min, _max = _check_param_borders(key, val) if variable_test else None, None
+        else:
+            for composite_item_key, composite_item in record.items():
+                for param_key, param_val in composite_item.items():
+                    variable_test = 'fixed' in param_val.keys() and param_val['fixed'] is False
+                    _min, _max = _check_param_borders(param_key, param_val) if variable_test else None, None
 
     if is_oc and all_fixed and are_same:
         return x0
@@ -397,6 +579,9 @@ def rv_initial_x0_validity_check(x0: Dict):
     :param x0: List[Dict];
     :return: List[Dict];
     """
+    # validating constraints
+    constraints_validator(x0)
+
     labels = x0.keys()
     has_t0, has_period = 'primary_minimum_time' in labels, 'period' in labels
 
@@ -476,15 +661,20 @@ def constraints_validator(x0):
     x0v = x0_to_variable_kwargs(x0)
     x0c = {key: utils.str_repalce(val, allowed_methods, [''] * len(allowed_methods)) for key, val in x0c.items()}
 
+    if len(x0v) == 0:
+        raise IndexError('There are no variable parameters to fit.')
+
     try:
-        subst = {key: val.format(**x0v).replace(' ', '') for key, val in x0c.items()}
+        subst = {key: val.replace(USER_PARAM_PARSER, PARAM_PARSER).format(**x0v).replace(' ', '')
+                 for key, val in x0c.items()}
     except KeyError:
         msg = f'It seems your constraint contain variable that cannot be resolved. ' \
-            f'Make sure that linked constraint variable is not fixed or check for typos.'
+              f'Make sure that linked constraint variable is not fixed or check for typos in variable name in ' \
+              f'constraint expression.'
         raise error.InitialParamsError(msg)
 
     for key, val in subst.items():
-        if not np.all(np.isin(list(val), allowed_chars)):
+        if not np.all(np.isin(list(val), allowed_chars + [PARAM_PARSER, ])):
             msg = f'Constraint {key} contain forbidden characters. Allowed: {allowed_chars}'
             raise error.InitialParamsError(msg)
 
@@ -499,7 +689,8 @@ def constraints_evaluator(floats, constraints):
     """
     allowed_methods = bonds.ALLOWED_CONSTRAINT_METHODS
     numpy_methods = [f'bonds.{method}' for method in bonds.TRANSFORM_TO_METHODS]
-    floats, constraints = floats.copy(), constraints.copy()
+    constraints = constraints.copy()
+    floats = {key.split(PARAM_PARSER, 1)[1] if PARAM_PARSER in key else key: val for key, val in floats.items()}
 
     numpy_callable = {key: utils.str_repalce(val, allowed_methods, numpy_methods) for key, val in constraints.items()}
     subst = {key: val.format(**floats) for key, val in numpy_callable.items()}
@@ -565,3 +756,29 @@ def is_time_dependent(labels):
     if 'period' in labels and 'primary_minimum_time' in labels:
         return True
     return False
+
+
+def dict_to_user_format(dictionary):
+    """
+    function converts dictionary of results of parameter labels back to user format
+
+    :param labels: list; list of labels
+    :return: list; user formatted list of parameter labels
+    """
+    ret_dict = {}
+    for param_name, param_val in dictionary.items():
+        if PARAM_PARSER not in param_name:
+            ret_dict[param_name] = param_val
+            continue
+
+        identificators = param_name.split(PARAM_PARSER)
+
+        if identificators[0] not in ret_dict.keys():
+            ret_dict[identificators[0]] = {}
+
+        if identificators[1] not in ret_dict[identificators[0]].keys():
+            ret_dict[identificators[0]][identificators[1]] = {}
+
+        ret_dict[identificators[0]][identificators[1]][identificators[2]] = param_val
+
+    return ret_dict

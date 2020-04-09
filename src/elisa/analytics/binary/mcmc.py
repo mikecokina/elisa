@@ -91,9 +91,9 @@ class McMcMixin(object):
         :param fname: str; base filename of stored state
         :return: Dict;
         """
-        fdir = fname[:len(config.DATE_MASK) + 2]
+        fdir = fname[:len(config.DATE_MASK) + 2] if '/' not in fname else fname
         fname = f'{fname}.json'
-        fpath = op.join(config.HOME, fdir, fname)
+        fpath = op.join(config.HOME, fdir, fname) if '/' not in fname else fname
         with open(fpath, "r") as f:
             return json.loads(f.read())
 
@@ -130,8 +130,9 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
         :param synthetic: Dict; {'dataset_name': numpy.array, }
         :return: float;
         """
-        lh = - 0.5 * np.sum([np.power((self.ys[item] - synthetic[item][self.xs_reverser[item]]) / self.yerrs[item], 2)
-                             for item, value in synthetic.items()])
+        lh = - 0.5 * np.sum([np.sum(
+            np.power((self.ys[item] - synthetic[item][self.xs_reverser[item]]) / self.yerrs[item], 2))
+            for item, value in synthetic.items()])
         return lh
 
     def ln_probability(self, xn):
@@ -155,7 +156,8 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
         """
         res_val_dict = {key: val['value'] for key, val in result_dict.items()}
         constrained_values = params.constraints_evaluator(res_val_dict, constraints)
-        result_dict.update({key: {'value': val} for key, val in constrained_values.items()})
+        result_dict.update({key: {'value': val, 'constraint': constraints[key]}
+                            for key, val in constrained_values.items()})
         return result_dict
 
     def _fit(self, x0, labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False):
@@ -216,15 +218,19 @@ class LightCurveFit(McMcFit):
         xn = params.param_renormalizer(xn, self.labels)
         kwargs = params.prepare_kwargs(xn, self.labels, self.constraint, self.fixed)
 
-        args = self.fit_xs, self.period, self.discretization, self.morphology, self.observer, True
+        phases, kwargs = models.rvt_layer_resolver(self.xs, **kwargs)
+        fit_xs = np.linspace(np.min(phases) - self.diff, np.max(phases) + self.diff, num=self.interp_treshold + 2) \
+            if np.shape(phases)[0] > self.interp_treshold else phases
+
+        args = fit_xs, self.discretization, self.morphology, self.observer, True
         synthetic = models.synthetic_binary(*args, **kwargs)
         synthetic = butils.normalize_light_curve(synthetic, kind='average')
 
-        if np.shape(self.fit_xs) != np.shape(self.xs):
+        if np.shape(fit_xs) != np.shape(phases):
             new_synthetic = dict()
             for fltr, curve in synthetic.items():
-                f = interpolate.interp1d(self.fit_xs, curve, kind='cubic')
-                new_synthetic[fltr] = f(self.xs)
+                f = interpolate.interp1d(fit_xs, curve, kind='cubic')
+                new_synthetic[fltr] = f(phases)
             synthetic = new_synthetic
 
         lhood = self.lhood(synthetic)
@@ -233,7 +239,7 @@ class LightCurveFit(McMcFit):
         logger.debug(f'eval counter = {self.eval_counter}, likelihood = {lhood}')
         return lhood
 
-    def fit(self, xs, ys, period, x0, discretization, nwalkers=None, nsteps=1000,
+    def fit(self, xs, ys, x0, discretization, nwalkers=None, nsteps=1000,
             initial_state=None, yerr=None, burn_in=None, percentiles=None, interp_treshold=None, progress=False):
         """
         Fit method using Markov Chain Monte Carlo.
@@ -248,7 +254,6 @@ class LightCurveFit(McMcFit):
         :param progress: bool; visualize progress of the sampling
         :param xs: Dict[str, Iterable[float]]; {<passband>: <phases>}
         :param ys: Dict[str, Iterable[float]]; {<passband>: <fluxes>};
-        :param period: float; system period
         :param x0: List[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
         :param interp_treshold: int; data binning treshold
@@ -272,32 +277,31 @@ class LightCurveFit(McMcFit):
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
         self.xs, self.xs_reverser = params.xs_reducer(xs)
-        self.labels, self.observer, self.period = labels, observer, period
+        self.labels, self.observer = labels, observer
         self.fixed, self.constraint = fixed, constraint
         self.ys, self.yerrs = ys, yerrs
-        self.period = period
         self.discretization = discretization
 
-        self.xs, x0 = models.time_layer_resolver(self.xs, x0)
-        interp_treshold = config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold
-        diff = 1.0 / interp_treshold
-        self.fit_xs = np.linspace(np.min(self.xs) - diff, np.max(self.xs) + diff, num=interp_treshold + 2) \
-            if np.shape(self.xs)[0] > interp_treshold else self.xs
+        # self.xs, x0 = models.time_layer_resolver(self.xs, x0)
+        self.interp_treshold = config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold
+        self.diff = 1.0 / self.interp_treshold
 
         sampler = self._fit(x0_vector, self.labels, nwalkers, ndim, nsteps, burn_in, initial_state, progress=progress)
 
         # extracting fit results from MCMC sampler
         flat_chain = sampler.get_chain(flat=True)
         result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels, percentiles=percentiles)
-        result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
+        result_dict.update({lbl: {'value': val, 'fixed': True} for lbl, val in self.fixed.items()})
 
         result_dict = self.eval_constraints_after_mcmc(result_dict, self.constraint)
 
-        r_squared_args = self.xs, self.ys, self.period, self.passband, discretization, self.morphology, self.xs_reverser
+        r_squared_args = self.xs, self.ys, self.passband, discretization, self.morphology, \
+                         self.xs_reverser, self.diff, self.interp_treshold
         r_dict = {key: value['value'] for key, value in result_dict.items()}
         r_squared_result = lc_r_squared(models.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result}
 
+        result_dict = params.dict_to_user_format(result_dict)
         return params.extend_result_with_units(result_dict)
 
 
@@ -403,7 +407,8 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         # extracting fit results from MCMC sampler
         flat_chain = sampler.get_chain(flat=True)
         result_dict = McMcMixin.resolve_mcmc_result(flat_chain=flat_chain, labels=self.labels, percentiles=percentiles)
-        result_dict.update({param: {'value': value} for param, value in self.fixed.items()})
+
+        result_dict.update({lbl: {'value': val, 'fixed': True} for lbl, val in self.fixed.items()})
 
         result_dict = self.eval_constraints_after_mcmc(result_dict, self.constraint)
 
@@ -412,6 +417,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         r_squared_result = rv_r_squared(models.central_rv_synthetic, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result}
 
+        result_dict = params.dict_to_user_format(result_dict)
         return params.extend_result_with_units(result_dict)
 
 

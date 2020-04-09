@@ -24,7 +24,7 @@ def normalize_light_curve(lc, kind='global_maximum', top_fraction_to_average=0.1
         n = {key: int(top_fraction_to_average * len(val)) for key, val in lc.items()}
         coeff = {key: np.average(val[np.argsort(val)[-n[key]:]]) for key, val in lc.items()}
     elif kind == valid_arguments[3]:  # curves are normalized to their global maximum
-        vals = np.array(list(lc.values())).flatten()
+        vals = np.concatenate(list(lc.values()))
         n = int(top_fraction_to_average * len(vals) / len(lc))
         c = np.average(vals[np.argsort(vals)[-n:]])
         coeff = {key: c for key, val in lc.items()}

@@ -46,11 +46,10 @@ def convert_flux(data, unit, zero_point=None):
     return data
 
 
-def convert_flux_error(data, error, unit, zero_point=None):
+def convert_flux_error(error, unit, zero_point=None):
     """
     If data an its errors are in magnitudes, they are converted to normalized flux.
 
-    :param error: numpy.array;
     :param data: numpy.array;
     :param unit: astropy.unit.Unit;
     :param zero_point: float;
@@ -61,7 +60,7 @@ def convert_flux_error(data, error, unit, zero_point=None):
             raise ValueError('You supplied your data in magnitudes. Please also specify a zero point using keyword '
                              'argument `reference_magnitude`.')
         else:
-            error = np.power(10, (zero_point - data) / 2.5) * (np.power(10, error / 2.5) - 1)
+            error = utils.magnitude_error_to_flux_error(error)
 
     return error
 
@@ -75,6 +74,33 @@ def convert_unit(unit, to_unit):
     :return: astropy.unit;
     """
     return unit if unit == u.dimensionless_unscaled else to_unit
+
+
+def read_data_file(filename, data_columns):
+    """
+    Function loads observation datafile. Rows with column names and comments should start with `#`.
+    It deals with missing data by omitting given line
+
+    :param filename: str;
+    :param data_columns: tuple;
+    :return: numpy.array;
+    """
+    data = [[] for _ in data_columns]
+    with open(filename) as f:
+        for line in f:
+            if line.startswith('#'):
+                continue
+
+            items = [float(xx.strip()) for xx in line.split()]
+            try:
+                data_to_append = [items[ii] for ii in data_columns]
+            except IndexError:
+                continue
+
+            for ii in range(len(data_columns)):
+                data[ii].append(data_to_append[ii])
+
+    return np.array(data).T
 
 
 class DataSet(metaclass=ABCMeta):
@@ -203,13 +229,13 @@ class RVData(DataSet):
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
 
-        data = np.loadtxt(filename)
+        data = read_data_file(filename, data_columns)
         try:
-            errs = data[:, data_columns[2]]
+            errs = data[:, 2]
         except IndexError:
             errs = None
-        return RVData(x_data=data[:, data_columns[0]],
-                      y_data=data[:, data_columns[1]],
+        return RVData(x_data=data[:, 0],
+                      y_data=data[:, 1],
                       yerr=errs,
                       x_unit=x_unit,
                       y_unit=y_unit)
@@ -279,7 +305,7 @@ class LCData(DataSet):
 
         # convert errors
         if 'yerr' in kwargs.keys():
-            kwargs['yerr'] = convert_flux_error(kwargs['y_data'], kwargs['yerr'], kwargs['y_unit'],
+            kwargs['yerr'] = convert_flux_error(kwargs['yerr'], kwargs['y_unit'],
                                                 zero_point=kwargs['reference_magnitude'])
 
         # converting y-axis
@@ -303,13 +329,13 @@ class LCData(DataSet):
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
 
-        data = np.loadtxt(filename)
+        data = read_data_file(filename, data_columns)
         try:
-            errs = data[:, data_columns[2]]
+            errs = data[:, 2]
         except IndexError:
             errs = None
-        return LCData(x_data=data[:, data_columns[0]],
-                      y_data=data[:, data_columns[1]],
+        return LCData(x_data=data[:, 0],
+                      y_data=data[:, 1],
                       yerr=errs,
                       x_unit=x_unit,
                       y_unit=y_unit,
