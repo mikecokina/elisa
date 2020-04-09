@@ -19,6 +19,7 @@ from elisa.analytics.binary.mcmc import (
 from elisa import units
 from elisa.analytics.binary_fit import shared
 from elisa.analytics.binary.models import prepare_binary
+from elisa.binary_system.surface.gravity import calculate_polar_gravity_acceleration
 
 logger = getLogger('analytics.binary_fit.lc_fit')
 
@@ -134,6 +135,7 @@ class LCFit(object):
         else:
             raise ValueError('Method name not recognised. Available methods `least_squares`, `mcmc` or `MCMC`.')
 
+        self.fit_summary()
         return self.fit_params
 
     def load_chain(self, filename, discard=0):
@@ -188,8 +190,119 @@ class LCFit(object):
         :param filename: Union[str, None]; if not None, summary is stored in file, otherwise it is printed into console
         :return:
         """
+        def component_summary(binary_instance, component):
+            """
+            Unified summary for binary system component fit summary
+            :param binary_instance: BinarySystem;
+            :param component: str;
+            :return:
+            """
+            comp_n = 1 if component == 'primary' else 2
+            comp_prfx = 'p__' if component == 'primary' else 's__'
+            star_instance = getattr(binary_instance, component)
+
+            write_fn(f"#{'-'*125}{line_sep}")
+            write_fn(f"# {component.upper()} COMPONENT{line_sep}")
+            shared.write_ln(*intro)
+            write_fn(f"#{'-'*125}{line_sep}")
+
+            m_desig = f'Mass (M_{comp_n}):'
+            shared.write_param_ln(self.fit_params, f'{comp_prfx}mass', m_desig, write_fn, line_sep, 3) \
+                if f'{comp_prfx}mass' in self.fit_params.keys() else \
+                shared.write_ln(write_fn, m_desig, (star_instance.mass * units.MASS_UNIT).to(u.solMass).value,
+                                '', '', 'solMass', 'Derived', line_sep, 3)
+
+            shared.write_param_ln(self.fit_params, f'{comp_prfx}surface_potential', 'Surface potential (Omega_1):',
+                                  write_fn, line_sep, 4)
+            crit_pot = binary_instance.critical_potential(component=component,
+                                                          components_distance=1-binary_instance.eccentricity)
+            shared.write_ln(write_fn, 'Critical potential at L_1:', crit_pot, '', '', '', 'Derived', line_sep, 4)
+
+            f_desig = f'Synchronicity (F_{comp_n}):'
+            shared.write_param_ln(self.fit_params, f'{comp_prfx}synchronicity', f_desig, write_fn, line_sep, 3) \
+                if f'{comp_prfx}synchronicity' in self.fit_params.keys() else \
+                shared.write_ln(write_fn, f_desig, star_instance.synchronicity,
+                                '', '', '', 'Fixed', line_sep, 3)
+
+            polar_g = calculate_polar_gravity_acceleration(star_instance,
+                                                           1 - binary_instance.eccentricity,
+                                                           binary_instance.mass_ratio,
+                                                           component=component,
+                                                           semi_major_axis=binary_instance.semi_major_axis,
+                                                           logg=True) + 2
+            shared.write_ln(write_fn, 'Polar gravity (log g):', polar_g,
+                            '', '', 'cgs', 'Derived', line_sep, 3)
+
+            write_fn(f"# Periastron radii{line_sep}")
+            polar_r = \
+                (star_instance.polar_radius * binary_instance.semi_major_axis * units.DISTANCE_UNIT). \
+                    to(u.solRad).value
+            back_r = \
+                (star_instance.backward_radius * binary_instance.semi_major_axis * units.DISTANCE_UNIT). \
+                    to(u.solRad).value
+            side_r = \
+                (star_instance.side_radius * binary_instance.semi_major_axis * units.DISTANCE_UNIT). \
+                    to(u.solRad).value
+
+            shared.write_ln(write_fn, 'Polar radius:', polar_r, '', '', 'solRad', 'Derived', line_sep, 5)
+            shared.write_ln(write_fn, 'Backward radius:', back_r, '', '', 'solRad', 'Derived', line_sep, 5)
+            shared.write_ln(write_fn, 'Side radius:', side_r, '', '', 'solRad', 'Derived', line_sep, 5)
+
+            if getattr(star_instance, 'forward_radius', None) is not None:
+                forward_r = \
+                    (star_instance.forward_radius * binary_instance.semi_major_axis * units.DISTANCE_UNIT). \
+                        to(u.solRad).value
+                shared.write_ln(write_fn, 'Forward radius:', forward_r, '', '', 'solRad', 'Derived', line_sep, 5)
+
+            write_fn(f"# Atmospheric parameters{line_sep}")
+            shared.write_param_ln(self.fit_params, f'{comp_prfx}t_eff', f'Effective temperature (T_eff{comp_n}):',
+                                  write_fn, line_sep, 0)
+            shared.write_param_ln(self.fit_params, f'{comp_prfx}gravity_darkening',
+                                  f'Gravity darkening factor (G_{comp_n}):', write_fn, line_sep, 3)
+            shared.write_param_ln(self.fit_params, f'{comp_prfx}albedo', f'Albedo (A_{comp_n}):', write_fn, line_sep, 3)
+
+            met_desig = 'Metallicity (log(X_Fe/X_H)):'
+            shared.write_param_ln(self.fit_params, f'{comp_prfx}metallicity', met_desig, write_fn, line_sep, 2) \
+                if f'{comp_prfx}metallicity' in self.fit_params.keys() else \
+                shared.write_ln(write_fn, met_desig, star_instance.metallicity,
+                                '', '', '', 'Fixed', line_sep, 2)
+
+            if star_instance.has_spots():
+                write_fn(f"#{'-'*125}{line_sep}")
+                write_fn(f"# {component.upper()} SPOTS{line_sep}")
+                shared.write_ln(*intro)
+
+                for spot_name, spot in self.fit_params[f'{comp_prfx}spots'].items():
+                    write_fn(f"#{'-'*125}{line_sep}")
+                    write_fn(f"# Spot: {spot_name} {line_sep}")
+                    write_fn(f"#{'-'*125}{line_sep}")
+
+                    shared.write_param_ln(spot, 'longitude', 'Longitude: ', write_fn, line_sep, 3)
+                    shared.write_param_ln(spot, 'latitude', 'Latitude: ', write_fn, line_sep, 3)
+                    shared.write_param_ln(spot, 'angular_radius', 'Angular radius: ', write_fn, line_sep, 3)
+                    shared.write_param_ln(spot, 'temperature_factor', 'Temperature factor (T_spot/T_eff): ',
+                                          write_fn, line_sep, 3)
+
+            if star_instance.has_pulsations():
+                write_fn(f"#{'-'*125}{line_sep}")
+                write_fn(f"# {component.upper()} PULSATIONS{line_sep}")
+                shared.write_ln(*intro)
+
+                for mode_name, mode in self.fit_params[f'{comp_prfx}pulsations'].items():
+                    write_fn(f"#{'-'*125}{line_sep}")
+                    write_fn(f"# Spot: {mode_name} {line_sep}")
+                    write_fn(f"#{'-'*125}{line_sep}")
+
+                    shared.write_param_ln(mode, 'l', 'Angular degree (l): ', write_fn, line_sep, 0)
+                    shared.write_param_ln(mode, 'm', 'Azimuthal order (m): ', write_fn, line_sep, 0)
+                    shared.write_param_ln(mode, 'amplitude', 'Amplitude (A): ', write_fn, line_sep, 0)
+                    shared.write_param_ln(mode, 'frequency', 'Frequency (f): ', write_fn, line_sep, 0)
+                    shared.write_param_ln(mode, 'start_phase', 'Initial phase (at T_0): ', write_fn, line_sep, 3)
+                    shared.write_param_ln(mode, 'mode_axis_phi', 'Longitude of mode axis: ', write_fn, line_sep, 1)
+                    shared.write_param_ln(mode, 'mode_axis_theta', 'Latitude of mode axis: ', write_fn, line_sep, 1)
+
         # preparing binary instance to calculate derived values
-        b_kwargs = {lbl: val['value'] for lbl, val in self.fit_params.items()}
+        b_kwargs = params.x0_to_kwargs(self.fit_params)
         binary_instance = prepare_binary(verify=True, **b_kwargs)
 
         if filename is not None:
@@ -200,40 +313,42 @@ class LCFit(object):
             write_fn = print
             line_sep = ''
 
+        intro = (write_fn, '# Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
+
         write_fn(f"# BINARY SYSTEM{line_sep}")
-        shared.write_ln(write_fn, '# Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
+        shared.write_ln(*intro)
         write_fn(f"#{'-'*125}{line_sep}")
-
+        q_desig = 'Mass ratio (q=M_2/M_1):'
+        a_desig = 'Semi major axis (a):'
         if 'mass_ratio' in self.fit_params.keys():
-            shared.write_param_ln(self, 'mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep)
-            shared.write_param_ln(self, 'semi_major_axis', 'Semi major axis (a):', write_fn, line_sep)
+            shared.write_param_ln(self.fit_params, 'mass_ratio', q_desig, write_fn, line_sep, 3)
+            shared.write_param_ln(self.fit_params, 'semi_major_axis', a_desig, write_fn, line_sep, 3)
         else:
-            shared.write_ln(write_fn, 'Mass ratio (q=M_2/M_1):', binary_instance.mass_ratio, '', '', '', 'derived',
-                            line_sep)
+            shared.write_ln(write_fn, q_desig, binary_instance.mass_ratio, '', '', '', 'derived',
+                            line_sep, 3)
             sma = (binary_instance.semi_major_axis * units.DISTANCE_UNIT).to(u.solRad).value
-            shared.write_ln(write_fn, 'Semi major axis (a):', sma, '', '', 'AU', 'derived', line_sep)
+            shared.write_ln(write_fn, a_desig, sma, '', '', 'AU', 'derived', line_sep, 3)
 
-        shared.write_param_ln(self, 'inclination', 'Inclination (i):', write_fn, line_sep)
-        shared.write_param_ln(self, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep)
-        shared.write_param_ln(self, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn, line_sep)
-        shared.write_param_ln(self, 'period', 'Orbital period (P):', write_fn, line_sep)
+        shared.write_param_ln(self.fit_params, 'inclination', 'Inclination (i):', write_fn, line_sep, 2)
+        shared.write_param_ln(self.fit_params, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep, 2)
+        shared.write_param_ln(self.fit_params, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn,
+                              line_sep, 2)
+        shared.write_param_ln(self.fit_params, 'period', 'Orbital period (P):', write_fn, line_sep)
+
         if 'primary_minimum_time' in self.fit_params.keys():
-            shared.write_param_ln(self, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn, line_sep)
-        shared.write_param_ln(self, 'additional_light', 'Additional light (l_3):', write_fn, line_sep)
+            shared.write_param_ln(self.fit_params, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn,
+                                  line_sep)
+        if 'additional_light' in self.fit_params.keys():
+            shared.write_param_ln(self.fit_params, 'additional_light', 'Additional light (l_3):', write_fn, line_sep, 4)
+
+        p_desig = 'Phase shift:'
         if 'phase_shift' in self.fit_params.keys():
-            shared.write_param_ln(self, 'phase_shift', 'Phase shift:', write_fn, line_sep)
+            shared.write_param_ln(self.fit_params, 'phase_shift', p_desig, write_fn, line_sep)
         else:
-            shared.write_ln(write_fn, 'Phase shift:', 0.0, '', '', '', 'Fixed', line_sep)
+            shared.write_ln(write_fn, p_desig, 0.0, '', '', '', 'Fixed', line_sep)
 
-        write_fn(f"#{'-'*125}{line_sep}")
-        write_fn(f"# PRIMARY COMPONENT{line_sep}")
-        write_fn(f"#{'-'*125}{line_sep}")
-        shared.write_param_ln(self, 'p__t_eff', 'Effective temperature (T_eff):', write_fn, line_sep)
-
-        write_fn(f"#{'-'*125}{line_sep}")
-        write_fn(f"# SECONDARY COMPONENT{line_sep}")
-        write_fn(f"#{'-'*125}{line_sep}")
-        shared.write_param_ln(self, 's__t_eff', 'Effective temperature (T_eff):', write_fn, line_sep)
+        component_summary(binary_instance, 'primary')
+        component_summary(binary_instance, 'secondary')
 
         if filename is not None:
             f.close()

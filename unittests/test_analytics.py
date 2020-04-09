@@ -339,6 +339,22 @@ class McMcLCTestCase(AbstractFitTestCase):
                 'value': 3.0,
                 'fixed': True
             },
+            'p__gravity_darkening': {
+                'value': 1.0,
+                'fixed': True
+            },
+            's__gravity_darkening': {
+                'value': 1.0,
+                'fixed': True
+            },
+            'p__albedo': {
+                'value': 1.0,
+                'fixed': True
+            },
+            's__albedo': {
+                'value': 1.0,
+                'fixed': True
+            },
         }
 
         lc_v = LCData(
@@ -404,6 +420,22 @@ class McMcLCTestCase(AbstractFitTestCase):
             },
             'period': {
                 'value': 3.0,
+                'fixed': True
+            },
+            'p__gravity_darkening': {
+                'value': 1.0,
+                'fixed': True
+            },
+            's__gravity_darkening': {
+                'value': 1.0,
+                'fixed': True
+            },
+            'p__albedo': {
+                'value': 1.0,
+                'fixed': True
+            },
+            's__albedo': {
+                'value': 1.0,
                 'fixed': True
             },
         }
@@ -780,6 +812,22 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
                 'value': 3.0,
                 'fixed': True
             },
+            'p__gravity_darkening': {
+                'value': 1.0,
+                'fixed': True
+            },
+            's__gravity_darkening': {
+                'value': 1.0,
+                'fixed': True
+            },
+            'p__albedo': {
+                'value': 1.0,
+                'fixed': True
+            },
+            's__albedo': {
+                'value': 1.0,
+                'fixed': True
+            },
         }
 
         lc_v = LCData(
@@ -846,6 +894,22 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
             },
             'period': {
                 'value': 3.0,
+                'fixed': True
+            },
+            'p__gravity_darkening': {
+                'value': 1.0,
+                'fixed': True
+            },
+            's__gravity_darkening': {
+                'value': 1.0,
+                'fixed': True
+            },
+            'p__albedo': {
+                'value': 1.0,
+                'fixed': True
+            },
+            's__albedo': {
+                'value': 1.0,
                 'fixed': True
             },
         }

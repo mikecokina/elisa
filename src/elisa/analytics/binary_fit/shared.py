@@ -70,45 +70,49 @@ def check_initial_param_validity(x0, all_fit_params, mandatory_fit_params):
             utils.check_missing_params(params.PULSATIONS_KEY_MAP.values(), pulsation_condensed, pulsation_name)
 
 
-def write_param_ln(fit_instance, param_name, designation, write_fn, line_sep):
+def write_param_ln(fit_params, param_name, designation, write_fn, line_sep, precision=8):
     """
     Auxiliary function to the fit_summary functions, produces one line in output for given parameter that is present
     in `fit_params`.
 
-    :param fit_instance: Union[LCFit, RVFit];
+    :param fit_params: dict;
     :param param_name: str; name os the parameter in `fit_params`
     :param designation: str; displayed name of the parameter
     :param write_fn: function used to write into console or to the file
     :param line_sep: str; symbols to finish the line
     :return:
     """
-    params = fit_instance.fit_params
-    if 'min' in params[param_name].keys() and 'max' in params[param_name].keys():
-        bot = params[param_name]['min'] - params[param_name]['value']
-        top = params[param_name]['max'] - params[param_name]['value']
-        sig_figures = -int(np.log10(np.min(np.abs([bot, top])))//1) + 1
+    if 'min' in fit_params[param_name].keys() and 'max' in fit_params[param_name].keys():
+        bot = fit_params[param_name]['min'] - fit_params[param_name]['value']
+        top = fit_params[param_name]['max'] - fit_params[param_name]['value']
+
+        aux = np.abs([bot, top])
+        aux[aux == 0] = 1e6
+        sig_figures = -int(np.log10(np.min(aux))//1) + 1
+
         bot = round(bot, sig_figures)
         top = round(top, sig_figures)
     else:
         bot, top = '', '',
-        sig_figures = 10
+        sig_figures = precision
 
     status = 'not recognized'
-    if 'fixed' in params[param_name].keys():
-        status = 'Fixed' if params[param_name]['fixed'] else 'Variable'
-    elif 'constraint' in params[param_name].keys():
-        status = params[param_name]['constraint']
+    if 'fixed' in fit_params[param_name].keys():
+        status = 'Fixed' if fit_params[param_name]['fixed'] else 'Variable'
+    elif 'constraint' in fit_params[param_name].keys():
+        status = fit_params[param_name]['constraint']
 
     return write_ln(write_fn,
                     designation,
-                    round(params[param_name]['value'], sig_figures),
-                    bot, top, params[param_name]['unit'],
+                    round(fit_params[param_name]['value'], sig_figures),
+                    bot, top, fit_params[param_name]['unit'],
                     status, line_sep)
 
 
-def write_ln(write_fn, designation, value, bot, top, unit, status, line_sep):
+def write_ln(write_fn, designation, value, bot, top, unit, status, line_sep, precision=8):
+    val = round(value, precision) if type(value) is not str else value
     return write_fn(f"{designation:<35} "
-                    f"{value:>20}"
+                    f"{val:>20}"
                     f"{bot:>20}"
                     f"{top:>20}"
                     f"{unit:>20}    "
