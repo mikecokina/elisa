@@ -91,14 +91,14 @@ def read_data_file(filename, data_columns):
             if line.startswith('#'):
                 continue
 
-            items = [float(xx.strip()) for xx in line.split()]
+            items = [xx.strip() for xx in line.split()]
             try:
                 data_to_append = [items[ii] for ii in data_columns]
             except IndexError:
                 continue
 
             for ii in range(len(data_columns)):
-                data[ii].append(data_to_append[ii])
+                data[ii].append(float(data_to_append[ii]))
 
     return np.array(data).T
 

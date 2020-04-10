@@ -131,7 +131,8 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
 
         results = {lbl: val['value'] for lbl, val in result_dict.items()}
         constraint_dict = params.constraints_evaluator(results, self.constraint)
-        result_dict.update({lbl: {'value': val, 'constraint': self.constraint[val]} for lbl, val in constraint_dict})
+        result_dict.update({lbl: {'value': val, 'constraint': self.constraint[lbl]}
+                            for lbl, val in constraint_dict.items()})
 
         results = {lbl: val['value'] for lbl, val in result_dict.items()}
         # compute r_squared and append to result
@@ -223,7 +224,7 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
 
         results = {lbl: val['value'] for lbl, val in result_dict.items()}
         constraint_dict = params.constraints_evaluator(results, self.constraint)
-        result_dict.update({lbl: {'value': val, 'constraint': self.constraint[val]} for lbl, val in constraint_dict})
+        result_dict.update({lbl: {'value': val, 'constraint': self.constraint[lbl]} for lbl, val in constraint_dict})
 
         results = {lbl: val['value'] for lbl, val in result_dict.items()}
         r_squared_args = self.xs, self.ys, on_normalized, self.xs_reverser

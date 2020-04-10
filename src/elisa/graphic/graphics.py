@@ -827,8 +827,8 @@ def binary_lc_fit_plot(**kwargs):
 
     ax2.axhline(0, ls='dashed', c='black', lw=0.5)
 
-    ax1.legend()
-    ax2.legend()
+    ax1.legend(loc=1)
+    ax2.legend(loc=1)
 
     ax1.set_ylabel(f'Normalized flux')
 
