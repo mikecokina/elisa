@@ -12,6 +12,7 @@ from ..binary import (
     models,
     shared
 )
+from elisa import const
 
 from elisa.analytics.binary.shared import (
     AbstractCentralRadialVelocityDataMixin,
@@ -55,8 +56,9 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
             synthetic = butils.normalize_light_curve(synthetic, kind='average')
 
         except Exception as e:
-            logger.error(f'your initial parmeters lead during fitting to invalid binary system')
-            raise RuntimeError(f'your initial parmeters lead during fitting to invalid binary system: {str(e)}')
+            logger.error(f'your initial parameters lead during fitting to invalid binary system')
+            # raise RuntimeError(f'your initial parameters lead during fitting to invalid binary system: {str(e)}')
+            return const.MAX_USABLE_FLOAT
 
         if np.shape(fit_xs) != np.shape(phases):
             new_synthetic = dict()
@@ -67,7 +69,7 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         else:
             synthetic = {band: val[self.xs_reverser[band]] for band, val in synthetic.items()}
 
-        residuals = np.array([np.sum(np.power(synthetic[band] - self.ys[band], 2)
+        residuals = np.sum([np.sum(np.power(synthetic[band] - self.ys[band], 2)
                               / self.yerrs[band]) for band in synthetic])
 
         r2 = shared.r_squared(synthetic, self.ys)
