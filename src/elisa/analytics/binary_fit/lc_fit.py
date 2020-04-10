@@ -303,7 +303,7 @@ class LCFit(object):
 
         # preparing binary instance to calculate derived values
         b_kwargs = params.x0_to_kwargs(self.fit_params)
-        binary_instance = prepare_binary(verify=True, **b_kwargs)
+        binary_instance = prepare_binary(verify=False, **b_kwargs)
 
         if filename is not None:
             f = open(filename, 'w')

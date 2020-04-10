@@ -48,6 +48,9 @@
         },
         "phase_shift": {
           "type": "number"
+        },
+        "additional_light": {
+          "type": "number"
         }
       }
     },
