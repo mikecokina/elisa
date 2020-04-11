@@ -1,7 +1,6 @@
 from elisa.binary_system import t_layer
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from ..binary import params
-from ...base import error
 from ...binary_system.system import BinarySystem
 from ...binary_system.utils import resolve_json_kind
 
@@ -58,8 +57,8 @@ def _serialize_star_kwargs(component, **kwargs):
         gravity_darkening=no_prefix.get('gravity_darkening', 1.0),
         albedo=no_prefix.get('albedo', 1.0),
         metallicity=no_prefix.get('metallicity', 0.0),
-        spots=spots,
-        pulsations=pulsations,
+        **{"spots": spots} if spots is not None else {},
+        **{"pulsations": pulsations} if pulsations is not None else {},
         **{"discretization_factor": no_prefix["discretization_factor"]}
         if no_prefix.get("discretization_factor") else {},
         **{"mass": no_prefix["mass"]} if no_prefix.get("mass") else {},
