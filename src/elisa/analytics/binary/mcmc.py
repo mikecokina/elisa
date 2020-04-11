@@ -112,8 +112,8 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
         self.last_sampler = emcee.EnsembleSampler
         self.last_normalization = dict()
         self.last_fname = ''
-
         self.eval_counter = 0
+        self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
 
     @staticmethod
     def ln_prior(xn):
@@ -133,6 +133,7 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
         lh = - 0.5 * np.sum([np.sum(
             np.power((self.ys[item] - synthetic[item][self.xs_reverser[item]]) / self.yerrs[item], 2))
             for item, value in synthetic.items()])
+        self._last_known_lhood = lh if lh < self._last_known_lhood else self._last_known_lhood
         return lh
 
     def ln_probability(self, xn):
@@ -142,7 +143,7 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
             likelihood = self.likelihood(xn)
         except (ElisaError, ValueError) as e:
             logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
-            return -10.0 * np.finfo(float).eps * np.sum(xn)
+            return self._last_known_lhood * 1e3
         return likelihood
 
     @staticmethod
