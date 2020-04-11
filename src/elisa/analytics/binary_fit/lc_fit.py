@@ -159,7 +159,6 @@ class LCFit(object):
         :param filename: str;
         """
         parameters = copy(self.fit_params) if parameters is None else parameters
-        parameters.update({'period': {'value': self.period, 'unit': units.PERIOD_UNIT}})
 
         parameters = autils.unify_unit_string_representation(parameters)
 
