@@ -12,40 +12,40 @@ ntriangles = {
     "10": (848, 288),
 }
 
+# phoebe.download_passband('Johnson:B')
+
 
 def get_binary(eccentricity, triangles):
-    b = phoebe.Bundle()
-    b.add_component('star', component='primary')
-    b.add_component('star', component='secondary')
-    b.add_orbit('binary')
-    b.set_hierarchy('orbit:binary(star:primary, star:secondary)')
+    b = phoebe.Bundle.default_binary()
+
     b.set_value('incl@orbit', 85)
     b.set_value('ecc@orbit', eccentricity)
     b.set_value('period@orbit', 3)
     b.set_value('sma@orbit', 12.628465471719581)
     b.set_value("per0@binary@component", 210.0)
-    # b.set_value('mass@primary@component', 2.0)
-    # b.set_value('mass@secondary@component', 1.0)
     b.set_value("q@binary@component", 0.5)
     b.set_value('teff@primary', 5500)
     b.set_value('teff@secondary', 5500)
-    # b.set_value('atm@primary@phoebe01@compute', 'ck2004')
-    # b.set_value('atm@secondary@phoebe01@compute', 'ck2004')
-    b.set_value("pot@primary@component", 5.0)
-    b.set_value("pot@secondary@component", 5.0)
-    b.set_value('irrad_method@phoebe01@compute', 'wilson')
-    b.set_value('ntriangles@primary@phoebe01@compute', triangles[0])
-    b.set_value('ntriangles@secondary@phoebe01@compute', triangles[1])
+
+    b.set_value("requiv@primary@component", 2.8)
+    b.set_value("requiv@secondary@component", 1.68)
+    b.set_value("irrad_method@phoebe01@compute", "wilson")
+
+    b.set_value('ntriangles@primary', triangles[0])
+    b.set_value('ntriangles@secondary', triangles[1])
+
+    b.set_value('atm@primary', "ck2004")
+    b.set_value('atm@secondary', "ck2004")
+
     b.set_value("syncpar@primary@component", 1.0)
     b.set_value("syncpar@secondary@component", 1.0)
-
 
     return b
 
 
 def run_observation(binary, phases):
-    binary.add_dataset('lc', times=phases, dataset='lc01')
-    binary.run_compute()
+    binary.add_dataset('lc', times=phases, passband="Johnson:B", dataset=f"lc{int(np.random.uniform(1, 100000000000))}")
+    binary.run_compute(irrad_method='wilson')
 
 
 def timeit(f):
@@ -78,7 +78,6 @@ def main():
                 result["phoebe2"][orbit][str(n_phases)] = runtime / test_runs
 
     print(json.dumps(result, indent=4))
-    # axs, artists = binary['lc@model'].plot(x='phases')
 
 
 if __name__ == "__main__":

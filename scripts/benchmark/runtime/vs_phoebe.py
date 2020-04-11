@@ -82,7 +82,7 @@ def run_observation(observer, phases):
 
 def main():
     # elisa runtime test ################
-    test_runs = 10
+    test_runs = 1
     result = {
         "elisa": {
             "circular": dict(),
@@ -90,7 +90,7 @@ def main():
         }
     }
 
-    for eccentricity in [0, 0.2]:
+    for eccentricity in [0]:
         orbit = "circular" if eccentricity == 0 else "eccentric"
         for alpha in [2, 5, 7, 10]:
             observer = get_elisa_binary_observer(PASSBAND[0], eccentricity=eccentricity, discretization_factor=alpha)
