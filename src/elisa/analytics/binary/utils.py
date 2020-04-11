@@ -14,20 +14,24 @@ def normalize_light_curve(lc, kind='global_maximum', top_fraction_to_average=0.1
         * ** global_maximum -- curves are normalized to their global maximum
     :return: Dict;
     """
-    valid_arguments = ['average', 'global_average', 'maximum', 'global_maximum']
+    valid_arguments = ['average', 'global_average', 'maximum', 'global_maximum', 'minimum']
     if kind == valid_arguments[0]:  # each curve is normalized to its average
         coeff = {key: np.mean(val) for key, val in lc.items()}
     elif kind == valid_arguments[1]:  # curves are normalized to their global average
         c = np.mean(list(lc.values()))
         coeff = {key: c for key, val in lc.items()}
     elif kind == valid_arguments[2]:  # each curve is normalized to its own average of the top fraction
-        n = {key: int(top_fraction_to_average * len(val)) for key, val in lc.items()}
+        n = {key: int(top_fraction_to_average * len(val)) + 1 for key, val in lc.items()}
         coeff = {key: np.average(val[np.argsort(val)[-n[key]:]]) for key, val in lc.items()}
     elif kind == valid_arguments[3]:  # curves are normalized to their global maximum
         vals = np.concatenate(list(lc.values()))
-        n = int(top_fraction_to_average * len(vals) / len(lc))
+        n = int(top_fraction_to_average * len(vals) / len(lc)) + 1
         c = np.average(vals[np.argsort(vals)[-n:]])
         coeff = {key: c for key, val in lc.items()}
+    elif kind == valid_arguments[4]:  # each curve is normalized to its own average of the top fraction
+        n = {key: int(top_fraction_to_average * len(val)) for key, val in lc.items()}
+        coeff = {key: np.average(val[np.argsort(val)[:n[key]]]) for key, val in lc.items()}
+
     else:
         raise ValueError(f'Argument `kind` = {kind} is not one of the valid arguments {valid_arguments}')
 

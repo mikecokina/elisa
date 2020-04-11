@@ -156,7 +156,7 @@ class LCPlot(object):
         self.lc_fit = instance
 
     def model(self, fit_params=None, start_phase=-0.6, stop_phase=0.6, number_of_points=300, discretization=3,
-              separation=0.1):
+              separation=0.1, data_frac_to_normalize=0.1):
         """
         Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
@@ -165,8 +165,11 @@ class LCPlot(object):
         :param start_phase: float;
         :param stop_phase: float;
         :param number_of_points: int;
-        :param discretization: unit
+        :param discretization: unit;
+        :param data_frac_to_normalize: float; between (0, 1), fraction of top data points used for normalization,
+        depends on level of noise in your data
         """
+        average_kind = 'maximum'
         plot_result_kwargs = dict()
         fit_params = self.lc_fit.fit_params if fit_params is None else fit_params
 
@@ -188,8 +191,8 @@ class LCPlot(object):
 
             yerr[_filter] = curve.yerr
 
-        # y_data = bsutils.normalize_light_curve(y_data, kind='global_maximum') if y_axis_unit != u.mag else y_data
-        y_data = bsutils.normalize_light_curve(y_data, kind='maximum')
+        y_data = bsutils.normalize_light_curve(y_data, kind=average_kind,
+                                               top_fraction_to_average=data_frac_to_normalize)
         ii, L = 0, len(y_data)
         for fltr, curve in y_data.items():
             curve -= separation * (ii - int(L/2))
@@ -226,8 +229,8 @@ class LCPlot(object):
                                                    _raise_invalid_morphology=False,
                                                    **system_kwargs)
 
-        # synthetic_curves = bsutils.normalize_light_curve(synthetic_curves, kind='global_maximum')
-        synthetic_curves = bsutils.normalize_light_curve(synthetic_curves, kind='maximum')
+        synthetic_curves = bsutils.normalize_light_curve(synthetic_curves, kind=average_kind,
+                                                         top_fraction_to_average=0.001)
         ii = 0
         for fltr, curve in synthetic_curves.items():
             curve -= separation * (ii - int(L/2))
