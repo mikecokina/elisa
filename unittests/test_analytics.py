@@ -689,7 +689,7 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
 
         with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.lc_generator):
             result = ls_binary_detached.fit(self.phases, self.flux, period=3.0, discretization=5, x0=dinit, xtol=1e-5)
-        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+        self.assertTrue(1.0 >= result[-1]["r_squared"] > 0.9)
 
     def test_least_squares_lc_fit_community_params(self):
         dinit = [
@@ -740,7 +740,7 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
         ]
         with mock.patch("elisa.analytics.binary.models.synthetic_binary", self.model_generator.lc_generator):
             result = ls_binary_detached.fit(self.phases, self.flux, period=3.0, discretization=5, x0=dinit, xtol=1e-5)
-        self.assertTrue(1.0 > result[-1]["r_squared"] > 0.9)
+        self.assertTrue(1.0 >= result[-1]["r_squared"] > 0.9)
 
 
 class ModelSimulator(object):

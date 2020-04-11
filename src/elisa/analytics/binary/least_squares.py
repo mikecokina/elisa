@@ -45,13 +45,12 @@ class LightCurveFit(AbstractLightCurveDataMixin, metaclass=ABCMeta):
         try:
             synthetic = logger_decorator()(fn)(*args, **kwargs)
             synthetic = analutils.normalize_lightcurve_to_max(synthetic)
-
         except Exception as e:
-            logger.error(f'your initial parmeters lead during fitting to invalid binary system')
-            raise RuntimeError(f'your initial parmeters lead during fitting to invalid binary system: {str(e)}')
+            logger.error(f'your initial parameters lead during fitting to invalid binary system')
+            return np.finfo(float).max * np.finfo(float).eps
 
-        residua = np.array([np.sum(np.power(synthetic[band][self.xs_reverser[band]] - self.ys[band], 2)
-                                   / self.yerrs[band]) for band in synthetic])
+        residua = np.sum([np.sum(np.power(synthetic[band][self.xs_reverser[band]] - self.ys[band], 2)
+                                 / self.yerrs[band]) for band in synthetic])
 
         return residua
 
