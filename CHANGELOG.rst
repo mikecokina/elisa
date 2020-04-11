@@ -104,6 +104,7 @@ v0.2.3_
 - normalize lightcurves (during fitting procedure) each on its max values instead of normalization on global maximum
 - MCMC penalisation in case of invalid binary system return big negative number instead of value near to 0.0
 - raise `elisa.base.error.AtmosphereError` when atmosphere file not founf instead `FileNotFoundError`
+- least square fitting continue in case of invalid binary parameters
 
 Future plans
 ============
