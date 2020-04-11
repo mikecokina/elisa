@@ -182,7 +182,7 @@ class LCFit(object):
 
         return prms
 
-    def fit_summary(self, filename=None):
+    def fit_summary(self, filename=None, fit_params=None):
         """
         Producing a summary of the fit in more human readable form.
 
@@ -206,20 +206,20 @@ class LCFit(object):
             write_fn(f"#{'-'*125}{line_sep}")
 
             m_desig = f'Mass (M_{comp_n}):'
-            shared.write_param_ln(self.fit_params, f'{comp_prfx}mass', m_desig, write_fn, line_sep, 3) \
-                if f'{comp_prfx}mass' in self.fit_params.keys() else \
+            shared.write_param_ln(processed_params, f'{comp_prfx}mass', m_desig, write_fn, line_sep, 3) \
+                if f'{comp_prfx}mass' in processed_params.keys() else \
                 shared.write_ln(write_fn, m_desig, (star_instance.mass * units.MASS_UNIT).to(u.solMass).value,
                                 '', '', 'solMass', 'Derived', line_sep, 3)
 
-            shared.write_param_ln(self.fit_params, f'{comp_prfx}surface_potential', 'Surface potential (Omega_1):',
+            shared.write_param_ln(processed_params, f'{comp_prfx}surface_potential', 'Surface potential (Omega_1):',
                                   write_fn, line_sep, 4)
             crit_pot = binary_instance.critical_potential(component=component,
                                                           components_distance=1-binary_instance.eccentricity)
             shared.write_ln(write_fn, 'Critical potential at L_1:', crit_pot, '', '', '', 'Derived', line_sep, 4)
 
             f_desig = f'Synchronicity (F_{comp_n}):'
-            shared.write_param_ln(self.fit_params, f'{comp_prfx}synchronicity', f_desig, write_fn, line_sep, 3) \
-                if f'{comp_prfx}synchronicity' in self.fit_params.keys() else \
+            shared.write_param_ln(processed_params, f'{comp_prfx}synchronicity', f_desig, write_fn, line_sep, 3) \
+                if f'{comp_prfx}synchronicity' in processed_params.keys() else \
                 shared.write_ln(write_fn, f_desig, star_instance.synchronicity,
                                 '', '', '', 'Fixed', line_sep, 3)
 
@@ -254,15 +254,15 @@ class LCFit(object):
                 shared.write_ln(write_fn, 'Forward radius:', forward_r, '', '', 'solRad', 'Derived', line_sep, 5)
 
             write_fn(f"# Atmospheric parameters{line_sep}")
-            shared.write_param_ln(self.fit_params, f'{comp_prfx}t_eff', f'Effective temperature (T_eff{comp_n}):',
+            shared.write_param_ln(processed_params, f'{comp_prfx}t_eff', f'Effective temperature (T_eff{comp_n}):',
                                   write_fn, line_sep, 0)
-            shared.write_param_ln(self.fit_params, f'{comp_prfx}gravity_darkening',
+            shared.write_param_ln(processed_params, f'{comp_prfx}gravity_darkening',
                                   f'Gravity darkening factor (G_{comp_n}):', write_fn, line_sep, 3)
-            shared.write_param_ln(self.fit_params, f'{comp_prfx}albedo', f'Albedo (A_{comp_n}):', write_fn, line_sep, 3)
+            shared.write_param_ln(processed_params, f'{comp_prfx}albedo', f'Albedo (A_{comp_n}):', write_fn, line_sep, 3)
 
             met_desig = 'Metallicity (log(X_Fe/X_H)):'
-            shared.write_param_ln(self.fit_params, f'{comp_prfx}metallicity', met_desig, write_fn, line_sep, 2) \
-                if f'{comp_prfx}metallicity' in self.fit_params.keys() else \
+            shared.write_param_ln(processed_params, f'{comp_prfx}metallicity', met_desig, write_fn, line_sep, 2) \
+                if f'{comp_prfx}metallicity' in processed_params.keys() else \
                 shared.write_ln(write_fn, met_desig, star_instance.metallicity,
                                 '', '', '', 'Fixed', line_sep, 2)
 
@@ -271,7 +271,7 @@ class LCFit(object):
                 write_fn(f"# {component.upper()} SPOTS{line_sep}")
                 shared.write_ln(*intro)
 
-                for spot_name, spot in self.fit_params[f'{comp_prfx}spots'].items():
+                for spot_name, spot in processed_params[f'{comp_prfx}spots'].items():
                     write_fn(f"#{'-'*125}{line_sep}")
                     write_fn(f"# Spot: {spot_name} {line_sep}")
                     write_fn(f"#{'-'*125}{line_sep}")
@@ -287,7 +287,7 @@ class LCFit(object):
                 write_fn(f"# {component.upper()} PULSATIONS{line_sep}")
                 shared.write_ln(*intro)
 
-                for mode_name, mode in self.fit_params[f'{comp_prfx}pulsations'].items():
+                for mode_name, mode in processed_params[f'{comp_prfx}pulsations'].items():
                     write_fn(f"#{'-'*125}{line_sep}")
                     write_fn(f"# Spot: {mode_name} {line_sep}")
                     write_fn(f"#{'-'*125}{line_sep}")
@@ -300,8 +300,29 @@ class LCFit(object):
                     shared.write_param_ln(mode, 'mode_axis_phi', 'Longitude of mode axis: ', write_fn, line_sep, 1)
                     shared.write_param_ln(mode, 'mode_axis_theta', 'Latitude of mode axis: ', write_fn, line_sep, 1)
 
+        fit_params = copy(self.fit_params) if fit_params is None else fit_params
         # preparing binary instance to calculate derived values
-        b_kwargs = params.x0_to_kwargs(self.fit_params)
+        r2 = fit_params.pop('r_squared') if 'r_squared' in fit_params.keys() else None
+
+        # TODO: add a unit trransform
+        x0_vector, labels = params.x0_vectorize(fit_params)
+        fixed = params.x0_to_fixed_kwargs(fit_params)
+        constraint = params.x0_to_constrained_kwargs(fit_params)
+
+        processed_params = {lbl: {'value': x0_vector[ii], 'fixed': False} for ii, lbl in enumerate(labels)}
+        processed_params.update({lbl: {'value': val, 'fixed': True} for lbl, val in fixed.items()})
+
+        results = {lbl: val['value'] for lbl, val in processed_params.items()}
+        constraint_dict = params.constraints_evaluator(results, constraint)
+
+        processed_params.update({lbl: {'value': val, 'constraint': constraint[lbl]}
+                                 for lbl, val in constraint_dict.items()})
+
+        #TODO: Add unit extensions to spots
+        processed_params = params.dict_to_user_format(processed_params)
+        processed_params = params.extend_result_with_units(processed_params)
+
+        b_kwargs = params.x0_to_kwargs(processed_params)
         binary_instance = prepare_binary(verify=False, **b_kwargs)
 
         if filename is not None:
@@ -319,32 +340,36 @@ class LCFit(object):
         write_fn(f"#{'-'*125}{line_sep}")
         q_desig = 'Mass ratio (q=M_2/M_1):'
         a_desig = 'Semi major axis (a):'
-        if 'mass_ratio' in self.fit_params.keys():
-            shared.write_param_ln(self.fit_params, 'mass_ratio', q_desig, write_fn, line_sep, 3)
-            shared.write_param_ln(self.fit_params, 'semi_major_axis', a_desig, write_fn, line_sep, 3)
+        if 'mass_ratio' in processed_params.keys():
+            shared.write_param_ln(processed_params, 'mass_ratio', q_desig, write_fn, line_sep, 3)
+            shared.write_param_ln(processed_params, 'semi_major_axis', a_desig, write_fn, line_sep, 3)
         else:
             shared.write_ln(write_fn, q_desig, binary_instance.mass_ratio, '', '', '', 'derived',
                             line_sep, 3)
             sma = (binary_instance.semi_major_axis * units.DISTANCE_UNIT).to(u.solRad).value
             shared.write_ln(write_fn, a_desig, sma, '', '', 'AU', 'derived', line_sep, 3)
 
-        shared.write_param_ln(self.fit_params, 'inclination', 'Inclination (i):', write_fn, line_sep, 2)
-        shared.write_param_ln(self.fit_params, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep, 2)
-        shared.write_param_ln(self.fit_params, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn,
+        shared.write_param_ln(processed_params, 'inclination', 'Inclination (i):', write_fn, line_sep, 2)
+        shared.write_param_ln(processed_params, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep, 2)
+        shared.write_param_ln(processed_params, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn,
                               line_sep, 2)
-        shared.write_param_ln(self.fit_params, 'period', 'Orbital period (P):', write_fn, line_sep)
+        shared.write_param_ln(processed_params, 'period', 'Orbital period (P):', write_fn, line_sep)
 
-        if 'primary_minimum_time' in self.fit_params.keys():
-            shared.write_param_ln(self.fit_params, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn,
+        if 'primary_minimum_time' in processed_params.keys():
+            shared.write_param_ln(processed_params, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn,
                                   line_sep)
-        if 'additional_light' in self.fit_params.keys():
-            shared.write_param_ln(self.fit_params, 'additional_light', 'Additional light (l_3):', write_fn, line_sep, 4)
+        if 'additional_light' in processed_params.keys():
+            shared.write_param_ln(processed_params, 'additional_light', 'Additional light (l_3):', write_fn, line_sep,
+                                  4)
 
         p_desig = 'Phase shift:'
-        if 'phase_shift' in self.fit_params.keys():
-            shared.write_param_ln(self.fit_params, 'phase_shift', p_desig, write_fn, line_sep)
+        if 'phase_shift' in processed_params.keys():
+            shared.write_param_ln(processed_params, 'phase_shift', p_desig, write_fn, line_sep)
         else:
             shared.write_ln(write_fn, p_desig, 0.0, '', '', '', 'Fixed', line_sep)
+
+        if r2 is not None:
+            shared.write_ln(write_fn, 'Fit R^2: ', r2['value'], '', '', '', 'Derived', line_sep, 3)
 
         component_summary(binary_instance, 'primary')
         component_summary(binary_instance, 'secondary')

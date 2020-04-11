@@ -128,7 +128,7 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         # put all together `floats`, `fixed` and `constraints`
         result = params.param_renormalizer(result.x, labels)
 
-        result_dict = {labels[ii]: {'value': result[ii], 'fixed': False} for ii in range(len(labels))}
+        result_dict = {lbl: {'value': result[ii], 'fixed': False} for ii, lbl in enumerate(labels)}
         result_dict.update({lbl: {'value': val, 'fixed': True} for lbl, val in self.fixed.items()})
 
         results = {lbl: val['value'] for lbl, val in result_dict.items()}
