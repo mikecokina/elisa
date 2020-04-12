@@ -634,8 +634,14 @@ def extend_result_with_units(result):
     :return: List[Dict];
     """
     for key, value in result.items():
-        if key in PARAMS_UNITS_MAP:
-            value['unit'] = PARAMS_UNITS_MAP[key]
+        s_key = key.split(PARAM_PARSER)
+        if s_key[0] in COMPOSITE_PARAMS:
+            if s_key[2] in PARAMS_UNITS_MAP:
+                value['unit'] = PARAMS_UNITS_MAP[s_key[2]]
+
+        else:
+            if key in PARAMS_UNITS_MAP:
+                value['unit'] = PARAMS_UNITS_MAP[key]
     return result
 
 

@@ -189,6 +189,45 @@ class LCFit(object):
         :param filename: Union[str, None]; if not None, summary is stored in file, otherwise it is printed into console
         :return:
         """
+        def prep_input_params(fit_params):
+            r2 = fit_params.pop('r_squared')['value'] if 'r_squared' in fit_params.keys() else None
+
+            # transforming initial parameters to base units
+            fit_params = autils.transform_initial_values(fit_params)
+
+            x0_vector, labels = params.x0_vectorize(fit_params)
+            fixed = params.x0_to_fixed_kwargs(fit_params)
+            constraint = params.x0_to_constrained_kwargs(fit_params)
+
+            processed_params = {lbl: {'value': x0_vector[ii], 'fixed': False} for ii, lbl in enumerate(labels)}
+
+            for lbl, val in processed_params.items():
+                s_lbl = lbl.split(params.PARAM_PARSER)
+                if s_lbl[0] in params.COMPOSITE_PARAMS:
+                    if 'min' in fit_params[s_lbl[0]][s_lbl[1]][s_lbl[2]].keys() and \
+                            'max' in fit_params[s_lbl[0]][s_lbl[1]][s_lbl[2]].keys():
+                        val.update({'min': fit_params[s_lbl[0]][s_lbl[1]][s_lbl[2]]['min'],
+                                    'max': fit_params[s_lbl[0]][s_lbl[1]][s_lbl[2]]['max']})
+
+                else:
+                    if 'min' in fit_params[lbl].keys() and 'max' in fit_params[lbl].keys():
+                        val.update({'min': fit_params[lbl]['min'], 'max': fit_params[lbl]['max']})
+
+            processed_params.update({lbl: {'value': val, 'fixed': True} for lbl, val in fixed.items()})
+
+            results = {lbl: val['value'] for lbl, val in processed_params.items()}
+            constraint_dict = params.constraints_evaluator(results, constraint)
+
+            processed_params.update({lbl: {'value': val, 'constraint': constraint[lbl]}
+                                     for lbl, val in constraint_dict.items()})
+
+
+            processed_params = params.extend_result_with_units(processed_params)
+            processed_params = params.dict_to_user_format(processed_params)
+
+            processed_params.update({'r_squared': {'value': r2, 'unit': ''}})
+            return processed_params
+
         def component_summary(binary_instance, component):
             """
             Unified summary for binary system component fit summary
@@ -302,25 +341,8 @@ class LCFit(object):
 
         fit_params = copy(self.fit_params) if fit_params is None else fit_params
         # preparing binary instance to calculate derived values
-        r2 = fit_params.pop('r_squared') if 'r_squared' in fit_params.keys() else None
 
-        # TODO: add a unit trransform
-        x0_vector, labels = params.x0_vectorize(fit_params)
-        fixed = params.x0_to_fixed_kwargs(fit_params)
-        constraint = params.x0_to_constrained_kwargs(fit_params)
-
-        processed_params = {lbl: {'value': x0_vector[ii], 'fixed': False} for ii, lbl in enumerate(labels)}
-        processed_params.update({lbl: {'value': val, 'fixed': True} for lbl, val in fixed.items()})
-
-        results = {lbl: val['value'] for lbl, val in processed_params.items()}
-        constraint_dict = params.constraints_evaluator(results, constraint)
-
-        processed_params.update({lbl: {'value': val, 'constraint': constraint[lbl]}
-                                 for lbl, val in constraint_dict.items()})
-
-        #TODO: Add unit extensions to spots
-        processed_params = params.dict_to_user_format(processed_params)
-        processed_params = params.extend_result_with_units(processed_params)
+        processed_params = prep_input_params(fit_params)
 
         b_kwargs = params.x0_to_kwargs(processed_params)
         binary_instance = prepare_binary(verify=False, **b_kwargs)
@@ -368,8 +390,8 @@ class LCFit(object):
         else:
             shared.write_ln(write_fn, p_desig, 0.0, '', '', '', 'Fixed', line_sep)
 
-        if r2 is not None:
-            shared.write_ln(write_fn, 'Fit R^2: ', r2['value'], '', '', '', 'Derived', line_sep, 3)
+        if processed_params['r_squared']['value'] is not None:
+            shared.write_param_ln(processed_params, 'r_squared', 'Fit R^2: ', write_fn, line_sep, 4)
 
         component_summary(binary_instance, 'primary')
         component_summary(binary_instance, 'secondary')

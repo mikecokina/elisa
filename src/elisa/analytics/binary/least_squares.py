@@ -143,8 +143,8 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **results)
 
         result_dict["r_squared"] = {'value': r_squared_result}
-        result_dict = params.dict_to_user_format(result_dict)
-        return params.extend_result_with_units(result_dict)
+        result_dict = params.extend_result_with_units(result_dict)
+        return params.dict_to_user_format(result_dict)
 
 
 class OvercontactLightCurveFit(LightCurveFit):
@@ -233,8 +233,9 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **results)
 
         result_dict["r_squared"] = {'value': r_squared_result}
-        result_dict = params.dict_to_user_format(result_dict)
-        return params.extend_result_with_units(result_dict)
+
+        result_dict = params.extend_result_with_units(result_dict)
+        return params.dict_to_user_format(result_dict)
 
 
 binary_detached = DetachedLightCurveFit()
