@@ -189,34 +189,34 @@ class LCFit(object):
         :param filename: Union[str, None]; if not None, summary is stored in file, otherwise it is printed into console
         :return:
         """
-        def prep_input_params(fit_params):
+        def prep_input_params(input_params):
             """
-            Function prepares input 'fit_params' to be able to be used to build binary system.
-            :param fit_params: dict;
+            Function prepares input 'input_params' to be able to be used to build binary system.
+            :param input_params: dict;
             :return:
             """
-            r2 = fit_params.pop('r_squared')['value'] if 'r_squared' in fit_params.keys() else None
+            r2 = input_params.pop('r_squared')['value'] if 'r_squared' in input_params.keys() else None
 
             # transforming initial parameters to base units
-            fit_params = autils.transform_initial_values(fit_params)
+            input_params = autils.transform_initial_values(input_params)
 
-            x0_vector, labels = params.x0_vectorize(fit_params)
-            fixed = params.x0_to_fixed_kwargs(fit_params)
-            constraint = params.x0_to_constrained_kwargs(fit_params)
+            x0_vector, labels = params.x0_vectorize(input_params)
+            fixed = params.x0_to_fixed_kwargs(input_params)
+            constraint = params.x0_to_constrained_kwargs(input_params)
 
             return_params = {lbl: {'value': x0_vector[ii], 'fixed': False} for ii, lbl in enumerate(labels)}
 
             for lbl, val in return_params.items():
                 s_lbl = lbl.split(params.PARAM_PARSER)
                 if s_lbl[0] in params.COMPOSITE_PARAMS:
-                    if 'min' in fit_params[s_lbl[0]][s_lbl[1]][s_lbl[2]].keys() and \
-                            'max' in fit_params[s_lbl[0]][s_lbl[1]][s_lbl[2]].keys():
-                        val.update({'min': fit_params[s_lbl[0]][s_lbl[1]][s_lbl[2]]['min'],
-                                    'max': fit_params[s_lbl[0]][s_lbl[1]][s_lbl[2]]['max']})
+                    if 'min' in input_params[s_lbl[0]][s_lbl[1]][s_lbl[2]].keys() and \
+                            'max' in input_params[s_lbl[0]][s_lbl[1]][s_lbl[2]].keys():
+                        val.update({'min': input_params[s_lbl[0]][s_lbl[1]][s_lbl[2]]['min'],
+                                    'max': input_params[s_lbl[0]][s_lbl[1]][s_lbl[2]]['max']})
 
                 else:
-                    if 'min' in fit_params[lbl].keys() and 'max' in fit_params[lbl].keys():
-                        val.update({'min': fit_params[lbl]['min'], 'max': fit_params[lbl]['max']})
+                    if 'min' in input_params[lbl].keys() and 'max' in input_params[lbl].keys():
+                        val.update({'min': input_params[lbl]['min'], 'max': input_params[lbl]['max']})
 
             return_params.update({lbl: {'value': val, 'fixed': True} for lbl, val in fixed.items()})
 
@@ -232,16 +232,16 @@ class LCFit(object):
             return_params.update({'r_squared': {'value': r2, 'unit': ''}})
             return return_params
 
-        def component_summary(binary_instance, component):
+        def component_summary(binary_system, component):
             """
             Unified summary for binary system component fit summary
-            :param binary_instance: BinarySystem;
+            :param binary_system: BinarySystem;
             :param component: str;
             :return:
             """
             comp_n = 1 if component == 'primary' else 2
             comp_prfx = 'p__' if component == 'primary' else 's__'
-            star_instance = getattr(binary_instance, component)
+            star_instance = getattr(binary_system, component)
 
             write_fn(f"#{'-'*125}{line_sep}")
             write_fn(f"# {component.upper()} COMPONENT{line_sep}")
@@ -256,8 +256,8 @@ class LCFit(object):
 
             shared.write_param_ln(processed_params, f'{comp_prfx}surface_potential', 'Surface potential (Omega_1):',
                                   write_fn, line_sep, 4)
-            crit_pot = binary_instance.critical_potential(component=component,
-                                                          components_distance=1-binary_instance.eccentricity)
+            crit_pot = binary_system.critical_potential(component=component,
+                                                          components_distance=1-binary_system.eccentricity)
             shared.write_ln(write_fn, 'Critical potential at L_1:', crit_pot, '', '', '', 'Derived', line_sep, 4)
 
             f_desig = f'Synchronicity (F_{comp_n}):'
@@ -267,23 +267,27 @@ class LCFit(object):
                                 '', '', '', 'Fixed', line_sep, 3)
 
             polar_g = calculate_polar_gravity_acceleration(star_instance,
-                                                           1 - binary_instance.eccentricity,
-                                                           binary_instance.mass_ratio,
+                                                           1 - binary_system.eccentricity,
+                                                           binary_system.mass_ratio,
                                                            component=component,
-                                                           semi_major_axis=binary_instance.semi_major_axis,
+                                                           semi_major_axis=binary_system.semi_major_axis,
                                                            logg=True) + 2
             shared.write_ln(write_fn, 'Polar gravity (log g):', polar_g,
                             '', '', 'cgs', 'Derived', line_sep, 3)
 
+            r_equiv = (binary_instance.calculate_equivalent_radius(components=component)[component] *
+            binary_system.semi_major_axis * units.DISTANCE_UNIT).to(u.solRad).value
+            shared.write_ln(write_fn, 'Equivalent radius (R_equiv):', r_equiv, '', '', 'solRad', 'Derived', line_sep, 5)
+
             write_fn(f"# Periastron radii{line_sep}")
             polar_r = \
-                (star_instance.polar_radius * binary_instance.semi_major_axis * units.DISTANCE_UNIT). \
+                (star_instance.polar_radius * binary_system.semi_major_axis * units.DISTANCE_UNIT). \
                     to(u.solRad).value
             back_r = \
-                (star_instance.backward_radius * binary_instance.semi_major_axis * units.DISTANCE_UNIT). \
+                (star_instance.backward_radius * binary_system.semi_major_axis * units.DISTANCE_UNIT). \
                     to(u.solRad).value
             side_r = \
-                (star_instance.side_radius * binary_instance.semi_major_axis * units.DISTANCE_UNIT). \
+                (star_instance.side_radius * binary_system.semi_major_axis * units.DISTANCE_UNIT). \
                     to(u.solRad).value
 
             shared.write_ln(write_fn, 'Polar radius:', polar_r, '', '', 'solRad', 'Derived', line_sep, 5)
@@ -292,7 +296,7 @@ class LCFit(object):
 
             if getattr(star_instance, 'forward_radius', None) is not None:
                 forward_r = \
-                    (star_instance.forward_radius * binary_instance.semi_major_axis * units.DISTANCE_UNIT). \
+                    (star_instance.forward_radius * binary_system.semi_major_axis * units.DISTANCE_UNIT). \
                         to(u.solRad).value
                 shared.write_ln(write_fn, 'Forward radius:', forward_r, '', '', 'solRad', 'Derived', line_sep, 5)
 

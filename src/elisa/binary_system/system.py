@@ -781,6 +781,30 @@ class BinarySystem(System):
             retval[component] = new_potentials
         return retval
 
+    def calculate_equivalent_radius(self, components):
+        """
+        Function returns equivalent radius of the given component, i.e. radius of the sphere with the same volume as
+        given component.
+
+        :param components: str; `primary`, `secondary` or None (=both)
+        :return: dict; {'primary': r_equiv, ...}
+        """
+        components = bsutils.component_to_list(components)
+        retval = dict()
+        for component in components:
+            star = getattr(self, component)
+            points_equator, points_meridian = \
+                self.generate_equator_and_meridian_points_in_detached_sys(
+                    components_distance=1.0,
+                    component=component,
+                    surface_potential=star.surface_potential
+                )
+
+            volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
+            retval[component] = np.power((3 * volume) / (4 * const.PI), 1.0/3.0)
+
+        return retval
+
     def generate_equator_and_meridian_points_in_detached_sys(self, components_distance, component, surface_potential):
         """
         Function calculates a two arrays of points contouring equator and meridian calculating for the same x-values.
