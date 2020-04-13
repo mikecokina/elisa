@@ -303,11 +303,16 @@ class LCFit(object):
             write_fn(f"# Atmospheric parameters{line_sep}")
             shared.write_param_ln(processed_params, f'{comp_prfx}t_eff', f'Effective temperature (T_eff{comp_n}):',
                                   write_fn, line_sep, 0)
+
+            l_bol = (binary_system.calculate_bolometric_luminosity(components=component)[component] *
+                     units.LUMINOSITY_UNIT).to('L_sun').value
+            shared.write_ln(write_fn, 'Bolometric luminosity (L_bol): ', l_bol, '', '', 'L_Sol', 'Derived', line_sep, 2)
+
             shared.write_param_ln(processed_params, f'{comp_prfx}gravity_darkening',
                                   f'Gravity darkening factor (G_{comp_n}):', write_fn, line_sep, 3)
             shared.write_param_ln(processed_params, f'{comp_prfx}albedo', f'Albedo (A_{comp_n}):', write_fn, line_sep, 3)
 
-            met_desig = 'Metallicity (log(X_Fe/X_H)):'
+            met_desig = 'Metallicity (log10(X_Fe/X_H)):'
             shared.write_param_ln(processed_params, f'{comp_prfx}metallicity', met_desig, write_fn, line_sep, 2) \
                 if f'{comp_prfx}metallicity' in processed_params.keys() else \
                 shared.write_ln(write_fn, met_desig, star_instance.metallicity,

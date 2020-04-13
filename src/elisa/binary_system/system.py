@@ -805,6 +805,25 @@ class BinarySystem(System):
 
         return retval
 
+    def calculate_bolometric_luminosity(self, components):
+        """
+        Calculates bolometric luminosity of given component based on its effective temperature and equivalent radius
+        using black body approximation.
+
+        :param components: str; `primary`, `secondary` or None (=both)
+        :return: dict; {'primary': L_bol, ...}
+        """
+        r_equiv = self.calculate_equivalent_radius(components=components)
+        components = bsutils.component_to_list(components)
+
+        retval = dict()
+        for component in components:
+            star = getattr(self, component)
+            retval[component] = 4 * const.PI * np.power(r_equiv[component] * self.semi_major_axis, 2) * \
+                                const.S_BOLTZMAN * np.power(star.t_eff, 4)
+
+        return retval
+
     def generate_equator_and_meridian_points_in_detached_sys(self, components_distance, component, surface_potential):
         """
         Function calculates a two arrays of points contouring equator and meridian calculating for the same x-values.
