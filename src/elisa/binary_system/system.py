@@ -113,7 +113,7 @@ class BinarySystem(System):
         logger.debug("setting up morphological classification of binary system")
         self.morphology = self.compute_morphology()
 
-        self.setup_periastron_components_radii(components_distance=self.orbit.periastron_distance)
+        self.setup_components_radii(components_distance=self.orbit.periastron_distance)
         self.assign_pulsations_amplitudes(normalisation_constant=self.semi_major_axis)
 
         # adjust and setup discretization factor if necessary
@@ -666,7 +666,7 @@ class BinarySystem(System):
         else:
             return [const.Position(*p) for p in positions]
 
-    def setup_periastron_components_radii(self, components_distance):
+    def setup_components_radii(self, components_distance):
         """
         Setup component radii.
         Use methods to calculate polar, side, backward and if not W UMa also
@@ -676,6 +676,12 @@ class BinarySystem(System):
         """
         fns = [bsradius.calculate_polar_radius, bsradius.calculate_side_radius, bsradius.calculate_backward_radius]
         components = ['primary', 'secondary']
+
+        if self.eccentricity == 0.0:
+            corrected_potential = {component: getattr(self, component).surface_potential for component in components}
+        else:
+            corrected_potential = self.correct_potentials(distances=[components_distance,])
+            corrected_potential = {component: corrected_potential[component][0] for component in components}
 
         for component in components:
             component_instance = getattr(self, component)
@@ -687,7 +693,7 @@ class BinarySystem(System):
                 kwargs = dict(synchronicity=component_instance.synchronicity,
                               mass_ratio=self.mass_ratio,
                               components_distance=components_distance,
-                              surface_potential=component_instance.surface_potential,
+                              surface_potential=corrected_potential[component],
                               component=component)
                 r = fn(**kwargs)
                 setattr(component_instance, param, r)
@@ -712,24 +718,32 @@ class BinarySystem(System):
         """
         return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
 
-    def correct_potentials(self, phases, component="all", iterations=2):
+    def correct_potentials(self, phases=None, component="all", iterations=2, distances=None):
         """
         Function calculates potential for each phase in phases in such way that conserves
         volume of the component. Volume is approximated by two half elipsoids.
 
-        :param phases: numpy.array;
+        :param phases: numpy.array; if `distances` is not `None`, phases will be not used
         :param component: str; `primary`, `secondary` or None (=both)
         :param iterations: int;
+        :param distances: numpy.array, if not `None`, corrected potentials will be calculated for given component
+        distances
         :return: numpy.array;
         """
-        data = self.orbit.orbital_motion(phases)
-        distances = data[:, 0]
+        if distances is None:
+            if phases is None:
+                raise ValueError('Either `phases` or components `distances` have to be supplied.')
+
+            data = self.orbit.orbital_motion(phases)
+            distances = data[:, 0]
+        else:
+            distances = np.array(distances)
 
         retval = {}
         components = bsutils.component_to_list(component)
         for component in components:
             star = getattr(self, component)
-            new_potentials = star.surface_potential * np.ones(phases.shape)
+            new_potentials = star.surface_potential * np.ones(distances.shape)
 
             points_equator, points_meridian = \
                 self.generate_equator_and_meridian_points_in_detached_sys(
@@ -740,8 +754,8 @@ class BinarySystem(System):
             volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
             equiv_r_mean = utils.calculate_equiv_radius(volume)
 
-            side_radii = np.empty(phases.shape)
-            volume = np.empty(phases.shape)
+            side_radii = np.empty(distances.shape)
+            volume = np.empty(distances.shape)
             for _ in range(iterations):
                 for idx, pot in enumerate(new_potentials):
                     radii_args = (star.synchronicity, self.mass_ratio, distances[idx], new_potentials[idx], component)

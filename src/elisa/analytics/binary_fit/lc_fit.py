@@ -190,6 +190,11 @@ class LCFit(object):
         :return:
         """
         def prep_input_params(fit_params):
+            """
+            Function prepares input 'fit_params' to be able to be used to build binary system.
+            :param fit_params: dict;
+            :return:
+            """
             r2 = fit_params.pop('r_squared')['value'] if 'r_squared' in fit_params.keys() else None
 
             # transforming initial parameters to base units
@@ -199,9 +204,9 @@ class LCFit(object):
             fixed = params.x0_to_fixed_kwargs(fit_params)
             constraint = params.x0_to_constrained_kwargs(fit_params)
 
-            processed_params = {lbl: {'value': x0_vector[ii], 'fixed': False} for ii, lbl in enumerate(labels)}
+            return_params = {lbl: {'value': x0_vector[ii], 'fixed': False} for ii, lbl in enumerate(labels)}
 
-            for lbl, val in processed_params.items():
+            for lbl, val in return_params.items():
                 s_lbl = lbl.split(params.PARAM_PARSER)
                 if s_lbl[0] in params.COMPOSITE_PARAMS:
                     if 'min' in fit_params[s_lbl[0]][s_lbl[1]][s_lbl[2]].keys() and \
@@ -213,20 +218,19 @@ class LCFit(object):
                     if 'min' in fit_params[lbl].keys() and 'max' in fit_params[lbl].keys():
                         val.update({'min': fit_params[lbl]['min'], 'max': fit_params[lbl]['max']})
 
-            processed_params.update({lbl: {'value': val, 'fixed': True} for lbl, val in fixed.items()})
+            return_params.update({lbl: {'value': val, 'fixed': True} for lbl, val in fixed.items()})
 
-            results = {lbl: val['value'] for lbl, val in processed_params.items()}
+            results = {lbl: val['value'] for lbl, val in return_params.items()}
             constraint_dict = params.constraints_evaluator(results, constraint)
 
-            processed_params.update({lbl: {'value': val, 'constraint': constraint[lbl]}
+            return_params.update({lbl: {'value': val, 'constraint': constraint[lbl]}
                                      for lbl, val in constraint_dict.items()})
 
+            return_params = params.extend_result_with_units(return_params)
+            return_params = params.dict_to_user_format(return_params)
 
-            processed_params = params.extend_result_with_units(processed_params)
-            processed_params = params.dict_to_user_format(processed_params)
-
-            processed_params.update({'r_squared': {'value': r2, 'unit': ''}})
-            return processed_params
+            return_params.update({'r_squared': {'value': r2, 'unit': ''}})
+            return return_params
 
         def component_summary(binary_instance, component):
             """
