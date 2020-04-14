@@ -403,6 +403,8 @@ class LCFit(object):
         else:
             shared.write_ln(write_fn, p_desig, 0.0, '', '', '', 'Fixed', line_sep)
 
+        shared.write_ln(write_fn, 'Morphology: ', binary_instance.morphology, '-', '-', '-', 'derived', line_sep)
+
         if processed_params['r_squared']['value'] is not None:
             shared.write_param_ln(processed_params, 'r_squared', 'Fit R^2: ', write_fn, line_sep, 4)
 

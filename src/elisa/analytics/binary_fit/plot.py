@@ -341,6 +341,7 @@ def corner(fit_instance, flat_chain=None, variable_labels=None, normalization=No
     if flat_chain is None:
         raise ValueError('You can use corner plot after running mcmc method or after loading the flat chain.')
 
+    # TODO: addapt for spots and pulsations
     labels = [params.PARAMS_KEY_TEX_MAP[label] for label in variable_labels]
     quantiles = [0.16, 0.5, 0.84] if quantiles is None else quantiles
 

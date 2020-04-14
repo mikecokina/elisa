@@ -54,7 +54,9 @@ def transform_initial_values(x0):
     :return: Dict;
     """
     def transform_variable(key, item):
-        if 'unit' in item.keys():
+        if 'unit' in item.keys() and 'value' in item.keys():
+            if item['value'] is None:
+                return
             item['unit'] = u.Unit(item['unit']) if isinstance(item['unit'], str) else item['unit']
             if 'value' in item.keys():
                 item['value'] = (item['value'] * item['unit']).to(
