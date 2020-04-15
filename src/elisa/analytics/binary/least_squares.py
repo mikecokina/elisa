@@ -231,7 +231,6 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
         results = {lbl: val['value'] for lbl, val in result_dict.items()}
         r_squared_args = self.xs, self.ys, on_normalized, self.xs_reverser
         r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **results)
-
         result_dict["r_squared"] = {'value': r_squared_result}
 
         result_dict = params.extend_result_with_units(result_dict)

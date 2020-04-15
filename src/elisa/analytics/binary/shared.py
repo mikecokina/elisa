@@ -106,6 +106,7 @@ def rv_r_squared(synthetic, *args, **x):
 
     if on_normalized:
         synthetic = analutils.normalize_rv_curve_to_max(synthetic)
+        ys = analutils.normalize_rv_curve_to_max(ys)
 
     return r_squared(synthetic, ys)
 

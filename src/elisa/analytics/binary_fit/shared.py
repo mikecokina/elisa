@@ -18,6 +18,7 @@ def load_mcmc_chain(fit_instance, filename, discard=0):
     params.update_normalization_map(fit_instance.normalization)
     dict_to_add = McMcMixin.resolve_mcmc_result(flat_chain=fit_instance.flat_chain,
                                                 labels=fit_instance.variable_labels)
+    dict_to_add = params.dict_to_user_format(dict_to_add)
     if fit_instance.fit_params is not None:
         fit_instance.fit_params.update(dict_to_add)
     else:

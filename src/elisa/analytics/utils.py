@@ -41,7 +41,7 @@ def convert_json_to_dict_format(json):
     """
     retval = dict()
     for item in json:
-        param = copy(item).pop('param')
+        param = item.pop('param')
         retval.update({param: item, })
     return retval
 

@@ -277,6 +277,7 @@ class LightCurveFit(McMcFit):
         nwalkers = 2 * len(labels) if nwalkers is None else nwalkers
         params.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
+        ys = butils.normalize_light_curve(ys, kind='average')
         self.xs, self.xs_reverser = params.xs_reducer(xs)
         self.labels, self.observer = labels, observer
         self.fixed, self.constraint = fixed, constraint
