@@ -109,16 +109,12 @@ PARAMS_KEY_TEX_MAP = {
     'primary_minimum_time': '$T_0$',
     'additional_light': '$l_{add}$',
     'phase_shift': 'phase shift$',
-}
-
-SPOTS_KEY_TEX_MAP = {
-    'longitude': '$\phi$',
-    'latitude': '$\\theta$',
-    'angular_radius': '$r$',
-    'temperature_factor': '$T_{spot}/T_{eff}$'
-}
-
-PULSATIONS_KEY_TEX_MAP = {
+    # SPOTS
+    'longitude': '$\\varphi$',
+    'latitude': '$\\vartheta$',
+    'angular_radius': '$R_{spot}$',
+    'temperature_factor': '$T_{spot}/T_{eff}$',
+    # PULSATIONS
     'l': '$\\ell$',
     'm': '$m$',
     'amplitude': '$A$',
@@ -288,6 +284,24 @@ def x0_vectorize(x0):
             values += [item['value'] for item in value.values()
                        if not item.get('fixed', False) and not item.get('constraint', False)]
     return values, keys
+
+
+def flatten_fit_params(x0):
+    """
+    Function flattens fit parameters dictionary by joining COMPOSIT_PARAM, name of the feature and parameter name
+    together to form a unique keyword for given fit parameter eg. p__spots@spot1@latitude: {....}.
+
+    :param x0: dict; fit params in `user format`
+    :return: dict; fit params in flattened linearized format
+    """
+    ret_dict = {key: value for key, value in x0.items() if key not in COMPOSITE_PARAMS}
+
+    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
+    for composite_name, composite_value in composite_params.items():
+        for key, value in composite_value.items():
+            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]): item
+                             for param_name, item in value.items()})
+    return ret_dict
 
 
 def x0_to_kwargs(x0):

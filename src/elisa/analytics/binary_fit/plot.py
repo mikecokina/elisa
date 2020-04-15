@@ -335,14 +335,20 @@ def corner(fit_instance, flat_chain=None, variable_labels=None, normalization=No
     variable_labels = fit_instance.variable_labels if variable_labels is None else variable_labels
     normalization = fit_instance.normalization if normalization is None else normalization
 
-    fit_params = deepcopy(fit_instance.fit_params)
+    fit_params = params.flatten_fit_params(fit_instance.fit_params)
 
     corner_plot_kwargs = dict()
     if flat_chain is None:
         raise ValueError('You can use corner plot after running mcmc method or after loading the flat chain.')
 
-    # TODO: addapt for spots and pulsations
-    labels = [params.PARAMS_KEY_TEX_MAP[label] for label in variable_labels]
+    labels = []
+    for lbl in variable_labels:
+        lbl_s = lbl.split(params.PARAM_PARSER)
+        if len(lbl_s) == 1:
+            labels.append(params.PARAMS_KEY_TEX_MAP[lbl])
+        else:
+            labels.append(lbl_s[1] + ' ' + params.PARAMS_KEY_TEX_MAP[lbl_s[2]])
+
     quantiles = [0.16, 0.5, 0.84] if quantiles is None else quantiles
 
     # renormalizing flat chain to meaningful values
@@ -406,8 +412,16 @@ def traces(fit_instance, traces_to_plot=None, flat_chain=None, variable_labels=N
 
     flat_chain = params.renormalize_flat_chain(flat_chain, variable_labels, normalization)
 
+    labels = []
+    for lbl in variable_labels:
+        lbl_s = lbl.split(params.PARAM_PARSER)
+        if len(lbl_s) == 1:
+            labels.append(params.PARAMS_KEY_TEX_MAP[lbl])
+        else:
+            labels.append(lbl_s[1] + ' ' + params.PARAMS_KEY_TEX_MAP[lbl_s[2]])
+
     # transforming units
-    fit_params = deepcopy(fit_instance.fit_params)
+    fit_params = params.flatten_fit_params(fit_instance.fit_params)
     plot_units = PLOT_UNITS if plot_units is None else plot_units
     for ii, lbl in enumerate(variable_labels):
         if lbl in plot_units.keys():
@@ -426,6 +440,7 @@ def traces(fit_instance, traces_to_plot=None, flat_chain=None, variable_labels=N
         'variable_labels': variable_labels,
         'fit_params': fit_params,
         'truths': truths,
+        'labels': labels,
     })
 
     MCMCPlot.paramtrace(**traces_plot_kwargs)
@@ -451,6 +466,14 @@ def autocorrelation(fit_instance, correlations_to_plot=None, flat_chain=None, va
 
     variable_labels = fit_instance.variable_labels if variable_labels is None else variable_labels
 
+    labels = []
+    for lbl in variable_labels:
+        lbl_s = lbl.split(params.PARAM_PARSER)
+        if len(lbl_s) == 1:
+            labels.append(params.PARAMS_KEY_TEX_MAP[lbl])
+        else:
+            labels.append(lbl_s[1] + ' ' + params.PARAMS_KEY_TEX_MAP[lbl_s[2]])
+
     autocorr_fns = np.empty((flat_chain.shape[0], len(variable_labels)))
     autocorr_time = np.empty((flat_chain.shape[0]))
     for ii, lbl in enumerate(variable_labels):
@@ -465,6 +488,7 @@ def autocorrelation(fit_instance, correlations_to_plot=None, flat_chain=None, va
         'autocorr_fns': autocorr_fns,
         'autocorr_time': autocorr_time,
         'variable_labels': variable_labels,
+        'labels': labels
     })
 
     MCMCPlot.autocorr(**autocorr_plot_kwargs)

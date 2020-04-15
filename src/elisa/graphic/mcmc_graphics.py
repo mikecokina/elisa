@@ -41,6 +41,7 @@ class Plot(object):
         """
         Show traces of mcmc chain.
         """
+        labels = kwargs['labels']
         hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) if label in
                     kwargs['traces_to_plot']}
 
@@ -49,7 +50,6 @@ class Plot(object):
 
         gs = gridspec.GridSpec(height, 1)
         ax = []
-        labels = [params.PARAMS_KEY_TEX_MAP[label] for label in kwargs['traces_to_plot']]
         for idx, label in enumerate(kwargs['variable_labels']):
             if label not in kwargs['traces_to_plot']:
                 continue
@@ -76,6 +76,7 @@ class Plot(object):
         """
         Show autocorrelation function.
         """
+        labels = kwargs['labels']
         hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) if label in
                     kwargs['correlations_to_plot']}
 
@@ -84,7 +85,7 @@ class Plot(object):
 
         gs = gridspec.GridSpec(height, 1)
         ax = []
-        labels = [params.PARAMS_KEY_TEX_MAP[label] for label in kwargs['correlations_to_plot']]
+
         for idx, label in enumerate(kwargs['variable_labels']):
             if label not in kwargs['correlations_to_plot']:
                 continue
