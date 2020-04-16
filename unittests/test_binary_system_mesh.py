@@ -152,6 +152,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         self.assertTrue(is_empty(s.primary.spots[0].faces))
         self.assertTrue(is_empty(s.secondary.spots[0].faces))
 
+    @skip("Skipped...deprecated funcionality")
     def test_make_sure_invalid_spots_are_deleted_in_overcontact(self):
         spot_meta = {
             "primary":

@@ -234,11 +234,7 @@ class LightCurveFit(McMcFit):
                 new_synthetic[fltr] = f(phases)
             synthetic = new_synthetic
 
-        lhood = self.lhood(synthetic)
-
-        self.eval_counter += 1
-        logger.debug(f'eval counter = {self.eval_counter}, likelihood = {lhood}')
-        return lhood
+        return self.lhood(synthetic)
 
     def fit(self, xs, ys, x0, discretization, nwalkers=None, nsteps=1000,
             initial_state=None, yerr=None, burn_in=None, percentiles=None, interp_treshold=None, progress=False):

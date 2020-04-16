@@ -1,7 +1,7 @@
 import gc
 import numpy as np
 
-from elisa.base.error import MaxIterationError
+from elisa.base.error import MaxIterationError, SpotError
 from elisa.base.spot import incorporate_spots_mesh
 from elisa.conf import config
 from elisa.opt.fsolver import fsolver
@@ -746,10 +746,9 @@ def mesh_spots(system, components_distance, component="all"):
             try:
                 spot_points = get_surface_points(*args)
             except (MaxIterationError, ValueError) as e:
-                logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
-                               f"doesn't satisfy reasonable conditions and entire spot will be omitted")
-                component_instance.remove_spot(spot_index=spot_index)
-                continue
+                raise SpotError(f"Solver could not find at least some surface points of spot "
+                                f"{spot_instance.kwargs_serializer()}. Probable reason is that your spot is"
+                                f"intersecting neck which is currently not supported.")
 
             if getattr(system, "morphology") == "over-contact":
                 if spot_points.ndim == 2:
@@ -759,10 +758,8 @@ def mesh_spots(system, components_distance, component="all"):
                     validity_test = False
 
                 if not validity_test:
-                    logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
-                                   f"doesn't satisfy reasonable conditions and entire spot will be omitted")
-                    component_instance.remove_spot(spot_index=spot_index)
-                    continue
+                    raise SpotError(f"Your spot {spot_instance.kwargs_serializer()} "
+                                    f"is intersecting neck which is currently not supported.")
 
             boundary_points = spot_points[-len(deltas[-1]):]
 
