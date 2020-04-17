@@ -162,7 +162,7 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
         return result_dict
 
     def _fit(self, x0, labels, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False):
-        p0 = self.generate_initial_states(p0, labels, nwalkers, ndim, x0_vector=x0)
+        p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=x0)
 
         lnf = self.ln_probability
         logger.info('starting mcmc')
@@ -182,13 +182,12 @@ class McMcFit(AbstractFit, AbstractLightCurveDataMixin, McMcMixin, metaclass=ABC
 
         return sampler
 
-    def generate_initial_states(self, initial_state, labels, nwalkers, ndim, x0_vector=None):
+    def generate_initial_states(self, initial_state, nwalkers, ndim, x0_vector=None):
         """
         Function transforms user initial state to normalized format suitable for our mcmc chain, where all vales are in
         interval (0, 1).
 
         :param initial_state: numpy.ndarray; initial state matrix before normalization
-        :param labels: list; list of variable names
         :param nwalkers: int;
         :param ndim: int;
         :param x0_vector: np.array; initial stat based on the firs value

@@ -10,7 +10,8 @@ from elisa.utils import is_empty
 from elisa import (
     umpy as up,
     ld,
-    utils
+    utils,
+    const
 )
 from elisa.base.surface import temperature as btemperature
 from elisa.pulse import pulsations
@@ -109,7 +110,7 @@ def reflection_effect(system, components_distance, iterations):
 
     # calculating C_A = (albedo_A / D_intB) - scalar
     # D_intB - bolometric limb darkening factor
-    d_int = {cmp: ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc[cmp])
+    d_int = {cmp: const.PI * ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc[cmp])
              for cmp in components}
     _c = {
         'primary': (system.primary.albedo / d_int['primary']),

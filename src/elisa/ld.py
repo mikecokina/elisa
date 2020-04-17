@@ -195,7 +195,7 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
 
 def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coefficients=None):
     """
-    Calculates limb darkening factor D(int) used when calculating flux from given intensity on surface.
+    Calculates limb darkening factor D(int)/PI used when calculating flux from given intensity on surface.
     D(int) = integral over hemisphere (D(theta)cos(theta)
 
     :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`
@@ -209,11 +209,11 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
                                  '`linear` or `cosine`, `logarithmic`, `square_root`.')
 
     if limb_darkening_law in ['linear', 'cosine']:
-        return const.PI * (1 - coefficients[0, :] / 3)
+        return 1 - coefficients[0, :] / 3
     elif limb_darkening_law == 'logarithmic':
-        return const.PI * (1 - coefficients[0, :] / 3 + 2 * coefficients[1, :] / 9)
+        return 1 - coefficients[0, :] / 3 + 2 * coefficients[1, :] / 9
     elif limb_darkening_law == 'square_root':
-        return const.PI * (1 - coefficients[0, :] / 3 - coefficients[1, :] / 5)
+        return 1 - coefficients[0, :] / 3 - coefficients[1, :] / 5
 
 
 def get_bolometric_ld_coefficients(temperature, log_g, metallicity):

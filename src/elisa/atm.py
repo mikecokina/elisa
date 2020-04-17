@@ -24,7 +24,8 @@ from elisa.conf import config
 from elisa import (
     umpy as up,
     utils,
-    const
+    const,
+    ld
 )
 
 logger = getLogger(__name__)
@@ -1068,13 +1069,10 @@ def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
     :return: dict;
     """
     for star, component_normal_radiances in normal_radiances.items():
-        ld_coefficients = ld_cfs[star]['bolometric'][config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].values
-        if config.LIMB_DARKENING_LAW in ['linear', 'cosine']:
-            coeff = 1 - ld_coefficients[:, 0] / 3
-        elif config.LIMB_DARKENING_LAW in ['logarithmic']:
-            coeff = 1 - ld_coefficients[:, 0] / 3 + 2 * ld_coefficients[:, 1] / 9
-        elif config.LIMB_DARKENING_LAW in ['square_root']:
-            coeff = 1 - ld_coefficients[:, 0] / 3 - ld_coefficients[:, 1] / 5
+        ld_coefficients = ld_cfs[star]['bolometric'][config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].values.T
+
+        coeff = ld.calculate_bolometric_limb_darkening_factor(limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                              coefficients=ld_coefficients)
 
         normal_radiances[star] = {filter: normal_radiance / coeff for filter, normal_radiance in
                                   component_normal_radiances.items()}
