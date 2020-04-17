@@ -801,7 +801,7 @@ class BinarySystem(System):
                 )
 
             volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
-            retval[component] = np.power((3 * volume) / (4 * const.PI), 1.0/3.0)
+            retval[component] = utils.calculate_equiv_radius(volume)
 
         return retval
 

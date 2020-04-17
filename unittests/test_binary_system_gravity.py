@@ -144,10 +144,14 @@ class GravityUtilsTestCase(ElisaTestCase):
 
         obtained_g_cgs_primary = gravity.calculate_polar_gravity_acceleration(orbital_position_container.primary,
                                                                               1.0, bs.mass_ratio, "primary",
-                                                                              bs.semi_major_axis, logg=False) * 100
+                                                                              bs.semi_major_axis,
+                                                                              bs.primary.synchronicity,
+                                                                              logg=False) * 100
         obtained_g_cgs_secondary = gravity.calculate_polar_gravity_acceleration(orbital_position_container.secondary,
                                                                                 1.0, bs.mass_ratio, "secondary",
-                                                                                bs.semi_major_axis, logg=False) * 100
+                                                                                bs.semi_major_axis,
+                                                                                bs.secondary.synchronicity,
+                                                                                logg=False) * 100
 
         self.assertEqual(round(expected_g_cgs_primary, 4), round(obtained_g_cgs_primary, 4))
         self.assertEqual(round(expected_g_cgs_secondary, 4), round(obtained_g_cgs_secondary, 4))
@@ -163,10 +167,12 @@ class GravityUtilsTestCase(ElisaTestCase):
         obtained_g_cgs_primary = gravity.calculate_polar_gravity_acceleration(orbital_position_container.primary,
                                                                               distance, bs.mass_ratio,
                                                                               "primary", bs.semi_major_axis,
+                                                                              bs.primary.synchronicity,
                                                                               logg=False) * 100.0
         obtained_g_cgs_secondary = gravity.calculate_polar_gravity_acceleration(orbital_position_container.secondary,
                                                                                 distance, bs.mass_ratio,
                                                                                 "secondary", bs.semi_major_axis,
+                                                                                bs.secondary.synchronicity,
                                                                                 logg=False) * 100.0
 
         print(expected_g_cgs_primary, obtained_g_cgs_primary)

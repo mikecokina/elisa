@@ -271,6 +271,7 @@ class LCFit(object):
                                                            binary_system.mass_ratio,
                                                            component=component,
                                                            semi_major_axis=binary_system.semi_major_axis,
+                                                           synchronicity=star_instance.synchronicity,
                                                            logg=True) + 2
             shared.write_ln(write_fn, 'Polar gravity (log g):', polar_g,
                             '', '', 'cgs', 'Derived', line_sep, 3)
