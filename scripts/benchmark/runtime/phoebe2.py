@@ -70,12 +70,13 @@ def main():
         orbit = "circular" if eccentricity == 0 else "eccentric"
         for alpha in [2, 5, 7, 10]:
             binary = get_binary(eccentricity, ntriangles[str(alpha)])
+            result["phoebe2"][orbit][str(alpha)] = dict()
             for n_phases in [20, 50, 100, 150, 200, 250, 300]:
                 phases = np.linspace(-0.6, 0.6, n_phases, endpoint=True)
                 runtime = 0
                 for _ in range(test_runs):
                     runtime += timeit(run_observation)(binary, phases)
-                result["phoebe2"][orbit][str(n_phases)] = runtime / test_runs
+                result["phoebe2"][orbit][str(alpha)][str(n_phases)] = runtime / test_runs
 
     print(json.dumps(result, indent=4))
 
