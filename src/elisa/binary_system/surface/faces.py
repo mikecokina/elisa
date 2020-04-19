@@ -279,11 +279,12 @@ def over_contact_system_surface(system, points=None, component="all", **kwargs):
         projected_points[:, 0] += 1
 
     # condition to select inward facing points
-    inside_points_test = (points[:, 0] > 0)[:-1] if component == 'primary' else (points[:, 0] < 1)[:-1]
+    inside_points_test = (points[:, 0] > 0) if component == 'primary' else (points[:, 0] < 1)
+
     # if auxiliary point was used than  it is not appended to list of inner points to be transformed
     # (it would cause division by zero error)
-    inside_points_test = np.append(inside_points_test, False) if \
-        np.array_equal(points[-1], np.array([neck_x, 0, 0])) else np.append(inside_points_test, True)
+    inside_points_test[-1] = False if \
+        np.array_equal(points[-1], np.array([neck_x, 0, 0])) else inside_points_test[-1]
     inside_points = points[inside_points_test]
     # scaling radii for each point in cylindrical coordinates
     r = (neck_x ** 2 - (k * inside_points[:, 0]) ** 2) ** 0.5 if component == 'primary' else \
