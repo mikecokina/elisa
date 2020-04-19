@@ -105,6 +105,7 @@ v0.2.3_
 - MCMC penalisation in case of invalid binary system return big negative number instead of value near to 0.0
 - raise `elisa.base.error.AtmosphereError` when atmosphere file not founf instead `FileNotFoundError`
 - least square fitting continue in case of invalid binary parameters
+- spots situated on darkside of over-contact component have valid shape
 
 Future plans
 ============
