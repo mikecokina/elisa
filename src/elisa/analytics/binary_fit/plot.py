@@ -156,7 +156,7 @@ class LCPlot(object):
         self.lc_fit = instance
 
     def model(self, fit_params=None, start_phase=-0.6, stop_phase=0.6, number_of_points=300, discretization=3,
-              separation=0.1, data_frac_to_normalize=0.1):
+              separation=0.1, data_frac_to_normalize=0.1, normalization_kind='maximum'):
         """
         Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
@@ -168,14 +168,15 @@ class LCPlot(object):
         :param discretization: unit;
         :param data_frac_to_normalize: float; between (0, 1), fraction of top data points used for normalization,
         depends on level of noise in your data
+        :param normalization_kind: str; `average` or `maximum`
         """
-        average_kind = 'maximum'
+        average_kind = normalization_kind
         plot_result_kwargs = dict()
         fit_params = self.lc_fit.fit_params if fit_params is None else fit_params
 
         if fit_params is None:
             raise ValueError('You did not performed light curve fit on this instance or you did not provided '
-                             'result parameter dictionary.')
+                             'parameter dictionary.')
 
         fit_params = autils.transform_initial_values(fit_params)
 

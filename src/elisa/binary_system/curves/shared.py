@@ -156,6 +156,5 @@ def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
         for component in config.BINARY_COUNTERPARTS
     }
 
-    # parameter 1 / PI converts to astrophysical flux
-    flux = (flux['primary'] + flux['secondary']) / const.PI
+    flux = (flux['primary'] + flux['secondary'])
     return flux

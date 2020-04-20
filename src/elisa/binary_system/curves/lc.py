@@ -124,7 +124,7 @@ def _eval_approximation_two(binary, rel_d, phases_span_test):
     :param rel_d: numpy.array;
     :return: bool;
     """
-    # defined bodies/objects/tempaltes in orbital supplements instance are sorted by distance,
+    # defined bodies/objects/templates in orbital supplements instance are sorted by distance,
     # That means that also radii `rel_d` computed from such values have to be already sorted by
     # their own size (forward radius changes based on components distance and it is monotonic function)
 

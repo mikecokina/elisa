@@ -209,11 +209,11 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
                                  '`linear` or `cosine`, `logarithmic`, `square_root`.')
 
     if limb_darkening_law in ['linear', 'cosine']:
-        return 1 - coefficients[0, :] / 3
+        return const.PI * (1 - coefficients[0, :] / 3)
     elif limb_darkening_law == 'logarithmic':
-        return 1 - coefficients[0, :] / 3 + 2 * coefficients[1, :] / 9
+        return const.PI * (1 - coefficients[0, :] / 3 + 2 * coefficients[1, :] / 9)
     elif limb_darkening_law == 'square_root':
-        return 1 - coefficients[0, :] / 3 - coefficients[1, :] / 5
+        return const.PI * (1 - coefficients[0, :] / 3 - coefficients[1, :] / 5)
 
 
 def get_bolometric_ld_coefficients(temperature, log_g, metallicity):

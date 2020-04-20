@@ -62,8 +62,7 @@ def compute_circular_synchronous_lightcurve(*args):
                                              coverage[component][visibility_indices[component]] *
                                              ld_cors[component])
 
-            # parameter 1 / PI converts to astrophysical flux
-            band_curves[band][pos_idx] = np.sum(flux) / c.PI
+            band_curves[band][pos_idx] = np.sum(flux)
 
     return band_curves
 

@@ -51,9 +51,8 @@ def compute_non_pulsating_lightcurve(*args):
                 limb_darkening_law=config.LIMB_DARKENING_LAW,
                 cos_theta=cosines)
 
-            # parameter 1 / PI converts to astrophysical flux
             band_curves[band][pos_idx] = np.sum(normal_radiance['star'][band][visibility_indices] * cosines *
-                                                coverage['star'][visibility_indices] * ld_cors) / c.PI
+                                                coverage['star'][visibility_indices] * ld_cors)
 
     return band_curves
 
@@ -92,8 +91,7 @@ def compute_pulsating_light_curve(*args):
                 limb_darkening_law=config.LIMB_DARKENING_LAW,
                 cos_theta=cosines)
 
-            # parameter 1 / PI converts to astrophysical flux
             band_curves[band][pos_idx] = np.sum(normal_radiance['star'][band][visibility_indices] * cosines *
-                                                coverage['star'][visibility_indices] * ld_cors) / c.PI
+                                                coverage['star'][visibility_indices] * ld_cors)
 
     return band_curves
