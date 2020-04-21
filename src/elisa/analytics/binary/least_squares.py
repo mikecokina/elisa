@@ -92,7 +92,7 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
                        scipy.optimize.least_squares method)
         :return: Dict;
         """
-        passband = list(ys.keys())
+        self.passband = list(ys.keys())
         # compute yerrs if not supplied
         yerrs = {c: butils.lightcurves_mean_error(ys[c]) if yerr[c] is None else yerr[c]
                  for c in xs.keys()}
@@ -102,10 +102,9 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         self.ys, self.yerrs = ys, yerrs
 
         x0 = params.lc_initial_x0_validity_check(x0, self.morphology)
-        x0_vector, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=passband)
+        x0_vector, labels, fixed, constraint, observer = params.fit_data_initializer(x0, passband=self.passband)
 
         self.discretization = discretization
-        self.passband = passband
         self.labels, self.fixed, self.constraint = labels, fixed, constraint
         self.observer = observer
 

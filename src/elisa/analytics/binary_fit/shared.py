@@ -40,7 +40,7 @@ def load_mcmc_chain(fit_instance, filename, discard=0):
 
 def check_initial_param_validity(x0, params_distribution):
     """
-    Checking if initial parameters system and composite (spots and pulsations) are containing all necessary values and
+    Checking if initial parameters dictionary is containing all necessary values and
     no invalid ones.
 
     :param x0: dict; dictionary of initial parameters

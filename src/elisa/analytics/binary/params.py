@@ -21,16 +21,6 @@ COMPOSITE_PARAMS = [
     'pulsations',
 ]
 
-SPOT_PARAMS = [
-    'p__spots',
-    's__spots',
-]
-
-PULSATIONS_PARAMS = [
-    'p__pulsations',
-    's__pulsations',
-]
-
 # DO NOT CHANGE KEYS - NEVER EVER
 PARAMS_KEY_MAP = {
     'omega': 'argument_of_periastron',
@@ -39,6 +29,13 @@ PARAMS_KEY_MAP = {
     'gamma': 'gamma',
     'q': 'mass_ratio',
     'a': 'semi_major_axis',
+    'M': 'mass',
+    'T': 't_eff',
+    'Omega': 'surface_potential',
+    'beta': 'gravity_darkening',
+    'A': 'albedo',
+    'MH': 'metallicity',
+    'F': 'synchronicity',
     'M1': 'p__mass',
     'T1': 'p__t_eff',
     'Omega1': 'p__surface_potential',
@@ -127,18 +124,25 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['e']: '',
     PARAMS_KEY_MAP['omega']: 'degree',
     PARAMS_KEY_MAP['gamma']: 'm/s',
+    PARAMS_KEY_MAP['M']: 'solMass',
     PARAMS_KEY_MAP['M1']: 'solMass',
     PARAMS_KEY_MAP['M2']: 'solMass',
+    PARAMS_KEY_MAP['T']: 'K',
     PARAMS_KEY_MAP['T1']: 'K',
     PARAMS_KEY_MAP['T2']: 'K',
+    PARAMS_KEY_MAP['MH']: '',
     PARAMS_KEY_MAP['MH1']: '',
     PARAMS_KEY_MAP['MH2']: '',
+    PARAMS_KEY_MAP['Omega']: '',
     PARAMS_KEY_MAP['Omega1']: '',
     PARAMS_KEY_MAP['Omega2']: '',
+    PARAMS_KEY_MAP['A']: '',
     PARAMS_KEY_MAP['A1']: '',
     PARAMS_KEY_MAP['A2']: '',
+    PARAMS_KEY_MAP['beta']: '',
     PARAMS_KEY_MAP['beta1']: '',
     PARAMS_KEY_MAP['beta2']: '',
+    PARAMS_KEY_MAP['F']: '',
     PARAMS_KEY_MAP['F1']: '',
     PARAMS_KEY_MAP['F2']: '',
     PARAMS_KEY_MAP['q']: '',
@@ -378,15 +382,19 @@ def x0_to_constrained_kwargs(x0):
                 ret_val = new_separator.join([ret_val, components[ii]])
         return ret_val
 
-    ret_dict = {key: _replace_parser(value['constraint'], USER_PARAM_PARSER, PARAM_PARSER) for key, value in x0.items()
-                if value.get('constraint', False)}
+    ret_dict = dict()
+    for type_name, param_type in x0.items():
+        ret_dict.update({PARAM_PARSER.join([type_name, key]):
+                             _replace_parser(value['constraint'], USER_PARAM_PARSER, PARAM_PARSER)
+                         for key, value in param_type.items() if value.get('constraint', False)})
 
-    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
-    for composite_name, composite_value in composite_params.items():
-        for key, value in composite_value.items():
-            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]):
-                                 _replace_parser(item['constraint'], USER_PARAM_PARSER, PARAM_PARSER)
-                             for param_name, item in value.items() if item.get('constraint', False)})
+        composite_params = {key: val for key, val in param_type.items() if key in COMPOSITE_PARAMS}
+        for composite_name, composite_value in composite_params.items():
+            for key, value in composite_value.items():
+                ret_dict.update({PARAM_PARSER.join([type_name, composite_name, key, param_name]):
+                                     _replace_parser(item['constraint'], USER_PARAM_PARSER, PARAM_PARSER)
+                                 for param_name, item in value.items() if item.get('constraint', False)})
+
     return ret_dict
 
 

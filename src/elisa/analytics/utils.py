@@ -67,14 +67,15 @@ def transform_initial_values(x0):
                 item['max'] = (item['max'] * item['unit']).to(params.PARAMS_UNITS_MAP[key]).value
             item['unit'] = params.PARAMS_UNITS_MAP[key]
 
-    for system_key, system_val in x0.items():
-        if system_key in params.COMPOSITE_PARAMS:  # testing if item are spots or pulsations
-            for composite_item in system_val.values():  # particular spot or pulsation mode
-                # iterating over params of the spot or pulsation mode
-                for composite_item_key, composite_item_val in composite_item.items():
-                    transform_variable(composite_item_key, composite_item_val)
+    for param_type in x0.values():
+        for system_key, system_val in param_type.items():
+            if system_key in params.COMPOSITE_PARAMS:  # testing if item are spots or pulsations
+                for composite_item in system_val.values():  # particular spot or pulsation mode
+                    # iterating over params of the spot or pulsation mode
+                    for composite_item_key, composite_item_val in composite_item.items():
+                        transform_variable(composite_item_key, composite_item_val)
 
-        transform_variable(system_key, system_val)
+            transform_variable(system_key, system_val)
     return x0
 
 
@@ -107,12 +108,13 @@ def prep_constrained_params(x0):
                     '{key}.')
             item['value'] = None
 
-    for system_key, system_val in x0.items():
-        if system_key in params.COMPOSITE_PARAMS:  # testing if item are spots or pulsations
-            for composite_item in system_val.values():  # particular spot or pulsation mode
-                # iterating over params of the spot or pulsation mode
-                for composite_item_val in composite_item.values():
-                    check_value_in_constrained(composite_item_val)
-        else:
-            check_value_in_constrained(system_val)
+    for param_type in x0.values():
+        for system_key, system_val in param_type.items():
+            if system_key in params.COMPOSITE_PARAMS:  # testing if item are spots or pulsations
+                for composite_item in system_val.values():  # particular spot or pulsation mode
+                    # iterating over params of the spot or pulsation mode
+                    for composite_item_val in composite_item.values():
+                        check_value_in_constrained(composite_item_val)
+            else:
+                check_value_in_constrained(system_val)
     return x0
