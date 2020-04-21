@@ -4,7 +4,17 @@ from ... import utils
 
 from elisa.analytics.binary.mcmc import McMcMixin
 from elisa.analytics.binary import params
-from elisa.analytics.binary_fit.lc_fit import LCFit
+
+from elisa.base.spot import Spot
+from elisa.pulse.mode import PulsationMode
+
+from elisa.conf import config
+
+MANDATORY_SPOT_PARAMS = Spot.MANDATORY_KWARGS
+OPTIONAL_SPOT_PARAMS = []
+
+MANDATORY_PULSATION_PARAMS = PulsationMode.MANDATORY_KWARGS
+OPTIONAL_PULSATION_PARAMS = PulsationMode.OPTIONAL_KWARGS
 
 
 def load_mcmc_chain(fit_instance, filename, discard=0):
@@ -28,47 +38,57 @@ def load_mcmc_chain(fit_instance, filename, discard=0):
     return fit_instance.flat_chain, fit_instance.variable_labels, fit_instance.normalization
 
 
-def check_initial_param_validity(x0, all_fit_params, mandatory_fit_params):
+def check_initial_param_validity(x0, params_distribution):
     """
     Checking if initial parameters system and composite (spots and pulsations) are containing all necessary values and
     no invalid ones.
 
     :param x0: dict; dictionary of initial parameters
-    :param all_fit_params: list; list of all valid system parameters (spot and pulsation parameters excluded)
-    :param mandatory_fit_params: list; list of mandatory system parameters (spot and pulsation parameters excluded)
+    :param params_distribution; dict; dictionary of necessary and allowed parameters
     :return:
     """
-    param_names = {key: value['value'] for key, value in x0.items() if key not in params.COMPOSITE_PARAMS}
-    utils.invalid_param_checker(param_names, all_fit_params, 'x0')
-    utils.check_missing_params(mandatory_fit_params, param_names, 'x0')
+    # checking types of variables
+    param_types = {key: None for key, _ in x0.items()}
+    utils.invalid_param_checker(param_types, params_distribution['ALL_TYPES'], 'FIT TYPE')
+    utils.check_missing_params(params_distribution['MANDATORY_TYPES'], param_types, 'FIT TYPE')
 
-    # checking validity of spot parameters
-    spots = {key: value for key, value in x0.items() if key in params.SPOT_PARAMS}
-    spot_names = []
-    for spot_object in spots.values():
-        for spot_name, spot in spot_object.items():
-            # checking for duplicate names
-            if spot_name in spot_names:
-                raise NameError(f'Spot name `{spot_name}` is duplicate.')
-            spot_names.append(spot_name)
+    # checking parameters in system fit parameters
+    system_param_names = {key: None for key, _ in x0['system'].items()}
+    utils.invalid_param_checker(system_param_names, params_distribution['ALL_SYSTEM_PARAMS'], 'System')
+    utils.check_missing_params(params_distribution['MANDATORY_SYSTEM_PARAMS'], system_param_names, 'System')
 
-            spot_condensed = {key: value['value'] for key, value in spot.items()}
-            utils.invalid_param_checker(spot_condensed, params.SPOTS_KEY_MAP.values(), spot_name)
-            utils.check_missing_params(params.SPOTS_KEY_MAP.values(), spot_condensed, spot_name)
+    # checking parameters in star fit parameters
+    spot_names, pulsation_names = [], []
+    for component in config.BINARY_COUNTERPARTS.keys():
+        star_param_names = {key: None for key, _ in x0[component].items()}
+        utils.invalid_param_checker(star_param_names, params_distribution['ALL_STAR_PARAMS'],
+                                    f'{component} component')
+        utils.check_missing_params(params_distribution['MANDATORY_STAR_PARAMS'], star_param_names,
+                                   f'{component} component')
 
-    # checking validity of pulsation mode parameters
-    pulsations = {key: value for key, value in x0.items() if key in params.PULSATIONS_PARAMS}
-    pulsation_names = []
-    for pulsation_object in pulsations.values():
-        for pulsation_name, pulsation in pulsation_object.items():
-            # checking for duplicate names
-            if pulsation_name in pulsation_names:
-                raise NameError(f'Pulsations mode name `{pulsation_name}` is duplicate.')
-            pulsation_names.append(pulsation_name)
+        # checking validity of parameters in spots
+        if 'spots' in x0[component].keys():
+            for spot_name, spot in x0[component]['spots'].items():
+                if spot_name in spot_names:
+                    raise NameError(f'Spot name `{spot_name}` is duplicate.')
+                spot_names.append(spot_name)
+                spot_param_names = {key: None for key, _ in spot.items()}
+                utils.invalid_param_checker(spot_param_names, params_distribution['ALL_SPOT_PARAMS'],
+                                            f'{component} component spot `{spot_name}`')
+                utils.check_missing_params(params_distribution['MANDATORY_SPOT_PARAMS'], spot_param_names,
+                                           f'{component} component spot `{spot_name}`')
 
-            pulsation_condensed = {key: value['value'] for key, value in pulsation.items()}
-            utils.invalid_param_checker(pulsation_condensed, params.PULSATIONS_KEY_MAP.values(), pulsation_name)
-            utils.check_missing_params(params.PULSATIONS_KEY_MAP.values(), pulsation_condensed, pulsation_name)
+        # checking validity of parameters in spots
+        if 'pulsations' in x0[component].keys():
+            for mode_name, mode in x0[component]['pulsations'].items():
+                if mode_name in pulsation_names:
+                    raise NameError(f'Pulsations mode name `{mode_name}` is duplicate.')
+                pulsation_names.append(mode_name)
+                mode_param_names = {key: None for key, _ in mode.items()}
+                utils.invalid_param_checker(mode_param_names, params_distribution['ALL_PULSATIONS_PARAMS'],
+                                            f'{component} pulsation mode `{mode_name}`')
+                utils.check_missing_params(params_distribution['MANDATORY_SPOT_PARAMS'], mode_param_names,
+                                           f'{component} pulsation mode `{mode_name}`')
 
 
 def write_param_ln(fit_params, param_name, designation, write_fn, line_sep, precision=8):

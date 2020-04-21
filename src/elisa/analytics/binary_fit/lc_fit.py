@@ -29,27 +29,51 @@ class LCFit(object):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    MANDATORY_FIT_PARAMS = ['eccentricity', 'argument_of_periastron', 'period', 'inclination', 'p__t_eff', 's__t_eff',
-                            'p__surface_potential', 's__surface_potential', 'p__gravity_darkening',
-                            's__gravity_darkening', 'p__albedo', 's__albedo', 'period']
-    OPTIONAL_FIT_PARAMS = ['primary_minimum_time', 'p__mass', 's__mass', 'semi_major_axis',
-                           'asini', 'mass_ratio', 'additional_light', 'phase_shift', 'p__synchronicity',
-                           's__synchronicity', 'p__metallicity', 's__metallicity', 'p__spots', 's__spots',
-                           'p__pulsations', 's__pulsations']
-    ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
+    PARAMS_DISTRIBUTION = {
+        'MANDATORY_TYPES': ['system', 'primary', 'secondary'],
+        'OPTIONAL_TYPES': [],
+
+        'MANDATORY_SYSTEM_PARAMS': ['eccentricity', 'argument_of_periastron', 'period', 'inclination'],
+        'OPTIONAL_SYSTEM_PARAMS': ['primary_minimum_time', 'semi_major_axis', 'mass_ratio', 'additional_light',
+                                   'phase_shift'],
+
+        'MANDATORY_STAR_PARAMS': ['t_eff', 'surface_potential', 'gravity_darkening', 'albedo'],
+        'OPTIONAL_STAR_PARAMS': ['mass', 'synchronicity', 'metallicity', 'spots', 'pulsations', 'spots', 'pulsations'],
+
+        'MANDATORY_SPOT_PARAMS': shared.MANDATORY_SPOT_PARAMS,
+        'OPTIONAL_SPOT_PARAMS': shared.OPTIONAL_SPOT_PARAMS,
+
+        'MANDATORY_PULSATION_PARAMS': shared.MANDATORY_PULSATION_PARAMS,
+        'OPTIONAL_PULSATION_PARAMS': shared.OPTIONAL_PULSATION_PARAMS,
+    }
+
+    PARAMS_DISTRIBUTION.update({
+        'ALL_TYPES': PARAMS_DISTRIBUTION['MANDATORY_TYPES'] + PARAMS_DISTRIBUTION['OPTIONAL_TYPES'],
+        'ALL_SYSTEM_PARAMS': PARAMS_DISTRIBUTION['MANDATORY_SYSTEM_PARAMS'] +
+                             PARAMS_DISTRIBUTION['OPTIONAL_SYSTEM_PARAMS'],
+        'ALL_STAR_PARAMS': PARAMS_DISTRIBUTION['MANDATORY_STAR_PARAMS'] + PARAMS_DISTRIBUTION['OPTIONAL_STAR_PARAMS'],
+        'ALL_SPOT_PARAMS': PARAMS_DISTRIBUTION['MANDATORY_SPOT_PARAMS'] + PARAMS_DISTRIBUTION['OPTIONAL_SPOT_PARAMS'],
+        'ALL_PULSATION_PARAMS': PARAMS_DISTRIBUTION['MANDATORY_PULSATION_PARAMS'] +
+                                PARAMS_DISTRIBUTION['OPTIONAL_PULSATION_PARAMS'],
+    })
 
     FIT_PARAMS_COMBINATIONS = {
-        'standard': ['p__mass', 's__mass', 'inclination', 'eccentricity', 'argument_of_periastron', 'period',
-                     'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
-                     's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
-                     's__albedo', 'additional_light', 'phase_shift', 'p__synchronicity', 's__synchronicity',
-                     'p__metallicity', 's__metallicity', 'p__spots', 's__spots', 'p__pulsations', 's__pulsations'],
-        'community': ['mass_ratio', 'semi_major_axis', 'inclination', 'eccentricity', 'argument_of_periastron',
-                      'period', 'primary_minimum_time', 'p__t_eff', 's__t_eff', 'p__surface_potential',
-                      's__surface_potential', 'p__gravity_darkening', 's__gravity_darkening', 'p__albedo',
-                      's__albedo', 'additional_light', 'phase_shift', 'p__synchronicity', 's__synchronicity',
-                      'p__metallicity', 's__metallicity', 'p__spots', 's__spots', 'p__pulsations',
-                      's__pulsations']
+        'standard': {
+            'system': ['primary_minimum_time', 'additional_light', 'phase_shift'] +
+                       PARAMS_DISTRIBUTION['MANDATORY_SYSTEM_PARAMS'],
+            'star': ['mass', 'synchronicity', 'metallicity', 'spots', 'pulsations'] +
+                     PARAMS_DISTRIBUTION['MANDATORY_STAR_PARAMS'],
+            'spots': PARAMS_DISTRIBUTION['ALL_SPOT_PARAMS'],
+            'pulsations': PARAMS_DISTRIBUTION['ALL_PULSATION_PARAMS']
+        },
+        'community': {
+            'system': ['mass_ratio', 'semi_major_axis', 'primary_minimum_time', 'additional_light', 'phase_shift'] +
+                       PARAMS_DISTRIBUTION['MANDATORY_SYSTEM_PARAMS'],
+            'star': ['synchronicity', 'metallicity', 'spots', 'pulsations'] +
+                     PARAMS_DISTRIBUTION['MANDATORY_STAR_PARAMS'],
+            'spots': PARAMS_DISTRIBUTION['ALL_SPOT_PARAMS'],
+            'pulsations': PARAMS_DISTRIBUTION['ALL_PULSATION_PARAMS']
+        }
     }
 
     def __init__(self, **kwargs):
@@ -104,10 +128,10 @@ class LCFit(object):
                     chain. Default value is [16, 50, 84] (1-sigma confidence interval)
         :return: dict; resulting parameters {param_name: {`value`: value, `unit`: astropy.unit, ...}, ...}
         """
+        shared.check_initial_param_validity(x0, LCFit.PARAMS_DISTRIBUTION)
+
         # treating a lack of `value` key in constrained parameters
         x0 = autils.prep_constrained_params(x0)
-
-        shared.check_initial_param_validity(x0, LCFit.ALL_FIT_PARAMS, LCFit.MANDATORY_FIT_PARAMS)
 
         # transforming initial parameters to base units
         x0 = autils.transform_initial_values(x0)

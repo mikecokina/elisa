@@ -17,10 +17,8 @@ PARAM_PARSER = '@'
 USER_PARAM_PARSER = '.'
 
 COMPOSITE_PARAMS = [
-    'p__spots',
-    's__spots',
-    'p__pulsations',
-    's__pulsations',
+    'spots',
+    'pulsations',
 ]
 
 SPOT_PARAMS = [

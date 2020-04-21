@@ -60,7 +60,7 @@ def invalid_param_checker(kwargs, kwarglist, message):
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
         raise ValueError(f'Invalid keyword argument(s): {", ".join(invalid_kwargs)} '
-                         f'in fitting parameter {message}.\n '
+                         f'in {message}.\n '
                          f'List of available parameters: {", ".join(kwarglist)}')
 
 

@@ -18,15 +18,51 @@ class RVFit(object):
     OPTIONAL_KWARGS = []
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    MANDATORY_FIT_PARAMS = ['eccentricity', 'argument_of_periastron', 'gamma']
-    OPTIONAL_FIT_PARAMS = ['period', 'primary_minimum_time', 'p__mass', 's__mass', 'inclination', 'asini', 'mass_ratio']
-    ALL_FIT_PARAMS = MANDATORY_FIT_PARAMS + OPTIONAL_FIT_PARAMS
+    PARAMS_DISTRIBUTION = {
+        'MANDATORY_TYPES': ['system'],
+        'OPTIONAL_TYPES': ['primary', 'secondary'],
+
+        'MANDATORY_SYSTEM_PARAMS': ['eccentricity', 'argument_of_periastron', 'gamma'],
+        'OPTIONAL_SYSTEM_PARAMS': ['period', 'primary_minimum_time', 'inclination', 'asini', 'mass_ratio'],
+
+        'MANDATORY_STAR_PARAMS': [],
+        'OPTIONAL_STAR_PARAMS': ['mass', 'synchronicity', 'metallicity', 't_eff', 'surface_potential',
+                                 'gravity_darkening', 'albedo', 'spots', 'pulsations', 'spots', 'pulsations'],
+
+        'MANDATORY_SPOT_PARAMS': shared.MANDATORY_SPOT_PARAMS,
+        'OPTIONAL_SPOT_PARAMS': shared.OPTIONAL_SPOT_PARAMS,
+
+        'MANDATORY_PULSATION_PARAMS': shared.MANDATORY_PULSATION_PARAMS,
+        'OPTIONAL_PULSATION_PARAMS': shared.OPTIONAL_PULSATION_PARAMS,
+    }
+
+    PARAMS_DISTRIBUTION.update({
+        'ALL_TYPES': PARAMS_DISTRIBUTION['MANDATORY_TYPES'] + PARAMS_DISTRIBUTION['OPTIONAL_TYPES'],
+        'ALL_SYSTEM_PARAMS': PARAMS_DISTRIBUTION['MANDATORY_SYSTEM_PARAMS'] +
+                             PARAMS_DISTRIBUTION['OPTIONAL_SYSTEM_PARAMS'],
+        'ALL_STAR_PARAMS': PARAMS_DISTRIBUTION['MANDATORY_STAR_PARAMS'] + PARAMS_DISTRIBUTION['OPTIONAL_STAR_PARAMS'],
+        'ALL_SPOT_PARAMS': PARAMS_DISTRIBUTION['MANDATORY_SPOT_PARAMS'] + PARAMS_DISTRIBUTION['OPTIONAL_SPOT_PARAMS'],
+        'ALL_PULSATION_PARAMS': PARAMS_DISTRIBUTION['MANDATORY_PULSATION_PARAMS'] +
+                                PARAMS_DISTRIBUTION['OPTIONAL_PULSATION_PARAMS'],
+    })
 
     FIT_PARAMS_COMBINATIONS = {
-        'standard': ['p__mass', 's__mass', 'inclination', 'eccentricity', 'argument_of_periastron', 'gamma', 'period',
-                     'primary_minimum_time'],
-        'community': ['mass_ratio', 'asini', 'eccentricity', 'argument_of_periastron', 'gamma', 'period',
-                      'primary_minimum_time']
+        'standard': {
+            'system': ['inclination', 'period', 'primary_minimum_time'] +
+                      PARAMS_DISTRIBUTION['MANDATORY_SYSTEM_PARAMS'],
+            'star': ['mass', 'synchronicity', 'metallicity', 't_eff', 'surface_potential', 'gravity_darkening',
+                     'albedo', 'spots', 'pulsations'] + PARAMS_DISTRIBUTION['MANDATORY_STAR_PARAMS'],
+            'spots': PARAMS_DISTRIBUTION['ALL_SPOT_PARAMS'],
+            'pulsations': PARAMS_DISTRIBUTION['ALL_PULSATION_PARAMS']
+        },
+        'community': {
+            'system': ['asini', 'mass_ratio', 'period', 'primary_minimum_time'] +
+                      PARAMS_DISTRIBUTION['MANDATORY_SYSTEM_PARAMS'],
+            'star': ['synchronicity', 'metallicity', 't_eff', 'surface_potential', 'gravity_darkening', 'albedo',
+                     'spots', 'pulsations'] + PARAMS_DISTRIBUTION['MANDATORY_STAR_PARAMS'],
+            'spots': PARAMS_DISTRIBUTION['ALL_SPOT_PARAMS'],
+            'pulsations': PARAMS_DISTRIBUTION['ALL_PULSATION_PARAMS']
+        }
     }
 
     def __init__(self, **kwargs):
@@ -74,10 +110,11 @@ class RVFit(object):
                     chain. Default value is [16, 50, 84] (1-sigma confidence interval)
         :return: dict; fit_params
         """
+        # checking that input dictionary has correct format and does not contain invalid values
+        shared.check_initial_param_validity(x0, RVFit.PARAMS_DISTRIBUTION)
+
         # treating a lack of `value` key in constrained parameters
         x0 = autils.prep_constrained_params(x0)
-
-        shared.check_initial_param_validity(x0, RVFit.ALL_FIT_PARAMS, RVFit.MANDATORY_FIT_PARAMS)
 
         # transforming initial parameters to base units
         x0 = autils.transform_initial_values(x0)
