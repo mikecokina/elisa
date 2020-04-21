@@ -39,8 +39,8 @@ def convert_flux(data, unit, zero_point=None):
     """
     if unit == au.mag:
         if zero_point is None:
-            raise ValueError('You supplied your data in magnitudes. Please also specify a zero point using keyword '
-                             'argument `reference_magnitude`.')
+            raise ValueError('You supplied your data in magnitudes. Please also specify '
+                             'a zero point using keyword argument `reference_magnitude`.')
         else:
             data = utils.magnitude_to_flux(data, zero_point)
 
@@ -58,8 +58,8 @@ def convert_flux_error(error, unit, zero_point=None):
     """
     if unit == au.mag:
         if zero_point is None:
-            raise ValueError('You supplied your data in magnitudes. Please also specify a zero point using keyword '
-                             'argument `reference_magnitude`.')
+            raise ValueError('You supplied your data in magnitudes. Please also specify '
+                             'a zero point using keyword argument `reference_magnitude`.')
         else:
             error = utils.magnitude_error_to_flux_error(error)
 
@@ -88,8 +88,9 @@ def read_data_file(fpath, data_columns, delimiter=config.DELIM_WHITESPACE):
     :return: numpy.array;
     """
     data = pd.read_csv(fpath, header=None, comment='#', delimiter=delimiter,
-                       error_bad_lines=False, engine='python').dropna()
-    return data.to_numpy().T[list(data_columns)].T
+                       error_bad_lines=False, engine='python')[list(data_columns)]
+    data = data.apply(lambda s: pd.to_numeric(s, errors='coerce')).dropna()
+    return data.to_numpy(dtype=float)
 
 
 class DataSet(metaclass=ABCMeta):
@@ -249,7 +250,7 @@ class LCData(DataSet):
         :param y_data: numpy.array; light curves
         :param yerr: numpy.array; light curve errors - optional
         :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given,
-                                          the `x_data are regarded as phases, otherwise if unit is convertible
+                                          the `x_data` are regarded as phases, otherwise if unit is convertible
                                           to days, the `x_data` are regarded to be in JD
         :param y_unit: astropy.unit.Unit; velocity unit of the observed flux and its errors
     """
