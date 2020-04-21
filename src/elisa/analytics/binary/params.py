@@ -411,14 +411,19 @@ def x0_to_variable_kwargs(x0):
     :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    ret_dict = {key: value['value'] for key, value in x0.items()
-                if not value.get('fixed', False) and not value.get('constraint', False) and key not in COMPOSITE_PARAMS}
+    ret_dict = dict()
+    for type_name, param_type in x0.items():
+        ret_dict.update({PARAM_PARSER.join([type_name, key]): value['value'] for key, value in param_type.items()
+                if not value.get('fixed', True) and not value.get('constraint', False)
+                         and key not in COMPOSITE_PARAMS})
 
-    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
-    for composite_value in composite_params.values():
-        for key, value in composite_value.items():
-            ret_dict.update({PARAM_PARSER.join([key, param_name]): item['value'] for param_name, item in value.items()
-                             if not value.get('fixed', False) and not value.get('constraint', False)})
+        composite_params = {key: val for key, val in param_type.items() if key in COMPOSITE_PARAMS}
+        for composite_name, composite_value in composite_params.items():
+            for key, value in composite_value.items():
+                ret_dict.update(
+                    {PARAM_PARSER.join([type_name, composite_name, key, param_name]): item['value']
+                     for param_name, item in value.items()
+                     if not item.get('fixed', True) and not item.get('constraint', False)})
 
     return ret_dict
 
@@ -665,6 +670,25 @@ def extend_result_with_units(result):
     return result
 
 
+def strip_flatten_param_names_to_unique(x0):
+    """
+    Function reduces full flatten parameter names to shorter unique names used for variable names in contraints.
+    :param x0: dict;
+    :return: dict
+    """
+    retval = dict()
+    for name, val in x0.items():
+        name_strp = name.split(PARAM_PARSER)
+        if name_strp[0] == 'system':
+            retval.update({name_strp[1]: val})
+        elif name_strp[1] in COMPOSITE_PARAMS:
+            retval.update({PARAM_PARSER.join(name_strp[2:]): val})
+        else:
+            retval.update({PARAM_PARSER.join(name_strp): val})
+
+    return retval
+
+
 def constraints_validator(x0):
     """
     Validate constraints. Make sure there is no harmful code.
@@ -690,8 +714,10 @@ def constraints_validator(x0):
     if len(x0v) == 0:
         raise IndexError('There are no variable parameters to fit.')
 
+    substitutions = strip_flatten_param_names_to_unique(x0v)
+
     try:
-        subst = {key: val.replace(USER_PARAM_PARSER, PARAM_PARSER).format(**x0v).replace(' ', '')
+        subst = {key: val.replace(USER_PARAM_PARSER, PARAM_PARSER).format(**substitutions).replace(' ', '')
                  for key, val in x0c.items()}
     except KeyError:
         msg = f'It seems your constraint contain variable that cannot be resolved. ' \

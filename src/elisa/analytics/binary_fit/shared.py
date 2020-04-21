@@ -58,7 +58,7 @@ def check_initial_param_validity(x0, params_distribution):
     utils.check_missing_params(params_distribution['MANDATORY_SYSTEM_PARAMS'], system_param_names, 'System')
 
     # checking parameters in star fit parameters
-    spot_names, pulsation_names = [], []
+    composite_names = []
     for component in config.BINARY_COUNTERPARTS.keys():
         star_param_names = {key: None for key, _ in x0[component].items()}
         utils.invalid_param_checker(star_param_names, params_distribution['ALL_STAR_PARAMS'],
@@ -69,9 +69,9 @@ def check_initial_param_validity(x0, params_distribution):
         # checking validity of parameters in spots
         if 'spots' in x0[component].keys():
             for spot_name, spot in x0[component]['spots'].items():
-                if spot_name in spot_names:
+                if spot_name in composite_names:
                     raise NameError(f'Spot name `{spot_name}` is duplicate.')
-                spot_names.append(spot_name)
+                composite_names.append(spot_name)
                 spot_param_names = {key: None for key, _ in spot.items()}
                 utils.invalid_param_checker(spot_param_names, params_distribution['ALL_SPOT_PARAMS'],
                                             f'{component} component spot `{spot_name}`')
@@ -81,9 +81,9 @@ def check_initial_param_validity(x0, params_distribution):
         # checking validity of parameters in spots
         if 'pulsations' in x0[component].keys():
             for mode_name, mode in x0[component]['pulsations'].items():
-                if mode_name in pulsation_names:
+                if mode_name in composite_names:
                     raise NameError(f'Pulsations mode name `{mode_name}` is duplicate.')
-                pulsation_names.append(mode_name)
+                composite_names.append(mode_name)
                 mode_param_names = {key: None for key, _ in mode.items()}
                 utils.invalid_param_checker(mode_param_names, params_distribution['ALL_PULSATIONS_PARAMS'],
                                             f'{component} pulsation mode `{mode_name}`')
