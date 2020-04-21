@@ -108,12 +108,13 @@ class DataSet(metaclass=ABCMeta):
             self.name = str(name)
 
         # initializing parmas to default values
-        self.x_data = np.ndarray(0)
-        self.y_data = np.ndarray(0)
+        self.x_data = np.array([])
+        self.y_data = np.array([])
         self.yerr = None
 
         self.check_data_validity(**kwargs)
 
+    @abstractmethod
     def transform_input(self, **kwargs):
         pass
 
@@ -186,7 +187,6 @@ class RVData(DataSet):
     MANDATORY_KWARGS = config.DATASET_MANDATORY_KWARGS
     OPTIONAL_KWARGS = config.DATASET_OPTIONAL_KWARGS
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
-    DATA_PROPERTIES_CLS = RVDataProperties
 
     def __init__(self, name=None, **kwargs):
         utils.invalid_kwarg_checker(kwargs, RVData.ALL_KWARGS, RVData)
@@ -256,7 +256,6 @@ class LCData(DataSet):
     MANDATORY_KWARGS = config.DATASET_MANDATORY_KWARGS
     OPTIONAL_KWARGS = config.DATASET_OPTIONAL_KWARGS + ['reference_magnitude']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
-    DATA_PROPERTIES_CLS = LCDataProperties
 
     def __init__(self, name=None, **kwargs):
         utils.invalid_kwarg_checker(kwargs, LCData.ALL_KWARGS, LCData)
