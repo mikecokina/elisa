@@ -1,4 +1,3 @@
-import time
 from copy import copy
 from unittest import (
     mock
@@ -9,12 +8,6 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from elisa.analytics.binary import params
-from elisa.analytics.binary.least_squares import (
-    binary_detached as ls_binary_detached,
-    central_rv
-)
-from elisa.analytics.binary.mcmc import binary_detached as mc_binary_detached
-from elisa.analytics.binary.mcmc import central_rv as mc_central_rv
 from elisa.base.error import InitialParamsError
 from elisa.binary_system import t_layer
 from elisa.conf.config import BINARY_COUNTERPARTS
@@ -22,7 +15,6 @@ from unittests.utils import ElisaTestCase
 from elisa.analytics.dataset.base import RVData, LCData
 from elisa.analytics.base import BinarySystemAnalyticsTask
 from elisa.analytics import utils as autils
-from unittest import skip
 
 TOL = 1e-5
 
