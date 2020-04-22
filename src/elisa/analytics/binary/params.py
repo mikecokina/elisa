@@ -262,38 +262,43 @@ def x0_vectorize(x0):
     JSON form::
 
         {
-            'p__mass': {
-                'value': 2.0,
-                'param': 'p__mass',
-                'fixed': False,
-                'min': 1.0,
-                'max': 3.0
-            },
-            'p__t_eff': {
-                'value': 4000.0,
-                'param': 'p__t_eff',
-                'fixed': True,
-                'min': 3500.0,
-                'max': 4500.0
-            },
-            ...
+            'system': { ... },
+            'primary': {
+                'mass': {
+                    'value': 2.0,
+                    'fixed': False,
+                    'min': 1.0,
+                    'max': 3.0
+                },
+                't_eff': {
+                    'value': 4000.0,
+                    'fixed': True,
+                    'min': 3500.0,
+                    'max': 4500.0
+                },
+            }
+            'secnodary': {...}
         }
 
     :param x0: Dict[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Tuple;
     """
-    keys = [key for key, val in x0.items() if not val.get('fixed', False) and not val.get('constraint', False)
-            and key not in COMPOSITE_PARAMS]
-    values = [val['value'] for key, val in x0.items() if not val.get('fixed', False)
-              and not val.get('constraint', False) and key not in COMPOSITE_PARAMS]
+    keys, values = [], []
+    for type_name, param_type in x0.items():
+        aux = {PARAM_PARSER.join([type_name, key]): val['value'] for key, val in param_type.items()
+               if not val.get('fixed', False) and not val.get('constraint', False) and key not in COMPOSITE_PARAMS}
+        keys += aux.keys()
+        values += aux.values()
 
-    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
-    for composite_name, composite_value in composite_params.items():
-        for key, value in composite_value.items():
-            keys += [PARAM_PARSER.join([composite_name, key, param_name]) for param_name, item in value.items()
-                         if not item.get('fixed', False) and not item.get('constraint', False)]
-            values += [item['value'] for item in value.values()
-                       if not item.get('fixed', False) and not item.get('constraint', False)]
+        composite_params = {key: val for key, val in param_type.items() if key in COMPOSITE_PARAMS}
+        for composite_name, composite_value in composite_params.items():
+            for key, value in composite_value.items():
+                aux = {PARAM_PARSER.join([type_name, composite_name, key, param_name]): item['value']
+                       for param_name, item in value.items()
+                       if not item.get('fixed', False) and not item.get('constraint', False)}
+                keys += aux.keys()
+                values += aux.values()
+
     return values, keys
 
 
@@ -349,14 +354,16 @@ def x0_to_fixed_kwargs(x0):
     :param x0: Dict[Dict[str, Union[float, str, bool]]];
     :return: Dict[str, float];
     """
-    ret_dict = {key: value['value'] for key, value in x0.items() if value.get('fixed', False)
-                and key not in COMPOSITE_PARAMS}
+    ret_dict = dict()
+    for type_name, param_type in x0.items():
+        ret_dict.update({PARAM_PARSER.join([type_name, key]): value['value'] for key, value in param_type.items()
+                         if value.get('fixed', False) and key not in COMPOSITE_PARAMS})
 
-    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
-    for composite_name, composite_value in composite_params.items():
-        for key, value in composite_value.items():
-            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]): item['value']
-                             for param_name, item in value.items() if item.get('fixed', False)})
+        composite_params = {key: val for key, val in param_type.items() if key in COMPOSITE_PARAMS}
+        for composite_name, composite_value in composite_params.items():
+            for key, value in composite_value.items():
+                ret_dict.update({PARAM_PARSER.join([type_name, composite_name, key, param_name]): item['value']
+                                 for param_name, item in value.items() if item.get('fixed', False)})
     return ret_dict
 
 

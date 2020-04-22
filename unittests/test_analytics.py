@@ -60,8 +60,9 @@ class TestParamsTestCase(ElisaTestCase):
 
     def test_x0_vectorize(self):
         x0, labels = params.x0_vectorize(self.x0)
-        expected_x0 = (2.0, 180)
-        expected_labels = ['p__mass', 'argument_of_periastron']
+        expected_x0 = (180, 2.0)
+        expected_labels = [params.PARAM_PARSER.join(['system', 'argument_of_periastron']),
+                           params.PARAM_PARSER.join(['primary', 'mass'])]
 
         assert_array_equal(x0, expected_x0)
         assert_array_equal(labels, expected_labels)
@@ -73,7 +74,7 @@ class TestParamsTestCase(ElisaTestCase):
 
     def test_x0_to_fixed_kwargs(self):
         obtained = params.x0_to_fixed_kwargs(self.x0)
-        expected = {'p__t_eff': 4000.0}
+        expected = {params.PARAM_PARSER.join(['primary', 't_eff']): 4000.0}
         self.assertDictEqual(obtained, expected)
 
     def test_serialize_param_boundaries(self):
@@ -83,6 +84,9 @@ class TestParamsTestCase(ElisaTestCase):
         self.assertDictEqual(obtained, expected)
 
     def test_param_normalizer(self):
+        boundaries = params.serialize_param_boundaries(self.x0)
+        params.update_normalization_map(boundaries)
+
         x0, labels = params.x0_vectorize(self.x0)
         obtained = params.param_normalizer(x0, labels)
         expected = np.array([0.5, 0.5])
@@ -280,7 +284,7 @@ class TestParamsTestCase(ElisaTestCase):
         x0v = {key: val for key, val in zip(labels, vectorized)}
 
         evaluated = params.constraints_evaluator(x0v, x0c)
-        self.assertTrue(evaluated["s__mass"] == 20)
+        self.assertTrue(evaluated[params.PARAM_PARSER.join(['primary', 'spots', 'spot1', 'temperature_factor'])] == 7.0)
 
     def test_xs_reducer_all_same(self):
         a = np.linspace(0, 1, 5)
