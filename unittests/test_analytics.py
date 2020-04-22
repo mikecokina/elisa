@@ -141,59 +141,69 @@ class TestParamsTestCase(ElisaTestCase):
 
     def test_initial_x0_validity_check(self):
         xn = {
-            "p__surface_potential": {
-                "value": 1.1,
-                "min": 1.0,
-                "max": 10.0
+            'primary': {
+                "surface_potential": {
+                    "value": 1.1,
+                    "min": 1.0,
+                    "max": 10.0
+                },
+                "t_eff": {
+                    'fixed': False,
+                    "value": 5000,
+                    "min": 4000,
+                    "max": 6000
+                }
             },
-            "s__surface_potential": {
-                "value": 1.2,
-                "min": 1.1,
-                "max": 11.0
-            },
-            "p__t_eff": {
-                'fixed': False,
-                "value": 5000,
-                "min": 4000,
-                "max": 6000
+            'secondary': {
+                "surface_potential": {
+                    "value": 1.2,
+                    "min": 1.1,
+                    "max": 11.0
+                },
             }
         }
 
         params.lc_initial_x0_validity_check(xn, morphology='detached')
 
-        xn["p__surface_potential"]["fixed"] = True
-        xn["s__surface_potential"]["fixed"] = False
+        xn['primary']["surface_potential"]["fixed"] = True
+        xn['secondary']["surface_potential"]["fixed"] = False
         with self.assertRaises(InitialParamsError) as context:
             params.lc_initial_x0_validity_check(xn, morphology='over-contact')
         self.assertTrue("just one fixed potential" in str(context.exception).lower())
 
-        xn["p__surface_potential"]["fixed"] = True
-        xn["s__surface_potential"]["fixed"] = True
+        xn['primary']["surface_potential"]["fixed"] = True
+        xn['secondary']["surface_potential"]["fixed"] = True
         with self.assertRaises(InitialParamsError) as context:
             params.lc_initial_x0_validity_check(xn, morphology='over-contact')
         self.assertTrue("different potential" in str(context.exception).lower())
 
-        xn["p__surface_potential"]["fixed"] = False
-        xn["s__surface_potential"]["fixed"] = False
+        xn['primary']["surface_potential"]["fixed"] = False
+        xn['secondary']["surface_potential"]["fixed"] = False
         params.lc_initial_x0_validity_check(xn, morphology='over-contact')
 
-        self.assertTrue(xn["p__surface_potential"]['min'] == xn["s__surface_potential"]['min'])
-        self.assertTrue(xn["p__surface_potential"]['max'] == xn["s__surface_potential"]['max'])
+        self.assertTrue(xn['primary']["surface_potential"]['min'] == xn['secondary']["surface_potential"]['min'])
+        self.assertTrue(xn['primary']["surface_potential"]['max'] == xn['secondary']["surface_potential"]['max'])
 
-        self.assertTrue(xn["s__surface_potential"]['constraint'] == "{p__surface_potential}")
-        self.assertFalse(xn["p__surface_potential"].get('fixed', False))
+        self.assertTrue(xn['secondary']["surface_potential"]['constraint'] ==
+                        "{primary" + params.PARAM_PARSER + "surface_potential}")
+        self.assertFalse(xn['primary']["surface_potential"].get('fixed', False))
 
     def test_mixed_fixed_and_constraint_raise_error(self):
         xn = {
-            "p__surface_potential": {
-                "value": 1.1,
-                "min": 1.0,
-                "max": 10.0,
-                "fixed": True,
-                "constraint": "{s__surface_potential}"
+            'primary': {
+                "surface_potential": {
+                    "value": 1.1,
+                    "min": 1.0,
+                    "max": 10.0,
+                    "fixed": True,
+                    "constraint": "{secondary.surface_potential}"
+                },
             },
-            "s__surface_potential": {
-                "value": 1.1,
+            'secondary': {
+                "surface_potential": {
+                    "value": 1.1,
+                    'fixed': False
+                }
             }
         }
 
@@ -202,30 +212,66 @@ class TestParamsTestCase(ElisaTestCase):
         self.assertTrue("to contain `fixed` and `constraint`" in str(context.exception).lower())
 
     def test_constraints(self):
-        x0 = [
-            {
-                "param": "inclination",
-                "value": 44.0
+        x0 = {
+            'system': {
+                'inclination': {
+                    'value': 80,
+                    'fixed': True,
+                    'units': u.deg
+                },
+                'semi_major_axis': {
+                    "value": 3.5,
+                    'fixed': False,
+                    'min': 3.0,
+                    'max': 4.0,
+                    'unit': u.solRad
+                },
+                'eccentricity': {
+                    'constraint': '2 * {semi_major_axis}',
+                    'unit': ''
+                }
             },
-            {
-                "param": "p__mass",
-                "value": 10.0,
-                "fixed": False
-            },
-            {
-                "param": "semi_major_axis",
-                "value": 3.33,
-                "fixed": True
-            },
-            {
-                "param": "s__mass",
-                "value": 10.0,
-                "constraint": "2.0 * {p__mass}"
+            'primary': {
+                'mass':{
+                    "value": 10.0,
+                    "fixed": True,
+                    'unit': u.solMass
+                },
+                'surface_potential': {
+                    'value': 3.5,
+                    'fixed': False,
+                    'min': 3.0,
+                    'max': 4.0,
+                    'unit': ''
+                },
+                'synchronicity': {
+                    'constraint': '2 * {semi_major_axis}',
+                    'unit': ''
+                },
+                'spots': {
+                    'spot1': {
+                        'latitude': {
+                            'value': 30,
+                            'fixed': True,
+                            'unit': u.deg
+                        },
+                        'longitude': {
+                            'value': 3.5,
+                            'fixed': False,
+                            'min': 3.0,
+                            'max': 4.0,
+                            'unit': u.deg
+                        },
+                        'temperature_factor': {
+                            'constraint': '{semi_major_axis} + {spot1.longitude}'
+                        }
+                    }
+                }
             }
-        ]
-        x0_list = autils.convert_json_to_dict_format(x0)
-        x0c = params.x0_to_constrained_kwargs(x0_list)
-        vectorized, labels = params.x0_vectorize(x0_list)
+        }
+
+        x0c = params.x0_to_constrained_kwargs(x0)
+        vectorized, labels = params.x0_vectorize(x0)
         x0v = {key: val for key, val in zip(labels, vectorized)}
 
         evaluated = params.constraints_evaluator(x0v, x0c)
@@ -1029,48 +1075,46 @@ class ModelSimulator(object):
 
 class ConstraintsTestCase(ElisaTestCase):
     basic_x0 = {
-        'a': {
-            "value": 50
+        'system': {
+            'a': {"value": 50, 'fixed': False},
+            "b": {"value": 2, 'fixed': False},
         },
-        "b": {
-            "value": 2
+        'primary': {
+            "c": {"value": 1.25},
+            "c1": {"value": None, "constraint": "2 * {a}"},
+            'spots': {
+                'spot1': {
+                    "c2": {
+                        "value": 50,
+                        "fixed": False
+                    },
+                    "c3": {
+                        "value": None,
+                        "constraint": "{spot1.c2} + {b}"
+                    },
+                    "c4": {
+                        "value": None,
+                        "constraint": "({a} + {b}) * 2.0"
+                    }
+                }
+            }
         },
-        "c": {
-            "value": 1.25
-        },
-        "c1": {
-            "value": 0,
-            "constraint": "2 * {a}"
-        },
-        "c2": {
-            "value": 0,
-            "constraint": "2 + {b}"
-        },
-        "c3": {
-            "value": 0,
-            "constraint": "{a} + {b}"
-        },
-        "c4": {
-            "value": 0,
-            "constraint": "({a} + {b}) * 2.0"
-        }
     }
 
     extended_x0 = {
-        "a": {
-            "value": 50
+        'system': {
+            "a": {"value": 50, 'fixed': False},
+            "b": {"value": 2, 'fixed': False},
         },
-        "b": {
-            "param": "b",
-            "value": 2
-        },
-        "c1": {
-            "value": 0,
-            "constraint": "{a} * sin({b})"
-        },
-        "c2": {
-            "value": 0,
-            "constraint": "{a} * log10({b})"
+        'primary': {
+            "c1": {
+                "value": None,
+                "constraint": "{a} * sin({b})"
+            },
+            "c2": {
+                "value": None,
+                "constraint": "{a} * log10({b})"
+            }
         }
     }
 
@@ -1079,8 +1123,8 @@ class ConstraintsTestCase(ElisaTestCase):
 
     def test_constraints_evaluator_basic(self):
         expected = {'c1': 100, 'c2': 4, 'c3': 52, 'c4': 104.0}
-        floats = params.x0_to_variable_kwargs(self.basic_x0)
         constraints = params.x0_to_constrained_kwargs(self.basic_x0)
+        floats = params.x0_to_variable_kwargs(self.basic_x0)
         obtained = params.constraints_evaluator(floats, constraints)
         self.assertDictEqual(expected, obtained)
 
@@ -1089,8 +1133,8 @@ class ConstraintsTestCase(ElisaTestCase):
 
     def test_constraints_evaluator_extended(self):
         expected = {'c1': np.round(45.46487134128409, 3), 'c2': np.round(15.05149978319906, 3)}
-        floats = params.x0_to_variable_kwargs(self.extended_x0)
         constraints = params.x0_to_constrained_kwargs(self.extended_x0)
+        floats = params.x0_to_variable_kwargs(self.extended_x0)
         obtained = params.constraints_evaluator(floats, constraints)
         obtained = {key: np.round(val, 3) for key, val in obtained.items()}
         self.assertDictEqual(expected, obtained)

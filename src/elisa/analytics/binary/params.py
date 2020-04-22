@@ -36,29 +36,31 @@ PARAMS_KEY_MAP = {
     'A': 'albedo',
     'MH': 'metallicity',
     'F': 'synchronicity',
-    'M1': 'p__mass',
-    'T1': 'p__t_eff',
-    'Omega1': 'p__surface_potential',
-    'beta1': 'p__gravity_darkening',
-    'A1': 'p__albedo',
-    'MH1': 'p__metallicity',
-    'F1': 'p__synchronicity',
-    'M2': 's__mass',
-    'T2': 's__t_eff',
-    'Omega2': 's__surface_potential',
-    'beta2': 's__gravity_darkening',
-    'A2': 's__albedo',
-    'MH2': 's__metallicity',
-    'F2': 's__synchronicity',
+    'M1': f'primary{PARAM_PARSER}mass',
+    'T1': f'primary{PARAM_PARSER}t_eff',
+    'Omega1': f'primary{PARAM_PARSER}surface_potential',
+    'beta1': f'primary{PARAM_PARSER}gravity_darkening',
+    'A1': f'primary{PARAM_PARSER}albedo',
+    'MH1': f'primary{PARAM_PARSER}metallicity',
+    'F1': f'primary{PARAM_PARSER}synchronicity',
+    'M2': f'secondary{PARAM_PARSER}mass',
+    'T2': f'secondary{PARAM_PARSER}t_eff',
+    'Omega2': f'secondary{PARAM_PARSER}surface_potential',
+    'beta2': f'secondary{PARAM_PARSER}gravity_darkening',
+    'A2': f'secondary{PARAM_PARSER}albedo',
+    'MH2': f'secondary{PARAM_PARSER}metallicity',
+    'F2': f'secondary{PARAM_PARSER}synchronicity',
     'asini': 'asini',
     'P': 'period',
     'T0': 'primary_minimum_time',
     'l_add': 'additional_light',
     'phase_shift': 'phase_shift',
-    'primary_spots': 'p__spots',
-    'secondary_spots': 's__spots',
-    'primary_pulsations': 'p__pulsations',
-    'secondary_pulsations': 's__pulsations',
+    'spots': 'spots',
+    'pulsations': 'pulsations',
+    'primary_spots': f'primary{PARAM_PARSER}spots',
+    'secondary_spots': f'secondary{PARAM_PARSER}spots',
+    'primary_pulsations': f'primary{PARAM_PARSER}pulsations',
+    'secondary_pulsations': f'secondary{PARAM_PARSER}pulsations',
 }
 
 SPOTS_KEY_MAP = {
@@ -176,18 +178,25 @@ NORMALIZATION_MAP = {
     PARAMS_KEY_MAP['e']: (0, 1),
     PARAMS_KEY_MAP['omega']: (0, 360),
     PARAMS_KEY_MAP['gamma']: (0, 1e6),
+    PARAMS_KEY_MAP['M']: (0.1, 50),
     PARAMS_KEY_MAP['M1']: (0.1, 50),
     PARAMS_KEY_MAP['M2']: (0.1, 50),
+    PARAMS_KEY_MAP['T']: (np.min(TEMPERATURES), np.max(TEMPERATURES)),
     PARAMS_KEY_MAP['T1']: (np.min(TEMPERATURES), np.max(TEMPERATURES)),
     PARAMS_KEY_MAP['T2']: (np.min(TEMPERATURES), np.max(TEMPERATURES)),
+    PARAMS_KEY_MAP['MH']: (np.min(METALLICITY), np.max(METALLICITY)),
     PARAMS_KEY_MAP['MH1']: (np.min(METALLICITY), np.max(METALLICITY)),
     PARAMS_KEY_MAP['MH2']: (np.min(METALLICITY), np.max(METALLICITY)),
+    PARAMS_KEY_MAP['Omega']: (2.0, 50.0),
     PARAMS_KEY_MAP['Omega1']: (2.0, 50.0),
     PARAMS_KEY_MAP['Omega2']: (2.0, 50.0),
+    PARAMS_KEY_MAP['A']: (0, 1),
     PARAMS_KEY_MAP['A1']: (0, 1),
     PARAMS_KEY_MAP['A2']: (0, 1),
+    PARAMS_KEY_MAP['beta']: (0, 1),
     PARAMS_KEY_MAP['beta1']: (0, 1),
     PARAMS_KEY_MAP['beta2']: (0, 1),
+    PARAMS_KEY_MAP['F']: (0, 10),
     PARAMS_KEY_MAP['F1']: (0, 10),
     PARAMS_KEY_MAP['F2']: (0, 10),
     PARAMS_KEY_MAP['q']: (0, 50),
@@ -476,6 +485,8 @@ def serialize_param_boundaries(x0):
     :param x0: Dict[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
     :return: Dict[str, Tuple[float, float]]
     """
+    # ret_dict = dict()
+    # for type_name, param_type in x0.items():
     ret_dict = {key: (value.get('min', NORMALIZATION_MAP[key][0]),
                       value.get('max', NORMALIZATION_MAP[key][1]))
                 for key, value in x0.items() if not value.get('fixed', False) and not value.get('constraint', False)
@@ -542,37 +553,40 @@ def lc_initial_x0_validity_check(x0, morphology):
     constraints_validator(x0)
 
     # invalidate fixed and constraints for same value
-    for key, record in x0.items():
-        if key not in COMPOSITE_PARAMS:
-            if 'fixed' in record and 'constraint' in record:
-                raise error.InitialParamsError(f'It is not allowed for `{key}` to contain `fixed` and `constraint` '
-                                               f'parameter.')
+    for param_type in x0.values():
+        for key, record in param_type.items():
+            if key not in COMPOSITE_PARAMS:
+                if 'fixed' in record and 'constraint' in record:
+                    raise error.InitialParamsError(f'It is not allowed for `{key}` to contain `fixed` and `constraint` '
+                                                   f'parameter.')
 
-        else:
-            for composite_item_key, composite_item in record.items():
-                for param_key, param_val in composite_item.items():
-                    if 'fixed' in param_val and 'constraint' in param_val:
-                        raise error.InitialParamsError(f'It is not allowed for `{param_key}` in `{composite_item_key}` '
-                                                       f'to contain `fixed` and `constraint` parameter.')
+            else:
+                for composite_item_key, composite_item in record.items():
+                    for param_key, param_val in composite_item.items():
+                        if 'fixed' in param_val and 'constraint' in param_val:
+                            raise error.InitialParamsError(f'It is not allowed for `{param_key}` in '
+                                                           f'`{composite_item_key}` to contain `fixed` and '
+                                                           f'`constraint` parameter.')
 
     is_oc = is_overcontact(morphology)
-    are_same = x0[PARAMS_KEY_MAP['Omega1']]['value'] == x0[PARAMS_KEY_MAP['Omega2']]['value']
+    are_same = x0['primary'][PARAMS_KEY_MAP['Omega']]['value'] == x0['secondary'][PARAMS_KEY_MAP['Omega']]['value']
 
-    omega_1 = x0[PARAMS_KEY_MAP['Omega1']].get('fixed', False)
-    omega_2 = x0[PARAMS_KEY_MAP['Omega2']].get('fixed', False)
+    omega_1 = x0['primary'][PARAMS_KEY_MAP['Omega']].get('fixed', False)
+    omega_2 = x0['secondary'][PARAMS_KEY_MAP['Omega']].get('fixed', False)
 
     any_fixed = omega_1 | omega_2
     all_fixed = omega_1 & omega_2
 
-    for key, val in x0.items():
-        if key not in COMPOSITE_PARAMS:
-            variable_test = 'fixed' in val.keys() and val['fixed'] is False
-            _min, _max = _check_param_borders(key, val) if variable_test else None, None
-        else:
-            for composite_item_key, composite_item in record.items():
-                for param_key, param_val in composite_item.items():
-                    variable_test = 'fixed' in param_val.keys() and param_val['fixed'] is False
-                    _min, _max = _check_param_borders(param_key, param_val) if variable_test else None, None
+    for param_type in x0.values():
+        for key, val in param_type.items():
+            if key not in COMPOSITE_PARAMS:
+                variable_test = 'fixed' in val.keys() and val['fixed'] is False
+                _min, _max = _check_param_borders(key, val) if variable_test else None, None
+            else:
+                for composite_item_key, composite_item in record.items():
+                    for param_key, param_val in composite_item.items():
+                        variable_test = 'fixed' in param_val.keys() and param_val['fixed'] is False
+                        _min, _max = _check_param_borders(param_key, param_val) if variable_test else None, None
 
     if is_oc and all_fixed and are_same:
         return x0
@@ -584,11 +598,10 @@ def lc_initial_x0_validity_check(x0, morphology):
         raise error.InitialParamsError(msg)
     if is_oc:
         # if is overcontact, add constraint for secondary pontetial
-        _min, _max = x0[PARAMS_KEY_MAP['Omega1']]['min'], x0[PARAMS_KEY_MAP['Omega1']]['max']
-        x0[PARAMS_KEY_MAP['Omega2']] = {
-            "value": x0[PARAMS_KEY_MAP['Omega1']]['value'],
-            "constraint": "{p__surface_potential}",
-            "param": "s__surface_potential",
+        _min, _max = x0['primary'][PARAMS_KEY_MAP['Omega']]['min'], x0['primary'][PARAMS_KEY_MAP['Omega']]['max']
+        x0['secondary'][PARAMS_KEY_MAP['Omega']] = {
+            "value": x0['primary'][PARAMS_KEY_MAP['Omega']]['value'],
+            "constraint": "{primary" + PARAM_PARSER + "surface_potential}",
             "min": _min,
             "max": _max,
         }
@@ -601,18 +614,18 @@ def rv_initial_x0_validity_check(x0: Dict):
     """
     Validate parameters for radial velocities curve fitting.
 
-    :param x0: List[Dict];
-    :return: List[Dict];
+    :param x0: Dict[Dict];
+    :return: Dict[Dict];
     """
     # validating constraints
     constraints_validator(x0)
 
-    labels = x0.keys()
+    labels = x0['system'].keys()
     has_t0, has_period = 'primary_minimum_time' in labels, 'period' in labels
 
     if has_t0:
         if not (has_t0 and has_period):
-            raise error.ValidationError("Input requires both, period and primary minimum time.")
+            raise error.ValidationError("You included `primary_minimum_time` and no `period`.")
     else:
         if not has_period:
             raise error.ValidationError("Input requires at least period.")
@@ -691,7 +704,7 @@ def strip_flatten_param_names_to_unique(x0):
 
 def constraints_validator(x0):
     """
-    Validate constraints. Make sure there is no harmful code.
+    Validate constraints. Making sure there is no harmful code.
     Allowed methods used in constraints::
 
         'arcsin', 'arccos', 'arctan', 'log', 'sin', 'cos', 'tan', 'exp', 'degrees', 'radians'
