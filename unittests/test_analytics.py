@@ -30,28 +30,32 @@ TOL = 1e-5
 class TestParamsTestCase(ElisaTestCase):
     def setUp(self):
         self.x0 = {
-            'p__mass': {
-                'value': 2.0,
-                'fixed': False,
-                'min': 1.0,
-                'max': 3.0
+            'system': {
+                'argument_of_periastron': {
+                    'value': 180,
+                    'fixed': False
+                }
             },
-            'p__t_eff': {
-                'value': 4000.0,
-                'fixed': True,
-                'min': 3500.0,
-                'max': 4500.0
+            'primary': {
+                'mass': {
+                    'value': 2.0,
+                    'fixed': False,
+                    'min': 1.0,
+                    'max': 3.0
+                },
+                't_eff': {
+                    'value': 4000.0,
+                    'fixed': True,
+                    'min': 3500.0,
+                    'max': 4500.0
+                },
             },
-            'argument_of_periastron': {
-                'value': 180,
-                'fixed': False
-            }
-    }
+        }
 
         params.NORMALIZATION_MAP.update({
-            'p__mass': (1.0, 3.0),
-            'p__t_eff': (3000, 5000),
-            'argument_of_periastron': (0, 360)
+            params.PARAMS_KEY_MAP['M1']: (1.0, 3.0),
+            params.PARAMS_KEY_MAP['T1']: (3000, 5000),
+            params.PARAMS_KEY_MAP['omega']: (0, 360),
         })
 
     def test_x0_vectorize(self):
@@ -74,7 +78,8 @@ class TestParamsTestCase(ElisaTestCase):
 
     def test_serialize_param_boundaries(self):
         obtained = params.serialize_param_boundaries(self.x0)
-        expected = {'p__mass': (1.0, 3.0), 'argument_of_periastron': (0, 360)}
+        expected = {params.PARAM_PARSER.join(['primary', 'mass']): (1.0, 3.0),
+                    params.PARAM_PARSER.join(['system', 'argument_of_periastron']): (0, 360)}
         self.assertDictEqual(obtained, expected)
 
     def test_param_normalizer(self):

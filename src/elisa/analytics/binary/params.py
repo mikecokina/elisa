@@ -482,24 +482,24 @@ def serialize_param_boundaries(x0):
     """
     Serialize boundaries of parameters if exists and parameter is not fixed.
 
-    :param x0: Dict[Dict[str, Union[float, str, bool]]]; initial parmetres in JSON form
+    :param x0: Dict[Dict[str, Union[float, str, bool]]]; initial parmeters in JSON form
     :return: Dict[str, Tuple[float, float]]
     """
-    # ret_dict = dict()
-    # for type_name, param_type in x0.items():
-    ret_dict = {key: (value.get('min', NORMALIZATION_MAP[key][0]),
-                      value.get('max', NORMALIZATION_MAP[key][1]))
-                for key, value in x0.items() if not value.get('fixed', False) and not value.get('constraint', False)
-                and key not in COMPOSITE_PARAMS}
+    ret_dict = dict()
+    for type_name, param_type in x0.items():
+        ret_dict.update({PARAM_PARSER.join([type_name, key]): (value.get('min', NORMALIZATION_MAP[key][0]),
+                               value.get('max', NORMALIZATION_MAP[key][1]))
+                         for key, value in param_type.items() if not value.get('fixed', False)
+                         and not value.get('constraint', False) and key not in COMPOSITE_PARAMS})
 
-    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
-    for composite_name, composite_value in composite_params.items():
-        for key, value in composite_value.items():
-            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]):
-                                 (item.get('min', NORMALIZATION_MAP[param_name][0]),
-                                  item.get('max', NORMALIZATION_MAP[param_name][1]))
-                             for param_name, item in value.items()
-                             if not item.get('fixed', False) and not item.get('constraint', False)})
+        composite_params = {key: val for key, val in param_type.items() if key in COMPOSITE_PARAMS}
+        for composite_name, composite_value in composite_params.items():
+            for key, value in composite_value.items():
+                ret_dict.update({PARAM_PARSER.join([type_name, composite_name, key, param_name]):
+                                     (item.get('min', NORMALIZATION_MAP[param_name][0]),
+                                      item.get('max', NORMALIZATION_MAP[param_name][1]))
+                                 for param_name, item in value.items()
+                                 if not item.get('fixed', False) and not item.get('constraint', False)})
 
     return ret_dict
 
@@ -583,7 +583,7 @@ def lc_initial_x0_validity_check(x0, morphology):
                 variable_test = 'fixed' in val.keys() and val['fixed'] is False
                 _min, _max = _check_param_borders(key, val) if variable_test else None, None
             else:
-                for composite_item_key, composite_item in record.items():
+                for composite_item_key, composite_item in val.items():
                     for param_key, param_val in composite_item.items():
                         variable_test = 'fixed' in param_val.keys() and param_val['fixed'] is False
                         _min, _max = _check_param_borders(param_key, param_val) if variable_test else None, None
