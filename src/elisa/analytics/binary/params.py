@@ -690,7 +690,7 @@ def extend_result_with_units(result):
     return result
 
 
-def strip_flatten_param_names_to_unique(x0):
+def strip_flatten_param_names_to_unique_name(x0):
     """
     Function reduces full flatten parameter names to shorter unique names used for variable names in contraints.
     :param x0: dict;
@@ -734,7 +734,7 @@ def constraints_validator(x0):
     if len(x0v) == 0:
         raise IndexError('There are no variable parameters to fit.')
 
-    substitutions = strip_flatten_param_names_to_unique(x0v)
+    substitutions = strip_flatten_param_names_to_unique_name(x0v)
 
     try:
         subst = {key: val.replace(USER_PARAM_PARSER, PARAM_PARSER).format(**substitutions).replace(' ', '')
@@ -762,7 +762,7 @@ def constraints_evaluator(floats, constraints):
     allowed_methods = bonds.ALLOWED_CONSTRAINT_METHODS
     numpy_methods = [f'bonds.{method}' for method in bonds.TRANSFORM_TO_METHODS]
     constraints = constraints.copy()
-    floats = {key.split(PARAM_PARSER, 1)[1] if PARAM_PARSER in key else key: val for key, val in floats.items()}
+    floats = strip_flatten_param_names_to_unique_name(floats)
 
     numpy_callable = {key: utils.str_repalce(val, allowed_methods, numpy_methods) for key, val in constraints.items()}
     subst = {key: val.format(**floats) for key, val in numpy_callable.items()}

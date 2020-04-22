@@ -70,7 +70,7 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
             synthetic = {band: val[self.xs_reverser[band]] for band, val in synthetic.items()}
 
         residuals = np.sum([np.sum(np.power(synthetic[band] - self.ys[band], 2)
-                              / self.yerrs[band]) for band in synthetic])
+                                   / self.yerrs[band]) for band in synthetic])
 
         r2 = shared.r_squared(synthetic, self.ys)
         logger.info(f'current R2: {r2}')

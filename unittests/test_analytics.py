@@ -1131,7 +1131,9 @@ class ConstraintsTestCase(ElisaTestCase):
         params.constraints_validator(self.basic_x0)
 
     def test_constraints_evaluator_basic(self):
-        expected = {'c1': 100, 'c2': 4, 'c3': 52, 'c4': 104.0}
+        expected = {params.PARAM_PARSER.join(['primary', 'c1']): 100,
+                    params.PARAM_PARSER.join(['primary', 'spots', 'spot1', 'c3']): 52,
+                    params.PARAM_PARSER.join(['primary', 'spots', 'spot1', 'c4']): 104.0}
         constraints = params.x0_to_constrained_kwargs(self.basic_x0)
         floats = params.x0_to_variable_kwargs(self.basic_x0)
         obtained = params.constraints_evaluator(floats, constraints)
@@ -1141,7 +1143,8 @@ class ConstraintsTestCase(ElisaTestCase):
         params.constraints_validator(self.extended_x0)
 
     def test_constraints_evaluator_extended(self):
-        expected = {'c1': np.round(45.46487134128409, 3), 'c2': np.round(15.05149978319906, 3)}
+        expected = {params.PARAM_PARSER.join(['primary', 'c1']): np.round(45.46487134128409, 3),
+                    params.PARAM_PARSER.join(['primary', 'c2']): np.round(15.05149978319906, 3)}
         constraints = params.x0_to_constrained_kwargs(self.extended_x0)
         floats = params.x0_to_variable_kwargs(self.extended_x0)
         obtained = params.constraints_evaluator(floats, constraints)
