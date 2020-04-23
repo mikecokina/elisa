@@ -162,6 +162,15 @@ class LCFit(object):
         self.fit_summary()
         return self.fit_params
 
+    def store_chain(self, filename):
+        """
+        Function stores a flat chain to filename.
+
+        :param filename: str;
+        :return:
+        """
+        return McMcMixin._store_flat_chain(self.flat_chain, self.variable_labels, self.normalization, filename)
+
     def load_chain(self, filename, discard=0):
         """
         Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
@@ -175,7 +184,7 @@ class LCFit(object):
         """
         return shared.load_mcmc_chain(self, filename, discard=discard)
 
-    def store_parameters(self, parameters=None, filename=None):
+    def store_parameters(self, filename, parameters=None):
         """
         Function converts model parameters to json compatibile format and stores model parameters.
 
@@ -189,17 +198,19 @@ class LCFit(object):
         with open(filename, 'w') as f:
             json.dump(parameters, f, separators=(',\n', ': '))
 
-    def load_parameters(self, filename=None):
+        logger.info(f'Fit parameters saved to: {filename}')
+
+    def load_parameters(self, filename):
         """
         Function loads fitted parameters of given model.
 
         :param filename: str;
         :return: Dict; {'name': {'value': numpy.ndarray, 'unit': Union[astropy.unit, str], ...}, ...}
         """
+        logger.info(f'Reading parameters stored in: {filename}')
         with open(filename, 'r') as f:
             prms = json.load(f)
 
-        # prms = autils.convert_json_to_dict_format(prms)
         self.period = prms['system']['period']['value']
         self.fit_params = prms
 

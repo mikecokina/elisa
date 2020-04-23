@@ -9,6 +9,9 @@ from elisa.base.spot import Spot
 from elisa.pulse.mode import PulsationMode
 
 from elisa.conf import config
+from ...logger import getLogger
+
+logger = getLogger('analytics.binary_fit.shared')
 
 MANDATORY_SPOT_PARAMS = Spot.MANDATORY_KWARGS
 OPTIONAL_SPOT_PARAMS = []
@@ -28,13 +31,17 @@ def load_mcmc_chain(fit_instance, filename, discard=0):
     params.update_normalization_map(fit_instance.normalization)
     dict_to_add = McMcMixin.resolve_mcmc_result(flat_chain=fit_instance.flat_chain,
                                                 labels=fit_instance.variable_labels)
-    dict_to_add = params.dict_to_user_format(dict_to_add)
+    # dict_to_add = params.dict_to_user_format(dict_to_add)
     if fit_instance.fit_params is not None:
-        fit_instance.fit_params.update(dict_to_add)
+        flatten_fit_params = params.flatten_fit_params(fit_instance.fit_params)
+        flatten_fit_params.update(dict_to_add)
+
+        fit_instance.fit_params = params.dict_to_user_format(flatten_fit_params)
     else:
         raise ValueError('Load fit parameters before loading the chain. '
                          'For eg. by `fit_instance.fit_parameters = your_X0`.')
 
+    logger.info(f'Loading chain from: {filename}.')
     return fit_instance.flat_chain, fit_instance.variable_labels, fit_instance.normalization
 
 
@@ -140,3 +147,20 @@ def write_ln(write_fn, designation, value, bot, top, unit, status, line_sep, pre
                     f"{top:>20}"
                     f"{unit:>20}    "
                     f"{status:<50}{line_sep}")
+
+
+def create_labels(variable_labels):
+    """
+    utility for creating labels for mcmc-related figures where unique figure labels needs to be generated
+    :param variable_labels:
+    :return:
+    """
+    labels = []
+    for lbl in variable_labels:
+        lbl_s = lbl.split(params.PARAM_PARSER)
+        if len(lbl_s) == 2:
+            labels.append(params.PARAMS_KEY_TEX_MAP[lbl_s[1]])
+        else:
+            labels.append(lbl_s[2] + ' ' + params.PARAMS_KEY_TEX_MAP[lbl_s[3]])
+
+    return labels

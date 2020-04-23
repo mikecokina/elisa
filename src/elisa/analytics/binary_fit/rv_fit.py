@@ -5,7 +5,7 @@ import numpy as np
 
 from ... import utils
 from elisa.analytics.binary.least_squares import central_rv as lstsqr_central_rv
-from elisa.analytics.binary.mcmc import central_rv as mcmc_central_rv
+from elisa.analytics.binary.mcmc import central_rv as mcmc_central_rv, McMcMixin
 from elisa.analytics.binary_fit.plot import RVPlot
 from elisa.analytics import utils as autils
 from elisa.analytics.binary_fit import shared
@@ -139,6 +139,16 @@ class RVFit(object):
         self.fit_summary()
         return self.fit_params
 
+    def store_chain(self, filename):
+        """
+        Function stores a flat chain to filename.
+
+        :param filename: str;
+        :return:
+        """
+
+        return McMcMixin._store_flat_chain(self.flat_chain, self.variable_labels, self.normalization, filename)
+
     def load_chain(self, filename, discard=0):
         """
         Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
@@ -150,9 +160,10 @@ class RVFit(object):
                                                   boundaries defined by user for each variable needed
                                                   to reconstruct real values from normalized `flat_chain` array
         """
+
         return shared.load_mcmc_chain(self, filename, discard=discard)
 
-    def store_parameters(self, parameters=None, filename=None):
+    def store_parameters(self, filename, parameters=None):
         """
         Function converts model parameters to json compatibile format and stores model parameters.
 
@@ -167,7 +178,10 @@ class RVFit(object):
         with open(filename, 'w') as f:
             json.dump(parameters, f, separators=(',\n', ': '))
 
-    def load_parameters(self, filename=None):
+        logger.info(f'Fit parameters saved to: {filename}')
+
+    def load_parameters(self, filename):
+        logger.info(f'Reading parameters stored in: {filename}')
         with open(filename, 'r') as f:
             prms = json.load(f)
 

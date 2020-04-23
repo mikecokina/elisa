@@ -55,7 +55,7 @@ class McMcMixin(object):
         return params.extend_result_with_units(result)
 
     @staticmethod
-    def _store_flat_chain(flat_chain: np.array, labels: Iterable[str], norm: Dict):
+    def _store_flat_chain(flat_chain: np.array, labels: Iterable[str], norm: Dict, filename=None):
         """
         Store state of mcmc run.
 
@@ -68,11 +68,14 @@ class McMcMixin(object):
 
         :param labels: Union[List, numpy.array]; labels of parameters in order of params in `flat_chain`
         """
-        now = datetime.now()
-        fdir = now.strftime(config.DATE_MASK)
-        fname = f'{now.strftime(config.DATETIME_MASK)}.json'
-        fpath = op.join(config.HOME, fdir, fname)
-        os.makedirs(op.join(config.HOME, fdir), exist_ok=True)
+        if filename is None:
+            now = datetime.now()
+            fdir = now.strftime(config.DATE_MASK)
+            fname = f'{now.strftime(config.DATETIME_MASK)}.json'
+            fpath = op.join(config.HOME, fdir, fname)
+            os.makedirs(op.join(config.HOME, fdir), exist_ok=True)
+        else:
+            fpath = filename if filename.endswith('.json') else filename  + '.json'
         data = {
             "flat_chain": flat_chain.tolist() if isinstance(flat_chain, np.ndarray) else flat_chain,
             "labels": labels,
@@ -340,8 +343,6 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
 
         lhood = self.lhood(synthetic)
 
-        self.eval_counter += 1
-        logger.debug(f'eval counter = {self.eval_counter}, likehood = {lhood}')
         return lhood
 
     def fit(self, xs, ys, x0, nwalkers=None, nsteps=1000, initial_state=None, yerr=None, burn_in=None, percentiles=None,
@@ -412,8 +413,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         r_squared_args = self.xs, self.ys, False, self.xs_reverser
         r_dict = {key: value['value'] for key, value in result_dict.items()}
         r_squared_result = rv_r_squared(models.central_rv_synthetic, *r_squared_args, **r_dict)
-        result_dict["r_squared"] = {'value': r_squared_result}
-
+        result_dict[params.PARAM_PARSER.join(['system', 'r_squared'])] = {'value': r_squared_result}
         result_dict = params.extend_result_with_units(result_dict)
         return params.dict_to_user_format(result_dict)
 

@@ -16,6 +16,7 @@ from elisa.analytics.binary import (
     utils as bsutils
 )
 from elisa.analytics import utils as autils
+from elisa.analytics.binary_fit import shared
 from elisa import utils
 
 
@@ -344,13 +345,7 @@ def corner(fit_instance, flat_chain=None, variable_labels=None, normalization=No
     if flat_chain is None:
         raise ValueError('You can use corner plot after running mcmc method or after loading the flat chain.')
 
-    labels = []
-    for lbl in variable_labels:
-        lbl_s = lbl.split(params.PARAM_PARSER)
-        if len(lbl_s) == 1:
-            labels.append(params.PARAMS_KEY_TEX_MAP[lbl])
-        else:
-            labels.append(lbl_s[1] + ' ' + params.PARAMS_KEY_TEX_MAP[lbl_s[2]])
+    labels = shared.create_labels(variable_labels)
 
     quantiles = [0.16, 0.5, 0.84] if quantiles is None else quantiles
 
@@ -415,13 +410,7 @@ def traces(fit_instance, traces_to_plot=None, flat_chain=None, variable_labels=N
 
     flat_chain = params.renormalize_flat_chain(flat_chain, variable_labels, normalization)
 
-    labels = []
-    for lbl in variable_labels:
-        lbl_s = lbl.split(params.PARAM_PARSER)
-        if len(lbl_s) == 1:
-            labels.append(params.PARAMS_KEY_TEX_MAP[lbl])
-        else:
-            labels.append(lbl_s[1] + ' ' + params.PARAMS_KEY_TEX_MAP[lbl_s[2]])
+    labels = shared.create_labels(variable_labels)
 
     # transforming units
     fit_params = params.flatten_fit_params(fit_instance.fit_params)
@@ -469,13 +458,7 @@ def autocorrelation(fit_instance, correlations_to_plot=None, flat_chain=None, va
 
     variable_labels = fit_instance.variable_labels if variable_labels is None else variable_labels
 
-    labels = []
-    for lbl in variable_labels:
-        lbl_s = lbl.split(params.PARAM_PARSER)
-        if len(lbl_s) == 1:
-            labels.append(params.PARAMS_KEY_TEX_MAP[lbl])
-        else:
-            labels.append(lbl_s[1] + ' ' + params.PARAMS_KEY_TEX_MAP[lbl_s[2]])
+    labels = shared.create_labels(variable_labels)
 
     autocorr_fns = np.empty((flat_chain.shape[0], len(variable_labels)))
     autocorr_time = np.empty((flat_chain.shape[0]))
@@ -495,3 +478,5 @@ def autocorrelation(fit_instance, correlations_to_plot=None, flat_chain=None, va
     })
 
     MCMCPlot.autocorr(**autocorr_plot_kwargs)
+
+
