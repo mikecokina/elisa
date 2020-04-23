@@ -225,12 +225,13 @@ class CentralRadialVelocity(AbstractCentralRadialVelocityDataMixin):
 
         results = {lbl: val['value'] for lbl, val in result_dict.items()}
         constraint_dict = params.constraints_evaluator(results, self.constraint)
-        result_dict.update({lbl: {'value': val, 'constraint': self.constraint[lbl]} for lbl, val in constraint_dict})
+        result_dict.update({lbl: {'value': val, 'constraint': self.constraint[lbl]}
+                            for lbl, val in constraint_dict.items()})
 
         results = {lbl: val['value'] for lbl, val in result_dict.items()}
         r_squared_args = self.xs, self.ys, on_normalized, self.xs_reverser
         r_squared_result = shared.rv_r_squared(models.central_rv_synthetic, *r_squared_args, **results)
-        result_dict["r_squared"] = {'value': r_squared_result}
+        result_dict[params.PARAM_PARSER.join(['system', 'r_squared'])] = {'value': r_squared_result}
 
         result_dict = params.extend_result_with_units(result_dict)
         return params.dict_to_user_format(result_dict)

@@ -69,8 +69,23 @@ class TestParamsTestCase(ElisaTestCase):
 
     def test_x0_to_kwargs(self):
         obtained = params.x0_to_kwargs(self.x0)
-        expected = {'p__mass': 2.0, 'p__t_eff': 4000.0, 'argument_of_periastron': 180}
+        expected = {params.PARAM_PARSER.join(['primary', 'mass']): 2.0,
+                    params.PARAM_PARSER.join(['primary', 't_eff']): 4000.0,
+                    params.PARAM_PARSER.join(['system', 'argument_of_periastron']): 180}
         self.assertDictEqual(obtained, expected)
+
+    def test_flatten_fit_params(self):
+        obtained = params.flatten_fit_params(self.x0)
+        expected = {params.PARAM_PARSER.join(['primary', 'mass']): self.x0['primary']['mass'],
+                    params.PARAM_PARSER.join(['primary', 't_eff']): self.x0['primary']['t_eff'],
+                    params.PARAM_PARSER.join(['system', 'argument_of_periastron']):
+                        self.x0['system']['argument_of_periastron']}
+        self.assertDictEqual(obtained, expected)
+
+    def test_dict_to_user_format(self):
+        flattened = params.flatten_fit_params(self.x0)
+        ret_dict = params.dict_to_user_format(flattened)
+        self.assertDictEqual(self.x0, ret_dict)
 
     def test_x0_to_fixed_kwargs(self):
         obtained = params.x0_to_fixed_kwargs(self.x0)

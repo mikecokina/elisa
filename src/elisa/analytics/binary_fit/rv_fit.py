@@ -161,20 +161,17 @@ class RVFit(object):
         :return:
         """
         parameters = copy(self.fit_params) if parameters is None else parameters
-        parameters = self.fit_params if parameters is None else parameters
 
         parameters = autils.unify_unit_string_representation(parameters)
 
-        json_params = autils.convert_dict_to_json_format(parameters)
         with open(filename, 'w') as f:
-            json.dump(json_params, f, separators=(',\n', ': '))
+            json.dump(parameters, f, separators=(',\n', ': '))
 
     def load_parameters(self, filename=None):
         with open(filename, 'r') as f:
             prms = json.load(f)
 
-        prms = autils.convert_json_to_dict_format(prms)
-        self.period = prms['period']['value']
+        self.period = prms['system']['period']['value']
         self.fit_params = prms
 
         return prms
@@ -196,21 +193,24 @@ class RVFit(object):
 
         shared.write_ln(write_fn, '# Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
         write_fn(f"#{'-'*123}{line_sep}")
-        if 'mass_ratio' in self.fit_params.keys():
-            shared.write_param_ln(self.fit_params, 'mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep, 3)
-            shared.write_param_ln(self.fit_params, 'asini', 'a*sin(i):', write_fn, line_sep, 2)
+        if 'mass_ratio' in self.fit_params['system'].keys():
+            shared.write_param_ln(self.fit_params['system'], 'mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep, 3)
+            shared.write_param_ln(self.fit_params['system'], 'asini', 'a*sin(i):', write_fn, line_sep, 2)
         else:
-            shared.write_param_ln(self.fit_params, 'p__mass', 'Primary mass:', write_fn, line_sep, 3)
-            shared.write_param_ln(self.fit_params, 's__mass', 'Secondary mass:', write_fn, line_sep, 3)
-            shared.write_param_ln(self.fit_params, 'inclination', 'Inclination(i):', write_fn, line_sep, 3)
-        shared.write_param_ln(self.fit_params, 'eccentricity', 'Eccentricity (e):', write_fn, line_sep)
-        shared.write_param_ln(self.fit_params, 'argument_of_periastron', 'Argument of periastron (omega):', write_fn,
+            shared.write_param_ln(self.fit_params['primary'], 'mass', 'Primary mass:', write_fn, line_sep, 3)
+            shared.write_param_ln(self.fit_params['secondary'], 'mass', 'Secondary mass:', write_fn, line_sep, 3)
+            shared.write_param_ln(self.fit_params['system'], 'inclination', 'Inclination(i):', write_fn, line_sep, 3)
+        shared.write_param_ln(self.fit_params['system'], 'eccentricity', 'Eccentricity (e):', write_fn, line_sep)
+        shared.write_param_ln(self.fit_params['system'], 'argument_of_periastron', 'Argument of periastron (omega):', write_fn,
                               line_sep)
-        shared.write_param_ln(self.fit_params, 'gamma', 'Centre of mass velocity (gamma):', write_fn, line_sep)
-        shared.write_param_ln(self.fit_params, 'period', 'Orbital period (P):', write_fn, line_sep)
-        if 'primary_minimum_time' in self.fit_params.keys():
-            shared.write_param_ln(self.fit_params, 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn,
+        shared.write_param_ln(self.fit_params['system'], 'gamma', 'Centre of mass velocity (gamma):', write_fn, line_sep)
+        shared.write_param_ln(self.fit_params['system'], 'period', 'Orbital period (P):', write_fn, line_sep)
+        if 'primary_minimum_time' in self.fit_params['system'].keys():
+            shared.write_param_ln(self.fit_params['system'], 'primary_minimum_time', 'Time of primary minimum (T0):', write_fn,
                                   line_sep)
+
+        if self.fit_params['system']['r_squared']['value'] is not None:
+            shared.write_param_ln(self.fit_params['system'], 'r_squared', 'Fit R^2: ', write_fn, line_sep, 4)
 
         if filename is not None:
             f.close()

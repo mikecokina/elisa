@@ -61,6 +61,7 @@ PARAMS_KEY_MAP = {
     'secondary_spots': f'secondary{PARAM_PARSER}spots',
     'primary_pulsations': f'primary{PARAM_PARSER}pulsations',
     'secondary_pulsations': f'secondary{PARAM_PARSER}pulsations',
+    'r_squared': 'r_squared'
 }
 
 SPOTS_KEY_MAP = {
@@ -154,6 +155,7 @@ PARAMS_UNITS_MAP = {
     PARAMS_KEY_MAP['T0']: 'd',
     PARAMS_KEY_MAP['l_add']: '',
     PARAMS_KEY_MAP['phase_shift']: '',
+    PARAMS_KEY_MAP['r_squared']: '',
     # SPOTS
     SPOTS_KEY_MAP['phi']: 'degree',
     SPOTS_KEY_MAP['theta']: 'degree',
@@ -305,18 +307,21 @@ def x0_vectorize(x0):
 def flatten_fit_params(x0):
     """
     Function flattens fit parameters dictionary by joining COMPOSIT_PARAM, name of the feature and parameter name
-    together to form a unique keyword for given fit parameter eg. p__spots@spot1@latitude: {....}.
+    together to form a unique keyword for given fit parameter eg. primary@spots@spot1@latitude: {....}.
 
     :param x0: dict; fit params in `user format`
     :return: dict; fit params in flattened linearized format
     """
-    ret_dict = {key: value for key, value in x0.items() if key not in COMPOSITE_PARAMS}
+    ret_dict = dict()
+    for type_name, param_type in x0.items():
+        ret_dict.update({PARAM_PARSER.join([type_name, key]): value for key, value in param_type.items()
+                         if key not in COMPOSITE_PARAMS})
 
-    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
-    for composite_name, composite_value in composite_params.items():
-        for key, value in composite_value.items():
-            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]): item
-                             for param_name, item in value.items()})
+        composite_params = {key: val for key, val in param_type.items() if key in COMPOSITE_PARAMS}
+        for composite_name, composite_value in composite_params.items():
+            for key, value in composite_value.items():
+                ret_dict.update({PARAM_PARSER.join([type_name, composite_name, key, param_name]): item
+                                 for param_name, item in value.items()})
     return ret_dict
 
 
@@ -332,13 +337,16 @@ def x0_to_kwargs(x0):
     :param x0: Dict[str, Union[float, str, bool]];
     :return: Dict[str, float];
     """
-    ret_dict = {key: value['value'] for key, value in x0.items() if key not in COMPOSITE_PARAMS}
+    ret_dict = dict()
+    for type_name, param_type in x0.items():
+        ret_dict.update({PARAM_PARSER.join([type_name, key]): value['value'] for key, value in param_type.items()
+                    if key not in COMPOSITE_PARAMS})
 
-    composite_params = {key: val for key, val in x0.items() if key in COMPOSITE_PARAMS}
-    for composite_name, composite_value in composite_params.items():
-        for key, value in composite_value.items():
-            ret_dict.update({PARAM_PARSER.join([composite_name, key, param_name]): item['value']
-                             for param_name, item in value.items()})
+        composite_params = {key: val for key, val in param_type.items() if key in COMPOSITE_PARAMS}
+        for composite_name, composite_value in composite_params.items():
+            for key, value in composite_value.items():
+                ret_dict.update({PARAM_PARSER.join([type_name, composite_name, key, param_name]): item['value']
+                                 for param_name, item in value.items()})
     return ret_dict
 
 
@@ -680,13 +688,17 @@ def extend_result_with_units(result):
     """
     for key, value in result.items():
         s_key = key.split(PARAM_PARSER)
-        if s_key[0] in COMPOSITE_PARAMS:
-            if s_key[2] in PARAMS_UNITS_MAP:
-                value['unit'] = PARAMS_UNITS_MAP[s_key[2]]
+        if len(s_key) == 1:
+            value['unit'] = PARAMS_UNITS_MAP[key]
+            continue
+
+        if s_key[1] in COMPOSITE_PARAMS:
+            if s_key[3] in PARAMS_UNITS_MAP:
+                value['unit'] = PARAMS_UNITS_MAP[s_key[3]]
 
         else:
-            if key in PARAMS_UNITS_MAP:
-                value['unit'] = PARAMS_UNITS_MAP[key]
+            if s_key[1] in PARAMS_UNITS_MAP:
+                value['unit'] = PARAMS_UNITS_MAP[s_key[1]]
     return result
 
 
@@ -825,7 +837,8 @@ def xs_reducer(xs):
 
 
 def is_time_dependent(labels):
-    if 'period' in labels and 'primary_minimum_time' in labels:
+    if PARAM_PARSER.join(['system', 'period']) in labels and \
+            PARAM_PARSER.join(['system', 'primary_minimum_time']) in labels:
         return True
     return False
 
@@ -834,23 +847,30 @@ def dict_to_user_format(dictionary):
     """
     function converts dictionary of results of parameter labels back to user format
 
-    :param labels: list; list of labels
-    :return: list; user formatted list of parameter labels
+    :param dictionary: dict; parameters in flattened format
+    :return: dict; parameters in user format
     """
     ret_dict = {}
     for param_name, param_val in dictionary.items():
-        if PARAM_PARSER not in param_name:
-            ret_dict[param_name] = param_val
-            continue
-
         identificators = param_name.split(PARAM_PARSER)
 
+        # `system`, `primary`, `secondary`
         if identificators[0] not in ret_dict.keys():
             ret_dict[identificators[0]] = {}
 
         if identificators[1] not in ret_dict[identificators[0]].keys():
-            ret_dict[identificators[0]][identificators[1]] = {}
+            # `inclination`, `mass`, ...
+            if len(identificators) == 2:
+                ret_dict[identificators[0]][identificators[1]] = param_val
+                continue
+            # `spots`, `pulsations`
+            else:
+                ret_dict[identificators[0]][identificators[1]] = {}
 
-        ret_dict[identificators[0]][identificators[1]][identificators[2]] = param_val
+        # `spot_name`, `pulsation_mode`
+        if identificators[2] not in ret_dict[identificators[0]][identificators[1]].keys():
+            ret_dict[identificators[0]][identificators[1]][identificators[2]] = {}
+
+        ret_dict[identificators[0]][identificators[1]][identificators[2]][identificators[3]] = param_val
 
     return ret_dict

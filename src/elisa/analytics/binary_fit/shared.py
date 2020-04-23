@@ -60,6 +60,8 @@ def check_initial_param_validity(x0, params_distribution):
     # checking parameters in star fit parameters
     composite_names = []
     for component in config.BINARY_COUNTERPARTS.keys():
+        if component not in x0.keys():
+            continue
         star_param_names = {key: None for key, _ in x0[component].items()}
         utils.invalid_param_checker(star_param_names, params_distribution['ALL_STAR_PARAMS'],
                                     f'{component} component')

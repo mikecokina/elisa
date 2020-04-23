@@ -16,20 +16,9 @@ def convert_dict_to_json_format(dictionary):
 
     ::
 
-        {
-            paramname: {
-                            value: value,
-                            min: ...
-                       }, ...
-        }
-
     :return: List; [{param: paramname, value: value, ...}, ...]
     """
-    retval = list()
-    for key, val in dictionary.items():
-        val.update({'param': key})
-        retval.append(val)
-    return retval
+    return dictionary
 
 
 def convert_json_to_dict_format(json):
@@ -86,10 +75,18 @@ def unify_unit_string_representation(dictionary):
     :param dictionary: dict; model parameter
     :return: dict; model parameter
     """
-    for key, val in dictionary.items():
-        if 'unit' in val.keys():
-            val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
-            val['unit'] = val['unit'].to_string()
+    for type_name, param_type in dictionary.items():
+        for key, val in param_type.items():
+            if 'unit' in val.keys():
+                val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
+                val['unit'] = val['unit'].to_string()
+
+        composite_params = {key: val for key, val in param_type.items() if key in params.COMPOSITE_PARAMS}
+        for composite_name, composite_value in composite_params.items():
+            for key, val in composite_value.items():
+                if 'unit' in val.keys():
+                    val['unit'] = u.Unit(val['unit']) if isinstance(val['unit'], str) else val['unit']
+                    val['unit'] = val['unit'].to_string()
 
     return dictionary
 

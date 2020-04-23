@@ -59,7 +59,8 @@ class RVPlot(object):
         for component, data in self.rv_fit.radial_velocities.items():
             x_data[component] = t_layer.adjust_phases(phases=data.x_data, centre=0.0) \
                 if data.x_unit is u.dimensionless_unscaled else \
-                t_layer.jd_to_phase(fit_params['primary_minimum_time']['value'], fit_params['period']['value'],
+                t_layer.jd_to_phase(fit_params['system']['primary_minimum_time']['value'],
+                                    fit_params['system']['period']['value'],
                                     data.x_data, centre=0.0)
             y_data[component] = (data.y_data * data.y_unit).to(y_axis_unit).value
             yerr[component] = (data.yerr * data.y_unit).to(y_axis_unit).value if data.yerr is not None else None
@@ -72,8 +73,9 @@ class RVPlot(object):
 
         kwargs_to_replot = params.x0_to_kwargs(fit_params)
 
-        if 'primary_minimum_time' in kwargs_to_replot.keys():
-            del kwargs_to_replot['primary_minimum_time']
+        t0_name = params.PARAM_PARSER.join(['system', 'primary_minimum_time'])
+        if t0_name in kwargs_to_replot.keys():
+            del kwargs_to_replot[t0_name]
         synth_phases = np.linspace(start_phase, stop_phase, number_of_points)
         rv_fit = central_rv_synthetic(synth_phases, Observer(), **kwargs_to_replot)
         rv_fit = {component: (data * eu.VELOCITY_UNIT).to(y_axis_unit).value for component, data in rv_fit.items()}
