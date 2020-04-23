@@ -1,12 +1,12 @@
 import numpy as np
 
-from astropy import units as u
-from elisa.base.transform import TransformProperties
+from astropy import units as au
 from elisa import units
-
-
-WHEN_ARRAY = (list, np.ndarray, tuple)
-WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np.float64)
+from elisa.base.transform import (
+    TransformProperties,
+    WHEN_FLOAT64,
+    WHEN_ARRAY
+)
 
 
 def array_transform(value, when_array):
@@ -25,7 +25,7 @@ def array_transform(value, when_array):
 
 def unit_transform(value, base_units):
     if value is None or value.to_string() == '':
-        value = u.dimensionless_unscaled
+        value = au.dimensionless_unscaled
 
     if value.is_equivalent(base_units):
         return value
@@ -50,7 +50,7 @@ class DatasetProperties(TransformProperties):
 class RVDataProperties(DatasetProperties):
     @staticmethod
     def x_unit(value):
-        return unit_transform(value, (u.dimensionless_unscaled, units.TIME_UNIT))
+        return unit_transform(value, (au.dimensionless_unscaled, units.TIME_UNIT))
 
     @staticmethod
     def y_unit(value):
@@ -60,17 +60,17 @@ class RVDataProperties(DatasetProperties):
 class LCDataProperties(DatasetProperties):
     @staticmethod
     def x_unit(value):
-        return unit_transform(value, (u.dimensionless_unscaled, units.TIME_UNIT))
+        return unit_transform(value, (au.dimensionless_unscaled, units.TIME_UNIT))
 
     @staticmethod
     def y_unit(value):
-        return unit_transform(value, (u.dimensionless_unscaled, u.mag))
+        return unit_transform(value, (au.dimensionless_unscaled, au.mag))
 
     @staticmethod
     def zero_magnitude(value):
         if isinstance(value, units.Quantity):
-            value.is_equivalent(u.mag)
-            value = np.float64(value.to(u.mag))
+            value.is_equivalent(au.mag)
+            value = np.float64(value.to(au.mag))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64(value)
         else:

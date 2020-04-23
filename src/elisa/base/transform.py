@@ -5,8 +5,8 @@ from .. import (
     const
 )
 
-
 WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np.float64)
+WHEN_ARRAY = (list, np.ndarray, tuple)
 
 
 def quantity_transform(value, unit, when_float64):

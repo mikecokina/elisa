@@ -1,7 +1,6 @@
 import json
 from ...logger import getLogger
 from copy import copy
-import numpy as np
 
 from ... import utils
 from elisa.analytics.binary.least_squares import central_rv as lstsqr_central_rv

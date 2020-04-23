@@ -13,7 +13,7 @@ from elisa.binary_system import t_layer
 from elisa.conf.config import BINARY_COUNTERPARTS
 from unittests.utils import ElisaTestCase
 from elisa.analytics.dataset.base import RVData, LCData
-from elisa.analytics.base import BinarySystemAnalyticsTask
+from elisa.analytics.task import BinarySystemAnalyticsTask
 from elisa.analytics import utils as autils
 
 TOL = 1e-5
