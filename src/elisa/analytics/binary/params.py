@@ -662,6 +662,7 @@ def adjust_constrained_potential(adjust_in, to_value=None):
     return adjust_in
 
 
+# Funxtion NOT USED!!!
 def adjust_result_constrained_potential(adjust_in, hash_map):
     """
     In constarained potentials (over-contact system), secondary potential is artificialy fixed and its values has to

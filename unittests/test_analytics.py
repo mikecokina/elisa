@@ -110,7 +110,8 @@ class TestParamsTestCase(ElisaTestCase):
 
     def test_param_renormalizer(self):
         values = [0.5, 0.5]
-        labels = ['p__mass', 'argument_of_periastron']
+        labels = [params.PARAM_PARSER.join(['primary', 'mass']),
+                  'argument_of_periastron']
 
         obtained = params.param_renormalizer(values, labels)
         expected = np.array([[2.0, 180.0]])
@@ -118,23 +119,15 @@ class TestParamsTestCase(ElisaTestCase):
 
     def test_extend_result_with_units(self):
         result = {
-            'p__mass': {
-                'value': 2.0,
-            },
-            'p__t_eff': {
-                'value': 4000.0,
-            }
+            params.PARAM_PARSER.join(['primary', 'mass']): {'value': 2.0},
+            params.PARAM_PARSER.join(['primary', 't_eff']): {'value': 4000},
+            params.PARAM_PARSER.join(['primary', 'spots', 'spot1', 'longitude']): {'value': 30},
         }
 
         expected = {
-            'p__mass': {
-                'value': 2.0,
-                'unit': 'solMass',
-            },
-            'p__t_eff': {
-                'value': 4000.0,
-                'unit': 'K',
-            }
+            params.PARAM_PARSER.join(['primary', 'mass']): {'value': 2.0, 'unit': u.solMass},
+            params.PARAM_PARSER.join(['primary', 't_eff']): {'value': 4000, 'unit': u.K},
+            params.PARAM_PARSER.join(['primary', 'spots', 'spot1', 'longitude']): {'value': 30, 'unit': u.degree},
         }
 
         obtained = params.extend_result_with_units(result)
@@ -145,6 +138,7 @@ class TestParamsTestCase(ElisaTestCase):
         self.assertFalse(params.is_overcontact('overcontact'))
         self.assertFalse(params.is_overcontact('detached'))
 
+    @skip('Not used')
     def test_adjust_result_constrained_potential(self):
         hash_map = {'p__surface_potential': 0, 's__surface_potential': 1}
         xn = [
@@ -365,65 +359,71 @@ class McMcLCTestCase(AbstractFitTestCase):
 
     def test_mcmc_lc_fit_std_params_detached(self):
         dinit = {
-            'p__mass': {
-                'value': 1.8,  # 2.0
-                'fixed': False,
-                'min': 1.5,
-                'max': 2.2
+            'system': {
+                'inclination': {
+                    'value': 90.0,
+                    'fixed': True
+                },
+                'eccentricity': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'argument_of_periastron': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'period': {
+                    'value': 3.0,
+                    'fixed': True
+                },
             },
-            'p__t_eff': {
-                'value': 5000.0,
-                'fixed': True
+            'primary': {
+                'mass': {
+                    'value': 1.8,  # 2.0
+                    'fixed': False,
+                    'min': 1.5,
+                    'max': 2.2
+                },
+                't_eff': {
+                    'value': 5000.0,
+                    'fixed': True
+                },
+                'surface_potential': {
+                    'value': 5.0,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                },
             },
-            'p__surface_potential': {
-                'value': 5.0,
-                'fixed': True
-            },
-            's__mass': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__t_eff': {
-                'value': 6500.0,  # 7000
-                'fixed': False,
-                'min': 5000.0,
-                'max': 10000.0
-            },
-            's__surface_potential': {
-                'value': 5,
-                'fixed': True
-            },
-            'inclination': {
-                'value': 90.0,
-                'fixed': True
-            },
-            'eccentricity': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'argument_of_periastron': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'period': {
-                'value': 3.0,
-                'fixed': True
-            },
-            'p__gravity_darkening': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__gravity_darkening': {
-                'value': 1.0,
-                'fixed': True
-            },
-            'p__albedo': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__albedo': {
-                'value': 1.0,
-                'fixed': True
+            'secondary': {
+                'mass': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                't_eff': {
+                    'value': 6500.0,  # 7000
+                    'fixed': False,
+                    'min': 5000.0,
+                    'max': 10000.0
+                },
+                'surface_potential': {
+                    'value': 5,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                },
             },
         }
 
@@ -448,65 +448,71 @@ class McMcLCTestCase(AbstractFitTestCase):
 
     def test_mcmc_lc_fit_community_params_detached(self):
         dinit = {
-            'semi_major_axis': {
-                'value': 11.0,  # 12.62
-                'fixed': False,
-                'min': 7.0,
-                'max': 15.0
+            'system': {
+                'semi_major_axis': {
+                    'value': 11.0,  # 12.62
+                    'fixed': False,
+                    'min': 7.0,
+                    'max': 15.0
+                },
+                'mass_ratio': {
+                    'value': 0.7,  # 0.5
+                    'fixed': False,
+                    'min': 0.3,
+                    'max': 2.0
+                },
+                'inclination': {
+                    'value': 90.0,
+                    'fixed': True
+                },
+                'eccentricity': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'argument_of_periastron': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'period': {
+                    'value': 3.0,
+                    'fixed': True
+                },
             },
-            'mass_ratio': {
-                'value': 0.7,  # 0.5
-                'fixed': False,
-                'min': 0.3,
-                'max': 2.0
+            'primary': {
+                't_eff': {
+                    'value': 5000.0,
+                    'fixed': True
+                },
+                'surface_potential': {
+                    'value': 5.0,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                },
             },
-            'p__t_eff': {
-                'value': 5000.0,
-                'fixed': True
-            },
-            'p__surface_potential': {
-                'value': 5.0,
-                'fixed': True
-            },
-            's__t_eff': {
-                'value': 7000.0,
-                'fixed': True
-            },
-            's__surface_potential': {
-                'value': 5,
-                'fixed': True
-            },
-            'inclination': {
-                'value': 90.0,
-                'fixed': True
-            },
-            'eccentricity': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'argument_of_periastron': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'period': {
-                'value': 3.0,
-                'fixed': True
-            },
-            'p__gravity_darkening': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__gravity_darkening': {
-                'value': 1.0,
-                'fixed': True
-            },
-            'p__albedo': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__albedo': {
-                'value': 1.0,
-                'fixed': True
+            'secondary': {
+                't_eff': {
+                    'value': 7000.0,
+                    'fixed': True
+                },
+                'surface_potential': {
+                    'value': 5,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                },
             },
         }
 
@@ -598,33 +604,35 @@ class McMcRVTestCase(RVTestCase):
 
         initial_parameters = \
             {
-                'eccentricity': {
-                    'value': 0.1,
-                    'fixed': True,
-                },
-                'asini': {
-                    'value': 20.0,  # 4.219470628180749
-                    'fixed': False,
-                    'min': 1.0,
-                    'max': 100
-                },
-                'mass_ratio': {
-                    'value': 0.8,  # 1.0 / 1.8
-                    'fixed': False,
-                    'min': 0,
-                    'max': 2
-                },
-                'argument_of_periastron': {
-                    'value': 0.0,
-                    'fixed': True
-                },
-                'gamma': {
-                    'value': -20000.0,
-                    'fixed': True
-                },
-                'period': {
-                    'value': 0.6,
-                    'fixed': True
+                'system': {
+                    'eccentricity': {
+                        'value': 0.1,
+                        'fixed': True,
+                    },
+                    'asini': {
+                        'value': 20.0,  # 4.219470628180749
+                        'fixed': False,
+                        'min': 1.0,
+                        'max': 100
+                    },
+                    'mass_ratio': {
+                        'value': 0.8,  # 1.0 / 1.8
+                        'fixed': False,
+                        'min': 0,
+                        'max': 2
+                    },
+                    'argument_of_periastron': {
+                        'value': 0.0,
+                        'fixed': True
+                    },
+                    'gamma': {
+                        'value': -20000.0,
+                        'fixed': True
+                    },
+                    'period': {
+                        'value': 0.6,
+                        'fixed': True
+                    }
                 }
             }
 
@@ -633,7 +641,7 @@ class McMcRVTestCase(RVTestCase):
             task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
             fit_params = task.rv_fit.fit(x0=initial_parameters, method='mcmc', nsteps=100)
 
-        self.assertTrue(1.0 > fit_params["r_squared"]['value'] > 0.9)
+        self.assertTrue(1.0 > fit_params['system']["r_squared"]['value'] > 0.9)
 
 
 class LeastSqaureRVTestCase(RVTestCase):
@@ -663,51 +671,57 @@ class LeastSqaureRVTestCase(RVTestCase):
 
         initial_parameters = \
             {
-                'eccentricity': {
-                    'value': 0.1,
-                    'fixed': True,
+                'system': {
+                    'eccentricity': {
+                        'value': 0.1,
+                        'fixed': True,
+                    },
+                    'inclination': {
+                        'value': 90.0,
+                        'fixed': True,
+                    },
+                    'argument_of_periastron': {
+                        'value': 0.0,
+                        'fixed': True
+                    },
+                    'gamma': {
+                        'value': -30000.0,  # 20000.0 is real
+                        'fixed': False,
+                        'min': -10000,
+                        'max': -40000
+                    },
+                    'period': {
+                        'value': 0.68,  # 0.6 is real
+                        'fixed': False,
+                        'min': 0.5,
+                        'max': 0.7
+                    },
+                    'primary_minimum_time': {
+                        'value': 11.5,  # 12 is real
+                        'fixed': False,
+                        'min': 11.0,
+                        'max': 13.0
+                    }
                 },
-                'inclination': {
-                    'value': 90.0,
-                    'fixed': True,
+                'primary': {
+                    'mass': {
+                        'value': 1.8,
+                        'fixed': True
+                    },
                 },
-                'p__mass': {
-                    'value': 1.8,
-                    'fixed': True
+                'secondary': {
+                    'mass': {
+                        'value': 1.0,
+                        'fixed': True,
+                    },
                 },
-                's__mass': {
-                    'value': 1.0,
-                    'fixed': True,
-                },
-                'argument_of_periastron': {
-                    'value': 0.0,
-                    'fixed': True
-                },
-                'gamma': {
-                    'value': -30000.0,  # 20000.0 is real
-                    'fixed': False,
-                    'min': -10000,
-                    'max': -40000
-                },
-                'period': {
-                    'value': 0.68,  # 0.6 is real
-                    'fixed': False,
-                    'min': 0.5,
-                    'max': 0.7
-                },
-                'primary_minimum_time': {
-                    'value': 11.5,  # 12 is real
-                    'fixed': False,
-                    'min': 11.0,
-                    'max': 13.0
-                }
             }
 
         self.model_generator.keep_out = True
         with mock.patch("elisa.analytics.binary.models.central_rv_synthetic", self.model_generator.rv_generator):
             task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
             result = task.rv_fit.fit(x0=copy(initial_parameters), method='least_squares')
-        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.90)
+        self.assertTrue(1.0 > result['system']["r_squared"]['value'] > 0.90)
 
     def test_least_squares_rv_fit_std_params(self):
         """
@@ -735,45 +749,51 @@ class LeastSqaureRVTestCase(RVTestCase):
         )
 
         initial_parameters = {
-            'eccentricity': {
-                'value': 0.1,
-                'fixed': True,
+            'system': {
+                'eccentricity': {
+                    'value': 0.1,
+                    'fixed': True,
+                },
+                'inclination': {
+                    'value': 90.0,
+                    'fixed': True,
+                },
+                'argument_of_periastron': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'gamma': {
+                    'value': -30000.0,  # 20000.0 is real
+                    'fixed': False,
+                    'min': -10000,
+                    'max': -40000
+                },
+                'period': {
+                    'value': 0.6,
+                    'fixed': True
+                }
             },
-            'inclination': {
-                'value': 90.0,
-                'fixed': True,
+            'primary': {
+                'mass': {
+                    'value': 1.2,  # 1.8 is real
+                    'fixed': False,
+                    'min': 1,
+                    'max': 3
+                },
             },
-            'p__mass': {
-                'value': 1.2,  # 1.8 is real
-                'fixed': False,
-                'min': 1,
-                'max': 3
+            'secondary': {
+                'mass': {
+                    'value': 1.0,
+                    'fixed': True,
+                },
             },
-            's__mass': {
-                'value': 1.0,
-                'fixed': True,
-            },
-            'argument_of_periastron': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'gamma': {
-                'value': -30000.0,  # 20000.0 is real
-                'fixed': False,
-                'min': -10000,
-                'max': -40000
-            },
-            'period': {
-                'value': 0.6,
-                'fixed': True
-            }
         }
         self.model_generator.keep_out = True
         with mock.patch("elisa.analytics.binary.models.central_rv_synthetic", self.model_generator.rv_generator):
             task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
             result = task.rv_fit.fit(x0=copy(initial_parameters), method='least_squares')
 
-        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.95)
+        self.assertTrue(1.0 > result['system']["r_squared"]['value'] > 0.95)
 
     def test_least_squares_rv_fit_community_params(self):
         phases = np.arange(-0.6, 0.62, 0.02)
@@ -797,34 +817,36 @@ class LeastSqaureRVTestCase(RVTestCase):
         )
 
         initial_parameters = {
-            'eccentricity': {
-                'value': 0.1,
-                'fixed': True,
+            'system': {
+                'eccentricity': {
+                    'value': 0.1,
+                    'fixed': True,
+                },
+                'asini': {
+                    'value': 20.0,  # 4.219470628180749
+                    'fixed': False,
+                    'min': 1.0,
+                    'max': 100
+                },
+                'mass_ratio': {
+                    'value': 0.8,  # 1.0 / 1.8
+                    'fixed': False,
+                    'min': 0,
+                    'max': 2
+                },
+                'argument_of_periastron': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'gamma': {
+                    'value': -20000.0,
+                    'fixed': True
+                },
+                'period': {
+                    'value': 0.6,
+                    'fixed': True
+                }
             },
-            'asini': {
-                'value': 20.0,  # 4.219470628180749
-                'fixed': False,
-                'min': 1.0,
-                'max': 100
-            },
-            'mass_ratio': {
-                'value': 0.8,  # 1.0 / 1.8
-                'fixed': False,
-                'min': 0,
-                'max': 2
-            },
-            'argument_of_periastron': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'gamma': {
-                'value': -20000.0,
-                'fixed': True
-            },
-            'period': {
-                'value': 0.6,
-                'fixed': True
-            }
         }
 
         self.model_generator.keep_out = True
@@ -832,71 +854,77 @@ class LeastSqaureRVTestCase(RVTestCase):
             task = BinarySystemAnalyticsTask(radial_velocities={'primary': rv_primary, 'secondary': rv_secondary})
             result = task.rv_fit.fit(x0=copy(initial_parameters), method='least_squares')
 
-        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.95)
+        self.assertTrue(1.0 > result['system']["r_squared"]['value'] > 0.95)
 
 
 class LeastSqaureLCTestCase(AbstractFitTestCase):
     def test_least_squares_lc_fit_std_params(self):
         dinit = {
-            'p__mass': {
-                'value': 1.8,  # 2.0
-                'fixed': False,
-                'min': 1.5,
-                'max': 2.2
+            'system': {
+                'inclination': {
+                    'value': 90.0,
+                    'fixed': True
+                },
+                'eccentricity': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'argument_of_periastron': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'period': {
+                    'value': 3.0,
+                    'fixed': True
+                },
             },
-            'p__t_eff': {
-                'value': 5000.0,
-                'fixed': True
+            'primary': {
+                'mass': {
+                    'value': 1.8,  # 2.0
+                    'fixed': False,
+                    'min': 1.5,
+                    'max': 2.2
+                },
+                't_eff': {
+                    'value': 5000.0,
+                    'fixed': True
+                },
+                'surface_potential': {
+                    'value': 5.0,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                },
             },
-            'p__surface_potential': {
-                'value': 5.0,
-                'fixed': True
-            },
-            's__mass': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__t_eff': {
-                'value': 7000,  # 7000
-                'fixed': True,
-                # 'min': 5000.0,
-                # 'max': 10000.0
-            },
-            's__surface_potential': {
-                'value': 5,
-                'fixed': True
-            },
-            'inclination': {
-                'value': 90.0,
-                'fixed': True
-            },
-            'eccentricity': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'argument_of_periastron': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'period': {
-                'value': 3.0,
-                'fixed': True
-            },
-            'p__gravity_darkening': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__gravity_darkening': {
-                'value': 1.0,
-                'fixed': True
-            },
-            'p__albedo': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__albedo': {
-                'value': 1.0,
-                'fixed': True
+            'secondary': {
+                'mass': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                't_eff': {
+                    'value': 7000,  # 7000
+                    'fixed': True,
+                    # 'min': 5000.0,
+                    # 'max': 10000.0
+                },
+                'surface_potential': {
+                    'value': 5,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                },
             },
         }
 
@@ -918,69 +946,75 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
             task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
             result = task.lc_fit.fit(x0=copy(dinit), method='least_squares', discretization=10)
 
-        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
+        self.assertTrue(1.0 > result['system']["r_squared"]['value'] > 0.9)
 
     def test_least_squares_lc_fit_community_params(self):
         dinit = {
-            'semi_major_axis': {
-                'value': 11.0,  # 12.62
-                'fixed': False,
-                'min': 7.0,
-                'max': 15.0
+            'system': {
+                'semi_major_axis': {
+                    'value': 11.0,  # 12.62
+                    'fixed': False,
+                    'min': 7.0,
+                    'max': 15.0
+                },
+                'mass_ratio': {
+                    'value': 0.7,  # 0.5
+                    'fixed': False,
+                    'min': 0.3,
+                    'max': 2.0
+                },
+                'inclination': {
+                    'value': 90.0,
+                    'fixed': True
+                },
+                'eccentricity': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'argument_of_periastron': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'period': {
+                    'value': 3.0,
+                    'fixed': True
+                },
             },
-            'mass_ratio': {
-                'value': 0.7,  # 0.5
-                'fixed': False,
-                'min': 0.3,
-                'max': 2.0
+            'primary': {
+                't_eff': {
+                    'value': 5000.0,
+                    'fixed': True
+                },
+                'surface_potential': {
+                    'value': 5.0,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                },
             },
-            'p__t_eff': {
-                'value': 5000.0,
-                'fixed': True
-            },
-            'p__surface_potential': {
-                'value': 5.0,
-                'fixed': True
-            },
-            's__t_eff': {
-                'value': 7000.0,
-                'fixed': True
-            },
-            's__surface_potential': {
-                'value': 5,
-                'fixed': True
-            },
-            'inclination': {
-                'value': 90.0,
-                'fixed': True
-            },
-            'eccentricity': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'argument_of_periastron': {
-                'value': 0.0,
-                'fixed': True
-            },
-            'period': {
-                'value': 3.0,
-                'fixed': True
-            },
-            'p__gravity_darkening': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__gravity_darkening': {
-                'value': 1.0,
-                'fixed': True
-            },
-            'p__albedo': {
-                'value': 1.0,
-                'fixed': True
-            },
-            's__albedo': {
-                'value': 1.0,
-                'fixed': True
+            'secondary': {
+                't_eff': {
+                    'value': 7000.0,
+                    'fixed': True
+                },
+                'surface_potential': {
+                    'value': 5,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                },
             },
         }
 
@@ -1002,7 +1036,7 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
             task = BinarySystemAnalyticsTask(light_curves={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b})
             result = task.lc_fit.fit(x0=copy(dinit), method='least_squares', discretization=10)
 
-        self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
+        self.assertTrue(1.0 > result['system']["r_squared"]['value'] > 0.9)
 
 
 class ModelSimulator(object):
