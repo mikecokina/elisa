@@ -330,6 +330,8 @@ DATE_MASK = '%Y-%m-%d'
 DATASET_MANDATORY_KWARGS = ['x_data', 'y_data', 'x_unit', 'y_unit']
 DATASET_OPTIONAL_KWARGS = ['yerr']
 
+DELIM_WHITESPACE = r'\s+|\t+|\s+\t+|\t+\s+'
+
 read_and_update_config()
 _update_atlas_to_base_dir()
 _create_home()
