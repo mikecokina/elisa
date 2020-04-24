@@ -15,6 +15,7 @@ from unittests.utils import ElisaTestCase
 from elisa.analytics.dataset.base import RVData, LCData
 from elisa.analytics.base import BinarySystemAnalyticsTask
 from elisa.analytics import utils as autils
+from unittest import skip
 
 TOL = 1e-5
 
