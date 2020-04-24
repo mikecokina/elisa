@@ -22,7 +22,8 @@ def _serialize_star_kwargs(component, **kwargs):
             'latitude': params_tree['spots'][key]['latitude'],
             'angular_radius': params_tree['spots'][key]['angular_radius'],
             'temperature_factor': params_tree['spots'][key]['temperature_factor']
-        } for key in params_tree['spots'].keys()] if 'spots' in params_tree.keys() else None
+        } for key in params_tree['spots'].keys()
+    ] if 'spots' in params_tree.keys() else None
 
     pulsations = [
         {
@@ -33,7 +34,8 @@ def _serialize_star_kwargs(component, **kwargs):
             'start_phase': params_tree['pulsations'][key]['start_phase'],
             'mode_axis_phi': params_tree['pulsations'][key].get('mode_axis_phi', 0),
             'mode_axis_theta': params_tree['pulsations'][key].get('mode_axis_theta', 0)
-        } for key in params_tree['pulsations'].keys()] if 'pulsations' in params_tree.keys() else None
+        } for key in params_tree['pulsations'].keys()
+    ] if 'pulsations' in params_tree.keys() else None
 
     return dict(
         surface_potential=params_tree['surface_potential'],
@@ -59,7 +61,7 @@ def serialize_system_kwargs(**kwargs):
         period=no_prefix["period"],
         eccentricity=no_prefix.get('eccentricity', 0.0),
         inclination=no_prefix.get('inclination'),
-        primary_minimum_time=no_prefix.get('primary_minimum_time'),
+        **{"primary_minimum_time": no_prefix['primary_minimum_time']} if no_prefix.get("primary_minimum_time") else {},
         **{"semi_major_axis": no_prefix["semi_major_axis"]} if no_prefix.get("semi_major_axis") else {},
         **{"mass_ratio": no_prefix["mass_ratio"]} if no_prefix.get("mass_ratio") else {},
         **{"asini": no_prefix["asini"]} if no_prefix.get("asini") else {},
@@ -109,7 +111,7 @@ def prepare_binary(discretization=3, verify=False, **kwargs):
 
     :return: elisa.binary_system.system.BinarySystem;
     """
-    kwargs.update({"p__discretization_factor": discretization})
+    kwargs.update({params.PARAM_PARSER.join(['primary', 'discretization_factor']): discretization})
     primary_kwargs = serialize_primary_kwargs(**kwargs)
     secondary_kwargs = serialize_secondary_kwargs(**kwargs)
     system_kwargs = serialize_system_kwargs(**kwargs)

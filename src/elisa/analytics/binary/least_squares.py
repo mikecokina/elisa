@@ -72,8 +72,8 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         residuals = np.sum([np.sum(np.power(synthetic[band] - self.ys[band], 2)
                                    / self.yerrs[band]) for band in synthetic])
 
-        r2 = shared.r_squared(synthetic, self.ys)
-        logger.info(f'current R2: {r2}')
+        # r2 = shared.r_squared(synthetic, self.ys)
+        # logger.info(f'current R2: {r2}')
 
         return residuals
 
@@ -140,8 +140,8 @@ class LightCurveFit(AbstractFit, AbstractLightCurveDataMixin, metaclass=ABCMeta)
         r_squared_args = self.xs, self.ys, self.passband, discretization, self.morphology, self.xs_reverser, \
                          self.diff, self.interp_treshold
         r_squared_result = shared.lc_r_squared(models.synthetic_binary, *r_squared_args, **results)
+        result_dict[params.PARAM_PARSER.join(['system', 'r_squared'])] = {'value': r_squared_result}
 
-        result_dict["r_squared"] = {'value': r_squared_result}
         result_dict = params.extend_result_with_units(result_dict)
         return params.dict_to_user_format(result_dict)
 

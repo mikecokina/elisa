@@ -299,7 +299,7 @@ class LightCurveFit(McMcFit):
                          self.xs_reverser, self.diff, self.interp_treshold
         r_dict = {key: value['value'] for key, value in result_dict.items()}
         r_squared_result = lc_r_squared(models.synthetic_binary, *r_squared_args, **r_dict)
-        result_dict["r_squared"] = {'value': r_squared_result}
+        result_dict[params.PARAM_PARSER.join(['system', 'r_squared'])] = {'value': r_squared_result}
 
         result_dict = params.extend_result_with_units(result_dict)
         return params.dict_to_user_format(result_dict)
@@ -414,6 +414,7 @@ class CentralRadialVelocity(McMcFit, AbstractCentralRadialVelocityDataMixin):
         r_dict = {key: value['value'] for key, value in result_dict.items()}
         r_squared_result = rv_r_squared(models.central_rv_synthetic, *r_squared_args, **r_dict)
         result_dict[params.PARAM_PARSER.join(['system', 'r_squared'])] = {'value': r_squared_result}
+
         result_dict = params.extend_result_with_units(result_dict)
         return params.dict_to_user_format(result_dict)
 

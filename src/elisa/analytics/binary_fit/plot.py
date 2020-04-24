@@ -188,7 +188,8 @@ class LCPlot(object):
         for _filter, curve in self.lc_fit.light_curves.items():
             x_data[_filter] = t_layer.adjust_phases(phases=curve.x_data, centre=0.0) \
                 if curve.x_unit is u.dimensionless_unscaled else \
-                t_layer.jd_to_phase(fit_params['primary_minimum_time']['value'], fit_params['period']['value'],
+                t_layer.jd_to_phase(fit_params['system']['primary_minimum_time']['value'],
+                                    fit_params['system']['period']['value'],
                                     curve.x_data, centre=0.0)
 
             y_data[_filter] = curve.y_data
