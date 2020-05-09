@@ -114,8 +114,8 @@ def main():
 
     xs_syn, xs_reverser = params.xs_reducer(xs)
 
-    p = dict(p=P, a=2.6440, i=84.10, q=0.35, t1=4400, t2=4500, omega_1=2.568,
-             omega_2=2.568, a_1=0.5, a_2=0.5, g_1=0.32, g_2=0.32)
+    p = dict(p=P, a=2.6403303616678713, i=84.93, q=0.3623, t1=5262, t2=5262, omega_1=2.53,
+             omega_2=2.53, a_1=0.5, a_2=0.5, g_1=0.32, g_2=0.32)
 
     ys_syn = lc_sys(xs_syn, **p)
     ys_syn = normalize_lightcurve_to_max(ys_syn)

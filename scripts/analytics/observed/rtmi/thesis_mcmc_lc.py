@@ -182,7 +182,7 @@ def main():
     # binary_overcontact.fit(xs=xs, ys=ys, x0=lc_initial, period=P, discretization=5.0,
     #                        nwalkers=20, nsteps=20000, nsteps_burn_in=3000, yerrs=yerrs)
 
-    result = binary_overcontact.restore_flat_chain("2020-05-07T21.28.08")
+    result = binary_overcontact.restore_flat_chain("2020-05-07T22.28.08")
     binary_overcontact.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
 
 
