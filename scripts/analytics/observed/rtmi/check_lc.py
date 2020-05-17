@@ -114,18 +114,19 @@ def main():
 
     xs_syn, xs_reverser = params.xs_reducer(xs)
 
-    p = dict(p=P, a=2.6403303616678713, i=84.93, q=0.3623, t1=5262, t2=5262, omega_1=2.53,
-             omega_2=2.53, a_1=0.5, a_2=0.5, g_1=0.32, g_2=0.32)
+    p = dict(p=P, a=2.69, i=84.63, q=0.38, t1=6272.96, t2=6430.94, omega_1=2.536,
+             omega_2=2.536, a_1=0.63, a_2=0.59, g_1=0.51, g_2=0.31)
 
     ys_syn = lc_sys(xs_syn, **p)
     ys_syn = normalize_lightcurve_to_max(ys_syn)
 
     for band in passbands:
         plt.scatter(xs[band] - 0.01, y=ys[band] - ys_shift[band], c=color_map[band])
-        plt.plot(xs_syn, ys_syn[band] - ys_shift[band], c=color_map[band])
+        plt.plot(xs_syn, ys_syn[band] - ys_shift[band], c=color_map[band], label=band)
 
     plt.xlabel('Phase')
     plt.ylabel('Flux')
+    plt.legend(loc="upper left", bbox_to_anchor=(0.0, 1.0))
     plt.show()
 
     lhood = -0.5 * np.sum(np.array([np.sum(np.power((ys_syn[band][xs_reverser[band]] - ys[band])

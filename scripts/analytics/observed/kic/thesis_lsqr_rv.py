@@ -77,18 +77,18 @@ def main():
 
     rv_initial = [
         {
-            'value': 0.04,
+            'value': 0.15,
             'param': 'eccentricity',
             'fixed': False,
             'min': 0.0,
-            'max': 0.2
+            'max': 0.3
         },
         {
-            'value': 11.0,
+            'value': 12.5,
             'param': 'asini',
             'fixed': False,
             'min': 10.0,
-            'max': 12.0
+            'max': 15.0
 
         },
         {
@@ -102,8 +102,8 @@ def main():
             'value': 220.0,
             'param': 'argument_of_periastron',
             'fixed': False,
-            'min': 200,
-            'max': 265
+            'min': 180,
+            'max': 360
         },
         {
             'value': 0.0,

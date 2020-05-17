@@ -5,6 +5,8 @@ import builtins
 
 from matplotlib import pyplot as plt
 from elisa.analytics.binary.mcmc import central_rv
+from elisa.analytics.binary.models import central_rv_synthetic
+from elisa.analytics.binary.shared import rv_r_squared
 from elisa.binary_system import t_layer
 
 builtins._ASTROPY_SETUP_ = True
@@ -87,9 +89,22 @@ def main():
         }
     ]
 
-    central_rv.fit(xs=xs, ys=ys, x0=rv_initial, nwalkers=20, nsteps=50000, nsteps_burn_in=5000, yerrs=yerr)
-    result = central_rv.restore_flat_chain(central_rv.last_fname)
-    central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
+    # central_rv.fit(xs=xs, ys=ys, x0=rv_initial, nwalkers=20, nsteps=50000, nsteps_burn_in=5000, yerrs=yerr)
+    # result = central_rv.restore_flat_chain(central_rv.last_fname)
+    # central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
+
+    result = {
+        "eccentricity": 0.0,
+        "asini": 2.64,
+        "mass_ratio": 0.35,
+        "argument_of_periastron": 0.0,
+        "gamma": -14717.23,
+        "period": P,
+    }
+    r_squared_args = xs["primary"], ys, False, {"primary": np.arange(0, len(xs["primary"]), 1),
+                                                "secondary": np.arange(0, len(xs["secondary"]), 1)}
+    r_squared_result = rv_r_squared(central_rv_synthetic, *r_squared_args, **result)
+    print(r_squared_result)
 
 
 if __name__ == '__main__':

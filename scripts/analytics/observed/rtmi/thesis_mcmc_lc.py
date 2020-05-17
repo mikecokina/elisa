@@ -101,88 +101,138 @@ def main():
     ys = {band: ys[band][phase_mask[band]] for band in passbands}
     yerrs = {band: yerrs[band][phase_mask[band]] for band in passbands}
 
-    lc_initial = [
-        {
-            'value': 2.63,
-            'param': 'semi_major_axis',
-            'constraint': '2.63 / sin(radians({inclination}))'
-        },
-        {
-            'value': 5000.0,
-            'param': 'p__t_eff',
-            'fixed': False,
-            'min': 4000.0,
-            'max': 7000.0
-        },
-        {
-            'value': 2.55,
-            'param': 'p__surface_potential',
-            'fixed': False,
-            'min': 2.0,
-            'max': 3.0
-        },
-        {
-            'value': 2.55,
-            'param': 's__surface_potential',
-            'fixed': False,
-            'min': 2.0,
-            'max': 3.0
-        },
-        {
-            'value': 5000.0,
-            'param': 's__t_eff',
-            'constraint': '{p__t_eff}',
-        },
-        {
-            'value': 85.0,
-            'param': 'inclination',
+    """
+    lc_initial = {
+    'system': {
+        'inclination': {
+            'value': 85,
             'fixed': False,
             'min': 80,
-            'max': 90
+            'max': 90,
+            'unit': u.deg,
         },
-        {
-            'value': 0.32,
-            'param': 'p__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 0.32,
-            'param': 's__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 0.6,
-            'param': 'p__albedo',
-            'fixed': True
-        },
-        {
-            'value': 0.6,
-            'param': 's__albedo',
-            'fixed': True
-        },
-        {
-            'value': 0.0,
-            'param': 'argument_of_periastron',
-            'fixed': True
-        },
-        {
+        'mass_ratio': {
             'value': 0.35,
-            'param': 'mass_ratio',
-            'fixed': False,
+            'fixed': True,
             'min': 0.33,
-            'max': 0.37
+            'max': 0.37,
+            'unit': ''
         },
-        {
+        'argument_of_periastron': {
+            'value': 0,
+            'fixed': True,
+            'unit': u.deg
+        },
+        'period': {
+            'value': 0.374918,
+            'fixed': True,
+        },
+        'additional_light': {
             'value': 0.0,
-            'param': 'eccentricity',
-            'fixed': True
-        }
-    ]
+            'fixed': True,
+            'unit': ''
+        },
+        'primary_minimum_time': {
+            'value': 2445002.2180,
+            'fixed': True,
+            'unit': u.d
+        },
+        'semi_major_axis': {
+            'constraint': '2.63 / sin(radians({inclination}))',
+            'unit': u.solRad
+        },
+        'eccentricity': {
+            'value': 0.0,
+            'fixed': True,
+            'unit': ''
+        },
+    },
+    'primary': {
+        't_eff': {
+            'value': 6400,
+            'fixed': False,
+            'min': 6000.0,
+            'max': 6500.0,
+            'unit': u.K
+        },
+        'surface_potential': {
+            'value': 2.55,
+            # 'fixed': True,
+            'fixed': False,
+            'min': 2.0,
+            'max': 3.0,
+            'unit': ''
+        },
+        'gravity_darkening': {
+            'value': 0.32,
+            'fixed': False,
+            'min': 0.3,
+            'max': 1.0,
+            'unit': ''
+        },
+        'albedo': {
+            'value': albedo,
+            # 'fixed': True,
+            'fixed': False,
+            'min': 0.5,
+            'max': 1.0,
+            'unit': ''
+        },
+        'metallicity': {
+            'value': metallicity,
+            'fixed': True,
+            'unit': ''
+        },
+        'synchronicity': {
+            'value': 1.0,
+            'fixed': True,
+            'unit': ''
+        },
+    },
+    'secondary':{
+        't_eff': {
+            'value': 6400,
+            'fixed': False,
+            'min': 6000.0,
+            'max': 6500.0,
+            'unit': u.K
+        },
+        'surface_potential': {
+            'constraint': '{primary.surface_potential}',
+            'unit': ''
+        },
+        'gravity_darkening': {
+            'value': 0.32,
+            'fixed': False,
+            'min': 0.3,
+            'max': 1.0,
+            'unit': ''
+        },
+        'albedo': {
+            'value': albedo,
+            'fixed': False,
+            'min': 0.5,
+            'max': 1.0,
+            'unit': ''
+        },
+        'metallicity': {
+            'value': metallicity,
+            'fixed': True,
+            'unit': ''
+        },
+        'synchronicity': {
+            'value': 1.0,
+            'fixed': True,
+            'unit': ''
+        },
+    }
+}
+    """
 
     # binary_overcontact.fit(xs=xs, ys=ys, x0=lc_initial, period=P, discretization=5.0,
     #                        nwalkers=20, nsteps=20000, nsteps_burn_in=3000, yerrs=yerrs)
 
-    result = binary_overcontact.restore_flat_chain("2020-05-07T22.28.08")
+    result = binary_overcontact.restore_flat_chain("2020-05-11T00.00.00")
     binary_overcontact.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
 
 
