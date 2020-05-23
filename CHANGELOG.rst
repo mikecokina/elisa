@@ -106,6 +106,7 @@ v0.2.3_
 - raise `elisa.base.error.AtmosphereError` when atmosphere file not founf instead `FileNotFoundError`
 - least square fitting continue in case of invalid binary parameters
 - spots situated on darkside of over-contact component have valid shape
+- lc observation atmosphere is not hardcode to `ck04` anymore
 
 Future plans
 ============
