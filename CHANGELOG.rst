@@ -121,6 +121,11 @@ v0.3
     - introduction of pulsations modelled as a perturbations of surface geometry and surface effective temperature
     distribution based on spherical harmonics
 
+* **analytics api** *
+    - more user frendly analytics api
+    - summary outputs of fitting
+    - extended i/o of fitting
+
 **Fixes**
 - fitting light curves of over-contact binaries won't crash with missing `param` error due to invalid constraint setting on backend
 - normalize lightcurves (during fitting procedure) each on its max values instead of normalization on global maximum

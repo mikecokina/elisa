@@ -1,10 +1,8 @@
 import numpy as np
+import matplotlib.gridspec as gridspec
 
 from corner import corner as _corner
-import matplotlib.gridspec as gridspec
 from matplotlib import pyplot as plt
-
-from elisa.analytics.binary import params
 
 
 class Plot(object):
@@ -24,14 +22,15 @@ class Plot(object):
         axes = np.array(figure.axes).reshape((ndim, ndim))
 
         # Loop over the diagonal, adding units
-        for ii, label in enumerate(variable_labels):
-            ax = axes[ii, ii]
+        for i, label in enumerate(variable_labels):
+            ax = axes[i, i]
             value = fit_params[label]['value']
             bottom = fit_params[label]['min'] - value
             top = fit_params[label]['max'] - value
-            unit = '' if fit_params[label]['unit'] == 'dimensionless' else fit_params[label]['unit']
-            title = r'{0}=${1:.2f}^{{{2:+.2f}}}_{{{3:+.2f}}}$ {4}'.format(kwargs['labels'][ii], value, top, bottom,
-                                                                          unit)
+
+            unit = fit_params[label]['unit']
+            unit = '' if unit == 'dimensionless' or unit is None else unit
+            title = r'{0}=${1:.2f}^{{{2:+.2f}}}_{{{3:+.2f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom, unit)
             ax.set_title(title)
 
         plt.show()
@@ -42,8 +41,8 @@ class Plot(object):
         Show traces of mcmc chain.
         """
         labels = kwargs['labels']
-        hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) if label in
-                    kwargs['traces_to_plot']}
+        hash_map = {label: idx for idx, label in enumerate(kwargs['variable_labels']) 
+                    if label in kwargs['traces_to_plot']}
 
         height = len(kwargs['traces_to_plot'])
         fig = plt.figure(figsize=(8, 2.5*height))
@@ -57,8 +56,9 @@ class Plot(object):
             ax[-1].scatter(np.arange(kwargs['flat_chain'].shape[0]), kwargs['flat_chain'][:, hash_map[label]],
                            label=labels[idx], s=0.2)
             ax[-1].legend(loc=1)
-            unit = '' if kwargs['fit_params'][label]['unit'] == 'dimensionless' \
-                else '/[{0}]'.format(kwargs['fit_params'][label]['unit'])
+
+            unit = kwargs['fit_params'][label]['unit']
+            unit = '' if unit == 'dimensionless' or unit is None else ' / [{0}]'.format(unit)
             ax[-1].set_ylabel(f'{labels[idx]}{unit}')
 
             if kwargs['truths']:
@@ -102,4 +102,3 @@ class Plot(object):
 
         plt.subplots_adjust(right=1.0, top=1.0, hspace=0)
         plt.show()
-

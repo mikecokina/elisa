@@ -16,7 +16,7 @@ class BinarySystemProperties(SystemProperties):
         if not isinstance(value, (int, np.int, float, np.float)):
             raise TypeError('Input of variable `eccentricity` is not (numpy.)int or (numpy.)float.')
         if value < 0 or value >= 1:
-            raise ValueError('Input of variable `eccentricity` is  or it is out of boundaries.')
+            raise ValueError('Input of variable `eccentricity` is out of boundaries [0, 1)')
         return np.float64(value)
 
     @staticmethod
@@ -93,4 +93,6 @@ class RadialVelocityObserverProperties(SystemProperties):
         else:
             raise TypeError('Input of variable `asini` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
+        if value < 0:
+            raise ValueError('Value of `asini` cannot be negative.')
         return value

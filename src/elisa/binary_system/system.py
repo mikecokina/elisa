@@ -680,7 +680,7 @@ class BinarySystem(System):
         if self.eccentricity == 0.0:
             corrected_potential = {component: getattr(self, component).surface_potential for component in components}
         else:
-            corrected_potential = self.correct_potentials(distances=[components_distance,])
+            corrected_potential = self.correct_potentials(distances=np.array([components_distance, ]))
             corrected_potential = {component: corrected_potential[component][0] for component in components}
 
         for component in components:

@@ -43,7 +43,7 @@ class DatasetProperties(TransformProperties):
         return array_transform(value, WHEN_ARRAY)
 
     @staticmethod
-    def yerr(value):
+    def y_err(value):
         return array_transform(value, WHEN_ARRAY)
 
 

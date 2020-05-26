@@ -50,27 +50,6 @@ class PulsationMode(object):
 
         self.validate_mode()
 
-    # @property
-    # def n(self):
-    #     """
-    #     returns radial degree `n` of pulsation mode
-    #     :return: int
-    #     """
-    #     return self._n
-    #
-    # @n.setter
-    # def n(self, radial_degree):
-    #     """
-    #     setter for radial degree of pulsation mode
-    #     :param radial_degree: int
-    #     :return:
-    #     """
-    #     try:
-    #         self._n = np.int(radial_degree)
-    #     except ValueError:
-    #         raise ValueError('Value for radial degree `n`={0} in pulsation mode class instance {1} is not valid.'
-    #                          .format(radial_degree, PulsationMode.__name__))
-
     @staticmethod
     def transform_input(**kwargs):
         """

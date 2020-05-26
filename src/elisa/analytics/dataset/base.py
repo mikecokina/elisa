@@ -2,16 +2,16 @@ import numpy as np
 import astropy.units as au
 import pandas as pd
 
-from elisa.analytics.dataset.transform import RVDataProperties, LCDataProperties
+from elisa.analytics.dataset.transform import (
+    RVDataProperties,
+    LCDataProperties
+)
 from elisa.logger import getLogger
 from elisa import utils, units
 from elisa.conf import config
-from abc import (
-    ABCMeta,
-    abstractmethod
-)
+from abc import ABCMeta
 from elisa.utils import is_empty
-from copy import copy
+from copy import copy, deepcopy
 
 logger = getLogger('analytics.dataset.base')
 
@@ -62,7 +62,6 @@ def convert_flux_error(error, unit, zero_point=None):
                              'a zero point using keyword argument `reference_magnitude`.')
         else:
             error = utils.magnitude_error_to_flux_error(error)
-
     return error
 
 
@@ -94,7 +93,7 @@ def read_data_file(fpath, data_columns, delimiter=config.DELIM_WHITESPACE):
 
 
 class DataSet(metaclass=ABCMeta):
-
+    TRANSFORM_PROPERTIES_CLS = None
     ID = 1
 
     def __init__(self, name=None, **kwargs):
@@ -111,30 +110,32 @@ class DataSet(metaclass=ABCMeta):
         # initializing parmas to default values
         self.x_data = np.array([])
         self.y_data = np.array([])
-        self.yerr = None
+        self.y_err = None
 
         self.check_data_validity(**kwargs)
 
-    @abstractmethod
     def transform_input(self, **kwargs):
-        pass
+        return self.__class__.TRANSFORM_PROPERTIES_CLS.transform_input(**kwargs)
+
+    def copy(self):
+        return deepcopy(self)
 
     @staticmethod
     def check_data_validity(**kwargs):
         if not np.shape(kwargs['x_data']) == np.shape(kwargs['y_data']):
             raise ValueError('`x_data` and `y_data` are not of the same shape.')
-        if 'yerr' in kwargs.keys():
-            if not np.shape(kwargs['x_data']) == np.shape(kwargs['yerr']):
-                raise ValueError('`yerr` are not of the same shape to `x_data` and `y_data`.')
+        if 'y_err' in kwargs.keys():
+            if not np.shape(kwargs['x_data']) == np.shape(kwargs['y_err']):
+                raise ValueError('`y_err` are not of the same shape to `x_data` and `y_data`.')
 
         # check for nans
         if np.isnan(kwargs['x_data']).any():
             raise ValueError('`x_data` contains NaN')
         if np.isnan(kwargs['y_data']).any():
             raise ValueError('`y_data` contains NaN')
-        if 'yerr' in kwargs.keys():
-            if np.isnan(kwargs['yerr']).any():
-                raise ValueError('`yerr` contains NaN')
+        if 'y_err' in kwargs.keys():
+            if np.isnan(kwargs['y_err']).any():
+                raise ValueError('`y_err` contains NaN')
 
     @classmethod
     def load_from_file(cls, fpath, x_unit=None, y_unit=None, data_columns=None,
@@ -162,7 +163,7 @@ class DataSet(metaclass=ABCMeta):
             errs = None
         return cls(x_data=data[:, 0],
                    y_data=data[:, 1],
-                   yerr=errs,
+                   y_err=errs,
                    x_unit=x_unit,
                    y_unit=y_unit,
                    **kwargs)
@@ -178,7 +179,7 @@ class RVData(DataSet):
 
     :param x_data: numpy.array; time or observed phases
     :param y_data: numpy.array; radial velocities
-    :param yerr: numpy.array; radial velocity errors - optional
+    :param y_err: numpy.array; radial velocity errors - optional
     :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given,
                                       the `x_data are regarded as phases, otherwise if unit is convertible
                                       to days, the `x_data` are regarded to be in JD
@@ -188,10 +189,13 @@ class RVData(DataSet):
     MANDATORY_KWARGS = config.DATASET_MANDATORY_KWARGS
     OPTIONAL_KWARGS = config.DATASET_OPTIONAL_KWARGS
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
+    TRANSFORM_PROPERTIES_CLS = RVDataProperties
+
+    __slots__ = ALL_KWARGS
 
     def __init__(self, name=None, **kwargs):
-        utils.invalid_kwarg_checker(kwargs, RVData.ALL_KWARGS, RVData)
-        utils.check_missing_kwargs(RVData.MANDATORY_KWARGS, kwargs, instance_of=RVData)
+        utils.invalid_kwarg_checker(kwargs, self.__slots__, RVData)
+        utils.check_missing_kwargs(self.MANDATORY_KWARGS, kwargs, instance_of=RVData)
         super().__init__(name, **kwargs)
 
         kwargs = self.transform_input(**kwargs)
@@ -199,17 +203,7 @@ class RVData(DataSet):
         # conversion to base units
         kwargs = self.convert_arrays(**kwargs)
         self.check_data_validity(**kwargs)
-
         self.init_parameters(**kwargs)
-
-    def transform_input(self, **kwargs):
-        """
-        Transform and validate input kwargs.
-
-        :param kwargs: Dict;
-        :return: Dict;
-        """
-        return RVDataProperties.transform_input(**kwargs)
 
     def init_parameters(self, **kwargs):
         logger.debug(f"initialising properties of class instance {self.__class__.__name__}")
@@ -233,8 +227,8 @@ class RVData(DataSet):
         kwargs['y_data'] = convert_data(kwargs['y_data'], kwargs['y_unit'], units.VELOCITY_UNIT)
 
         # convert errors
-        if 'yerr' in kwargs.keys():
-            kwargs['yerr'] = convert_data(kwargs['yerr'], kwargs['y_unit'], units.VELOCITY_UNIT)
+        if 'y_err' in kwargs.keys():
+            kwargs['y_err'] = convert_data(kwargs['y_err'], kwargs['y_unit'], units.VELOCITY_UNIT)
         kwargs['y_unit'] = convert_unit(kwargs['y_unit'], units.VELOCITY_UNIT)
 
         return kwargs
@@ -248,38 +242,33 @@ class LCData(DataSet):
 
         :param x_data: numpy.array; time or observed phases
         :param y_data: numpy.array; light curves
-        :param yerr: numpy.array; light curve errors - optional
+        :param y_err: numpy.array; light curve errors - optional
         :param x_unit: astropy.unit.Unit; if `None` or `astropy.unit.dimensionless_unscaled` is given,
                                           the `x_data` are regarded as phases, otherwise if unit is convertible
                                           to days, the `x_data` are regarded to be in JD
         :param y_unit: astropy.unit.Unit; velocity unit of the observed flux and its errors
     """
     MANDATORY_KWARGS = config.DATASET_MANDATORY_KWARGS
-    OPTIONAL_KWARGS = config.DATASET_OPTIONAL_KWARGS + ['reference_magnitude']
+    OPTIONAL_KWARGS = config.DATASET_OPTIONAL_KWARGS + ['reference_magnitude', 'passband']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
+    TRANSFORM_PROPERTIES_CLS = LCDataProperties
+
+    __slots__ = ALL_KWARGS
 
     def __init__(self, name=None, **kwargs):
-        utils.invalid_kwarg_checker(kwargs, LCData.ALL_KWARGS, LCData)
-        utils.check_missing_kwargs(LCData.MANDATORY_KWARGS, kwargs, instance_of=LCData)
+        self.passband = None
+        self.reference_magnitude = None
+
+        utils.invalid_kwarg_checker(kwargs, self.__slots__, LCData)
+        utils.check_missing_kwargs(self.MANDATORY_KWARGS, kwargs, instance_of=LCData)
         super().__init__(name, **kwargs)
         kwargs = self.transform_input(**kwargs)
-
-        self.zero_magnitude = None
 
         # conversion to base units
         kwargs = self.convert_arrays(**kwargs)
         self.check_data_validity(**kwargs)
 
         self.init_parameters(**kwargs)
-
-    def transform_input(self, **kwargs):
-        """
-        Transform and validate input kwargs.
-
-        :param kwargs: Dict;
-        :return: Dict;
-        """
-        return LCDataProperties.transform_input(**kwargs)
 
     def init_parameters(self, **kwargs):
         logger.debug(f"initialising properties of class instance {self.__class__.__name__}")
@@ -301,9 +290,9 @@ class LCData(DataSet):
         kwargs['reference_magnitude'] = kwargs.get('reference_magnitude', None)
 
         # convert errors
-        if 'yerr' in kwargs.keys():
-            kwargs['yerr'] = convert_flux_error(kwargs['yerr'], kwargs['y_unit'],
-                                                zero_point=kwargs['reference_magnitude'])
+        if 'y_err' in kwargs.keys():
+            kwargs['y_err'] = convert_flux_error(kwargs['y_err'], kwargs['y_unit'],
+                                                 zero_point=kwargs['reference_magnitude'])
 
         # converting y-axis
         kwargs['y_data'] = convert_flux(kwargs['y_data'], kwargs['y_unit'], zero_point=kwargs['reference_magnitude'])

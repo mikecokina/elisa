@@ -3,9 +3,9 @@ from elisa.base.transform import TransformProperties
 from elisa.analytics.dataset.base import RVData, LCData
 
 
-class AnalyticsProperties(TransformProperties):
+class RVBinaryAnalyticsTask(TransformProperties):
     @staticmethod
-    def radial_velocities(value):
+    def data(value):
         if isinstance(value, dict):
             for key, val in value.items():
                 if key not in BINARY_COUNTERPARTS:
@@ -16,8 +16,10 @@ class AnalyticsProperties(TransformProperties):
             return value
         raise TypeError('`radial_velocities` are not of type `dict`')
 
+
+class LCBinaryAnalyticsProperties(TransformProperties):
     @staticmethod
-    def light_curves(value):
+    def data(value):
         if isinstance(value, dict):
             for key, val in value.items():
                 if key not in PASSBANDS:
