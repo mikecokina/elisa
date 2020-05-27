@@ -328,7 +328,7 @@ DATETIME_MASK = '%Y-%m-%dT%H.%M.%S'
 DATE_MASK = '%Y-%m-%d'
 
 DATASET_MANDATORY_KWARGS = ['x_data', 'y_data', 'x_unit', 'y_unit']
-DATASET_OPTIONAL_KWARGS = ['yerr']
+DATASET_OPTIONAL_KWARGS = ['y_err']
 
 DELIM_WHITESPACE = r'\s+|\t+|\s+\t+|\t+\s+'
 

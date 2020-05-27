@@ -1,13 +1,11 @@
 import json
 import os.path as op
-
 import numpy as np
 
+from  elisa import units
 from elisa.analytics import RVData, RVBinaryAnalyticsTask
 from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.binary_system import t_layer
 from elisa.utils import random_sign
-from elisa import units
 
 np.random.seed(1)
 DATA = op.join(op.abspath(op.dirname(__file__)), "data")
@@ -20,9 +18,7 @@ def get_rv():
 
 
 def main():
-    period, t0, phases = 4.5, 12.0, np.arange(-0.6, 0.62, 0.02)
-    jd = t_layer.phase_to_jd(t0, period, phases)
-
+    phases = np.arange(-0.6, 0.62, 0.02)
     rv = get_rv()
     u = np.random.uniform
     n = len(rv["primary"])
@@ -33,9 +29,9 @@ def main():
     rv = {comp: val + bias[comp] for comp, val in rv.items()}
 
     data = {comp: RVData(**{
-        "x_data": jd,
+        "x_data": phases,
         "y_data": rv[comp],
-        "x_unit": units.d,
+        "x_unit": units.dimensionless_unscaled,
         "y_unit": units.m / units.s
 
     }) for comp in rv}
@@ -72,27 +68,14 @@ def main():
             },
             "period": {
                 "value": 4.5,
-                "fixed": False,
-                "unit": units.d,
-                "min": 4.4,
-                "max": 4.6
-            },
-            "primary_minimum_time": {
-                'value': 11.1,
-                'fixed': False,
-                'min': 11.1,
-                'max': 12.1
+                "fixed": True
             }
         }
     }
 
     rv_initial = BinaryInitialParameters(**rv_initial)
-    task = RVBinaryAnalyticsTask(data=data, method='mcmc')
-    task.fit(x0=rv_initial, nsteps=1000, burn_in=100, save=True, fit_id="mcmc_rv_fit_no_period", progress=True)
-    task.plot.model()
-    task.plot.corner(truths=True)
-    task.plot.traces()
-    task.plot.autocorrelation()
+    task = RVBinaryAnalyticsTask(data=data, method='least_squares')
+    task.fit(x0=rv_initial)
 
 
 if __name__ == '__main__':

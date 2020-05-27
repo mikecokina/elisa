@@ -55,7 +55,7 @@ def invalid_param_checker(kwargs, kwarglist, message):
 
     :param kwargs: Dict; kwargs to evaluate if are in kwarg list
     :param kwarglist: Dict;
-    :param instance: Any class
+    :param message: Any class
     """
     invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
     if len(invalid_kwargs) > 0:
@@ -435,19 +435,19 @@ def check_missing_kwargs(mandatory_kwargs, supplied_kwargs, instance_of):
         raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in class instance {instance_of.__name__}')
 
 
-def check_missing_params(mandatory_kwargs, supplied_kwargs, obj):
+def check_missing_params(mandatory_kwargs, supplied_kwargs, instance):
     """
     Checks if all `kwargs` are all in parameter `obj` .
     If missing raise ValuerError with missing `kwargs`.
 
     :param mandatory_kwargs: List[str]
     :param supplied_kwargs: List[str]
-    :param object: class
+    :param instance: class instance
     :return:
     """
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
-        raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in object {obj}')
+        raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in object {instance}')
 
 
 def numeric_logg_to_string(logg):
@@ -927,12 +927,8 @@ def str_repalce(x, old, new):
     new = [new] if isinstance(new, str) else new
 
     for _old, _new in zip(old, new):
-        x = str(x).replace(_old, _new)
+        x = str(x).replace(str(_old), str(_new))
     return x
-
-
-def query_dict(dict, key):
-    return dict[key] if key in dict.keys() else None
 
 
 def magnitude_to_flux(data, zero_point):

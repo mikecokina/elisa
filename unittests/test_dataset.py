@@ -22,7 +22,7 @@ class RVDatasetTestCase(ElisaTestCase):
             y_data=rv_data,
             x_unit=time_unit,
             y_unit=rv_unit,
-            yerr=rv_err
+            y_err=rv_err
         )
 
         expected_times = [0.2, 0.5]
@@ -30,7 +30,7 @@ class RVDatasetTestCase(ElisaTestCase):
         expected_rv_err = [5000.0, 6000.0]
         assert_array_equal(np.round(expected_times, 10), np.round(rv_dataset.x_data, 10))
         assert_array_equal(np.round(expected_rv, 10), np.round(rv_dataset.y_data, 10))
-        assert_array_equal(np.round(expected_rv_err, 10), np.round(rv_dataset.yerr, 10))
+        assert_array_equal(np.round(expected_rv_err, 10), np.round(rv_dataset.y_err, 10))
 
     @staticmethod
     def test_phase_conversion():
@@ -49,7 +49,7 @@ class RVDatasetTestCase(ElisaTestCase):
         expected_times = [0.2, 0.5]
         expected_rv = [50000.0, 60000.0]
         assert_array_equal(np.round(expected_times, 10), np.round(rv_dataset.x_data, 10))
-        assert_array_equal(np.round(expected_rv, 10), np.round(rv_dataset.y_data,10))
+        assert_array_equal(np.round(expected_rv, 10), np.round(rv_dataset.y_data, 10))
 
 
 class LCDatasetTestCase(ElisaTestCase):
@@ -86,11 +86,11 @@ class LCDatasetTestCase(ElisaTestCase):
             y_data=lc_data,
             x_unit=time_unit,
             y_unit=lc_unit,
-            yerr=lc_err,
+            y_err=lc_err,
             reference_magnitude=10.0
         )
 
         expected_times = [0.2, 0.5]
         expected_lc_err = [0.09648, 0.09648]
         assert_array_equal(np.round(expected_times, 10), np.round(lc_dataset.x_data, 10))
-        assert_array_equal(np.round(expected_lc_err, 5), np.round(lc_dataset.yerr, 5))
+        assert_array_equal(np.round(expected_lc_err, 5), np.round(lc_dataset.y_err, 5))

@@ -98,7 +98,7 @@ setup(
     # $ pip install -e .[dev,test]
     extras_require={
         'dev': [],
-        'test': ['coverage'],
+        'test': ['coverage', 'parameterized'],
     },
 
     # If there are data files included in your packages that need to be

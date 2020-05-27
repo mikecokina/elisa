@@ -13,6 +13,8 @@ class PulsationModeProperties(SystemProperties):
         :param value: int;
         :return: int; validated value of angular degree
         """
+        if int(value) - value == 0:
+            value = int(value)
         if not isinstance(value, (int, np.int)):
             raise TypeError('Angular degree `l` is not (numpy.)int ')
         return value
@@ -25,6 +27,8 @@ class PulsationModeProperties(SystemProperties):
         :param value: int;
         :return: int; validated value of azimuthal order
         """
+        if int(value) - value == 0:
+            value = int(value)
         if not isinstance(value, (int, np.int)):
             raise TypeError('Angular degree `m` is not (numpy.)int ')
         return value
@@ -95,8 +99,8 @@ class PulsationModeProperties(SystemProperties):
         elif isinstance(value, (int, np.int, float, np.float)):
             retval = np.float64((value*units.deg).to(units.ARC_UNIT))
         else:
-            raise TypeError('Input of variable `mode_axis_theta` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.units.Quantity instance.')
+            raise TypeError('Input of variable `mode_axis_theta` is not (numpy.)int or '
+                            '(numpy.)float nor astropy.unit.quantity.units.Quantity instance.')
         if not 0 <= retval < c.PI:
             raise ValueError(f'Value of `mode_axis_theta`: {retval} is outside bounds (0, pi).')
 
@@ -116,8 +120,8 @@ class PulsationModeProperties(SystemProperties):
         elif isinstance(value, (int, np.int, float, np.float)):
             retval = np.float64((value * units.deg).to(units.ARC_UNIT))
         else:
-            raise TypeError('Input of variable `mode_axis_phi` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+            raise TypeError('Input of variable `mode_axis_phi` is not (numpy.)int or '
+                            '(numpy.)float nor astropy.unit.quantity.Quantity instance.')
 
         return retval
 

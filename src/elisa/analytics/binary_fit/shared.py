@@ -1,166 +1,182 @@
+from typing import Iterable, Dict
+
 import numpy as np
 
-from ... import utils
+from scipy import interpolate
+from abc import ABCMeta, abstractmethod
 
-from elisa.analytics.binary.mcmc import McMcMixin
-from elisa.analytics.binary import params
-
-from elisa.base.spot import Spot
-from elisa.pulse.mode import PulsationMode
-
-from elisa.conf import config
-from ...logger import getLogger
-
-logger = getLogger('analytics.binary_fit.shared')
-
-MANDATORY_SPOT_PARAMS = Spot.MANDATORY_KWARGS
-OPTIONAL_SPOT_PARAMS = []
-
-MANDATORY_PULSATION_PARAMS = PulsationMode.MANDATORY_KWARGS
-OPTIONAL_PULSATION_PARAMS = PulsationMode.OPTIONAL_KWARGS
+from elisa.analytics.params import parameters
+from elisa.analytics.params.parameters import BinaryInitialParameters
+from elisa.analytics.tools.utils import (
+    normalize_light_curve,
+    radialcurves_mean_error,
+    lightcurves_mean_error,
+    time_layer_resolver)
+from elisa.binary_system.system import BinarySystem
+from elisa.observer.observer import Observer
+from elisa.utils import is_empty
 
 
-def load_mcmc_chain(fit_instance, filename, discard=0):
-    filename = filename[:-5] if filename[-5:] == '.json' else filename
-    data = McMcMixin.restore_flat_chain(fname=filename)
-    fit_instance.flat_chain = np.array(data['flat_chain'])[discard:, :]
-    fit_instance.variable_labels = data['labels']
-    fit_instance.normalization = data['normalization']
+class AbstractFit(metaclass=ABCMeta):
+    MEAN_ERROR_FN = None
 
-    # reproducing results from chain
-    params.update_normalization_map(fit_instance.normalization)
-    dict_to_add = McMcMixin.resolve_mcmc_result(flat_chain=fit_instance.flat_chain,
-                                                labels=fit_instance.variable_labels)
-    # dict_to_add = params.dict_to_user_format(dict_to_add)
-    if fit_instance.fit_params is not None:
-        flatten_fit_params = params.flatten_fit_params(fit_instance.fit_params)
-        flatten_fit_params.update(dict_to_add)
+    __slots__ = ['fixed', 'constrained', 'fitable', 'normalized', 'observer', 'x_data', 'y_data',
+                 'y_err', 'x_data_reduced', 'x_data_reducer', 'initial_vector', 'normalization', 'flat_result']
 
-        fit_instance.fit_params = params.dict_to_user_format(flatten_fit_params)
-    else:
-        raise ValueError('Load fit parameters before loading the chain. '
-                         'For eg. by `fit_instance.fit_parameters = your_X0`.')
+    def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
+        setattr(self, 'fixed', x0.get_fixed(jsonify=False))
+        setattr(self, 'constrained', x0.get_constrained(jsonify=False))
+        setattr(self, 'fitable', x0.get_fitable(jsonify=False))
+        setattr(self, 'normalization', x0.get_normalization_map())
 
-    logger.info(f'Loading chain from: {filename}.')
-    return fit_instance.flat_chain, fit_instance.variable_labels, fit_instance.normalization
+        observer = Observer(passband='bolometric' if passband is None else passband, system=None)
+        observer._system_cls = BinarySystem
+        setattr(self, 'observer', observer)
+
+        setattr(self, 'x_data', {key: val.x_data for key, val in data.items()})
+        setattr(self, 'y_data', {key: val.y_data for key, val in data.items()})
+
+        err = {key: abs(self.__class__.MEAN_ERROR_FN(val)) if data[key].y_err is None else data[key].y_err
+               for key, val in self.y_data.items()}
+        setattr(self, 'y_err', err)
+
+        x_data_reduced, x_data_reducer = parameters.xs_reducer({key: val.x_data for key, val in data.items()})
+        setattr(self, 'x_data_reduced', x_data_reduced)
+        setattr(self, 'x_data_reducer', x_data_reducer)
+
+        setattr(self, 'initial_vector', [val.value for val in self.fitable.values()])
+        setattr(self, 'flat_result', dict())
+
+    @abstractmethod
+    def fit(self, *args, **kwargs):
+        pass
+
+    @staticmethod
+    def eval_constrained_results(result_dict: Dict[str, Dict], constraints: Dict[str, 'InitialParameter']):
+        """
+        Function adds constrained parameters into the resulting dictionary.
+
+        :param constraints: Dict; contains constrained parameters
+        :param result_dict: Dict; {'name': {'value': value, 'unit': unit, ...}
+        :return: Dict; {'name': {'value': value, 'unit': unit, ...}
+        """
+        if is_empty(constraints):
+            return result_dict
+
+        res_val_dict = {key: val['value'] for key, val in result_dict.items()}
+        constrained_values = parameters.constraints_evaluator(res_val_dict, constraints)
+        result_dict.update(
+            {
+                key: {
+                    'value': val,
+                    'constraint': constraints[key].constraint,
+                    'unit': constraints[key].to_dict()['unit']
+                } for key, val in constrained_values.items()
+            })
+        return result_dict
 
 
-def check_initial_param_validity(x0, params_distribution):
+class AbstractRVFit(AbstractFit):
+    MEAN_ERROR_FN = radialcurves_mean_error
+
+    @abstractmethod
+    def fit(self, *args, **kwargs):
+        pass
+
+    def set_up(self, x0: BinaryInitialParameters, data: Dict, **kwargs):
+        super().set_up(x0, data, passband=None, **kwargs)
+
+
+class AbstractLCFit(AbstractFit):
+    MEAN_ERROR_FN = lightcurves_mean_error
+
+    __slots__ = ['fixed', 'constrained', 'fitable', 'normalized', 'observer', "discretization",
+                 'interp_treshold', 'data', 'y_err', 'x_data_reduced', 'x_data_reducer',
+                 'initial_vector', 'normalization', 'x_data', 'y_data']
+
+    def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
+        super().set_up(x0, data, passband)
+        setattr(self, 'discretization', kwargs.pop('discretization'))
+        setattr(self, 'interp_treshold', kwargs.pop('interp_treshold'))
+        self.normalize_data(kind='average')
+
+    @abstractmethod
+    def fit(self, *args, **kwargs):
+        pass
+
+    def normalize_data(self, kind='global_maximum', top_fraction_to_average=0.1):
+        y_data, y_err = normalize_light_curve(self.y_data, self.y_err, kind, top_fraction_to_average)
+        setattr(self, 'y_data', y_data)
+        setattr(self, 'y_err', y_err)
+
+
+def lc_r_squared(synthetic, *args, **x):
     """
-    Checking if initial parameters dictionary is containing all necessary values and
-    no invalid ones.
+    Compute R^2 (coefficient of determination).
 
-    :param x0: dict; dictionary of initial parameters
-    :param params_distribution; dict; dictionary of necessary and allowed parameters
-    :return:
+    :param synthetic: callable; synthetic method
+    :param args: Tuple;
+    :**args**:
+        * **x_data_reduced** * -- numpy.array; phases
+        * **y_data** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
+        * **period** * -- float;
+        * **passband** * -- Union[str, List[str]];
+        * **discretization** * -- flaot;
+        * **diff** * -- flaot; auxiliary parameter for interpolation defining spacing between evaluation phases if
+                               interpolation is active
+        * **interp_treshold** * - int; number of points
+    :param x: Dict;
+    :** x options**: kwargs of current parameters to compute binary system
+    :return: float;
     """
-    # checking types of variables
-    param_types = {key: None for key, _ in x0.items()}
-    utils.invalid_param_checker(param_types, params_distribution['ALL_TYPES'], 'FIT TYPE')
-    utils.check_missing_params(params_distribution['MANDATORY_TYPES'], param_types, 'FIT TYPE')
+    x_data_reduced, y_data, passband, discretization, x_data_reducer, diff, interp_treshold = args
 
-    # checking parameters in system fit parameters
-    system_param_names = {key: None for key, _ in x0['system'].items()}
-    utils.invalid_param_checker(system_param_names, params_distribution['ALL_SYSTEM_PARAMS'], 'System')
-    utils.check_missing_params(params_distribution['MANDATORY_SYSTEM_PARAMS'], system_param_names, 'System')
+    x_data_reduced, kwargs = time_layer_resolver(x_data_reduced, pop=False, **x)
+    fit_xs = np.linspace(np.min(x_data_reduced) - diff, np.max(x_data_reduced) + diff, num=interp_treshold + 2) \
+        if np.shape(x_data_reduced)[0] > interp_treshold else x_data_reduced
 
-    # checking parameters in star fit parameters
-    composite_names = []
-    for component in config.BINARY_COUNTERPARTS.keys():
-        if component not in x0.keys():
-            continue
-        star_param_names = {key: None for key, _ in x0[component].items()}
-        utils.invalid_param_checker(star_param_names, params_distribution['ALL_STAR_PARAMS'],
-                                    f'{component} component')
-        utils.check_missing_params(params_distribution['MANDATORY_STAR_PARAMS'], star_param_names,
-                                   f'{component} component')
+    observer = Observer(passband=passband, system=None)
+    observer._system_cls = BinarySystem
+    synthetic = synthetic(fit_xs, discretization, observer, **x)
 
-        # checking validity of parameters in spots
-        if 'spots' in x0[component].keys():
-            for spot_name, spot in x0[component]['spots'].items():
-                if spot_name in composite_names:
-                    raise NameError(f'Spot name `{spot_name}` is duplicate.')
-                composite_names.append(spot_name)
-                spot_param_names = {key: None for key, _ in spot.items()}
-                utils.invalid_param_checker(spot_param_names, params_distribution['ALL_SPOT_PARAMS'],
-                                            f'{component} component spot `{spot_name}`')
-                utils.check_missing_params(params_distribution['MANDATORY_SPOT_PARAMS'], spot_param_names,
-                                           f'{component} component spot `{spot_name}`')
+    if np.shape(fit_xs) != np.shape(x_data_reduced):
+        synthetic = {
+            fltr: interpolate.interp1d(fit_xs, curve, kind='cubic')(x_data_reduced)
+            for fltr, curve in synthetic.items()
+        }
+    synthetic = {band: synthetic[band][x_data_reducer[band]] for band in synthetic}
+    synthetic, _ = normalize_light_curve(synthetic, kind='average')
 
-        # checking validity of parameters in spots
-        if 'pulsations' in x0[component].keys():
-            for mode_name, mode in x0[component]['pulsations'].items():
-                if mode_name in composite_names:
-                    raise NameError(f'Pulsations mode name `{mode_name}` is duplicate.')
-                composite_names.append(mode_name)
-                mode_param_names = {key: None for key, _ in mode.items()}
-                utils.invalid_param_checker(mode_param_names, params_distribution['ALL_PULSATIONS_PARAMS'],
-                                            f'{component} pulsation mode `{mode_name}`')
-                utils.check_missing_params(params_distribution['MANDATORY_SPOT_PARAMS'], mode_param_names,
-                                           f'{component} pulsation mode `{mode_name}`')
+    return r_squared(synthetic, y_data)
 
 
-def write_param_ln(fit_params, param_name, designation, write_fn, line_sep, precision=8):
+def rv_r_squared(synthetic, *args, **x):
     """
-    Auxiliary function to the fit_summary functions, produces one line in output for given parameter that is present
-    in `fit_params`.
+    Compute R^2 (coefficient of determination).
 
-    :param fit_params: dict;
-    :param param_name: str; name os the parameter in `fit_params`
-    :param designation: str; displayed name of the parameter
-    :param write_fn: function used to write into console or to the file
-    :param line_sep: str; symbols to finish the line
-    :return:
+    :param synthetic: callable; synthetic method
+    :param args: Tuple;
+    :**args**:
+        * **x_data_reduced** * -- numpy.array; phases
+        * **y_data** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
+        * **period** * -- float;
+        * **on_normalized** * -- bool;
+    :param x: Dict;
+    :** x options**: kwargs of current parameters to compute radial velocities curve
+    :return: float;
     """
-    if 'min' in fit_params[param_name].keys() and 'max' in fit_params[param_name].keys():
-        bot = fit_params[param_name]['min'] - fit_params[param_name]['value']
-        top = fit_params[param_name]['max'] - fit_params[param_name]['value']
+    x_data_reduced, y_data, x_data_reducer = args
 
-        aux = np.abs([bot, top])
-        aux[aux == 0] = 1e6
-        sig_figures = -int(np.log10(np.min(aux))//1) + 1
+    observer = Observer(passband='bolometric', system=None)
+    observer._system_cls = BinarySystem
+    synthetic = synthetic(x_data_reduced, observer, **x)
+    synthetic = {comp: synthetic[comp][x_data_reducer[comp]] for comp in synthetic}
 
-        bot = round(bot, sig_figures)
-        top = round(top, sig_figures)
-    else:
-        bot, top = '', '',
-        sig_figures = precision
-
-    status = 'not recognized'
-    if 'fixed' in fit_params[param_name].keys():
-        status = 'Fixed' if fit_params[param_name]['fixed'] else 'Variable'
-    elif 'constraint' in fit_params[param_name].keys():
-        status = fit_params[param_name]['constraint']
-
-    return write_ln(write_fn,
-                    designation,
-                    round(fit_params[param_name]['value'], sig_figures),
-                    bot, top, fit_params[param_name]['unit'],
-                    status, line_sep)
+    return r_squared(synthetic, y_data)
 
 
-def write_ln(write_fn, designation, value, bot, top, unit, status, line_sep, precision=8):
-    val = round(value, precision) if type(value) is not str else value
-    return write_fn(f"{designation:<35} "
-                    f"{val:>20}"
-                    f"{bot:>20}"
-                    f"{top:>20}"
-                    f"{unit:>20}    "
-                    f"{status:<50}{line_sep}")
+def r_squared(synthetic, observed):
+    variability = np.sum([np.sum(np.power(observed[item] - np.mean(observed[item]), 2)) for item in observed])
+    residual = np.sum([np.sum(np.power(synthetic[item] - observed[item], 2)) for item in observed])
 
-
-def create_labels(variable_labels):
-    """
-    utility for creating labels for mcmc-related figures where unique figure labels needs to be generated
-    :param variable_labels:
-    :return:
-    """
-    labels = []
-    for lbl in variable_labels:
-        lbl_s = lbl.split(params.PARAM_PARSER)
-        if len(lbl_s) == 2:
-            labels.append(params.PARAMS_KEY_TEX_MAP[lbl_s[1]])
-        else:
-            labels.append(lbl_s[2] + ' ' + params.PARAMS_KEY_TEX_MAP[lbl_s[3]])
-
-    return labels
+    return 1 - (residual / variability)
