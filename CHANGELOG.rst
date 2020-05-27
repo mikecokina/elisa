@@ -98,6 +98,8 @@ v0.2.3_
 -------
 .. v0.2.3_: https://github.com/mikecokina/elisa/commits/release/0.2.3
 
+**Release date:** 2020-05-27
+
 **Fixes**
 
 - fitting light curves of over-contact binaries won't crash with missing `param` error due to invalid constraint setting on backend
