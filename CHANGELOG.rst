@@ -119,7 +119,7 @@ v0.3
 
 * **pulsations**
     - introduction of pulsations modelled as a perturbations of surface geometry and surface effective temperature
-    distribution based on spherical harmonics
+      distribution based on spherical harmonics
 
 * **analytics api** *
     - more user frendly analytics api
