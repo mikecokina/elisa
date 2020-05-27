@@ -30,19 +30,8 @@ def write_param_ln(fit_params, param_id, designation, write_fn, line_sep, precis
     """
 
     if 'confidence_interval' in fit_params[param_id]:
-        # FIXME: Miro, what the fuck is going on here???
-        # bot = fit_params[param_name]['min'] - fit_params[param_name]['value']
-        # top = fit_params[param_name]['max'] - fit_params[param_name]['value']
-        #
-        # aux = np.abs([bot, top])
-        # aux[aux == 0] = 1e6
-        # sig_figures = -int(np.log10(np.min(aux)) // 1) + 1
-        #
-        # bot = round(bot, sig_figures)
-        # top = round(top, sig_figures)
-
-        bot = fit_params[param_id]['confidence_interval']['min']
-        top = fit_params[param_id]['confidence_interval']['max']
+        bot = fit_params[param_id]['value'] - fit_params[param_id]['confidence_interval']['min']
+        top = fit_params[param_id]['confidence_interval']['max'] - fit_params[param_id]['value']
 
         aux = np.abs([bot, top])
         aux[aux == 0] = 1e6
