@@ -155,7 +155,7 @@ class Observer(object):
             passband=self.passband,
             left_bandwidth=self.left_bandwidth,
             right_bandwidth=self.right_bandwidth,
-            atlas="ck04",
+            atlas=config.ATM_ATLAS,
             phases=base_phases,
             position_method=position_method
         )
