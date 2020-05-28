@@ -6,6 +6,7 @@ from scipy.interpolate import interp1d
 from copy import deepcopy
 from emcee.autocorr import integrated_time, function_1d
 
+from elisa.analytics.binary_fit import shared
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.models.lc import synthetic_binary
 from elisa.analytics.models.rv import central_rv_synthetic
@@ -125,6 +126,9 @@ class RVPlot(object):
             y_data[component] = (data.y_data * data.y_unit).to(y_axis_unit).value
             y_err[component] = (data.y_err * data.y_unit).to(y_axis_unit).value if data.y_err is not None else None
 
+        x_data, y_data, y_err = \
+            shared.extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_data, y_err)
+
         plot_result_kwargs.update({
             'x_data': x_data,
             'y_data': y_data,
@@ -229,6 +233,9 @@ class LCPlot(object):
             y_data[band] = np.tile(y_data[band], 3)[phases_extended_filter]
             if y_err[band] is not None:
                 y_err[band] = np.tile(y_err[band], 3)[phases_extended_filter]
+
+        x_data, y_data, y_err = \
+            shared.extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_data, y_err)
 
         plot_result_kwargs.update({
             'x_data': x_data,

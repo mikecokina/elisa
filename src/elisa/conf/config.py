@@ -59,7 +59,7 @@ MAX_CURVE_DATA_POINTS = 300
 
 # support data
 PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")
-VAN_HAMME_LD_TABLES = os.path.join(HOME, "limbdarkening", "vh")
+VAN_HAMME_LD_TABLES = os.path.join(HOME, "limbdarkening", "vh16")
 CK04_ATM_TABLES = os.path.join(HOME, "atmosphere", "ck04")
 K93_ATM_TABLES = os.path.join(HOME, "atmosphere", "k93")
 ATM_ATLAS = "ck04"

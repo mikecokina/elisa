@@ -161,7 +161,7 @@ def rv_r_squared(synthetic, *args, **x):
         * **y_data** * -- numpy.array; supplied fluxes (lets say fluxes from observation) normalized to max value
         * **period** * -- float;
         * **on_normalized** * -- bool;
-    :param x: Dict;
+    :param x: Dict;synth_phases
     :** x options**: kwargs of current parameters to compute radial velocities curve
     :return: float;
     """
@@ -180,3 +180,26 @@ def r_squared(synthetic, observed):
     residual = np.sum([np.sum(np.power(synthetic[item] - observed[item], 2)) for item in observed])
 
     return 1 - (residual / variability)
+
+
+def extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_data, y_err):
+    """
+    Extending observations to desired phase interval.
+
+    :param start_phase: float;
+    :param stop_phase: float;
+    :param x_data: dict;
+    :param y_data: dict;
+    :param y_err: dict;
+    :return:
+    """
+    for item, curve in x_data.items():
+        phases_extended = np.concatenate((x_data[item] - 1.0, x_data[item], x_data[item] + 1.0))
+        phases_extended_filter = np.logical_and(start_phase < phases_extended, phases_extended < stop_phase)
+        x_data[item] = phases_extended[phases_extended_filter]
+
+        y_data[item] = np.tile(y_data[item], 3)[phases_extended_filter]
+        if y_err[item] is not None:
+            y_err[item] = np.tile(y_err[item], 3)[phases_extended_filter]
+
+    return x_data, y_data, y_err
