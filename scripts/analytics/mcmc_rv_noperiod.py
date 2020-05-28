@@ -6,7 +6,6 @@ import numpy as np
 from elisa.analytics import RVData, RVBinaryAnalyticsTask
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.binary_system import t_layer
-from elisa.utils import random_sign
 from elisa import units
 
 np.random.seed(1)
@@ -24,17 +23,17 @@ def main():
     jd = t_layer.phase_to_jd(t0, period, phases)
 
     rv = get_rv()
-    u = np.random.uniform
+    u = np.random.normal
     n = len(rv["primary"])
 
-    _max = np.max(list(rv.values()))
-    bias = {"primary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)]),
-            "secondary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)])}
-    rv = {comp: val + bias[comp] for comp, val in rv.items()}
+    sigma = 2000
+    rv = {comp: u(val, sigma, n) for comp, val in rv.items()}
+    rv_err = {comp: sigma * np.ones(val.shape) for comp, val in rv.items()}
 
     data = {comp: RVData(**{
         "x_data": jd,
         "y_data": rv[comp],
+        "y_err": rv_err[comp],
         "x_unit": units.d,
         "y_unit": units.m / units.s
 
@@ -43,7 +42,7 @@ def main():
     rv_initial = {
         "system": {
             "eccentricity": {
-                "value": 0.2,
+                "value": 0.25,
                 "fixed": False,
                 "min": 0.0,
                 "max": 0.5
@@ -55,14 +54,17 @@ def main():
                 "max": 20.0
             },
             "mass_ratio": {
-                "value": 3,
+                "value": 0.6,
                 "fixed": False,
                 "min": 0.1,
-                "max": 10
+                "max": 1.0
             },
             "argument_of_periastron": {
                 "value": 0.0,
-                "fixed": True
+                "fixed": False,
+                "min": 0,
+                "max": 360,
+                "units": units.deg
             },
             "gamma": {
                 "value": 30000.0,
@@ -88,11 +90,8 @@ def main():
 
     rv_initial = BinaryInitialParameters(**rv_initial)
     task = RVBinaryAnalyticsTask(data=data, method='mcmc')
-    task.fit(x0=rv_initial, nsteps=1000, burn_in=100, save=True, fit_id="mcmc_rv_fit_no_period", progress=True)
+    task.fit(x0=rv_initial, nsteps=2000, burn_in=1000, save=True, fit_id="mcmc_rv_fit_no_period", progress=True)
     task.plot.model()
-    task.plot.corner(truths=True)
-    task.plot.traces()
-    task.plot.autocorrelation()
 
 
 if __name__ == '__main__':

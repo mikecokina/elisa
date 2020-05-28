@@ -23,15 +23,15 @@ def main():
     phases = {band: np.arange(-0.6, 0.62, 0.02) for band in lc}
     n = len(lc["Generic.Bessell.V"])
 
-    _max = np.max(list(lc.values()))
-    bias = {"Generic.Bessell.B": np.random.uniform(0, _max * 0.004, n) * np.array([random_sign() for _ in range(n)]),
-            "Generic.Bessell.V": np.random.uniform(0, _max * 0.004, n) * np.array([random_sign() for _ in range(n)]),
-            "Generic.Bessell.R": np.random.uniform(0, _max * 0.004, n) * np.array([random_sign() for _ in range(n)])}
-    lc = {comp: val + bias[comp] for comp, val in lc.items()}
+    sigma = 0.004
+    bias = {passband: np.random.normal(0, sigma, n) for passband, curve in lc.items()}
+    lc = {passband: curve + bias[passband] for passband, curve in lc.items()}
+    lc_err = {passband: sigma * np.ones(curve.shape) for passband, curve in lc.items()}
 
     data = {passband: LCData(**{
         "x_data": phases[passband],
         "y_data": lc[passband],
+        "y_err": lc_err[passband],
         "x_unit": au.dimensionless_unscaled,
         "y_unit": au.dimensionless_unscaled,
         "passband": passband
