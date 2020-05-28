@@ -20,17 +20,17 @@ def get_rv():
 def main():
     phases = np.arange(-0.6, 0.62, 0.02)
     rv = get_rv()
-    u = np.random.uniform
-    n = len(rv["primary"])
+    u = np.random.normal
+    n = len(phases)
 
-    _max = np.max(list(rv.values()))
-    bias = {"primary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)]),
-            "secondary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)])}
-    rv = {comp: val + bias[comp] for comp, val in rv.items()}
+    sigma = 2000
+    rv = {comp: u(val, sigma, n) for comp, val in rv.items()}
+    rv_err = {comp: sigma * np.ones(val.shape) for comp, val in rv.items()}
 
     data = {comp: RVData(**{
         "x_data": phases,
         "y_data": rv[comp],
+        "y_err": rv_err[comp],
         "x_unit": au.dimensionless_unscaled,
         "y_unit": au.m / au.s
 

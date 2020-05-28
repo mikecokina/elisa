@@ -2,11 +2,9 @@ import json
 import os.path as op
 
 import numpy as np
-from elisa import units
+from elisa import units as au
 
 from elisa.analytics import RVData, RVBinaryAnalyticsTask
-from elisa.utils import random_sign
-
 np.random.seed(1)
 DATA = op.join(op.abspath(op.dirname(__file__)), "data")
 
@@ -20,19 +18,20 @@ def get_rv():
 def main():
     phases = np.arange(-0.6, 0.62, 0.02)
     rv = get_rv()
-    u = np.random.uniform
-    n = len(rv["primary"])
+    u = np.random.normal
+    n = len(phases)
 
+    sigma = 2000
     _max = np.max(list(rv.values()))
-    bias = {"primary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)]),
-            "secondary": u(0, _max * 0.05, n) * np.array([random_sign() for _ in range(n)])}
-    rv = {comp: val + bias[comp] for comp, val in rv.items()}
+    rv = {comp: u(val, sigma, n) for comp, val in rv.items()}
+    rv_err = {comp: sigma * np.ones(val.shape) for comp, val in rv.items()}
 
     data = {comp: RVData(**{
         "x_data": phases,
         "y_data": rv[comp],
-        "x_unit": units.dimensionless_unscaled,
-        "y_unit": units.m / units.s
+        "y_err": rv_err[comp],
+        "x_unit": au.dimensionless_unscaled,
+        "y_unit": au.m / au.s
 
     }) for comp in rv}
 
@@ -101,7 +100,7 @@ def main():
 
     task = RVBinaryAnalyticsTask(data=data, method='mcmc')
     task.set_result(result=result)
-    task.load_chain("mcmc_rv_fit")
+    task.load_chain("mcmc_rv_fit", discard=2000)
     task.plot.model()
     task.plot.corner(truths=True)
     task.plot.traces()
