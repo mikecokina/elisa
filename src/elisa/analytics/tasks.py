@@ -71,6 +71,11 @@ class AnalyticsTask(metaclass=ABCMeta):
     def get_result(self):
         return self.fit_cls.get_result()
 
+    def result_summary(self, path=None):
+        self.fit_cls.fit_summary(path)
+
+    fit_summary = result_summary
+
     def load_chain(self, filename, discard=0, percentiles=None):
         """
 

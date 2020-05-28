@@ -1,6 +1,6 @@
 import json
-from abc import abstractmethod
 
+from abc import abstractmethod
 from typing import Union, Dict
 
 from elisa.conf.config import BINARY_COUNTERPARTS
@@ -39,7 +39,7 @@ class LCFit(object):
             line_sep = ''
 
         try:
-            result_dict: Dict = self.fit_method_instance.flat_result
+            result_dict: Dict = self.flat_result
             b_kwargs = {key: val['value'] for key, val in result_dict.items()}
             binary_instance = lc_model.prepare_binary(_verify=False, **b_kwargs)
 
@@ -205,10 +205,11 @@ class LCFit(object):
 
                 write_fn(f"{'-' * DESH_N}{line_sep}")
 
-            if result_dict['r_squared']['value'] is not None:
-                io_tools.write_param_ln(result_dict, 'r_squared', 'Fit R^2: ', write_fn, line_sep, 6)
+            if result_dict.get('r_squared', False):
+                if result_dict['r_squared']['value'] is not None:
+                    io_tools.write_param_ln(result_dict, 'r_squared', 'Fit R^2: ', write_fn, line_sep, 6)
 
-            write_fn(f"{'-' * DESH_N}{line_sep}")
+                write_fn(f"{'-' * DESH_N}{line_sep}")
         finally:
             if f is not None:
                 f.close()

@@ -39,7 +39,7 @@ class RVFit(object):
             write_fn(f"\n{'-' * DESH_N}{line_sep}")
             io_tools.write_ln(write_fn, 'Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
             write_fn(f"{'-'*DESH_N}{line_sep}")
-            result_dict: Dict = self.fit_method_instance.flat_result
+            result_dict: Dict = self.flat_result
 
             if 'system@mass_ratio' in result_dict:
                 io_tools.write_param_ln(result_dict, 'system@mass_ratio', 'Mass ratio (q=M_2/M_1):',
@@ -61,10 +61,11 @@ class RVFit(object):
 
             write_fn(f"{'-' * DESH_N}{line_sep}")
 
-            if result_dict['r_squared']['value'] is not None:
-                io_tools.write_param_ln(result_dict, 'r_squared', 'Fit R^2: ', write_fn, line_sep, 6)
+            if result_dict.get('r_squared', False):
+                if result_dict['r_squared']['value'] is not None:
+                    io_tools.write_param_ln(result_dict, 'r_squared', 'Fit R^2: ', write_fn, line_sep, 6)
 
-            write_fn(f"{'-' * DESH_N}{line_sep}")
+                write_fn(f"{'-' * DESH_N}{line_sep}")
         finally:
             if f is not None:
                 f.close()

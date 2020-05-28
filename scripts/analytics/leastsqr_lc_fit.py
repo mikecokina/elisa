@@ -40,8 +40,7 @@ def main():
     lc_initial = {
         "system": {
             "semi_major_axis": {
-                "value": 16.515,
-                "constraint": "16.515 / sin(radians(system@inclination))"
+                "constraint": "16.515 / sin(radians(system@inclination))",
             },
             "inclination": {
                 "value": 85.0,

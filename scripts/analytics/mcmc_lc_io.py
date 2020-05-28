@@ -148,10 +148,11 @@ def main():
     task = LCBinaryAnalyticsTask(data=data, method='mcmc')
     task.set_result(result)
     task.load_chain("mcmc_lc_fit")
-    task.plot.model()
-    task.plot.corner(truths=True)
-    task.plot.traces()
-    task.plot.autocorrelation()
+    # task.plot.model()
+    # task.plot.corner(truths=True)
+    # task.plot.traces()
+    # task.plot.autocorrelation()
+    task.result_summary()
 
 
 if __name__ == '__main__':
