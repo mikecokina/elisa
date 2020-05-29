@@ -5,7 +5,6 @@ import numpy as np
 from  elisa import units
 from elisa.analytics import RVData, RVBinaryAnalyticsTask
 from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.utils import random_sign
 
 np.random.seed(1)
 DATA = op.join(op.abspath(op.dirname(__file__)), "data")

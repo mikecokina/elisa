@@ -81,6 +81,7 @@ def main():
 
     task = RVBinaryAnalyticsTask(data=data, method='least_squares')
     task.set_result(result)
+    task.result_summary()
     task.plot.model()
 
 

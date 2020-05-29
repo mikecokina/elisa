@@ -76,17 +76,17 @@ def convert_unit(unit, to_unit):
     return unit if unit == au.dimensionless_unscaled else to_unit
 
 
-def read_data_file(fpath, data_columns, delimiter=config.DELIM_WHITESPACE):
+def read_data_file(filename, data_columns, delimiter=config.DELIM_WHITESPACE):
     """
     Function loads observation datafile. Rows with column names and comments should start with `#`.
     It deals with missing data by omitting given line
 
     :param delimiter: str; regex to define columns separtor
-    :param fpath: str;
+    :param filename: str;
     :param data_columns: Tuple;
     :return: numpy.array;
     """
-    data = pd.read_csv(fpath, header=None, comment='#', delimiter=delimiter,
+    data = pd.read_csv(filename, header=None, comment='#', delimiter=delimiter,
                        error_bad_lines=False, engine='python')[list(data_columns)]
     data = data.apply(lambda s: pd.to_numeric(s, errors='coerce')).dropna()
     return data.to_numpy(dtype=float)
@@ -138,12 +138,12 @@ class DataSet(metaclass=ABCMeta):
                 raise ValueError('`y_err` contains NaN')
 
     @classmethod
-    def load_from_file(cls, fpath, x_unit=None, y_unit=None, data_columns=None,
+    def load_from_file(cls, filename, x_unit=None, y_unit=None, data_columns=None,
                        delimiter=config.DELIM_WHITESPACE, **kwargs):
         """
         Function loads a RV/LC measurements from text file.
 
-        :param fpath: str; name of the file
+        :param filename: str; name of the file
         :param x_unit: astropy.unit.Unit;
         :param y_unit: astropy.unit.Unit;
         :param data_columns: Tuple; ordered tuple with column indices of x_data, y_data, y_errors
@@ -155,7 +155,7 @@ class DataSet(metaclass=ABCMeta):
         :return: Union[RVData, LCData];
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
-        data = read_data_file(fpath, data_columns, delimiter=delimiter)
+        data = read_data_file(filename, data_columns, delimiter=delimiter)
 
         try:
             errs = data[:, 2]
