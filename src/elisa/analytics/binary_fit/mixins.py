@@ -68,15 +68,22 @@ class MCMCMixin(object):
         :param norm: Dict; normalization dict
         :param fitable: Union[List, numpy.array]; labels of parameters in order of params in `flat_chain`
         """
-        now = datetime.now()
-        fdir = now.strftime(config.DATE_MASK)
-        fname = f'{now.strftime(config.DATETIME_MASK)}.json'
 
+        home = config.HOME
         if fit_id is not None:
-            fdir = str(fit_id)
-            fname = f'{str(fit_id)}.json'
+            if op.isdir(op.dirname(fit_id)):
+                fdir = op.dirname(fit_id)
+                fname = op.basename(fit_id)
+                home = ''
+            else:
+                fdir = str(fit_id)
+                fname = f'{str(fit_id)}.json'
+        else:
+            now = datetime.now()
+            fdir = now.strftime(config.DATE_MASK)
+            fname = f'{now.strftime(config.DATETIME_MASK)}.json'
 
-        fpath = op.join(config.HOME, fdir, fname)
+        fpath = op.join(home, fdir, fname)
         os.makedirs(op.join(config.HOME, fdir), exist_ok=True)
         data = {
             "flat_chain": flat_chain.tolist() if isinstance(flat_chain, np.ndarray) else flat_chain,
