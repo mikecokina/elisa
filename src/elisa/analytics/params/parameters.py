@@ -317,13 +317,13 @@ class InitialParameter(object):
         self.max = None
 
         # units transformaton
+        self.unit = au.Unit(self.unit) if self.unit is not None else self.unit
         if self.unit is not None and self.unit is not au.dimensionless_unscaled and self.constraint is None:
             kwargs.update({
                 "value": kwargs.get("value") * self.unit,
                 "min": kwargs.get("min") * self.unit,
                 "max": kwargs.get("max") * self.unit
             })
-        self.unit = conf.DEFAULT_FLOAT_UNITS[self.property]
 
         if self.constraint is None:
             self.value = transform_cls.transform_input(**{self.param: kwargs.get("value")})[self.param]
@@ -333,11 +333,10 @@ class InitialParameter(object):
         if self.fixed:
             self.min, self.max = None, None
 
+        self.unit = conf.DEFAULT_FLOAT_UNITS[self.property]
+
     def copy(self):
         return deepcopy(self)
-
-    def _convert_to_base_unit(self):
-        pass
 
     def to_dict(self):
         return dict(
