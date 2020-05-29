@@ -236,7 +236,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         return lhood
 
     def fit(self, data: Dict[str, RVData], x0: parameters.BinaryInitialParameters, nwalkers=None, nsteps=1000,
-            initial_state=None, burn_in=None, percentiles=None, progress=False, save=False, fit_id=None):
+            initial_state=None, burn_in=None, percentiles=None, progress=False, save=True, fit_id=None):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
@@ -246,7 +246,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
 
             Based on https://emcee.readthedocs.io/en/stable/.
 
-        :param save: bool; wheterher stor chain or not
+        :param save: bool; whether to store chain or not
         :param fit_id: str; id which identifies fit file (if not specified, current dateime is used)
         :param data: elisa.analytics.dataset.base.RVData;
         :param x0: elisa.analytics.params.parameters.BinaryInitialParameters;
