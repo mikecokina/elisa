@@ -31,8 +31,6 @@ def angular(value):
     else:
         raise TypeError('Input of variable is not (numpy.)int or (numpy.)float '
                         'nor astropy.unit.quantity.Quantity instance.')
-    if value < 0 or value >= 360:
-        value %= const.FULL_ARC
     return value
 
 
