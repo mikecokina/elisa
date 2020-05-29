@@ -66,8 +66,8 @@ def load_chain(mcmc_fit_cls, fit_id, discard=0, percentiles=None):
     :param fit_id: str; chain identificator
     :return: Tuple[numpy.ndarray, List, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
                                               {var_name: (min_boundary, max_boundary), ...} dictionary of
-                                               boundaries defined by user for each variable needed
-                                               to reconstruct real values from normalized `flat_chain` array
+                                              boundaries defined by user for each variable needed
+                                              to reconstruct real values from normalized `flat_chain` array
     """
     data = MCMCMixin.load_flat_chain(fit_id=fit_id)
 

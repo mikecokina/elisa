@@ -726,8 +726,8 @@ class BinarySystem(System):
         :param phases: numpy.array; if `distances` is not `None`, phases will be not used
         :param component: str; `primary`, `secondary` or None (=both)
         :param iterations: int;
-        :param distances: numpy.array, if not `None`, corrected potentials will be calculated for given component
-        distances
+        :param distances: numpy.array; if not `None`, corrected potentials will be calculated
+                                       for given component distances
         :return: numpy.array;
         """
         if distances is None:

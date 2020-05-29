@@ -185,12 +185,12 @@ class LCPlot(object):
         :param number_of_points: int;
         :param discretization: unit;
         :param data_frac_to_normalize: float; between (0, 1), fraction of top data points used for normalization,
-        depends on level of noise in your data
+                                       depends on level of noise in your data
         :param normalization_kind: str; `average` or `maximum`
         :param kwargs: Dict;
         :**kwargs options for mcmc**:
             * **fit_result** * - Dict - {result_parameter: {value: float, unit: astropy.unit.Unit,
-                                         ...(fitting method dependent)}
+                                        ...(fitting method dependent)}
         """
 
         average_kind = normalization_kind

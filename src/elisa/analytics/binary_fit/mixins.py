@@ -62,9 +62,8 @@ class MCMCMixin(object):
         :param flat_chain: numpy.array; flatted array of parameters values in each mcmc step::
 
             [[param0_0, param1_0, ..., paramk_0],
-             [param0_1, param1_1, ..., paramk_1]
-             ...
-             [param0_b, param1_n, ..., paramk_n]]
+            [param0_1, param1_1, ..., paramk_1], ...
+            [param0_b, param1_n, ..., paramk_n]]
 
         :param norm: Dict; normalization dict
         :param fitable: Union[List, numpy.array]; labels of parameters in order of params in `flat_chain`

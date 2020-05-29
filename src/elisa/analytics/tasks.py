@@ -78,7 +78,6 @@ class AnalyticsTask(metaclass=ABCMeta):
 
     def load_chain(self, filename, discard=0, percentiles=None):
         """
-
         Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
 
         :param percentiles: List;
@@ -87,8 +86,8 @@ class AnalyticsTask(metaclass=ABCMeta):
         :param filename: str; full name of the json file
         :return: Tuple[numpy.ndarray, List, Dict]; flattened mcmc chain, labels of variables in `flat_chain` columns,
                                                   {var_name: (min_boundary, max_boundary), ...} dictionary of
-                                                   boundaries defined by user for each variable needed
-                                                   to reconstruct real values from normalized `flat_chain` array
+                                                  boundaries defined by user for each variable needed
+                                                  to reconstruct real values from normalized `flat_chain` array
         """
 
         if self.method not in ['mcmc']:

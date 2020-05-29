@@ -244,7 +244,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
 
         # extracting fit results from MCMC sampler::
 
-        Based on https://emcee.readthedocs.io/en/stable/.
+            Based on https://emcee.readthedocs.io/en/stable/.
 
         :param save: bool; wheterher stor chain or not
         :param fit_id: str; id which identifies fit file (if not specified, current dateime is used)
@@ -255,7 +255,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         :param initial_state: numpy.array; initial priors for mcmc
         :param burn_in: int; numer of steps for mcmc to explore parameters
         :param percentiles: List[int]; [percentile for left side error estimation, percentile of the centre,
-                                        percentile for right side error estimation]
+                                       percentile for right side error estimation]
         :param progress: bool; visualize progress of the sampling
         :return: Dict; fit results
         """
