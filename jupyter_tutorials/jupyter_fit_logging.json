@@ -46,6 +46,16 @@
             "level": "WARNING",
             "handlers": ["console"],
             "propagate": 0
+        },
+        "observer.mp": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": 0
+        },
+        "binary_system.curves.lc": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": 0
         }
     },
 
