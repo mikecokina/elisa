@@ -18,6 +18,10 @@ from elisa.graphic.mcmc_graphics import Plot as MCMCPlot
 from elisa.observer.observer import Observer
 from elisa.graphic import graphics
 from elisa.analytics.params import parameters, conf
+from elisa.logger import getLogger
+
+
+logger = getLogger('analytics.binary_fit.plot')
 
 PLOT_UNITS = {
     'system@asini': eu.solRad,
@@ -104,6 +108,7 @@ class RVPlot(object):
             * **fit_result** * - Dict - {result_parameter: {value: float, unit: astropy.unit.Unit,
                                          ...(fitting method dependent)}
         """
+        logger.debug('Producing/retrieving data for RV plot.')
         plot_result_kwargs = dict()
         fit_result = kwargs.get('fit_result', self.fit.result)
 
@@ -156,6 +161,7 @@ class RVPlot(object):
             'y_unit': y_axis_unit
         })
 
+        logger.debug('Sending data to matplotlib interface.')
         graphics.binary_rv_fit_plot(**plot_result_kwargs)
 
 
@@ -192,7 +198,7 @@ class LCPlot(object):
             * **fit_result** * - Dict - {result_parameter: {value: float, unit: astropy.unit.Unit,
                                         ...(fitting method dependent)}
         """
-
+        logger.debug('Producing/retrieving data for LC plot.')
         average_kind = normalization_kind
         plot_result_kwargs = dict()
         fit_result = kwargs.get('fit_result', self.fit.result)
@@ -269,6 +275,8 @@ class LCPlot(object):
             'lcs': lc_fit,
             'residuals': residuals,
         })
+
+        logger.debug('Sending data to matplotlib interface.')
         graphics.binary_lc_fit_plot(**plot_result_kwargs)
 
 
@@ -316,6 +324,7 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
                               errors and units are displayed
     :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
     """
+    logger.debug('Producing/retrieving data for corner plot.')
     flat_chain = deepcopy(mcmc_fit_instance.flat_chain) if flat_chain is None else deepcopy(flat_chain)
     variable_labels = mcmc_fit_instance.variable_labels if variable_labels is None else variable_labels
     normalization = mcmc_fit_instance.normalization if normalization is None else normalization
@@ -353,6 +362,7 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
         'fit_params': flat_result
     })
     corner_plot_kwargs.update(**kwargs)
+    logger.debug('Sending data to matplotlib interface.')
     MCMCPlot.corner(**corner_plot_kwargs)
 
 
@@ -414,6 +424,7 @@ def traces(mcmc_fit_instance, traces_to_plot=None, flat_chain=None, variable_lab
     :param truths: bool; if True, fit results are used to indicate position of found values. If False,
                          none are shown. It will not work with a custom chain. (if `flat_chain` is not None).
     """
+    logger.debug('Producing/retrieving data for traces plot.')
     traces_plot_kwargs = dict()
 
     variable_labels = mcmc_fit_instance.variable_labels if variable_labels is None else variable_labels
@@ -450,4 +461,5 @@ def traces(mcmc_fit_instance, traces_to_plot=None, flat_chain=None, variable_lab
         'labels': labels,
     })
 
+    logger.debug('Sending data to matplotlib interface.')
     MCMCPlot.paramtrace(**traces_plot_kwargs)

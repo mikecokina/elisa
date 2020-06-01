@@ -56,6 +56,11 @@
             "level": "WARNING",
             "handlers": ["console"],
             "propagate": 0
+        },
+        "analytics.binary_fit.plot": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+            "propagate": 0
         }
     },
 

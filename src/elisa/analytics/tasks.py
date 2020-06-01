@@ -58,11 +58,11 @@ class AnalyticsTask(metaclass=ABCMeta):
         if method not in ['least_squares', 'mcmc']:
             raise ValueError(f'Invalid fitting method. Use one of: {", ".join(AnalyticsTask.ALLOWED_METHODS)}')
 
-    def load_result(self, path):
-        self.fit_cls.load_result(path)
+    def load_result(self, filename):
+        self.fit_cls.load_result(filename)
 
-    def save_result(self, path):
-        self.fit_cls.save_result(path)
+    def save_result(self, filename):
+        self.fit_cls.save_result(filename)
 
     def set_result(self, result):
         self.fit_cls.set_result(result)
@@ -91,7 +91,7 @@ class AnalyticsTask(metaclass=ABCMeta):
         """
 
         if self.method not in ['mcmc']:
-            raise IOError('Load chain method is allowed to be used only with mcmc task.')
+            raise IOError('Load chain method can be used only with mcmc task.')
         self.fit_cls.load_chain(filename, discard, percentiles)
         return self
 
