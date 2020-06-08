@@ -22,7 +22,7 @@ def serialize_system_kwargs(**kwargs):
 
 def _serialize_star_kwargs(component, **kwargs):
     """
-    Serialize `xn` input like kawrgs to Star kwargs (truncate p__ or s__).
+    Serialize `xn` input like kwargs to Star kwargs (truncate p__ or s__).
 
     :param component: str; `primary` or `secondary`
     :param kwargs: Dict;

@@ -52,8 +52,9 @@ def write_param_ln(fit_params, param_id, designation, write_fn, line_sep, precis
     elif param_id in ['r_squared']:
         status = 'Derived'
 
+    unit = str(fit_params[param_id]['unit']) if 'unit' in fit_params[param_id].keys() else '-'
     return write_ln(write_fn, designation, round(fit_params[param_id]['value'], sig_figures),
-                    bot, top, fit_params[param_id]['unit'] or '-', status, line_sep)
+                    bot, top, unit, status, line_sep)
 
 
 def load_chain(mcmc_fit_cls, fit_id, discard=0, percentiles=None):

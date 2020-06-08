@@ -181,7 +181,8 @@ class LCPlot(object):
         self.data = data
 
     def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, discretization=3,
-              separation=0.1, data_frac_to_normalize=0.1, normalization_kind='maximum', **kwargs):
+              separation=0.1, data_frac_to_normalize=0.1, normalization_kind='maximum', plot_legend=True, loc=1,
+              **kwargs):
         """
         Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
@@ -193,6 +194,8 @@ class LCPlot(object):
         :param data_frac_to_normalize: float; between (0, 1), fraction of top data points used for normalization,
                                        depends on level of noise in your data
         :param normalization_kind: str; `average` or `maximum`
+        :param loc: int; location of the legend
+        :param plot_legend: bool; display legend
         :param kwargs: Dict;
         :**kwargs options for mcmc**:
             * **fit_result** * - Dict - {result_parameter: {value: float, unit: astropy.unit.Unit,
@@ -214,8 +217,8 @@ class LCPlot(object):
             if data.x_unit is u.dimensionless_unscaled:
                 x_data[band] = t_layer.adjust_phases(phases=data.x_data, centre=0.0)
             else:
-                x_data[band] = t_layer.jd_to_phase(fit_result['primary_minimum_time']['value'],
-                                                   fit_result['period']['value'],
+                x_data[band] = t_layer.jd_to_phase(fit_result['system']['primary_minimum_time']['value'],
+                                                   fit_result['system']['period']['value'],
                                                    data.x_data, centre=0.0)
             y_data[band] = data.y_data
             y_err[band] = data.y_err
@@ -274,6 +277,8 @@ class LCPlot(object):
             'synth_phases': synth_phases,
             'lcs': lc_fit,
             'residuals': residuals,
+            'legend': plot_legend,
+            'loc': loc
         })
 
         logger.debug('Sending data to matplotlib interface.')
