@@ -37,6 +37,12 @@ def deflate_phenomena(flatten):
 
 
 def deserialize_result(result_dict: Dict) -> Dict:
+    """
+    Function converts dictionary of results in user format to flat format.
+
+    :param result_dict:
+    :return:
+    """
     data = {}
 
     if 'r_quared' in result_dict:
@@ -60,7 +66,7 @@ def deserialize_result(result_dict: Dict) -> Dict:
                         for phenom_key, phenom_value in phenom.items():
                             if phenom_key not in ['label']:
                                 data.update({
-                                    f'{system_slot}@{component_slot}@{phenom["label"]}@{phenom_key}': phenom_value
+                                    f'{system_slot}@{component_slot[:-1]}@{phenom["label"]}@{phenom_key}': phenom_value
                                 })
     return data
 
@@ -111,7 +117,6 @@ def serialize_result(result_dict: Dict) -> Dict:
             })
 
     # renormalize spots and pulastions if presented
-    # TODO: make it better, this is shitcode
     for component in BINARY_COUNTERPARTS:
         if component in ret_dict:
             for phenomena in ['spots', 'pulsations']:

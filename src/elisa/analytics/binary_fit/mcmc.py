@@ -147,7 +147,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
 
     def fit(self, data: Dict[str, LCData], x0: parameters.BinaryInitialParameters, discretization=5.0, nwalkers=None,
             nsteps=1000, initial_state=None, burn_in=None, percentiles=None, interp_treshold=None, progress=False,
-            save=False, fit_id=None):
+            save=True, fit_id=None):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::

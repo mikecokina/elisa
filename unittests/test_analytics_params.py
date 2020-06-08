@@ -477,21 +477,21 @@ class ParamsSupportTestCase(ElisaTestCase):
                 "min": 2.0,
                 "max": 5.5
             },
-            "secondary@spots@utopic@longitude": {
+            "secondary@spot@utopic@longitude": {
                 "value": 4.5,
                 "fixed": False,
                 "unit": "d",
                 "min": 2.0,
                 "max": 5.5
             },
-            "secondary@spots@unicorn@longitude": {
+            "secondary@spot@unicorn@longitude": {
                 "value": 2.5,
                 "fixed": False,
                 "unit": "d",
                 "min": 2.0,
                 "max": 5.5
             },
-            "secondary@pulsations@unicorn@start_phase": {
+            "secondary@pulsation@unicorn@start_phase": {
                 "value": 2.2,
                 "fixed": False,
                 "unit": "d",
