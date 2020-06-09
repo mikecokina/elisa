@@ -2,7 +2,8 @@ import numpy as np
 
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.params import parameters
-from elisa.analytics.params.parameters import ParameterMeta
+from elisa.analytics.params.parameters import ParameterMeta, BinaryInitialParameters
+from elisa.analytics.binary_fit.shared import AbstractFit
 
 
 def write_ln(write_fn, designation, value, bot, top, unit, status, line_sep, precision=8):
@@ -83,6 +84,12 @@ def load_chain(mcmc_fit_cls, fit_id, discard=0, percentiles=None):
 
     if mcmc_fit_cls.result is not None:
         mcmc_fit_cls.flat_result.update(flat_result_update)
+
+        # evaluating constraints
+        fit_params = parameters.serialize_result(mcmc_fit_cls.flat_result)
+        constrained = BinaryInitialParameters(**fit_params).get_constrained()
+        mcmc_fit_cls.flat_result = AbstractFit.eval_constrained_results(mcmc_fit_cls.flat_result, constrained)
+
         mcmc_fit_cls.result = parameters.serialize_result(mcmc_fit_cls.flat_result)
 
     else:
