@@ -84,12 +84,17 @@ class Plot(object):
         })
         graphics.orbit(**orbit_kwargs)
 
-    def equipotential(self, plane='xy', phase=0.0):
+    def equipotential(self, plane='xy', phase=0.0, components_to_plot='both', colors=('b', 'r'), legend=True,
+                      legend_loc=1):
         """
         Function for quick 2D plot of equipotential cross-section.
 
         :param plane: str; (`xy`, `yz` or `xz`) specifying what plane cross-section to display default is `xy`
         :param phase: float; phase at which to plot cross-section
+        :param components_to_plot: str; component to plot `primary`, `secondary` or `both` (default)
+        :param colors: tuple; tuple of colors for primary and secondary component equipotentials
+        :param legend: bool; legend display on/off
+        :param legend_loc: int; location of the legend
         """
         equipotential_kwargs = dict()
         # relative distance between components (a = 1)
@@ -103,7 +108,11 @@ class Plot(object):
             'plane': plane,
             'phase': phase,
             'points_primary': points_primary,
-            'points_secondary': points_secondary
+            'points_secondary': points_secondary,
+            'components_to_plot': components_to_plot,
+            'colors': colors,
+            'legend': legend,
+            "legend_loc": legend_loc
         })
         graphics.equipotential(**equipotential_kwargs)
 
@@ -111,11 +120,12 @@ class Plot(object):
         """
         Function plots 3D scatter plot of the surface points.
 
-        :param phase: float; phase at which to construct plot
-        :param components_to_plot: str; component to plot `primary`, `secondary` or `both` (default)
         :param plot_axis: bool; switch the plot axis on/off
         :param inclination: Union[float, astropy.Quantity]; elevation of the camera (in degrees if float)
         :param azimuth: Union[float, astropy.Quantity]; azimuth of the camera (in degrees if float)
+        :param components_to_plot: str; component to plot `primary`, `secondary` or `both` (default)
+
+        :param phase: float; phase at which to construct plot
         """
 
         binary_mesh_kwargs = dict()
@@ -146,7 +156,7 @@ class Plot(object):
             "components_to_plot": components_to_plot,
             "plot_axis": plot_axis,
             "inclination": inclination,
-            "azimuth": azimuth
+            "azimuth": azimuth,
         })
         graphics.binary_mesh(**binary_mesh_kwargs)
 
@@ -200,7 +210,8 @@ class Plot(object):
 
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
                 face_mask_primary=None, face_mask_secondary=None, inclination=None, azimuth=None, units='cgs',
-                axis_unit=eu.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear'):
+                axis_unit=eu.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
+                surface_colors=('g', 'r')):
         """
         function creates plot of binary system components
 
@@ -219,6 +230,7 @@ class Plot(object):
         :param colorbar_orientation: str; `horizontal` or `vertical` (default)
         :param colorbar: bool; colorabar on/off switchic
         :param scale: str; `linear` or `log`
+        :param surface_colors: tuple; tuple of colors for components if colormaps are not specified
         """
         surface_kwargs = dict()
 
@@ -294,7 +306,8 @@ class Plot(object):
             "colorbar_orientation": colorbar_orientation,
             "colorbar": colorbar,
             "scale": scale,
-            "morphology": self.binary.morphology
+            "morphology": self.binary.morphology,
+            "surface_colors": surface_colors
         })
 
         graphics.binary_surface(**surface_kwargs)

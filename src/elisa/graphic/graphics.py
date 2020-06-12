@@ -77,14 +77,19 @@ def equipotential(**kwargs):
 
     f = plt.figure()
     ax = f.add_subplot(111)
-    ax.plot(x_primary, y_primary, label='primary')
-    ax.plot(x_secondary, y_secondary, label='secondary')
+
+    if kwargs['components_to_plot'] in ['primary', 'both']:
+        ax.plot(x_primary, y_primary, label='primary', c=kwargs['colors'][0])
+    if kwargs['components_to_plot'] in ['secondary', 'both']:
+        ax.plot(x_secondary, y_secondary, label='secondary', c=kwargs['colors'][1])
+
     lims = ax.get_xlim() - np.mean(ax.get_xlim())
     ax.set_ylim(lims)
     ax.set_aspect('equal', 'box')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
-    ax.legend(loc=1)
+    if kwargs['legend']:
+        ax.legend(loc=kwargs['legend_loc'])
     ax.grid()
     plt.show()
 
@@ -290,7 +295,7 @@ def binary_surface(**kwargs):
     ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
-    clr = ['g', 'r']
+    clr = kwargs['surface_colors']
 
     if kwargs['components_to_plot'] == 'primary':
         plot = ax.plot_trisurf(
