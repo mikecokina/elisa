@@ -1,7 +1,9 @@
 Limbdarkening models
 ====================
 
-    **url:** https://mega.nz/#!PAs1xCqZ!JIMLIdEjK48OEu1kkPPm_uw1GjxtbD0gUP5loKYKpac
+    VanHamme 2016 **url:** https://mega.nz/#!PAs1xCqZ!JIMLIdEjK48OEu1kkPPm_uw1GjxtbD0gUP5loKYKpac
+
+    Claret 2017 (TESS) **url:** https://mega.nz/#!PAs1xCqZ!JIMLIdEjK48OEu1kkPPm_uw1GjxtbD0gUP5loKYKpac
 
     Contain limb darkening models for given limbdarkening models, passbands and metalicities
     Extract content of ``limbdarkening.tar`` archive to any directory and setup ``support.van_hamme_ld_tables``

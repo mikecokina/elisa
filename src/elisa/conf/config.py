@@ -260,6 +260,7 @@ PASSBANDS = [
     'Generic.Stromgren.y',
     'Kepler',
     'GaiaDR2',
+    'TESS',
 ]
 
 PASSBAND_DATAFRAME_THROUGHPUT = "throughput"
