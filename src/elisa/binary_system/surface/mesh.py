@@ -668,7 +668,8 @@ def mesh_spots(system, components_distance, component="all"):
             # lon -> phi, lat -> theta
             lon, lat = spot_instance.longitude, spot_instance.latitude
 
-            alpha = spot_instance.discretization_factor
+            alpha = spot_instance.discretization_factor \
+                if spot_instance.discretization_factor < spot_instance.angular_radius else spot_instance.angular_radius
             spot_radius = spot_instance.angular_radius
             synchronicity = component_instance.synchronicity
             mass_ratio = system.mass_ratio
