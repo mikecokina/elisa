@@ -12,7 +12,7 @@ from unittests.utils import ElisaTestCase
 class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
     def generator_test_temperatures(self, key, allowed_range=None):
         config.LIMB_DARKENING_LAW = 'linear'
-        config.VAN_HAMME_LD_TABLES = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
+        config.LD_TABLES = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
         reload(testutils)
 
         s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])

@@ -67,7 +67,7 @@ class MockSelf(object):
 class SupportMethodsTestCase(ElisaTestCase):
     def setUp(self):
         config.LIMB_DARKENING_LAW = 'linear'
-        config.VAN_HAMME_LD_TABLES = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
+        config.LD_TABLES = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
         reload(lc)
 
     def test_compute_filling_factor(self):
@@ -343,7 +343,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
         self.law = config.LIMB_DARKENING_LAW
 
-        config.VAN_HAMME_LD_TABLES = op.join(self.base_path, "limbdarkening")
+        config.LD_TABLES = op.join(self.base_path, "limbdarkening")
         config.CK04_ATM_TABLES = op.join(self.base_path, "atmosphere")
         config.ATM_ATLAS = "ck04"
         config._update_atlas_to_base_dir()

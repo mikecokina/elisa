@@ -1,6 +1,6 @@
 import os.path as op
 import pandas as pd
-from elisa.ld import get_van_hamme_ld_table_filename
+from elisa.ld import get_ld_table_filename
 
 DATA = op.join(op.abspath(op.dirname(__file__)), "data")
 OUTPUT = op.join(op.abspath(op.dirname(__file__)), "claret17.tess")
@@ -50,7 +50,7 @@ def main():
         df = df.sort_values(by=["Z", "temperature", "gravity"])
         gb = df.groupby('Z')
         for x in gb.groups:
-            filename = get_van_hamme_ld_table_filename("TESS", x, law=_ld)
+            filename = get_ld_table_filename("TESS", x, law=_ld)
             _df = gb.get_group(x)
             _df = _df.loc[:, _df.columns != 'Z']
             _df.to_csv(op.join(OUTPUT, filename), index=False)

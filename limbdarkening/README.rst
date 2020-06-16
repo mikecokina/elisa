@@ -1,12 +1,10 @@
 Limbdarkening models
 ====================
 
-    VanHamme 2016 **url:** https://mega.nz/#!PAs1xCqZ!JIMLIdEjK48OEu1kkPPm_uw1GjxtbD0gUP5loKYKpac
-
-    Claret 2017 (TESS) **url:** https://mega.nz/#!PAs1xCqZ!JIMLIdEjK48OEu1kkPPm_uw1GjxtbD0gUP5loKYKpac
+    **url:** https://mega.nz/file/7U0h3RpC#ZxAGflTglX3JGOmTS0C9S8WF64bnibRyGTeNJG0eZyQ
 
     Contain limb darkening models for given limbdarkening models, passbands and metalicities
-    Extract content of ``limbdarkening.tar`` archive to any directory and setup ``support.van_hamme_ld_tables``
+    Extract content of ``limbdarkening.tar`` archive to any directory and setup ``support.ld_tables``
     in ``elisa_config.ini``.
 
 Metallicity sign
@@ -31,7 +29,7 @@ File content
 
     Each file contain a header and values. In general, header composition of::
 
-        temperature, gravity, coefficients, error
+        temperature, gravity, coefficients, error (migh not be presented)
 
     Temperature is stored in units of Kelvin
 
@@ -68,3 +66,4 @@ List of passbands included
     Generic.Stromgren.b
     Generic.Stromgren.v
     Generic.Stromgren.y
+    TESS

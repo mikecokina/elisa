@@ -189,14 +189,14 @@ Custom tables location
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Models can be stored on your machine in directory of your choosing as well. Lets say you want ot use ``Castelli-Kurucz 2004``
-models stored in directory ``/home/user/castelli_kurucz/ck04`` and Van Hamme limb darkening models in directory
-``/home/user/van_hamme_ld/vh16``. You have to create configuration ``ini`` file where
+models stored in directory ``/home/user/castelli_kurucz/ck04`` and limb darkening models in directory
+``/home/user/ld/``. You have to create configuration ``ini`` file where
 model and directories will be specified. Now assume that name of our configuration file is ``elisa_config.ini`` located
 in path ``/home/user/.elisa/``. Then content of your configuration file should at least look like this following
 example::
 
     [support]
-    van_hamme_ld_tables = /home/user/van_hamme_ld/vh16
+    ld_tables = /home/user/ld
     castelli_kurucz_04_atm_tables = /home/user/castelli_kurucz/ck04
     atlas = ck04
 

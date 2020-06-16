@@ -5,7 +5,7 @@ import pandas as pd
 from elisa import const, utils
 
 __BASE_PATH__ = pjoin(dirname(dirname(abspath(__file__))), "vh16.orig")
-__MH__ = const.VAN_HAMME_METALLICITY_LIST_LD
+__MH__ = const.METALLICITY_LIST_LD
 __HEADER__ = ['xlin', 'qlin', 'xlog', 'ylog', 'qlog', 'xsqrt', 'ysqrt', 'qsqrt']
 
 __TABLE_HEADERS__ = {
@@ -108,10 +108,10 @@ def remove_parenthesis(record):
 def export_all_to_elisa_format(path):
     for law in ["lin", "log", "sqrt"]:
         for passband, band in __PASSBANDS_MAP__.items():
-            for mh in const.VAN_HAMME_METALLICITY_LIST_LD:
+            for mh in const.METALLICITY_LIST_LD:
                 pd_records = pd.DataFrame(columns=__TABLE_HEADERS__[law])
                 for t in const.CK_TEMPERATURE_LIST_ATM:
-                    for g in const.VAN_HAMME_GRAVITY_LIST_LD:
+                    for g in const.GRAVITY_LIST_LD:
                         obtained_record = get_record(t, g, mh, band)
                         if utils.is_empty(obtained_record):
                             continue

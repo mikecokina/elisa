@@ -59,7 +59,7 @@ MAX_CURVE_DATA_POINTS = 300
 
 # support data
 PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")
-VAN_HAMME_LD_TABLES = os.path.join(HOME, "limbdarkening", "vh16")
+LD_TABLES = os.path.join(HOME, "limbdarkening", "ld")
 CK04_ATM_TABLES = os.path.join(HOME, "atmosphere", "ck04")
 K93_ATM_TABLES = os.path.join(HOME, "atmosphere", "k93")
 ATM_ATLAS = "ck04"
@@ -205,11 +205,11 @@ def update_config():
     # ******************************************************************************************************************
 
     if c_parse.has_section('support'):
-        global VAN_HAMME_LD_TABLES
-        VAN_HAMME_LD_TABLES = c_parse.get('support', 'van_hamme_ld_tables', fallback=VAN_HAMME_LD_TABLES)
+        global LD_TABLES
+        LD_TABLES = c_parse.get('support', 'ld_tables', fallback=LD_TABLES)
 
-        if not isdir(VAN_HAMME_LD_TABLES) and not SUPPRESS_WARNINGS:
-            warnings.warn(f"path {VAN_HAMME_LD_TABLES} to van hamme ld tables doesn't exists\n"
+        if not isdir(LD_TABLES) and not SUPPRESS_WARNINGS:
+            warnings.warn(f"path {LD_TABLES} to limb darkening tables doesn't exists\n"
                           f"Specifiy it in elisa_conf.ini file")
 
         global CK04_ATM_TABLES
