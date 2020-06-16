@@ -122,10 +122,6 @@ v0.3_
 * **single system**
     - light curve calculation of single stars with spots and pulsations
 
-* **pulsations**
-    - introduction of pulsations modelled as a perturbations of surface geometry and surface effective temperature
-      distribution based on spherical harmonics
-
 * **analytics api** *
     - more user frendly analytics api
     - summary outputs of fitting
@@ -144,7 +140,7 @@ v0.3_
 
 v0.4
 ----
-    - enhanced pulsations
+    - pulsations
 
 v0.5
 ----
