@@ -107,9 +107,6 @@ v0.2.3_
 - MCMC penalisation in case of invalid binary system return big negative number instead of value near to 0.0
 - raise `elisa.base.error.AtmosphereError` when atmosphere file not founf instead `FileNotFoundError`
 
-Future plans
-============
-
 v0.3_
 -----
 
@@ -131,12 +128,17 @@ v0.3_
     - TESS passband (limb darkening tables included)
 
 **Fixes**
-- fitting light curves of over-contact binaries won't crash with missing `param` error due to invalid constraint setting on backend
-- normalize lightcurves (during fitting procedure) each on its max values instead of normalization on global maximum
-- MCMC penalisation in case of invalid binary system return big negative number instead of value near to 0.0
-- raise `elisa.base.error.AtmosphereError` when atmosphere file not founf instead `FileNotFoundError`
-- lc observation atmosphere is not hardcode to `ck04` anymore
-- small spots do not cause crashes
+
+    - fitting light curves of over-contact binaries won't crash with missing `param` error due to invalid constraint setting on backend
+    - normalize lightcurves (during fitting procedure) each on its max values instead of normalization on global maximum
+    - MCMC penalisation in case of invalid binary system return big negative number instead of value near to 0.0
+    - raise `elisa.base.error.AtmosphereError` when atmosphere file not founf instead `FileNotFoundError`
+    - lc observation atmosphere is not hardcode to `ck04` anymore
+    - small spots do not cause crashes
+
+
+Future plans
+============
 
 v0.4
 ----
