@@ -112,7 +112,7 @@ v0.3_
 
 .. v0.3_: https://github.com/mikecokina/elisa/commits/release/0.3
 
-**Release date:** ? - current (hopefully somewhat stable) version available in dev branch
+**Release date:** 2020-06-17
 
 **Features**
 
