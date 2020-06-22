@@ -18,7 +18,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
         obtained = [ld.get_metallicity_from_ld_table_filename(filename) for filename in filenames]
         assert_array_equal(expected, obtained)
 
-    def test_get_van_hamme_ld_table_filename(self):
+    def test_get_ld_table_filename(self):
         expected = ["lin.Generic.Bessell.B.m01.csv",
                     "lin.Generic.Stromgren.v.m50.csv",
                     "lin.Kepler.p01.csv",
@@ -29,7 +29,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
             dict(passband="Kepler", metallicity=0.1, law="linear"),
             dict(passband="Generic.Bessell.B", metallicity=1.0, law="square_root")
         ]
-        obtained = [ld.get_van_hamme_ld_table_filename(**param) for param in params]
+        obtained = [ld.get_ld_table_filename(**param) for param in params]
 
         assert_array_equal(expected, obtained)
 
@@ -38,38 +38,38 @@ class TestLimbDarkeningModule(ElisaTestCase):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
         return [pd.read_csv(os.path.join(path, file)) for file in sorted(os.listdir(path))]
 
-    def test_get_van_hamme_ld_table(self):
-        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
+    def test_get_ld_table(self):
+        config.LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
         params = [
             dict(passband="Generic.Bessell.B", metallicity=-0.2, law="cosine"),
             dict(passband="Kepler", metallicity=-4, law="logarithmic")
         ]
 
         expected = self.expected_ld_tables()
-        obtained = [ld.get_van_hamme_ld_table(**param) for param in params]
+        obtained = [ld.get_ld_table(**param) for param in params]
 
         for e, o in zip(expected, obtained):
             assert_frame_equal(e, o, check_less_precise=True, check_dtype=False, check_exact=True)
 
-    def test_get_van_hamme_ld_table_by_name(self):
-        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
+    def test_get_ld_table_by_name(self):
+        config.LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "vh93")
         filenames = ["lin.Generic.Bessell.B.m02.csv", "log.Kepler.m40.csv"]
 
         expected = self.expected_ld_tables()
-        obtained = [ld.get_van_hamme_ld_table_by_name(file) for file in filenames]
+        obtained = [ld.get_ld_table_by_name(file) for file in filenames]
 
         for e, o in zip(expected, obtained):
             assert_frame_equal(e, o, check_less_precise=True, check_dtype=False, check_exact=True)
 
-    def test_get_van_hamme_ld_table_by_name_same_as_get_van_hamme_ld_table(self):
+    def test_get_ld_table_by_name_same_as_get_ld_table(self):
         params = [
             dict(passband="Generic.Bessell.B", metallicity=-0.2, law="cosine"),
             dict(passband="Kepler", metallicity=-4, law="logarithmic")
         ]
         filenames = ["lin.Generic.Bessell.B.m02.csv", "log.Kepler.m40.csv"]
 
-        obtained_by_params = [ld.get_van_hamme_ld_table(**param) for param in params]
-        obtained_by_filename = [ld.get_van_hamme_ld_table_by_name(file) for file in filenames]
+        obtained_by_params = [ld.get_ld_table(**param) for param in params]
+        obtained_by_filename = [ld.get_ld_table_by_name(file) for file in filenames]
 
         for o1, o2 in zip(obtained_by_filename, obtained_by_params):
             assert_frame_equal(o1, o2)
@@ -91,7 +91,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
         assert_array_equal(obtained, expected)
 
     def test_interpolate_on_ld_grid_lin(self):
-        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "ld_grid")
+        config.LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "ld_grid")
         temperature = np.array([5500, 5561, 5582, 5932])
         log_g = np.array([4.2, 4.21, 4.223, 4.199]) - 2.0
         metallicity = -0.1
@@ -105,7 +105,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
         self.assertTrue(np.all(obtained == expected))
 
     def test_interpolate_on_ld_grid_log(self):
-        config.VAN_HAMME_LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+        config.LD_TABLES = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                                   "data", "light_curves", "limbdarkening")
         config.LIMB_DARKENING_LAW = "logarithmic"
 
