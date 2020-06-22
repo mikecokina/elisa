@@ -8,12 +8,12 @@ from abc import ABCMeta, abstractmethod
 from elisa.analytics.params import parameters
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.analytics.tools.utils import (
-    normalize_light_curve,
     radialcurves_mean_error,
     lightcurves_mean_error,
     time_layer_resolver)
 from elisa.binary_system.system import BinarySystem
 from elisa.observer.observer import Observer
+from elisa.observer.utils import normalize_light_curve
 from elisa.utils import is_empty
 
 

@@ -17,7 +17,8 @@ from elisa.analytics.binary_fit.shared import (
 from elisa.analytics.models import lc as lc_model
 from elisa.analytics.models import rv as rv_model
 from elisa.analytics.params import parameters
-from elisa.analytics.tools.utils import time_layer_resolver, normalize_light_curve
+from elisa.analytics.tools.utils import time_layer_resolver
+from elisa.observer.utils import normalize_light_curve
 from elisa.base.error import ElisaError
 from elisa.conf import config
 from elisa.graphic.mcmc_graphics import Plot

@@ -10,7 +10,7 @@ from elisa.analytics.binary_fit import shared
 from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.analytics.models.lc import synthetic_binary
 from elisa.analytics.models.rv import central_rv_synthetic
-from elisa.analytics.tools.utils import normalize_light_curve
+from elisa.observer.utils import normalize_light_curve
 from elisa.binary_system import t_layer
 from elisa import units as eu
 from elisa.binary_system.system import BinarySystem

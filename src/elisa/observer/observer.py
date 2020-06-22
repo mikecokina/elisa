@@ -186,13 +186,13 @@ class Observer(object):
 
         self.phases = phases + self._system.phase_shift
         if normalize:
-            # TODO: here develop lc normalization method
+            self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum')
             self.fluxes_unit = units.dimensionless_unscaled
         else:
             self.fluxes = curves
             self.fluxes_unit = units.W / units.m**2
         logger.info("observation finished")
-        return self.phases, curves
+        return self.phases, self.fluxes
 
     def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
         """

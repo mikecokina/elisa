@@ -5,7 +5,6 @@ import numpy as np
 from elisa.analytics import LCBinaryAnalyticsTask
 from elisa.analytics import LCData
 from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.utils import random_sign
 from elisa import units
 
 np.random.seed(1)

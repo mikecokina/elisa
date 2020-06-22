@@ -14,7 +14,8 @@ from elisa.analytics.binary_fit.shared import (
     AbstractRVFit, AbstractLCFit,
     lc_r_squared, rv_r_squared, r_squared
 )
-from elisa.analytics.tools.utils import time_layer_resolver, normalize_light_curve
+from elisa.analytics.tools.utils import time_layer_resolver
+from elisa.observer.utils import normalize_light_curve
 from elisa.logger import getPersistentLogger
 from elisa.analytics.params import parameters
 from elisa import const
