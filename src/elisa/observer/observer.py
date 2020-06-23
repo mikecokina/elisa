@@ -186,7 +186,7 @@ class Observer(object):
 
         self.phases = phases + self._system.phase_shift
         if normalize:
-            self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum')
+            self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum', top_fraction_to_average=0.0)
             self.fluxes_unit = units.dimensionless_unscaled
         else:
             self.fluxes = curves
