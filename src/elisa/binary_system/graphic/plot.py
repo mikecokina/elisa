@@ -35,7 +35,7 @@ class Plot(object):
         self.binary = instance
 
     def orbit(self, start_phase=0.0, stop_phase=1.0, number_of_points=300,
-              axis_units=eu.solRad, frame_of_reference='primary'):
+              axis_units=eu.solRad, frame_of_reference='primary', legend=True):
         """
         Function for quick 2D plot of the orbital motion in the orbital plane.
 
@@ -45,6 +45,7 @@ class Plot(object):
         :param axis_units: Union[astropy.unit, str]; specifying axis unit, use astropy
                            units or `dimensionless` or `SMA` (semi-major axis) units for axis scale
         :param frame_of_reference: str; `barycentric` or `primary`
+        :param legend: bool;
         """
         orbit_kwargs = dict()
         if axis_units in ['dimensionless', 'SMA']:
@@ -80,7 +81,8 @@ class Plot(object):
             "start_phase": start_phase,
             "stop_phase": stop_phase,
             "number_of_points": number_of_points,
-            "frame_of_reference": frame_of_reference
+            "frame_of_reference": frame_of_reference,
+            "legend": legend
         })
         graphics.orbit(**orbit_kwargs)
 
