@@ -41,6 +41,12 @@ class MCMCMixin(object):
         for idx, key in enumerate(fitable):
             mcmc_result = np.percentile(flat_chain[:, idx], percentiles)
             vals = parameters.vector_renormalizer(mcmc_result, np.repeat(key, len(mcmc_result)), normalization)
+
+            # rounding up values to significant digits
+            sigma = np.min(np.abs([vals[2] - vals[1], vals[1] - vals[0]]))
+            prec = - int(np.log10(sigma)) + 1
+            vals = np.round(vals, decimals=prec)
+
             result[key] = {
                 "value": vals[1],
                 "confidence_interval": {
@@ -51,6 +57,7 @@ class MCMCMixin(object):
                 "max": normalization[key][1],
                 "unit": fitable[key].to_dict()['unit']
             }
+
         return result
 
     @staticmethod

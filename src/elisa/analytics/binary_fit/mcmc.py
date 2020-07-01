@@ -23,6 +23,7 @@ from elisa.base.error import ElisaError
 from elisa.conf import config
 from elisa.graphic.mcmc_graphics import Plot
 from elisa.logger import getPersistentLogger
+from elisa.analytics.binary_fit.shared import check_for_boundary_surface_potentials
 
 logger = getPersistentLogger('analytics.binary_fit.mcmc')
 
@@ -198,6 +199,8 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         r_dict = {key: value['value'] for key, value in result_dict.items()}
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result, "unit": None}
+
+        result_dict = check_for_boundary_surface_potentials(result_dict)
 
         setattr(self, 'flat_result', result_dict)
         return parameters.serialize_result(result_dict)

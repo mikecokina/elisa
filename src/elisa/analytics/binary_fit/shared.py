@@ -15,6 +15,8 @@ from elisa.binary_system.system import BinarySystem
 from elisa.observer.observer import Observer
 from elisa.observer.utils import normalize_light_curve
 from elisa.utils import is_empty
+from elisa.conf import config
+from elisa.binary_system.system import BinarySystem
 
 
 class AbstractFit(metaclass=ABCMeta):
@@ -203,3 +205,53 @@ def extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_d
             y_err[item] = np.tile(y_err[item], 3)[phases_extended_filter]
 
     return x_data, y_data, y_err
+
+
+def check_for_boundary_surface_potentials(result_dict):
+    """
+    Function checks if surface potential are within errors below critical potentials (which would break BinarySystem
+    initialization). If surface potential are within errors they are snapped to critical values.
+
+    :param result_dict: dict; flat dict of fit results
+    :return: dict; corrected flat dict of fit results
+    """
+    if "primary@surface_potential" not in result_dict.keys() or "secondary@surface_potential" not in result_dict.keys():
+        return result_dict
+
+    for component in config.BINARY_COUNTERPARTS:
+        pot = result_dict[component + "@surface_potential"]
+        if "fixed" not in pot.keys() or "value" not in pot.keys():
+            continue
+
+        sigma = pot["value"] - pot["confidence_interval"]["min"] if "confidence_interval" in pot.keys() else 0.001
+
+        synchronicity = result_dict[component + "@synchronicity"]["value"] \
+            if component + "@synchronicity" in result_dict.keys() else 1.0
+
+        mass_ratio = result_dict["system@mass_ratio"]["value"] \
+            if "system@mass_ratio" in result_dict.keys() \
+            else result_dict["secondary@mass"]["value"]/result_dict["primary@mass"]["value"]
+
+        periastron_distance = 1 - result_dict["system@eccentricity"]["value"]
+
+        critical_potential = \
+            BinarySystem.critical_potential_static(
+                component=component,
+                components_distance=periastron_distance,
+                mass_ratio=mass_ratio,
+                synchronicity=synchronicity
+            )
+
+        # if resulting potential is too close critical potentials (within errors), it will snap potential to critical
+        # to avoid problems
+        if sigma >= critical_potential - pot["value"] >= 0.0:
+            pot["value"] = critical_potential
+
+        # test for over-contact overflow trough L2 point
+        critical_potential2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
+        if sigma >= critical_potential - pot["value"] >= 0.0:
+            pot["value"] = critical_potential2
+
+    return result_dict
+
+

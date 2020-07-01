@@ -135,6 +135,8 @@ v0.3_
     - raise `elisa.base.error.AtmosphereError` when atmosphere file not founf instead `FileNotFoundError`
     - lc observation atmosphere is not hardcode to `ck04` anymore
     - small spots do not cause crashes
+    - mcmc chain evaluator often crashed when fitting system with component filling its roche lobe, fixed by snapping
+      surface potential to critical potentials if they are within errors from fitted potential
 
 
 Future plans

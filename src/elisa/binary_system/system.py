@@ -458,28 +458,45 @@ class BinarySystem(System):
         :param components_distance: numpy.float;
         :return: numpy.float;
         """
-        if component == "primary":
-            args = self.primary.synchronicity, self.mass_ratio, components_distance
-            solution = optimize.newton(model.primary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
-        elif component == "secondary":
-            args = self.secondary.synchronicity, self.mass_ratio, components_distance
-            solution = optimize.newton(model.secondary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
+        synchronicity = self.primary.synchronicity if component == 'primary' else self.secondary.synchronicity
+        return self.critical_potential_static(component, components_distance, self.mass_ratio, synchronicity)
+
+    @staticmethod
+    def critical_potential_static(component, components_distance, mass_ratio, synchronicity):
+        """
+        Static method for calculation of critical potential for EB system component.
+
+        :param component: str; define target component to compute critical potential; `primary` or `secondary`
+        :param components_distance: components_distance: numpy.float;
+        :param mass_ratio: float;
+        :param synchronicity: float;
+        :return: numpy.float;
+        """
+        args1 = synchronicity, mass_ratio, components_distance
+        args2 = args1 + (0.0, const.HALF_PI)
+        solver_err = ValueError("Iteration process to solve critical potential seems "
+                                "to lead nowhere (critical potential solver has failed).")
+
+        if component == 'primary':
+            solution = optimize.newton(model.primary_potential_derivative_x, 0.000001, args=args1, tol=1e-12)
+            if not up.isnan(solution):
+                precalc_args = model.pre_calculate_for_potential_value_primary(*args2)
+                args = (mass_ratio,) + precalc_args
+                return abs(model.potential_value_primary(solution, *args))
+            else:
+                raise solver_err
+
+        elif component == 'secondary':
+            solution = optimize.newton(model.secondary_potential_derivative_x, 0.000001, args=args1, tol=1e-12)
+            if not up.isnan(solution):
+                precalc_args = model.pre_calculate_for_potential_value_secondary(*args2)
+                args = (mass_ratio,) + precalc_args
+                return abs(model.potential_value_secondary(components_distance - solution, *args))
+            else:
+                raise solver_err
+
         else:
             raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
-
-        if not up.isnan(solution):
-            args = components_distance, 0.0, const.HALF_PI
-            if component == "primary":
-                args = (self.primary.synchronicity, self.mass_ratio) + args
-                args = (self.mass_ratio, ) + model.pre_calculate_for_potential_value_primary(*args)
-                return abs(model.potential_value_primary(solution, *args))
-            elif component == 'secondary':
-                args = (self.secondary.synchronicity, self.mass_ratio) + args
-                args = (self.mass_ratio, ) + model.pre_calculate_for_potential_value_secondary(*args)
-                return abs(model.potential_value_secondary(components_distance - solution, *args))
-        else:
-            raise ValueError("Iteration process to solve critical potential seems "
-                             "to lead nowhere (critical potential solver has failed).")
 
     def libration_potentials(self):
         """
@@ -487,9 +504,19 @@ class BinarySystem(System):
 
         :return: List; [Omega(L3), Omega(L1), Omega(L2)];
         """
+        return self.libration_potentials_static(self.orbit.periastron_distance, self.mass_ratio)
 
+    @staticmethod
+    def libration_potentials_static(periastron_distance, mass_ratio):
+        """
+        Static version of `libration_potentials` where potentials in L3, L1, L2 are calculated.
+
+        :param periastron_distance: float;
+        :param mass_ratio: float;
+        :return: list
+        """
         def potential(radius):
-            theta, d = const.HALF_PI, self.orbit.periastron_distance
+            theta, d = const.HALF_PI, periastron_distance
             if isinstance(radius, (float, int, np.float, np.int)):
                 radius = [radius]
             elif not isinstance(radius, tuple([list, np.array])):
@@ -500,22 +527,33 @@ class BinarySystem(System):
                 phi, r = (0.0, r) if r >= 0 else (const.PI, abs(r))
 
                 block_a = 1.0 / r
-                block_b = self.mass_ratio / (up.sqrt(up.power(d, 2) + up.power(r, 2) - (
+                block_b = mass_ratio / (up.sqrt(up.power(d, 2) + up.power(r, 2) - (
                         2.0 * r * up.cos(phi) * up.sin(theta) * d)))
-                block_c = (self.mass_ratio * r * up.cos(phi) * up.sin(theta)) / (up.power(d, 2))
-                block_d = 0.5 * (1 + self.mass_ratio) * up.power(r, 2) * (
+                block_c = (mass_ratio * r * up.cos(phi) * up.sin(theta)) / (up.power(d, 2))
+                block_d = 0.5 * (1 + mass_ratio) * up.power(r, 2) * (
                         1 - up.power(up.cos(theta), 2))
 
                 p_values.append(block_a + block_b - block_c + block_d)
             return p_values
 
-        lagrangian_points = self.lagrangian_points()
+        lagrangian_points = BinarySystem.lagrangian_points_static(periastron_distance, mass_ratio)
         return potential(lagrangian_points)
 
     def lagrangian_points(self):
         """
         Compute Lagrangian points for current system parameters.
 
+        :return: List; x-valeus of libration points [L3, L1, L2] respectively
+        """
+        return self.lagrangian_points_static(self.orbit.periastron_distance, self.mass_ratio)
+
+    @staticmethod
+    def lagrangian_points_static(periastron_distance, mass_ratio):
+        """
+        Static version of `lagrangian_points` that returns Lagrangian points for current system parameters.
+
+        :param periastron_distance: float;
+        :param mass_ratio: float;
         :return: List; x-valeus of libration points [L3, L1, L2] respectively
         """
 
@@ -531,10 +569,9 @@ class BinarySystem(System):
             """
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-            return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                    3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+            return - (x / r_sqr ** (3.0 / 2.0)) + ((mass_ratio * (d - x)) / rw_sqr ** (
+                    3.0 / 2.0)) + (mass_ratio + 1) * x - mass_ratio / d ** 2
 
-        periastron_distance = self.orbit.periastron_distance
         xs = np.linspace(- periastron_distance * 3.0, periastron_distance * 3.0, 100)
 
         args_val = periastron_distance,
@@ -572,7 +609,7 @@ class BinarySystem(System):
                 logger.debug(f"solution for x: {x_val} lead to nowhere, exception: {str(e)}")
                 continue
 
-        return sorted(lagrange) if self.mass_ratio < 1.0 else sorted(lagrange, reverse=True)
+        return sorted(lagrange) if mass_ratio < 1.0 else sorted(lagrange, reverse=True)
 
     def compute_equipotential_boundary(self, components_distance, plane):
         """
@@ -837,8 +874,8 @@ class BinarySystem(System):
         discretization_factor = star.discretization_factor
 
         # generating equidistant angles
-        num, n = int(const.PI // discretization_factor), 5
-        theta = np.linspace(discretization_factor / n, const.PI - discretization_factor / n, num=num + 1, endpoint=True)
+        num = int(const.PI // discretization_factor)
+        theta = np.linspace(discretization_factor, const.PI - discretization_factor, num=num + 1, endpoint=True)
 
         rad_args = (star.synchronicity, self.mass_ratio, components_distance, surface_potential, component)
         backward_radius = bsradius.calculate_backward_radius(*rad_args)
@@ -862,7 +899,10 @@ class BinarySystem(System):
                 cylindrical_potential_derivative_fn, surface_potential, self.mass_ratio, star.synchronicity)
         points = mesh.get_surface_points_cylindrical(*args)
 
-        return points[:points.shape[0] // 2, :], points[points.shape[0] // 2:, :]
+        forward_point = np.array([0.0, 0.0, forward_radius])
+        backward_point = np.array([0.0, 0.0, -backward_radius])
+        return np.vstack((forward_point, points[:points.shape[0] // 2, :], backward_point)), \
+               np.vstack((forward_point, points[points.shape[0] // 2:, :], backward_point))
 
     # light curves *****************************************************************************************************
     def compute_lightcurve(self, **kwargs):

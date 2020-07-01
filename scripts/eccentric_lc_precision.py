@@ -9,52 +9,50 @@ from elisa.observer.observer import Observer
 from elisa.conf import config
 import matplotlib.gridspec as gridspec
 
-
 """script aims to test the precision of various aproximations taken during eccentric lc calculation compared to exact 
 solution"""
 
 logger = logging.getLogger()
-logger.setLevel(level='WARNING')
-# logger.setLevel(level='DEBUG')
+# logger.setLevel(level='WARNING')
+logger.setLevel(level='DEBUG')
 # contact_pot = 2.5
 contact_pot = 4
 start_time = time()
 
-
 star_time = time()
-primary = Star(mass=1.514*u.solMass,
+primary = Star(mass=1.514 * u.solMass,
                surface_potential=contact_pot,
                synchronicity=1.0,
-               t_eff=10000*u.K,
+               t_eff=10000 * u.K,
                gravity_darkening=1.0,
                discretization_factor=5,
                albedo=0.6,
                metallicity=0,
                # spots=spots_metadata['primary'],
                )
-secondary = Star(mass=0.327*u.solMass,
+secondary = Star(mass=0.327 * u.solMass,
                  surface_potential=contact_pot,
                  synchronicity=1.0,
-                 t_eff=4000*u.K,
+                 t_eff=4000 * u.K,
                  gravity_darkening=1.0,
                  albedo=0.6,
                  metallicity=0,
                  # spots=spots_metadata['secondary'],
-                )
+                 )
 
 bs = BinarySystem(primary=primary,
                   secondary=secondary,
-                  argument_of_periastron=320*u.deg,
-                  gamma=-41.7*u.km/u.s,
-                  period=0.7949859*u.d,
+                  argument_of_periastron=320 * u.deg,
+                  gamma=-41.7 * u.km / u.s,
+                  period=0.7949859 * u.d,
                   eccentricity=0.25,
                   # eccentricity=0,
-                  inclination=85*u.deg,
-                  primary_minimum_time=2440862.60793*u.d,
+                  inclination=85 * u.deg,
+                  primary_minimum_time=2440862.60793 * u.d,
                   phase_shift=0.0,
                   )
 
-print('Elapsed time during system build: {:.6f}'.format(time()-star_time))
+print('Elapsed time during system build: {:.6f}'.format(time() - star_time))
 
 star_time = time()
 o = Observer(passband=['Generic.Bessell.V',
@@ -67,22 +65,30 @@ o = Observer(passband=['Generic.Bessell.V',
 
 start_phs = -0.6
 stop_phs = 0.6
-# step = 0.1
-step = 0.01
+step = 0.005
 config.POINTS_ON_ECC_ORBIT = 50
-curves_approx = o.lc(from_phase=start_phs,
-                     to_phase=stop_phs,
-                     phase_step=step,
-                     )
+curves_approx1 = o.lc(from_phase=start_phs,
+                      to_phase=stop_phs,
+                      phase_step=step,
+                      )
 
-print('Elapsed time for approx LC gen: {:.6f}'.format(time()-star_time))
-star_time = time()
+print('Elapsed time for approx one LC gen: {:.6f}'.format(time() - star_time))
+
 config.POINTS_ON_ECC_ORBIT = 9999
+config.MAX_RELATIVE_D_R_POINT = 0.005
+star_time = time()
+curves_approx2 = o.lc(from_phase=start_phs,
+                      to_phase=stop_phs,
+                      phase_step=step,
+                      )
+print('Elapsed time for approx two LC gen: {:.6f}'.format(time() - star_time))
+
+config.MAX_RELATIVE_D_R_POINT = 1e-8
 curves_exact = o.lc(from_phase=start_phs,
                     to_phase=stop_phs,
                     phase_step=step,
                     )
-print('Elapsed time for exact LC gen: {:.6f}'.format(time()-star_time))
+print('Elapsed time for exact LC gen: {:.6f}'.format(time() - star_time))
 
 x = np.linspace(start_phs, stop_phs, int(round((stop_phs-start_phs)/step, 0)))
 
@@ -91,12 +97,15 @@ gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
 ax1 = fig.add_subplot(gs[0])
 ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
-for item in curves_approx[1]:
-    y_approx = curves_approx[1][item]/max(curves_approx[1][item])
+for item in curves_approx1[1]:
+    y_approx1 = curves_approx1[1][item]/max(curves_approx1[1][item])
+    y_approx2 = curves_approx2[1][item]/max(curves_approx2[1][item])
     y_exact = curves_exact[1][item]/max(curves_exact[1][item])
-    ax1.plot(x, y_approx, label=item + '_approx')
+    ax1.plot(x, y_approx1, label=item + '_approx1')
+    ax1.plot(x, y_approx2, label=item + '_approx2')
     ax1.plot(x, y_exact, label=item + '_exact')
-    ax2.plot(x, y_exact-y_approx, label='exact - approximation')
+    ax2.plot(x, y_exact-y_approx1, label='exact - approximation1')
+    ax2.plot(x, y_exact-y_approx2, label='exact - approximation2')
 ax1.legend()
 ax2.legend()
 ax1.set_ylabel('Flux')

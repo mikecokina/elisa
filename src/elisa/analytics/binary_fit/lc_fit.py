@@ -13,6 +13,7 @@ from elisa import units
 from elisa.analytics.binary_fit import io_tools
 from elisa.binary_system.surface.gravity import calculate_polar_gravity_acceleration
 from elisa.analytics.models import lc as lc_model
+from elisa.analytics.binary_fit.shared import check_for_boundary_surface_potentials
 
 logger = getLogger('analytics.binary_fit.lc_fit')
 
@@ -40,6 +41,7 @@ class LCFit(object):
 
         try:
             result_dict: Dict = self.flat_result
+            result_dict = check_for_boundary_surface_potentials(result_dict)
             b_kwargs = {key: val['value'] for key, val in result_dict.items()}
             binary_instance = lc_model.prepare_binary(_verify=False, **b_kwargs)
 
