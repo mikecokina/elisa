@@ -68,7 +68,7 @@ o = Observer(passband=['Generic.Bessell.V',
 
 start_phs = -0.6
 stop_phs = 0.6
-step = 0.0075
+step = 0.005
 config.POINTS_ON_ECC_ORBIT = 50
 
 start_time = time()
