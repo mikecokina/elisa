@@ -19,6 +19,9 @@ logger.setLevel(level='DEBUG')
 contact_pot = 4
 start_time = time()
 
+# N = 10
+N = 1
+
 star_time = time()
 primary = Star(mass=1.514 * u.solMass,
                surface_potential=contact_pot,
@@ -54,7 +57,7 @@ bs = BinarySystem(primary=primary,
 
 print('Elapsed time during system build: {:.6f}'.format(time() - star_time))
 
-star_time = time()
+
 o = Observer(passband=['Generic.Bessell.V',
                        # 'Generic.Bessell.B',
                        # 'Generic.Bessell.U',
@@ -65,30 +68,41 @@ o = Observer(passband=['Generic.Bessell.V',
 
 start_phs = -0.6
 stop_phs = 0.6
-step = 0.005
+step = 0.0075
 config.POINTS_ON_ECC_ORBIT = 50
-curves_approx1 = o.lc(from_phase=start_phs,
-                      to_phase=stop_phs,
-                      phase_step=step,
-                      )
 
-print('Elapsed time for approx one LC gen: {:.6f}'.format(time() - star_time))
+start_time = time()
+for _ in range(N):
+    curves_approx1 = o.lc(from_phase=start_phs,
+                          to_phase=stop_phs,
+                          phase_step=step,
+                          )
+interp_time = (time() - start_time) / N
+print('Elapsed time for approx one LC gen: {:.6f}'.format(interp_time))
 
 config.POINTS_ON_ECC_ORBIT = 9999
 config.MAX_RELATIVE_D_R_POINT = 0.005
-star_time = time()
-curves_approx2 = o.lc(from_phase=start_phs,
-                      to_phase=stop_phs,
-                      phase_step=step,
-                      )
-print('Elapsed time for approx two LC gen: {:.6f}'.format(time() - star_time))
+start_time = time()
+
+for _ in range(N):
+    curves_approx2 = o.lc(from_phase=start_phs,
+                          to_phase=stop_phs,
+                          phase_step=step,
+                          )
+sim_geom_time = (time() - start_time) / N
+print('Elapsed time for approx two LC gen: {:.6f}'.format(sim_geom_time))
+
 
 config.MAX_RELATIVE_D_R_POINT = 1e-8
-curves_exact = o.lc(from_phase=start_phs,
-                    to_phase=stop_phs,
-                    phase_step=step,
-                    )
-print('Elapsed time for exact LC gen: {:.6f}'.format(time() - star_time))
+
+start_time = time()
+for _ in range(N):
+    curves_exact = o.lc(from_phase=start_phs,
+                        to_phase=stop_phs,
+                        phase_step=step,
+                        )
+exact_time = (time() - start_time) / N
+print('Elapsed time for exact LC gen: {:.6f}'.format(exact_time))
 
 x = np.linspace(start_phs, stop_phs, int(round((stop_phs-start_phs)/step, 0)))
 
@@ -97,19 +111,25 @@ gs = gridspec.GridSpec(2, 1, height_ratios=[2, 1])
 ax1 = fig.add_subplot(gs[0])
 ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
+text = r'$t_{approx}/t_{exact}=$'
 for item in curves_approx1[1]:
     y_approx1 = curves_approx1[1][item]/max(curves_approx1[1][item])
     y_approx2 = curves_approx2[1][item]/max(curves_approx2[1][item])
     y_exact = curves_exact[1][item]/max(curves_exact[1][item])
-    ax1.plot(x, y_approx1, label=item + '_approx1')
-    ax1.plot(x, y_approx2, label=item + '_approx2')
-    ax1.plot(x, y_exact, label=item + '_exact')
-    ax2.plot(x, y_exact-y_approx1, label='exact - approximation1')
-    ax2.plot(x, y_exact-y_approx2, label='exact - approximation2')
+    time_frac1 = np.round(interp_time/exact_time, 2)
+    time_frac2 = np.round(sim_geom_time/exact_time, 2)
+    ax1.plot(x, y_approx1, label='interpolation, '+text+str(time_frac1))
+    ax1.plot(x, y_approx2, label='similar geometry, '+text+str(time_frac2))
+    ax1.plot(x, y_exact, label='exact')
+    ax2.plot(x, y_exact-y_approx1, label='exact - interpolation')
+    ax2.plot(x, y_exact-y_approx2, label='exact - similar geometry')
+
 ax1.legend()
 ax2.legend()
+ax2.ticklabel_format(scilimits=(-3, 5))
 ax1.set_ylabel('Flux')
 ax2.set_xlabel('Phase')
+ax2.set_ylabel('Residual flux')
 plt.subplots_adjust(hspace=0, right=0.98, top=0.98)
 plt.show()
 
