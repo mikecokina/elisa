@@ -219,14 +219,14 @@ def check_for_boundary_surface_potentials(result_dict):
         return result_dict
 
     for component in config.BINARY_COUNTERPARTS:
-        pot = result_dict[component + "@surface_potential"]
+        pot = result_dict[f"{component}@surface_potential"]
         if "fixed" not in pot.keys() or "value" not in pot.keys():
             continue
 
         sigma = pot["value"] - pot["confidence_interval"]["min"] if "confidence_interval" in pot.keys() else 0.001
 
-        synchronicity = result_dict[component + "@synchronicity"]["value"] \
-            if component + "@synchronicity" in result_dict.keys() else 1.0
+        synchronicity = result_dict[f"{component}@synchronicity"]["value"] \
+            if f"{component}@synchronicity" in result_dict.keys() else 1.0
 
         mass_ratio = result_dict["system@mass_ratio"]["value"] \
             if "system@mass_ratio" in result_dict.keys() \
@@ -234,7 +234,7 @@ def check_for_boundary_surface_potentials(result_dict):
 
         periastron_distance = 1 - result_dict["system@eccentricity"]["value"]
 
-        critical_potential = \
+        l1 = \
             BinarySystem.critical_potential_static(
                 component=component,
                 components_distance=periastron_distance,
@@ -244,14 +244,12 @@ def check_for_boundary_surface_potentials(result_dict):
 
         # if resulting potential is too close critical potentials (within errors), it will snap potential to critical
         # to avoid problems
-        if sigma >= critical_potential - pot["value"] >= 0.0:
-            pot["value"] = critical_potential
+        if sigma >= l1 - pot["value"] >= 0.0:
+            pot["value"] = l1
 
         # test for over-contact overflow trough L2 point
-        critical_potential2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
-        if sigma >= critical_potential - pot["value"] >= 0.0:
-            pot["value"] = critical_potential2
+        l2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
+        if sigma >= l2 - pot["value"] >= 0.0:
+            pot["value"] = l2
 
     return result_dict
-
-

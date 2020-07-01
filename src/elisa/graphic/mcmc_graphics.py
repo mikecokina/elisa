@@ -63,8 +63,10 @@ class Plot(object):
 
             if kwargs['truths']:
                 ax[-1].axhline(kwargs['fit_params'][label]['value'], linestyle='dashed', color='black')
-                ax[-1].axhline(kwargs['fit_params'][label]["confidence_interval"]['min'], linestyle='dotted', color='black')
-                ax[-1].axhline(kwargs['fit_params'][label]["confidence_interval"]['max'], linestyle='dotted', color='black')
+                ax[-1].axhline(kwargs['fit_params'][label]["confidence_interval"]['min'],
+                               linestyle='dotted', color='black')
+                ax[-1].axhline(kwargs['fit_params'][label]["confidence_interval"]['max'],
+                               linestyle='dotted', color='black')
 
         ax[-1].set_xlabel('N')
 
