@@ -138,6 +138,19 @@ v0.3_
     - mcmc chain evaluator often crashed when fitting system with component filling its roche lobe, fixed by snapping
       surface potential to critical potentials if they are within errors from fitted potential
 
+v0.3.1_
+-------
+
+.. v0.3.1_: https://github.com/mikecokina/elisa/commits/release/0.3.1
+
+**Release date:** ----
+
+**Fixes**
+
+    - on-demand normalization of light curves
+    - mcmc chain evaluator often crashed when fitting system with component filling its roche lobe, fixed by snapping
+      surface potential to critical potentials if they are within errors from fitted potential
+
 
 Future plans
 ============
