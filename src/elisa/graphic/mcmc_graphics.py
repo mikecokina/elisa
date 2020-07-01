@@ -25,8 +25,8 @@ class Plot(object):
         for i, label in enumerate(variable_labels):
             ax = axes[i, i]
             value = fit_params[label]['value']
-            bottom = fit_params[label]['min'] - value
-            top = fit_params[label]['max'] - value
+            bottom = fit_params[label]["confidence_interval"]['min'] - value
+            top = fit_params[label]["confidence_interval"]['max'] - value
 
             unit = fit_params[label]['unit']
             unit = '' if unit == 'dimensionless' or unit is None else unit
@@ -63,8 +63,8 @@ class Plot(object):
 
             if kwargs['truths']:
                 ax[-1].axhline(kwargs['fit_params'][label]['value'], linestyle='dashed', color='black')
-                ax[-1].axhline(kwargs['fit_params'][label]['min'], linestyle='dotted', color='black')
-                ax[-1].axhline(kwargs['fit_params'][label]['max'], linestyle='dotted', color='black')
+                ax[-1].axhline(kwargs['fit_params'][label]["confidence_interval"]['min'], linestyle='dotted', color='black')
+                ax[-1].axhline(kwargs['fit_params'][label]["confidence_interval"]['max'], linestyle='dotted', color='black')
 
         ax[-1].set_xlabel('N')
 

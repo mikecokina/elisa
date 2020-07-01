@@ -351,8 +351,10 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
             unt = u.Unit(flat_result[lbl]['unit'])
             flat_chain[:, ii] = (flat_chain[:, ii] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['value'] = (flat_result[lbl]['value'] * unt).to(plot_units[lbl]).value
-            flat_result[lbl]['min'] = (flat_result[lbl]['min'] * unt).to(plot_units[lbl]).value
-            flat_result[lbl]['max'] = (flat_result[lbl]['max'] * unt).to(plot_units[lbl]).value
+            flat_result[lbl]["confidence_interval"]['min'] = \
+                (flat_result[lbl]["confidence_interval"]['min'] * unt).to(plot_units[lbl]).value
+            flat_result[lbl]["confidence_interval"]['max'] = \
+                (flat_result[lbl]["confidence_interval"]['max'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['unit'] = plot_units[lbl].to_string()
 
     truths = [flat_result[lbl]['value'] for lbl in variable_labels] if truths is True else None
@@ -451,8 +453,10 @@ def traces(mcmc_fit_instance, traces_to_plot=None, flat_chain=None, variable_lab
             unt = u.Unit(flat_result[lbl]['unit'])
             flat_chain[:, ii] = (flat_chain[:, ii] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['value'] = (flat_result[lbl]['value'] * unt).to(plot_units[lbl]).value
-            flat_result[lbl]['min'] = (flat_result[lbl]['min'] * unt).to(plot_units[lbl]).value
-            flat_result[lbl]['max'] = (flat_result[lbl]['max'] * unt).to(plot_units[lbl]).value
+            flat_result[lbl]["confidence_interval"]['min'] = \
+                (flat_result[lbl]["confidence_interval"]['min'] * unt).to(plot_units[lbl]).value
+            flat_result[lbl]["confidence_interval"]['max'] = \
+                (flat_result[lbl]["confidence_interval"]['max'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['unit'] = plot_units[lbl].to_string()
 
     traces_to_plot = variable_labels if traces_to_plot is None else traces_to_plot
