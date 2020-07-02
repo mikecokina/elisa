@@ -151,7 +151,7 @@ v0.3.1_
     - mcmc chain evaluator often crashed when fitting system with component filling its roche lobe, fixed by snapping
       surface potential to critical potentials if they are within errors from fitted potential
     - wrong intervals used in corner and trace plot, now fitting confidence intervals instead of fit intervals
-
+    - more suitable form of cost function for least squares fitting method
 
 Future plans
 ============

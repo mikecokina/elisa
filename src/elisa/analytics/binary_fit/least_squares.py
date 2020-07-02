@@ -72,8 +72,8 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         else:
             synthetic = {band: val[self.x_data_reducer[band]] for band, val in synthetic.items()}
 
-        residuals = np.sum([np.sum(np.power(synthetic[band] - self.y_data[band], 2) /
-                                   self.y_err[band]) for band in synthetic])
+        residuals = np.sum([np.sum(np.power((synthetic[band] - self.y_data[band]) / self.y_err[band], 2))
+                            for band in synthetic])
 
         r2 = r_squared(synthetic, self.y_data)
         logger.info(f'current R2: {r2}')
