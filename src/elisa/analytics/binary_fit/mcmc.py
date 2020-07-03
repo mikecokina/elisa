@@ -53,8 +53,14 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         :return: float;
         """
         lh = - 0.5 * np.sum([np.sum(
-            np.power((self.y_data[item] - synthetic[item][self.x_data_reducer[item]]) / self.y_err[item], 2))
+            np.power((self.y_data[item] - synthetic[item][self.x_data_reducer[item]]) / self.y_err[item], 2) /
+            np.shape(self.y_data[item])[0])
             for item, value in synthetic.items()])
+        # lh = - 0.5 * np.sum([np.sum(
+        #     np.power((self.y_data[item] - synthetic[item][self.x_data_reducer[item]]), 2) /
+        #     (np.power(self.y_err[item], 2) + np.power(synthetic[item][self.x_data_reducer[item]], 2))
+        # ) for item, value in synthetic.items()])
+
         self._last_known_lhood = lh if lh < self._last_known_lhood else self._last_known_lhood
         return lh
 
@@ -66,6 +72,8 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         except (ElisaError, ValueError) as e:
             logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
             return self._last_known_lhood * 1e3
+        print(likelihood)
+        # print(np.exp(likelihood))
         return likelihood
 
     def _fit(self, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False, save=False, fit_id=None):
