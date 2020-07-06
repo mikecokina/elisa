@@ -22,7 +22,7 @@ from elisa.binary_system.system import BinarySystem
 class AbstractFit(metaclass=ABCMeta):
     MEAN_ERROR_FN = None
 
-    __slots__ = ['fixed', 'constrained', 'fitable', 'normalized', 'observer', 'x_data', 'y_data',
+    __slots__ = ['fixed', 'constrained', 'fitable', 'normalized', 'observer', 'x_data', 'y_data', 'num_of_points'
                  'y_err', 'x_data_reduced', 'x_data_reducer', 'initial_vector', 'normalization', 'flat_result']
 
     def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
@@ -37,6 +37,7 @@ class AbstractFit(metaclass=ABCMeta):
 
         setattr(self, 'x_data', {key: val.x_data for key, val in data.items()})
         setattr(self, 'y_data', {key: val.y_data for key, val in data.items()})
+        setattr(self, 'num_of_points', {key: np.shape(val.y_data)[0] for key, val in data.items()})
 
         err = {key: abs(self.__class__.MEAN_ERROR_FN(val)) if data[key].y_err is None else data[key].y_err
                for key, val in self.y_data.items()}
@@ -81,6 +82,10 @@ class AbstractFit(metaclass=ABCMeta):
 class AbstractRVFit(AbstractFit):
     MEAN_ERROR_FN = radialcurves_mean_error
 
+    __slots__ = ['fixed', 'constrained', 'fitable', 'normalized', 'observer', "discretization",
+                 'interp_treshold', 'data', 'y_err', 'num_of_points', 'x_data_reduced', 'x_data_reducer',
+                 'initial_vector', 'normalization', 'x_data', 'y_data']
+
     @abstractmethod
     def fit(self, *args, **kwargs):
         pass
@@ -93,7 +98,7 @@ class AbstractLCFit(AbstractFit):
     MEAN_ERROR_FN = lightcurves_mean_error
 
     __slots__ = ['fixed', 'constrained', 'fitable', 'normalized', 'observer', "discretization",
-                 'interp_treshold', 'data', 'y_err', 'x_data_reduced', 'x_data_reducer',
+                 'interp_treshold', 'data', 'y_err', 'num_of_points', 'x_data_reduced', 'x_data_reducer',
                  'initial_vector', 'normalization', 'x_data', 'y_data']
 
     def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
