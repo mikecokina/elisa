@@ -249,12 +249,12 @@ def check_for_boundary_surface_potentials(result_dict):
 
         # if resulting potential is too close critical potentials (within errors), it will snap potential to critical
         # to avoid problems
-        if sigma >= l1 - pot["value"] >= 0.0:
-            pot["value"] = l1
+        if 5 * sigma >= l1 - pot["value"] >= 0.0:
+            pot["value"] = l1 + 1e-5 * sigma
 
         # test for over-contact overflow trough L2 point
         l2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
-        if sigma >= l2 - pot["value"] >= 0.0:
-            pot["value"] = l2
+        if 5 * sigma >= pot["value"] - l2 >= 0.0:
+            pot["value"] = l2 - 1e-5 * sigma
 
     return result_dict
