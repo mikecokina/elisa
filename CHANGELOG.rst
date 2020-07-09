@@ -152,6 +152,7 @@ v0.3.1_
       surface potential to critical potentials if they are within errors from fitted potential
     - wrong intervals used in corner and trace plot, now fitting confidence intervals instead of fit intervals
     - more suitable form of cost function for least squares fitting method
+    - correcting secondary potential derivative component
 
 Future plans
 ============
