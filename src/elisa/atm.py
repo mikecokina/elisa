@@ -28,6 +28,8 @@ from elisa import (
     ld
 )
 
+from time import time
+
 logger = getLogger(__name__)
 
 
@@ -420,19 +422,19 @@ def strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=F
     :param inplace: if True `atm_container` is overwritten by striped atmosphere container
     :return: elisa.atm.AtmDataContainer;
     """
-    # indices in bandwidth
-    valid_indices = list(
-        atm_container.model.index[
-            atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE].between(
-                left_bandwidth, right_bandwidth, inclusive=False)
-        ])
+    # valid indices of wavelengths for given passband
+    waves = atm_container.model.values[:, 1]
+    valid_wave_mask = np.logical_and(np.greater(waves, left_bandwidth), np.less(waves, right_bandwidth))
+    valid_indices = atm_container.model.index.values[valid_wave_mask]
+
     # extend left  and right index (left - 1 and right + 1)
     left_extention_index = valid_indices[0] - 1 if valid_indices[0] >= 1 else 0
     right_extention_index = valid_indices[-1] + 1 \
         if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
     atm_cont = atm_container if inplace else deepcopy(atm_container)
+
     atm_cont.model = atm_cont.model.iloc[
-        np.unique([left_extention_index] + valid_indices + [right_extention_index])
+        np.unique(np.concatenate(([left_extention_index], valid_indices, [right_extention_index]))), :
     ]
     return extend_atm_container_on_bandwidth_boundary(atm_cont, left_bandwidth, right_bandwidth)
 
@@ -489,7 +491,6 @@ def apply_passband(atm_containers, passband, **kwargs):
     logger.debug("applying passband functions on given atmospheres")
 
     for band, band_container in passband.items():
-
         if band in ['bolometric']:
             band_container.left_bandwidth = kwargs.get('global_left', band_container.left_bandwidth)
             band_container.right_bandwidth = kwargs.get('global_right', band_container.right_bandwidth)
@@ -504,6 +505,7 @@ def apply_passband(atm_containers, passband, **kwargs):
                 right_bandwidth=band_container.right_bandwidth,
                 inplace=False
             )
+
             # found passband throughput on atm defined wavelength
             passband_df = pd.DataFrame(
                 {
@@ -513,9 +515,11 @@ def apply_passband(atm_containers, passband, **kwargs):
                 }
             )
             passband_df.fillna(0.0, inplace=True)
-            atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX] *= passband_df[config.PASSBAND_DATAFRAME_THROUGHPUT]
+
+            atm_container.model.values[:, 0] *= passband_df.values[:, 0]
             passbanded_atm_containers[band].append(atm_container)
     logger.debug("passband application finished")
+
     return passbanded_atm_containers
 
 
@@ -820,8 +824,9 @@ def multithread_atm_tables_reader(path_queue, error_queue, result_queue):
             result_queue.put((index, None))
             continue
         try:
+            types = {'flux': np.float, 'wave': np.float}
             t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(file_path))
-            atm_container = AtmDataContainer(pd.read_csv(file_path), t, l, m, file_path)
+            atm_container = AtmDataContainer(pd.read_csv(file_path, dtype=types), t, l, m, file_path)
             result_queue.put((index, atm_container))
         except Exception as we:
             error_queue.put(we)
