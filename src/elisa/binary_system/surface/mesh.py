@@ -776,7 +776,6 @@ def mesh_spots(system, components_distance, component="all"):
                                                    for point in boundary_points])
 
                 spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1], spot_center[2]])
-            gc.collect()
 
 
 def calculate_neck_position(system, return_polynomial=False):
