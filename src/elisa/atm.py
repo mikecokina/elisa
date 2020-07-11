@@ -28,6 +28,8 @@ from elisa import (
     ld
 )
 
+from time import time
+
 logger = getLogger(__name__)
 
 
@@ -489,7 +491,6 @@ def apply_passband(atm_containers, passband, **kwargs):
     logger.debug("applying passband functions on given atmospheres")
 
     for band, band_container in passband.items():
-
         if band in ['bolometric']:
             band_container.left_bandwidth = kwargs.get('global_left', band_container.left_bandwidth)
             band_container.right_bandwidth = kwargs.get('global_right', band_container.right_bandwidth)
