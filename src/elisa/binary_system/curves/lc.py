@@ -16,7 +16,6 @@ from ...binary_system.orbit.container import OrbitalSupplements
 from ...binary_system.surface.coverage import calculate_coverage_with_cosines
 from ...binary_system.curves import lcmp, shared
 from elisa.observer.mp import manage_observations
-from elisa import atm
 
 from ... import (
     umpy as up,
