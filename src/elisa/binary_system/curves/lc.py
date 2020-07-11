@@ -475,19 +475,17 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         initial_system.set_on_position_params(body_orb_pos, potentials['primary'][idx], potentials['secondary'][idx])
         initial_system = _update_surface_in_ecc_orbits(initial_system, body_orb_pos, require_geometry_rebuild)
 
-        args1 = shared.prep_surface_params(initial_system, **kwargs)
-
         if body_orb_pos.phase not in used_phases:
             on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos, on_copy=True)
-            _args = args1 + calculate_coverage_with_cosines(on_pos_body, on_pos_body.semi_major_axis,
-                                                            in_eclipse=True)
+            _args = _onpos_params(on_pos_body, **kwargs)
             _produce_lc_point(body_orb_pos, *_args)
             used_phases += [body_orb_pos.phase]
 
         if (not OrbitalSupplements.is_empty(mirror)) and (mirror_orb_pos.phase not in used_phases):
             on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, on_copy=True)
-            _args = args1 + calculate_coverage_with_cosines(on_pos_mirror, on_pos_mirror.semi_major_axis,
-                                                            in_eclipse=True)
+
+            _args = _args[:2] + calculate_coverage_with_cosines(on_pos_mirror, on_pos_mirror.semi_major_axis,
+                                                                 in_eclipse=True)
             _produce_lc_point(mirror_orb_pos, *_args)
             used_phases += [mirror_orb_pos.phase]
 
