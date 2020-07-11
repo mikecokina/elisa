@@ -28,18 +28,17 @@ def calculate_potential_gradient(components_distance, component, points, synchro
     r3 = up.power(np.linalg.norm(points, axis=1), 3)
     r_hat3 = up.power(np.linalg.norm(points - np.array([components_distance, 0., 0]), axis=1), 3)
 
+    f2 = up.power(synchronicity, 2)
     if component == 'primary':
-        f2 = up.power(synchronicity, 2)
-        domega_dx = - points[:, 0] / r3 + mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 + f2 * (
-                            mass_ratio + 1) * points[:, 0] - mass_ratio / up.power(components_distance, 2)
+        domega_dx = - points[:, 0] / r3 + \
+                    mass_ratio * (components_distance - points[:, 0]) / r_hat3 + \
+                    f2 * (mass_ratio + 1) * points[:, 0] - \
+                    mass_ratio / up.power(components_distance, 2)
     elif component == 'secondary':
-        f2 = up.power(synchronicity, 2)
-        domega_dx = - points[:, 0] / r3 + mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 - f2 * (
-                            mass_ratio + 1) * (
-                            components_distance - points[:, 0]) * points[:, 0] + 1 / up.power(
-            components_distance, 2)
+        domega_dx = - points[:, 0] / r3 + \
+                    mass_ratio * (components_distance - points[:, 0]) / r_hat3 - \
+                    f2 * (mass_ratio + 1) * (components_distance - points[:, 0]) + \
+                    1 / up.power(components_distance, 2)
     else:
         raise ValueError(f'Invalid value `{component}` of argument `component`.\n Use `primary` or `secondary`.')
 

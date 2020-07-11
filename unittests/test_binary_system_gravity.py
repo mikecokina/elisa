@@ -120,14 +120,12 @@ class GravityUtilsTestCase(ElisaTestCase):
     def test_calculate_potential_gradient_secondary(self):
         points = np.array([[0.1, 0.1, 0.1], [-0.1, 0.0, 0.3]])
         distance = 0.95
-
         expected = np.round(np.array(
             [
-                [[17.60021, 19.17316, 19.32316], [-4.83097, 0., 9.60202]],
-                [[17.65631, 19.10716, 19.32316], [-4.90027, 0., 9.60202]]
+                [[18.74770634, 19.17315831, 19.32315831], [-3.0984656,   0.,          9.60202004]],
+                [[19.30870634, 19.10715831, 19.3231583], [-2.4054656,   0.,          9.60202004]]
             ]), 4)
         obtained = list()
-
         for bs in self._binaries:
             gradient = gravity.calculate_potential_gradient(distance, "secondary", points,
                                                             bs.secondary.synchronicity, bs.mass_ratio)

@@ -1,8 +1,8 @@
 {
   "system": {
     "inclination": 80.0,
-    "period": 200,
-    "argument_of_periastron": 0.0,
+    "period": 2.0,
+    "argument_of_periastron": 170,
     "gamma": 0.0,
     "eccentricity": 0.1,
     "primary_minimum_time": 0.0,
@@ -10,7 +10,7 @@
   },
   "primary": {
     "mass": 2.0,
-    "surface_potential": 200,
+    "surface_potential": 7.0,
     "synchronicity": 1.0,
     "t_eff": 7000.0,
     "gravity_darkening": 1.0,
@@ -19,7 +19,7 @@
   },
   "secondary": {
     "mass": 2.0,
-    "surface_potential": 200,
+    "surface_potential": 7.0,
     "synchronicity": 1.0,
     "t_eff": 7000.0,
     "gravity_darkening": 1.0,

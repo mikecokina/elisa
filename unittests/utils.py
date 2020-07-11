@@ -326,7 +326,7 @@ BINARY_SYSTEM_PARAMS = {
         "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
         "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
-        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_t_eff": 5000, "secondary_t_eff": 5100,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
         "primary_albedo": 0.6, "secondary_albedo": 0.6,
     }
@@ -399,3 +399,33 @@ SPOT_TO_RAISE = [
      "angular_radius": 28,
      "temperature_factor": 0.1},
 ]
+
+IDENTICAL_BINARY = {
+  "system": {
+    "inclination": 80.0,
+    "period": 2.0,
+    "argument_of_periastron": 170,
+    "gamma": 0.0,
+    "eccentricity": 0.00,
+    "primary_minimum_time": 0.0,
+    "phase_shift": 0.0
+  },
+  "primary": {
+    "mass": 2.0,
+    "surface_potential": 7.0,
+    "synchronicity": 1.0,
+    "t_eff": 7000.0,
+    "gravity_darkening": 1.0,
+    "albedo": 1.0,
+    "metallicity": 0.0
+  },
+  "secondary": {
+    "mass": 2.0,
+    "surface_potential": 7.0,
+    "synchronicity": 1.0,
+    "t_eff": 7000.0,
+    "gravity_darkening": 1.0,
+    "albedo": 1.0,
+    "metallicity": 0.0
+  }
+}

@@ -758,7 +758,7 @@ class BinarySystem(System):
     def correct_potentials(self, phases=None, component="all", iterations=2, distances=None):
         """
         Function calculates potential for each phase in phases in such way that conserves
-        volume of the component. Volume is approximated by two half elipsoids.
+        volume of the component.
 
         :param phases: numpy.array; if `distances` is not `None`, phases will be not used
         :param component: str; `primary`, `secondary` or None (=both)
