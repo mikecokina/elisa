@@ -433,9 +433,17 @@ def strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=F
         if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
     atm_cont = atm_container if inplace else deepcopy(atm_container)
 
+    # start = time()
+    # indices = np.unique(np.concatenate(([left_extention_index], valid_indices, [right_extention_index])))
+    # new_model_arr = atm_cont.model.values[indices, :]
+    # atm_cont.model = pd.DataFrame({
+    #     config.ATM_MODEL_DATAFRAME_FLUX: new_model_arr[:, 0],
+    #     config.ATM_MODEL_DATAFRAME_WAVE: new_model_arr[:, 1],
+    # }
     atm_cont.model = atm_cont.model.iloc[
         np.unique(np.concatenate(([left_extention_index], valid_indices, [right_extention_index]))), :
     ]
+    # config.TIMER += time() - start
     return extend_atm_container_on_bandwidth_boundary(atm_cont, left_bandwidth, right_bandwidth)
 
 

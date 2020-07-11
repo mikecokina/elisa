@@ -57,6 +57,8 @@ MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
 MAX_SOLVER_ITERS = 100
 MAX_CURVE_DATA_POINTS = 300
 
+TIMER = 0.0
+
 # support data
 PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")
 LD_TABLES = os.path.join(HOME, "limbdarkening", "ld")

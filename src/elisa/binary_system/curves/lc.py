@@ -392,7 +392,8 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
         on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos)
         on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos)
 
-        normal_radiance, ld_cfs = shared.prep_surface_params(on_pos_body, **kwargs)
+        if require_geometry_rebuild:
+            normal_radiance, ld_cfs = shared.prep_surface_params(on_pos_body, **kwargs)
 
         coverage_b, cosines_b = calculate_coverage_with_cosines(on_pos_body, binary.semi_major_axis, in_eclipse=True)
         coverage_m, cosines_m = calculate_coverage_with_cosines(on_pos_mirror, binary.semi_major_axis, in_eclipse=True)
@@ -477,7 +478,10 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
 
         if body_orb_pos.phase not in used_phases:
             on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos, on_copy=True)
-            _args = _onpos_params(on_pos_body, **kwargs)
+
+            # recalculating normal radiances only for new geometry
+            _args = _onpos_params(on_pos_body, **kwargs) if require_geometry_rebuild else \
+                _args[:2] + calculate_coverage_with_cosines(on_pos_body, on_pos_body.semi_major_axis, in_eclipse=True)
             _produce_lc_point(body_orb_pos, *_args)
             used_phases += [body_orb_pos.phase]
 
@@ -525,7 +529,12 @@ def _integrate_eccentric_lc_appx_three(binary, phases, orbital_positions, new_ge
         initial_system = _update_surface_in_ecc_orbits(initial_system, orbital_position, require_geometry_rebuild)
 
         on_pos_body = bsutils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
-        n_radiance, ldc, cvrg, csns = _onpos_params(on_pos_body, **kwargs)
+
+        # recalculating normal radiances only for new geometry
+        if require_geometry_rebuild:
+            n_radiance, ldc = shared.prep_surface_params(on_pos_body, **kwargs)
+        cvrg, csns = calculate_coverage_with_cosines(on_pos_body, on_pos_body.semi_major_axis, in_eclipse=True)
+
         for band in kwargs["passband"]:
             band_curves[band][int(orbital_position.idx)] = shared.calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
 
