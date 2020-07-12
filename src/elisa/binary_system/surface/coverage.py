@@ -42,6 +42,44 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     return retval
 
 
+def calculate_centre_of_star_projection(system, component):
+    """
+    Returns yz projection of centre of mass of given `component`.
+
+    :param system: elisa.binary_system.container.OrbitalPositionContainer
+    :param component: str; `primary` or `secondary`
+    :return: numpy.array;
+    """
+    if component == 'primary':
+        return np.array([0.0, 0.0])
+    else:
+        centre_vector = np.array([system.position.distance, 0.0, 0.0])
+        args = (system.position.azimuth - const.HALF_PI, centre_vector, "z", False, False)
+        centre_vector = utils.around_axis_rotation(*args)
+
+        args = (const.HALF_PI - system.inclination, centre_vector, "y", False, False)
+        centre_vector = utils.around_axis_rotation(*args)
+
+        return centre_vector[1:]
+
+
+def expand_star_outline(path, system, cover_component):
+    """
+    Function takes outline of the cover star and expands it slightly to compensate for the loss of its area due to
+    surface discretization.
+
+    :param path: Path; outline of the eclipsing star
+    :param system: elisa.binary_system.container.OrbitalPositionContainer
+    :param cover_component: str; `primary` or `secondary`
+    :return: Path; expanded outline of the star
+    """
+    cpm = calculate_centre_of_star_projection(system, cover_component)
+    alpha = const.FULL_ARC / np.shape(path.vertices)[0]
+    corr_factor = np.sqrt(2 - (np.sin(alpha) / alpha))
+    path.vertices = corr_factor * (path.vertices - cpm[None, :]) + cpm[None, :]
+    return path
+
+
 def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
     # todo: add unittests
     """
@@ -49,7 +87,7 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
     defined by container/SingleOrbitalPositionContainer.
 
     :param semi_major_axis: float;
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;;
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param in_eclipse: bool;
     :return: Dict;
     """
@@ -64,6 +102,8 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
     # get matplotlib boudary path defined by hull of projection
     if in_eclipse:
         bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)
+        # expanding cover star outline to cmpensate for discretization (currently not in use, effect is insignificant)
+        # bb_path = expand_star_outline(bb_path, system, cover_component)
         # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
         out_of_bound = up.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
         # undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]

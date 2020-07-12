@@ -504,6 +504,7 @@ def apply_passband(atm_containers, passband, **kwargs):
                 right_bandwidth=band_container.right_bandwidth,
                 inplace=False
             )
+
             # found passband throughput on atm defined wavelength
             passband_throughput = np.nan_to_num(band_container.akima(atm_container.model.wavelength))
 
@@ -814,8 +815,9 @@ def multithread_atm_tables_reader(path_queue, error_queue, result_queue):
             result_queue.put((index, None))
             continue
         try:
+            types = {'flux': np.float, 'wave': np.float}
             t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(file_path))
-            atm_container = AtmDataContainer(pd.read_csv(file_path), t, l, m, file_path)
+            atm_container = AtmDataContainer(pd.read_csv(file_path, dtype=types), t, l, m, file_path)
             result_queue.put((index, atm_container))
         except Exception as we:
             error_queue.put(we)

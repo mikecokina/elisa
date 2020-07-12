@@ -134,7 +134,6 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
     return results
 
 
-# todo: discuss following shits
 def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None,
                           cos_theta=None):
     """
