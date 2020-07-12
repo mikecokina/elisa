@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pandas as pd
 
@@ -5,6 +6,37 @@ from scipy import interpolate
 
 from elisa.conf import config
 from elisa.observer import utils as outils
+
+
+def init_bolometric_passband():
+    """
+    initializing bolometric passband and its wavelength boundaries
+
+    :return: tuple;
+    """
+    df = pd.DataFrame(
+        {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
+         config.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
+    right_bandwidth = sys.float_info.max
+    left_bandwidth = 0.0
+    bol_passband = PassbandContainer(table=df, passband='bolometric')
+
+    return bol_passband, right_bandwidth, left_bandwidth
+
+
+def bolometric(x):
+    """
+    Bolometric passband interpolation function in way of lambda x: 1.0
+
+    :param x:
+    :return: float or numpy.array; 1.0s in shape of x
+    """
+    if isinstance(x, (float, int)):
+        return 1.0
+    if isinstance(x, list):
+        return [1.0] * len(x)
+    if isinstance(x, np.ndarray):
+        return np.array([1.0] * len(x))
 
 
 class PassbandContainer(object):
@@ -48,9 +80,8 @@ class PassbandContainer(object):
         :param df: pandas.DataFrame;
         """
         self._table = df
-        self.akima = outils.bolometric if (self.passband.lower() in ['bolometric']) else \
+        self.akima = bolometric if (self.passband.lower() in ['bolometric']) else \
             interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
                                             df[config.PASSBAND_DATAFRAME_THROUGHPUT])
         self.left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
         self.right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
-

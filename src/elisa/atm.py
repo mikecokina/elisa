@@ -50,6 +50,14 @@ class AtmModel(object):
         return cls(flux=np.array(df[config.ATM_MODEL_DATAFRAME_FLUX], dtype=float),
                    wavelength=np.array(df[config.ATM_MODEL_DATAFRAME_WAVE], dtype=float))
 
+    def to_dataframe(self):
+        return pd.DataFrame(
+            {
+                config.ATM_MODEL_DATAFRAME_FLUX: self.flux,
+                config.ATM_MODEL_DATAFRAME_WAVE: self.wavelength
+            }
+        )
+
     def last_valid_index(self):
         return len(self.flux)
 
