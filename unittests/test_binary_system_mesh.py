@@ -32,16 +32,16 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
         obtained_secondary = np.round(orbital_position_container.secondary.points, 4)
         assert_array_equal([len(obtained_primary), len(obtained_secondary)], length)
 
-    def test_build_mesh_detached(self):
+    def test_build_mesh_detached_no_spot(self):
         self.generator_test_mesh(key="detached", d=up.radians(10), length=[426, 426])
 
-    def test_build_mesh_overcontact(self):
+    def test_build_mesh_overcontact_no_spot(self):
         self.generator_test_mesh(key="over-contact", d=up.radians(10), length=[413, 401])
 
-    def test_build_mesh_semi_detached(self):
+    def test_build_mesh_semi_detached_no_spot(self):
         self.generator_test_mesh(key="semi-detached", d=up.radians(10), length=[426, 426])
 
-    def test_mesh_for_duplicate_points(self):
+    def test_mesh_for_duplicate_points_no_spot(self):
         for params in testutils.BINARY_SYSTEM_PARAMS.values():
             s = prepare_binary_system(params)
             # reducing runtime of the test
