@@ -13,7 +13,7 @@ from elisa.observer import (
     utils as outils,
 )
 from elisa.observer.plot import Plot
-from elisa.observer.passband import PassbandContainer
+from elisa.observer.passband import PassbandContainer, init_bolometric_passband
 from elisa.conf import config
 from elisa.utils import is_empty
 from elisa.logger import getLogger
@@ -38,7 +38,7 @@ class Observables(object):
 
 
 class Observer(object):
-    def __init__(self, passband=[], system=None):
+    def __init__(self, passband=None, system=None):
         """
         Initializer for observer class.
 
@@ -84,7 +84,7 @@ class Observer(object):
         passband = [passband] if isinstance(passband, str) else passband
         for band in passband:
             if band in ['bolometric']:
-                psbnd, right_bandwidth, left_bandwidth = outils.init_bolometric_passband()
+                psbnd, right_bandwidth, left_bandwidth = init_bolometric_passband()
             else:
                 df = self.get_passband_df(band)
                 left_bandwidth = df[config.PASSBAND_DATAFRAME_WAVE].min()

@@ -5,6 +5,7 @@ import pandas as pd
 from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
+from elisa.atm import AtmModel
 from elisa.conf import config
 from elisa.observer.passband import PassbandContainer
 from unittests.utils import ElisaTestCase
@@ -65,31 +66,30 @@ class TestAtmModuleGeneral(ElisaTestCase):
         config._update_atlas_to_base_dir()
 
     def test_arange_atm_to_same_wavelength(self):
-        c1 = atm.AtmDataContainer({
-            config.ATM_MODEL_DATAFRAME_FLUX: np.array([1, 2, 3, 4, 5]),
-            config.ATM_MODEL_DATAFRAME_WAVE: np.array([1, 2, 3, 4, 5])
-        }, 10, 10, 10)
+        c1 = atm.AtmDataContainer(AtmModel(**{
+            "flux": np.array([1, 2, 3, 4, 5]),
+            "wavelength": np.array([1, 2, 3, 4, 5])
+        }), 10, 10, 10)
 
-        c2 = atm.AtmDataContainer({
-            config.ATM_MODEL_DATAFRAME_FLUX: np.array([0.4, 2, 3, 4.3, 5]),
-            config.ATM_MODEL_DATAFRAME_WAVE: np.array([0.9, 2, 3, 4.1, 5])
-        }, 5, 5, 5)
+        c2 = atm.AtmDataContainer(AtmModel(**{
+            "flux": np.array([0.4, 2, 3, 4.3, 5]),
+            "wavelength": np.array([0.9, 2, 3, 4.1, 5])
+        }), 5, 5, 5)
 
         result = atm.arange_atm_to_same_wavelength([c1, c2])
-
         expected_wavelength = np.array([0.9, 1, 2, 3, 4, 4.1, 5])
 
         # are aligned?
-        assert_array_equal(result[0].model[config.ATM_MODEL_DATAFRAME_WAVE],
-                           result[1].model[config.ATM_MODEL_DATAFRAME_WAVE])
+        assert_array_equal(result[0].model.wavelength,
+                           result[1].model.wavelength)
         # are xpected
-        assert_array_equal(result[0].model[config.ATM_MODEL_DATAFRAME_WAVE], expected_wavelength)
+        assert_array_equal(result[0].model.wavelength, expected_wavelength)
 
     def test_strip_atm_container_by_bandwidth(self):
-        c = atm.AtmDataContainer(pd.DataFrame({
+        c = atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({
             config.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=np.float),
             config.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=np.float)
-        }), 10, 10, 10)
+        })), 10, 10, 10)
 
         l_band, r_band = 3.1, 7.8
         result = atm.strip_atm_container_by_bandwidth(c, l_band, r_band)
@@ -97,12 +97,12 @@ class TestAtmModuleGeneral(ElisaTestCase):
             config.ATM_MODEL_DATAFRAME_FLUX: [31, 40, 50, 60, 70, 78],
             config.ATM_MODEL_DATAFRAME_WAVE: [3.1, 4., 5., 6., 7., 7.8]
         })
-        assert_frame_equal(expected_df, result.model, check_dtype=False)
+        assert_frame_equal(expected_df, result.model.to_dataframe(), check_dtype=False)
 
         # global is set but right and left are valid for given model
         gl_band, gr_band = 4.0, 6.5
         result = atm.strip_atm_container_by_bandwidth(c, l_band, r_band, global_left=gl_band, global_right=gr_band)
-        assert_frame_equal(expected_df, result.model, check_dtype=False)
+        assert_frame_equal(expected_df, result.model.to_dataframe(), check_dtype=False)
 
         # global is set
         l_band, r_band = -1, 10000
@@ -112,31 +112,32 @@ class TestAtmModuleGeneral(ElisaTestCase):
             config.ATM_MODEL_DATAFRAME_FLUX: [40, 50, 60, 65],
             config.ATM_MODEL_DATAFRAME_WAVE: [4, 5., 6, 6.5]
         })
-        assert_frame_equal(expected_df, result.model, check_dtype=False)
+        assert_frame_equal(expected_df, result.model.to_dataframe(), check_dtype=False)
 
     def test_find_global_atm_bandwidth(self):
-        c1 = atm.AtmDataContainer({
-            config.ATM_MODEL_DATAFRAME_FLUX: np.array([1, 2, 3, 4, 5]),
-            config.ATM_MODEL_DATAFRAME_WAVE: np.array([1, 2, 3, 4, 5])
-        }, 10, 10, 10)
+        c1 = atm.AtmDataContainer(AtmModel(**{
+            "flux": np.array([1, 2, 3, 4, 5]),
+            "wavelength": np.array([1, 2, 3, 4, 5])
+        }), 10, 10, 10)
 
-        c2 = atm.AtmDataContainer({
-            config.ATM_MODEL_DATAFRAME_FLUX: np.array([0.4, 2, 3, 4.3, 5]),
-            config.ATM_MODEL_DATAFRAME_WAVE: np.array([0.9, 2, 3, 4.1, 5])
-        }, 5, 5, 5)
+        c2 = atm.AtmDataContainer(AtmModel(**{
+            "flux": np.array([0.4, 2, 3, 4.3, 5]),
+            "wavelength": np.array([0.9, 2, 3, 4.1, 5])
+        }), 5, 5, 5)
 
         result = atm.find_global_atm_bandwidth([c1, c2])
         expected = (1, 5)
         self.assertTupleEqual(result, expected)
 
     def test_extend_atm_container_on_bandwidth_boundary(self):
-        c = atm.AtmDataContainer(pd.DataFrame({
+        c = atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({
             config.ATM_MODEL_DATAFRAME_FLUX: up.arange(0, 100, 10, dtype=np.float),
             config.ATM_MODEL_DATAFRAME_WAVE: up.arange(10, dtype=np.float)
-        }), 10, 10, 10)
+        })), 10, 10, 10)
 
         l_band, r_band = 0.4, 8.8
-        result = atm.extend_atm_container_on_bandwidth_boundary(c, l_band, r_band).model.sort_index(axis=1)
+        result = atm.extend_atm_container_on_bandwidth_boundary(c, l_band, r_band).\
+            model.to_dataframe().sort_index(axis=1)
         expected = pd.DataFrame({
             config.ATM_MODEL_DATAFRAME_WAVE: [0.4] + list(range(1, 9, 1)) + [8.8],
             config.ATM_MODEL_DATAFRAME_FLUX: [4] + list(range(10, 90, 10)) + [88]
@@ -258,8 +259,8 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
     def test_find_atm_si_multiplicators(self):
         expected = (1e-7 * 1e4 * 1e10, 1e-10)
-        cs = [atm.AtmDataContainer(pd.DataFrame({config.ATM_MODEL_DATAFRAME_WAVE: [],
-                                                 config.ATM_MODEL_DATAFRAME_FLUX: []}), 0, 0, 0)] * 10
+        cs = [atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({config.ATM_MODEL_DATAFRAME_WAVE: [1, 2, 3],
+                                                           config.ATM_MODEL_DATAFRAME_FLUX: [1, 2, 3]})), 0, 0, 0)] * 10
         mults = atm.find_atm_si_multiplicators(cs)
         self.assertTupleEqual(mults, expected)
 
@@ -271,10 +272,10 @@ class TestAtmModuleGeneral(ElisaTestCase):
         assert_array_equal(expected, obtained)
 
     def test_apply_passband(self):
-        atmc = atm.AtmDataContainer(pd.DataFrame({
+        atmc = atm.AtmDataContainer(AtmModel.from_dataframe(pd.DataFrame({
             config.ATM_MODEL_DATAFRAME_FLUX: up.arange(10, dtype=np.float),
             config.ATM_MODEL_DATAFRAME_WAVE: up.arange(0, 100, 10, dtype=np.float)
-        }), 0, 0, 0)
+        })), 0, 0, 0)
 
         bandc = PassbandContainer(
             pd.DataFrame({
@@ -286,7 +287,7 @@ class TestAtmModuleGeneral(ElisaTestCase):
 
         passband = dict(bandc=bandc)
 
-        obtained = np.round(atm.apply_passband([atmc], passband)["bandc"][0].model, 4)
+        obtained = np.round(atm.apply_passband([atmc], passband)["bandc"][0].model.to_dataframe(), 4)
         expected = pd.DataFrame({
             config.ATM_MODEL_DATAFRAME_FLUX: [0.02, 1., 0.8117, 0.5077, 0.8, 2.],
             config.ATM_MODEL_DATAFRAME_WAVE: [1., 10., 20., 30., 40., 50.]

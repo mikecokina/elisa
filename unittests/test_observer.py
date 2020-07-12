@@ -16,7 +16,7 @@ from elisa.conf import config
 from elisa import umpy as up
 from elisa.observer.observer import Observer
 from elisa.observer.passband import PassbandContainer
-from elisa.observer.utils import bolometric
+from elisa.observer.passband import bolometric
 from unittests.utils import ElisaTestCase
 
 

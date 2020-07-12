@@ -1,13 +1,9 @@
 import numpy as np
 
 from elisa.conf import config
-from elisa import (
-    atm,
-    ld,
-    const
-)
+from elisa import atm, ld
 from elisa.binary_system import utils as butils
-from elisa.observer.utils import init_bolometric_passband
+from elisa.observer.passband import init_bolometric_passband
 
 
 def get_limbdarkening_cfs(system, component="all", **kwargs):
