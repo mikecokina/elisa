@@ -69,9 +69,9 @@ following dependencies:
 and potentially also **python-tk** package or equivalent for matplotlib
 package to display the figures correctly.
 
-note
+**note**:
 
-:   although python distribution and package versions are specified
+    although python distribution and package versions are specified
     precisely, that does not mean that the package will not work with
     higher versions, only that it was not tested with higher versions
     of packages. However we highly recommend to stick with python
@@ -223,9 +223,9 @@ This configuration file is used for adjusting Full content of
 configuration file with description might be found here,
 [Elisa-Configuration-File](https://github.com/mikecokina/elisa/blob/master/src/elisa/conf/elisa_conf_docs.ini)
 
-warning
-
-:   atmospheric models and limb darkening tables for this package are
+**warning**:   
+    
+    atmospheric models and limb darkening tables for this package are
     stored in industry standard ''.csv'' files. Therefore, their native
     format as usually provided on web sites is not suitable for Elisa
     and require conversion to standard format. Models have been altered
@@ -293,57 +293,22 @@ maximum value in our datasets.
 
 ![](./docs/source/_static/readme/detached.circ.sync.svg)
 
-> width
->
-> :   70%
->
-> alt
->
-> :   detached.circ.sync.svg
->
-> align
->
-> :   center
->
 > Paralellization benchmark for `detached circular synchronous` star
 > system.
 
 ![](./docs/source/_static/readme/detached.circ.async.svg)
 
-> width
->
-> :   70%
->
-> alt
->
-> :   detached.circ.async.svg
->
-> align
->
-> :   center
->
 > Paralellization benchmark for `detached circular asynchronous` star
 > system.
 
 ![](./docs/source/_static/readme/detached.ecc.sync.svg)
 
-> width
->
-> :   70%
->
-> alt
->
-> :   detached.ecc.sync.svg
->
-> align
->
-> :   center
->
+
 > Paralellization benchmark for `eccentric synchronous` star system.
 
-note
+**note**: 
 
-:   outliers in charts are caused by curve symetrization process
+    outliers in charts are caused by curve symetrization process
 
 Binary Stars Radial Curves Fitting
 ----------------------------------
@@ -356,18 +321,6 @@ shown below.
 
 ![image](./docs/source/_static/readme/rv_example.svg)
 
-> width
->
-> :   70%
->
-> alt
->
-> :   rv\_example.svg
->
-> align
->
-> :   center
->
 This radial velocity curve was obtained on system with following
 relevant parameters:
 
@@ -458,32 +411,8 @@ following
 
 ![image](./docs/source/_static/readme/rv_fit.svg)
 
-> width
->
-> :   70%
->
-> alt
->
-> :   rv\_fit.svg
->
-> align
->
-> :   center
->
 ![image](./docs/source/_static/readme/mcmc_rv_corner.svg)
 
-> width
->
-> :   95%
->
-> alt
->
-> :   mcmc\_rv\_corner.svg
->
-> align
->
-> :   center
->
 An example scripts can be found in
 [example\_scripts](https://github.com/mikecokina/elisa/tree/master/scripts/analytics)
 
@@ -504,27 +433,15 @@ values has to be supplied in form:
 Based on primiary minimum time and period adjusted in fitting proces, JD
 times are transformed to phases within process itself.
 
-warning
+**warning**:
 
-:   make sure you have reasonable boundaries set for
+    make sure you have reasonable boundaries set for
     primary\_minimum\_time and period
 
 Corner plot of mcmc result for such approach is in figure bellow
 
-![image](./docs/source/_static/readme/%20mcmc_rv_corner_noperiod.svg)
+![image](./docs/source/_static/readme/mcmc_rv_corner_noperiod.svg)
 
-> width
->
-> :   95%
->
-> alt
->
-> :   mcmc\_rv\_corner\_noperiod.svg
->
-> align
->
-> :   center
->
 An example scripts can be found in
 [example\_scripts](https://github.com/mikecokina/elisa/tree/master/scripts/analytics)
 
@@ -565,27 +482,15 @@ curve like shown below generated on parameters:
 
 ![image](./docs/source/_static/readme/lc_example.svg)
 
-> width
->
-> :   70%
->
-> alt
->
-> :   lc\_example.svg
->
-> align
->
-> :   center
->
 It is up to the user what methods choose to use (mcmc or
 least\_squares). In both cases, fitting requires provide morphology
 estimation. In case of over-contact morphology, fitting module keeps
 surface potential of both binary components constrained to the same
 value.
 
-warning
+**warning**:
 
-:   Non-linear least squares method used in such complex problem as
+    Non-linear least squares method used in such complex problem as
     fitting light curves of eclipsing binaries, might be insuficient in
     case of initial parametres being too far from real values and also
     too broad fitting boundaries.
@@ -614,38 +519,27 @@ bvi.elisa_bv_temperature(b_v)
 
 This approach give us value \~ 8307K.
 
-note
+**note**:
 
-:   index 55 is used because we know that such index will give as flux
+    index 55 is used because we know that such index will give as flux
     on photometric phase $\Phi=0.5$, where we eliminte impact of
     secondary component to result of primary component temperature.
 
-note
+**note**:
 
-:   we recommend you to set boundaries for temperature obtained from bvi
+    we recommend you to set boundaries for temperature obtained from bvi
     module at least in range +/-500K.
 
-warning
+**warning**:
 
-:   Use this feature only in case when you are sure about curves offsets
+    Use this feature only in case when you are sure about curves offsets
     to each other.
 
 Visualization of fit is
 
 ![image](./docs/source/_static/readme/lc_fit.svg)
 
-> width
->
-> :   70%
->
-> alt
->
-> :   lc\_fit.svg
->
-> align
->
-> :   center
->
+
 `Elisa` also provides lightcurve fitting method based on
 Markov Chain Monte Carlo. Read data output requires the same level of
 knowledge as in case of radial velocities fitting.
@@ -654,17 +548,5 @@ Corner plot of mcmc result for such approach is in figure bellow
 
 ![image](./docs/source/_static/readme/mcmc_lc_corner.svg)
 
-> width
->
-> :   95%
->
-> alt
->
-> :   mcmc\_lc\_corner.svg
->
-> align
->
-> :   center
->
 All example scripts can be found in
 [example\_scripts](https://github.com/mikecokina/elisa/tree/master/scripts/analytics)
