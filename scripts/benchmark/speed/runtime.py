@@ -15,8 +15,6 @@ def get_params(filename):
 
 def get_data(data, phs):
     binary = system.BinarySystem.from_json(data)
-    print(np.degrees(binary.primary.discretization_factor))
-    print(np.degrees(binary.secondary.discretization_factor))
     o = Observer(passband=[  # defining passbands at which calculate a light curve
         # 'Generic.Bessell.U',
         'Generic.Bessell.B',
@@ -29,7 +27,6 @@ def get_data(data, phs):
     _ = o.lc(
         phases=phs
     )
-    # o.lc.plot()
 
 config.LIMB_DARKENING_LAW = 'logarithmic'
 
@@ -39,10 +36,10 @@ outfl1 = 'benchmark_circ.dat'
 outfl2 = 'benchmark_ecc.dat'
 
 surface_discredizations = [10, 7, 5, 3]
-#n_phases = np.arange(50, 310, 50)
-n_phases = np.arange(50, 60, 50)
-N = 1
-# N = 10
+n_phases = np.arange(50, 310, 50)
+# n_phases = np.arange(50, 60, 50)
+# N = 1
+N = 10
 
 #ecc = False
 ecc = True
@@ -62,13 +59,13 @@ for ii, alpha in enumerate(surface_discredizations):
     data_ecc['secondary']['discretization_factor'] = alpha
 
     for jj, phs in enumerate(n_phases):
-        # start_time = time()
-        # for kk in range(N):
-        #     phases = np.linspace(-0.5, 0.5, num=phs)
-        #     get_data(data_circ, phases)
-        # elapsed = np.round((time() - start_time) / N, 2)
-        # f.write('{:>5} {:>10} {:>10}\n'.format(alpha, phs, elapsed))
-        # print('circular {:>10} {:>10} {:>10}'.format(alpha, phs, elapsed))
+        start_time = time()
+        for kk in range(N):
+            phases = np.linspace(-0.5, 0.5, num=phs)
+            get_data(data_circ, phases)
+        elapsed = np.round((time() - start_time) / N, 2)
+        f.write('{:>5} {:>10} {:>10}\n'.format(alpha, phs, elapsed))
+        print('circular {:>10} {:>10} {:>10}'.format(alpha, phs, elapsed))
 
         # binary = system.BinarySystem.from_json(data_circ)
         # position = binary.calculate_orbital_motion(0.0)[0]
