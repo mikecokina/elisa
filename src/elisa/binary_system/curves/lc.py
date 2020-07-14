@@ -110,16 +110,15 @@ def _eval_approximation_one(binary, phases, phases_span_test):
     :param phases: numpy.array;
     :return: bool;
     """
-    if len(phases) > config.POINTS_ON_ECC_ORBIT and binary.is_synchronous() and phases_span_test:
+    if len(phases) > config.POINTS_ON_ECC_ORBIT and phases_span_test:
         return True
     return False
 
 
-def _eval_approximation_two(binary, rel_d, phases_span_test):
+def _eval_approximation_two(rel_d, phases_span_test):
     """
     Test if it is appropriate to compute eccentric binary system with approximation approax two.
 
-    :param binary: elisa.binary_system.system.BinarySystem;
     :param rel_d: numpy.array;
     :return: bool;
     """
@@ -127,7 +126,7 @@ def _eval_approximation_two(binary, rel_d, phases_span_test):
     # That means that also radii `rel_d` computed from such values have to be already sorted by
     # their own size (forward radius changes based on components distance and it is monotonic function)
 
-    if np.max(rel_d[:, 1:]) < config.MAX_RELATIVE_D_R_POINT and binary.is_synchronous() and phases_span_test:
+    if np.max(rel_d[:, 1:]) < config.MAX_RELATIVE_D_R_POINT and phases_span_test:
         return True
     return False
 
@@ -250,7 +249,7 @@ def _resolve_ecc_approximation_method(binary, phases, position_method, try_to_fi
 
     orbital_supplements.sort(by='distance')
     rel_d_radii = _compute_rel_d_radii(binary, orbital_supplements.body[:, 1])
-    appx_two = _eval_approximation_two(binary, rel_d_radii, phases_span_test)
+    appx_two = _eval_approximation_two(rel_d_radii, phases_span_test)
     new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(),
                                                                orbital_supplements.size(), rel_d_radii)
 
@@ -258,8 +257,21 @@ def _resolve_ecc_approximation_method(binary, phases, position_method, try_to_fi
         return 'two', lambda: _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements,
                                                                new_geometry_mask, **kwargs)
 
-    # APPX ZERO once again *********************************************************************************************
     return 'zero', lambda: _integrate_eccentric_lc_exactly(binary, all_orbital_pos, phases, **kwargs)
+
+    # # attempt APPX_THREE if some phases allow else APPX ZERO once again *********************************************
+    # sorted_all_orbital_pos_arr = all_orbital_pos_arr[all_orbital_pos_arr[:, 1].argsort()]
+    # rel_d_radii = _compute_rel_d_radii(binary, sorted_all_orbital_pos_arr[:, 1])
+    # new_geometry_mask = \
+    #     dynamic.resolve_object_geometry_update(binary.has_spots(),
+    #                                            all_orbital_pos_arr.shape[0], rel_d_radii,
+    #                                            max_allowed_difference=config.MAX_RELATIVE_D_R_POINT/10.0)
+    # approx_three = not (~new_geometry_mask).all()
+    # if approx_three:
+    #     return 'three', lambda: _integrate_eccentric_lc_appx_three(binary, phases, all_orbital_pos,
+    #                                                                new_geometry_mask, **kwargs)
+    # else:
+    #     return 'zero', lambda: _integrate_eccentric_lc_exactly(binary, all_orbital_pos, phases, **kwargs)
 
 
 def compute_circular_synchronous_lightcurve(binary, **kwargs):

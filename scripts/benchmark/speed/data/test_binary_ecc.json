@@ -4,26 +4,26 @@
     "period": 2.0,
     "argument_of_periastron": 170,
     "gamma": 0.0,
-    "eccentricity": 0.1,
+    "eccentricity": 0.2,
     "primary_minimum_time": 0.0,
     "phase_shift": 0.0
   },
   "primary": {
     "mass": 2.0,
-    "surface_potential": 7.0,
-    "synchronicity": 1.0,
+    "surface_potential": 6.0,
+    "synchronicity": 1.5,
     "t_eff": 7000.0,
     "gravity_darkening": 1.0,
     "albedo": 1.0,
     "metallicity": 0.0
   },
   "secondary": {
-    "mass": 2.0,
-    "surface_potential": 7.0,
+    "mass": 1.3,
+    "surface_potential": 8.0,
     "synchronicity": 1.0,
-    "t_eff": 7000.0,
-    "gravity_darkening": 1.0,
-    "albedo": 1.0,
+    "t_eff": 6000.0,
+    "gravity_darkening": 0.32,
+    "albedo": 0.6,
     "metallicity": 0.0
   }
 }

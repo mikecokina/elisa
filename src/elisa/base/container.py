@@ -454,11 +454,11 @@ class StarContainer(object):
     def get_flatten_properties(self):
         """
         Return flatten ndarrays of points, faces, etc. from object instance and spot instances for given object.
-        :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, ndarray]
+        :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray]
 
         ::
 
-            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres)
+            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres, areas)
         """
         points = self.points
         normals = self.normals
@@ -468,6 +468,7 @@ class StarContainer(object):
         rals = {mode_idx: None for mode_idx, mode in self.pulsations.items()}
         # rals = {mode_idx: mode.rals[0] for mode_idx, mode in self.pulsations.items()}
         centres = self.face_centres
+        areas = self.areas
 
         if isinstance(self.spots, (dict,)):
             for idx, spot in self.spots.items():
@@ -479,12 +480,13 @@ class StarContainer(object):
                 # for mode_idx, mode in self.pulsations.items():
                 #     rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
                 centres = up.concatenate((centres, spot.face_centres), axis=0)
+                areas = up.concatenate((areas, spot.areas), axis=0)
 
-        return points, normals, faces, temperatures, log_g, rals, centres
+        return points, normals, faces, temperatures, log_g, rals, centres, areas
 
     def flatt_it(self):
         """
-        Make properties "points", "normals", "faces", "temperatures", "log_g", "rals", "centers"
+        Make properties "points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas"
         of container flatt. It means all properties of start and spots are put together.
 
         :return: self
@@ -493,7 +495,7 @@ class StarContainer(object):
         if self._flatten:
             return self
 
-        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers"]
+        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas"]
         flat_props = self.get_flatten_properties()
         for prop, value in zip(props_list, flat_props):
             setattr(self, prop, value)
