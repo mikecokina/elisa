@@ -35,7 +35,7 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to loss in precission
     pypex_polys_surface_area = np.array(bsutils.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
 
-    inplane_points_3d = up.concatenate((points.T, [[0.0] * len(points)])).T
+    inplane_points_3d = np.column_stack((points, np.zeros(points.shape[0])))
     inplane_surface_area = utils.triangle_areas(triangles=faces, points=inplane_points_3d)
     correction_cosine = utils.calculate_cos_theta_los_x(normals)
     retval = (inplane_surface_area - pypex_polys_surface_area) / correction_cosine
@@ -134,7 +134,8 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
     else:
         partial_coverage = None
 
-    visible_coverage = utils.poly_areas(undercover_object.points[undercover_object.faces[full_visible]])
+    # visible_coverage = utils.poly_areas(undercover_object.points[undercover_object.faces[full_visible]])
+    visible_coverage = undercover_object.areas[full_visible]
 
     undercover_obj_coverage = bcoverage.surface_area_coverage(
         size=np.shape(undercover_object.normals)[0],
@@ -142,9 +143,11 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
         partial=partial_visible, partial_coverage=partial_coverage
     )
 
-    visible_coverage = utils.poly_areas(cover_object.points[cover_object.faces[cover_object.indices]])
-    cover_obj_coverage = bcoverage.surface_area_coverage(len(cover_object.faces),
-                                                         cover_object.indices, visible_coverage)
+    # visible_coverage = utils.poly_areas(cover_object.points[cover_object.faces[cover_object.indices]])
+    # cover_obj_coverage = bcoverage.surface_area_coverage(len(cover_object.faces),
+    #                                                      cover_object.indices, visible_coverage)
+    cover_obj_coverage = np.zeros(cover_object.areas.shape)
+    cover_obj_coverage[cover_object.indices] = cover_object.areas[cover_object.indices]
 
     # areas are now in SMA^2, converting to SI
     cover_obj_coverage *= up.power(semi_major_axis, 2)
