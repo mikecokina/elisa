@@ -123,12 +123,12 @@ class OrbitalPositionContainer(PositionContainer):
         """
         components_distance = self._components_distance(components_distance)
         self.build_faces(components_distance, component)
-        self.build_pulsations_on_mesh(component, components_distance)
+        # self.build_pulsations_on_mesh(component, components_distance)
         self.build_surface_areas(component)
         self.build_faces_orientation(components_distance, component)
         self.build_surface_gravity(components_distance, component)
         self.build_temperature_distribution(components_distance, component)
-        self.build_temperature_perturbations(components_distance, component)
+        # self.build_temperature_perturbations(components_distance, component)
         return self
 
     def apply_eclipse_filter(self):

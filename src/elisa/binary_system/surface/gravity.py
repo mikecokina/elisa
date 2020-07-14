@@ -41,7 +41,6 @@ def calculate_potential_gradient(components_distance, component, points, synchro
                     1 / up.power(components_distance, 2)
     else:
         raise ValueError(f'Invalid value `{component}` of argument `component`.\n Use `primary` or `secondary`.')
-
     domega_dy = - points[:, 1] * (1 / r3 + mass_ratio / r_hat3 - f2 * (mass_ratio + 1))
     domega_dz = - points[:, 2] * (1 / r3 + mass_ratio / r_hat3)
     return -np.column_stack((domega_dx, domega_dy, domega_dz))

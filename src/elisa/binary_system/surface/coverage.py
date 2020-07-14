@@ -134,7 +134,6 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
     else:
         partial_coverage = None
 
-    # visible_coverage = utils.poly_areas(undercover_object.points[undercover_object.faces[full_visible]])
     visible_coverage = undercover_object.areas[full_visible]
 
     undercover_obj_coverage = bcoverage.surface_area_coverage(
@@ -143,9 +142,6 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
         partial=partial_visible, partial_coverage=partial_coverage
     )
 
-    # visible_coverage = utils.poly_areas(cover_object.points[cover_object.faces[cover_object.indices]])
-    # cover_obj_coverage = bcoverage.surface_area_coverage(len(cover_object.faces),
-    #                                                      cover_object.indices, visible_coverage)
     cover_obj_coverage = np.zeros(cover_object.areas.shape)
     cover_obj_coverage[cover_object.indices] = cover_object.areas[cover_object.indices]
 
