@@ -1,7 +1,7 @@
 {
   "system": {
     "inclination": 80.0,
-    "period": 2.0,
+    "period": 5.0,
     "argument_of_periastron": 170,
     "gamma": 0.0,
     "eccentricity": 0.2,

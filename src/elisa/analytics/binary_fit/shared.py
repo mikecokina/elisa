@@ -254,7 +254,7 @@ def check_for_boundary_surface_potentials(result_dict):
 
         # test for over-contact overflow trough L2 point
         l2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
-        if 5 * sigma >= pot["value"] - l2 >= 0.0:
+        if 5 * sigma >= l2 - pot["value"] >= 0.0:
             pot["value"] = l2 - 1e-5 * sigma
 
     return result_dict
