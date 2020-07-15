@@ -829,8 +829,8 @@ def calculate_volume_ellipse_approx(equator_points=None, meridian_points=None):
     Function calculates volume of the object where only equator and meridian points where provided usin elipsoidal
     approximation for the points with the same x-cordinates.
 
-    :param equator_points: numpy array;
-    :param meridian_points: numpy array;
+    :param equator_points: numpy array; (yzx) column-wise
+    :param meridian_points: numpy array; (yzx) column-wise
     :return: float;
     """
     areas = up.abs(const.PI * equator_points[:, 1] * meridian_points[:, 0])
