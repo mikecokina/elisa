@@ -738,6 +738,11 @@ class BinarySystem(System):
                     r = bsradius.calculate_forward_radius(**kwargs)
                     setattr(component_instance, 'forward_radius', r)
 
+            # setting value of equivalent radius
+            setattr(component_instance, 'equivalent_radius',
+                    self.
+                    calculate_equivalent_radius(components=component)[component])
+
     @staticmethod
     def compute_filling_factor(surface_potential, lagrangian_points):
         """
@@ -850,8 +855,8 @@ class BinarySystem(System):
         :param components: str; `primary`, `secondary` or None (=both)
         :return: dict; {'primary': L_bol, ...}
         """
-        r_equiv = self.calculate_equivalent_radius(components=components)
         components = bsutils.component_to_list(components)
+        r_equiv = {component: getattr(self, component).equivalent_radius for component in components}
 
         retval = dict()
         for component in components:

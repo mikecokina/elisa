@@ -17,6 +17,7 @@ from elisa.single_system import (
     model,
     graphic,
     radius as sradius,
+    utils as sys_utils
 )
 
 logger = getLogger('single_system.system')
@@ -163,6 +164,8 @@ class SingleSystem(System):
                                  f'Your system is not physical. Exception: {str(e)}')
             setattr(self.star, param, r)
 
+        setattr(self.star, 'equivalent_radius', self.calculate_equivalent_radius())
+
     @property
     def components(self):
         """
@@ -272,6 +275,16 @@ class SingleSystem(System):
             return positions
         else:
             return [const.SinglePosition(*p) for p in positions]
+
+    def calculate_equivalent_radius(self):
+        """
+        Function returns equivalent radius of the star, i.e. radius of the sphere with the same volume as
+        given component.
+
+        :return: float;
+        """
+        volume = sys_utils.calculate_volume(self)
+        return utils.calculate_equiv_radius(volume)
 
     # light curves *****************************************************************************************************
     def compute_lightcurve(self, **kwargs):
