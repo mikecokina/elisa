@@ -1,4 +1,5 @@
-from elisa import const
+import numpy as np
+from elisa import const, utils
 
 
 def move_sys_onpos(system, position, on_copy=True):
@@ -26,3 +27,14 @@ def move_sys_onpos(system, position, on_copy=True):
     system.calculate_face_angles(line_of_sight=const.LINE_OF_SIGHT)
     system.apply_darkside_filter()
     return system
+
+
+def calculate_volume(system):
+    """
+    Returns volume of rotationally squashed star based on a volume of elipsoid.
+
+    :param system: elisa.SingleSystem;
+    :return: float
+    """
+    return utils.calculate_ellipsoid_volume(system.star.polar_radius, system.star.equatorial_radius,
+                                            system.star.equatorial_radius)

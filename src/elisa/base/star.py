@@ -61,6 +61,7 @@ class Star(Body):
         self.side_radius = np.nan
         self.forward_radius = np.nan
         self.backward_radius = np.nan
+        self.equivalent_radius = np.nan
 
         self.init_parameters(**kwargs)
 

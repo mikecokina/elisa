@@ -122,8 +122,8 @@ class LCFit(object):
 
                 io_tools.write_ln(write_fn, 'Polar gravity (log g):', polar_g, '-', '-', 'cgs', 'Derived', line_sep, 3)
 
-                r_equiv = (binary_instance.calculate_equivalent_radius(components=component)[component] *
-                           binary_instance.semi_major_axis * units.DISTANCE_UNIT).to(units.solRad).value
+                r_equiv = (star_instance.equivalent_radius * binary_instance.semi_major_axis *
+                           units.DISTANCE_UNIT).to(units.solRad).value
 
                 io_tools.write_ln(write_fn, 'Equivalent radius (R_equiv):', r_equiv,
                                   '-', '-', 'solRad', 'Derived', line_sep, 5)
