@@ -39,7 +39,7 @@ surface_discredizations = [10, 7, 5, 3]
 n_phases = np.arange(50, 310, 50)
 # n_phases = np.arange(50, 60, 50)
 # N = 1
-N = 10
+N = 5
 
 #ecc = False
 ecc = True
@@ -54,9 +54,7 @@ if ecc:
 print(f'#Alpha    n_phases    time')
 for ii, alpha in enumerate(surface_discredizations):
     data_circ['primary']['discretization_factor'] = alpha
-    data_circ['secondary']['discretization_factor'] = alpha
     data_ecc['primary']['discretization_factor'] = alpha
-    data_ecc['secondary']['discretization_factor'] = alpha
 
     for jj, phs in enumerate(n_phases):
         start_time = time()
