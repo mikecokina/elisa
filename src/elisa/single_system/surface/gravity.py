@@ -26,7 +26,7 @@ def build_surface_gravity(system_container):
     pgms_args = bgravity.eval_args_for_magnitude_gradient(star_container) + \
                 (system_container.angular_velocity, star_container.mass)
     pgms_kwargs = dict(
-        **{"face_symmetry_vector": star_container.face_symmetry_vector} if not star_container.has_spots() else {})
+        **{"face_symmetry_vector": star_container.face_symmetry_vector} if not star_container.symmetry_test() else {})
 
     star_container.potential_gradient_magnitudes = calculate_face_magnitude_gradient(*pgms_args, **pgms_kwargs)
 
