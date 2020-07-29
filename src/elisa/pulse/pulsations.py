@@ -105,10 +105,10 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
     :param star_container: StarContainer;
     :return:
     """
-    r_polar = star_container.polar_radius * normalization_constant
-    mult = const.G * star_container.mass / (r_polar)**3
+    r_equiv = star_container.equivalent_radius * normalization_constant
+    mult = const.G * star_container.mass / r_equiv**3
     for mode_index, mode in star_container.pulsations.items():
-        mode.radial_relative_amplitude = mode.amplitude / (r_polar * mode.angular_frequency)
+        mode.radial_relative_amplitude = mode.amplitude / (r_equiv * mode.angular_frequency)
         mode.horizontal_relative_amplitude = \
             np.sqrt(mode.l*(mode.l+1)) * mult / mode.angular_frequency**2
 
