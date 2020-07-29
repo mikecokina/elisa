@@ -788,7 +788,7 @@ class BinarySystem(System):
             new_potentials = star.surface_potential * np.ones(distances.shape)
 
             points_equator, points_meridian = \
-                self.generate_equator_and_meridian_points_in_detached_sys(
+                self.generate_equator_and_meridian_points(
                     components_distance=1.0,
                     component=component,
                     surface_potential=star.surface_potential
@@ -804,7 +804,7 @@ class BinarySystem(System):
                     side_radii[idx] = bsradius.calculate_side_radius(*radii_args)
 
                     points_equator, points_meridian = \
-                        self.generate_equator_and_meridian_points_in_detached_sys(
+                        self.generate_equator_and_meridian_points(
                             components_distance=distances[idx],
                             component=component,
                             surface_potential=new_potentials[idx]
@@ -836,7 +836,7 @@ class BinarySystem(System):
         for component in components:
             star = getattr(self, component)
             points_equator, points_meridian = \
-                self.generate_equator_and_meridian_points_in_detached_sys(
+                self.generate_equator_and_meridian_points(
                     components_distance=1.0,
                     component=component,
                     surface_potential=star.surface_potential
@@ -866,7 +866,7 @@ class BinarySystem(System):
 
         return retval
 
-    def generate_equator_and_meridian_points_in_detached_sys(self, components_distance, component, surface_potential):
+    def generate_equator_and_meridian_points(self, components_distance, component, surface_potential):
         """
         Function calculates a two arrays of points contouring equator and meridian calculating for the same x-values.
 
@@ -878,18 +878,51 @@ class BinarySystem(System):
         star = getattr(self, component)
         discretization_factor = star.discretization_factor
 
-        # generating equidistant angles
-        num = int(const.PI // discretization_factor)
-        theta = np.linspace(discretization_factor, const.PI - discretization_factor, num=num + 1, endpoint=True)
-
         rad_args = (star.synchronicity, self.mass_ratio, components_distance, surface_potential, component)
         backward_radius = bsradius.calculate_backward_radius(*rad_args)
-        forward_radius = bsradius.calculate_forward_radius(*rad_args)
 
-        # generating x coordinates for both meridian and equator
-        a = 0.5 * (forward_radius + backward_radius)
-        c = forward_radius - a
-        x = a * up.cos(theta) + c
+        # generating equidistant angles
+        if self.morphology == 'detached':
+            num = int(const.PI // discretization_factor)
+            theta = np.linspace(discretization_factor, const.PI - discretization_factor, num=num + 1,
+                                endpoint=True)
+
+            forward_radius = bsradius.calculate_forward_radius(*rad_args)
+
+            # generating x coordinates for both meridian and equator
+            a = 0.5 * (forward_radius + backward_radius)
+            c = forward_radius - a
+            x = a * up.cos(theta) + c
+
+        elif self.morphology == 'over-contact':
+            num = int(const.HALF_PI // discretization_factor)
+            theta = np.linspace(const.HALF_PI + discretization_factor, const.PI - discretization_factor, num=num + 1,
+                                endpoint=True)
+
+            forward_radius = mesh.calculate_neck_position(self, return_polynomial=False) \
+                if component == 'primary' else 1 - mesh.calculate_neck_position(self, return_polynomial=False)
+
+            a = 0.5 * (forward_radius + backward_radius)
+            c = forward_radius - a
+            x_back = a * up.cos(theta) + c
+
+            x_front = np.linspace(forward_radius, c, num=num + 1, endpoint=True)
+            x = np.concatenate((x_front, x_back))
+
+        elif self.morphology == 'semi-detached' or self.morphology == 'double-contact':
+            num = int(const.HALF_PI // discretization_factor)
+            theta = np.linspace(const.HALF_PI + discretization_factor, const.PI - discretization_factor, num=num,
+                                endpoint=True)
+
+            forward_radius = bsradius.calculate_forward_radius(*rad_args)
+
+            a = 0.5 * (forward_radius + backward_radius)
+            c = forward_radius - a
+
+            x_front = np.linspace(forward_radius - 0.05 * a, c, num=num + 1, endpoint=True)
+            x_back = a * up.cos(theta) + c
+
+            x = np.concatenate((x_front, x_back))
 
         fn_cylindrical = getattr(model, f"potential_{component}_cylindrical_fn")
         precal_cylindrical = getattr(model, f"pre_calculate_for_potential_value_{component}_cylindrical")
@@ -904,10 +937,23 @@ class BinarySystem(System):
                 cylindrical_potential_derivative_fn, surface_potential, self.mass_ratio, star.synchronicity)
         points = mesh.get_surface_points_cylindrical(*args)
 
-        forward_point = np.array([0.0, 0.0, forward_radius])
-        backward_point = np.array([0.0, 0.0, -backward_radius])
-        return np.vstack((forward_point, points[:points.shape[0] // 2, :], backward_point)), \
-               np.vstack((forward_point, points[points.shape[0] // 2:, :], backward_point))
+        if self.morphology != 'over-contact':
+            # add forward and backward points to meridians
+            equator_points = np.vstack(([0, 0, forward_radius],
+                                        points[:points.shape[0] // 2, :],
+                                        [0, 0, -backward_radius]))
+            meridian_points = np.vstack(([0, 0, forward_radius],
+                                         points[points.shape[0] // 2:, :],
+                                         [0, 0, -backward_radius]))
+
+            return equator_points, meridian_points
+        else:
+            equator_points = np.vstack((points[:points.shape[0] // 2, :],
+                                        [0, 0, -backward_radius]))
+            meridian_points = np.vstack((points[points.shape[0] // 2:, :],
+                                         [0, 0, -backward_radius]))
+
+            return equator_points, meridian_points
 
     # light curves *****************************************************************************************************
     def compute_lightcurve(self, **kwargs):
