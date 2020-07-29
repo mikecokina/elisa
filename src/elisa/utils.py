@@ -736,45 +736,6 @@ def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     return phi_new, theta_new
 
 
-# todo: write unit test to test_utils
-def spherical_harmonics_renormalization_constant(l, m):
-    """
-    Spherical harmonic functions are by default normalized using orthogonality of ALS where integral(Y(l,m)**2) over the
-    spherical surface is one. However in our case, it is more useful to renormalise them in such way that maximum of
-    the real part of the spherical harmonics is one. This function returns such renormalization constant.
-    :param l: float; angular degree of the mode
-    :param m: float; azimuthal order of the mode
-    :return: float;
-    """
-
-    def alp(xx: float, *args) -> float:
-        """
-        Returns negative value from imaginary part of associated Legendre polynomial (ALP),
-        used in minimizer to find global maximum of real part of spherical harmonics.
-
-        :param xx: float; - argument of function
-        :param args: Tuple;
-
-        ::
-
-            l - angular degree of ALP
-            m - azimuthal order of ALP
-
-        :return: float; negative of absolute value of ALP
-        """
-        l_mode, m_mode = args
-        return -abs(up.lpmv(m_mode, l_mode, xx))
-
-    old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
-    ns = int(up.power(5, up.ceil((l - m) / 23)) * ((l - m) + 1))
-    output = np.array(brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=ns, finish=fmin, full_output=True))
-    np.seterr(**old_settings)
-
-    x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
-    result = abs(np.real(up.sph_harm(m, l, 0, up.arccos(x))))
-    return 1.0 / result
-
-
 def calculate_equiv_radius(volume):
     """returns equivalent radius of a sphere with given volume"""
     return up.power(3.0 * volume / (4.0 * const.PI), 1.0 / 3.0)

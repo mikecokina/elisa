@@ -46,8 +46,8 @@ class PulsationMode(object):
         self.init_properties(**kwargs)
 
         self.angular_frequency = c.FULL_ARC * self.frequency
-        self.renorm_const = utils.spherical_harmonics_renormalization_constant(self.l, self.m)
-
+        # spherical harmonics renormalization constant to rms = 1
+        self.renorm_const = 2 * c.PI ** 0.5
         self.validate_mode()
 
     @staticmethod

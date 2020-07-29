@@ -19,6 +19,30 @@ def phase_correction(phase):
     return phase * const.FULL_ARC
 
 
+def generate_time_exponential(mode, time):
+    """
+    Returns time dependent exponential used in `generate_spherical_harmonics`.
+
+    :param mode: PulsationMode; PulsationMode; mode used to generate sph. harmonics
+    :param time: float; time at which evaluate spherical harmonics
+    :return: np.float; complex time dependent exponential
+    """
+    exponent = mode.angular_frequency * time + mode.start_phase
+    return up.exp(complex(0, -exponent))
+
+
+def generate_spherical_harmonics(mode, points, time_exponential):
+    """
+    Returns spherical harmonics normalized such that its rms = 1.
+
+    :param mode: PulsationMode; mode used to generate sph. harmonics
+    :param points: np.array; points in spherical coordinates on which to calculate spherical harmonics value
+    :param time: float; time at which evaluate spherical harmonics
+    :return: np.array; array of spherical harmonics for  given `points`
+    """
+    return mode.renorm_const * sph_harm(mode.m, mode.l, points[:, 1], points[:, 2]) * time_exponential
+
+
 def incorporate_pulsations_to_mesh(star_container, com_x, phase, time):
     """
     adds pulsation perturbation to the mesh
@@ -38,10 +62,9 @@ def incorporate_pulsations_to_mesh(star_container, com_x, phase, time):
     displacement_spots = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in points_spot.items()}
 
     for mode_index, mode in star_container.pulsations.items():
-        exponent = mode.angular_frequency * time + mode.start_phase
-        exponential = up.exp(complex(0, -exponent))
-        rals = mode.renorm_const * sph_harm(mode.m, mode.l, tilted_points[:, 1], tilted_points[:, 2]) * exponential
-        rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2]) * exponential
+        exponential = generate_time_exponential(mode, time)
+        rals = generate_spherical_harmonics(mode, tilted_points, exponential)
+        rals_spots = {spot_idx: generate_spherical_harmonics(mode, spotp, exponential)
                       for spot_idx, spotp in tilted_points_spot.items()}
 
         displacement += calculate_mode_displacement(mode, points, rals)
@@ -217,10 +240,9 @@ def incorporate_temperature_perturbations(star_container, com_x, phase, time):
     t_pert_spots = {spot_idx: up.zeros(spot.shape[0]) for spot_idx, spot in spot_centres.items()}
 
     for mode_index, mode in star_container.pulsations.items():
-        exponent = mode.angular_frequency * time + mode.start_phase + mode.temperature_perturbation_phase_shift
-        exponential = up.exp(complex(0, -exponent))
-        rals = mode.renorm_const * sph_harm(mode.m, mode.l, tilted_centres[:, 1], tilted_centres[:, 2]) * exponential
-        rals_spots = {spot_idx: mode.renorm_const * sph_harm(mode.m, mode.l, spotp[:, 1], spotp[:, 2]) * exponential
+        exponential = generate_time_exponential(mode, time)
+        rals = generate_spherical_harmonics(mode, tilted_centres, exponential)
+        rals_spots = {spot_idx: generate_spherical_harmonics(mode, spotp, exponential)
                       for spot_idx, spotp in tilted_spot_centres.items()}
 
         t_pert += calculate_temperature_perturbation(mode, star_container.temperatures, rals)
