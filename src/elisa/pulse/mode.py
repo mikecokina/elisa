@@ -40,8 +40,9 @@ class PulsationMode(object):
         # here the time-independent, renormalized associated Legendree polynomial is stored
         self.rals = None
 
-        self.radial_relative_amplitude = None
-        self.horizontal_relative_amplitude = None
+        # dimensionless normalized amplitudes
+        self.radial_amplitude = None
+        self.horizontal_amplitude = None
 
         self.init_properties(**kwargs)
 

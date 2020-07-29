@@ -31,16 +31,20 @@ def generate_time_exponential(mode, time):
     return up.exp(complex(0, -exponent))
 
 
-def generate_spherical_harmonics(mode, points, time_exponential):
+def generate_spherical_harmonics(mode, points, time_exponential, order=None, degree=None):
     """
     Returns spherical harmonics normalized such that its rms = 1.
 
     :param mode: PulsationMode; mode used to generate sph. harmonics
     :param points: np.array; points in spherical coordinates on which to calculate spherical harmonics value
-    :param time: float; time at which evaluate spherical harmonics
+    :param time_exponential: float; time at which evaluate spherical harmonics
+    :param degree: int;
+    :param order: int;
     :return: np.array; array of spherical harmonics for  given `points`
     """
-    return mode.renorm_const * sph_harm(mode.m, mode.l, points[:, 1], points[:, 2]) * time_exponential
+    l = mode.l if degree is None else degree
+    m = mode.m if order is None else order
+    return mode.renorm_const * sph_harm(m, l, points[:, 1], points[:, 2]) * time_exponential
 
 
 def incorporate_pulsations_to_mesh(star_container, com_x, phase, time):
@@ -63,13 +67,25 @@ def incorporate_pulsations_to_mesh(star_container, com_x, phase, time):
 
     for mode_index, mode in star_container.pulsations.items():
         exponential = generate_time_exponential(mode, time)
-        rals = generate_spherical_harmonics(mode, tilted_points, exponential)
-        rals_spots = {spot_idx: generate_spherical_harmonics(mode, spotp, exponential)
-                      for spot_idx, spotp in tilted_points_spot.items()}
 
-        displacement += calculate_mode_displacement(mode, points, rals)
-        for spot_idx, spoints in points_spot.items():
-            displacement_spots[spot_idx] += calculate_mode_displacement(mode, spoints, rals_spots[spot_idx])
+        harmonics = np.zeros((2, tilted_points.shape[0]), dtype=np.complex)
+        spot_harmonics = {spot_idx: np.zeros((2, spoints.shape[0]), dtype=np.complex)
+                          for spot_idx, spoints in tilted_points_spot.items()}
+
+        harmonics[0] = generate_spherical_harmonics(mode, tilted_points, exponential)
+        for spot_idx, spotp in tilted_points_spot.items():
+            spot_harmonics[spot_idx][0] = generate_spherical_harmonics(mode, spotp, exponential)
+
+        if mode.m != mode.l:
+            harmonics[1] = generate_spherical_harmonics(mode, tilted_points, exponential,
+                                                        order=mode.m + 1, degree=mode.l)
+            for spot_idx, spotp in tilted_points_spot.items():
+                spot_harmonics[spot_idx][1] = generate_spherical_harmonics(mode, spotp, exponential,
+                                                                           order=mode.m + 1, degree=mode.l)
+
+        displacement += calculate_mode_displacement(mode, tilted_points, harmonics)
+        for spot_idx, spoints in tilted_points_spot.items():
+            displacement_spots[spot_idx] += calculate_mode_displacement(mode, spoints, spot_harmonics[spot_idx])
 
     star_container.points = utils.spherical_to_cartesian(points + displacement)
     star_container.points[:, 0] += com_x
@@ -131,93 +147,78 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
     r_equiv = star_container.equivalent_radius * normalization_constant
     mult = const.G * star_container.mass / r_equiv**3
     for mode_index, mode in star_container.pulsations.items():
-        mode.radial_relative_amplitude = mode.amplitude / (r_equiv * mode.angular_frequency)
-        mode.horizontal_relative_amplitude = \
-            np.sqrt(mode.l*(mode.l+1)) * mult / mode.angular_frequency**2
+        mode.radial_amplitude = mode.amplitude / (r_equiv * mode.angular_frequency)
+        mode.horizontal_amplitude = np.sqrt(mode.l*(mode.l+1)) * mult / mode.angular_frequency**2
 
 
-def calculate_radial_displacement(relative_amplitude, radii, rals):
+def calculate_radial_displacement(mode, radii, spherical_harmonics):
     """
     Calculates radial displacement of surface points.
 
-    :param rals: numpy.array;
-    :param relative_amplitude: float; relative radial amplitude of the pulsation mode
-                               see: PulsationMode.radial_relative_amplitude
+    :param mode: PulsationMode;
     :param radii: numpy.array;
+    :param spherical_harmonics: numpy.array; Y_l^m
     :return: numpy.array
     """
-    return relative_amplitude * radii * np.real(rals)
+    return mode.radial_amplitude * radii * np.real(spherical_harmonics)
 
 
-def calculate_phi_displacement(radial_amplitude, relative_amplitude, radii, thetas, m, rals):
+def calculate_phi_displacement(mode, thetas, harmonics):
     """
     Displacement of azimuthal coordinates.
 
-    :param radial_amplitude: float;
-    :param relative_amplitude: float; relative amplitude of horizontal displacement
-    :param radii: numpy.array;
+    :param mode: PulsationMode;
     :param thetas: numpy.array
-    :param m: int;
-    :param rals: numpy.array;
+    :param harmonics: numpy.array; Y_l^m
     :return: numpy.array;
     """
     sin_thetas = np.sin(thetas)
     sin_test = sin_thetas != 0.0
-    retval = np.zeros(radii.shape)
-    retval[sin_test] = \
-        radial_amplitude * relative_amplitude * m * np.imag(- rals[sin_test]) / sin_thetas[sin_test]
+    retval = np.zeros(thetas.shape)
+    retval[sin_test] = - mode.m * mode.radial_amplitude * mode.horizontal_amplitude * np.imag(harmonics[sin_test]) \
+         / sin_thetas[sin_test]
     return retval
 
 
-def calculate_theta_displacement(radial_amplitude, relative_amplitude, radii, phis, thetas, l, m):
+def calculate_theta_displacement(mode, phis, thetas, harmonics):
     """
     Displacement in latitude.
 
-    :param radial_amplitude: float;
-    :param relative_amplitude: float; relative amplitude of horizontal displacement
-    :param radii: numpy.array;
+    :param mode: PulsationMode;
     :param thetas: numpy.array;
     :param phis: numpy.array;
-    :param l: int;
-    :param m: int;
+    :param harmonics: np.array;
     :return: numpy.array;
     """
-    def alp_derivative(order):
+
+    def spherical_harm_derivative():
         """works for m > 0"""
-        derivative = \
-            0.5 * np.sqrt((l + order) * (l - order + 1)) * \
-            np.real(np.exp(1j*phis) * sph_harm(order-1, l, phis, thetas))
-        derivative += 0 if order == l else \
-            0.5 * np.sqrt((l - order) * (l + order + 1)) * \
-            np.real(np.exp(-1j*phis) * sph_harm(order+1, l, phis, thetas))
+        theta_test = np.logical_and(thetas != 0.0, thetas != const.PI)
+
+        derivative = np.zeros(phis.shape)
+        derivative[theta_test] = mode.m * np.real(harmonics[0][theta_test] / np.tan(thetas[theta_test])) + \
+                                 np.sqrt((mode.l - mode.m) * (mode.l + mode.m + 1)) * \
+                                 np.real(np.exp((0 - 1j) * phis[theta_test]) * harmonics[1][theta_test])
+
         return derivative
 
-    if m > 0:
-        return radial_amplitude * relative_amplitude * alp_derivative(m)
-    elif m == 0:
-        return - radial_amplitude * relative_amplitude * np.real(sph_harm(1, l, phis, thetas))
-    elif m < 0:
-        coeff = np.power(-1, -m) * factorial(l+m) / factorial(l-m)
-        return radial_amplitude * relative_amplitude * coeff * alp_derivative(-m)
+    mult = mode.radial_amplitude * mode.horizontal_amplitude
+    return mult * spherical_harm_derivative()
 
 
-def calculate_mode_displacement(mode, points, rals):
+def calculate_mode_displacement(mode, points, spherical_harmonics):
     """
     Calculates surface displacement caused by given `mode`.
 
     :param mode: elisa.pulse.mode.Mode;
     :param points: numpy.array;
-    :param rals: numpy.array;
+    :param spherical_harmonics: list; [Y_l^m, Y_l^m+1]
     :return:
     """
-    radial_displacement = calculate_radial_displacement(mode.radial_relative_amplitude, points[:, 0], rals)
-    phi_displacement = calculate_phi_displacement(mode.radial_relative_amplitude, mode.horizontal_relative_amplitude,
-                                                  points[:, 0], points[:, 2],
-                                                  mode.m, rals)
-    theta_displacement = calculate_theta_displacement(mode.radial_relative_amplitude,
-                                                      mode.horizontal_relative_amplitude,
-                                                      points[:, 0], points[:, 1], points[:, 2],
-                                                      mode.l, mode.m)
+    radial_displacement = calculate_radial_displacement(mode, points[:, 0], spherical_harmonics[0])
+    phi_displacement = calculate_phi_displacement(mode, points[:, 2], spherical_harmonics[0])
+    theta_displacement = calculate_theta_displacement(mode, points[:, 1], points[:, 2], spherical_harmonics)
+
     return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
 
 
@@ -241,14 +242,14 @@ def incorporate_temperature_perturbations(star_container, com_x, phase, time):
 
     for mode_index, mode in star_container.pulsations.items():
         exponential = generate_time_exponential(mode, time)
-        rals = generate_spherical_harmonics(mode, tilted_centres, exponential)
-        rals_spots = {spot_idx: generate_spherical_harmonics(mode, spotp, exponential)
-                      for spot_idx, spotp in tilted_spot_centres.items()}
+        harmonics = generate_spherical_harmonics(mode, tilted_centres, exponential)
+        spot_harmonics = {spot_idx: generate_spherical_harmonics(mode, spotp, exponential)
+                          for spot_idx, spotp in tilted_spot_centres.items()}
 
-        t_pert += calculate_temperature_perturbation(mode, star_container.temperatures, rals)
+        t_pert += calculate_temperature_perturbation(mode, star_container.temperatures, harmonics)
         for spot_idx, t_s in t_pert_spots.items():
             t_s += calculate_temperature_perturbation(mode, star_container.spots[spot_idx].temperatures,
-                                                      rals_spots[spot_idx])
+                                                      spot_harmonics[spot_idx])
 
     star_container.temperatures += t_pert
     for spot_idx, spot in star_container.spots.items():
@@ -268,6 +269,6 @@ def calculate_temperature_perturbation(mode, temperatures, rals, adiabatic_gradi
     """
     ad_g = const.IDEAL_ADIABATIC_GRADIENT if adiabatic_gradient is None else float(adiabatic_gradient)
     l = mode.l
-    h, eps = mode.horizontal_relative_amplitude, mode.radial_relative_amplitude
+    h, eps = mode.horizontal_amplitude, mode.radial_amplitude
 
     return ad_g * temperatures * (h * l * (l + 1) - 4 - (1 / h)) * eps * np.real(rals)
