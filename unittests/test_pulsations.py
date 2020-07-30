@@ -6,7 +6,7 @@ from elisa import utils
 
 from elisa.base.star import Star
 from elisa.single_system.system import SingleSystem
-from elisa.pulse import pulsations
+from elisa.pulse import pulsations, utils as putils
 from unittests.utils import ElisaTestCase
 from unittests import utils as testutils
 
@@ -97,7 +97,7 @@ class PulsatingStarInitTestCase(ElisaTestCase):
                 single.init()
 
                 mode = single.star.pulsations[0]
-                exponential = pulsations.generate_time_exponential(mode, time)
+                exponential = putils.generate_time_exponential(mode, time)
                 sph_harm = pulsations.spherical_harmonics(mode, points, exponential)
 
                 test_val = np.sqrt(np.sum(np.abs(sph_harm)**2)/points.shape[0])

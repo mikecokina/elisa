@@ -142,30 +142,32 @@ def build_surface_gravity(system, components_distance, component="all"):
 
     components = bsutils.component_to_list(component)
     mass_ratio = system.mass_ratio
-    semi_major_axis = system.semi_major_axis
 
     for component in components:
         star = getattr(system, component)
         synchronicity = star.synchronicity
-        polar_gravity = calculate_polar_gravity_acceleration(star, components_distance, mass_ratio,
-                                                             component, semi_major_axis, star.synchronicity,
-                                                             logg=False)
 
         pgm = calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio,
                                                            star.polar_radius, component, star.synchronicity)
         setattr(star, "polar_potential_gradient_magnitude", pgm)
-        gravity_scalling_factor = polar_gravity / pgm
 
         logger.debug(f'computing potential gradient magnitudes distribution of {component} component')
 
-        pgms_args = bgravity.eval_args_for_magnitude_gradient(star) + (synchronicity, mass_ratio)
-        pgms_kwargs = dict(
-            **{"face_symmetry_vector": star.face_symmetry_vector} if star.symmetry_test() else {})
-        pgms = calculate_face_magnitude_gradient(components_distance, component, *pgms_args, **pgms_kwargs)
-        setattr(star, "potential_gradient_magnitudes", pgms)
+        points, faces = bgravity.eval_args_for_magnitude_gradient(star)
 
-        logg = up.log10(gravity_scalling_factor * star.potential_gradient_magnitudes)
-        setattr(star, "log_g", logg)
+        scaling_factor = (const.G * system.primary.mass / system.semi_major_axis**2)
+        g_acc_vector = scaling_factor * \
+                       calculate_potential_gradient(components_distance, component, points=points,
+                                                    synchronicity=synchronicity, mass_ratio=mass_ratio)
+
+        # TODO: here implement pulsations
+        if star.has_pulsations():
+            pass
+
+        gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
+        setattr(star, 'potential_gradient_magnitudes', gravity[star.face_symmetry_vector]) \
+            if star.symmetry_test() else setattr(star, 'potential_gradient_magnitudes', gravity)
+        setattr(star, 'log_g', np.log10(star.potential_gradient_magnitudes))
 
         if star.has_spots():
             for spot_index, spot in star.spots.items():
@@ -173,10 +175,16 @@ def build_surface_gravity(system, components_distance, component="all"):
                 logger.debug(f'calculating distribution of potential gradient '
                              f'magnitudes of spot index: {spot_index} / {component} component')
 
-                spot_pgms = calculate_face_magnitude_gradient(components_distance, component, spot.points, spot.faces,
-                                                              synchronicity, mass_ratio, face_symmetry_vector=None)
-                setattr(spot, "potential_gradient_magnitudes", spot_pgms)
-                spot_logg = up.log10(gravity_scalling_factor * spot.potential_gradient_magnitudes)
-                setattr(spot, "log_g", spot_logg)
+                g_acc_vector = scaling_factor * \
+                               calculate_potential_gradient(components_distance, component, points=spot.points,
+                                                            synchronicity=synchronicity, mass_ratio=mass_ratio)
+
+                # TODO: here implement pulsations
+                if star.has_pulsations():
+                    pass
+
+                setattr(spot, 'potential_gradient_magnitudes',
+                        np.mean(np.linalg.norm(g_acc_vector, axis=1)[spot.faces], axis=1))
+                setattr(spot, 'log_g', np.log10(spot.potential_gradient_magnitudes))
 
     return system

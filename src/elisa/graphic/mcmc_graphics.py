@@ -49,10 +49,14 @@ class Plot(object):
 
         gs = gridspec.GridSpec(height, 1)
         ax = []
+
+        plot_conter = 0
         for idx, label in enumerate(kwargs['variable_labels']):
             if label not in kwargs['traces_to_plot']:
                 continue
-            ax.append(fig.add_subplot(gs[idx])) if idx == 0 else ax.append(fig.add_subplot(gs[idx], sharex=ax[0]))
+            ax.append(fig.add_subplot(gs[plot_conter])) \
+                if plot_conter == 0 else ax.append(fig.add_subplot(gs[plot_conter], sharex=ax[0]))
+            plot_conter += 1
             ax[-1].scatter(np.arange(kwargs['flat_chain'].shape[0]), kwargs['flat_chain'][:, hash_map[label]],
                            label=labels[idx], s=0.2)
             ax[-1].legend(loc=1)
