@@ -1,4 +1,5 @@
 import numpy as np
+import astropy.units as u
 
 from copy import copy
 from scipy.spatial.qhull import Delaunay
@@ -6,10 +7,13 @@ from elisa.base import spot
 from elisa.pulse import pulsations
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
+from elisa.binary_system.orbit import orbit
 from elisa.logger import getLogger
 
 from elisa import (
-    umpy as up
+    umpy as up,
+    const,
+    units
 )
 from elisa.base.surface.faces import (
     initialize_model_container,
@@ -379,3 +383,42 @@ def set_all_normals(star_container, com):
                                                                          star_container.spots[spot_index].face_centres,
                                                                          com)
     return star_container
+
+
+def build_velocities(system, components_distance, component='all'):
+    """
+    Function calculates velocity vector for each face relative to the centre of mass.
+
+    :param system: elisa.binary_system.container.SystemContainer
+    :param components_distance: float;
+    :param component: str;
+    :return: elisa.binary_system.container.SystemContainer
+    """
+    if is_empty(component):
+        logger.debug("no component set to build face orientation")
+        return system
+
+    component = bsutils.component_to_list(component)
+    com_x = {'primary': 0.0, 'secondary': components_distance}
+
+    velocities = orbit.create_orb_vel_vectors(system, components_distance)
+
+    orb_period = (system.period * units.PERIOD_UNIT).to(u.s).value
+    omega_orb = np.array([0, 0, const.FULL_ARC / orb_period])
+
+    for _component in component:
+        star = getattr(system, _component)
+        points = star.points - com_x[_component]
+        omega = star.synchronicity * omega_orb
+
+        # orbital velocity + rotational velocity
+        p_velocities = velocities['primary'] + np.cross(points, omega, axisa=1)
+        star.velocities = np.mean(p_velocities[star.faces], axis=1)
+
+        if star.has_spots():
+            for spot in star.spots.values():
+                points = spot.points - com_x[_component]
+                p_velocities = velocities['primary'] + np.cross(points, omega, axisa=1)
+                spot.velocities = np.mean(p_velocities[spot.faces], axis=1)
+
+    return system

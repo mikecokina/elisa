@@ -61,6 +61,7 @@ class SystemContainer(PositionContainer):
 
             - build_mesh
             - build_faces
+            - self.build_velocities
             - self.build_pulsations_on_mesh
             - self.build_surface_areas
             - self.build_faces_orientation
@@ -71,16 +72,28 @@ class SystemContainer(PositionContainer):
         :param kwargs:
         :return: self;
         """
-        self.build_mesh()
-        self.build_faces()
+        self.build_surface()
         self.build_from_points()
         return self
+
+    def build_surface(self):
+        """
+        Building only clear surface. (points, faces, velocities)
+
+        :return:
+        """
+        self.build_mesh()
+        self.build_faces()
+        self.build_velocities()
 
     def build_mesh(self):
         return mesh.build_mesh(self)
 
     def build_faces(self):
         return faces.build_faces(self)
+
+    def build_velocities(self):
+        return faces.build_velocities(self)
 
     def build_pulsations_on_mesh(self):
         return mesh.build_pulsations_on_mesh(self)

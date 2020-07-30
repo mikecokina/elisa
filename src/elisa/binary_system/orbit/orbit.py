@@ -35,6 +35,55 @@ def angular_velocity(period, eccentricity, distance):
         (1.0 - eccentricity) * (1.0 + eccentricity))  # $\rad.sec^{-1}$
 
 
+def primary_orbital_speed(m1, m2, a_red, components_distance):
+    """
+    Returns orbital speed of primary component with respect to the system centre of mass.
+
+    :param m1: float; primary mass
+    :param m2: float; secondary mass
+    :param a_red: float; semi major axis of the primary compoenent with respect to the system centre of mass
+    :param components_distance: float;
+    :return: float;
+    """
+    m = m1 + m2
+    return m2 * np.sqrt((const.G / m) * (2 / components_distance - (m2 / (a_red * m))))
+
+
+def velocity_vector_angle(eccentricity, true_anomaly):
+    """
+    Returns sine and cosine of angle between velocity vector and join vector.
+
+    :param eccentricity: float;
+    :param true_anomaly: float;
+    :return: tuple;
+    """
+    den = np.sqrt(1 + eccentricity**2 + 2 * eccentricity * np.cos(true_anomaly))
+    sin = (1 + eccentricity * np.cos(true_anomaly)) / den
+    cos = - (eccentricity * np.sin(true_anomaly)) / den
+    return sin, cos
+
+
+def create_orb_vel_vectors(system, components_distance):
+    """
+    Returns orbital velocity vectors for both components in reference frame of centre of mass.
+
+    :param system: elisa.binary_system.container;
+    :param components_distance: float;
+    :return:
+    """
+    a_red = system.semi_major_axis * components_distance / (1 + system.mass_ratio)
+
+    speed = primary_orbital_speed(system.primary.mass, system.secondary.mass, a_red,
+                                  system.semi_major_axis * components_distance)
+
+    sin, cos = velocity_vector_angle(system.eccentricity, system.position.true_anomaly)
+
+    velocity = {'primary': np.array([cos * speed, - sin * speed, 0])}
+    velocity['secondary'] = - velocity['primary'] / system.mass_ratio
+
+    return velocity
+
+
 class Orbit(object):
     """
     Model which represents orbit of binary system.
