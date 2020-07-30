@@ -23,7 +23,18 @@ def build_surface_gravity(system_container):
     logger.debug('computing potential gradient magnitudes distribution on a star')
     points, faces = bgravity.eval_args_for_magnitude_gradient(star_container)
 
-    g_acc_vector = - calculate_potential_gradient(points, system_container.angular_velocity, star_container.mass)
+    g_acc_vector = calculate_potential_gradient(points, system_container.angular_velocity, star_container.mass)
+
+    spot_g_acc_vector = dict()
+    if star_container.has_spots():
+        for spot_index, spot in star_container.spots.items():
+            logger.debug(f'calculating surface SI unit gravity of {spot_index} spot')
+            logger.debug(f'calculating distribution of potential gradient '
+                         f'magnitudes of spot index: {spot_index} component')
+
+            spot_g_acc_vector.update(
+                {spot_index:
+                     calculate_potential_gradient(spot.points, system_container.angular_velocity, star_container.mass)})
 
     # TODO: here implement pulsations
     if star_container.has_pulsations():
@@ -36,19 +47,8 @@ def build_surface_gravity(system_container):
 
     if star_container.has_spots():
         for spot_index, spot in star_container.spots.items():
-            logger.debug(f'calculating surface SI unit gravity of {spot_index} spot')
-            logger.debug(f'calculating distribution of potential gradient '
-                         f'magnitudes of spot index: {spot_index} component')
-
-            g_acc_vector = - calculate_potential_gradient(spot.points, system_container.angular_velocity,
-                                                          star_container.mass)
-
-            # TODO: here implement pulsations
-            if star_container.has_pulsations():
-                pass
-
             setattr(spot, 'potential_gradient_magnitudes',
-                    np.mean(np.linalg.norm(g_acc_vector, axis=1)[spot.faces], axis=1))
+                    np.mean(np.linalg.norm(spot_g_acc_vector[spot_index], axis=1)[spot.faces], axis=1))
             setattr(spot, 'log_g', np.log10(spot.potential_gradient_magnitudes))
 
     return system_container
@@ -92,7 +92,6 @@ def calculate_potential_gradient(points, angular_velocity, mass):
     returns array of gravity potential gradients for corresponding faces
 
     :param points: np.array; (N * 3) array of surface points
-    :param faces: np.array; simplices of triangulated points
     :param angular_velocity: float; angular velocity of rotation
     :param mass: float; stellar mass
     :return: np.array; gravity gradients for each face
@@ -103,5 +102,5 @@ def calculate_potential_gradient(points, angular_velocity, mass):
     points_gradients[:, 1] = c.G * mass * points[:, 1] / r3 - np.power(angular_velocity, 2) * points[:, 1]
     points_gradients[:, 2] = c.G * mass * points[:, 2] / r3
 
-    return points_gradients
+    return - points_gradients
 

@@ -736,6 +736,33 @@ def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     return phi_new, theta_new
 
 
+def derotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
+    """
+    backward transformation of spherical coordinates produced by rotation around old
+    z_axis by `phi_rotation` and second rotation around new y axis by value `theta rotation` into original coordinate
+    system
+
+    :param phi: numpy.array; - in radians
+    :param theta: numpy.array; - in radians
+    :param phi_rotation: float; - rotation of old spherical system around z axis, in radians
+    :param theta_rotation: float; - rotation of z axis along new y axis by this value, in radians
+    :return:
+    """
+    # TODO: write unit test to test_utils
+    cos_theta = up.cos(theta)
+    sin_theta = up.sin(theta)
+    cos_phi = up.cos(phi)
+    sin_phi = up.sin(phi)
+
+    sin_axis_theta = up.sin(theta_rotation)
+    cos_axis_theta = up.cos(theta_rotation)
+
+    theta_new = up.arccos(cos_theta * cos_axis_theta - cos_phi * sin_theta * sin_axis_theta)
+    phi_new = up.arctan2(sin_phi * sin_theta, cos_phi * sin_theta * cos_axis_theta +
+                         cos_theta * sin_axis_theta)
+    return (phi_new + phi_rotation) % const.FULL_ARC, theta_new
+
+
 def calculate_equiv_radius(volume):
     """returns equivalent radius of a sphere with given volume"""
     return up.power(3.0 * volume / (4.0 * const.PI), 1.0 / 3.0)

@@ -51,7 +51,7 @@ def tilt_mode_coordinates(points, spot_points, phi, theta):
     :param theta: float; latitude of the new polar axis
     :return: Tuple;
     """
-    if theta != 0 and phi != 0:
+    if theta != 0 or phi != 0:
         tilted_phi, tilted_theta = utils.rotation_in_spherical(points[:, 1], points[:, 2], phi, theta)
         ret_points = np.column_stack((points[:, 0], tilted_phi, tilted_theta))
 
@@ -62,3 +62,25 @@ def tilt_mode_coordinates(points, spot_points, phi, theta):
         return ret_points, ret_spot_points
     else:
         return points, spot_points
+
+
+def derotate_surface_points(points_to_derotate, phi, theta, com_x):
+    """
+    Derotating surface points  into the base coordinate system after surface displacement for misalligned mode is
+    calculated.
+
+    :param points_to_derotate: numpy.array; surface points in tilted spherical coordinates
+    :param phi: float; azimuthal tilt of the input coordinate system
+    :param theta: float; latitudinal tilt of the input coordinate system
+    :param com_x:
+    :return:
+    """
+    derot_phi, derot_theta = \
+        utils.derotation_in_spherical(points_to_derotate[:, 1],
+                                      points_to_derotate[:, 2],
+                                      phi, theta)
+    derot_points = np.column_stack((points_to_derotate[:, 0], derot_phi, derot_theta))
+    points = utils.spherical_to_cartesian(derot_points)
+    points[:, 0] += com_x
+
+    return points

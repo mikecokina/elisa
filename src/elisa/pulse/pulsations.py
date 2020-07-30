@@ -61,15 +61,6 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
 
 
 def incorporate_pulsations_to_mesh(star_container, com_x):
-    """
-    adds pulsation perturbation to the mesh
-
-    :param star_container: elisa.base.container.StarContainer;
-    :param com_x: float; centre of mass of the star
-    :return: StarContainer;
-    """
-    points, points_spot = star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
-
     tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
 
     displacement = up.zeros(tilted_points.shape)
@@ -83,17 +74,22 @@ def incorporate_pulsations_to_mesh(star_container, com_x):
                 calculate_mode_displacement(mode, spoints, mode.spot_point_harmonics[spot_idx],
                                             mode.spot_point_harmonics_derivatives[spot_idx])
 
-    star_container.points = utils.spherical_to_cartesian(points + displacement)
-    star_container.points[:, 0] += com_x
+    setattr(star_container, 'points', putils.derotate_surface_points(tilted_points + displacement,
+                                                                     star_container.pulsations[0].mode_axis_phi,
+                                                                     star_container.pulsations[0].mode_axis_theta,
+                                                                     com_x))
 
     for spot_idx, spot in star_container.spots.items():
-        spot.points = utils.spherical_to_cartesian(points_spot[spot_idx] + displacement_spots[spot_idx])
-        spot.points[:, 0] += com_x
+        setattr(spot, 'points',
+                putils.derotate_surface_points(tilted_points_spot[spot_idx] + displacement_spots[spot_idx],
+                                               star_container.pulsations[0].mode_axis_phi,
+                                               star_container.pulsations[0].mode_axis_theta,
+                                               com_x))
 
     return star_container
 
 
-def incorporate_gravity_perturbation(container, acceleration):
+def incorporate_gravity_perturbation(container):
     pass
 
 
