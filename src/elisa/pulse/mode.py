@@ -44,6 +44,14 @@ class PulsationMode(object):
         self.radial_amplitude = None
         self.horizontal_amplitude = None
 
+        # surface related aux variables
+        self.points = None
+        self.spot_points = None
+        self.point_harmonics = None
+        self.face_harmonics = None
+        self.spot_point_harmonics = None
+        self.spot_face_harmonics = None
+
         self.init_properties(**kwargs)
 
         self.angular_frequency = c.FULL_ARC * self.frequency

@@ -36,7 +36,7 @@ def generate_time_exponential(mode, time):
     return up.exp(complex(0, -exponent))
 
 
-def generate_spherical_harmonics(mode, points, time_exponential, order=None, degree=None):
+def spherical_harmonics(mode, points, time_exponential, order=None, degree=None):
     """
     Returns spherical harmonics normalized such that its rms = 1.
 
@@ -52,45 +52,26 @@ def generate_spherical_harmonics(mode, points, time_exponential, order=None, deg
     return mode.renorm_const * sph_harm(m, l, points[:, 1], points[:, 2]) * time_exponential
 
 
-def incorporate_pulsations_to_mesh(star_container, com_x, phase, time):
+def incorporate_pulsations_to_mesh(star_container, com_x):
     """
     adds pulsation perturbation to the mesh
 
     :param star_container: elisa.base.container.StarContainer;
     :param com_x: float; centre of mass of the star
-    :param phase: float; rotational phase of the star
-    :param time: float; time elapsed since
     :return: StarContainer;
     """
     points, points_spot = star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
 
-    tilt_phi, tilt_theta = generate_tilt_coordinates(star_container, phase)
-    tilted_points, tilted_points_spot = tilt_mode_coordinates(points, points_spot, tilt_phi, tilt_theta)
+    tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
 
-    displacement = up.zeros(points.shape)
-    displacement_spots = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in points_spot.items()}
+    displacement = up.zeros(tilted_points.shape)
+    displacement_spots = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in tilted_points_spot.items()}
 
     for mode_index, mode in star_container.pulsations.items():
-        exponential = generate_time_exponential(mode, time)
-
-        harmonics = np.zeros((2, tilted_points.shape[0]), dtype=np.complex)
-        spot_harmonics = {spot_idx: np.zeros((2, spoints.shape[0]), dtype=np.complex)
-                          for spot_idx, spoints in tilted_points_spot.items()}
-
-        harmonics[0] = generate_spherical_harmonics(mode, tilted_points, exponential)
-        for spot_idx, spotp in tilted_points_spot.items():
-            spot_harmonics[spot_idx][0] = generate_spherical_harmonics(mode, spotp, exponential)
-
-        if mode.m != mode.l:
-            harmonics[1] = generate_spherical_harmonics(mode, tilted_points, exponential,
-                                                        order=mode.m + 1, degree=mode.l)
-            for spot_idx, spotp in tilted_points_spot.items():
-                spot_harmonics[spot_idx][1] = generate_spherical_harmonics(mode, spotp, exponential,
-                                                                           order=mode.m + 1, degree=mode.l)
-
-        displacement += calculate_mode_displacement(mode, tilted_points, harmonics)
+        displacement += calculate_mode_displacement(mode, tilted_points, mode.point_harmonics)
         for spot_idx, spoints in tilted_points_spot.items():
-            displacement_spots[spot_idx] += calculate_mode_displacement(mode, spoints, spot_harmonics[spot_idx])
+            displacement_spots[spot_idx] += \
+                calculate_mode_displacement(mode, spoints, mode.spot_point_harmonics[spot_idx])
 
     star_container.points = utils.spherical_to_cartesian(points + displacement)
     star_container.points[:, 0] += com_x
@@ -255,8 +236,8 @@ def incorporate_temperature_perturbations(star_container, com_x, phase, time):
 
     for mode_index, mode in star_container.pulsations.items():
         exponential = generate_time_exponential(mode, time)
-        harmonics = generate_spherical_harmonics(mode, tilted_centres, exponential)
-        spot_harmonics = {spot_idx: generate_spherical_harmonics(mode, spotp, exponential)
+        harmonics = spherical_harmonics(mode, tilted_centres, exponential)
+        spot_harmonics = {spot_idx: spherical_harmonics(mode, spotp, exponential)
                           for spot_idx, spotp in tilted_spot_centres.items()}
 
         t_pert += calculate_temperature_perturbation(mode, star_container.temperatures, harmonics)
@@ -285,3 +266,52 @@ def calculate_temperature_perturbation(mode, temperatures, rals, adiabatic_gradi
     h, eps = mode.horizontal_amplitude, mode.radial_amplitude
 
     return ad_g * temperatures * (h * l * (l + 1) - 4 - (1 / h)) * eps * np.real(rals)
+
+
+def generate_harmonics(star_container, com_x, phase, time):
+    """
+    Generating spherical harmonics (Y_l^m, Y_l^m+1) in shapes(2, n_points) and (2, n_faces) to be subsequently used for
+    calculation of perturbed properties.
+
+    :param star_container: elisa.base.container.StarContainer;
+    :param com_x: float; centre of mass for the component
+    :param phase: float; rotational/orbital phase
+    :param time: float; time of the observation
+    :return: elisa.base.container.StarContainer; Star container with updated harmonics
+    """
+    points, points_spot = star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
+
+    tilt_phi, tilt_theta = generate_tilt_coordinates(star_container, phase)
+    tilted_points, tilted_points_spot = tilt_mode_coordinates(points, points_spot, tilt_phi, tilt_theta)
+
+    # assigning tilted points in spherical coordinates only to the first mode (the rest will share the same points)
+    star_container.pulsations[0].points = tilted_points
+    star_container.pulsations[0].spot_points = tilted_points_spot
+
+    for mode_index, mode in star_container.pulsations.items():
+        exponential = generate_time_exponential(mode, time)
+
+        harmonics = np.zeros((2, tilted_points.shape[0]), dtype=np.complex)
+        spot_harmonics = {spot_idx: np.zeros((2, spoints.shape[0]), dtype=np.complex)
+                          for spot_idx, spoints in tilted_points_spot.items()}
+
+        harmonics[0] = spherical_harmonics(mode, tilted_points, exponential)
+        for spot_idx, spotp in tilted_points_spot.items():
+            spot_harmonics[spot_idx][0] = spherical_harmonics(mode, spotp, exponential)
+
+        if mode.m != mode.l:
+            harmonics[1] = spherical_harmonics(mode, tilted_points, exponential,
+                                               order=mode.m + 1, degree=mode.l)
+            for spot_idx, spotp in tilted_points_spot.items():
+                spot_harmonics[spot_idx][1] = spherical_harmonics(mode, spotp, exponential,
+                                                                  order=mode.m + 1, degree=mode.l)
+
+        mode.point_harmonics = harmonics
+        mode.spot_point_harmonics = spot_harmonics
+
+        mode.face_harmonics = np.mean(harmonics[:, star_container.faces], axis=2)
+        mode.spot_face_harmonics = {spot_idx: np.mean(spoth[:, star_container.spots[spot_idx].faces], axis=2)
+                                    for spot_idx, spoth in spot_harmonics.items()}
+
+    return star_container
+

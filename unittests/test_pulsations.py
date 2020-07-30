@@ -98,7 +98,7 @@ class PulsatingStarInitTestCase(ElisaTestCase):
 
                 mode = single.star.pulsations[0]
                 exponential = pulsations.generate_time_exponential(mode, time)
-                sph_harm = pulsations.generate_spherical_harmonics(mode, points, exponential)
+                sph_harm = pulsations.spherical_harmonics(mode, points, exponential)
 
                 test_val = np.sqrt(np.sum(np.abs(sph_harm)**2)/points.shape[0])
                 assert_almost_equal(test_val, 1.0, 2)

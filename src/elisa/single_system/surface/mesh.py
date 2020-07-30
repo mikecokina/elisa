@@ -44,9 +44,8 @@ def build_pulsations_on_mesh(system):
     :return: elisa.single_system.contaier.PositionContainer; instance
     """
     if system.star.has_pulsations():
-        system.star = pulsations.incorporate_pulsations_to_mesh(system.star, com_x=0.0,
-                                                                phase=system.position.phase,
-                                                                time=system.time)
+        system.star = pulsations.generate_harmonics(system.star, com_x=0, phase=system.position.phase, time=system.time)
+        system.star = pulsations.incorporate_pulsations_to_mesh(system.star, com_x=0.0)
     return system
 
 
