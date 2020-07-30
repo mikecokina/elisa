@@ -4,6 +4,7 @@ from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
 from elisa.logger import getLogger
 from elisa.base.surface import gravity as bgravity
+from elisa.pulse import pulsations
 
 from elisa import (
     umpy as up,
@@ -160,9 +161,22 @@ def build_surface_gravity(system, components_distance, component="all"):
                        calculate_potential_gradient(components_distance, component, points=points,
                                                     synchronicity=synchronicity, mass_ratio=mass_ratio)
 
-        # TODO: here implement pulsations
+        g_acc_vector_spot = dict()
+        if star.has_spots():
+            for spot_index, spot in star.spots.items():
+                logger.debug(f'calculating surface SI unit gravity of {component} component / {spot_index} spot')
+                logger.debug(f'calculating distribution of potential gradient '
+                             f'magnitudes of spot index: {spot_index} / {component} component')
+
+                g_acc_vector_spot.update(
+                    {spot_index: scaling_factor *
+                                 calculate_potential_gradient(components_distance, component, points=spot.points,
+                                                              synchronicity=synchronicity, mass_ratio=mass_ratio)})
+
         if star.has_pulsations():
-            pass
+            g_acc_vector, g_acc_vector_spot = \
+                pulsations.incorporate_gravity_perturbation(star, g_acc_vector, g_acc_vector_spot,
+                                                            phase=system.position.phase)
 
         gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
         setattr(star, 'potential_gradient_magnitudes', gravity[star.face_symmetry_vector]) \
@@ -171,20 +185,8 @@ def build_surface_gravity(system, components_distance, component="all"):
 
         if star.has_spots():
             for spot_index, spot in star.spots.items():
-                logger.debug(f'calculating surface SI unit gravity of {component} component / {spot_index} spot')
-                logger.debug(f'calculating distribution of potential gradient '
-                             f'magnitudes of spot index: {spot_index} / {component} component')
-
-                g_acc_vector = scaling_factor * \
-                               calculate_potential_gradient(components_distance, component, points=spot.points,
-                                                            synchronicity=synchronicity, mass_ratio=mass_ratio)
-
-                # TODO: here implement pulsations
-                if star.has_pulsations():
-                    pass
-
                 setattr(spot, 'potential_gradient_magnitudes',
-                        np.mean(np.linalg.norm(g_acc_vector, axis=1)[spot.faces], axis=1))
+                        np.mean(np.linalg.norm(g_acc_vector_spot[spot_index], axis=1)[spot.faces], axis=1))
                 setattr(spot, 'log_g', np.log10(spot.potential_gradient_magnitudes))
 
     return system

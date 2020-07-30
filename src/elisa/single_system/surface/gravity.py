@@ -4,6 +4,7 @@ from elisa import const as c
 from elisa.logger import getLogger
 from elisa.base.surface import gravity as bgravity
 from elisa.utils import is_empty
+from elisa.pulse import pulsations
 
 logger = getLogger("binary-system-gravity-module")
 
@@ -25,20 +26,22 @@ def build_surface_gravity(system_container):
 
     g_acc_vector = calculate_potential_gradient(points, system_container.angular_velocity, star_container.mass)
 
-    spot_g_acc_vector = dict()
+    g_acc_vector_spot = dict()
     if star_container.has_spots():
         for spot_index, spot in star_container.spots.items():
             logger.debug(f'calculating surface SI unit gravity of {spot_index} spot')
             logger.debug(f'calculating distribution of potential gradient '
                          f'magnitudes of spot index: {spot_index} component')
 
-            spot_g_acc_vector.update(
+            g_acc_vector_spot.update(
                 {spot_index:
                      calculate_potential_gradient(spot.points, system_container.angular_velocity, star_container.mass)})
 
     # TODO: here implement pulsations
     if star_container.has_pulsations():
-        pass
+        g_acc_vector, g_acc_vector_spot = \
+            pulsations.incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot,
+                                                        phase=system_container.position.phase)
 
     gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
     setattr(star_container, 'potential_gradient_magnitudes', gravity[star_container.face_symmetry_vector]) \
@@ -48,7 +51,7 @@ def build_surface_gravity(system_container):
     if star_container.has_spots():
         for spot_index, spot in star_container.spots.items():
             setattr(spot, 'potential_gradient_magnitudes',
-                    np.mean(np.linalg.norm(spot_g_acc_vector[spot_index], axis=1)[spot.faces], axis=1))
+                    np.mean(np.linalg.norm(g_acc_vector_spot[spot_index], axis=1)[spot.faces], axis=1))
             setattr(spot, 'log_g', np.log10(spot.potential_gradient_magnitudes))
 
     return system_container

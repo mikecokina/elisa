@@ -38,7 +38,7 @@ def diff_spherical_harmonics_by_phi(mode, harmonics):
     :param harmonics: list; [Y_l^m, Y_l^m+1]
     :return: np.array;
     """
-    return (0+1j) * mode.m * harmonics[0]
+    return (0 + 1j) * mode.m * harmonics[0]
 
 
 def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
@@ -89,8 +89,40 @@ def incorporate_pulsations_to_mesh(star_container, com_x):
     return star_container
 
 
-def incorporate_gravity_perturbation(container):
-    pass
+def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
+    g_sph = utils.cartesian_to_spherical(g_acc_vector)
+    g_sph_spot = {spot_idx: utils.cartesian_to_spherical(g_acc) for spot_idx, g_acc in g_acc_vector_spot.items()}
+
+    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
+    tilted_acc, tilted_acc_spot = \
+        putils.tilt_mode_coordinates(g_sph, g_sph_spot, tilt_phi, tilt_theta)
+
+    tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
+
+    g_pert = up.zeros(tilted_points.shape)
+    g_pert_spot = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in tilted_points_spot.items()}
+
+    for mode_index, mode in star_container.pulsations.items():
+        g_pert += calculate_acc_pert(mode, tilted_points, mode.point_harmonics, mode.point_harmonics_derivatives)
+
+        for spot_idx, spoints in tilted_points_spot.items():
+            g_pert_spot[spot_idx] += calculate_acc_pert(mode, tilted_points_spot[spot_idx],
+                                                        mode.spot_point_harmonics[spot_idx],
+                                                        mode.spot_point_harmonics_derivatives[spot_idx])
+
+    g_acc_vector = putils.derotate_surface_points(tilted_acc + g_pert,
+                                                  star_container.pulsations[0].mode_axis_phi,
+                                                  star_container.pulsations[0].mode_axis_theta,
+                                                  com_x=0.0)
+
+    for spot_idx, spot in star_container.spots.items():
+        g_acc_vector_spot[spot_idx] = \
+            putils.derotate_surface_points(tilted_acc_spot[spot_idx] + g_pert_spot[spot_idx],
+                                           star_container.pulsations[0].mode_axis_phi,
+                                           star_container.pulsations[0].mode_axis_theta,
+                                           com_x=0.0)
+
+    return g_acc_vector, g_acc_vector_spot
 
 
 def assign_amplitudes(star_container, normalization_constant=1.0):
@@ -103,10 +135,10 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
     :return:
     """
     r_equiv = star_container.equivalent_radius * normalization_constant
-    mult = const.G * star_container.mass / r_equiv**3
+    mult = const.G * star_container.mass / r_equiv ** 3
     for mode_index, mode in star_container.pulsations.items():
         mode.radial_amplitude = mode.amplitude / (r_equiv * mode.angular_frequency)
-        mode.horizontal_amplitude = np.sqrt(mode.l*(mode.l+1)) * mult / mode.angular_frequency**2
+        mode.horizontal_amplitude = np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2
 
         surf_ampl = mode.radial_amplitude * mode.horizontal_amplitude
         if surf_ampl > config.SURFACE_DISPLACEMENT_TOL:
@@ -174,6 +206,19 @@ def calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives):
     theta_displacement = calculate_theta_displacement(mode, harmonics_derivatives[1])
 
     return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
+
+
+def calculate_acc_pert(mode, points, harmonics, harmonics_derivatives):
+    """
+    Calculate perturbation of surface acceleration.
+
+    :param mode: elisa.pulse.mode.Mode;
+    :param points: numpy.array;
+    :param harmonics: numpy.array; Y_l^m
+    :param harmonics_derivatives: numpy.array; [dY/dphi, dY/dtheta]
+    :return:
+    """
+    return - mode.angular_frequency ** 2 * calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives)
 
 
 def incorporate_temperature_perturbations(star_container, com_x, phase, time):
