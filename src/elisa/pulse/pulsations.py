@@ -61,6 +61,13 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
 
 
 def incorporate_pulsations_to_mesh(star_container, com_x):
+    """
+    Function adds perturbation to the surface mesh due to pulsations.
+
+    :param star_container: base.container.StarContainer;
+    :param com_x: float;
+    :return: base.container.StarContainer;
+    """
     tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
 
     displacement = up.zeros(tilted_points.shape)
@@ -90,6 +97,14 @@ def incorporate_pulsations_to_mesh(star_container, com_x):
 
 
 def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
+    """
+
+    :param star_container:
+    :param g_acc_vector:
+    :param g_acc_vector_spot:
+    :param phase:
+    :return:
+    """
     g_sph = utils.cartesian_to_spherical(g_acc_vector)
     g_sph_spot = {spot_idx: utils.cartesian_to_spherical(g_acc) for spot_idx, g_acc in g_acc_vector_spot.items()}
 
