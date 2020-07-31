@@ -8,7 +8,7 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system import dynamic
 from elisa.binary_system.curves import rvmp
 from ...binary_system.curves import shared
-from elisa.observer import utils as outils
+from elisa.observer.passband import init_rv_passband
 from elisa.conf import config
 from elisa.observer.mp import manage_observations
 
@@ -99,7 +99,7 @@ def include_passband_data_to_kwargs(**kwargs):
     :param kwargs: tuple;
     :return: tuple;
     """
-    psbnd, right_bandwidth, left_bandwidth = outils.init_rv_passband()
+    psbnd, right_bandwidth, left_bandwidth = init_rv_passband()
     kwargs.update({'passband': {'rv_band': psbnd},
                    'left_bandwidth': left_bandwidth,
                    'right_bandwidth': right_bandwidth,
