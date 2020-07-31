@@ -1,8 +1,16 @@
 import numpy as np
 from elisa import (
     umpy as up,
-    units
+    units,
+    const
 )
+from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.binary_system import dynamic
+from elisa.binary_system.curves import rvmp
+from ...binary_system.curves import shared
+from elisa.observer import utils as outils
+from elisa.conf import config
+from elisa.observer.mp import manage_observations
 
 
 def distance_to_center_of_mass(primary_mass, secondary_mass, positions):
@@ -81,9 +89,51 @@ def com_radial_velocity(binary, **kwargs):
                                     binary.argument_of_periastron, period, orbital_motion[:, 3])
 
     rvs = {'primary': rv_primary + binary.gamma, 'secondary': rv_secondary + binary.gamma}
-    return orbital_motion[:, 4], rvs
+    return rvs
 
 
-def radiometric_radial_velocity(binary, **kwargs):
-    position_method = kwargs.pop("position_method")
+def include_passband_data_to_kwargs(**kwargs):
+    """
+    Including dummy passband from which radiometric radial velocities will be calculated.
+
+    :param kwargs: tuple;
+    :return: tuple;
+    """
+    psbnd, right_bandwidth, left_bandwidth = outils.init_rv_passband()
+    kwargs.update({'passband': {'rv_band': psbnd},
+                   'left_bandwidth': left_bandwidth,
+                   'right_bandwidth': right_bandwidth,
+                   'atlas': config.ATM_ATLAS})
+    return kwargs
+
+
+def compute_circular_synchronous_rv_curve(binary, **kwargs):
+    kwargs = include_passband_data_to_kwargs(**kwargs)
+
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
+    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
+    initial_system.build(components_distance=1.0)
+
     phases = kwargs.pop("phases")
+    # unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
+    normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
+
+    fn_args = (binary, initial_system, normal_radiance, ld_cfs)
+    rv_curves = manage_observations(fn=rvmp.compute_circular_synchronous_rv,
+                                    fn_args=fn_args,
+                                    position=phases,
+                                    **kwargs)
+
+    return rv_curves
+
+
+def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
+    pass
+
+
+def compute_eccentric_spotty_asynchronous_rv_curve(binary, **kwargs):
+    pass
+
+
+def compute_eccentric_rv_curve(binary, **kwargs):
+    pass

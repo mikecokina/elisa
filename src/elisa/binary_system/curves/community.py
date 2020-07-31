@@ -114,7 +114,7 @@ class RadialVelocitySystem(object):
 
         rv_dict = {'primary':  primary_rv + self.gamma, 'secondary': secondary_rv + self.gamma}
 
-        return phases, rv_dict
+        return rv_dict
 
     @staticmethod
     def distance_to_center_of_mass(q, positions):

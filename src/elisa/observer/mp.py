@@ -21,13 +21,13 @@ def observe_lc_worker(*args):
 
 def manage_observations(fn, fn_args, position, **kwargs):
     """
-    function decides whether LC will be calculated using single or multi-process aproach
+    function decides whether curve will be calculated using single or multi-process approach
 
-    :param fn: function used for LC integration
+    :param fn: function used for curve integration
     :param fn_args: tuple; some of the argument in `fn`
     :param position: list;
     :param kwargs: dict;
-    :return: dict; calculated LCs in different passbands
+    :return: dict; calculated curves (in each passbands)
     """
     args = fn_args + (kwargs, )
     if len(position) >= config.NUMBER_OF_PROCESSES > 1:

@@ -995,8 +995,27 @@ class BinarySystem(System):
 
     # radial velocity curves *******************************************************************************************
     def compute_rv(self, **kwargs):
-        if config.RV_METHOD == 'centre_of_mass':
+        if kwargs['method'] == 'point_mass':
             return rv.com_radial_velocity(self, **kwargs)
-        if config.RV_METHOD == 'radiometric':
-            return rv.radiometric_radial_velocity(self, **kwargs)
+        if kwargs['method'] == 'radiometric':
+            fn_arr = (self._compute_circular_synchronous_rv_curve,
+                      self._compute_circular_spotty_asynchronous_rv_curve,
+                      self._compute_eccentric_spotty_asynchronous_rv_curve,
+                      self._compute_eccentric_rv_curve)
+            curve_fn = shared.resolve_curve_method(self, fn_arr)
+
+            return curve_fn(**kwargs)
+
+    def _compute_circular_synchronous_rv_curve(self, **kwargs):
+        return rv.compute_circular_synchronous_rv_curve(self, **kwargs)
+
+    def _compute_circular_spotty_asynchronous_rv_curve(self, **kwargs):
+        return rv.compute_circular_spotty_asynchronous_rv_curve(self, **kwargs)
+
+    def _compute_eccentric_spotty_asynchronous_rv_curve(self, **kwargs):
+        return rv.compute_eccentric_spotty_asynchronous_rv_curve(self, **kwargs)
+
+    def _compute_eccentric_rv_curve(self, **kwargs):
+        return rv.compute_eccentric_rv_curve(self, **kwargs)
+
 

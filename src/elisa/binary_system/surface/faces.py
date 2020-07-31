@@ -399,7 +399,7 @@ def build_velocities(system, components_distance, component='all'):
         return system
 
     component = bsutils.component_to_list(component)
-    com_x = {'primary': 0.0, 'secondary': components_distance}
+    com_x = {'primary': np.array([0.0, 0.0, 0.0]), 'secondary': np.array([components_distance, 0.0, 0.0])}
 
     velocities = orbit.create_orb_vel_vectors(system, components_distance)
 
@@ -408,17 +408,19 @@ def build_velocities(system, components_distance, component='all'):
 
     for _component in component:
         star = getattr(system, _component)
-        points = star.points - com_x[_component]
+        points = (star.points - com_x[_component][None, :]) * system.semi_major_axis
+        # points = (star.points - com_x[_component])
         omega = star.synchronicity * omega_orb
 
         # orbital velocity + rotational velocity
-        p_velocities = velocities['primary'] + np.cross(points, omega, axisa=1)
+        p_velocities = velocities[_component] + np.cross(points, omega, axisa=1)
         star.velocities = np.mean(p_velocities[star.faces], axis=1)
 
         if star.has_spots():
             for spot in star.spots.values():
-                points = spot.points - com_x[_component]
-                p_velocities = velocities['primary'] + np.cross(points, omega, axisa=1)
+                points = (spot.points - com_x[_component][None, :]) * system.semi_major_axis
+                p_velocities = velocities[_component] + np.cross(points, omega, axisa=1)
                 spot.velocities = np.mean(p_velocities[spot.faces], axis=1)
 
     return system
+

@@ -44,7 +44,8 @@ REFLECTION_EFFECT_ITERATIONS = 2
 LIMB_DARKENING_LAW = 'cosine'
 DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 2.0
 SURFACE_DISPLACEMENT_TOL = 1e-2
-RV_METHOD = 'centre_of_mass'
+RV_METHOD = 'point_mass'
+RV_LAMBDA_INTERVAL = (5500, 5600)
 
 # computational
 MAX_DISCRETIZATION_FACTOR = 20
@@ -165,6 +166,9 @@ def update_config():
 
         global RV_METHOD
         RV_METHOD = c_parse.getfloat('physics', 'rv_method', fallback=RV_METHOD)
+
+        global RV_LAMBDA_INTERVAL
+        RV_LAMBDA_INTERVAL = c_parse.getfloat('physics', 'rv_lambda_interval', fallback=RV_LAMBDA_INTERVAL)
 
     # ******************************************************************************************************************
 
