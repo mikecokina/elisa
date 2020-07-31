@@ -41,7 +41,7 @@ class RadialVelocityObserverTestCase(ElisaTestCase):
         s = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
         s.inclination = 1.1
         s.init()
-        phases, std_rvdict = rv.com_radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
+        std_rvdict = rv.com_radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
 
         asini = np.float64((s.semi_major_axis * np.sin(s.inclination) * units.m).to(units.solRad))
 
@@ -53,7 +53,7 @@ class RadialVelocityObserverTestCase(ElisaTestCase):
                                          gamma=s.gamma)
         o = Observer(passband='bolometric', system=rv_system)
 
-        phases, com_rv_dict = o.observe.rv(phases=self.phases)
+        phases, com_rv_dict = o.observe.rv(phases=self.phases, method='point_mass')
 
         self.assertTrue(np.all(np.abs(std_rvdict['primary'] - com_rv_dict['primary']) < TOL))
         self.assertTrue(np.all(np.abs(std_rvdict['secondary'] - com_rv_dict['secondary']) < TOL))
