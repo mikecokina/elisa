@@ -4,6 +4,9 @@ from elisa.conf import config
 from elisa import atm, ld
 from elisa.binary_system import utils as butils
 from elisa.observer.passband import init_bolometric_passband
+from elisa.logger import getLogger
+
+logger = getLogger('binary_system.curves.shared')
 
 
 def get_limbdarkening_cfs(system, component="all", **kwargs):
@@ -154,3 +157,42 @@ def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
 
     flux = (flux['primary'] + flux['secondary'])
     return flux
+
+
+def resolve_curve_method(system, fn_array):
+    """
+    Resolves which curve calculating method to use based on the type of the system.
+
+    :param system: elisa.binary_system.BinarySystem;
+    :param fn_array: tuple; list of curve calculating functions in specific order
+    (circular synchronous or circular assynchronous without spots,
+     circular assynchronous with spots,
+     eccentric synchronous or eccentric assynchronous without spots,
+     eccentric assynchronous with spots)
+    :return: curve calculating method chosen from `fn_array`
+    """
+    is_circular = system.eccentricity == 0
+    is_eccentric = 1 > system.eccentricity > 0
+    assynchronous_spotty_p = system.primary.synchronicity != 1 and system.primary.has_spots()
+    assynchronous_spotty_s = system.secondary.synchronicity != 1 and system.secondary.has_spots()
+    assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
+
+    if is_circular:
+        if not assynchronous_spotty_test and not system.has_pulsations():
+            logger.debug('Calculating curve for circular binary system without pulsations and without '
+                         'assynchronous spotty components.')
+            return fn_array[0]
+        else:
+            logger.debug('Calculating curve for circular binary system with pulsations or with assynchronous '
+                         'spotty components.')
+            return fn_array[1]
+    elif is_eccentric:
+        if assynchronous_spotty_test:
+            logger.debug('Calculating curve for eccentric binary system with assynchronous spotty components.')
+            return fn_array[2]
+        else:
+            logger.debug('Calculating curve for eccentric binary system without assynchronous spotty '
+                         'components.')
+            return fn_array[3]
+
+    raise NotImplementedError("Orbit type not implemented or invalid")

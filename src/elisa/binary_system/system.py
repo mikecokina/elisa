@@ -26,6 +26,8 @@ from elisa.binary_system import (
     radius as bsradius,
     model
 )
+from elisa.binary_system.curves import shared
+
 
 logger = getLogger('binary_system.system')
 
@@ -971,31 +973,13 @@ class BinarySystem(System):
             * ** position_method ** * - method
         :return: Dict
         """
-        is_circular = self.eccentricity == 0
-        is_eccentric = 1 > self.eccentricity > 0
-        assynchronous_spotty_p = self.primary.synchronicity != 1 and self.primary.has_spots()
-        assynchronous_spotty_s = self.secondary.synchronicity != 1 and self.secondary.has_spots()
-        assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
+        fn_arr = (self._compute_circular_synchronous_lightcurve,
+                  self._compute_circular_spotty_asynchronous_lightcurve,
+                  self._compute_eccentric_spotty_asynchronous_lightcurve,
+                  self._compute_eccentric_lightcurve)
+        curve_fn = shared.resolve_curve_method(self, fn_arr)
 
-        if is_circular:
-            if not assynchronous_spotty_test and not self.has_pulsations():
-                logger.debug('Calculating lightcurve for circular binary system without pulsations and without '
-                             'assynchronous spotty components.')
-                return self._compute_circular_synchronous_lightcurve(**kwargs)
-            else:
-                logger.debug('Calculating lightcurve for circular binary system with pulsations or with assynchronous '
-                             'spotty components.')
-                return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
-        elif is_eccentric:
-            if assynchronous_spotty_test:
-                logger.debug('Calculating lightcurve for eccentric binary system with assynchronous spotty components.')
-                return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
-            else:
-                logger.debug('Calculating lightcurve for eccentric binary system without assynchronous spotty '
-                             'components.')
-                return self._compute_eccentric_lightcurve(**kwargs)
-
-        raise NotImplementedError("Orbit type not implemented or invalid")
+        return curve_fn(**kwargs)
 
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
@@ -1011,4 +995,8 @@ class BinarySystem(System):
 
     # radial velocity curves *******************************************************************************************
     def compute_rv(self, **kwargs):
-        return rv.radial_velocity(self, **kwargs)
+        if config.RV_METHOD == 'centre_of_mass':
+            return rv.com_radial_velocity(self, **kwargs)
+        if config.RV_METHOD == 'radiometric':
+            return rv.radiometric_radial_velocity(self, **kwargs)
+

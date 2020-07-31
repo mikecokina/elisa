@@ -21,7 +21,7 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
 
     def test_circular_detached(self):
         s = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached-physical"])
-        phases, rvdict = rv.radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
+        phases, rvdict = rv.com_radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
         obtained_rvp, obtained_rvs = normalize_lv_for_unittests(rvdict['primary'], rvdict['secondary'])
         expected = load_radial_curve("detahed.circ.json")
 
@@ -33,7 +33,7 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
 
     def test_eccentric_detached(self):
         s = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
-        phases, rvdict = rv.radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
+        phases, rvdict = rv.com_radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
         obtained_rvp, obtained_rvs = normalize_lv_for_unittests(rvdict['primary'], rvdict['secondary'])
         expected = load_radial_curve("detahed.ecc.json")
 

@@ -50,9 +50,9 @@ def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_per
     return - a * c / b
 
 
-def radial_velocity(binary, **kwargs):
+def com_radial_velocity(binary, **kwargs):
     """
-    Calculates radial velocity curves of the `binary` system.
+    Calculates radial velocity curves of the `binary` system using radial velocities of centres of masses.
 
     :param binary: elisa.binary_system.system.BinarySystem; binary system instance
     :param kwargs: dict;
@@ -82,3 +82,8 @@ def radial_velocity(binary, **kwargs):
 
     rvs = {'primary': rv_primary + binary.gamma, 'secondary': rv_secondary + binary.gamma}
     return orbital_motion[:, 4], rvs
+
+
+def radiometric_radial_velocity(binary, **kwargs):
+    position_method = kwargs.pop("position_method")
+    phases = kwargs.pop("phases")
