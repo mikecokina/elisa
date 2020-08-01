@@ -16,6 +16,7 @@ from ...binary_system.orbit.container import OrbitalSupplements
 from ...binary_system.surface.coverage import calculate_coverage_with_cosines
 from ...binary_system.curves import lcmp, shared
 from elisa.observer.mp import manage_observations
+from elisa import atm
 
 from ... import (
     umpy as up,
@@ -276,8 +277,8 @@ def _resolve_ecc_approximation_method(binary, phases, position_method, try_to_fi
 
 def compute_circular_synchronous_lightcurve(binary, **kwargs):
     """
-    Compute light curve, exactly, from position to position, for synchronous circular
-    binary system.
+    Compute light curve for synchronous circular binary system.
+
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param kwargs: Dict;
@@ -290,19 +291,13 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     :return: Dict[str, numpy.array];
     """
 
-    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
-    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
-    initial_system.build(components_distance=1.0)
+    initial_system = shared.prep_initial_system(binary)
 
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
-    normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
-    fn_args = (binary, initial_system, normal_radiance, ld_cfs)
-    band_curves = manage_observations(fn=lcmp.compute_circular_synchronous_lightcurve,
-                                      fn_args=fn_args,
-                                      position=unique_phase_interval,
-                                      **kwargs)
+    band_curves = shared.produce_circ_sync_curves(binary, initial_system, unique_phase_interval,
+                                                  lcmp.compute_circular_synchronous_lightcurve, **kwargs)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
     return band_curves

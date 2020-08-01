@@ -1,14 +1,14 @@
 import numpy as np
 
 from elisa.conf import config
-from elisa import atm, ld
+from elisa import atm, ld, const
 from elisa.observer.passband import init_bolometric_passband
 from elisa.logger import getLogger
 from elisa.binary_system import (
     utils as butils,
-    dynamic,
-    surface
 )
+from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.observer.mp import manage_observations
 
 logger = getLogger('binary_system.curves.shared')
 
@@ -200,3 +200,45 @@ def resolve_curve_method(system, fn_array):
             return fn_array[3]
 
     raise NotImplementedError("Orbit type not implemented or invalid")
+
+
+def prep_initial_system(binary):
+    """
+    Prepares base binary system from which curves will be calculated in case of circular synchronous binaries.
+
+    :param binary: elisa.binary_system.system.BinarySystem
+    :return: elisa.binary_system.container.OrbitalPositionContainer
+    """
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
+    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
+    initial_system.build(components_distance=1.0)
+
+    return initial_system
+
+
+def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, **kwargs):
+    """
+    Auxiliary function to produce curve from circular synchronous binary system
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param initial_system: elisa.binary_system.container.OrbitalPositionContainer
+    :param phases: numpy.array
+    :param curve_fn: function to calculate given type of the curve
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+            * ** position_method** * - function definition; to evaluate orbital positions
+            * ** phases ** * - numpy.array
+    :return: dict; calculated curves
+    """
+    normal_radiance, ld_cfs = prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
+
+    fn_args = (binary, initial_system, normal_radiance, ld_cfs)
+    curves = manage_observations(fn=curve_fn,
+                                 fn_args=fn_args,
+                                 position=phases,
+                                 **kwargs)
+
+    return curves

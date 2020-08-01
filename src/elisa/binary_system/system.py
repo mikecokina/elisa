@@ -1004,6 +1004,7 @@ class BinarySystem(System):
                       self._compute_eccentric_rv_curve)
             curve_fn = shared.resolve_curve_method(self, fn_arr)
 
+            kwargs = rv.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**kwargs)
 
     def _compute_circular_synchronous_rv_curve(self, **kwargs):
