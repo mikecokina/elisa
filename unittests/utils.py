@@ -173,7 +173,7 @@ def normalize_lc_for_unittests(flux_arr):
 
 
 def normalize_lv_for_unittests(primary, secondary):
-    _max = np.max([primary, secondary])
+    _max = np.max(np.abs([primary, secondary]))
     primary /= _max
     secondary /= _max
     return primary, secondary
