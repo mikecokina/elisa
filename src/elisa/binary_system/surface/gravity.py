@@ -156,7 +156,7 @@ def build_surface_gravity(system, components_distance, component="all"):
 
         points, faces = bgravity.eval_args_for_magnitude_gradient(star)
 
-        scaling_factor = (const.G * system.primary.mass / system.semi_major_axis**2)
+        scaling_factor = const.G * system.primary.mass / system.semi_major_axis**2
         g_acc_vector = scaling_factor * \
                        calculate_potential_gradient(components_distance, component, points=points,
                                                     synchronicity=synchronicity, mass_ratio=mass_ratio)
@@ -178,7 +178,8 @@ def build_surface_gravity(system, components_distance, component="all"):
                 pulsations.incorporate_gravity_perturbation(star, g_acc_vector, g_acc_vector_spot,
                                                             phase=system.position.phase)
 
-        gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
+        gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1) if star.symmetry_test else \
+            np.mean(np.linalg.norm(g_acc_vector, axis=1), axis=1)
         setattr(star, 'potential_gradient_magnitudes', gravity[star.face_symmetry_vector]) \
             if star.symmetry_test() else setattr(star, 'potential_gradient_magnitudes', gravity)
         setattr(star, 'log_g', np.log10(star.potential_gradient_magnitudes))

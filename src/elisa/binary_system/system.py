@@ -1,5 +1,6 @@
 import numpy as np
 import scipy
+from copy import deepcopy
 
 from scipy import optimize
 
@@ -60,8 +61,8 @@ class BinarySystem(System):
     :morphology: str; morphology of current system
     """
 
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron']
-    OPTIONAL_KWARGS = ['phase_shift', 'additional_light', 'primary_minimum_time']
+    MANDATORY_KWARGS = ['inclination', 'period', 'eccentricity', 'argument_of_periastron']
+    OPTIONAL_KWARGS = ['gamma', 'phase_shift', 'additional_light', 'primary_minimum_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     COMPONENT_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'surface_potential', 'synchronicity',
@@ -96,6 +97,7 @@ class BinarySystem(System):
         self.argument_of_periastron = np.nan
         self.primary_minimum_time = 0.0
         self.phase_shift = 0.0
+        self.gamma = 0.0
 
         # set attributes and test whether all parameters were initialized
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
@@ -219,15 +221,16 @@ class BinarySystem(System):
 
         :return: elisa.binary_system.system.BinarySystem
         """
+        data_cp = deepcopy(data)
         if _verify:
-            bsutils.validate_binary_json(data)
+            bsutils.validate_binary_json(data_cp)
 
-        kind_of = _kind_of or bsutils.resolve_json_kind(data)
+        kind_of = _kind_of or bsutils.resolve_json_kind(data_cp)
         if kind_of in ["community"]:
-            data = bsutils.transform_json_community_to_std(data)
+            data_cp = bsutils.transform_json_community_to_std(data_cp)
 
-        primary, secondary = Star(**data["primary"]), Star(**data["secondary"])
-        return cls(primary=primary, secondary=secondary, **data["system"])
+        primary, secondary = Star(**data_cp["primary"]), Star(**data_cp["secondary"])
+        return cls(primary=primary, secondary=secondary, **data_cp["system"])
 
     def to_json(self):
         """
