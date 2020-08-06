@@ -939,10 +939,10 @@ class BinarySystem(System):
                 return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
         elif is_eccentric:
             if spotty_test_eccentric:
-                logger.debug('Calculating lightcurve for eccentric binary system with assynchronous spotty components.')
+                logger.debug('Calculating lightcurve for eccentric binary system with spotty components.')
                 return self._compute_eccentric_spotty_lightcurve(**kwargs)
             else:
-                logger.debug('Calculating lightcurve for eccentric binary system without assynchronous spotty '
+                logger.debug('Calculating lightcurve for eccentric binary system without spotty '
                              'components.')
                 return self._compute_eccentric_lightcurve(**kwargs)
 
