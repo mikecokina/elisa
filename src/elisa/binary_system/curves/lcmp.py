@@ -75,8 +75,8 @@ def integrate_eccentric_lc_exactly(*args):
         pos_idx = int(position.idx)
         from_this = dict(binary_system=binary, position=position)
         on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
-        on_pos.primary.surface_potential = potentials['primary'][pos_idx]
-        on_pos.secondary.surface_potential = potentials['secondary'][pos_idx]
+        on_pos.set_on_position_params(position, potentials["primary"][pos_idx],
+                                      potentials["secondary"][pos_idx])
         on_pos.build(components_distance=position.distance)
 
         normal_radiance, ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
