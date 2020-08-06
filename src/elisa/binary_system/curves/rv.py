@@ -138,7 +138,7 @@ def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
 
-def compute_eccentric_spotty_asynchronous_rv_curve(binary, **kwargs):
+def compute_eccentric_spotty_rv_curve(binary, **kwargs):
     pass
 
 

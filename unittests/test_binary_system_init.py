@@ -183,7 +183,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
 
 
 class ValidityTestCase(ElisaTestCase):
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron']
+    MANDATORY_KWARGS = ['inclination', 'period', 'eccentricity', 'argument_of_periastron']
 
     def setUp(self):
         self._initial_params = {
@@ -266,7 +266,6 @@ class ValidityTestCase(ElisaTestCase):
         initial_kwargs = dict(primary=self._primary,
                               secondary=self._secondary,
                               argument_of_periastron=self._initial_params["argument_of_periastron"],
-                              gamma=self._initial_params["gamma"],
                               period=self._initial_params["period"],
                               eccentricity=self._initial_params["eccentricity"],
                               inclination=self._initial_params["inclination"],
@@ -317,11 +316,11 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
         obtained = bs.kwargs_serializer()
 
         expected = dict(
-            gamma=0.0,
             inclination=c.HALF_PI,
             period=1.0,
             eccentricity=0.3,
             argument_of_periastron=c.HALF_PI,
+            gamma=0.0,
             primary_minimum_time=0.0,
             phase_shift=0.0
         )

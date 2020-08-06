@@ -587,7 +587,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     return band_curves
 
 
-def compute_eccentric_spotty_asynchronous_lightcurve(binary, **kwargs):
+def compute_eccentric_spotty_lightcurve(binary, **kwargs):
     """
     Function returns light curve of assynchronous systems with eccentric orbits and spots.
 
