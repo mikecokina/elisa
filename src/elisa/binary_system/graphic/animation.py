@@ -52,41 +52,47 @@ class Animation(object):
         faces = {component: copy(none) for component in components}
         cmap = {component: copy(none) for component in components}
 
-        result = self.binary.orbit.orbital_motion(phase=phases)[:, :2]
-        components_distance, azimuth = result[:, 0], result[:, 1]
+        orbital_motion = \
+            self.binary.calculate_orbital_motion(input_argument=phases, return_nparray=False, calculate_from='phase')
 
         # in case of assynchronous component rotation and spots, the positions of spots are recalculated
         spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phases, component="all")
-        orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
+        potentials = self.binary.correct_potentials(phases, component="all", iterations=2)
+
         logger.info('calculating surface parameters (points, faces, colormap)')
-        for idx, phase in enumerate(phases):
-            # assigning new longitudes for each spot
-            orbital_position_container.time = 86400 * self.binary.period * phase
-            dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=idx, component="both")
-            orbital_position_container.build(components_distance=components_distance[idx], components='both')
+        for pos_idx, position in enumerate(orbital_motion):
+            from_this = dict(binary_system=self.binary, position=self.defpos)
+            on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
+            on_pos.time = 86400 * self.binary.period * position.phase
+            dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_idx, component="all")
+            on_pos.set_on_position_params(position, potentials["primary"][pos_idx],
+                                           potentials["secondary"][pos_idx])
+            on_pos.build(components_distance=position.distance)
+            on_pos = butils.move_sys_onpos(on_pos, position, potentials["primary"][pos_idx],
+                                           potentials["secondary"][pos_idx], on_copy=False)
 
             for component in components:
-                star = getattr(orbital_position_container, component)
-                points[component][idx], faces[component][idx] = star.surface_serializer()
+                star = getattr(on_pos, component)
+                points[component][pos_idx], faces[component][pos_idx] = star.points, star.faces
 
                 if colormap == 'gravity_acceleration':
-                    log_g = star.get_flatten_parameter('log_g')
+                    log_g = star.log_g
                     value = log_g if units == 'SI' else log_g + 2
-                    cmap[component][idx] = value if scale == 'log' else up.power(10, value)
+                    cmap[component][pos_idx] = value if scale == 'log' else up.power(10, value)
 
                 elif colormap == 'temperature':
-                    temperatures = star.get_flatten_parameter('temperatures')
-                    cmap[component][idx] = temperatures if scale == 'linear' else up.log10(temperatures)
+                    temperatures = star.temperatures
+                    cmap[component][pos_idx] = temperatures if scale == 'linear' else up.log10(temperatures)
 
                 # rotating pints to correct place
-                # rotation by azimuth
-                points[component][idx] = utils.around_axis_rotation(azimuth[idx] - const.HALF_PI,
-                                                                    points[component][idx],
-                                                                    "z", False, False)
-                # tilting the orbit due to inclination
-                points[component][idx] = utils.around_axis_rotation(const.HALF_PI - self.binary.inclination,
-                                                                    points[component][idx],
-                                                                    "y", False, False)
+                # # rotation by azimuth
+                # points[component][pos_idx] = utils.around_axis_rotation(position.azimuth - const.HALF_PI,
+                #                                                         points[component][pos_idx],
+                #                                                         "z", False, False)
+                # # tilting the orbit due to inclination
+                # points[component][pos_idx] = utils.around_axis_rotation(const.HALF_PI - self.binary.inclination,
+                #                                                         points[component][pos_idx],
+                #                                                         "y", False, False)
 
         anim_kwargs.update({
             'morphology': self.binary.morphology,
