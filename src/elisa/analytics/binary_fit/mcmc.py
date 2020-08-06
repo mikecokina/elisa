@@ -185,7 +185,6 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
                     interp_treshold=config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold)
-        self.observer._system_cls = BinarySystem
 
         ndim = len(self.initial_vector)
         nwalkers = 2 * len(self.initial_vector) if nwalkers is None else nwalkers
