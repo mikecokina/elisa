@@ -926,6 +926,8 @@ class BinarySystem(System):
         assynchronous_spotty_s = self.secondary.synchronicity != 1 and self.secondary.has_spots()
         assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
 
+        spotty_test_eccentric = self.primary.has_spots() or self.secondary.has_spots()
+
         if is_circular:
             if not assynchronous_spotty_test and not self.has_pulsations():
                 logger.debug('Calculating lightcurve for circular binary system without pulsations and without '
@@ -936,9 +938,9 @@ class BinarySystem(System):
                              'spotty components.')
                 return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
         elif is_eccentric:
-            if assynchronous_spotty_test:
+            if spotty_test_eccentric:
                 logger.debug('Calculating lightcurve for eccentric binary system with assynchronous spotty components.')
-                return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
+                return self._compute_eccentric_spotty_lightcurve(**kwargs)
             else:
                 logger.debug('Calculating lightcurve for eccentric binary system without assynchronous spotty '
                              'components.')
@@ -952,8 +954,8 @@ class BinarySystem(System):
     def _compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_spotty_asynchronous_lightcurve(self, **kwargs)
 
-    def _compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs):
-        return lc.compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs)
+    def _compute_eccentric_spotty_lightcurve(self, **kwargs):
+        return lc.compute_eccentric_spotty_lightcurve(self, **kwargs)
 
     def _compute_eccentric_lightcurve(self, **kwargs):
         return lc.compute_eccentric_lightcurve(self, **kwargs)
