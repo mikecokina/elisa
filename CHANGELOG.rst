@@ -153,6 +153,8 @@ v0.3.1_
     - wrong intervals used in corner and trace plot, now fitting confidence intervals instead of fit intervals
     - more suitable form of cost function for least squares fitting method
     - correcting secondary potential derivative component
+    - libration motion accounted for in spot position in case of eccetric orbits
+    - fix: volume conserved in eccentric spotty systems
 
 Future plans
 ============

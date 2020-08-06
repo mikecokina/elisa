@@ -613,9 +613,9 @@ def compute_eccentric_spotty_lightcurve(binary, **kwargs):
         on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
         # assigning new longitudes for each spot
         dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_idx, component="all")
+        on_pos.set_on_position_params(position, potentials['primary'][pos_idx], potentials['secondary'][pos_idx])
         on_pos.build(components_distance=position.distance)
-        on_pos = bsutils.move_sys_onpos(on_pos, position, potentials["primary"][pos_idx],
-                                        potentials["secondary"][pos_idx], on_copy=False)
+        on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
         normal_radiance, ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
 
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
