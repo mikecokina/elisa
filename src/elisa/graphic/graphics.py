@@ -665,7 +665,7 @@ def binary_surface_anim(**kwargs):
 
     args = (points, faces, clr, cmaps, plot)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
-    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='imagemagick', fps=20)
+    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=20, dpi=300)
 
 
 def phase_curve(**kwargs):

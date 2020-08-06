@@ -8,6 +8,7 @@ from elisa import (
     const,
     umpy as up
 )
+from copy import copy
 
 
 def get_eclipse_boundaries(binary, components_distance):
@@ -221,10 +222,35 @@ def in_eclipse_test(azimuths, ecl_boundaries):
     return up.logical_or(primary_ecl_test, secondary_ecl_test)
 
 
-def calculate_spot_longitudes(system, phases, component="all"):
+def correct_spot_positions_for_libration(system, phases):
+    """
+    Function corrects the position of spots for the libration motion caused by an eccentric orbit.
+
+    :param system: Union[elisa.binary_system.system.BinarySystem,
+                   elisa.binary_system.container.OrbitalPositionContainer];
+    :param phases: nympy.array;
+    :return: numpy.arrray; angular correction for each phase
+    """
+    # ensuring that phase = 0 is in dataset
+    phases_p = [phases, ] if np.isscalar(phases) else copy(phases)
+    phases_p = np.concatenate((phases_p, [0, ]))
+
+    positions = system.calculate_orbital_motion(phases_p, return_nparray=True)
+
+    ecc_anomaly = system.orbit.true_anomaly_to_eccentric_anomaly(positions[:, 3])
+    mean_anomaly = system.orbit.eccentric_anomaly_to_mean_anomaly(ecc_anomaly)
+
+    diff = mean_anomaly - positions[:, 3]
+    diff = diff[:-1] - diff[-1]
+    return diff if diff.shape[0] > 1 else diff[0]
+
+
+def calculate_spot_longitudes(system, phases, component="all", correct_libration=True):
     """
     Function calculates the latitudes of every spot on given component(s) for every phase.
 
+    :param correct_libration: bool; switch for calculation of correction for the libration motion of spots for EBs with
+    eccentric orbit
     :param system: Union[elisa.binary_system.system.BinarySystem,
                    elisa.binary_system.container.OrbitalPositionContainer];
     :param phases: numpy.array;
@@ -233,9 +259,12 @@ def calculate_spot_longitudes(system, phases, component="all"):
     """
     components = bsutils.component_to_list(component)
     components = {comp: getattr(system, comp) for comp in components}
+
+    libration_correction = correct_spot_positions_for_libration(system, phases) if correct_libration else 0
+
     spots_longitudes = {
         comp: {
-            spot_index: (instance.synchronicity - 1.0) * phases * const.FULL_ARC + spot.longitude
+            spot_index: (instance.synchronicity - 1.0) * phases * const.FULL_ARC + spot.longitude + libration_correction
             for spot_index, spot in instance.spots.items()}
         for comp, instance in components.items()
     }

@@ -95,7 +95,7 @@ def compute_circular_spotty_asynchronous_lightcurve(*args):
     # pre-calculate the longitudes of each spot for each phase
     phases = np.array([val.phase for val in motion_batch])
     in_eclipse = dynamic.in_eclipse_test([position.azimuth for position in motion_batch], ecl_boundaries)
-    spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all")
+    spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all", correct_libration=False)
     pulsation_tests = {'primary': binary.primary.has_pulsations(),
                        'secondary': binary.secondary.has_pulsations()}
     primary_reducer, secondary_reducer = \
