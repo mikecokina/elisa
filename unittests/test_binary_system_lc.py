@@ -107,7 +107,7 @@ class SupportMethodsTestCase(ElisaTestCase):
              np.array([1.68848668, 1.123, 0.93450444, 0.36901776])]
         ), 5)
 
-        obtained = dynamic.calculate_spot_longitudes(MockBinaryInstance(), phases)
+        obtained = dynamic.calculate_spot_longitudes(MockBinaryInstance(), phases, correct_libration=False)
         obtained = np.round(np.array([obtained["primary"][0], obtained["secondary"][0]]), 5)
         assert_array_equal(expected, obtained)
 
