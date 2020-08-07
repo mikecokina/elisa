@@ -186,10 +186,10 @@ def resolve_curve_method(system, fn_array):
     if is_circular:
         if not assynchronous_spotty_test and not system.has_pulsations():
             logger.debug('Calculating curve for circular binary system without pulsations and without '
-                         'assynchronous spotty components.')
+                         'asynchronous spotty components.')
             return fn_array[0]
         else:
-            logger.debug('Calculating curve for circular binary system with pulsations or with assynchronous '
+            logger.debug('Calculating curve for circular binary system with pulsations or with asynchronous '
                          'spotty components.')
             return fn_array[1]
     elif is_eccentric:
