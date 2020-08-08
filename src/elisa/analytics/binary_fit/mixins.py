@@ -40,7 +40,7 @@ class MCMCMixin(object):
         result = dict()
         for idx, key in enumerate(fitable):
             mcmc_result = np.percentile(flat_chain[:, idx], percentiles)
-            vals = parameters.vector_renormalizer(mcmc_result, np.repeat(key, len(mcmc_result)), normalization)
+            vals = parameters.renormalize_value(mcmc_result, normalization[key][0], normalization[key][1])
 
             # rounding up values to significant digits
             sigma = np.min(np.abs([vals[2] - vals[1], vals[1] - vals[0]]))

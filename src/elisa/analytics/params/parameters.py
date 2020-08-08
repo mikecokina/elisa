@@ -210,7 +210,7 @@ def vector_renormalizer(vector, properties, normalization):
     Renormalize values from `x` to their native form.
 
     :param vector: List[float]; iterable of normalized parameter values
-    :param properties: Iterable[str]; related parmaeter names from `x`
+    :param properties: Iterable[str]; related parameter names from `x`
     :param normalization: Dict[str, Tuple[float, float]]; normalization map
     :return: List[float];
     """

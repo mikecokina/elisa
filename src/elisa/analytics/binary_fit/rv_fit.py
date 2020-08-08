@@ -10,7 +10,7 @@ from elisa.analytics.binary_fit import io_tools
 
 logger = getLogger('analytics.binary_fit.rv_fit')
 
-DESH_N = 126
+DASH_N = 126
 
 
 class RVFit(object):
@@ -36,9 +36,9 @@ class RVFit(object):
             line_sep = ''
 
         try:
-            write_fn(f"\n{'-' * DESH_N}{line_sep}")
+            write_fn(f"\n{'-' * DASH_N}{line_sep}")
             io_tools.write_ln(write_fn, 'Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
-            write_fn(f"{'-'*DESH_N}{line_sep}")
+            write_fn(f"{'-'*DASH_N}{line_sep}")
             result_dict: Dict = self.flat_result
 
             if 'system@mass_ratio' in result_dict:
@@ -59,13 +59,13 @@ class RVFit(object):
                 io_tools.write_param_ln(result_dict, 'system@primary_minimum_time',
                                         'Time of primary minimum (T0):', write_fn, line_sep)
 
-            write_fn(f"{'-' * DESH_N}{line_sep}")
+            write_fn(f"{'-' * DASH_N}{line_sep}")
 
             if result_dict.get('r_squared', False):
                 if result_dict['r_squared']['value'] is not None:
                     io_tools.write_param_ln(result_dict, 'r_squared', 'Fit R^2: ', write_fn, line_sep, 6)
 
-                write_fn(f"{'-' * DESH_N}{line_sep}")
+                write_fn(f"{'-' * DASH_N}{line_sep}")
         finally:
             if f is not None:
                 f.close()

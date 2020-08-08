@@ -35,7 +35,7 @@ class MCMCPlotMixin(object):
     fit = None
 
     def corner(self, flat_chain=None, variable_labels=None, normalization=None,
-               quantiles=None, truths=False, show_titles=True, plot_units=None, **kwargs):
+               quantiles=None, truths=False, show_titles=True, plot_units=None, sigma_clip=False, sigma=5, **kwargs):
         """
         Plots complete correlation plot from supplied parameters. Usefull only for MCMC method.
 
@@ -56,7 +56,8 @@ class MCMCPlotMixin(object):
         :param plot_units: Dict; Units in which to display the output {variable_name: unit, ...}
         """
         corner(self.fit, flat_chain=flat_chain, variable_labels=variable_labels, normalization=normalization,
-               quantiles=quantiles, truths=truths, show_titles=show_titles, plot_units=plot_units, **kwargs)
+               quantiles=quantiles, truths=truths, show_titles=show_titles, plot_units=plot_units,
+               sigma_clip=sigma_clip, sigma=sigma, **kwargs)
 
     def autocorrelation(self, correlations_to_plot=None, flat_chain=None, variable_labels=None):
         """
@@ -308,10 +309,12 @@ def serialize_plot_labels(variable_labels):
 
 
 def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalization=None,
-           quantiles=None, truths=False, show_titles=True, plot_units=None, **kwargs):
+           quantiles=None, truths=False, show_titles=True, plot_units=None, sigma_clip=False, sigma=5, **kwargs):
     """
     Plots complete correlation plot from supplied parameters. Usefull only for MCMC method
 
+    :param sigma: float; value to use for sigma clipping
+    :param sigma_clip: bool; if true, the corner plot clips values to be within given `sigma` around the solution
     :param mcmc_fit_instance: <ADD>
     :param flat_chain: numpy.array; flattened chain of all parameters, use only if you want display your own chain
     :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
@@ -347,7 +350,6 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
     plot_units = PLOT_UNITS if plot_units is None else plot_units
     for ii, lbl in enumerate(variable_labels):
         if lbl in plot_units.keys():
-
             unt = u.Unit(flat_result[lbl]['unit'])
             flat_chain[:, ii] = (flat_chain[:, ii] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['value'] = (flat_result[lbl]['value'] * unt).to(plot_units[lbl]).value
@@ -358,6 +360,14 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
             flat_result[lbl]['unit'] = plot_units[lbl].to_string()
 
     truths = [flat_result[lbl]['value'] for lbl in variable_labels] if truths is True else None
+
+    if sigma_clip:
+        for ii, lbl in enumerate(variable_labels):
+            tol = 0.5 * sigma * np.abs(flat_result[lbl]["confidence_interval"]['max'] -
+                                         flat_result[lbl]["confidence_interval"]['min'])
+            mask = np.logical_and(flat_chain[:, ii] > flat_result[lbl]['value'] - tol,
+                                  flat_chain[:, ii] < flat_result[lbl]['value'] + tol)
+            flat_chain = flat_chain[mask]
 
     corner_plot_kwargs.update({
         'flat_chain': flat_chain,
