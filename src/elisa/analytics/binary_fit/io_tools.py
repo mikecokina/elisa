@@ -58,6 +58,40 @@ def write_param_ln(fit_params, param_id, designation, write_fn, line_sep, precis
                     bot, top, unit, status, line_sep)
 
 
+def write_propagated_ln(values, fit_params, param_id, designation, write_fn, line_sep, unit):
+    """
+    Auxiliary function to the fit_summary functions, produces one
+    line in output for given parameter that is present in `fit_params`.
+
+    :param values:
+    :param fit_params: Dict;
+    :param param_id: str; name os the parameter in `fit_params`
+    :param designation: str; displayed name of the parameter
+    :param write_fn: function used to write into console or to the file
+    :param line_sep: str; symbols to finish the line
+    :return:
+    """
+
+    aux = np.abs([values[1], values[2]])
+    aux[aux <= 1e-10] = 1e-10
+    sig_figures = -int(np.log10(np.min(aux))//1) + 1
+
+    values = np.round(values, sig_figures)
+
+    if param_id not in fit_params.keys():
+        status = 'derived'
+    elif 'fixed' in fit_params[param_id]:
+        status = 'Fixed' if fit_params[param_id]['fixed'] else 'Variable'
+
+    elif 'constraint' in fit_params[param_id].keys():
+        status = fit_params[param_id]['constraint']
+    elif param_id in ['r_squared']:
+        status = 'Derived'
+
+    return write_ln(write_fn, designation, values[0],
+                    values[1], values[2], unit, status, line_sep)
+
+
 def load_chain(mcmc_fit_cls, fit_id, discard=0, percentiles=None):
     """
     Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.

@@ -15,6 +15,7 @@ from elisa.analytics.binary_fit.mixins import MCMCMixin
 from elisa.binary_system.surface.gravity import calculate_polar_gravity_acceleration
 from elisa.analytics.models import lc as lc_model
 from elisa.analytics.binary_fit.shared import check_for_boundary_surface_potentials
+from elisa.base.error import MaxIterationError, MorphologyError
 
 from elisa.logger import getLogger
 
@@ -111,7 +112,15 @@ class LCFitMCMC(LCFit):
         """
         return io_tools.load_chain(self, filename, discard, percentiles)
 
-    def fit_summary(self, chain_file=None, parameters_file=None):
+    def fit_summary(self, path=None, chain_file=None, parameters_file=None, percentiles=None):
+        f = None
+        if path is not None:
+            f = open(path, 'w')
+            write_fn = f.write
+            line_sep = '\n'
+        else:
+            write_fn = print
+            line_sep = ''
 
         if chain_file is None:
             flat_chain = self.flat_chain
@@ -148,22 +157,19 @@ class LCFitMCMC(LCFit):
 
         component_param_list = [
             'mass', 'surface_potential', 'synchronicity', 'equivalent_radius',
-            'polar_radius', 'backward_radius', 'side_radius', 'forward_radius', 't_eff', 'bolometric_luminosity',
-            'gravity_darkening', 'albedo', 'metallicity', 'critical_potential', 'polar_log_g'
+            'polar_radius', 'backward_radius', 'side_radius', 'forward_radius', 't_eff',
+            'gravity_darkening', 'albedo', 'metallicity', 'critical_potential', 'polar_log_g', 'bolometric_luminosity'
         ]
 
         stop_idx['system'] = len(complete_param_list)
+        spot_numbers, pulsation_numbers = {}, {}
 
         for component in BINARY_COUNTERPARTS.keys():
-            complete_param_list += [
-                f'{component}@mass', f'{component}@surface_potential', f'{component}@critical_potential',
-                f'{component}@synchronicity', f'{component}@polar_log_g', f'{component}@equivalent_radius',
-                f'{component}@polar_radius', f'{component}@backward_radius', f'{component}@side_radius',
-                f'{component}@forward_radius', f'{component}@t_eff', f'{component}@bolometric_luminosity',
-                f'{component}@gravity_darkening', f'{component}@albedo', f'{component}@metallicity',
-            ]
+            complete_param_list += [f'{component}@{prm}' for prm in component_param_list]
+
             stop_idx[f'{component}_params'] = len(complete_param_list)
             spot_lbls = set([lbl.split('@')[2] for lbl in params.keys() if f'{component}@spots' in lbl])
+            spot_numbers[component] = len(spot_lbls)
             for spot in spot_lbls:
                 complete_param_list += [
                     f'{component}@spots@{spot}@longitude', f'{component}@spots@{spot}@latitude',
@@ -171,6 +177,7 @@ class LCFitMCMC(LCFit):
                 ]
             stop_idx[f'{component}_spots'] = len(complete_param_list)
             pulse_lbls = set([lbl.split('@')[2] for lbl in params.keys() if f'{component}@pulsations' in lbl])
+            pulsation_numbers[component] = len(pulse_lbls)
             for spot in pulse_lbls:
                 complete_param_list += [
                     f'{component}@pulsations@{spot}@l', f'{component}@pulsations@{spot}@m',
@@ -192,14 +199,174 @@ class LCFitMCMC(LCFit):
                     full_chain[ii, param_columns[var_label]] = getattr(binary_instance, var_label.split('@')[1])
 
                 for component in BINARY_COUNTERPARTS.keys():
-                    component_instance = getattr(binary_instance, component)
-                    full_chain[ii, param_columns[var_label]] = getattr(primary, var_label.split('@')[2])
+                    star_instance = getattr(binary_instance, component)
+                    for var_label in complete_param_list[stop_idx[f'{component}_params'] - len(component_param_list):
+                    stop_idx[f'{component}_params'] - 3]:
+                        full_chain[ii, param_columns[var_label]] = getattr(star_instance, var_label.split('@')[1])
 
-                primary = getattr(binary_instance, 'secondary')
-                for var_label in complete_param_list[stop_idx['primary_pulsations']:stop_idx['secondary_params']]:
-                    full_chain[ii, param_columns[var_label]] = getattr(primary, var_label.split('@')[2])
-            except:
+                    polar_g = calculate_polar_gravity_acceleration(star_instance,
+                                                                   1 - binary_instance.eccentricity,
+                                                                   binary_instance.mass_ratio,
+                                                                   component=component,
+                                                                   semi_major_axis=binary_instance.semi_major_axis,
+                                                                   synchronicity=star_instance.synchronicity,
+                                                                   logg=True) + 2
+                    full_chain[ii, param_columns[f'{component}@polar_log_g']] = polar_g
+
+                    crit_pot = binary_instance.critical_potential(component, 1.0 - binary_instance.eccentricity)
+                    full_chain[ii, param_columns[f'{component}@critical_potential']] = crit_pot
+
+                    l_bol = binary_instance.calculate_bolometric_luminosity(components=component)[component]
+                    full_chain[ii, param_columns[f'{component}@bolometric_luminosity']] = l_bol
+
+                    if spot_numbers[component] == 0 and pulsation_numbers[component] == 0:
+                        continue
+
+                    ref_idx = stop_idx[f'{component}_params']
+                    for spot_idx in range(spot_numbers[component]):
+                        full_chain[ii, ref_idx + 4 * spot_idx] = star_instance.spots[spot_idx].longitude
+                        full_chain[ii, ref_idx + 4 * spot_idx + 1] = star_instance.spots[spot_idx].latitude
+                        full_chain[ii, ref_idx + 4 * spot_idx + 2] = star_instance.spots[spot_idx].angular_radius
+                        full_chain[ii, ref_idx + 4 * spot_idx + 3] = star_instance.spots[spot_idx].temperature_factor
+
+                    ref_idx = stop_idx[f'{component}_spots']
+                    for pulse_idx in range(pulsation_numbers[component]):
+                        full_chain[ii, ref_idx + 7*pulse_idx] = star_instance.pulsations[pulse_idx].l
+                        full_chain[ii, ref_idx + 7*pulse_idx + 1] = star_instance.pulsations[pulse_idx].m
+                        full_chain[ii, ref_idx + 7*pulse_idx + 2] = star_instance.pulsations[pulse_idx].amplitude
+                        full_chain[ii, ref_idx + 7*pulse_idx + 3] = star_instance.pulsations[pulse_idx].frequency
+                        full_chain[ii, ref_idx + 7*pulse_idx + 4] = star_instance.pulsations[pulse_idx].start_phase
+                        full_chain[ii, ref_idx + 7*pulse_idx + 5] = star_instance.pulsations[pulse_idx].mode_axis_phi
+                        full_chain[ii, ref_idx + 7*pulse_idx + 6] = star_instance.pulsations[pulse_idx].mode_axis_theta
+
+            except (MaxIterationError, MorphologyError) as e:
                 continue
+
+        full_chain_mask = (~np.isnan(full_chain)).any(axis=1)
+        full_chain = full_chain[full_chain_mask]
+
+        percentiles = [16, 50, 84] if percentiles is None else percentiles
+        calculated_percentiles = np.percentile(full_chain, percentiles, axis=0)
+        full_chain_results = np.row_stack((calculated_percentiles[1, :],
+                                           calculated_percentiles[1, :] - calculated_percentiles[0, :],
+                                           calculated_percentiles[2, :] - calculated_percentiles[1, :]))
+
+        intro = (write_fn, 'Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
+        write_fn(f"\nBINARY SYSTEM{line_sep}")
+        io_tools.write_ln(*intro)
+        write_fn(f"{'-' * DASH_N}{line_sep}")
+
+        io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@mass_ratio']], params,
+                                     'system@mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep, '-')
+
+        sma = (full_chain_results[:, param_columns['system@semi_major_axis']] *
+               units.DISTANCE_UNIT).to(units.solRad).value
+        io_tools.write_propagated_ln(sma, params, 'system@semi_major_axis', 'Semi major axis (a):', write_fn, line_sep,
+                                     'solRad')
+
+        incl = (full_chain_results[:, param_columns['system@inclination']] *
+                units.ARC_UNIT).to(units.deg).value
+        io_tools.write_propagated_ln(incl, params, 'system@inclination', 'Inclination (i):', write_fn, line_sep, 'deg')
+
+        io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@eccentricity']], params,
+                                     'system@eccentricity', 'Eccentricity (e):', write_fn, line_sep, '-')
+
+        omega = (full_chain_results[:, param_columns['system@argument_of_periastron']] *
+                 units.ARC_UNIT).to(units.deg).value
+        io_tools.write_propagated_ln(omega, params, 'system@argument_of_periastron', 'Argument of periastron (omega):',
+                                     write_fn, line_sep, 'deg')
+
+        io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@period']], params,
+                                     'system@period', 'Orbital period (P):', write_fn, line_sep, 'd')
+
+        if 'system@primary_minimum_time' in params:
+            io_tools.write_param_ln(params, 'system@primary_minimum_time', 'Time of primary minimum (T0):',
+                                    write_fn, line_sep)
+
+        io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@additional_light']], params,
+                                     'system@additional_light', 'Additional light (l_3):', write_fn,
+                                     line_sep, '-')
+
+        io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@phase_shift']], params,
+                                     'system@phase_shift', 'Phase shift:', write_fn,
+                                     line_sep, '-')
+
+        write_fn(f"{'-' * DASH_N}{line_sep}")
+
+        for component in BINARY_COUNTERPARTS:
+            comp_n = 1 if component == 'primary' else 2
+            write_fn(f"{component.upper()} COMPONENT{line_sep}")
+            io_tools.write_ln(*intro)
+            write_fn(f"{'-' * DASH_N}{line_sep}")
+
+            mass = (full_chain_results[:, param_columns[f'{component}@mass']] * units.MASS_UNIT).to(units.solMass).value
+            io_tools.write_propagated_ln(mass, params, f'{component}@mass', f'Mass (M_{comp_n}):', write_fn, line_sep,
+                                         'solMas')
+
+            io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@surface_potential']], params,
+                                         f'{component}@surface_potential', f'Surface potential (Omega_{comp_n}):',
+                                         write_fn, line_sep, '-')
+            io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@critical_potential']], params,
+                                         f'{component}@critical_potential', 'Critical potential at L_1:',
+                                         write_fn, line_sep, '-')
+            io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@synchronicity']],
+                                         params, f'{component}@synchronicity', f'Synchronicity (F_{comp_n}):',
+                                         write_fn, line_sep, '-')
+            io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@polar_log_g']],
+                                         params, f'{component}@polar_log_g', 'Polar gravity (log g):',
+                                         write_fn, line_sep, 'log(cgs)')
+
+            r_equiv = (full_chain_results[:, param_columns[f'{component}@equivalent_radius']] *
+                       full_chain_results[:, param_columns['system@semi_major_axis']] *
+                       units.DISTANCE_UNIT).to(units.solRad).value
+
+            io_tools.write_propagated_ln(r_equiv, params, f'{component}@equivalent_radius',
+                                         'Equivalent radius (R_equiv):', write_fn, line_sep, 'solRad')
+            write_fn(f"\nPeriastron radii{line_sep}")
+
+            r_polar = (full_chain_results[:, param_columns[f'{component}@polar_radius']] *
+                       full_chain_results[:, param_columns['system@semi_major_axis']] *
+                       units.DISTANCE_UNIT).to(units.solRad).value
+            r_backw = (full_chain_results[:, param_columns[f'{component}@backward_radius']] *
+                       full_chain_results[:, param_columns['system@semi_major_axis']] *
+                       units.DISTANCE_UNIT).to(units.solRad).value
+            r_side = (full_chain_results[:, param_columns[f'{component}@side_radius']] *
+                      full_chain_results[:, param_columns['system@semi_major_axis']] *
+                      units.DISTANCE_UNIT).to(units.solRad).value
+
+            io_tools.write_propagated_ln(r_polar, params, f'{component}@polar_radius',
+                                         'Polar radius:', write_fn, line_sep, 'solRad')
+            io_tools.write_propagated_ln(r_backw, params, f'{component}@backw_radius',
+                                         'Backward radius:', write_fn, line_sep, 'solRad')
+            io_tools.write_propagated_ln(r_side, params, f'{component}@side_radius',
+                                         'Backward radius:', write_fn, line_sep, 'solRad')
+            if self.morphology is not 'over-contact':
+                r_forw = (full_chain_results[:, param_columns[f'{component}@forward_radius']] *
+                          full_chain_results[:, param_columns['system@semi_major_axis']] *
+                          units.DISTANCE_UNIT).to(units.solRad).value
+                io_tools.write_propagated_ln(r_forw, params, f'{component}@forward_radius',
+                                             'Forward radius:', write_fn, line_sep, 'solRad')
+
+            write_fn(f"\nAtmospheric parameters{line_sep}")
+            io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@t_eff']],
+                                         params, f'{component}@t_eff', f'Effective temperature (T_eff{comp_n}):',
+                                         write_fn, line_sep, 'K')
+
+            l_bol = (full_chain_results[:, param_columns[f'{component}@bolometric_luminosity']] *
+                     units.LUMINOSITY_UNIT).to('L_sun').value
+            io_tools.write_propagated_ln(l_bol, params, f'{component}@bolometric_luminosity',
+                                         'Bolometric luminosity (L_bol): ', write_fn, line_sep, 'L_sol')
+            io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@gravity_darkening']],
+                                         params, f'{component}@gravity_darkening',
+                                         f'Gravity darkening factor (G_{comp_n}):', write_fn, line_sep, '-')
+            io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@albedo']],
+                                         params, f'{component}@albedo',
+                                         f'Albedo (A_{comp_n}):', write_fn, line_sep, '-')
+            io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@metallicity']],
+                                         params, f'{component}@metallicity',
+                                         'Metallicity (log10(X_Fe/X_H)):', write_fn, line_sep, '-')
+
+            write_fn(f"{'-' * DASH_N}{line_sep}")
 
 
 class LCFitLeastSquares(LCFit):
@@ -311,7 +478,8 @@ class LCFitLeastSquares(LCFit):
                                                                synchronicity=star_instance.synchronicity,
                                                                logg=True) + 2
 
-                io_tools.write_ln(write_fn, 'Polar gravity (log g):', polar_g, '-', '-', 'cgs', 'Derived', line_sep, 3)
+                io_tools.write_ln(write_fn, 'Polar gravity (log g):', polar_g, '-', '-', 'log(cgs)', 'Derived',
+                                  line_sep, 3)
 
                 r_equiv = (star_instance.equivalent_radius * binary_instance.semi_major_axis *
                            units.DISTANCE_UNIT).to(units.solRad).value
