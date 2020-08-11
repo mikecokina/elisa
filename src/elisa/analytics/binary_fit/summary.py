@@ -61,6 +61,7 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
         renormalized_chain[:, ii] = parameters.renormalize_value(flat_chain[:, ii], normalization[lbl][0],
                                                                  normalization[lbl][1])
     stop_idx = {}
+    # creating param list of the binary system
     complete_param_list = [
         'system@mass_ratio', 'system@semi_major_axis', 'system@asini', 'system@inclination', 'system@eccentricity',
         'system@argument_of_periastron', 'system@gamma', 'system@period', 'system@primary_minimum_time',
@@ -102,6 +103,7 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
 
     param_columns = {lbl: ii for ii, lbl in enumerate(complete_param_list)}
 
+    # obtaining binary parameters for each item in MCMC chain
     args = (fit_instance, param_columns, stop_idx, spot_numbers, pulsation_numbers, len(component_param_list))
     if config.NUMBER_OF_MCMC_PROCESSES > 1:
         logger.info("starting multiprocessor workers for error propagation technique")
@@ -124,11 +126,14 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
     calculated_percentiles = np.empty((3, full_chain.shape[1]))
     calculated_percentiles[:] = np.NaN
     full_chain_mask = (~np.isnan(full_chain)).any(axis=0)
+
+    # evaluating posterior distribution of each binary parameter
     calculated_percentiles[:, full_chain_mask] = np.percentile(full_chain[:, full_chain_mask], percentiles, axis=0)
     full_chain_results = np.row_stack((calculated_percentiles[1, :],
                                        calculated_percentiles[1, :] - calculated_percentiles[0, :],
                                        calculated_percentiles[2, :] - calculated_percentiles[1, :]))
 
+    # output to screen/file
     intro = (write_fn, 'Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
     write_fn(f"\nBINARY SYSTEM{line_sep}")
     io_tools.write_ln(*intro)
