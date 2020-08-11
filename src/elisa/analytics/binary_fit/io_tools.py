@@ -71,6 +71,9 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
     :param line_sep: str; symbols to finish the line
     :return:
     """
+    # if parameter does not exists in given fitting mode, the line in summary is omitted
+    if np.isnan(values).any():
+        return
 
     aux = np.abs([values[1], values[2]])
     aux[aux <= 1e-10] = 1e-10
@@ -87,6 +90,8 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
         status = fit_params[param_id]['constraint']
     elif param_id in ['r_squared']:
         status = 'Derived'
+    else:
+        status = 'unknown'
 
     return write_ln(write_fn, designation, values[0],
                     values[1], values[2], unit, status, line_sep)

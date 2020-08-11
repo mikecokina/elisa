@@ -71,8 +71,8 @@ class AnalyticsTask(metaclass=ABCMeta):
     def get_result(self):
         return self.fit_cls.get_result()
 
-    def result_summary(self, filename=None):
-        self.fit_cls.fit_summary(filename)
+    def result_summary(self, filename=None, **kwargs):
+        self.fit_cls.fit_summary(filename, **kwargs)
 
     fit_summary = result_summary
 

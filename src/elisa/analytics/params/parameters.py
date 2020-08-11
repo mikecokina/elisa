@@ -233,6 +233,10 @@ def prepare_properties_set(xn, properties, constrained, fixed):
     """
     This will prepare final kwargs for synthetic model evaluation.
 
+    :param xn: numpy.array; initial vector
+    :param properties: list; variable labels
+    :param constrained: dict;
+    :param fixed: dict;
     :return: Dict[str, float];
     """
     kwargs = dict(zip(properties, xn))

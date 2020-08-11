@@ -1,4 +1,5 @@
 import json
+import numpy as np
 
 from typing import Union, Dict
 from elisa.analytics.params import parameters
@@ -7,6 +8,9 @@ from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.analytics.binary_fit.mcmc import CentralRadialVelocity as MCMCCentralRV
 from elisa.analytics.binary_fit.least_squares import CentralRadialVelocity as LstSqrCentralRV
 from elisa.analytics.binary_fit import io_tools
+from elisa.analytics.binary_fit.summary import fit_rv_summary_with_error_propagation, \
+    fit_lc_summary_with_error_propagation, simple_rv_fit_summary
+from elisa.binary_system.utils import resolve_json_kind
 
 logger = getLogger('analytics.binary_fit.rv_fit')
 
@@ -18,57 +22,6 @@ class RVFit(object):
         self.result = None
         self.flat_result = None
         self.fit_method_instance: Union[RVFitLeastSquares, RVFitMCMC, None] = None
-
-    def fit_summary(self, path=None):
-        """
-        Producing a summary of the fit in more human readable form.
-
-        :param path: Union[str, None]; if not None, summary is stored in file, otherwise it is printed into console
-        :return:
-        """
-        f = None
-        if path is not None:
-            f = open(path, 'w')
-            write_fn = f.write
-            line_sep = '\n'
-        else:
-            write_fn = print
-            line_sep = ''
-
-        try:
-            write_fn(f"\n{'-' * DASH_N}{line_sep}")
-            io_tools.write_ln(write_fn, 'Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
-            write_fn(f"{'-'*DASH_N}{line_sep}")
-            result_dict: Dict = self.flat_result
-
-            if 'system@mass_ratio' in result_dict:
-                io_tools.write_param_ln(result_dict, 'system@mass_ratio', 'Mass ratio (q=M_2/M_1):',
-                                        write_fn, line_sep, 3)
-                io_tools.write_param_ln(result_dict, 'system@asini', 'a*sin(i):', write_fn, line_sep, 2)
-            else:
-                io_tools.write_param_ln(result_dict, 'primary@mass', 'Primary mass:', write_fn, line_sep, 3)
-                io_tools.write_param_ln(result_dict, 'secondary@mass', 'Secondary mass:', write_fn, line_sep, 3)
-                io_tools.write_param_ln(result_dict, 'system@inclination', 'Inclination(i):', write_fn, line_sep, 3)
-
-            io_tools.write_param_ln(result_dict, 'system@eccentricity', 'Eccentricity (e):', write_fn, line_sep)
-            io_tools.write_param_ln(result_dict, 'system@argument_of_periastron',
-                                    'Argument of periastron (omega):', write_fn, line_sep)
-            io_tools.write_param_ln(result_dict, 'system@gamma', 'Centre of mass velocity (gamma):', write_fn, line_sep)
-            io_tools.write_param_ln(result_dict, 'system@period', 'Orbital period (P):', write_fn, line_sep)
-            if 'system@primary_minimum_time' in result_dict.keys():
-                io_tools.write_param_ln(result_dict, 'system@primary_minimum_time',
-                                        'Time of primary minimum (T0):', write_fn, line_sep)
-
-            write_fn(f"{'-' * DASH_N}{line_sep}")
-
-            if result_dict.get('r_squared', False):
-                if result_dict['r_squared']['value'] is not None:
-                    io_tools.write_param_ln(result_dict, 'r_squared', 'Fit R^2: ', write_fn, line_sep, 6)
-
-                write_fn(f"{'-' * DASH_N}{line_sep}")
-        finally:
-            if f is not None:
-                f.close()
 
     def get_result(self):
         return self.result
@@ -141,6 +94,32 @@ class RVFitMCMC(RVFit):
         """
         return io_tools.load_chain(self, filename, discard, percentiles)
 
+    def fit_summary(self, path=None, **kwargs):
+        """
+        Function produces detailed summary about the current RV fitting task with the complete error propagation for RV
+        parameters if `propagate_errors` is True
+
+        :param path: str; path, where to store summary
+        :param kwargs: dict;
+            * ** propagate_errors ** * (bool) -- errors of fitted parameters will be propagated to the rest of EB
+                                                 parameters (takes a while)
+            * ** percentiles ** * (list) -- percentiles used to evaluate confidence intervals from forward distribution
+                                            of EB parameters. Useless if `propagate_errors` is False.
+
+        :return:
+        """
+        propagate_errors, percentiles = kwargs.get('propagate_errors', False), kwargs.get('percentiles', [16, 50, 84])
+        if not propagate_errors:
+            simple_rv_fit_summary(self, path)
+            return
+
+        kind_of = resolve_json_kind(data=self.result, _sin=True)
+
+        if kind_of in ["community"]:
+            fit_rv_summary_with_error_propagation(self, path, percentiles)
+        else:
+            fit_lc_summary_with_error_propagation(self, path, percentiles)
+
 
 class RVFitLeastSquares(RVFit):
     def __init__(self):
@@ -156,3 +135,7 @@ class RVFitLeastSquares(RVFit):
         self.fit_summary()
 
         return self.result
+
+    def fit_summary(self, path=None, **kwargs):
+        simple_rv_fit_summary(self, path)
+

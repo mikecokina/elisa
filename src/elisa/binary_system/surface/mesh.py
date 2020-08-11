@@ -281,7 +281,7 @@ def get_surface_points(*args):
                 fprime: callable,
                 surface_potential: float,
                 mass_ratio: float
-                symchronicity: float
+                synchronicity: float
             ]
 
     :return: numpy.array

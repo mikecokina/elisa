@@ -209,7 +209,7 @@ def resolve_json_kind(data, _sin=False):
     :return: str; `std` or `community`
     """
     lookup = "asini" if _sin else "semi_major_axis"
-    m1, m2 = data["primary"].get("mass"), data["secondary"].get("mass")
+    m1, m2 = data.get("primary", dict()).get("mass"), data.get("secondary", dict()).get("mass")
     q, a = data["system"].get("mass_ratio"), data["system"].get(lookup)
 
     if m1 and m2:

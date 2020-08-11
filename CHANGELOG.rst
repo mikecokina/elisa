@@ -145,6 +145,9 @@ v0.3.1_
 
 **Release date:** ----
 
+* **computaional** *
+    - fit_summary (result_summary) function now enables full propagation of errors using `propagate_errors` argument
+
 **Fixes**
 
     - on-demand normalization of light curves
