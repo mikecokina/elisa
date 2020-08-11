@@ -159,9 +159,9 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
     io_tools.write_propagated_ln(omega, flat_params, 'system@argument_of_periastron', 'Argument of periastron (omega):',
                                  write_fn, line_sep, 'deg')
 
-    omega = (full_chain_results[:, param_columns['system@gamma']] *
+    gamma = (full_chain_results[:, param_columns['system@gamma']] *
              units.VELOCITY_UNIT).to(units.km / units.s).value
-    io_tools.write_propagated_ln(omega, flat_params, 'system@gamma', 'Centre of mass velocity (gamma):',
+    io_tools.write_propagated_ln(gamma, flat_params, 'system@gamma', 'Centre of mass velocity (gamma):',
                                  write_fn, line_sep, 'km/s')
 
     io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@period']], flat_params,
@@ -205,36 +205,26 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
                                      flat_params, f'{component}@polar_log_g', 'Polar gravity (log g):',
                                      write_fn, line_sep, 'log(cgs)')
 
-        r_equiv = (full_chain_results[:, param_columns[f'{component}@equivalent_radius']] *
-                   full_chain_results[:, param_columns['system@semi_major_axis']] *
-                   units.DISTANCE_UNIT).to(units.solRad).value
+        r_equiv = full_chain_results[:, param_columns[f'{component}@equivalent_radius']]
 
         io_tools.write_propagated_ln(r_equiv, flat_params, f'{component}@equivalent_radius',
-                                     'Equivalent radius (R_equiv):', write_fn, line_sep, 'solRad')
+                                     'Equivalent radius (R_equiv):', write_fn, line_sep, 'sma')
         write_fn(f"\nPeriastron radii{line_sep}")
 
-        r_polar = (full_chain_results[:, param_columns[f'{component}@polar_radius']] *
-                   full_chain_results[:, param_columns['system@semi_major_axis']] *
-                   units.DISTANCE_UNIT).to(units.solRad).value
-        r_backw = (full_chain_results[:, param_columns[f'{component}@backward_radius']] *
-                   full_chain_results[:, param_columns['system@semi_major_axis']] *
-                   units.DISTANCE_UNIT).to(units.solRad).value
-        r_side = (full_chain_results[:, param_columns[f'{component}@side_radius']] *
-                  full_chain_results[:, param_columns['system@semi_major_axis']] *
-                  units.DISTANCE_UNIT).to(units.solRad).value
+        r_polar = full_chain_results[:, param_columns[f'{component}@polar_radius']]
+        r_backw = full_chain_results[:, param_columns[f'{component}@backward_radius']]
+        r_side = full_chain_results[:, param_columns[f'{component}@side_radius']]
 
         io_tools.write_propagated_ln(r_polar, flat_params, f'{component}@polar_radius',
-                                     'Polar radius:', write_fn, line_sep, 'solRad')
+                                     'Polar radius:', write_fn, line_sep, 'sma')
         io_tools.write_propagated_ln(r_backw, flat_params, f'{component}@backw_radius',
-                                     'Backward radius:', write_fn, line_sep, 'solRad')
+                                     'Backward radius:', write_fn, line_sep, 'sma')
         io_tools.write_propagated_ln(r_side, flat_params, f'{component}@side_radius',
-                                     'Backward radius:', write_fn, line_sep, 'solRad')
+                                     'Backward radius:', write_fn, line_sep, 'sma')
         if fit_instance.morphology != 'over-contact':
-            r_forw = (full_chain_results[:, param_columns[f'{component}@forward_radius']] *
-                      full_chain_results[:, param_columns['system@semi_major_axis']] *
-                      units.DISTANCE_UNIT).to(units.solRad).value
+            r_forw = full_chain_results[:, param_columns[f'{component}@forward_radius']]
             io_tools.write_propagated_ln(r_forw, flat_params, f'{component}@forward_radius',
-                                         'Forward radius:', write_fn, line_sep, 'solRad')
+                                         'Forward radius:', write_fn, line_sep, 'sma')
 
         write_fn(f"\nAtmospheric parameters{line_sep}")
         io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@t_eff']],
@@ -351,6 +341,7 @@ def evaluate_binary_params(*args):
     """
     fit_instance, param_columns, stop_idx, spot_numbers, pulsation_numbers, cpl, renormalized_chain = args
     full_chain = np.empty((renormalized_chain.shape[0], len(param_columns)))
+    full_chain[:] = np.nan
 
     for ii in tqdm(range(renormalized_chain.shape[0])):
         init_binary_kwargs = parameters.prepare_properties_set(renormalized_chain[ii, :],
