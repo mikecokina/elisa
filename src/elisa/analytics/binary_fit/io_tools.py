@@ -44,7 +44,7 @@ def write_param_ln(fit_params, param_id, designation, write_fn, line_sep, precis
         bot, top = '-', '-',
         sig_figures = precision
 
-    status = 'not recognized'
+    status = 'Not recognized'
     if 'fixed' in fit_params[param_id]:
         status = 'Fixed' if fit_params[param_id]['fixed'] else 'Variable'
 
@@ -82,7 +82,7 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
     values = np.round(values, sig_figures)
 
     if param_id not in fit_params.keys():
-        status = 'derived'
+        status = 'Derived'
     elif 'fixed' in fit_params[param_id]:
         status = 'Fixed' if fit_params[param_id]['fixed'] else 'Variable'
 
@@ -91,7 +91,7 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
     elif param_id in ['r_squared']:
         status = 'Derived'
     else:
-        status = 'unknown'
+        status = 'Unknown'
 
     return write_ln(write_fn, designation, values[0],
                     values[1], values[2], unit, status, line_sep)

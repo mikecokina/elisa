@@ -145,7 +145,7 @@ v0.3.1_
 
 **Release date:** ----
 
-* **computaional** *
+**Enhancements**
     - fit_summary (result_summary) function now enables full propagation of errors using `propagate_errors` argument
 
 **Fixes**
@@ -157,7 +157,7 @@ v0.3.1_
     - more suitable form of cost function for least squares fitting method
     - correcting secondary potential derivative component
     - libration motion accounted for in spot position in case of eccetric orbits
-    - fix: volume conserved in eccentric spotty systems
+    - volume conserved in eccentric spotty systems
 
 Future plans
 ============

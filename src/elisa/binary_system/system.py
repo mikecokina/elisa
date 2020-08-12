@@ -739,9 +739,8 @@ class BinarySystem(System):
                     setattr(component_instance, 'forward_radius', r)
 
             # setting value of equivalent radius
-            setattr(component_instance, 'equivalent_radius',
-                    self.
-                    calculate_equivalent_radius(components=component)[component])
+            e_rad = self.calculate_equivalent_radius(components=component)[component]
+            setattr(component_instance, 'equivalent_radius', e_rad)
 
     @staticmethod
     def compute_filling_factor(surface_potential, lagrangian_points):

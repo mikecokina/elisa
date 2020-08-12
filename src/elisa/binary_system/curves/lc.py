@@ -1,5 +1,3 @@
-from multiprocessing.pool import Pool
-
 import numpy as np
 
 from copy import (
