@@ -1,7 +1,6 @@
-from typing import Iterable, Dict
-
 import numpy as np
 
+from typing import Iterable, Dict
 from scipy import interpolate
 from abc import ABCMeta, abstractmethod
 
