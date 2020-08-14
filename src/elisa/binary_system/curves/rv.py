@@ -125,7 +125,7 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
     return shared.produce_circ_sync_curves(binary, initial_system, kwargs.pop("phases"),
-                                           rvmp.compute_circular_synchronous_rv, rv_labels, **kwargs)
+                                           rvmp.compute_circ_sync_rv_at_pos, rv_labels, **kwargs)
 
 
 def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):

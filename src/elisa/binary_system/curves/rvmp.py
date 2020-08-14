@@ -10,8 +10,8 @@ from elisa.binary_system import (
 )
 
 
-def compute_circular_synchronous_rv(velocities, pos_idx, crv_labels, stars, ld_cfs, ld_law_cfs_column, normal_radiance,
-                                    coverage):
+def compute_circ_sync_rv_at_pos(velocities, pos_idx, crv_labels, stars, ld_cfs, ld_law_cfs_column, normal_radiance,
+                                coverage):
     """
     Calculates rv points for given orbital position in case of circular orbit and synchronous rotation.
 
@@ -37,9 +37,8 @@ def compute_circular_synchronous_rv(velocities, pos_idx, crv_labels, stars, ld_c
                 limb_darkening_law=config.LIMB_DARKENING_LAW,
                 cos_theta=cosines)
 
-        flux = normal_radiance[component]['rv_band'][visibility_indices] * \
-               cosines * coverage[component][visibility_indices] * \
-               ld_cors
+        flux = normal_radiance[component]['rv_band'][visibility_indices] * cosines * \
+               coverage[component][visibility_indices] * ld_cors
 
         velocities[component][pos_idx] = np.sum(stars[component].velocities[visibility_indices][:, 0] * flux) / \
                                          np.sum(flux) if np.sum(flux) != 0 else np.NaN

@@ -253,6 +253,26 @@ def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, crv_label
 
 
 def produce_circ_sync_curves_mp(*args):
+    """
+    Curve generator function for circular synchronous systems.
+
+    :param args: Tuple;
+
+    ::
+
+        Tuple[
+                binary: elisa.binary_system.BinarySystem,
+                initial_system: elisa.binary_system.container.OrbitalPositionContainer, system container with built
+                geometry
+                phase_batch: numpy.array; phases at which to calculate curves,
+                normal_radiance: Dict; {component: numpy.array; normal radiances for each surface element},
+                ld_cfs: Dict;
+                crv_labels: List;
+                curves_fn: function to calculate curve points at given orbital positions,
+                kwargs: Dict,
+            ]
+    :return:
+    """
     binary, initial_system, phase_batch, normal_radiance, ld_cfs, crv_labels, curves_fn, kwargs = args
 
     position_method = kwargs.pop("position_method")
@@ -279,18 +299,20 @@ def produce_circ_sync_curves_mp(*args):
     return curves
 
 
-def produce_circ_spotty_async_curves(binary, curve_fn, **kwargs):
+def produce_circ_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
     """
-       Function returns curve of assynchronous systems with circular orbits and spots.
+    Function returns curve of assynchronous systems with circular orbits and spots.
 
-       :param binary: elisa.binary_system.system.BinarySystem;
-       :param kwargs: Dict;
-       :**kwargs options**:
-           * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-           * ** left_bandwidth ** * - float
-           * ** right_bandwidth ** * - float
-           * ** atlas ** * - str
-       :return: Dict; fluxes for each filter
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param curve_fn: curve function
+    :param crv_labels: labels of the calculated curves (passbands, components,...)
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa .observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
+    :return: Dict; fluxes for each filter
     """
     phases = kwargs.pop("phases")
     position_method = kwargs.pop("position_method")
@@ -310,10 +332,14 @@ def produce_circ_spotty_async_curves(binary, curve_fn, **kwargs):
         setattr(star, "base_symmetry_points_number", _c)
         setattr(star, "inverse_point_symmetry_matrix", _d)
 
-    fn_args = binary, initial_system, points, ecl_boundaries
+    fn_args = binary, initial_system, points, ecl_boundaries, crv_labels, curve_fn
+    # fn_args = (binary, initial_system, normal_radiance, ld_cfs, crv_labels, curve_fn)
     band_curves = manage_observations(fn=curve_fn,
                                       fn_args=fn_args,
                                       position=orbital_motion,
                                       **kwargs)
 
     return band_curves
+
+
+

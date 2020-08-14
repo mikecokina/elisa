@@ -304,6 +304,25 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     return band_curves
 
 
+def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
+    """
+    Function returns light curve of assynchronous systems with circular orbits and spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
+    :return: Dict; fluxes for each filter
+    """
+    lc_labels = list(kwargs["passband"].keys())
+
+    return shared.produce_circ_spotty_async_curves(binary, lcmp.compute_circular_spotty_asynchronous_lightcurve,
+                                                   lc_labels, **kwargs)
+
+
 def compute_eccentric_lightcurve(binary, **kwargs):
     """
     Top-level helper method to compute eccentric lightcurve.
@@ -546,24 +565,6 @@ def _integrate_eccentric_lc_appx_three(binary, phases, orbital_positions, new_ge
             band_curves[band][int(orbital_position.idx)] = shared.calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
 
     return band_curves
-
-
-def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
-    """
-    Function returns light curve of assynchronous systems with circular orbits and spots.
-
-    :param binary: elisa.binary_system.system.BinarySystem;
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** * - float
-        * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
-    :return: Dict; fluxes for each filter
-    """
-    return shared.produce_circ_spotty_async_curves(binary,
-                                                   lcmp.compute_circular_spotty_asynchronous_lightcurve,
-                                                   **kwargs)
 
 
 def compute_eccentric_spotty_lightcurve(binary, **kwargs):
