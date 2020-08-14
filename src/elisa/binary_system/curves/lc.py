@@ -16,7 +16,6 @@ from ...binary_system.orbit.container import OrbitalSupplements
 from ...binary_system.surface.coverage import calculate_coverage_with_cosines
 from ...binary_system.curves import lcmp, shared
 from elisa.observer.mp import manage_observations
-from elisa import atm
 
 from ... import (
     umpy as up,
@@ -296,8 +295,10 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
 
+    lc_labels = list(kwargs["passband"].keys())
+
     band_curves = shared.produce_circ_sync_curves(binary, initial_system, unique_phase_interval,
-                                                  lcmp.compute_circular_synchronous_lightcurve, **kwargs)
+                                                  lcmp.compute_circ_sync_lc_on_pos, lc_labels, **kwargs)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
     return band_curves
@@ -560,31 +561,9 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
         * ** atlas ** * - str
     :return: Dict; fluxes for each filter
     """
-    phases = kwargs.pop("phases")
-    position_method = kwargs.pop("position_method")
-    orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
-    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
-
-    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
-    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
-
-    points = dict()
-    for component in config.BINARY_COUNTERPARTS:
-        star = getattr(initial_system, component)
-        _a, _b, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
-        points[component] = _a
-        setattr(star, "points", copy(_a))
-        setattr(star, "point_symmetry_vector", _b)
-        setattr(star, "base_symmetry_points_number", _c)
-        setattr(star, "inverse_point_symmetry_matrix", _d)
-
-    fn_args = binary, initial_system, points, ecl_boundaries
-    band_curves = manage_observations(fn=lcmp.compute_circular_spotty_asynchronous_lightcurve,
-                                      fn_args=fn_args,
-                                      position=orbital_motion,
-                                      **kwargs)
-
-    return band_curves
+    return shared.produce_circ_spotty_async_curves(binary,
+                                                   lcmp.compute_circular_spotty_asynchronous_lightcurve,
+                                                   **kwargs)
 
 
 def compute_eccentric_spotty_lightcurve(binary, **kwargs):

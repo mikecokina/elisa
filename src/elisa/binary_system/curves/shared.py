@@ -1,4 +1,5 @@
 import numpy as np
+from copy import copy
 
 from elisa.conf import config
 from elisa import atm, ld, const
@@ -6,6 +7,8 @@ from elisa.observer.passband import init_bolometric_passband
 from elisa.logger import getLogger
 from elisa.binary_system import (
     utils as butils,
+    dynamic,
+    surface
 )
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.observer.mp import manage_observations
@@ -218,7 +221,7 @@ def prep_initial_system(binary):
     return initial_system
 
 
-def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, **kwargs):
+def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, crv_labels, **kwargs):
     """
     Auxiliary function to produce curve from circular synchronous binary system
 
@@ -226,6 +229,7 @@ def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, **kwargs)
     :param initial_system: elisa.binary_system.container.OrbitalPositionContainer
     :param phases: numpy.array
     :param curve_fn: function to calculate given type of the curve
+    :param crv_labels: labels of the calculated curves (passbands, components,...)
     :param kwargs: Dict;
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
@@ -235,12 +239,81 @@ def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, **kwargs)
             * ** phases ** * - numpy.array
     :return: dict; calculated curves
     """
+
     normal_radiance, ld_cfs = prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
-    fn_args = (binary, initial_system, normal_radiance, ld_cfs)
-    curves = manage_observations(fn=curve_fn,
+    fn_args = (binary, initial_system, normal_radiance, ld_cfs, crv_labels, curve_fn)
+
+    curves = manage_observations(fn=produce_circ_sync_curves_mp,
                                  fn_args=fn_args,
                                  position=phases,
                                  **kwargs)
 
     return curves
+
+
+def produce_circ_sync_curves_mp(*args):
+    binary, initial_system, phase_batch, normal_radiance, ld_cfs, crv_labels, curves_fn, kwargs = args
+
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(input_argument=phase_batch, return_nparray=False, calculate_from='phase')
+    # is in eclipse test eval
+    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
+    azimuths = [position.azimuth for position in orbital_motion]
+    in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
+
+    curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
+
+    ld_law_cfs_column = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+    for pos_idx, position in enumerate(orbital_motion):
+        on_pos = butils.move_sys_onpos(initial_system, position)
+        # dict of components
+        stars = {component: getattr(on_pos, component) for component in config.BINARY_COUNTERPARTS}
+
+        coverage = surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis,
+                                                             in_eclipse=in_eclipse[pos_idx])
+
+        curves = curves_fn(curves, pos_idx, crv_labels, stars, ld_cfs, ld_law_cfs_column, normal_radiance,
+                           coverage)
+
+    return curves
+
+
+def produce_circ_spotty_async_curves(binary, curve_fn, **kwargs):
+    """
+       Function returns curve of assynchronous systems with circular orbits and spots.
+
+       :param binary: elisa.binary_system.system.BinarySystem;
+       :param kwargs: Dict;
+       :**kwargs options**:
+           * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+           * ** left_bandwidth ** * - float
+           * ** right_bandwidth ** * - float
+           * ** atlas ** * - str
+       :return: Dict; fluxes for each filter
+    """
+    phases = kwargs.pop("phases")
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
+    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
+
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
+    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
+
+    points = dict()
+    for component in config.BINARY_COUNTERPARTS:
+        star = getattr(initial_system, component)
+        _a, _b, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
+        points[component] = _a
+        setattr(star, "points", copy(_a))
+        setattr(star, "point_symmetry_vector", _b)
+        setattr(star, "base_symmetry_points_number", _c)
+        setattr(star, "inverse_point_symmetry_matrix", _d)
+
+    fn_args = binary, initial_system, points, ecl_boundaries
+    band_curves = manage_observations(fn=curve_fn,
+                                      fn_args=fn_args,
+                                      position=orbital_motion,
+                                      **kwargs)
+
+    return band_curves

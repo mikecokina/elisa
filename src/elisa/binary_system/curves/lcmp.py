@@ -18,51 +18,40 @@ from elisa.binary_system import (
 )
 
 
-def compute_circular_synchronous_lightcurve(*args):
-    binary, initial_system, phase_batch, normal_radiance, ld_cfs, kwargs = args
+def compute_circ_sync_lc_on_pos(band_curves, pos_idx, crv_labels, stars, ld_cfs, ld_law_cfs_column, normal_radiance,
+                                coverage):
+    """
+    Calculates lc points for given orbital position in case of circular orbit and synchronous rotation.
 
-    position_method = kwargs.pop("position_method")
-    orbital_motion = position_method(input_argument=phase_batch, return_nparray=False, calculate_from='phase')
-    # is in eclipse test eval
-    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
-    azimuths = [position.azimuth for position in orbital_motion]
-    in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
+    :param band_curves: Dict; {str; passband : numpy.array; light curve, ...}
+    :param pos_idx: int; position in `band_curves` to which calculated lc points will be assigned
+    :param crv_labels: list; list of passbands
+    :param stars: Dict; {str; component: base.container.StarContainer, ...}
+    :param ld_cfs: Dict; {str; component: {passband: np.array; ld_coefficients}}
+    :param ld_law_cfs_column:
+    :param normal_radiance: Dict; {str; component: numpy.array; normal radiances for each surface element}
+    :param coverage: Dict; {str; component: numpy.array; visible areas for each surface element}
+    :return: Dict; updated {str; passband : numpy.array; light curve, ...}
+    """
+    # integrating resulting flux
+    for band in crv_labels:
+        flux, ld_cors = np.empty(2), dict()
 
-    band_curves = {key: up.zeros(phase_batch.shape) for key in kwargs["passband"].keys()}
+        for component_idx, component in enumerate(config.BINARY_COUNTERPARTS.keys()):
+            vis_indices = stars[component].indices
+            cosines = stars[component].los_cosines[vis_indices]
+            ld_cors[component] = \
+                ld.limb_darkening_factor(
+                    coefficients=ld_cfs[component][band][ld_law_cfs_column].values[vis_indices],
+                    limb_darkening_law=config.LIMB_DARKENING_LAW,
+                    cos_theta=cosines)
 
-    for pos_idx, position in enumerate(orbital_motion):
-        on_pos = bsutils.move_sys_onpos(initial_system, position)
-        # dict of components
-        stars = {component: getattr(on_pos, component) for component in config.BINARY_COUNTERPARTS}
+            flux[component_idx] = np.sum(normal_radiance[component][band][vis_indices] *
+                                         cosines *
+                                         coverage[component][vis_indices] *
+                                         ld_cors[component])
 
-        coverage = surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis,
-                                                             in_eclipse=in_eclipse[pos_idx])
-
-        # calculating cosines between face normals and line of sight
-        cosines, visibility_indices = dict(), dict()
-        for component, star in stars.items():
-            cosines[component] = star.los_cosines
-            visibility_indices[component] = star.indices
-            cosines[component] = cosines[component][visibility_indices[component]]
-
-        # integrating resulting flux
-        for band in kwargs["passband"].keys():
-            ld_law_cfs_column = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-            flux, ld_cors = np.empty(2), dict()
-
-            for component_idx, component in enumerate(config.BINARY_COUNTERPARTS.keys()):
-                ld_cors[component] = \
-                    ld.limb_darkening_factor(
-                        coefficients=ld_cfs[component][band][ld_law_cfs_column].values[visibility_indices[component]],
-                        limb_darkening_law=config.LIMB_DARKENING_LAW,
-                        cos_theta=cosines[component])
-
-                flux[component_idx] = np.sum(normal_radiance[component][band][visibility_indices[component]] *
-                                             cosines[component] *
-                                             coverage[component][visibility_indices[component]] *
-                                             ld_cors[component])
-
-            band_curves[band][pos_idx] = np.sum(flux)
+        band_curves[band][pos_idx] = np.sum(flux)
 
     return band_curves
 
