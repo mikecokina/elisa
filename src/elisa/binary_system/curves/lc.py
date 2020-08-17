@@ -319,7 +319,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     """
     lc_labels = list(kwargs["passband"].keys())
 
-    return shared.produce_circ_spotty_async_curves(binary, lcmp.compute_circular_spotty_asynchronous_lightcurve,
+    return shared.produce_circ_spotty_async_curves(binary, lcmp.compute_circ_spotty_async_lc_at_pos,
                                                    lc_labels, **kwargs)
 
 

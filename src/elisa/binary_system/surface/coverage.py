@@ -80,7 +80,7 @@ def expand_star_outline(path, system, cover_component):
     return path
 
 
-def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
+def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_values=True, write_to_containers=False):
     # todo: add unittests
     """
     Compute surface coverage of faces for given orbital position
@@ -89,6 +89,8 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
     :param semi_major_axis: float;
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param in_eclipse: bool;
+    :param return_values: bool; return coverages
+    :param write_to_containers: bool; calculated values will be assigned to `system` container
     :return: Dict;
     """
     logger.debug(f"computing surface coverage for {system.position}")
@@ -149,10 +151,14 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
     cover_obj_coverage *= up.power(semi_major_axis, 2)
     undercover_obj_coverage *= up.power(semi_major_axis, 2)
 
+    if write_to_containers:
+        setattr(cover_object, 'coverage', cover_obj_coverage)
+        setattr(undercover_object, 'coverage', undercover_obj_coverage)
+
     return {
         cover_component: cover_obj_coverage,
         config.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
-    }
+    } if return_values else None
 
 
 def get_eclipse_boundary_path(hull):

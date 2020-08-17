@@ -113,7 +113,7 @@ def component_to_list(component):
     return component
 
 
-def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_potential=None, on_copy=True):
+def move_sys_onpos(init_system, orbital_position, primary_potential=None, secondary_potential=None, on_copy=True):
     """
     Prepares a postion container for given orbital position.
     Supplied `system` is not affected if `on_copy` is set to True.
@@ -132,8 +132,7 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
     :param on_copy: bool;
     :return: container; elisa.binary_system.container.OrbitalPositionContainer;
     """
-    if on_copy:
-        system = system.copy()
+    system = init_system.copy() if on_copy else init_system
     system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
     system.flatt_it()
     system.apply_rotation()

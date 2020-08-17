@@ -129,9 +129,10 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
 
 
 def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
-    return shared.produce_circ_spotty_async_curves(binary,
-                                                   rvmp.compute_circular_spotty_asynchronous_lightcurve,
-                                                   **kwargs)
+    rv_labels = list(config.BINARY_COUNTERPARTS.keys())
+
+    return shared.produce_circ_spotty_async_curves(binary, rvmp.compute_circ_spotty_async_rv_at_pos,
+                                                   rv_labels, **kwargs)
 
 
 def compute_eccentric_spotty_rv_curve(binary, **kwargs):

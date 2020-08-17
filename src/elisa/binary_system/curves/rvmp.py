@@ -8,40 +8,45 @@ from elisa.binary_system import (
     utils as bsutils,
     surface
 )
+from elisa.binary_system.curves import shared
 
 
-def compute_circ_sync_rv_at_pos(velocities, pos_idx, crv_labels, stars, ld_cfs, ld_law_cfs_column, normal_radiance,
-                                coverage):
+def compute_circ_sync_rv_at_pos(velocities, pos_idx, crv_labels, system):
     """
     Calculates rv points for given orbital position in case of circular orbit and synchronous rotation.
 
     :param velocities: Dict; {str; component : numpy.array; rvs, ...}
     :param pos_idx: int; position in `band_curves` to which calculated lc points will be assigned
     :param crv_labels: list; list of components for which to calculate rvs
-    :param stars: Dict; {str; component: base.container.StarContainer, ...}
-    :param ld_cfs: Dict; {str; component: {passband: np.array; ld_coefficients}}
-    :param ld_law_cfs_column:
-    :param normal_radiance: Dict; {str; component: numpy.array; normal radiances for each surface element}
-    :param coverage: Dict; {str; component: numpy.array; visible areas for each surface element}
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :return: Dict; updated {str; passband : numpy.array; rvs, ...}
     """
     # calculating cosines between face normals and line of sight
+    ld_law_cfs_column = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
     for component in crv_labels:
-        cosines = stars[component].los_cosines
-        visibility_indices = stars[component].indices
-        cosines = cosines[visibility_indices]
+        star = getattr(system, component)
+        visibility_indices = star.indices
+        cosines = star.los_cosines[star.indices]
 
         ld_cors = \
             ld.limb_darkening_factor(
-                coefficients=ld_cfs[component]['rv_band'][ld_law_cfs_column].values[visibility_indices],
+                coefficients=star.ld_cfs['rv_band'][ld_law_cfs_column].values[visibility_indices],
                 limb_darkening_law=config.LIMB_DARKENING_LAW,
                 cos_theta=cosines)
 
-        flux = normal_radiance[component]['rv_band'][visibility_indices] * cosines * \
-               coverage[component][visibility_indices] * ld_cors
+        flux = star.normal_radiance['rv_band'][visibility_indices] * cosines * \
+               star.coverage[visibility_indices] * ld_cors
 
-        velocities[component][pos_idx] = np.sum(stars[component].velocities[visibility_indices][:, 0] * flux) / \
+        velocities[component][pos_idx] = np.sum(star.velocities[visibility_indices][:, 0] * flux) / \
                                          np.sum(flux) if np.sum(flux) != 0 else np.NaN
+
+    return velocities
+
+
+def compute_circ_spotty_async_rv_at_pos(velocities, pos_idx, crv_labels, ld_cfs, normal_radiance, coverage, cosines):
+    for component in crv_labels:
+        velocities[component][pos_idx] = shared.calculate_rv_point(velocities, ld_cfs, normal_radiance, coverage,
+                                                                   cosines)
 
     return velocities
 
