@@ -147,7 +147,45 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
     return normal_radiance, ld_cfs if return_values else None
 
 
-def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
+def flux_from_star_container(band, star):
+    """
+    Function generates outgoing flux from given star container in certain band.
+
+    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
+    :param band: str; name of the photometric band compatibile with supported names in config
+    :return:
+    """
+    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+    indices = getattr(star, 'indices')
+    radiance = getattr(star, 'normal_radiance')[band][indices]
+    ld_cfs = getattr(star, 'ld_cfs')[band][ld_law_cfs_columns].values[indices]
+    cosines = getattr(star, 'los_cosines')[indices]
+    coverage = getattr(star, 'coverage')[indices]
+
+    ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs,
+                                       limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                       cos_theta=cosines)
+
+    return np.sum(radiance * cosines * coverage * ld_cors)
+
+
+def calculate_lc_point(band, system):
+    """
+    Calculates point on the light curve for given band.
+
+    :param band: str; name of the photometric band compatibile with supported names in config
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :return: float;
+    """
+    flux = 0.0
+    for component in config.BINARY_COUNTERPARTS.keys():
+        star = getattr(system, component)
+        flux += flux_from_star_container(band, star)
+
+    return flux
+
+
+def _calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
     """
     Calculates point on the light curve for given band.
 
@@ -175,16 +213,17 @@ def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
     return flux
 
 
-def calculate_rv_point(component, ld_cfs, normal_radiance, coverage, cosines, velocities):
-    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-    ld_cors = \
-        ld.limb_darkening_factor(
-            coefficients=ld_cfs[component]['rv_band'][ld_law_cfs_columns].values,
-            limb_darkening_law=config.LIMB_DARKENING_LAW,
-            cos_theta=cosines)
+def calculate_rv_point(star):
+    """
+    Calculates point on the rv curve for given component.
 
-    flux = normal_radiance[component]['rv_band'] * cosines * \
-           coverage[component] * ld_cors
+    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
+    :return: Union[numpy.float, numpy.nan];
+    """
+    indices = getattr(star, 'indices')
+    velocities = getattr(star, 'velocities')[indices]
+
+    flux = flux_from_star_container('rv_band', star)
 
     return np.sum(velocities[:, 0] * flux) / np.sum(flux) if np.sum(flux) != 0 else np.NaN
 

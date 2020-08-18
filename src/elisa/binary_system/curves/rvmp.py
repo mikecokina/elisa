@@ -43,10 +43,19 @@ def compute_circ_sync_rv_at_pos(velocities, pos_idx, crv_labels, system):
     return velocities
 
 
-def compute_circ_spotty_async_rv_at_pos(velocities, pos_idx, crv_labels, ld_cfs, normal_radiance, coverage, cosines):
+def compute_circ_spotty_async_rv_at_pos(velocities, pos_idx, crv_labels, system):
+    """
+    Calculates rv points for given orbital position in case of circular orbit and synchronous rotation.
+
+    :param velocities: Dict; {str; component : numpy.array; rv curve, ...} result will be written to the
+                              corresponding `pos_idx` position
+    :param pos_idx: int; position in `velocities` to which calculated rv points will be assigned
+    :param crv_labels: list; list of components for rv calculation
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :return: Dict; updated curve {str; passband : numpy.array; light curve, ...}
+    """
     for component in crv_labels:
-        velocities[component][pos_idx] = shared.calculate_rv_point(velocities, ld_cfs, normal_radiance, coverage,
-                                                                   cosines)
+        velocities[component][pos_idx] = shared.calculate_rv_point(getattr(system, component))
 
     return velocities
 

@@ -22,33 +22,16 @@ def compute_circ_sync_lc_on_pos(band_curves, pos_idx, crv_labels, system):
     """
     Calculates lc points for given orbital position in case of circular orbit and synchronous rotation.
 
-    :param band_curves: Dict; {str; passband : numpy.array; light curve, ...}
+    :param band_curves: Dict; {str; passband : numpy.array; light curve, ...} result will be written to the
+                              corresponding `pos_idx` position
     :param pos_idx: int; position in `band_curves` to which calculated lc points will be assigned
     :param crv_labels: list; list of passbands
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :return: Dict; updated {str; passband : numpy.array; light curve, ...}
     """
-    ld_law_cfs_column = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
     # integrating resulting flux
     for band in crv_labels:
-        flux, ld_cors = np.empty(2), dict()
-
-        for component_idx, component in enumerate(config.BINARY_COUNTERPARTS.keys()):
-            star = getattr(system, component)
-            vis_indices = star.indices
-            cosines = star.los_cosines[vis_indices]
-            ld_cors[component] = \
-                ld.limb_darkening_factor(
-                    coefficients=star.ld_cfs[band][ld_law_cfs_column].values[vis_indices],
-                    limb_darkening_law=config.LIMB_DARKENING_LAW,
-                    cos_theta=cosines)
-
-            flux[component_idx] = np.sum(star.normal_radiance[band][vis_indices] *
-                                         cosines *
-                                         star.coverage[vis_indices] *
-                                         ld_cors[component])
-
-        band_curves[band][pos_idx] = np.sum(flux)
+        band_curves[band][pos_idx] = shared.calculate_lc_point(band, system)
 
     return band_curves
 
@@ -71,7 +54,7 @@ def integrate_eccentric_lc_exactly(*args):
                                                                              in_eclipse=True)
 
         for band in kwargs["passband"]:
-            band_curves[band][run_idx] = shared.calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
+            band_curves[band][run_idx] = shared._calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
     return band_curves
 
 
@@ -89,6 +72,6 @@ def compute_circ_spotty_async_lc_at_pos(band_curves, pos_idx, crv_labels, ld_cfs
     :return: Dict; updated {str; passband : numpy.array; light curve, ...}
     """
     for band in crv_labels:
-        band_curves[band][pos_idx] = shared.calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
+        band_curves[band][pos_idx] = shared._calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
 
     return band_curves
