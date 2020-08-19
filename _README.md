@@ -1,7 +1,7 @@
 [![Travis
 build](https://travis-ci.org/mikecokina/elisa.svg?branch=dev)](https://travis-ci.org/mikecokina/elisa)
 [![GitHub
-version](https://img.shields.io/badge/version-0.3.1-yellow.svg)](https://github.com/Naereen/StrapDown.js)
+version](https://img.shields.io/badge/version-0.4.dev0-yellow.svg)](https://github.com/Naereen/StrapDown.js)
 [![Licence
 GPLv2](https://img.shields.io/badge/License-GNU/GPLv2-blue.svg)](https://github.com/Naereen/StrapDown.js)
 

@@ -159,12 +159,18 @@ v0.3.1_
     - libration motion accounted for in spot position in case of eccetric orbits
     - volume conserved in eccentric spotty systems
 
-Future plans
-============
-
 v0.4
 ----
-    - pulsations
+
+**Release date:** ????-??-??
+
+**Enhancements**
+
+**Fixes**
+
+
+Future plans
+============
 
 v0.5
 ----
