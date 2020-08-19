@@ -16,7 +16,7 @@ here = path.dirname(__file__)
 
 # Get the long description from the README file
 with open(path.join(here, '_README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+    long_description = "For more information visit https://github.com/mikecokina/elisa/blob/master/README.rst"
 
 setup(
     name='elisa',
