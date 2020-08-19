@@ -250,7 +250,7 @@ def calculate_spot_longitudes(system, phases, component="all", correct_libration
     Function calculates the latitudes of every spot on given component(s) for every phase.
 
     :param correct_libration: bool; switch for calculation of correction for the libration motion of spots for EBs with
-    eccentric orbit
+                                    eccentric orbit
     :param system: Union[elisa.binary_system.system.BinarySystem,
                    elisa.binary_system.container.OrbitalPositionContainer];
     :param phases: numpy.array;

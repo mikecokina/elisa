@@ -143,7 +143,7 @@ v0.3.1_
 
 .. v0.3.1_: https://github.com/mikecokina/elisa/commits/release/0.3.1
 
-**Release date:** ----
+**Release date:** 2020-08-19
 
 **Enhancements**
     - fit_summary (result_summary) function now enables full propagation of errors using `propagate_errors` argument

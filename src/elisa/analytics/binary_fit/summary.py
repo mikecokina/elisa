@@ -342,7 +342,6 @@ def evaluate_binary_params(*args):
                 cpl: int; component parameter
                 renormalized_chain: numpy.array; mcmc chain with renormalized (actual) values
             ]
-    :return:
     """
     fit_instance, param_columns, stop_idx, spot_numbers, pulsation_numbers, cpl, renormalized_chain = args
     full_chain = np.empty((renormalized_chain.shape[0], len(param_columns)))

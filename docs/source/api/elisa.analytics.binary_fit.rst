@@ -68,6 +68,14 @@ elisa.analytics.binary\_fit.shared module
    :undoc-members:
    :show-inheritance:
 
+elisa.analytics.binary\_fit.summary module
+------------------------------------------
+
+.. automodule:: elisa.analytics.binary_fit.summary
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------

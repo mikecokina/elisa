@@ -100,13 +100,12 @@ class RVFitMCMC(RVFit):
         parameters if `propagate_errors` is True
 
         :param path: str; path, where to store summary
-        :param kwargs: dict;
-            * ** propagate_errors ** * (bool) -- errors of fitted parameters will be propagated to the rest of EB
+        :param kwargs: Dict;
+        :**kwargs options**:
+            * ** propagate_errors ** * - bool -- errors of fitted parameters will be propagated to the rest of EB
                                                  parameters (takes a while)
-            * ** percentiles ** * (list) -- percentiles used to evaluate confidence intervals from forward distribution
+            * ** percentiles ** * - List -- percentiles used to evaluate confidence intervals from forward distribution
                                             of EB parameters. Useless if `propagate_errors` is False.
-
-        :return:
         """
         propagate_errors, percentiles = kwargs.get('propagate_errors', False), kwargs.get('percentiles', [16, 50, 84])
         if not propagate_errors:
