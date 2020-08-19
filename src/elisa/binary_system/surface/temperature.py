@@ -10,9 +10,11 @@ from elisa.utils import is_empty
 from elisa import (
     umpy as up,
     ld,
-    utils
+    utils,
+    const
 )
 from elisa.base.surface import temperature as btemperature
+from elisa.pulse import pulsations
 
 
 logger = getLogger("binary_system.surface.temperature")
@@ -267,16 +269,13 @@ def renormalize_temperatures(star):
             spot.temperatures *= coefficient
 
 
-def build_temperature_distribution(system, components_distance, component="all", phase=0):
+def build_temperature_distribution(system, components_distance, component="all"):
     """
     Function calculates temperature distribution on across all faces.
-    Value assigned to face is mean of values calculated in corners of given face.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param components_distance: str;
     :param component: `primary` or `secondary`
-    :param do_pulsations: bool;
-    :param phase: float;
     :return: system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
@@ -305,18 +304,6 @@ def build_temperature_distribution(system, components_distance, component="all",
         logger.debug(f'renormalizing temperature of components due to '
                      f'presence of spots in case of component {component}')
         renormalize_temperatures(star)
-
-    #     if star.has_pulsations() and do_pulsations:
-    #         logger.debug(f'adding pulsations to surface temperature distribution '
-    #                          f'of the component instance: {component}  / name: {star.name}')
-    #
-    #         com_x = 0 if component == 'primary' else components_distance
-    #         pulsations.set_misaligned_ralp(star, phase, com_x=com_x)
-    #         temp_pert, temp_pert_spot = pulsations.calc_temp_pert(star, phase, system.period)
-    #         star.temperatures += temp_pert
-    #         if star.has_spots():
-    #             for spot_idx, spot in star.spots.items():
-    #                 spot.temperatures += temp_pert_spot[spot_idx]
 
     if 'primary' in components and 'secondary' in components:
         logger.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
@@ -537,3 +524,24 @@ def get_distance_matrix_shape(system, vis_test):
     shape_reduced = (np.sum(vis_test['primary'][:system.primary.base_symmetry_faces_number]),
                      np.sum(vis_test['secondary'][:system.secondary.base_symmetry_faces_number]))
     return shape, shape_reduced
+
+
+def build_temperature_perturbations(system, components_distance, component):
+    """
+    adds position perturbations to container mesh
+
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param components_distance: float;
+    :param component: Union[str, None];
+    :return:
+    """
+    components = bsutils.component_to_list(component)
+    for component in components:
+        star = getattr(system, component)
+        if star.has_pulsations():
+            phase = bsutils.calculate_rotational_phase(system, component)
+            com_x = 0 if component == 'primary' else components_distance
+            star = pulsations.incorporate_temperature_perturbations(star, com_x=com_x, phase=phase, time=system.time)
+    return system
+
+

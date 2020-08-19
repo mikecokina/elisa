@@ -20,7 +20,7 @@ from version import get_version
 # -- Project information -----------------------------------------------------
 
 project = 'elisa'
-copyright = '2019, Michal Cokina, Miroslav Fedurco'
+copyright = '2020, Michal Cokina, Miroslav Fedurco'
 author = 'Michal Cokina, Miroslav Fedurco'
 
 # The full version, including alpha/beta/rc tags

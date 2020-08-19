@@ -133,7 +133,7 @@ class Plot(object):
             if azimuth is not None else np.degrees(azim) - 90
 
         position_container = SystemContainer.from_single_system(self.single, self.defpos)
-        position_container.build(do_pulsations=True, phase=phase)
+        position_container.build(phase=phase)
 
         star_container = position_container.star
         points, faces = star_container.surface_serializer()

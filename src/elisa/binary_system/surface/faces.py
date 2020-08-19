@@ -7,7 +7,6 @@ from elisa.pulse import pulsations
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
 from elisa.logger import getLogger
-from elisa.binary_system import utils as butils
 
 from elisa import (
     umpy as up
@@ -279,11 +278,12 @@ def over_contact_system_surface(system, points=None, component="all", **kwargs):
         projected_points[:, 0] += 1
 
     # condition to select inward facing points
-    inside_points_test = (points[:, 0] > 0)[:-1] if component == 'primary' else (points[:, 0] < 1)[:-1]
+    inside_points_test = (points[:, 0] > 0) if component == 'primary' else (points[:, 0] < 1)
+
     # if auxiliary point was used than  it is not appended to list of inner points to be transformed
     # (it would cause division by zero error)
-    inside_points_test = np.append(inside_points_test, False) if \
-        np.array_equal(points[-1], np.array([neck_x, 0, 0])) else np.append(inside_points_test, True)
+    inside_points_test[-1] = False if \
+        np.array_equal(points[-1], np.array([neck_x, 0, 0])) else inside_points_test[-1]
     inside_points = points[inside_points_test]
     # scaling radii for each point in cylindrical coordinates
     r = (neck_x ** 2 - (k * inside_points[:, 0]) ** 2) ** 0.5 if component == 'primary' else \
@@ -349,12 +349,6 @@ def build_faces_orientation(system, components_distance, component="all"):
         star = getattr(system, _component)
         set_all_surface_centres(star)
         set_all_normals(star, com=com_x[_component])
-
-        # todo: move it to separate method
-        # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
-        # pulsation mode
-        # if star.has_pulsations():
-        #     pulsations.set_ralp(star, com_x=com_x[_component], phase=)
     return system
 
 
@@ -385,23 +379,3 @@ def set_all_normals(star_container, com):
                                                                          star_container.spots[spot_index].face_centres,
                                                                          com)
     return star_container
-
-
-def build_temperature_perturbations(system_container, components_distance, component):
-    """
-    adds position perturbations to container mesh
-
-    :param system_container: elisa.binary_system.contaier.OrbitalPositionContainer; instance
-    :param components_distance: float;
-    :param component: Union[str, None];
-    :return:
-    """
-    components = bsutils.component_to_list(component)
-    for component in components:
-        star = getattr(system_container, component)
-        if star.has_pulsations():
-            phase = butils.calculate_rotational_phase(system_container, component)
-            com_x = 0 if component == 'primary' else components_distance
-            star = pulsations.incorporate_temperature_perturbations(star, com_x=com_x, phase=phase,
-                                                                    time=system_container.time)
-    return system_container

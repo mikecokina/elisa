@@ -137,7 +137,7 @@ class RadialVelocitySystem(object):
         a = 2.0 * up.pi * asini
         b = period * up.sqrt(1.0 - up.power(eccentricity, 2))
         c = up.cos(true_anomaly + argument_of_periastron) + (eccentricity * up.cos(argument_of_periastron))
-        return a * c / b
+        return - a * c / b
 
     def get_positions_method(self):
         return self.orbit.orbital_motion

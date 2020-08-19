@@ -15,37 +15,39 @@ from elisa import (
     utils
 )
 
-logger = getLogger("single-system-mesh-module")
+logger = getLogger("single_system.mesh")
 
 
-def build_mesh(system_container):
+def build_mesh(system):
     """
     Build points of surface for including spots.
+
+    :param system: elisa.single_system.contaier.PositionContainer; instance
+    :return: elisa.single_system.contaier.PositionContainer; instance
     """
-    star = system_container.star
-    a, b, c, d = mesh(system_container=system_container, symmetry_output=True)
+    a, b, c, d = mesh(system_container=system, symmetry_output=True)
 
-    star.points = a
-    star.point_symmetry_vector = b
-    star.base_symmetry_points_number = c
-    star.inverse_point_symmetry_matrix = d
+    system.star.points = a
+    system.star.point_symmetry_vector = b
+    system.star.base_symmetry_points_number = c
+    system.star.inverse_point_symmetry_matrix = d
 
-    add_spots_to_mesh(system_container)
-    return system_container
+    add_spots_to_mesh(system)
+    return system
 
 
-def build_pulsations_on_mesh(system_container):
+def build_pulsations_on_mesh(system):
     """
-    adds position perturbations to stellar mesh
+    Adds position perturbations to stellar mesh.
 
-    :param system_container: elisa.single_system.contaier.PositionContainer; instance
-    :return:
+    :param system: elisa.single_system.contaier.PositionContainer; instance
+    :return: elisa.single_system.contaier.PositionContainer; instance
     """
-    if system_container.star.has_pulsations():
-        system_container.star = \
-            pulsations.incorporate_pulsations_to_mesh(system_container.star, com_x=0.0,
-                                                      phase=system_container.position.phase,
-                                                      time=system_container.time)
+    if system.star.has_pulsations():
+        system.star = pulsations.incorporate_pulsations_to_mesh(system.star, com_x=0.0,
+                                                                phase=system.position.phase,
+                                                                time=system.time)
+    return system
 
 
 def mesh(system_container, symmetry_output=False):
@@ -292,10 +294,10 @@ def mesh_spots(system_container):
     Compute points of each spots and assigns values to spot container instance.
     """
 
-    logger.info("Evaluating spots.")
+    logger.info("evaluating spots")
     star_container = system_container.star
     if not star_container.has_spots():
-        logger.info("No spots to evaluate.")
+        logger.info("no spots to evaluate")
         return
 
     potential_fn = model.potential_fn
@@ -393,7 +395,10 @@ def mesh_spots(system_container):
         spot_instance.center = np.array(spot_center)
 
 
-def add_spots_to_mesh(system_container):
-    star_container = system_container.star
-    mesh_spots(system_container)
-    incorporate_spots_mesh(star_container, component_com=0.0)
+def add_spots_to_mesh(system):
+    """
+    Function implements surface points into clean mesh and removes stellar
+    points and other spot points under the given spot if such overlapped spots exists.
+    """
+    mesh_spots(system)
+    incorporate_spots_mesh(system.star, component_com=0.0)

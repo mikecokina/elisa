@@ -6,6 +6,7 @@ from elisa.single_system.orbit import orbit
 from elisa.single_system.curves import lc
 from elisa.logger import getLogger
 from elisa.single_system.transform import SingleSystemProperties
+from elisa import const
 
 from elisa import (
     utils,
@@ -16,6 +17,7 @@ from elisa.single_system import (
     model,
     graphic,
     radius as sradius,
+    utils as sys_utils
 )
 
 logger = getLogger('single_system.system')
@@ -30,7 +32,7 @@ class SingleSystem(System):
     OPTIONAL_KWARGS = ['reference_time', 'phase_shift']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
-    STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g']
+    STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g', 'metallicity']
     STAR_OPTIONAL_KWARGS = []
     STAR_ALL_KWARGS = STAR_MANDATORY_KWARGS + STAR_OPTIONAL_KWARGS
 
@@ -77,6 +79,7 @@ class SingleSystem(System):
         # this is also check if star surface is closed
         self.setup_radii()
         self.assign_pulsations_amplitudes()
+        self.setup_discretisation_factor()
 
     @classmethod
     def is_property(cls, kwargs):
@@ -108,25 +111,6 @@ class SingleSystem(System):
     def get_info(self):
         pass
 
-    def get_positions_method(self):
-        return self.calculate_lines_of_sight
-
-    def calculate_lines_of_sight(self, phase=None):
-        """
-        returns vector oriented in direction star - observer
-
-        :param phase: list
-        :return: np.array([index, spherical coordinates of line of sight vector])
-        """
-        idx = np.arange(np.shape(phase)[0], dtype=np.int)
-
-        line_of_sight_spherical = np.empty((np.shape(phase)[0], 3), dtype=np.float)
-        line_of_sight_spherical[:, 0] = 1
-        line_of_sight_spherical[:, 1] = c.FULL_ARC * phase
-        line_of_sight_spherical[:, 2] = self.inclination
-        line_of_sight = utils.spherical_to_cartesian(line_of_sight_spherical)
-        return np.hstack((idx[:, np.newaxis], line_of_sight))
-
     # _________________________AFTER_REFACTOR___________________________________
 
     def init(self):
@@ -147,26 +131,40 @@ class SingleSystem(System):
         orbit_kwargs = {key: getattr(self, key) for key in orbit.Orbit.ALL_KWARGS}
         self.orbit = orbit.Orbit(**orbit_kwargs)
 
+    def setup_discretisation_factor(self):
+        if self.star.has_spots():
+            for spot in self.star.spots.values():
+                if not spot.kwargs.get('discretization_factor'):
+                    spot.discretization_factor = self.star.discretization_factor
+
+    @staticmethod
+    def is_eccentric():
+        """
+        Resolve whether system is eccentric.
+
+        :return: bool;
+        """
+        return False
+
     def setup_radii(self):
         """
-        auxiliary function for calculation of important radii
-        :return:
+        Auxiliary function for calculation of important radii.
         """
         fns = [sradius.calculate_polar_radius, sradius.calculate_equatorial_radius]
-        star = self.star
         for fn in fns:
-            logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} '
-                               f'for the star')
+            logger.debug(f'initialising {" ".join(str(fn.__name__).split("_")[1:])} for the star')
             param = f'{"_".join(str(fn.__name__).split("_")[1:])}'
-            kwargs = dict(mass=star.mass,
+            kwargs = dict(mass=self.star.mass,
                           angular_velocity=self.angular_velocity,
-                          surface_potential=star.surface_potential)
+                          surface_potential=self.star.surface_potential)
             try:
                 r = fn(**kwargs)
-            except:
+            except Exception as e:
                 raise ValueError(f'Function {fn.__name__} was not able to calculate its radius. '
-                                 f'Your system is not physical')
-            setattr(star, param, r)
+                                 f'Your system is not physical. Exception: {str(e)}')
+            setattr(self.star, param, r)
+
+        setattr(self.star, 'equivalent_radius', self.calculate_equivalent_radius())
 
     @property
     def components(self):
@@ -234,7 +232,7 @@ class SingleSystem(System):
     def calculate_critical_potential(self):
         """
         Compute and set critical surface potential.
-        Critical surface potential is for component defined as potential when component fill its Roche lobe.
+        Critical surface potential is potential when component is stable for give mass and rotaion period.
         """
         precalc_args = self.star.mass, self.angular_velocity, c.HALF_PI
         args = (model.pre_calculate_for_potential_value(*precalc_args), 0.0)
@@ -249,11 +247,44 @@ class SingleSystem(System):
 
     def check_stability(self):
         """
-        checks if star is rotationally stable
-        :return:
+        Checks if star is rotationally stable.
         """
         if self.star.critical_surface_potential < self.star.surface_potential:
             raise ValueError('Non-physical system. Star rotation is above critical break-up velocity.')
+
+    def get_positions_method(self):
+        return self.calculate_lines_of_sight
+
+    def calculate_lines_of_sight(self, input_argument=None, return_nparray=False, calculate_from='phase'):
+        """
+        Returns vector oriented in direction star - observer.
+
+        :param calculate_from: str; 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
+        :param return_nparray: bool; if True positions in form of numpy arrays will be also returned
+        :param input_argument: numpy.array;
+        :return: Tuple[List[NamedTuple: elisa.const.SinglePosition], List[Integer]] or
+                 List[NamedTuple: elisa.const.SinglePosition]
+        """
+        input_argument = np.array([input_argument]) if np.isscalar(input_argument) else input_argument
+        rotational_motion = self.orbit.rotational_motion(phase=input_argument) if calculate_from == 'phase' \
+            else self.orbit.rotational_motion_from_azimuths(azimuth=input_argument)
+        idx = np.arange(np.shape(input_argument)[0], dtype=np.int)
+        positions = np.hstack((idx[:, np.newaxis], rotational_motion))
+
+        if return_nparray:
+            return positions
+        else:
+            return [const.SinglePosition(*p) for p in positions]
+
+    def calculate_equivalent_radius(self):
+        """
+        Function returns equivalent radius of the star, i.e. radius of the sphere with the same volume as
+        given component.
+
+        :return: float;
+        """
+        volume = sys_utils.calculate_volume(self)
+        return utils.calculate_equiv_radius(volume)
 
     # light curves *****************************************************************************************************
     def compute_lightcurve(self, **kwargs):
@@ -271,8 +302,10 @@ class SingleSystem(System):
         :return: Dict
         """
         if self.star.has_pulsations():
+            logger.debug('calculating light curve for a non pulsating single star system')
             return self._compute_light_curve_with_pulsations(**kwargs)
         else:
+            logger.debug('calculating light curve for star system with pulsations')
             return self._compute_light_curve_without_pulsations(**kwargs)
 
     def _compute_light_curve_with_pulsations(self, **kwargs):

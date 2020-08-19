@@ -28,21 +28,19 @@ def calculate_potential_gradient(components_distance, component, points, synchro
     r3 = up.power(np.linalg.norm(points, axis=1), 3)
     r_hat3 = up.power(np.linalg.norm(points - np.array([components_distance, 0., 0]), axis=1), 3)
 
+    f2 = up.power(synchronicity, 2)
     if component == 'primary':
-        f2 = up.power(synchronicity, 2)
-        domega_dx = - points[:, 0] / r3 + mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 + f2 * (
-                            mass_ratio + 1) * points[:, 0] - mass_ratio / up.power(components_distance, 2)
+        domega_dx = - points[:, 0] / r3 + \
+                    mass_ratio * (components_distance - points[:, 0]) / r_hat3 + \
+                    f2 * (mass_ratio + 1) * points[:, 0] - \
+                    mass_ratio / up.power(components_distance, 2)
     elif component == 'secondary':
-        f2 = up.power(synchronicity, 2)
-        domega_dx = - points[:, 0] / r3 + mass_ratio * (
-                components_distance - points[:, 0]) / r_hat3 - f2 * (
-                            mass_ratio + 1) * (
-                            components_distance - points[:, 0]) * points[:, 0] + 1 / up.power(
-            components_distance, 2)
+        domega_dx = - points[:, 0] / r3 + \
+                    mass_ratio * (components_distance - points[:, 0]) / r_hat3 - \
+                    f2 * (mass_ratio + 1) * (components_distance - points[:, 0]) + \
+                    1 / up.power(components_distance, 2)
     else:
         raise ValueError(f'Invalid value `{component}` of argument `component`.\n Use `primary` or `secondary`.')
-
     domega_dy = - points[:, 1] * (1 / r3 + mass_ratio / r_hat3 - f2 * (mass_ratio + 1))
     domega_dz = - points[:, 2] * (1 / r3 + mass_ratio / r_hat3)
     return -np.column_stack((domega_dx, domega_dy, domega_dz))
@@ -71,7 +69,8 @@ def calculate_face_magnitude_gradient(components_distance, component, points, fa
         else np.mean(points_gradients[faces], axis=1)[face_symmetry_vector]
 
 
-def calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio, polar_radius, component):
+def calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio, polar_radius, component,
+                                                 synchronicity):
     """
     Calculate magnitude of polar potential gradient.
 
@@ -79,6 +78,7 @@ def calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio
     :param polar_radius: float;
     :param mass_ratio: float;
     :param component: str;
+    :param synchronicity: float;
     :return: float;
     """
     points = [0., 0., polar_radius] if component == 'primary' else [components_distance, 0., polar_radius]
@@ -89,7 +89,8 @@ def calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio
     if component == 'primary':
         domega_dx = mass_ratio * components_distance / r_hat3 - mass_ratio / up.power(components_distance, 2)
     elif component == 'secondary':
-        domega_dx = + 0 - points[0] / r3 + mass_ratio * (components_distance - points[0]) / r_hat3 \
+        domega_dx = - points[0] / r3 + mass_ratio * (components_distance - points[0]) / r_hat3 \
+                    - np.power(synchronicity, 2) * (mass_ratio + 1) * (1 - points[0])\
                     + 1. / up.power(components_distance, 2)
     else:
         raise ValueError(f'Invalid value `{component}` of argument `component`. \nUse `primary` or `secondary`.')
@@ -98,7 +99,7 @@ def calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio
 
 
 def calculate_polar_gravity_acceleration(star, components_distance, mass_ratio, component,
-                                         semi_major_axis, logg=False):
+                                         semi_major_axis, synchronicity, logg=False):
     """
     Calculates polar gravity acceleration for component of binary system.
     Calculated from gradient of Roche potential::
@@ -112,10 +113,11 @@ def calculate_polar_gravity_acceleration(star, components_distance, mass_ratio, 
     :param component: str;
     :param semi_major_axis: float;
     :param logg: bool; if True log g is returned, otherwise values are not in log10
+    :param synchronicity: float;
     :return: numpy.array; surface gravity or log10 of surface gravity
     """
     pgm = calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio,
-                                                       star.polar_radius, component)
+                                                       star.polar_radius, component, synchronicity)
     gradient = const.G * star.mass * pgm / up.power(semi_major_axis, 2)
     gradient = gradient / mass_ratio if component == 'secondary' else gradient
     return up.log10(gradient) if logg else gradient
@@ -146,10 +148,11 @@ def build_surface_gravity(system, components_distance, component="all"):
         star = getattr(system, component)
         synchronicity = star.synchronicity
         polar_gravity = calculate_polar_gravity_acceleration(star, components_distance, mass_ratio,
-                                                             component, semi_major_axis, logg=False)
+                                                             component, semi_major_axis, star.synchronicity,
+                                                             logg=False)
 
         pgm = calculate_polar_potential_gradient_magnitude(components_distance, mass_ratio,
-                                                           star.polar_radius, component)
+                                                           star.polar_radius, component, star.synchronicity)
         setattr(star, "polar_potential_gradient_magnitude", pgm)
         gravity_scalling_factor = polar_gravity / pgm
 

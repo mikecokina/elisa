@@ -1,0 +1,14 @@
+# x y z
+# comment line
+0 0.1 0.001
+1 0.1 0.001
+# comment line
+2 0.1 0.001
+3 0.1 0.002
+4   0.1    0.002
+5             23
+6 string string
+
+
+
+

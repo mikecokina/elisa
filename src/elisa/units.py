@@ -14,14 +14,18 @@ VELOCITY_UNIT = DISTANCE_UNIT / TIME_UNIT
 ACCELERATION_UNIT = DISTANCE_UNIT / TIME_UNIT**2
 LOG_ACCELERATION_UNIT = u.dex(ACCELERATION_UNIT)
 FREQUENCY_UNIT = u.Hz
+ANGULAR_FREQUENCY_UNIT = u.rad / u.s
+LUMINOSITY_UNIT = u.W
 
 # astropy units to avoid annoying undefined warning accross basecode
 deg = u.deg
+degree = u.degree
 rad = u.rad
 km = u.km
 solMass = u.solMass
 deg_C = u.deg_C
 m = u.m
+cm = u.cm
 d = u.d
 s = u.s
 W = u.W
@@ -29,5 +33,6 @@ solRad = u.solRad
 K = u.K
 dimensionless_unscaled = u.dimensionless_unscaled
 kg = u.kg
+dex = u.dex
 
 Quantity = u.quantity.Quantity

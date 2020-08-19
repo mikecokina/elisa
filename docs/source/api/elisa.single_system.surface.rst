@@ -4,6 +4,14 @@ elisa.single\_system.surface package
 Submodules
 ----------
 
+elisa.single\_system.surface.coverage module
+--------------------------------------------
+
+.. automodule:: elisa.single_system.surface.coverage
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.single\_system.surface.faces module
 -----------------------------------------
 

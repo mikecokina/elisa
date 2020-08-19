@@ -8,25 +8,7 @@ from elisa import (
     const,
     umpy as up
 )
-
-
-def darkside_filter(line_of_sight, normals):
-    """
-    Return indices for visible faces defined by given normals.
-    Function assumes that `line_of_sight` ([1, 0, 0]) and `normals` are already normalized to one.
-
-    :param line_of_sight: numpy.array;
-    :param normals: numpy.array;
-    :return: numpy.array;
-    """
-    # todo: require to resolve self shadowing in case of W UMa
-    # calculating normals utilizing the fact that normals and line of sight vector [1, 0, 0] are already normalized
-    if (line_of_sight == np.array([1.0, 0.0, 0.0])).all():
-        cosines = utils.calculate_cos_theta_los_x(normals=normals)
-    else:
-        cosines = utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
-    # recovering indices of points on near-side (from the point of view of observer)
-    return up.arange(np.shape(normals)[0])[cosines > 0]
+from copy import copy
 
 
 def get_eclipse_boundaries(binary, components_distance):
@@ -56,6 +38,7 @@ def get_eclipse_boundaries(binary, components_distance):
         sin_i_critical = 1.01 * (radius1 + radius2) / components_distance
         square = up.power(sin_i_critical, 2) - up.power(up.cos(binary.inclination), 2)
         square = 0 if square < 0 else square
+        square = 1 if square > 1 else square
         azimuth = up.arcsin(up.sqrt(square))
         azimuths = np.array([const.HALF_PI - azimuth, const.HALF_PI + azimuth, 1.5 * const.PI - azimuth,
                              1.5 * const.PI + azimuth]) % const.FULL_ARC
@@ -120,40 +103,34 @@ def resolve_object_geometry_update(has_spots, size, rel_d, max_allowed_differenc
                                     max_allowed_difference=max_allowed_difference or config.MAX_RELATIVE_D_R_POINT)
 
 
-def resolve_spots_geometry_update(spots_longitudes, max_allowed_difference=None):
+def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
+                                  max_allowed_difference=None):
     """
     Evaluate where on orbital position is necessary to fully update geometry.
     Evaluation depends on difference of spots longitudes between upcomming orbital positions.
     """
-    slp, sls = spots_longitudes["primary"], spots_longitudes["secondary"]
+    reducer = {}
+    for component in config.BINARY_COUNTERPARTS.keys():
+        if pulsations_tests[component]:
+            # in case of pulsations, the geometry is recalculated always
+            reducer[component] = np.ones(size, dtype=np.bool)
+            continue
 
-    reference_long_p = list(utils.nested_dict_values(slp))[0] if not utils.is_empty(slp) else np.array([])
-    reference_long_s = list(utils.nested_dict_values(sls))[0] if not utils.is_empty(sls) else np.array([])
+        # longitude of all spots stored in array (longitudes of the first spot are enough)
+        longitude_array = np.array(list(utils.nested_dict_values(spots_longitudes[component]))[0]) if \
+            not utils.is_empty(spots_longitudes[component]) else np.array([])
 
-    # compute longitudes differences, slice according to shift (zero value is difference agains last)
-    # and setup shape compatible with `_resolve_geometry_update` method
-    d_long_p = abs(reference_long_p - np.roll(reference_long_p, shift=1))
-    d_long_p = np.array([d_long_p[1:]] * 2)
+        d_long = np.abs(longitude_array - np.roll(longitude_array, shift=1))[1:]
+        # creating 2*n array due to compatibility with new geometry assessment based on change in forward radius where
+        # both components are evaluated at once
+        d_long = np.row_stack((d_long, d_long))
 
-    d_long_s = abs(reference_long_s - np.roll(reference_long_s, shift=1))
-    d_long_s = np.array([d_long_s[1:]] * 2)
-
-    # this will find an array of longitudes of any spot and len basically defines how many
-    size = len(list(utils.nested_dict_values(spots_longitudes))[0])
-    if size <= 0:
-        raise ValueError("Unexpected value, at least single spot should be detected if this method is called")
-
-    primary_reducer = _resolve_geometry_update(
-        has_spots=True, size=size, rel_d=d_long_p, resolve="spot",
+        reducer[component] = _resolve_geometry_update(
+        has_spots=True, size=size, rel_d=d_long, resolve="spot",
         max_allowed_difference=max_allowed_difference or config.MAX_SPOT_D_LONGITUDE
-    )
+        )
 
-    secondary_reducer = _resolve_geometry_update(
-        has_spots=True, size=size, rel_d=d_long_s, resolve="spot",
-        max_allowed_difference=max_allowed_difference or config.MAX_SPOT_D_LONGITUDE
-    )
-
-    return primary_reducer, secondary_reducer
+    return reducer['primary'], reducer['secondary']
 
 
 def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, resolve="object"):
@@ -177,8 +154,9 @@ def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, res
     elif utils.is_empty(rel_d) and resolve == "spot":
         # if `rel_d` is empty and resolve is equal to `spot` it means given component has no spots
         # and does require build only on first position
-        # fixme: do it better, this is really ugly way
-        return np.array([True] + [False] * (size - 1), dtype=np.bool)
+        arr = up.zeros(size, dtype=np.bool)
+        arr[0] = True
+        return arr
 
     require_new_geo = np.ones(size, dtype=np.bool)
 
@@ -208,7 +186,6 @@ def phase_crv_symmetry(self, phase):
     phase = phase.copy()
     if (not self.has_pulsations()) & (not self.has_spots()):
         symmetrical_counterpart = phase > 0.5
-        # phase[symmetrical_counterpart] = 0.5 - (phase[symmetrical_counterpart] - 0.5)
         phase[symmetrical_counterpart] = np.round(1.0 - phase[symmetrical_counterpart], 9)
         res_phases, reverse_idx = np.unique(phase, return_inverse=True)
         return res_phases, reverse_idx
@@ -245,10 +222,35 @@ def in_eclipse_test(azimuths, ecl_boundaries):
     return up.logical_or(primary_ecl_test, secondary_ecl_test)
 
 
-def calculate_spot_longitudes(system, phases, component="all"):
+def correct_spot_positions_for_libration(system, phases):
+    """
+    Function corrects the position of spots for the libration motion caused by an eccentric orbit.
+
+    :param system: Union[elisa.binary_system.system.BinarySystem,
+                   elisa.binary_system.container.OrbitalPositionContainer];
+    :param phases: nympy.array;
+    :return: numpy.arrray; angular correction for each phase
+    """
+    # ensuring that phase = 0 is in dataset
+    phases_p = [phases, ] if np.isscalar(phases) else copy(phases)
+    phases_p = np.concatenate((phases_p, [0, ]))
+
+    positions = system.calculate_orbital_motion(phases_p, return_nparray=True)
+
+    ecc_anomaly = system.orbit.true_anomaly_to_eccentric_anomaly(positions[:, 3])
+    mean_anomaly = system.orbit.eccentric_anomaly_to_mean_anomaly(ecc_anomaly)
+
+    diff = mean_anomaly - positions[:, 3]
+    diff = diff[:-1] - diff[-1]
+    return diff if diff.shape[0] > 1 else diff[0]
+
+
+def calculate_spot_longitudes(system, phases, component="all", correct_libration=True):
     """
     Function calculates the latitudes of every spot on given component(s) for every phase.
 
+    :param correct_libration: bool; switch for calculation of correction for the libration motion of spots for EBs with
+                                    eccentric orbit
     :param system: Union[elisa.binary_system.system.BinarySystem,
                    elisa.binary_system.container.OrbitalPositionContainer];
     :param phases: numpy.array;
@@ -257,9 +259,12 @@ def calculate_spot_longitudes(system, phases, component="all"):
     """
     components = bsutils.component_to_list(component)
     components = {comp: getattr(system, comp) for comp in components}
+
+    libration_correction = correct_spot_positions_for_libration(system, phases) if correct_libration else 0
+
     spots_longitudes = {
         comp: {
-            spot_index: (instance.synchronicity - 1.0) * phases * const.FULL_ARC + spot.longitude
+            spot_index: (instance.synchronicity - 1.0) * phases * const.FULL_ARC + spot.longitude + libration_correction
             for spot_index, spot in instance.spots.items()}
         for comp, instance in components.items()
     }

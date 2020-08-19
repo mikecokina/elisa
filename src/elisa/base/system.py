@@ -33,7 +33,6 @@ class System(metaclass=ABCMeta):
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
-
         # default params
         self.inclination = np.nan
         self.period = np.nan
@@ -68,10 +67,9 @@ class System(metaclass=ABCMeta):
 
     def assign_pulsations_amplitudes(self, normalisation_constant=1.0):
         """
-        function assigns amplitudes of displacement to each mode based on radial velocity amplitude
+        Function assigns amplitudes of displacement to each mode based on radial velocity amplitude.
 
         :param normalisation_constant: float;
-        :return:
         """
         for component, component_instance in self._components.items():
             if component_instance.has_pulsations():

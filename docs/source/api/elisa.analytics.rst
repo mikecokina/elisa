@@ -6,15 +6,27 @@ Subpackages
 
 .. toctree::
 
-   elisa.analytics.binary
+   elisa.analytics.binary_fit
+   elisa.analytics.dataset
+   elisa.analytics.models
+   elisa.analytics.params
+   elisa.analytics.tools
 
 Submodules
 ----------
 
-elisa.analytics.bvi module
---------------------------
+elisa.analytics.tasks module
+----------------------------
 
-.. automodule:: elisa.analytics.bvi
+.. automodule:: elisa.analytics.tasks
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+elisa.analytics.transform module
+--------------------------------
+
+.. automodule:: elisa.analytics.transform
    :members:
    :undoc-members:
    :show-inheritance:

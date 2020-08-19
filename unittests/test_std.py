@@ -5,7 +5,7 @@ from elisa.conf import config
 from elisa.binary_system import system
 from elisa.observer import observer
 from importlib import reload
-from elisa.analytics.bvi import pogsons_formula
+from elisa.analytics.tools.bvi import pogsons_formula
 from unittest import skip
 
 

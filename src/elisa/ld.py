@@ -27,7 +27,7 @@ def get_metallicity_from_ld_table_filename(filename):
     return utils.numeric_metallicity_from_string(m)
 
 
-def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
+def get_ld_table_filename(passband, metallicity, law=None):
     """
     Get filename with stored coefficients for given passband, metallicity and limb darkening law.
 
@@ -40,7 +40,7 @@ def get_van_hamme_ld_table_filename(passband, metallicity, law=None):
     return f"{config.LD_LAW_TO_FILE_PREFIX[law]}.{passband}.{utils.numeric_metallicity_to_string(metallicity)}.csv"
 
 
-def get_van_hamme_ld_table(passband, metallicity, law=None):
+def get_ld_table(passband, metallicity, law=None):
     """
     Get content of van hamme table (read csv file).
 
@@ -50,14 +50,14 @@ def get_van_hamme_ld_table(passband, metallicity, law=None):
     :return: pandas.DataFrame;
     """
     law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
-    filename = get_van_hamme_ld_table_filename(passband, metallicity, law=law)
-    path = os.path.join(config.VAN_HAMME_LD_TABLES, filename)
+    filename = get_ld_table_filename(passband, metallicity, law=law)
+    path = os.path.join(config.LD_TABLES, filename)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"There is no file like {path}.")
     return pd.read_csv(path)
 
 
-def get_van_hamme_ld_table_by_name(fname):
+def get_ld_table_by_name(fname):
     """
     Get content of van hamme table defined by filename (assume it is stored in configured directory).
 
@@ -65,7 +65,7 @@ def get_van_hamme_ld_table_by_name(fname):
     :return: pandas.DataFrame;
     """
     logger.debug(f"accessing limb darkening file {fname}")
-    path = os.path.join(config.VAN_HAMME_LD_TABLES, fname)
+    path = os.path.join(config.LD_TABLES, fname)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"There is no file like {path}.")
     return pd.read_csv(path)
@@ -81,8 +81,8 @@ def get_relevant_ld_tables(passband, metallicity, law=None):
     :return: List;
     """
     # todo: make better decision which values should be used
-    surrounded = utils.find_surrounded(const.VAN_HAMME_METALLICITY_LIST_LD, metallicity)
-    files = [get_van_hamme_ld_table_filename(passband, m, law) for m in surrounded]
+    surrounded = utils.find_surrounded(const.METALLICITY_LIST_LD, metallicity)
+    files = [get_ld_table_filename(passband, m, law) for m in surrounded]
     return files
 
 
@@ -112,7 +112,7 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
         df = pd.DataFrame(columns=all_columns)
 
         for table in relevant_tables:
-            _df = get_van_hamme_ld_table_by_name(table)[csv_columns]
+            _df = get_ld_table_by_name(table)[csv_columns]
             df = df.append(_df)
 
         df = df.drop_duplicates()
@@ -134,7 +134,6 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
     return results
 
 
-# todo: discuss following shits
 def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=None, limb_darkening_law=None,
                           cos_theta=None):
     """
@@ -195,7 +194,7 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
 
 def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coefficients=None):
     """
-    Calculates limb darkening factor D(int) used when calculating flux from given intensity on surface.
+    Calculates limb darkening factor D(int)/PI used when calculating flux from given intensity on surface.
     D(int) = integral over hemisphere (D(theta)cos(theta)
 
     :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`

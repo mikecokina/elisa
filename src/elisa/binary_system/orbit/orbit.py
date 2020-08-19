@@ -247,7 +247,6 @@ class Orbit(object):
             phase = np.array([np.float(phase)])
         # photometric phase to phase measured from periastron
         true_phase = self.true_phase(phase=phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
-        true_phase = self.phase(true_phase=true_phase, phase_shift=self.phase_shift)
 
         mean_anomaly = self.phase_to_mean_anomaly(phase=true_phase)
         eccentric_anomaly = np.array([self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
@@ -264,7 +263,8 @@ class Orbit(object):
         positions of the secondary component in the frame of reference of primary component.
 
         :param azimuth: Union[numpy.array, float];
-        :return: numpy.array: matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
+        :return: numpy.array; matrix consisting of column stacked vectors distance,
+                              azimut angle, true anomaly and phase
 
         ::
 

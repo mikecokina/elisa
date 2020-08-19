@@ -1,8 +1,10 @@
 import numpy as np
 import mpl_toolkits.mplot3d.axes3d as axes3d
 
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.gridspec as gridspec
 
 from matplotlib import cm
 from elisa import (
@@ -47,7 +49,8 @@ def orbit(**kwargs):
         # ax.scatter(x[0], y[0], c='r')
         ax.scatter([0], [0], c='b', label='primary')
 
-    ax.legend(loc=1)
+    if kwargs['legend']:
+        ax.legend(loc=1)
     ax.set_aspect('equal')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
@@ -75,14 +78,19 @@ def equipotential(**kwargs):
 
     f = plt.figure()
     ax = f.add_subplot(111)
-    ax.plot(x_primary, y_primary, label='primary')
-    ax.plot(x_secondary, y_secondary, label='secondary')
+
+    if kwargs['components_to_plot'] in ['primary', 'both']:
+        ax.plot(x_primary, y_primary, label='primary', c=kwargs['colors'][0])
+    if kwargs['components_to_plot'] in ['secondary', 'both']:
+        ax.plot(x_secondary, y_secondary, label='secondary', c=kwargs['colors'][1])
+
     lims = ax.get_xlim() - np.mean(ax.get_xlim())
     ax.set_ylim(lims)
     ax.set_aspect('equal', 'box')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
-    ax.legend(loc=1)
+    if kwargs['legend']:
+        ax.legend(loc=kwargs['legend_loc'])
     ax.grid()
     plt.show()
 
@@ -288,7 +296,7 @@ def binary_surface(**kwargs):
     ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
-    clr = ['g', 'r']
+    clr = kwargs['surface_colors']
 
     if kwargs['components_to_plot'] == 'primary':
         plot = ax.plot_trisurf(
@@ -657,7 +665,7 @@ def binary_surface_anim(**kwargs):
 
     args = (points, faces, clr, cmaps, plot)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
-    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='imagemagick', fps=20)
+    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=20, dpi=300)
 
 
 def phase_curve(**kwargs):
@@ -691,9 +699,148 @@ def rv_curve(**kwargs):
     plt.xlabel('Phase')
     if isinstance(kwargs['unit'], type(u.m / u.s)):
         uu = kwargs['unit']
-        plt.ylabel(f'Radial Velocity/({uu:latex})')
+        plt.ylabel(f'Radial velocity/({uu:latex})')
     else:
-        plt.ylabel('Radial Velocity')
+        plt.ylabel('Radial velocity')
     if kwargs['legend']:
         plt.legend(loc=kwargs['legend_location'])
+    plt.show()
+
+
+def binary_rv_fit_plot(**kwargs):
+    """
+    Plots the model and residuals described by fit params or calculated by last run of fitting procedure.
+
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * **fit_params** * -- dict; {fit_parameter: {value: float, unit: astropy.unit.Unit}
+        * **start_phase** * -- float;
+        * **stop_phase** * -- float;
+        * **number_of_points** * -- int;
+        * **y_axis_unit** * -- astropy.unit.Unit;
+    :return:
+    """
+    matplotlib.rcParams.update({'errorbar.capsize': 2})
+    fig = plt.figure(figsize=(8, 6))
+
+    gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1], sharex=ax1)
+
+    ax1.plot(kwargs['synth_phases'], kwargs['rv_fit']['primary'], label='primary RV fit', color='cornflowerblue')
+    ax1.plot(kwargs['synth_phases'], kwargs['rv_fit']['secondary'], label='secondary RV fit', color='firebrick',
+             ls='dashed')
+    if kwargs['y_err']['primary'] is None:
+        ax1.scatter(kwargs['x_data']['primary'], kwargs['y_data']['primary'],
+                    marker='o', color='blue', s=3, label='primary')
+        ax2.scatter(kwargs['x_data']['primary'], kwargs['residuals']['primary'],
+                    marker='o', color='blue', s=3, label='primary')
+    else:
+        ax1.errorbar(kwargs['x_data']['primary'], kwargs['y_data']['primary'], yerr=kwargs['y_err']['primary'],
+                     linestyle='none', marker='o', color='blue', markersize=3, label='primary')
+        ax2.errorbar(kwargs['x_data']['primary'], kwargs['residuals']['primary'], yerr=kwargs['y_err']['primary'],
+                     linestyle='none', marker='o', color='blue', markersize=3, label='primary')
+
+    if kwargs['y_err']['secondary'] is None:
+        ax1.scatter(kwargs['x_data']['secondary'], kwargs['y_data']['secondary'],
+                    marker='x', color='red', s=3, label='secondary')
+        ax2.scatter(kwargs['x_data']['secondary'], kwargs['residuals']['secondary'],
+                    marker='x', color='red', s=3, label='secondary')
+    else:
+        ax1.errorbar(kwargs['x_data']['secondary'], kwargs['y_data']['secondary'], yerr=kwargs['y_err']['secondary'],
+                     linestyle='none', marker='x', color='red',
+                     markersize=3, label='secondary')
+        ax2.errorbar(kwargs['x_data']['secondary'], kwargs['residuals']['secondary'], yerr=kwargs['y_err']['secondary'],
+                     linestyle='none', marker='x', color='red',
+                     markersize=3, label='secondary')
+    ax1.legend()
+    unit = kwargs['y_unit']
+    ax1.set_ylabel(f'Radial velocity/[{unit}]')
+
+    ax2.axhline(0, ls='dashed', c='black', lw=0.5)
+
+    ax2.set_xlabel('Phase')
+    ax2.set_ylabel('Residuals')
+
+    plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
+    plt.show()
+
+
+def binary_lc_fit_plot(**kwargs):
+    synthetic_clrs = {
+        'bolometric': 'black',
+        'Generic.Bessell.U': '#ff00bf',
+        'Generic.Bessell.B': '#0000E5',
+        'Generic.Bessell.V': '#00cc00',
+        'Generic.Bessell.R': '#fd2b2b',
+        'Generic.Bessell.I': '#b30000',
+        'SLOAN.SDSS.u': '#0000ff',
+        'SLOAN.SDSS.g': '#00cc00',
+        'SLOAN.SDSS.r': '#ff1a1a',
+        'SLOAN.SDSS.i': '#cc00cc',
+        'SLOAN.SDSS.z': '#00ffff',
+        'Generic.Stromgren.u': '#cc00cc',
+        'Generic.Stromgren.v': '#ff00ff',
+        'Generic.Stromgren.b': '#3333ff',
+        'Generic.Stromgren.y': '#00e600',
+        'Kepler': '#E50000',
+        'GaiaDR2': 'black',
+    }
+    datapoint_clrs = {
+        'bolometric': 'gray',
+        'Generic.Bessell.U': '#cc0099',
+        'Generic.Bessell.B': '#00007F',
+        'Generic.Bessell.V': '#008000',
+        'Generic.Bessell.R': '#ff0000',
+        'Generic.Bessell.I': '#800000',
+        'SLOAN.SDSS.u': '#000099',
+        'SLOAN.SDSS.g': '#009900',
+        'SLOAN.SDSS.r': '#e60000',
+        'SLOAN.SDSS.i': '#800080',
+        'SLOAN.SDSS.z': '#00cccc',
+        'Generic.Stromgren.u': '#990099',
+        'Generic.Stromgren.v': '#cc00cc',
+        'Generic.Stromgren.b': '#0000cc',
+        'Generic.Stromgren.y': '#00b300',
+        'Kepler': '#890000',
+        'GaiaDR2': 'gray',
+    }
+
+    matplotlib.rcParams.update({'errorbar.capsize': 2})
+    fig = plt.figure(figsize=(8, 6))
+
+    gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1], sharex=ax1)
+
+    for fltr, curve in kwargs['lcs'].items():
+        (dt_clr, clr) = (datapoint_clrs[fltr], datapoint_clrs[fltr]) if len(kwargs['lcs']) > 1 else ('blue', 'red')
+
+        if kwargs['y_err'][fltr] is None:
+            ax1.scatter(kwargs['x_data'][fltr], kwargs['y_data'][fltr], s=3, label=fltr + ' observed',
+                        color=dt_clr)
+
+            ax2.scatter(kwargs['x_data'][fltr], kwargs['residuals'][fltr], s=3, label=fltr + ' residual',
+                        color=dt_clr)
+        else:
+            ax1.errorbar(kwargs['x_data'][fltr], kwargs['y_data'][fltr], yerr=kwargs['y_err'][fltr],
+                         linestyle='none', markersize=3, label=fltr + ' observed', color=dt_clr)
+
+            ax2.errorbar(kwargs['x_data'][fltr], kwargs['residuals'][fltr], yerr=kwargs['y_err'][fltr],
+                         linestyle='none', markersize=3, label=fltr + ' residual', color=dt_clr)
+
+        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic', color=clr)
+
+    ax2.axhline(0, ls='dashed', c='black', lw=0.5)
+
+    if kwargs['legend']:
+        ax1.legend(loc=kwargs['loc'])
+    # ax2.legend(loc=1)
+
+    ax1.set_ylabel(f'Normalized flux')
+
+    ax2.set_xlabel('Phase')
+    ax2.set_ylabel('Residuals')
+
+    plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
     plt.show()

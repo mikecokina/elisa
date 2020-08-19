@@ -12,6 +12,8 @@ from elisa.conf import config
 from elisa.observer.observer import Observer
 from elisa.binary_system.orbit.container import OrbitalSupplements
 from elisa.binary_system import surface
+from elisa.base import surface as basesurface
+from elisa.base.container import PositionContainer
 
 from elisa.binary_system import (
     utils as bsutils,
@@ -29,8 +31,8 @@ from unittests.utils import (
 from elisa import (
     umpy as up,
     units,
-    const
-)
+    const,
+    utils)
 from elisa.binary_system.curves import (
     lc,
     lcmp
@@ -65,7 +67,7 @@ class MockSelf(object):
 class SupportMethodsTestCase(ElisaTestCase):
     def setUp(self):
         config.LIMB_DARKENING_LAW = 'linear'
-        config.VAN_HAMME_LD_TABLES = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
+        config.LD_TABLES = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
         reload(lc)
 
     def test_compute_filling_factor(self):
@@ -78,7 +80,8 @@ class SupportMethodsTestCase(ElisaTestCase):
         normals = np.array([[1, 1, 1], [0.3, 0.1, -5], [-2, -3, -4.1]])
         normals = np.array([a / b for a, b in zip(normals, np.linalg.norm(normals, axis=1))])
         los = [1, 0, 0]
-        obtained = dynamic.darkside_filter(los, normals)
+        cosines = PositionContainer.return_cosines(normals=normals, line_of_sight=los)
+        obtained = PositionContainer.darkside_filter(cosines)
         expected = np.array([0, 1], dtype=int)
         self.assertTrue(np.all(obtained == expected))
 
@@ -104,7 +107,7 @@ class SupportMethodsTestCase(ElisaTestCase):
              np.array([1.68848668, 1.123, 0.93450444, 0.36901776])]
         ), 5)
 
-        obtained = dynamic.calculate_spot_longitudes(MockBinaryInstance(), phases)
+        obtained = dynamic.calculate_spot_longitudes(MockBinaryInstance(), phases, correct_libration=False)
         obtained = np.round(np.array([obtained["primary"][0], obtained["secondary"][0]]), 5)
         assert_array_equal(expected, obtained)
 
@@ -113,7 +116,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         visible = [0, 2]
         coverage = [10, 20]
 
-        obtained = surface.coverage.surface_area_coverage(size, visible, coverage)
+        obtained = basesurface.coverage.surface_area_coverage(size, visible, coverage)
         expected = np.array([10., 0., 20., 0., 0.])
         self.assertTrue(np.all(obtained == expected))
 
@@ -124,7 +127,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         coverage = [10, 20]
         partial_coverage = [30]
 
-        obtained = surface.coverage.surface_area_coverage(size, visible, coverage, partial, partial_coverage)
+        obtained = basesurface.coverage.surface_area_coverage(size, visible, coverage, partial, partial_coverage)
         expected = np.array([10., 30., 20., 0., 0.])
         self.assertTrue(np.all(obtained == expected))
 
@@ -152,7 +155,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         mock_supplements = OrbitalSupplements([[1., 10.]], [[1., 10.]])
         expected = np.array([[0.1111, 0.0625, 0.4118, 0.4333], [0.0909, 0.1579, 0.525, 0.2121]])
         with mock.patch('elisa.binary_system.radius.calculate_forward_radii', MockSelf.calculate_forward_radii):
-            obtained = np.round(lc._compute_rel_d_radii(MockSelf, mock_supplements), 4)
+            obtained = np.round(lc._compute_rel_d_radii(MockSelf, mock_supplements.body[:, 1]), 4)
         self.assertTrue(np.all(expected == obtained))
 
     def _test_find_apsidally_corresponding_positions(self, arr1, arr2, expected, tol=1e-10):
@@ -223,7 +226,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         obj.indices = np.array([0, 1])
         obj.points = np.array([[-1, -1, -2], [0., 1, 1], [1, 1, 2], [2, 3, 4]])
 
-        obtained = bsutils.get_visible_projection(obj)
+        obtained = utils.get_visible_projection(obj)
         expected = np.vstack((obj.points[:, 1], obj.points[:, 2])).T
         self.assertTrue(np.all(expected == obtained))
 
@@ -249,7 +252,8 @@ class SupportMethodsTestCase(ElisaTestCase):
             'secondary': {}
         }
 
-        obtained = np.array(dynamic.resolve_spots_geometry_update(spots_longitudes), dtype=bool)
+        pulsation_tests = {'primary': False, 'secondary': False}
+        obtained = np.array(dynamic.resolve_spots_geometry_update(spots_longitudes, 6, pulsation_tests), dtype=bool)
         expected = np.array([[True, False, True, True, False, False], [True] + [False] * 5], dtype=bool)
         assert_array_equal(expected, obtained)
 
@@ -268,6 +272,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         from_this = dict(binary_system=bs, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
         system = OrbitalPositionContainer.from_binary_system(**from_this)
         system.build(components_distance=1.0)
+        system.calculate_face_angles(line_of_sight=const.LINE_OF_SIGHT)
         system.apply_darkside_filter()
         self.assertTrue((not is_empty(system.primary.indices)) and (not is_empty(system.secondary.indices)))
 
@@ -338,7 +343,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
         self.law = config.LIMB_DARKENING_LAW
 
-        config.VAN_HAMME_LD_TABLES = op.join(self.base_path, "limbdarkening")
+        config.LD_TABLES = op.join(self.base_path, "limbdarkening")
         config.CK04_ATM_TABLES = op.join(self.base_path, "atmosphere")
         config.ATM_ATLAS = "ck04"
         config._update_atlas_to_base_dir()
@@ -470,6 +475,31 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_exact = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
         expected_flux_exact = normalize_lc_for_unittests(expected_exact[1]["Generic.Bessell.V"])
         self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux_exact, 3)) < 5e-3))
+
+        # from matplotlib import pyplot as plt
+        # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
+        # plt.show()
+
+    def test_eccentric_synchronous_detached_system_approximation_three(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.05
+        reload(lc)
+
+        bs = prepare_binary_system(self.params["eccentric"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+
+        start_phs, stop_phs, step = -0.0, 0.01, 0.002
+
+        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        obtained_phases = obtained[0]
+        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
+
+        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.appx_three.json")
+        expected_phases = expected[0]
+        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(np.round(obtained_phases, 3) - np.round(expected_phases, 3) < TOL))
+        self.assertTrue(np.all(np.round(obtained_flux, 3) - np.round(expected_flux, 3) < TOL))
 
         # from matplotlib import pyplot as plt
         # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")

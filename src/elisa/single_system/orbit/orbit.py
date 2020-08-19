@@ -14,21 +14,30 @@ logger = getLogger('single_system.orbit.orbit')
 
 def angular_velocity(rotation_period):
     """
-    rotational angular velocity of the star
+    Rotational angular velocity of the star.
 
     :param rotation_period: float;
-    :return:
+    :return: float;
     """
     return c.FULL_ARC / (rotation_period * units.PERIOD_UNIT).to(units.s).value
 
 
 def true_phase_to_azimuth(phase):
     """
-    calculates observer azimuths for single star system
-    :param phase:
-    :return: numpy.array;
+    Calculates observer azimuths for single star system.
+
+    :param phase: Union[numpy.array, float];
+    :return: Union[numpy.array, float];
     """
     return c.FULL_ARC * phase
+
+
+def azimuth_to_true_phase(azimuth):
+    """
+    :param azimuth: Union[numpy.array, float];
+    :return: Union[numpy.array, float];
+    """
+    return azimuth / c.FULL_ARC
 
 
 class Orbit(object):
@@ -69,7 +78,8 @@ class Orbit(object):
         """
         return true_phase - phase_shift
 
-    def rotational_motion(self, phase):
+    @staticmethod
+    def rotational_motion(phase):
         """
         Function takes photometric phase of the single system as input and calculates azimuths for the observer
 
@@ -87,7 +97,26 @@ class Orbit(object):
         if isinstance(phase, (int, np.int, float, np.float)):
             phase = np.array([np.float(phase)])
 
-        true_phase = self.phase(true_phase=phase, phase_shift=self.phase_shift)
-        azimuth_angle = true_phase_to_azimuth(phase=true_phase)
+        azimuth_angle = true_phase_to_azimuth(phase=phase)
 
         return np.column_stack((azimuth_angle, phase))
+
+    @staticmethod
+    def rotational_motion_from_azimuths(azimuth):
+        """
+        return rotational motion derived from known azimuths
+
+        :param azimuth: Union[numpy.array, float];
+        :return: numpy.array; matrix consisting of column stacked vectors distance,
+                                azimut angle, true anomaly and phase
+
+        ::
+
+               numpy.array((az1, phs1),
+                           (az2, phs2),
+                            ...
+                           (azN, phsN))
+
+        """
+        true_phase = azimuth_to_true_phase(azimuth)
+        return np.column_stack((azimuth, true_phase))

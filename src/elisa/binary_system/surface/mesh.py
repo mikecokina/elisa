@@ -1,7 +1,7 @@
 import gc
 import numpy as np
 
-from elisa.base.error import MaxIterationError
+from elisa.base.error import MaxIterationError, SpotError
 from elisa.base.spot import incorporate_spots_mesh
 from elisa.conf import config
 from elisa.opt.fsolver import fsolver
@@ -51,24 +51,26 @@ def build_mesh(system, components_distance, component="all"):
 
     add_spots_to_mesh(system, components_distance, component="all")
 
+    return system
 
-def build_pulsations_on_mesh(system_container, component, components_distance):
+
+def build_pulsations_on_mesh(system, component, components_distance):
     """
     adds position perturbations to container mesh
 
-    :param system_container: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     :param component: Union[str, None];
     :param components_distance: float;
     :return: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     components = bsutils.component_to_list(component)
     for component in components:
-        star = getattr(system_container, component)
+        star = getattr(system, component)
         if star.has_pulsations():
-            phase = butils.calculate_rotational_phase(system_container, component)
+            phase = butils.calculate_rotational_phase(system, component)
             com_x = 0 if component == 'primary' else components_distance
-            star = pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, phase=phase, time=system_container.time)
-    return system_container
+            star = pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, phase=phase, time=system.time)
+    return system
 
 
 def pre_calc_azimuths_for_detached_points(discretization):
@@ -279,7 +281,7 @@ def get_surface_points(*args):
                 fprime: callable,
                 surface_potential: float,
                 mass_ratio: float
-                symchronicity: float
+                synchronicity: float
             ]
 
     :return: numpy.array
@@ -290,6 +292,8 @@ def get_surface_points(*args):
     x0 = x0 * np.ones(phi.shape)
     radius_kwargs = dict(fprime=fprime, maxiter=max_iter, args=((q, ) + precalc_vals, potential), rtol=1e-10)
     radius = opt.newton.newton(potential_fn, x0, **radius_kwargs)
+    if (radius < 0.0).any():
+        raise ValueError('Solver found at least one point in the opposite direction. Check you points. ')
     return utils.spherical_to_cartesian(np.column_stack((radius, phi, theta)))
 
 
@@ -664,7 +668,8 @@ def mesh_spots(system, components_distance, component="all"):
             # lon -> phi, lat -> theta
             lon, lat = spot_instance.longitude, spot_instance.latitude
 
-            alpha = spot_instance.discretization_factor
+            alpha = spot_instance.discretization_factor \
+                if spot_instance.discretization_factor < spot_instance.angular_radius else spot_instance.angular_radius
             spot_radius = spot_instance.angular_radius
             synchronicity = component_instance.synchronicity
             mass_ratio = system.mass_ratio
@@ -741,11 +746,21 @@ def mesh_spots(system, components_distance, component="all"):
                 potential_fn, fprime, potential, mass_ratio, synchronicity
             try:
                 spot_points = get_surface_points(*args)
-            except MaxIterationError:
-                logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
-                               f"doesn't satisfy reasonable conditions and entire spot will be omitted")
-                component_instance.remove_spot(spot_index=spot_index)
-                continue
+            except (MaxIterationError, ValueError) as e:
+                raise SpotError(f"Solver could not find at least some surface points of spot "
+                                f"{spot_instance.kwargs_serializer()}. Probable reason is that your spot is"
+                                f"intersecting neck which is currently not supported.")
+
+            if getattr(system, "morphology") == "over-contact":
+                if spot_points.ndim == 2:
+                    validity_test = (spot_points[:, 0] <= neck_position).all() if component == 'primary' else \
+                        (spot_points[:, 0] <= (1 - neck_position)).all()
+                else:
+                    validity_test = False
+
+                if not validity_test:
+                    raise SpotError(f"Your spot {spot_instance.kwargs_serializer()} "
+                                    f"is intersecting neck which is currently not supported.")
 
             boundary_points = spot_points[-len(deltas[-1]):]
 
@@ -761,7 +776,6 @@ def mesh_spots(system, components_distance, component="all"):
                                                    for point in boundary_points])
 
                 spot_instance.center = np.array([components_distance - spot_center[0], -spot_center[1], spot_center[2]])
-            gc.collect()
 
 
 def calculate_neck_position(system, return_polynomial=False):

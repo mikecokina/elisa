@@ -52,7 +52,7 @@ class Spot(object):
     def __init__(self, **kwargs):
         utils.invalid_kwarg_checker(kwargs=kwargs, kwarglist=Spot.ALL_KWARGS, instance=Spot)
         utils.check_missing_kwargs(Spot.MANDATORY_KWARGS, kwargs, instance_of=Spot)
-        kwargs = self.transform_input(**kwargs)
+        self.kwargs = self.transform_input(**kwargs)
 
         # supplied parameters
         self.discretization_factor = np.nan
@@ -76,7 +76,7 @@ class Spot(object):
         self.temperatures = np.array([])
         self.log_g = np.array([])
 
-        self.init_properties(**kwargs)
+        self.init_properties(**self.kwargs)
 
     @staticmethod
     def transform_input(**kwargs):
@@ -192,7 +192,11 @@ def incorporate_spots_mesh(to_container, component_com):
     vertices_map = [{"enum": -1} for _ in to_container.points]
     # `all_component_points` do not contain points of Any spot
     all_component_points = copy(to_container.points)
-    neck = np.min(all_component_points[:to_container.base_symmetry_points_number, 0])
+
+    # neck = np.max(np.abs(to_container.points[:, 0] - component_com)) if neck is None else neck - component_com
+    neck = np.max(np.abs(to_container.points[:, 0] - component_com))
+    # neck = np.min(all_component_points[:to_container.base_symmetry_points_number, 0])
+    # neck = np.min(all_component_points[:, 0])
 
     for spot_index, spot in to_container.spots.items():
         # average spacing in spot points
@@ -203,12 +207,12 @@ def incorporate_spots_mesh(to_container, component_com):
         # removing star points in spot
         # all component points means just points of component NOT merged points + spots
         for ix, pt in enumerate(all_component_points):
-            surface_point = all_component_points[ix] - np.array([component_com, 0., 0.])
+            surface_point = pt - np.array([component_com, 0., 0.])
             cos_angle = \
                 up.inner(spot_center, surface_point) / (
                     np.linalg.norm(spot_center) * np.linalg.norm(surface_point))
             # skip all points of object outside of spot
-            if cos_angle < cos_max_angle_point or np.linalg.norm(pt[0] - neck) < 1e-9:
+            if cos_angle < cos_max_angle_point or np.abs(np.abs(pt[0]) - neck) < 1e-9:
                 continue
             # mark component point (NOT point of spot) for removal if is within the spot
             vertices_to_remove.append(ix)

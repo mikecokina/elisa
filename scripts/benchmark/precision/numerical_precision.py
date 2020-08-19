@@ -3,6 +3,7 @@ from elisa.binary_system import system
 from elisa.observer.observer import Observer
 import matplotlib.pyplot as plt
 import numpy as np
+from elisa.binary_system.container import OrbitalPositionContainer
 
 
 def get_params(filename):
@@ -11,7 +12,7 @@ def get_params(filename):
 
 
 data = get_params('data/wide_binary.json')
-surface_discredizations = [10, 5, 3]
+surface_discredizations = [10, 7, 5, 3]
 
 curves = [None for _ in surface_discredizations]
 phases = None
@@ -37,9 +38,15 @@ for ii, alpha in enumerate(surface_discredizations):
     curves[ii] = curves[ii]['Generic.Bessell.V']
 
     y_data = curves[ii] / np.mean(curves[ii])
-    mean = np.mean(abs(y_data-1))
+    mean = np.sqrt(np.mean(np.power(y_data-1, 2)))
     print(f'factor: {alpha}, mean noise: {mean}')
     plt.plot(phases, y_data, label='factor: {0}, mean noise: {1:.2E}'.format(alpha, mean))
+
+    position = binary.calculate_orbital_motion(0.0)[0]
+    container = OrbitalPositionContainer.from_binary_system(binary, position)
+    container.build()
+
+    print(f'{alpha} {container.primary.points.shape[0]}    {container.primary.faces.shape[0]} {mean}')
 
 plt.xlabel('Phase')
 plt.ylabel('Normalized flux')

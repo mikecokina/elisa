@@ -42,22 +42,26 @@ HOME = os.path.expanduser(os.path.join("~", '.elisa'))
 REFLECTION_EFFECT = True
 REFLECTION_EFFECT_ITERATIONS = 2
 LIMB_DARKENING_LAW = 'cosine'
+DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 2.0
 
 # computational
 MAX_DISCRETIZATION_FACTOR = 20
-MIN_DISCRETIZATION_FACTOR = 1
+MIN_DISCRETIZATION_FACTOR = 3
 NUMBER_OF_THREADS = 1
 NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
 NUMBER_OF_MCMC_PROCESSES = -1
-POINTS_ON_ECC_ORBIT = 99999
-MAX_RELATIVE_D_R_POINT = 0.0
+POINTS_ON_ECC_ORBIT = 118
+MAX_RELATIVE_D_R_POINT = 3e-3
 MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
 MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
 MAX_SOLVER_ITERS = 100
+MAX_CURVE_DATA_POINTS = 300
+
+TIMER = 0.0
 
 # support data
 PASSBAND_TABLES = os.path.join(dirname(os.path.abspath(__file__)), pardir, "passband")
-VAN_HAMME_LD_TABLES = os.path.join(HOME, "limbdarkening", "vh")
+LD_TABLES = os.path.join(HOME, "limbdarkening", "ld")
 CK04_ATM_TABLES = os.path.join(HOME, "atmosphere", "ck04")
 K93_ATM_TABLES = os.path.join(HOME, "atmosphere", "k93")
 ATM_ATLAS = "ck04"
@@ -147,6 +151,11 @@ def update_config():
         if LIMB_DARKENING_LAW not in ['linear', 'cosine', 'logarithmic', 'square_root']:
             raise ValueError(f'{LIMB_DARKENING_LAW} is not valid name of limb darkening law. '
                              f'Available limb darkening laws are: `linear` or `cosine`, `logarithmic`, `square_root`')
+
+        global DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT
+        DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = \
+            c_parse.getfloat('physics', 'default_temperature_perturbation_phase_shift',
+                             fallback=DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT)
     # ******************************************************************************************************************
 
     if c_parse.has_section('computational'):
@@ -191,14 +200,18 @@ def update_config():
 
         global MAX_SOLVER_ITERS
         MAX_SOLVER_ITERS = c_parse.getfloat('computational', 'max_solver_iters', fallback=MAX_SOLVER_ITERS)
+
+        global MAX_CURVE_DATA_POINTS
+        MAX_CURVE_DATA_POINTS = c_parse.getfloat('computational', 'max_curve_datapoints',
+                                                 fallback=MAX_CURVE_DATA_POINTS)
     # ******************************************************************************************************************
 
     if c_parse.has_section('support'):
-        global VAN_HAMME_LD_TABLES
-        VAN_HAMME_LD_TABLES = c_parse.get('support', 'van_hamme_ld_tables', fallback=VAN_HAMME_LD_TABLES)
+        global LD_TABLES
+        LD_TABLES = c_parse.get('support', 'ld_tables', fallback=LD_TABLES)
 
-        if not isdir(VAN_HAMME_LD_TABLES) and not SUPPRESS_WARNINGS:
-            warnings.warn(f"path {VAN_HAMME_LD_TABLES} to van hamme ld tables doesn't exists\n"
+        if not isdir(LD_TABLES) and not SUPPRESS_WARNINGS:
+            warnings.warn(f"path {LD_TABLES} to limb darkening tables doesn't exists\n"
                           f"Specifiy it in elisa_conf.ini file")
 
         global CK04_ATM_TABLES
@@ -249,6 +262,7 @@ PASSBANDS = [
     'Generic.Stromgren.y',
     'Kepler',
     'GaiaDR2',
+    'TESS',
 ]
 
 PASSBAND_DATAFRAME_THROUGHPUT = "throughput"
@@ -315,6 +329,11 @@ ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
 
 DATETIME_MASK = '%Y-%m-%dT%H.%M.%S'
 DATE_MASK = '%Y-%m-%d'
+
+DATASET_MANDATORY_KWARGS = ['x_data', 'y_data', 'x_unit', 'y_unit']
+DATASET_OPTIONAL_KWARGS = ['y_err']
+
+DELIM_WHITESPACE = r'\s+|\t+|\s+\t+|\t+\s+'
 
 read_and_update_config()
 _update_atlas_to_base_dir()

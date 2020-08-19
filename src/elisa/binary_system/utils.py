@@ -113,44 +113,6 @@ def component_to_list(component):
     return component
 
 
-def get_visible_projection(obj):
-    """
-    Returns yz projection of nearside points.
-
-    :param obj: instance;
-    :return: numpy.array
-    """
-    return utils.plane_projection(
-        obj.points[
-            np.unique(obj.faces[obj.indices])
-        ], "yz"
-    )
-
-
-def renormalize_async_result(result):
-    """
-    Renormalize multiprocessing output to native form.
-    Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
-    computaion require dict in form like::
-
-        [{'passband': [all fluxes]}]
-
-    instead::
-
-        [[{'passband': [fluxes in batch]}], [{'passband': [fluxes in batch]}], ...]
-
-    :param result: List;
-    :return: Dict[str; numpy.array]
-    """
-    # todo: come with something more sophisticated
-    placeholder = {key: np.array([]) for key in result[-1]}
-    for record in result:
-        for passband in placeholder:
-            placeholder[passband] = record[passband] if is_empty(placeholder[passband]) else np.hstack(
-                (placeholder[passband], record[passband]))
-    return placeholder
-
-
 def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_potential=None, on_copy=True):
     """
     Prepares a postion container for given orbital position.
@@ -165,30 +127,31 @@ def move_sys_onpos(system, orbital_position, primary_potential=None, secondary_p
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param orbital_position: collections.namedtuple; elisa.const.Position;
-    :return: container; elisa.binary_system.container.OrbitalPositionContainer;
     :param primary_potential: float;
     :param secondary_potential: float;
     :param on_copy: bool;
+    :return: container; elisa.binary_system.container.OrbitalPositionContainer;
     """
     if on_copy:
         system = system.copy()
     system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
     system.flatt_it()
     system.apply_rotation()
+    system.calculate_face_angles(line_of_sight=const.LINE_OF_SIGHT)
     system.apply_darkside_filter()
     return system
 
 
-def calculate_rotational_phase(system_container, component):
+def calculate_rotational_phase(system, component):
     """
     Returns rotational phase with in co-rotating frame of reference.
 
-    :param system_container: SystemContainer;
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     :param component: str; `primary` or `secondary`
     :return: float;
     """
-    star = getattr(system_container, component)
-    return (star.synchronicity - 1.0) * system_container.position.phase
+    star = getattr(system, component)
+    return (star.synchronicity - 1.0) * system.position.phase
 
 
 def validate_binary_json(data):
@@ -215,11 +178,21 @@ def validate_binary_json(data):
     except ValidationError:
         pass
 
+    # previous code cannot catch error when user inputs only one argument from the other parameter input format
+    if ('mass_ratio' in data['system'].keys() or 'semi_major_axis' in data['system'].keys()) and std_valid is True:
+        raise ValidationError("You probably tried to input your parameters in `standard` format but your "
+                              "parameters include `mass ratio` or `semi_major_axis` (use either (M1, M2) or  (q, a)).")
+
+    if ('mass' in data['primary'].keys() or 'mass' in data['secondary'].keys()) and community_valid is True:
+        raise ValidationError("You probably tried to input your parameters in `community` format but your "
+                              "parameters include masses of the components (useeither (M1, M2) or  (q, a)).")
+
     if (not community_valid) & (not std_valid):
-        raise ValidationError("BinarySystem cannot be created from supplied json schema.")
+        raise ValidationError("BinarySystem cannot be created from supplied json schema. ")
 
     if community_valid & std_valid:
-        raise YouHaveNoIdeaError("You have no idea what is going on [M1, M2, q, a].")
+        raise YouHaveNoIdeaError("Make sure that list of fitted parameters contain only `standard` or `community` "
+                                 "combination of parameter (either (M1, M2) or  (q, a)).")
 
     return True
 
@@ -236,7 +209,7 @@ def resolve_json_kind(data, _sin=False):
     :return: str; `std` or `community`
     """
     lookup = "asini" if _sin else "semi_major_axis"
-    m1, m2 = data["primary"].get("mass"), data["secondary"].get("mass")
+    m1, m2 = data.get("primary", dict()).get("mass"), data.get("secondary", dict()).get("mass")
     q, a = data["system"].get("mass_ratio"), data["system"].get(lookup)
 
     if m1 and m2:

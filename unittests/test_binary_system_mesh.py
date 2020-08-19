@@ -16,7 +16,7 @@ from unittests.utils import ElisaTestCase, prepare_binary_system
 class BuildMeshSpotsFreeTestCase(ElisaTestCase):
     @staticmethod
     def generator_test_mesh(key, d, length):
-        s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])
+        s = prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])
         s.primary.discretization_factor = d
         s.secondary.discretization_factor = d
 
@@ -32,19 +32,21 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
         obtained_secondary = np.round(orbital_position_container.secondary.points, 4)
         assert_array_equal([len(obtained_primary), len(obtained_secondary)], length)
 
-    def test_build_mesh_detached(self):
+    def test_build_mesh_detached_no_spot(self):
         self.generator_test_mesh(key="detached", d=up.radians(10), length=[426, 426])
 
-    def test_build_mesh_overcontact(self):
+    def test_build_mesh_overcontact_no_spot(self):
         self.generator_test_mesh(key="over-contact", d=up.radians(10), length=[413, 401])
 
-    def test_build_mesh_semi_detached(self):
+    def test_build_mesh_semi_detached_no_spot(self):
         self.generator_test_mesh(key="semi-detached", d=up.radians(10), length=[426, 426])
 
-    @skip
-    def test_mesh_for_duplicate_points(self):
+    def test_mesh_for_duplicate_points_no_spot(self):
         for params in testutils.BINARY_SYSTEM_PARAMS.values():
-            s = testutils.prepare_binary_system(params)
+            s = prepare_binary_system(params)
+            # reducing runtime of the test
+            s.primary.discretization_factor = up.radians(7)
+            s.init()
             components_distance = s.orbit.orbital_motion(phase=0.0)[0][0]
 
             orbital_position_container = OrbitalPositionContainer(
@@ -53,22 +55,22 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
                 position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
                 **s.properties_serializer()
             )
+
             orbital_position_container.build_mesh(components_distance=components_distance)
 
-            distance1 = round(find_nearest_dist_3d(list(orbital_position_container.primary.points)), 10)
-            distance2 = round(find_nearest_dist_3d(list(orbital_position_container.secondary.points)), 10)
+            for component in ['primary', 'secondary']:
+                component_instance = getattr(orbital_position_container, component)
+                distance = round(find_nearest_dist_3d(list(component_instance.points)), 10)
 
-            if distance1 < 1e-10:
-                bad_points = []
-                for i, point in enumerate(orbital_position_container.primary.points):
-                    for j, xx in enumerate(orbital_position_container.primary.points[i + 1:]):
-                        dist = np.linalg.norm(point - xx)
-                        if dist <= 1e-10:
-                            print(f'Match: {point}, {i}, {j}')
-                            bad_points.append(point)
-
-            self.assertFalse(distance1 < 1e-10)
-            self.assertFalse(distance2 < 1e-10)
+                if distance < 1e-10:
+                    bad_points = []
+                    for i, point in enumerate(component_instance.points):
+                        for j, xx in enumerate(component_instance.points[i + 1:]):
+                            dist = np.linalg.norm(point - xx)
+                            if dist <= 1e-10:
+                                print(f'Match: {point}, {i}, {j}')
+                                bad_points.append(point)
+                self.assertFalse(distance < 1e-10)
 
 
 class BuildSpottyMeshTestCase(ElisaTestCase):
@@ -150,6 +152,91 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
         self.assertTrue(is_empty(s.primary.spots[0].faces))
         self.assertTrue(is_empty(s.secondary.spots[0].faces))
 
+    @skip("Skipped...deprecated funcionality")
+    def test_make_sure_invalid_spots_are_deleted_in_overcontact(self):
+        spot_meta = {
+            "primary":
+                [
+                    {"longitude": 0,
+                     "latitude": 43,
+                     "angular_radius": 30,
+                     "temperature_factor": 1.1,
+                     },
+                ],
+            "secondary":
+                [
+                    {"longitude": 0,
+                     "latitude": 37,
+                     "angular_radius": 30,
+                     "temperature_factor": 1.1,
+                     },
+                ]
+        }
+        s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS["over-contact"],
+                                            spots_primary=spot_meta["primary"],
+                                            spots_secondary=spot_meta["secondary"]
+                                            )
+        s.primary.discretization_factor = up.radians(6)
+        s.init()
+
+        orbital_position_container = OrbitalPositionContainer(
+            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
+            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+            position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
+            **s.properties_serializer()
+        )
+        orbital_position_container.build_mesh(components_distance=1.0)
+        self.assertTrue(len(orbital_position_container.primary.spots) == 0)
+        self.assertTrue(len(orbital_position_container.secondary.spots) == 0)
+
+    def test_spotty_mesh_for_duplicate_points(self):
+        for params in testutils.BINARY_SYSTEM_PARAMS.values():
+            s = testutils.prepare_binary_system(params,
+                                                spots_primary=testutils.SPOTS_META["primary"],
+                                                spots_secondary=testutils.SPOTS_META["secondary"]
+                                                )
+            # reducing runtime of the test
+            s.primary.discretization_factor = up.radians(7)
+            s.init()
+            components_distance = s.orbit.orbital_motion(phase=0.0)[0][0]
+
+            orbital_position_container = OrbitalPositionContainer(
+                primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
+                secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+                position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
+                **s.properties_serializer()
+            )
+
+            orbital_position_container.build_mesh(components_distance=components_distance)
+
+            for component in ['primary', 'secondary']:
+                component_instance = getattr(orbital_position_container, component)
+                distance = round(find_nearest_dist_3d(list(component_instance.points)), 10)
+
+                if distance < 1e-10:
+                    bad_points = []
+                    for i, point in enumerate(component_instance.points):
+                        for j, xx in enumerate(component_instance.points[i + 1:]):
+                            dist = np.linalg.norm(point - xx)
+                            if dist <= 1e-10:
+                                print(f'Match: {point}, {i}, {j}')
+                                bad_points.append(point)
+
+                self.assertFalse(distance < 1e-10)
+
+                spot_distance = round(find_nearest_dist_3d(list(component_instance.spots[0].points)), 10)
+
+                if spot_distance < 1e-10:
+                    bad_points = []
+                    for i, point in enumerate(component_instance.spots[0].points):
+                        for j, xx in enumerate(component_instance.spots[0].points[i + 1:]):
+                            dist = np.linalg.norm(point - xx)
+                            if dist <= 1e-10:
+                                print(f'Match: {point}, {i}, {j}')
+                                bad_points.append(point)
+
+                self.assertFalse(spot_distance < 1e-10)
+
 
 class MeshUtilsTestCase(ElisaTestCase):
     def setUp(self):
@@ -182,7 +269,7 @@ class MeshUtilsTestCase(ElisaTestCase):
 
     def prepare_systems(self):
         return [prepare_binary_system(combo) for combo in self.params_combination]
-    
+
     def test_primary_potential_derivative_x(self):
         d, x = 1.1, 0.13
         expected = np.round(np.array([-58.8584146731, -58.6146646731]), 4)

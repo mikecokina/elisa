@@ -12,9 +12,11 @@ from elisa import umpy as up
 from elisa.base.container import StarContainer
 from elisa.base.star import Star
 from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.single_system.container import SystemContainer
 from elisa.binary_system.system import BinarySystem
+from elisa.single_system.system import SingleSystem
 from elisa.conf import config
-from elisa.const import Position
+from elisa.const import Position, SinglePosition
 from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
 
@@ -110,12 +112,14 @@ def prepare_binary_system(params, spots_primary=None, spots_secondary=None):
     primary = Star(mass=params["primary_mass"], surface_potential=params["primary_surface_potential"],
                    synchronicity=params["primary_synchronicity"],
                    t_eff=params["primary_t_eff"], gravity_darkening=params["primary_gravity_darkening"],
-                   albedo=params['primary_albedo'], metallicity=0.0, spots=spots_primary)
+                   albedo=params['primary_albedo'],
+                   metallicity=0.0, spots=spots_primary)
 
     secondary = Star(mass=params["secondary_mass"], surface_potential=params["secondary_surface_potential"],
                      synchronicity=params["secondary_synchronicity"],
                      t_eff=params["secondary_t_eff"], gravity_darkening=params["secondary_gravity_darkening"],
-                     albedo=params['secondary_albedo'], metallicity=0.0, spots=spots_secondary)
+                     albedo=params['secondary_albedo'],
+                     metallicity=0.0, spots=spots_secondary)
 
     return BinarySystem(primary=primary,
                         secondary=secondary,
@@ -145,12 +149,23 @@ def prepare_orbital_position_container(system):
 def prepare_single_system(params, spots=None, pulsations=None):
     star = Star(mass=params['mass'], t_eff=params['t_eff'],
                 gravity_darkening=params['gravity_darkening'],
-                polar_log_g=params['polar_log_g'], spots=spots, pulsations=pulsations)
+                polar_log_g=params['polar_log_g'],
+                metallicity=0.0,
+                spots=spots, pulsations=pulsations)
 
-    return BinarySystem(star=star,
+    return SingleSystem(star=star,
                         gamma=params["gamma"],
                         inclination=params["inclination"],
                         rotation_period=params['rotation_period'])
+
+
+def prepare_single_system_container(system):
+    system_container = SystemContainer(
+        star=StarContainer.from_properties_container(system.star.to_properties_container()),
+        position=SinglePosition(*(0, 0.0, 0.0)),
+        **system.properties_serializer()
+    )
+    return system_container
 
 
 def normalize_lc_for_unittests(flux_arr):
@@ -162,6 +177,14 @@ def normalize_lv_for_unittests(primary, secondary):
     primary /= _max
     secondary /= _max
     return primary, secondary
+
+
+def dump_observation_to_json(observation, filename):
+    observation = list(observation)
+    observation[0] = observation[0].tolist()
+    observation[1] = {filter: item.tolist() for filter, item in observation[1].items()}
+    with open(filename, 'w') as outfile:
+        json.dump(observation, outfile)
 
 
 def load_light_curve(filename):
@@ -178,6 +201,66 @@ def load_radial_curve(filename):
         return json.loads(content)
 
 
+def find_indices_of_duplicates(records_array):
+    """
+    returns duplicate values and indices of duplicates
+    :param records_array: np.array;
+    :return: tuple; duplicit values, corresponding indices (iterator)
+    """
+    idx_sort = np.argsort(records_array)
+    sorted_records_array = records_array[idx_sort]
+    vals, idx_start, count = np.unique(sorted_records_array, return_counts=True,
+                                       return_index=True)
+
+    # sets of indices
+    res = np.split(idx_sort, idx_start[1:])
+    # filter them with respect to their size, keeping only items occurring more than once
+
+    vals = vals[count > 1]
+    res = filter(lambda x: x.size > 1, res)
+    return vals, res
+
+
+def surface_closed(faces, points):
+    """
+    tests if surface given by `points` and `faces` contains all points, is closed, and without overlaps
+
+    :param faces: np.array;
+    :param points: np.array
+    :return: bool;
+    """
+    # removing duplicite points on borders between components and/or spots
+    unique_face_vertices, inverse_face_indices = np.unique(faces, return_inverse=True)
+    # if this will not pass, there are points not included in surface
+    if (unique_face_vertices != np.arange(unique_face_vertices.shape[0])).all():
+        return False
+    points_from_uniq_vertices = points[unique_face_vertices]
+    # renormalizing unique surface points so we can round them to specific precision
+    points_from_uniq_vertices = np.round(points_from_uniq_vertices / np.max(np.abs(points_from_uniq_vertices)), 6)
+    # filtering out duplicit points on borders
+    _, inverse_point_indices = np.unique(points_from_uniq_vertices, return_inverse=True, axis=0)
+
+    # re-routing indices of duplicit vertices to index of unique point so the code below will work properly
+    vals, duplicit_idx_iterator = find_indices_of_duplicates(inverse_point_indices)
+    for duplicit_idx in duplicit_idx_iterator:
+        unique_face_vertices[duplicit_idx] = unique_face_vertices[duplicit_idx[0]]
+
+    faces = unique_face_vertices[inverse_face_indices].reshape(faces.shape)
+
+    edges = np.row_stack((np.column_stack((faces[:, 0], faces[:, 1])),
+                          np.column_stack((faces[:, 1], faces[:, 2])),
+                          np.column_stack((faces[:, 2], faces[:, 0]))))
+    for edge in edges:
+        in_array = np.isin(element=faces, test_elements=edge)
+        occurences = np.sum(in_array, axis=1)  # searching for particular edge
+        edge_is_in_count = np.sum(occurences == 2)
+        # every edge should belong to exactly two faces
+        if edge_is_in_count != 2:
+            return False
+
+    return True
+
+
 class ElisaTestCase(unittest.TestCase):
     def setUpClass(*args, **kwargs):
         reset_config()
@@ -190,7 +273,7 @@ BINARY_SYSTEM_PARAMS = {
         "primary_mass": 2.0, "secondary_mass": 1.0,
         "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
         "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
+        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 8,
         "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
@@ -219,7 +302,7 @@ BINARY_SYSTEM_PARAMS = {
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 0.6, "secondary_albedo": 0.6
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
     },  # close tidally deformed components with asynchronous rotation on eccentric orbit
 
     "over-contact": {
@@ -232,7 +315,7 @@ BINARY_SYSTEM_PARAMS = {
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 0.6, "secondary_albedo": 0.6
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
     },  # over-contact system
 
     "semi-detached": {
@@ -243,10 +326,42 @@ BINARY_SYSTEM_PARAMS = {
         "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
         "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
-        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_t_eff": 5000, "secondary_t_eff": 5100,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 0.6, "secondary_albedo": 0.6
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
     }
+}
+
+SINGLE_SYSTEM_PARAMS = {
+    "spherical": {
+        "mass": 1.0,
+        "t_eff": 5774 * units.K,
+        "gravity_darkening": 0.32,
+        "polar_log_g": 4.1,
+        "gamma": 0.0,
+        "inclination": 90.0 * units.deg,
+        "rotation_period": 30 * units.d,
+    },
+    "squashed": {
+        "mass": 1.0,
+        "t_eff": 5774 * units.K,
+        "gravity_darkening": 0.32,
+        "polar_log_g": 4.1,
+        "gamma": 0.0,
+        "inclination": 90.0 * units.deg,
+        "rotation_period": 0.3818 * units.d,
+    },
+}
+
+SOLAR_MODEL = {
+    "mass": 1.0,
+    "t_eff": 5772 * units.K,
+    "gravity_darkening": 0.32,
+    "polar_log_g": 4.43775 * units.dex(units.cm / units.s ** 2),
+    "gamma": 0.0,
+    # "inclination": 82.5 * units.deg,
+    "inclination": 90.0 * units.deg,
+    "rotation_period": 25.38 * units.d,
 }
 
 SPOTS_META = {
@@ -269,13 +384,13 @@ SPOTS_META = {
 
 SPOTS_OVERLAPPED = [
     {"longitude": 90,
-     "latitude": 58,
+     "latitude": 60,
      "angular_radius": 15,
-     "temperature_factor": 0.95},
+     "temperature_factor": 0.98},
     {"longitude": 90,
      "latitude": 58,
      "angular_radius": 25,
-     "temperature_factor": 0.95},
+     "temperature_factor": 0.99},
 ]
 
 SPOT_TO_RAISE = [
@@ -284,3 +399,33 @@ SPOT_TO_RAISE = [
      "angular_radius": 28,
      "temperature_factor": 0.1},
 ]
+
+IDENTICAL_BINARY = {
+  "system": {
+    "inclination": 80.0,
+    "period": 2.0,
+    "argument_of_periastron": 170,
+    "gamma": 0.0,
+    "eccentricity": 0.00,
+    "primary_minimum_time": 0.0,
+    "phase_shift": 0.0
+  },
+  "primary": {
+    "mass": 2.0,
+    "surface_potential": 7.0,
+    "synchronicity": 1.0,
+    "t_eff": 7000.0,
+    "gravity_darkening": 1.0,
+    "albedo": 1.0,
+    "metallicity": 0.0
+  },
+  "secondary": {
+    "mass": 2.0,
+    "surface_potential": 7.0,
+    "synchronicity": 1.0,
+    "t_eff": 7000.0,
+    "gravity_darkening": 1.0,
+    "albedo": 1.0,
+    "metallicity": 0.0
+  }
+}

@@ -50,6 +50,20 @@ def invalid_kwarg_checker(kwargs, kwarglist, instance):
                          f'List of available parameters: {", ".join(kwarglist)}')
 
 
+def invalid_param_checker(kwargs, kwarglist, message):
+    """
+
+    :param kwargs: Dict; kwargs to evaluate if are in kwarg list
+    :param kwarglist: Dict;
+    :param message: Any class
+    """
+    invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
+    if len(invalid_kwargs) > 0:
+        raise ValueError(f'Invalid keyword argument(s): {", ".join(invalid_kwargs)} '
+                         f'in {message}.\n '
+                         f'List of available parameters: {", ".join(kwarglist)}')
+
+
 def is_plane(given, expected):
     """
     Find out whether `given` plane definition of 2d plane is `expected` one. E.g. if `yx` is `yx` or `xy`
@@ -419,6 +433,21 @@ def check_missing_kwargs(mandatory_kwargs, supplied_kwargs, instance_of):
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in class instance {instance_of.__name__}')
+
+
+def check_missing_params(mandatory_kwargs, supplied_kwargs, instance):
+    """
+    Checks if all `kwargs` are all in parameter `obj` .
+    If missing raise ValuerError with missing `kwargs`.
+
+    :param mandatory_kwargs: List[str]
+    :param supplied_kwargs: List[str]
+    :param instance: class instance
+    :return:
+    """
+    missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
+    if len(missing_kwargs) > 0:
+        raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in object {instance}')
 
 
 def numeric_logg_to_string(logg):
@@ -800,8 +829,8 @@ def calculate_volume_ellipse_approx(equator_points=None, meridian_points=None):
     Function calculates volume of the object where only equator and meridian points where provided usin elipsoidal
     approximation for the points with the same x-cordinates.
 
-    :param equator_points: numpy array;
-    :param meridian_points: numpy array;
+    :param equator_points: numpy array; (yzx) column-wise
+    :param meridian_points: numpy array; (yzx) column-wise
     :return: float;
     """
     areas = up.abs(const.PI * equator_points[:, 1] * meridian_points[:, 0])
@@ -827,6 +856,20 @@ def plane_projection(points, plane, keep_3d=False):
     return in_plane
 
 
+def get_visible_projection(obj):
+    """
+    Returns yz projection of nearside points.
+
+    :param obj: instance;
+    :return: numpy.array
+    """
+    return plane_projection(
+        obj.points[
+            np.unique(obj.faces[obj.indices])
+        ], "yz"
+    )
+
+
 def split_to_batches(batch_size, array):
     """
     Split array to batches with size `batch_size`.
@@ -837,6 +880,30 @@ def split_to_batches(batch_size, array):
     """
     chunks = lambda d: (d[i:i + batch_size] for i in range(0, len(d), batch_size))
     return [chunk for chunk in chunks(array)]
+
+
+def renormalize_async_result(result):
+    """
+    Renormalize multiprocessing output to native form.
+    Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
+    computaion require dict in form like::
+
+        [{'passband': [all fluxes]}]
+
+    instead::
+
+        [[{'passband': [fluxes in batch]}], [{'passband': [fluxes in batch]}], ...]
+
+    :param result: List;
+    :return: Dict[str; numpy.array]
+    """
+    # todo: come with something more sophisticated
+    placeholder = {key: np.array([]) for key in result[-1]}
+    for record in result:
+        for passband in placeholder:
+            placeholder[passband] = record[passband] if is_empty(placeholder[passband]) else np.hstack(
+                (placeholder[passband], record[passband]))
+    return placeholder
 
 
 def random_sign():
@@ -860,5 +927,21 @@ def str_repalce(x, old, new):
     new = [new] if isinstance(new, str) else new
 
     for _old, _new in zip(old, new):
-        x = str(x).replace(_old, _new)
+        x = str(x).replace(str(_old), str(_new))
     return x
+
+
+def magnitude_to_flux(data, zero_point):
+    return np.power(10, (zero_point - data) / 2.5)
+
+
+def magnitude_error_to_flux_error(error):
+    return np.power(10, error / 2.5) - 1.0
+
+
+def flux_to_magnitude(data, zero_point):
+    return -2.5*np.log10(data) + zero_point
+
+
+def flux_error_to_magnitude_error(data, error):
+    return 2.5 * np.log10(1 + (error / data))

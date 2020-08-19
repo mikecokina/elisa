@@ -9,7 +9,7 @@ class SingleSystemProperties(SystemProperties):
         Transform and validate rotational period of star in single star system, if unit is not specified, default period
         unit is assumed
         :param value: quantity or float; rotation period
-        :return:
+        :return: float
         """
         return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)
 
