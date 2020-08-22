@@ -122,7 +122,7 @@ def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
             not utils.is_empty(spots_longitudes[component]) else np.array([])
 
         d_long = np.abs(longitude_array - np.roll(longitude_array, shift=1))[1:]
-        # creating 2*n array due to compatibility with new geometry assessment based on change in forward radius where
+        # creating 2*n array due to compatibility with new geometry assessment based on change in spot longitude where
         # both components are evaluated at once
         d_long = np.row_stack((d_long, d_long))
 

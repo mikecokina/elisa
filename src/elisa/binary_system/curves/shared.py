@@ -433,10 +433,10 @@ def produce_circ_spotty_async_curves_mp(*args):
         dynamic.resolve_spots_geometry_update(spots_longitudes, len(phases), pulsation_tests)
     combined_reducer = primary_reducer & secondary_reducer
 
-    normal_radiance, ld_cfs = dict(), dict()
     # calculating lc with spots gradually shifting their positions in each phase
     curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
     for pos_idx, orbital_position in enumerate(motion_batch):
+        print(np.round(orbital_position.phase, 2))
         initial_system.set_on_position_params(position=orbital_position)
         initial_system.time = initial_system.set_time()
         # setup component necessary to build/rebuild
@@ -462,16 +462,27 @@ def produce_circ_spotty_async_curves_mp(*args):
         # build the rest of the surface based on preset surface points
         initial_system.build_from_points(components_distance=orbital_position.distance, component=require_build)
 
+        # initial_system.build(components_distance=orbital_position.distance, component='all')
+
         on_pos = butils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
 
-        # if None of components has to be rebuilded, use previously compyted radiances and limbdarkening when available
-        if utils.is_empty(normal_radiance) or not utils.is_empty(require_build):
-            normal_radiance, ld_cfs = prep_surface_params(on_pos, **kwargs)
+        # if None of components has to be rebuilt, use previously computed radiances and limbdarkening when available
+        if require_build is not None:
+            normal_radiance, ld_cfs = \
+                prep_surface_params(on_pos, return_values=True, write_to_containers=True, **kwargs)
+        else:
+            for component in config.BINARY_COUNTERPARTS.keys():
+                star = getattr(on_pos, component)
+                setattr(star, 'normal_radiance', normal_radiance[component])
+                setattr(star, 'ld_cfs', ld_cfs[component])
 
-        coverage, cosines = surface.coverage.calculate_coverage_with_cosines(
-            on_pos, on_pos.semi_major_axis, in_eclipse=in_eclipse[pos_idx])
+        # print(np.sum(on_pos.primary.temperatures * on_pos.primary.areas) / np.sum(on_pos.primary.areas))
+        print(np.sum(normal_radiance['primary']['Generic.Bessell.V'] * on_pos.p rimary.areas) / np.sum(on_pos.primary.areas))
 
-        curves = curve_fn(curves, pos_idx, crv_labels, ld_cfs, normal_radiance, coverage, cosines)
+        surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
+                                                  return_values=False, write_to_containers=True)
+
+        curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
 
     return curves
 

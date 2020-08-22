@@ -36,6 +36,23 @@ def compute_circ_sync_lc_on_pos(band_curves, pos_idx, crv_labels, system):
     return band_curves
 
 
+def compute_circ_spotty_async_lc_at_pos(band_curves, pos_idx, crv_labels, system):
+    """
+    Calculates lc points for given orbital position in case of circular orbit and asynchronous rotation with spots.
+
+    :param band_curves: Dict; {str; passband : numpy.array; light curve, ...}
+    :param pos_idx: int; position in `band_curves` to which calculated lc points will be assigned
+    :param crv_labels: list; list of passbands
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :return: Dict; updated {str; passband : numpy.array; light curve, ...}
+    """
+    for band in crv_labels:
+        # band_curves[band][pos_idx] = shared._calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
+        band_curves[band][pos_idx] = shared.calculate_lc_point(band, system)
+
+    return band_curves
+
+
 def integrate_eccentric_lc_exactly(*args):
     binary, motion_batch, potentials, kwargs = args
     band_curves = {key: np.empty(len(motion_batch)) for key in kwargs["passband"]}
@@ -55,23 +72,4 @@ def integrate_eccentric_lc_exactly(*args):
 
         for band in kwargs["passband"]:
             band_curves[band][run_idx] = shared._calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
-    return band_curves
-
-
-def compute_circ_spotty_async_lc_at_pos(band_curves, pos_idx, crv_labels, ld_cfs, normal_radiance, coverage, cosines):
-    """
-    Calculates lc points for given orbital position in case of circular orbit and asynchronous rotation with spots.
-
-    :param band_curves: Dict; {str; passband : numpy.array; light curve, ...}
-    :param pos_idx: int; position in `band_curves` to which calculated lc points will be assigned
-    :param crv_labels: list; list of passbands
-    :param ld_cfs: Dict; {str; component: {passband: np.array; ld_coefficients}}
-    :param normal_radiance: Dict; {str; component: numpy.array; normal radiances for each surface element}
-    :param coverage: Dict; {str; component: numpy.array; visible areas for each surface element}
-    :param cosines: Dict; {str; component: numpy.array; angles between line_of_sight and surface element normals}
-    :return: Dict; updated {str; passband : numpy.array; light curve, ...}
-    """
-    for band in crv_labels:
-        band_curves[band][pos_idx] = shared._calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
-
     return band_curves
