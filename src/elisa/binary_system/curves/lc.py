@@ -16,7 +16,6 @@ from ...binary_system.orbit.container import OrbitalSupplements
 from ...binary_system.surface.coverage import calculate_coverage_with_cosines
 from ...binary_system.curves import lcmp, shared
 from elisa.observer.mp import manage_observations
-from elisa import atm
 
 from ... import (
     umpy as up,
@@ -296,11 +295,32 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
 
+    lc_labels = list(kwargs["passband"].keys())
+
     band_curves = shared.produce_circ_sync_curves(binary, initial_system, unique_phase_interval,
-                                                  lcmp.compute_circular_synchronous_lightcurve, **kwargs)
+                                                  lcmp.compute_circ_sync_lc_on_pos, lc_labels, **kwargs)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
     return band_curves
+
+
+def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
+    """
+    Function returns light curve of assynchronous systems with circular orbits and spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
+    :return: Dict; fluxes for each filter
+    """
+    lc_labels = list(kwargs["passband"].keys())
+
+    return shared.produce_circ_spotty_async_curves(binary, lcmp.compute_circ_spotty_async_lc_at_pos,
+                                                   lc_labels, **kwargs)
 
 
 def compute_eccentric_lightcurve(binary, **kwargs):
@@ -405,10 +425,10 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
         coverage_m, cosines_m = calculate_coverage_with_cosines(on_pos_mirror, binary.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"].keys():
-            band_curves_body[band].append(shared.calculate_lc_point(band, ld_cfs, normal_radiance,
-                                                                    coverage_b, cosines_b))
-            band_curves_mirror[band].append(shared.calculate_lc_point(band, ld_cfs, normal_radiance,
-                                                                      coverage_m, cosines_m))
+            band_curves_body[band].append(shared._calculate_lc_point(band, ld_cfs, normal_radiance,
+                                                                     coverage_b, cosines_b))
+            band_curves_mirror[band].append(shared._calculate_lc_point(band, ld_cfs, normal_radiance,
+                                                                       coverage_m, cosines_m))
 
     # interpolation of the points in the second half of the light curves using splines
     x = up.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4] % 1))
@@ -458,7 +478,7 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
         :return:
         """
         for band in kwargs["passband"]:
-            band_curves[band][int(orbital_position.idx)] = shared.calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
+            band_curves[band][int(orbital_position.idx)] = shared._calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
 
     # array `used_phases` is used to check, whether flux on given phase was already computed
     # orbital supplementes tolarance test can lead
@@ -542,47 +562,7 @@ def _integrate_eccentric_lc_appx_three(binary, phases, orbital_positions, new_ge
         cvrg, csns = calculate_coverage_with_cosines(on_pos_body, on_pos_body.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"]:
-            band_curves[band][int(orbital_position.idx)] = shared.calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
-
-    return band_curves
-
-
-def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
-    """
-    Function returns light curve of assynchronous systems with circular orbits and spots.
-
-    :param binary: elisa.binary_system.system.BinarySystem;
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** * - float
-        * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
-    :return: Dict; fluxes for each filter
-    """
-    phases = kwargs.pop("phases")
-    position_method = kwargs.pop("position_method")
-    orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
-    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
-
-    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
-    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
-
-    points = dict()
-    for component in config.BINARY_COUNTERPARTS:
-        star = getattr(initial_system, component)
-        _a, _b, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
-        points[component] = _a
-        setattr(star, "points", copy(_a))
-        setattr(star, "point_symmetry_vector", _b)
-        setattr(star, "base_symmetry_points_number", _c)
-        setattr(star, "inverse_point_symmetry_matrix", _d)
-
-    fn_args = binary, initial_system, points, ecl_boundaries
-    band_curves = manage_observations(fn=lcmp.compute_circular_spotty_asynchronous_lightcurve,
-                                      fn_args=fn_args,
-                                      position=orbital_motion,
-                                      **kwargs)
+            band_curves[band][int(orbital_position.idx)] = shared._calculate_lc_point(band, ldc, n_radiance, cvrg, csns)
 
     return band_curves
 
@@ -621,6 +601,6 @@ def compute_eccentric_spotty_lightcurve(binary, **kwargs):
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"]:
-            band_curves[band][pos_idx] = shared.calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
+            band_curves[band][pos_idx] = shared._calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
 
     return band_curves

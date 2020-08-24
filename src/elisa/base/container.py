@@ -177,6 +177,14 @@ class PositionContainer(object):
         # recovering indices of points on near-side (from the point of view of observer)
         return up.arange(np.shape(cosines)[0])[cosines > 0]
 
+    def copy(self):
+        """
+        Return deepcopy of PositionContainer instance.
+
+        :return: elisa.base.container.PositionContainer;
+        """
+        return deepcopy(self)
+
 
 class StarContainer(object):
     """
@@ -294,7 +302,10 @@ class StarContainer(object):
                  face_centres=None,
                  metallicity=None,
                  areas=None,
-                 potential_gradient_magnitudes=None):
+                 potential_gradient_magnitudes=None,
+                 ld_cfs=None,
+                 normal_radiance=None,
+                 los_cosines=None):
 
         self.points = points
         self.normals = normals
@@ -309,6 +320,9 @@ class StarContainer(object):
         self.metallicity = metallicity
         self.areas = areas
         self.potential_gradient_magnitudes = potential_gradient_magnitudes
+        self.ld_cfs = ld_cfs
+        self.normal_radiance = normal_radiance
+        self.los_cosines = los_cosines
 
         self.point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])

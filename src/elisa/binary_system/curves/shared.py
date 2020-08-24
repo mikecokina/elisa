@@ -1,11 +1,14 @@
 import numpy as np
+from copy import copy
 
 from elisa.conf import config
-from elisa import atm, ld, const
+from elisa import atm, ld, const, utils
 from elisa.observer.passband import init_bolometric_passband
 from elisa.logger import getLogger
 from elisa.binary_system import (
     utils as butils,
+    dynamic,
+    surface
 )
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.observer.mp import manage_observations
@@ -99,11 +102,13 @@ def get_normal_radiance(system, component="all", **kwargs):
     return retval
 
 
-def prep_surface_params(system, **kwargs):
+def prep_surface_params(system, return_values=True, write_to_containers=False, **kwargs):
     """
     Prepares normal radiances and limb darkening coefficients variables.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param return_values: bool; return normal radiances and limb darkening coefficients
+    :param write_to_containers: bool; calculated values will be assigned to `system` container
     :param kwargs: Dict;
     :**kwargs options**:
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
@@ -132,10 +137,55 @@ def prep_surface_params(system, **kwargs):
         bol_ld_cfs = get_limbdarkening_cfs(system, **bol_kwargs)
 
     normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, bol_ld_cfs)
-    return normal_radiance, ld_cfs
+
+    if write_to_containers:
+        for component in config.BINARY_COUNTERPARTS.keys():
+            star = getattr(system, component)
+            setattr(star, 'normal_radiance', normal_radiance[component])
+            setattr(star, 'ld_cfs', ld_cfs[component])
+
+    return normal_radiance, ld_cfs if return_values else None
 
 
-def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
+def flux_from_star_container(band, star):
+    """
+    Function generates outgoing flux from given star container in certain band.
+
+    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
+    :param band: str; name of the photometric band compatibile with supported names in config
+    :return:
+    """
+    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+    indices = getattr(star, 'indices')
+    radiance = getattr(star, 'normal_radiance')[band][indices]
+    ld_cfs = getattr(star, 'ld_cfs')[band][ld_law_cfs_columns].values[indices]
+    cosines = getattr(star, 'los_cosines')[indices]
+    coverage = getattr(star, 'coverage')[indices]
+
+    ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs,
+                                       limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                       cos_theta=cosines)
+
+    return np.sum(radiance * cosines * coverage * ld_cors)
+
+
+def calculate_lc_point(band, system):
+    """
+    Calculates point on the light curve for given band.
+
+    :param band: str; name of the photometric band compatibile with supported names in config
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :return: float;
+    """
+    flux = 0.0
+    for component in config.BINARY_COUNTERPARTS.keys():
+        star = getattr(system, component)
+        flux += flux_from_star_container(band, star)
+
+    return flux
+
+
+def _calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
     """
     Calculates point on the light curve for given band.
 
@@ -161,6 +211,21 @@ def calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
 
     flux = (flux['primary'] + flux['secondary'])
     return flux
+
+
+def calculate_rv_point(star):
+    """
+    Calculates point on the rv curve for given component.
+
+    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
+    :return: Union[numpy.float, numpy.nan];
+    """
+    indices = getattr(star, 'indices')
+    velocities = getattr(star, 'velocities')[indices]
+
+    flux = flux_from_star_container('rv_band', star)
+
+    return np.sum(velocities[:, 0] * flux) / np.sum(flux) if np.sum(flux) != 0 else np.NaN
 
 
 def resolve_curve_method(system, fn_array):
@@ -218,7 +283,7 @@ def prep_initial_system(binary):
     return initial_system
 
 
-def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, **kwargs):
+def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, crv_labels, **kwargs):
     """
     Auxiliary function to produce curve from circular synchronous binary system
 
@@ -226,6 +291,7 @@ def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, **kwargs)
     :param initial_system: elisa.binary_system.container.OrbitalPositionContainer
     :param phases: numpy.array
     :param curve_fn: function to calculate given type of the curve
+    :param crv_labels: labels of the calculated curves (passbands, components,...)
     :param kwargs: Dict;
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
@@ -235,12 +301,179 @@ def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, **kwargs)
             * ** phases ** * - numpy.array
     :return: dict; calculated curves
     """
-    normal_radiance, ld_cfs = prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
-    fn_args = (binary, initial_system, normal_radiance, ld_cfs)
-    curves = manage_observations(fn=curve_fn,
+    prep_surface_params(initial_system.flatt_it(), return_values=False, write_to_containers=True, **kwargs)
+
+    fn_args = (binary, initial_system, crv_labels, curve_fn)
+
+    curves = manage_observations(fn=produce_circ_sync_curves_mp,
                                  fn_args=fn_args,
                                  position=phases,
                                  **kwargs)
 
     return curves
+
+
+def produce_circ_sync_curves_mp(*args):
+    """
+    Curve generator function for circular synchronous systems.
+
+    :param args: Tuple;
+
+    ::
+
+        Tuple[
+                binary: elisa.binary_system.BinarySystem,
+                initial_system: elisa.binary_system.container.OrbitalPositionContainer, system container with built
+                geometry
+                phase_batch: numpy.array; phases at which to calculate curves,
+                normal_radiance: Dict; {component: numpy.array; normal radiances for each surface element},
+                ld_cfs: Dict;
+                crv_labels: List;
+                curves_fn: function to calculate curve points at given orbital positions,
+                kwargs: Dict,
+            ]
+    :return:
+    """
+    binary, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
+
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(input_argument=phase_batch, return_nparray=False, calculate_from='phase')
+    # is in eclipse test eval
+    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
+    azimuths = [position.azimuth for position in orbital_motion]
+    in_eclipse = dynamic.in_eclipse_test(azimuths, ecl_boundaries)
+
+    curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
+
+    for pos_idx, position in enumerate(orbital_motion):
+        on_pos = butils.move_sys_onpos(initial_system, position)
+
+        surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
+                                                  return_values=False, write_to_containers=True)
+
+        curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
+
+    return curves
+
+
+def produce_circ_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
+    """
+    Function returns curve of assynchronous systems with circular orbits and spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param curve_fn: curve function
+    :param crv_labels: labels of the calculated curves (passbands, components,...)
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa .observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
+    :return: Dict; fluxes for each filter
+    """
+    phases = kwargs.pop("phases")
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
+    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
+
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
+    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
+
+    points = dict()
+    for component in config.BINARY_COUNTERPARTS:
+        star = getattr(initial_system, component)
+        _a, _b, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
+        points[component] = _a
+        setattr(star, "points", copy(_a))
+        setattr(star, "point_symmetry_vector", _b)
+        setattr(star, "base_symmetry_points_number", _c)
+        setattr(star, "inverse_point_symmetry_matrix", _d)
+
+    fn_args = binary, initial_system, points, ecl_boundaries, crv_labels, curve_fn
+
+    band_curves = manage_observations(fn=produce_circ_spotty_async_curves_mp,
+                                      fn_args=fn_args,
+                                      position=orbital_motion,
+                                      **kwargs)
+
+    return band_curves
+
+
+def produce_circ_spotty_async_curves_mp(*args):
+    """
+    Curve generator function for circular asynchronous spotty systems.
+
+    :param args: Tuple;
+
+    ::
+
+        Tuple[
+                binary: elisa.binary_system.BinarySystem,
+                initial_system: elisa.binary_system.container.OrbitalPositionContainer, system container with built
+                geometry: surface points of a clean system
+                phase_batch: numpy.array; phases at which to calculate curves,
+                ecl_boundaries: boundaries for both eclipses
+                crv_labels: List;
+                curves_fn: function to calculate curve points at given orbital positions,
+                kwargs: Dict,
+            ]
+
+    :return:
+    """
+    binary, initial_system, motion_batch, base_points, ecl_boundaries, crv_labels, curve_fn, kwargs = args
+
+    # pre-calculate the longitudes of each spot for each phase
+    phases = np.array([val.phase for val in motion_batch])
+    in_eclipse = dynamic.in_eclipse_test([position.azimuth for position in motion_batch], ecl_boundaries)
+    spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all", correct_libration=False)
+    pulsation_tests = {'primary': binary.primary.has_pulsations(),
+                       'secondary': binary.secondary.has_pulsations()}
+    primary_reducer, secondary_reducer = \
+        dynamic.resolve_spots_geometry_update(spots_longitudes, len(phases), pulsation_tests)
+    combined_reducer = primary_reducer & secondary_reducer
+
+    normal_radiance, ld_cfs = dict(), dict()
+    # calculating lc with spots gradually shifting their positions in each phase
+    curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
+    for pos_idx, orbital_position in enumerate(motion_batch):
+        initial_system.set_on_position_params(position=orbital_position)
+        initial_system.time = initial_system.set_time()
+        # setup component necessary to build/rebuild
+
+        require_build = "all" if combined_reducer[pos_idx] \
+            else "primary" if primary_reducer[pos_idx] \
+            else "secondary" if secondary_reducer[pos_idx] \
+            else None
+
+        # use clear system surface points as a starting place to save a time
+        # if reducers for related component is set to False, previous build will be used
+
+        if primary_reducer[pos_idx]:
+            initial_system.primary.points = copy(base_points['primary'])
+        if secondary_reducer[pos_idx]:
+            initial_system.secondary.points = copy(base_points['secondary'])
+
+        # assigning new longitudes for each spot
+        dynamic.assign_spot_longitudes(initial_system, spots_longitudes, index=pos_idx, component="all")
+
+        # build the spots points
+        surface.mesh.add_spots_to_mesh(initial_system, orbital_position.distance, component=require_build)
+        # build the rest of the surface based on preset surface points
+        initial_system.build_from_points(components_distance=orbital_position.distance, component=require_build)
+
+        on_pos = butils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
+
+        # if None of components has to be rebuilded, use previously compyted radiances and limbdarkening when available
+        if utils.is_empty(normal_radiance) or not utils.is_empty(require_build):
+            normal_radiance, ld_cfs = prep_surface_params(on_pos, **kwargs)
+
+        coverage, cosines = surface.coverage.calculate_coverage_with_cosines(
+            on_pos, on_pos.semi_major_axis, in_eclipse=in_eclipse[pos_idx])
+
+        curves = curve_fn(curves, pos_idx, crv_labels, ld_cfs, normal_radiance, coverage, cosines)
+
+    return curves
+
+
+

@@ -122,20 +122,17 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
         :return: Dict[str, numpy.array];
         """
     initial_system = shared.prep_initial_system(binary)
+    rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
     return shared.produce_circ_sync_curves(binary, initial_system, kwargs.pop("phases"),
-                                           rvmp.compute_circular_synchronous_rv, **kwargs)
+                                           rvmp.compute_circ_sync_rv_at_pos, rv_labels, **kwargs)
 
 
 def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
-    phases = kwargs.pop("phases")
-    position_method = kwargs.pop("position_method")
+    rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
-    orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
-    ecl_boundaries = dynamic.get_eclipse_boundaries(binary, 1.0)
-
-    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
-    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
+    return shared.produce_circ_spotty_async_curves(binary, rvmp.compute_circ_spotty_async_rv_at_pos,
+                                                   rv_labels, **kwargs)
 
 
 def compute_eccentric_spotty_rv_curve(binary, **kwargs):
