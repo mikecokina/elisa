@@ -926,19 +926,19 @@ class BinarySystem(System):
         """
         is_circular = self.eccentricity == 0
         is_eccentric = 1 > self.eccentricity > 0
-        assynchronous_spotty_p = self.primary.synchronicity != 1 and self.primary.has_spots()
-        assynchronous_spotty_s = self.secondary.synchronicity != 1 and self.secondary.has_spots()
-        assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
+        asynchronous_spotty_p = self.primary.synchronicity != 1 and self.primary.has_spots()
+        asynchronous_spotty_s = self.secondary.synchronicity != 1 and self.secondary.has_spots()
+        asynchronous_spotty_test = asynchronous_spotty_p or asynchronous_spotty_s
 
         spotty_test_eccentric = self.primary.has_spots() or self.secondary.has_spots()
 
         if is_circular:
-            if not assynchronous_spotty_test and not self.has_pulsations():
+            if not asynchronous_spotty_test and not self.has_pulsations():
                 logger.debug('Calculating lightcurve for circular binary system without pulsations and without '
-                             'assynchronous spotty components.')
+                             'asynchronous spotty components.')
                 return self._compute_circular_synchronous_lightcurve(**kwargs)
             else:
-                logger.debug('Calculating lightcurve for circular binary system with pulsations or with assynchronous '
+                logger.debug('Calculating lightcurve for circular binary system with pulsations or with asynchronous '
                              'spotty components.')
                 return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
         elif is_eccentric:

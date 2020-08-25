@@ -240,14 +240,14 @@ class Observer(object):
             reverse_indices: ndarray mask applicable to `base_phases` which will reconstruct original `phases`
         """
         if self._system_cls == BinarySystem or str(self._system_cls) == str(BinarySystem):
-            # function shouldn't search for base phases if system has pulsations or is assynchronous with spots
+            # function shouldn't search for base phases if system has pulsations or is asynchronous with spots
             has_pulsation_test = self._system.primary.has_pulsations() | self._system.secondary.has_pulsations()
 
             test1 = (self._system.primary.synchronicity != 1.0) & self._system.primary.has_spots()
             test2 = (self._system.secondary.synchronicity != 1.0) & self._system.secondary.has_spots()
-            assynchronous_spotty_test = test1 | test2
+            asynchronous_spotty_test = test1 | test2
 
-            if has_pulsation_test | assynchronous_spotty_test:
+            if has_pulsation_test | asynchronous_spotty_test:
                 return phases, up.arange(phases.shape[0])
             else:
                 base_interval = np.round(phases % 1, 9)

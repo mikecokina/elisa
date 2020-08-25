@@ -55,7 +55,7 @@ class Animation(object):
         orbital_motion = \
             self.binary.calculate_orbital_motion(input_argument=phases, return_nparray=False, calculate_from='phase')
 
-        # in case of assynchronous component rotation and spots, the positions of spots are recalculated
+        # in case of asynchronous component rotation and spots, the positions of spots are recalculated
         spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phases, component="all")
         potentials = self.binary.correct_potentials(phases, component="all", iterations=2)
 

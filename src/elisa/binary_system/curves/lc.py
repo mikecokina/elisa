@@ -100,17 +100,14 @@ def _look_for_approximation(not_pulsations_test):
         and not_pulsations_test
 
 
-def _eval_approximation_one(binary, phases, phases_span_test):
+def _eval_approximation_one(phases, phases_span_test):
     """
     Test if it is appropriate to compute eccentric binary system with approximation approximation one.
 
-    :param binary: elisa.binary_system.system.BinarySystem;
     :param phases: numpy.array;
     :return: bool;
     """
-    if len(phases) > config.POINTS_ON_ECC_ORBIT and phases_span_test:
-        return True
-    return False
+    return len(phases) > config.POINTS_ON_ECC_ORBIT and phases_span_test
 
 
 def _eval_approximation_two(rel_d, phases_span_test):
@@ -124,9 +121,7 @@ def _eval_approximation_two(rel_d, phases_span_test):
     # That means that also radii `rel_d` computed from such values have to be already sorted by
     # their own size (forward radius changes based on components distance and it is monotonic function)
 
-    if np.max(rel_d[:, 1:]) < config.MAX_RELATIVE_D_R_POINT and phases_span_test:
-        return True
-    return False
+    return np.max(rel_d[:, 1:]) < config.MAX_RELATIVE_D_R_POINT and phases_span_test
 
 
 def _split_orbit_by_apse_line(orbital_motion, orbital_mask):
@@ -225,7 +220,7 @@ def _resolve_ecc_approximation_method(binary, phases, position_method, try_to_fi
                                                                        new_geometry_mask, **kwargs)
 
     # APPX ONE *********************************************************************************************************
-    appx_one = _eval_approximation_one(binary, phases, phases_span_test)
+    appx_one = _eval_approximation_one(phases, phases_span_test)
 
     if appx_one:
         orbital_supplements = OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
@@ -552,7 +547,7 @@ def _integrate_eccentric_lc_appx_three(binary, phases, orbital_positions, new_ge
 
 def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     """
-    Function returns light curve of assynchronous systems with circular orbits and spots.
+    Function returns light curve of asynchronous systems with circular orbits and spots.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param kwargs: Dict;
@@ -592,7 +587,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
 
 def compute_eccentric_spotty_lightcurve(binary, **kwargs):
     """
-    Function returns light curve of assynchronous systems with eccentric orbits and spots.
+    Function returns light curve of asynchronous systems with eccentric orbits and spots.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param kwargs: Dict; kwargs taken from BinarySystem `compute_lightcurve` function

@@ -19,6 +19,7 @@ from elisa.binary_system import (
 
 
 def compute_circular_synchronous_lightcurve(*args):
+    # fixme: kwargs has to be passed as kwargs not in args, it makes no sense
     binary, initial_system, phase_batch, normal_radiance, ld_cfs, kwargs = args
 
     position_method = kwargs.pop("position_method")
@@ -38,7 +39,7 @@ def compute_circular_synchronous_lightcurve(*args):
         coverage = surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis,
                                                              in_eclipse=in_eclipse[pos_idx])
 
-        # calculating cosines between face normals and line of sight
+        # obtaining cosines between face normals and line of sight
         cosines, visibility_indices = dict(), dict()
         for component, star in stars.items():
             cosines[component] = star.los_cosines
@@ -136,7 +137,7 @@ def compute_circular_spotty_asynchronous_lightcurve(*args):
 
         on_pos = bsutils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
 
-        # if None of components has to be rebuilded, use previously compyted radiances and limbdarkening when available
+        # if None of components has to be rebuilded, use previously computed radiances and limbdarkening when available
         if utils.is_empty(normal_radiance) or not utils.is_empty(require_build):
             normal_radiance, ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
 
