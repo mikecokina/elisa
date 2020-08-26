@@ -161,7 +161,13 @@ Future plans
 
 v0.4
 ----
-    - pulsations
+
+**Release date:** ????-??-??
+
+**Enhancements**
+
+**Fixes**
+
 
 v0.5
 ----
