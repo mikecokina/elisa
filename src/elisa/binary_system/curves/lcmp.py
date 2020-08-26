@@ -47,7 +47,6 @@ def compute_circ_spotty_async_lc_at_pos(band_curves, pos_idx, crv_labels, system
     :return: Dict; updated {str; passband : numpy.array; light curve, ...}
     """
     for band in crv_labels:
-        # band_curves[band][pos_idx] = shared._calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
         band_curves[band][pos_idx] = shared.calculate_lc_point(band, system)
 
     return band_curves

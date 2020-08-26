@@ -13,6 +13,7 @@ from elisa.binary_system import (
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.observer.mp import manage_observations
 
+
 logger = getLogger('binary_system.curves.shared')
 
 
@@ -96,8 +97,8 @@ def get_normal_radiance(system, component="all", **kwargs):
     # mirroring symmetrical part back to the rest of the surface
     for cpmnt in components:
         if symmetry_test[cpmnt]:
-            retval[cpmnt] = {filter: vals[getattr(system, cpmnt).face_symmetry_vector] for
-                             filter, vals in retval[cpmnt].items()}
+            retval[cpmnt] = {fltr: vals[getattr(system, cpmnt).face_symmetry_vector] for
+                             fltr, vals in retval[cpmnt].items()}
 
     return retval
 
@@ -147,13 +148,13 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
     return normal_radiance, ld_cfs if return_values else None
 
 
-def flux_from_star_container(band, star):
+def calculate_surface_element_fluxes(band, star):
     """
-    Function generates outgoing flux from given star container in certain band.
+        Function generates outgoing flux from each surface element of given star container in certain band.
 
-    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
-    :param band: str; name of the photometric band compatibile with supported names in config
-    :return:
+        :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
+        :param band: str; name of the photometric band compatibile with supported names in config
+        :return: numpy.array
     """
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
     indices = getattr(star, 'indices')
@@ -166,7 +167,19 @@ def flux_from_star_container(band, star):
                                        limb_darkening_law=config.LIMB_DARKENING_LAW,
                                        cos_theta=cosines)
 
-    return np.sum(radiance * cosines * coverage * ld_cors)
+    return radiance * cosines * coverage * ld_cors
+
+
+def flux_from_star_container(band, star):
+    """
+    Function generates outgoing flux from given star container in certain band.
+
+    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
+    :param band: str; name of the photometric band compatibile with supported names in config
+    :return:
+    """
+
+    return np.sum(calculate_surface_element_fluxes(band, star))
 
 
 def calculate_lc_point(band, system):
@@ -223,9 +236,9 @@ def calculate_rv_point(star):
     indices = getattr(star, 'indices')
     velocities = getattr(star, 'velocities')[indices]
 
-    flux = flux_from_star_container('rv_band', star)
+    fluxes = calculate_surface_element_fluxes('rv_band', star)
 
-    return np.sum(velocities[:, 0] * flux) / np.sum(flux) if np.sum(flux) != 0 else np.NaN
+    return np.sum(velocities[:, 0] * fluxes) / np.sum(fluxes) if np.sum(fluxes) != 0 else np.NaN
 
 
 def resolve_curve_method(system, fn_array):
@@ -435,8 +448,8 @@ def produce_circ_spotty_async_curves_mp(*args):
 
     # calculating lc with spots gradually shifting their positions in each phase
     curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
+    normal_radiance, ld_cfs = None, None
     for pos_idx, orbital_position in enumerate(motion_batch):
-        print(np.round(orbital_position.phase, 2))
         initial_system.set_on_position_params(position=orbital_position)
         initial_system.time = initial_system.set_time()
         # setup component necessary to build/rebuild
@@ -462,8 +475,6 @@ def produce_circ_spotty_async_curves_mp(*args):
         # build the rest of the surface based on preset surface points
         initial_system.build_from_points(components_distance=orbital_position.distance, component=require_build)
 
-        # initial_system.build(components_distance=orbital_position.distance, component='all')
-
         on_pos = butils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
 
         # if None of components has to be rebuilt, use previously computed radiances and limbdarkening when available
@@ -476,15 +487,9 @@ def produce_circ_spotty_async_curves_mp(*args):
                 setattr(star, 'normal_radiance', normal_radiance[component])
                 setattr(star, 'ld_cfs', ld_cfs[component])
 
-        # print(np.sum(on_pos.primary.temperatures * on_pos.primary.areas) / np.sum(on_pos.primary.areas))
-        print(np.sum(normal_radiance['primary']['Generic.Bessell.V'] * on_pos.p rimary.areas) / np.sum(on_pos.primary.areas))
-
         surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
                                                   return_values=False, write_to_containers=True)
 
         curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
 
     return curves
-
-
-
