@@ -1,7 +1,10 @@
 import numpy as np
 
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.binary_system.curves import curves
+from elisa.binary_system.curves import (
+    curves,
+    utils as crv_utils
+)
 from elisa.binary_system import (
     utils as bsutils,
     surface
@@ -54,7 +57,7 @@ def integrate_eccentric_lc_exactly(*args):
                                       potentials["secondary"][pos_idx])
         on_pos.build(components_distance=position.distance)
 
-        normal_radiance, ld_cfs = curves.prep_surface_params(on_pos, **kwargs)
+        normal_radiance, ld_cfs = crv_utils.prep_surface_params(on_pos, **kwargs)
         on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
         coverage, cosines = surface.coverage.calculate_coverage_with_cosines(on_pos, binary.semi_major_axis,
                                                                              in_eclipse=True)

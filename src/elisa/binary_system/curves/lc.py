@@ -14,7 +14,11 @@ from ...binary_system.container import OrbitalPositionContainer
 from ...binary_system import radius as bsradius
 from ...binary_system.orbit.container import OrbitalSupplements
 from ...binary_system.surface.coverage import calculate_coverage_with_cosines
-from ...binary_system.curves import lcmp, curves
+from ...binary_system.curves import (
+    lcmp,
+    curves,
+    utils as crv_utils
+)
 from elisa.observer.mp import manage_observations
 
 from ... import (
@@ -39,7 +43,7 @@ def _onpos_params(on_pos, **kwargs):
     :param on_pos: elisa.binary_system.container.OrbitalPositionContainer;
     :return: Tuple;
     """
-    _normal_radiance, _ld_cfs = curves.prep_surface_params(on_pos, **kwargs)
+    _normal_radiance, _ld_cfs = crv_utils.prep_surface_params(on_pos, **kwargs)
 
     _coverage, _cosines = calculate_coverage_with_cosines(on_pos, on_pos.semi_major_axis, in_eclipse=True)
     return _normal_radiance, _ld_cfs, _coverage, _cosines
@@ -419,7 +423,7 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
         on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos)
 
         if require_geometry_rebuild:
-            normal_radiance, ld_cfs = curves.prep_surface_params(on_pos_body, **kwargs)
+            normal_radiance, ld_cfs = crv_utils.prep_surface_params(on_pos_body, **kwargs)
 
         coverage_b, cosines_b = calculate_coverage_with_cosines(on_pos_body, binary.semi_major_axis, in_eclipse=True)
         coverage_m, cosines_m = calculate_coverage_with_cosines(on_pos_mirror, binary.semi_major_axis, in_eclipse=True)
@@ -558,7 +562,7 @@ def _integrate_eccentric_lc_appx_three(binary, phases, orbital_positions, new_ge
 
         # recalculating normal radiances only for new geometry
         if require_geometry_rebuild:
-            n_radiance, ldc = curves.prep_surface_params(on_pos_body, **kwargs)
+            n_radiance, ldc = crv_utils.prep_surface_params(on_pos_body, **kwargs)
         cvrg, csns = calculate_coverage_with_cosines(on_pos_body, on_pos_body.semi_major_axis, in_eclipse=True)
 
         for band in kwargs["passband"]:
@@ -596,7 +600,7 @@ def compute_eccentric_spotty_lightcurve(binary, **kwargs):
         on_pos.set_on_position_params(position, potentials['primary'][pos_idx], potentials['secondary'][pos_idx])
         on_pos.build(components_distance=position.distance)
         on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
-        normal_radiance, ld_cfs = curves.prep_surface_params(on_pos, **kwargs)
+        normal_radiance, ld_cfs = crv_utils.prep_surface_params(on_pos, **kwargs)
 
         coverage, cosines = calculate_coverage_with_cosines(on_pos, binary.semi_major_axis, in_eclipse=True)
 
