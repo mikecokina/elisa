@@ -28,9 +28,9 @@ def calculate_lc_point(band, system):
     return flux
 
 
-def compute_circ_sync_lc_on_pos(band_curves, pos_idx, crv_labels, system):
+def compute_circ_lc_on_pos(band_curves, pos_idx, crv_labels, system):
     """
-    Calculates lc points for given orbital position in case of circular orbit and synchronous rotation.
+    Calculates lc points for given orbital position in case of circular orbit.
 
     :param band_curves: Dict; {str; passband : numpy.array; light curve, ...} result will be written to the
                               corresponding `pos_idx` position
@@ -40,22 +40,6 @@ def compute_circ_sync_lc_on_pos(band_curves, pos_idx, crv_labels, system):
     :return: Dict; updated {str; passband : numpy.array; light curve, ...}
     """
     # integrating resulting flux
-    for band in crv_labels:
-        band_curves[band][pos_idx] = calculate_lc_point(band, system)
-
-    return band_curves
-
-
-def compute_circ_spotty_async_lc_at_pos(band_curves, pos_idx, crv_labels, system):
-    """
-    Calculates lc points for given orbital position in case of circular orbit and asynchronous rotation with spots.
-
-    :param band_curves: Dict; {str; passband : numpy.array; light curve, ...}
-    :param pos_idx: int; position in `band_curves` to which calculated lc points will be assigned
-    :param crv_labels: list; list of passbands
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :return: Dict; updated {str; passband : numpy.array; light curve, ...}
-    """
     for band in crv_labels:
         band_curves[band][pos_idx] = calculate_lc_point(band, system)
 

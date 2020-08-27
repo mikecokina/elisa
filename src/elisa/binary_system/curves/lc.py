@@ -302,7 +302,7 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     lc_labels = list(kwargs["passband"].keys())
 
     band_curves = curves.produce_circ_sync_curves(binary, initial_system, unique_phase_interval,
-                                                  lcmp.compute_circ_sync_lc_on_pos, lc_labels, **kwargs)
+                                                  lcmp.compute_circ_lc_on_pos, lc_labels, **kwargs)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
     return band_curves
@@ -323,7 +323,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     """
     lc_labels = list(kwargs["passband"].keys())
 
-    return curves.produce_circ_spotty_async_curves(binary, lcmp.compute_circ_spotty_async_lc_at_pos,
+    return curves.produce_circ_spotty_async_curves(binary, lcmp.compute_circ_lc_on_pos,
                                                    lc_labels, **kwargs)
 
 
