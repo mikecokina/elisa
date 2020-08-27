@@ -31,26 +31,18 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
         * ** atlas ** * - str
     :return: Dict[str, numpy.array];
     """
-    if component in ["all", "both"]:
-        return {
-            component:
-                ld.interpolate_on_ld_grid(
-                    temperature=getattr(system, component).temperatures,
-                    log_g=getattr(system, component).log_g,
-                    metallicity=getattr(system, component).metallicity,
+    components = butils.component_to_list(component)
+
+    retval = {}
+    for cmpnt in components:
+        retval[cmpnt] = ld.interpolate_on_ld_grid(
+                    temperature=getattr(system, cmpnt).temperatures,
+                    log_g=getattr(system, cmpnt).log_g,
+                    metallicity=getattr(system, cmpnt).metallicity,
                     passband=kwargs["passband"]
-                ) for component in config.BINARY_COUNTERPARTS.keys()
-        }
-    elif component in config.BINARY_COUNTERPARTS.keys():
-        return ld.interpolate_on_ld_grid(
-            temperature=getattr(system, component).temperatures,
-            log_g=getattr(system, component).log_g,
-            metallicity=getattr(system, component).metallicity,
-            passband=kwargs["passband"]
-        )
-    else:
-        raise ValueError('Invalid value of `component` argument. '
-                         'Available parameters are `primary`, `secondary` or `all`.')
+                )
+
+    return retval
 
 
 def get_normal_radiance(system, component="all", **kwargs):
@@ -107,6 +99,7 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
     """
     Prepares normal radiances and limb darkening coefficients variables.
 
+    :param indices: numpy.array; indices a which calculate radiances and ld factors (visible faces)
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param return_values: bool; return normal radiances and limb darkening coefficients
     :param write_to_containers: bool; calculated values will be assigned to `system` container
