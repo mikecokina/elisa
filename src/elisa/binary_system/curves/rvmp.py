@@ -1,8 +1,23 @@
 import numpy as np
 
-from elisa import ld
-from elisa.conf import config
-from elisa.binary_system.curves import curves
+from elisa.binary_system.curves import (
+    utils as crv_utils
+)
+
+
+def calculate_rv_point(star):
+    """
+    Calculates point on the rv curve for given component.
+
+    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
+    :return: Union[numpy.float, numpy.nan];
+    """
+    indices = getattr(star, 'indices')
+    velocities = getattr(star, 'velocities')[indices]
+
+    fluxes = crv_utils.calculate_surface_element_fluxes('rv_band', star)
+
+    return np.sum(velocities[:, 0] * fluxes) / np.sum(fluxes) if np.sum(fluxes) != 0 else np.NaN
 
 
 def compute_circ_sync_rv_at_pos(velocities, pos_idx, crv_labels, system):
@@ -15,24 +30,8 @@ def compute_circ_sync_rv_at_pos(velocities, pos_idx, crv_labels, system):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :return: Dict; updated {str; passband : numpy.array; rvs, ...}
     """
-    # calculating cosines between face normals and line of sight
-    ld_law_cfs_column = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
     for component in crv_labels:
-        star = getattr(system, component)
-        visibility_indices = star.indices
-        cosines = star.los_cosines[star.indices]
-
-        ld_cors = \
-            ld.limb_darkening_factor(
-                coefficients=star.ld_cfs['rv_band'][ld_law_cfs_column].values[visibility_indices],
-                limb_darkening_law=config.LIMB_DARKENING_LAW,
-                cos_theta=cosines)
-
-        flux = star.normal_radiance['rv_band'][visibility_indices] * cosines * star.coverage[visibility_indices] * \
-               ld_cors
-
-        velocities[component][pos_idx] = np.sum(star.velocities[visibility_indices][:, 0] * flux) / np.sum(flux) \
-            if np.sum(flux) != 0 else np.NaN
+        velocities[component][pos_idx] = calculate_rv_point(getattr(system, component))
 
     return velocities
 
@@ -49,6 +48,6 @@ def compute_circ_spotty_async_rv_at_pos(velocities, pos_idx, crv_labels, system)
     :return: Dict; updated curve {str; passband : numpy.array; light curve, ...}
     """
     for component in crv_labels:
-        velocities[component][pos_idx] = curves.calculate_rv_point(getattr(system, component))
+        velocities[component][pos_idx] = calculate_rv_point(getattr(system, component))
 
     return velocities

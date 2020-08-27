@@ -9,6 +9,23 @@ from elisa.binary_system import (
     utils as bsutils,
     surface
 )
+from elisa.conf import config
+
+
+def calculate_lc_point(band, system):
+    """
+    Calculates point on the light curve for given band.
+
+    :param band: str; name of the photometric band compatibile with supported names in config
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :return: float;
+    """
+    flux = 0.0
+    for component in config.BINARY_COUNTERPARTS.keys():
+        star = getattr(system, component)
+        flux += crv_utils.flux_from_star_container(band, star)
+
+    return flux
 
 
 def compute_circ_sync_lc_on_pos(band_curves, pos_idx, crv_labels, system):
@@ -24,7 +41,7 @@ def compute_circ_sync_lc_on_pos(band_curves, pos_idx, crv_labels, system):
     """
     # integrating resulting flux
     for band in crv_labels:
-        band_curves[band][pos_idx] = curves.calculate_lc_point(band, system)
+        band_curves[band][pos_idx] = calculate_lc_point(band, system)
 
     return band_curves
 
@@ -40,7 +57,7 @@ def compute_circ_spotty_async_lc_at_pos(band_curves, pos_idx, crv_labels, system
     :return: Dict; updated {str; passband : numpy.array; light curve, ...}
     """
     for band in crv_labels:
-        band_curves[band][pos_idx] = curves.calculate_lc_point(band, system)
+        band_curves[band][pos_idx] = calculate_lc_point(band, system)
 
     return band_curves
 

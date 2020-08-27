@@ -19,22 +19,6 @@ from elisa.observer.mp import manage_observations
 logger = getLogger('binary_system.curves.shared')
 
 
-def calculate_lc_point(band, system):
-    """
-    Calculates point on the light curve for given band.
-
-    :param band: str; name of the photometric band compatibile with supported names in config
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;
-    :return: float;
-    """
-    flux = 0.0
-    for component in config.BINARY_COUNTERPARTS.keys():
-        star = getattr(system, component)
-        flux += crv_utils.flux_from_star_container(band, star)
-
-    return flux
-
-
 def _calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
     """
     Calculates point on the light curve for given band.
@@ -61,21 +45,6 @@ def _calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
 
     flux = (flux['primary'] + flux['secondary'])
     return flux
-
-
-def calculate_rv_point(star):
-    """
-    Calculates point on the rv curve for given component.
-
-    :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
-    :return: Union[numpy.float, numpy.nan];
-    """
-    indices = getattr(star, 'indices')
-    velocities = getattr(star, 'velocities')[indices]
-
-    fluxes = crv_utils.calculate_surface_element_fluxes('rv_band', star)
-
-    return np.sum(velocities[:, 0] * fluxes) / np.sum(fluxes) if np.sum(fluxes) != 0 else np.NaN
 
 
 def resolve_curve_method(system, fn_array):
