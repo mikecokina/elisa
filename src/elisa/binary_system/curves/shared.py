@@ -45,10 +45,11 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     return retval
 
 
-def get_normal_radiance(system, component="all", **kwargs):
+def get_normal_radiance(system, component="all", indices=None, **kwargs):
     """
     Compute normal radiance for all faces and all components in SingleOrbitalPositionContainer.
 
+    :param indices: dict; {component: indices of visible faces}
     :param component: str;
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param kwargs: Dict; arguments to be passed into light curve generator functions
@@ -60,19 +61,20 @@ def get_normal_radiance(system, component="all", **kwargs):
     :return: Dict[String, dict]
     """
     components = butils.component_to_list(component)
-    symmetry_test = {cmpnt: not getattr(system, cmpnt).has_spots() and not getattr(system, cmpnt).has_pulsations() for
-                     cmpnt in components}
-    temperatures, log_g = {}, {}
+    symmetry_test = getattr(system, 'primary').symmetry_test() and getattr(system, 'secondary').symmetry_test()
+    temperatures, log_g, idxs = {}, {}, {}
 
     # utilizing surface symmetry in case of a clear surface
-    for cmpnt in components:
-        component_instance = getattr(system, cmpnt)
-        if symmetry_test[cmpnt]:
-            temperatures[cmpnt] = component_instance.temperatures[:component_instance.base_symmetry_faces_number]
-            log_g[cmpnt] = component_instance.log_g[:component_instance.base_symmetry_faces_number]
+    for component in components:
+        component_instance = getattr(system, component)
+        if symmetry_test:
+            temperatures[component] = component_instance.temperatures[:component_instance.base_symmetry_faces_number]
+            log_g[component] = component_instance.log_g[:component_instance.base_symmetry_faces_number]
         else:
-            temperatures[cmpnt] = component_instance.temperatures
-            log_g[cmpnt] = component_instance.log_g
+            idxs[component] = np.ones(component_instance.temperatures.shape, dtype=np.bool) if indices is None \
+                else indices[component]
+            temperatures[component] = component_instance.temperatures[idxs[component]]
+            log_g[component] = component_instance.log_g[idxs[component]]
 
     retval = {
         cpmnt:
@@ -87,19 +89,25 @@ def get_normal_radiance(system, component="all", **kwargs):
     }
 
     # mirroring symmetrical part back to the rest of the surface
-    for cpmnt in components:
-        if symmetry_test[cpmnt]:
-            retval[cpmnt] = {fltr: vals[getattr(system, cpmnt).face_symmetry_vector] for
-                             fltr, vals in retval[cpmnt].items()}
+    for component in components:
+        if symmetry_test:
+            retval[component] = {fltr: vals[getattr(system, component).face_symmetry_vector] for
+                             fltr, vals in retval[component].items()}
+
+        elif indices is not None:
+            for fltr, vals in retval[component].items():
+                aux_val = np.empty(getattr(system, component).temperatures.shape)
+                aux_val[idxs[component]] = vals
+                retval[component][fltr] = aux_val
 
     return retval
 
 
-def prep_surface_params(system, return_values=True, write_to_containers=False, **kwargs):
+def prep_surface_params(system, return_values=True, write_to_containers=False, indices=None, **kwargs):
     """
     Prepares normal radiances and limb darkening coefficients variables.
 
-    :param indices: numpy.array; indices a which calculate radiances and ld factors (visible faces)
+    :param indices: dict; {component: indices of visible faces}
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param return_values: bool; return normal radiances and limb darkening coefficients
     :param write_to_containers: bool; calculated values will be assigned to `system` container
@@ -472,8 +480,10 @@ def produce_circ_spotty_async_curves_mp(*args):
 
         # if None of components has to be rebuilt, use previously computed radiances and limbdarkening when available
         if require_build is not None:
+            indices = {component: getattr(on_pos, component).indices
+                       for component in config.BINARY_COUNTERPARTS.keys()}
             normal_radiance, ld_cfs = \
-                prep_surface_params(on_pos, return_values=True, write_to_containers=True, **kwargs)
+                prep_surface_params(on_pos, return_values=True, write_to_containers=True, indices=indices, **kwargs)
         else:
             for component in config.BINARY_COUNTERPARTS.keys():
                 star = getattr(on_pos, component)
