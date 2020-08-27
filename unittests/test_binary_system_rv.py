@@ -239,3 +239,11 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
         self.do_comparison(bs, "overcontact.circ.spotty.sync.json")
 
+    def test_cicular_spotty_asynchronous_detached_system(self):
+        config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
+        reload(rv)
+
+        bs = prepare_binary_system(self.params["detached-async"],
+                                   spots_primary=SPOTS_META["primary"])
+
+        self.do_comparison(bs, "detached.circ.spotty.async.json")

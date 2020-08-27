@@ -179,12 +179,19 @@ def normalize_lv_for_unittests(primary, secondary):
     return primary, secondary
 
 
-def dump_observation_to_json(observation, filename):
+def dump_lc_observation_to_json(observation, filename):
     observation = list(observation)
     observation[0] = observation[0].tolist()
     observation[1] = {filter: item.tolist() for filter, item in observation[1].items()}
     with open(filename, 'w') as outfile:
-        json.dump(observation, outfile)
+        json.dump(observation, outfile, indent=4)
+
+
+def dump_rv_observation_to_json(observation, filename):
+    dct = {'phases': list(observation[0]), 'primary': list(observation[1]['primary']),
+           'secondary': list(observation[1]['secondary'])}
+    with open(filename, 'w') as outfile:
+        json.dump(dct, outfile, indent=4)
 
 
 def load_light_curve(filename):
