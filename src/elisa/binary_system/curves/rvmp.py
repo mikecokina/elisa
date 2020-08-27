@@ -2,7 +2,7 @@ import numpy as np
 
 from elisa import ld
 from elisa.conf import config
-from elisa.binary_system.curves import shared
+from elisa.binary_system.curves import curves
 
 
 def compute_circ_sync_rv_at_pos(velocities, pos_idx, crv_labels, system):
@@ -49,6 +49,6 @@ def compute_circ_spotty_async_rv_at_pos(velocities, pos_idx, crv_labels, system)
     :return: Dict; updated curve {str; passband : numpy.array; light curve, ...}
     """
     for component in crv_labels:
-        velocities[component][pos_idx] = shared.calculate_rv_point(getattr(system, component))
+        velocities[component][pos_idx] = curves.calculate_rv_point(getattr(system, component))
 
     return velocities

@@ -1,19 +1,9 @@
 import numpy as np
 
-from copy import copy
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.binary_system.curves import shared
-from elisa.conf import config
-
-from elisa import (
-    umpy as up,
-    utils,
-    ld,
-    const as c,
-)
+from elisa.binary_system.curves import curves
 from elisa.binary_system import (
     utils as bsutils,
-    dynamic,
     surface
 )
 
@@ -31,7 +21,7 @@ def compute_circ_sync_lc_on_pos(band_curves, pos_idx, crv_labels, system):
     """
     # integrating resulting flux
     for band in crv_labels:
-        band_curves[band][pos_idx] = shared.calculate_lc_point(band, system)
+        band_curves[band][pos_idx] = curves.calculate_lc_point(band, system)
 
     return band_curves
 
@@ -47,7 +37,7 @@ def compute_circ_spotty_async_lc_at_pos(band_curves, pos_idx, crv_labels, system
     :return: Dict; updated {str; passband : numpy.array; light curve, ...}
     """
     for band in crv_labels:
-        band_curves[band][pos_idx] = shared.calculate_lc_point(band, system)
+        band_curves[band][pos_idx] = curves.calculate_lc_point(band, system)
 
     return band_curves
 
@@ -64,11 +54,11 @@ def integrate_eccentric_lc_exactly(*args):
                                       potentials["secondary"][pos_idx])
         on_pos.build(components_distance=position.distance)
 
-        normal_radiance, ld_cfs = shared.prep_surface_params(on_pos, **kwargs)
+        normal_radiance, ld_cfs = curves.prep_surface_params(on_pos, **kwargs)
         on_pos = bsutils.move_sys_onpos(on_pos, position, on_copy=False)
         coverage, cosines = surface.coverage.calculate_coverage_with_cosines(on_pos, binary.semi_major_axis,
                                                                              in_eclipse=True)
 
         for band in kwargs["passband"]:
-            band_curves[band][run_idx] = shared._calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
+            band_curves[band][run_idx] = curves._calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines)
     return band_curves

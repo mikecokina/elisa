@@ -7,7 +7,7 @@ from elisa import (
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system import dynamic
 from elisa.binary_system.curves import rvmp
-from ...binary_system.curves import shared
+from ...binary_system.curves import curves
 from elisa.observer.passband import init_rv_passband
 from elisa.conf import config
 from elisa.observer.mp import manage_observations
@@ -121,17 +121,17 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
                 * ** phases ** * - numpy.array
         :return: Dict[str, numpy.array];
         """
-    initial_system = shared.prep_initial_system(binary)
+    initial_system = curves.prep_initial_system(binary)
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
-    return shared.produce_circ_sync_curves(binary, initial_system, kwargs.pop("phases"),
+    return curves.produce_circ_sync_curves(binary, initial_system, kwargs.pop("phases"),
                                            rvmp.compute_circ_sync_rv_at_pos, rv_labels, **kwargs)
 
 
 def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
-    return shared.produce_circ_spotty_async_curves(binary, rvmp.compute_circ_spotty_async_rv_at_pos,
+    return curves.produce_circ_spotty_async_curves(binary, rvmp.compute_circ_spotty_async_rv_at_pos,
                                                    rv_labels, **kwargs)
 
 
