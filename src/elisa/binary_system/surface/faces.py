@@ -409,7 +409,6 @@ def build_velocities(system, components_distance, component='all'):
     for _component in component:
         star = getattr(system, _component)
         points = (star.points - com_x[_component][None, :]) * system.semi_major_axis
-        # points = (star.points - com_x[_component])
         omega = star.synchronicity * omega_orb
 
         # orbital velocity + rotational velocity

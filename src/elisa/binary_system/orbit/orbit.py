@@ -41,12 +41,12 @@ def primary_orbital_speed(m1, m2, a_red, components_distance):
 
     :param m1: float; primary mass
     :param m2: float; secondary mass
-    :param a_red: float; semi major axis of the primary compoenent with respect to the system centre of mass
+    :param a_red: float; semi major axis of the primary component with respect to the system centre of mass
     :param components_distance: float;
     :return: float;
     """
     m = m1 + m2
-    return m2 * np.sqrt((const.G / m) * (2 / components_distance - (m2 / (a_red * m))))
+    return m2 * np.sqrt((const.G / m) * ((2 / components_distance) - (m2 / (a_red * m))))
 
 
 def velocity_vector_angle(eccentricity, true_anomaly):
@@ -71,15 +71,14 @@ def create_orb_vel_vectors(system, components_distance):
     :param components_distance: float;
     :return:
     """
-    a_red = system.semi_major_axis * components_distance * system.mass_ratio / (1 + system.mass_ratio)
+    a_red = system.semi_major_axis * system.mass_ratio / (1 + system.mass_ratio)
 
     speed = primary_orbital_speed(system.primary.mass, system.secondary.mass, a_red,
                                   system.semi_major_axis * components_distance)
 
     sin, cos = velocity_vector_angle(system.eccentricity, system.position.true_anomaly)
 
-    # TODO: check signs in case of eccentric orbits
-    velocity = {'primary': np.array([cos * speed, sin * speed, 0])}
+    velocity = {'primary': np.array([-cos * speed, sin * speed, 0])}
     velocity['secondary'] = - velocity['primary'] / system.mass_ratio
 
     return velocity
