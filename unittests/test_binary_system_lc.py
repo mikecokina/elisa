@@ -367,16 +367,10 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
             o = Observer(passband=['Generic.Bessell.V'], system=bs)
             o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
 
-    def test_circular_synchronous_detached_system(self):
-        config.LIMB_DARKENING_LAW = "linear"
-        reload(lc)
+    def do_comparison(self, system, filename, f_tol, start_phs, stop_phs, step):
+        o = Observer(passband=['Generic.Bessell.V'], system=system)
 
-        bs = prepare_binary_system(self.params["detached"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.01
-
-        expected = load_light_curve("detached.circ.sync.generic.bessel.v.json")
+        expected = load_light_curve(filename)
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
@@ -385,27 +379,21 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
         self.assertTrue(np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
-        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
+        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < f_tol))
+
+    def test_circular_synchronous_detached_system(self):
+        config.LIMB_DARKENING_LAW = "linear"
+        reload(lc)
+
+        bs = prepare_binary_system(self.params["detached"])
+        self.do_comparison(bs, "detached.circ.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
     def test_circular_synchronous_overcontact_system(self):
         config.LIMB_DARKENING_LAW = "linear"
         reload(lc)
 
         bs = prepare_binary_system(self.params["over-contact"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.01
-
-        expected = load_light_curve("overcontact.circ.sync.generic.bessel.v.json")
-        expected_phases = expected[0]
-        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-
-        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-
-        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
-        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
+        self.do_comparison(bs, "overcontact.circ.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
     def test_eccentric_synchronous_detached_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
@@ -413,21 +401,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         reload(lcmp)
 
         bs = prepare_binary_system(self.params["eccentric"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
-
-        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-
-        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
-        expected_phases = expected[0]
-        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-
-        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
-        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
+        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.json", TOL, -0.2, 1.2, 0.1)
 
     def test_eccentric_synchronous_detached_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
