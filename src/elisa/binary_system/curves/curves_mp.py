@@ -8,6 +8,7 @@ from elisa.binary_system import (
     surface
 )
 from elisa.binary_system.curves import utils as crv_utils
+from elisa.binary_system.container import OrbitalPositionContainer
 
 
 def produce_circ_sync_curves_mp(*args):
@@ -132,4 +133,25 @@ def produce_circ_spotty_async_curves_mp(*args):
 
         curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
 
+    return curves
+
+
+def integrate_eccentric_curve_exactly(*args):
+    binary, potentials, motion_batch, crv_labels, curve_fn, kwargs = args
+    curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
+    for run_idx, position in enumerate(motion_batch):
+        pos_idx = int(position.idx)
+        from_this = dict(binary_system=binary, position=position)
+        on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
+        on_pos.set_on_position_params(position, potentials["primary"][pos_idx],
+                                      potentials["secondary"][pos_idx])
+        on_pos.build(components_distance=position.distance)
+        on_pos = butils.move_sys_onpos(on_pos, position, on_copy=False)
+
+        crv_utils.prep_surface_params(on_pos, return_values=False, write_to_containers=True, **kwargs)
+        # TODO: properly calculate in_eclipse parameter
+        surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True,
+                                                  return_values=False, write_to_containers=True)
+
+        curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
     return curves

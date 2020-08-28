@@ -20,9 +20,9 @@ def calculate_rv_point(star):
     return np.sum(velocities[:, 0] * fluxes) / np.sum(fluxes) if np.sum(fluxes) != 0 else np.NaN
 
 
-def compute_circ_rv_at_pos(velocities, pos_idx, crv_labels, system):
+def compute_rv_at_pos(velocities, pos_idx, crv_labels, system):
     """
-    Calculates rv points for given orbital position in case of circular orbit .
+    Calculates rv points for given orbital position.
 
     :param velocities: Dict; {str; component : numpy.array; rvs, ...}
     :param pos_idx: int; position in `band_curves` to which calculated lc points will be assigned

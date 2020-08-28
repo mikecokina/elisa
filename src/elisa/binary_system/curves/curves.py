@@ -10,7 +10,8 @@ from elisa.binary_system import (
 )
 from elisa.binary_system.curves import (
     utils as crv_utils,
-    curves_mp
+    curves_mp,
+    curve_approx
 )
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.observer.mp import manage_observations
@@ -19,6 +20,7 @@ from elisa.observer.mp import manage_observations
 logger = getLogger('binary_system.curves.shared')
 
 
+# TODO: soon to be removed
 def _calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
     """
     Calculates point on the light curve for given band.
@@ -174,3 +176,58 @@ def produce_circ_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
                                       **kwargs)
 
     return band_curves
+
+
+def produce_ecc_curves(binary, curve_fn, crv_labels, **kwargs):
+    phases = kwargs.pop("phases")
+
+    # this condition checks if even to attempt to utilize apsidal line symmetry approximations
+    # curve has to have enough point on orbit and have to span at least in 0.8 phase
+    phases_span_test = np.max(phases) - np.min(phases) >= 0.8
+
+    position_method = kwargs.pop("position_method")
+
+    try_to_find_appx = curve_approx.look_for_approximation(not binary.has_pulsations())
+
+    curve_fn_list = [integrate_eccentric_curve_exactly]
+
+    appx_uid, run = curve_approx.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
+                                                                  phases_span_test, curve_fn_list, crv_labels, curve_fn,
+                                                                  **kwargs)
+
+    logger_messages = {
+        'zero': 'curve will be calculated in a rigorous `phase to phase manner` without approximations',
+        'one': 'one half of the curve points on the one side of the apsidal line will be interpolated',
+        'two': 'geometry of the stellar surface on one half of the apsidal '
+               'line will be copied from their symmetrical counterparts',
+        'three': 'surface geometry at some orbital positions will not be recalculated due to similarities to previous '
+                 'orbital positions'
+    }
+    logger.info(logger_messages.get(appx_uid))
+    return run()
+
+
+def integrate_eccentric_curve_exactly(binary, orbital_motion, phases, crv_labels, curve_fn, **kwargs):
+    """
+    Function calculates LC for eccentric orbit for selected filters.
+    LC is calculated exactly for each OrbitalPosition.
+    It is very slow and it should be used only as a benchmark.
+
+    :param binary: elisa.binary_system.system.BinarySystem; instance
+    :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
+    :param phases: phases in which the phase curve will be calculated
+    :param kwargs: kwargs taken from `produce_eccentric_curve` function
+    :param crv_labels: labels of the calculated curves (passbands, components,...)
+    :param curve_fn: curve function
+    :return: Dict; dictionary of fluxes for each filter
+    """
+    # surface potentials with constant volume of components
+    potentials = binary.correct_potentials(phases, component="all", iterations=2)
+    fn_args = (binary, potentials, crv_labels, curve_fn)
+
+    band_curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly,
+                                      fn_args=fn_args,
+                                      position=orbital_motion,
+                                      **kwargs)
+    return band_curves
+
