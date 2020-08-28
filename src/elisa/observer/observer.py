@@ -161,21 +161,7 @@ class Observer(object):
             position_method=position_method
         )
 
-        if config.NUMBER_OF_PROCESSES > 1 and self._system.is_eccentric():
-            batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
-            phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
-            func = self._system.compute_lightcurve
-
-            pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-            result = [pool.apply_async(mp.observe_lc_worker, (func, batch_idx, batch, lc_kwargs))
-                      for batch_idx, batch in enumerate(phase_batches)]
-            pool.close()
-            pool.join()
-            # this will return output in same order as was given on apply_async init
-            result = [r.get() for r in result]
-            curves = utils.renormalize_async_result(result)
-        else:
-            curves = self._system.compute_lightcurve(**lc_kwargs)
+        curves = self._system.compute_lightcurve(**lc_kwargs)
 
         # remap unique phases back to original phase interval
         for items in curves:
