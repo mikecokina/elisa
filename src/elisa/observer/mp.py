@@ -32,8 +32,7 @@ def manage_observations(fn, fn_args, position, **kwargs):
     args = fn_args + (kwargs, )
     if len(position) >= config.NUMBER_OF_PROCESSES > 1:
         logger.info("starting multiprocessor workers")
-        batch_size = int(up.ceil(len(position) / config.NUMBER_OF_PROCESSES))
-        phase_batches = utils.split_to_batches(batch_size=batch_size, array=position)
+        phase_batches = utils.split_to_batches(array=position, n_proc=config.NUMBER_OF_PROCESSES)
         pool = Pool(processes=config.NUMBER_OF_PROCESSES)
 
         result = [pool.apply_async(fn, args[:2] + (batch,) + args[2:]) for batch in phase_batches]

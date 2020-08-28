@@ -858,16 +858,17 @@ def get_visible_projection(obj):
     )
 
 
-def split_to_batches(batch_size, array):
+def split_to_batches(array, n_proc):
     """
     Split array to batches with size `batch_size`.
 
-    :param batch_size: int;
+    :param n_proc: int; number of processes
     :param array: Union[List, numpy.array];
     :return: List;
     """
-    chunks = lambda d: (d[i:i + batch_size] for i in range(0, len(d), batch_size))
-    return [chunk for chunk in chunks(array)]
+    indices = np.linspace(0, len(array), num=n_proc+1, endpoint=True, dtype=np.int)
+    indices = [(indices[ii-1], indices[ii]) for ii in range(1, n_proc+1)]
+    return [array[idx[0]: idx[1]] for idx in indices]
 
 
 def renormalize_async_result(result):
