@@ -30,64 +30,61 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
     def setUp(self):
         self.phases = up.arange(-0.2, 1.25, 0.05)
 
-    def test_circular_detached(self):
-        s = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached-physical"])
-        rvdict = rv.com_radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
+    def do_comparison(self, system, file):
+        rvdict = rv.com_radial_velocity(system, position_method=system.calculate_orbital_motion, phases=self.phases)
         obtained_rvp, obtained_rvs = normalize_lv_for_unittests(rvdict['primary'], rvdict['secondary'])
-        expected = load_radial_curve("detahed.circ.json")
+        expected = load_radial_curve(file)
 
         expected_rvp, expected_rvs = -1 * np.array(expected["primary"]), -1 * np.array(expected["secondary"])
         expected_rvp, expected_rvs = normalize_lv_for_unittests(expected_rvp, expected_rvs)
 
         assert_array_equal(np.round(expected_rvp, 4), np.round(obtained_rvp, 4))
         assert_array_equal(np.round(expected_rvs, 4), np.round(obtained_rvs, 4))
+
+    def test_circular_detached(self):
+        s = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached-physical"])
+        self.do_comparison(s, "detahed.circ.json")
 
     def test_eccentric_detached(self):
         s = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
-        rvdict = rv.com_radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
-        obtained_rvp, obtained_rvs = normalize_lv_for_unittests(rvdict['primary'], rvdict['secondary'])
-        expected = load_radial_curve("detahed.ecc.json")
+        self.do_comparison(s, "detahed.ecc.json")
 
-        expected_rvp, expected_rvs = -1 * np.array(expected["primary"]), -1 * np.array(expected["secondary"])
-        expected_rvp, expected_rvs = normalize_lv_for_unittests(expected_rvp, expected_rvs)
+    def check_consistency(self, binary_kwargs, desired_delta, spots_primary=None, spots_secondary=None):
+        system = prepare_binary_system(binary_kwargs, spots_primary=spots_primary, spots_secondary=spots_secondary)
+        rvdict1 = system.compute_rv(position_method=system.calculate_orbital_motion, phases=self.phases,
+                                    method='point_mass')
+        rvdict2 = system.compute_rv(position_method=system.calculate_orbital_motion, phases=self.phases,
+                                    method='radiometric')
 
-        assert_array_equal(np.round(expected_rvp, 4), np.round(obtained_rvp, 4))
-        assert_array_equal(np.round(expected_rvs, 4), np.round(obtained_rvs, 4))
+        rvdict1['primary'], rvdict1['secondary'] = normalize_lv_for_unittests(rvdict1['primary'], rvdict1['secondary'])
+        rvdict2['primary'], rvdict2['secondary'] = normalize_lv_for_unittests(rvdict2['primary'], rvdict2['secondary'])
+
+        assert_array_less(np.abs(rvdict1['primary'] - rvdict2['primary']), desired_delta * np.ones(self.phases.shape))
+        assert_array_less(np.abs(rvdict2['secondary'] - rvdict2['secondary']),
+                          desired_delta * np.ones(self.phases.shape))
 
     def test_rv_consistency_circular_detached(self):
         binary_kwargs = BINARY_SYSTEM_PARAMS["detached-physical"]
         binary_kwargs['inclination'] = 70 * u.deg
 
-        s = prepare_binary_system(binary_kwargs, spots_primary=SPOTS_META['primary'])
-        rvdict1 = s.compute_rv(position_method=s.calculate_orbital_motion, phases=self.phases, method='point_mass')
-        rvdict2 = s.compute_rv(position_method=s.calculate_orbital_motion, phases=self.phases, method='radiometric')
-
-        rvdict1['primary'], rvdict1['secondary'] = normalize_lv_for_unittests(rvdict1['primary'], rvdict1['secondary'])
-        rvdict2['primary'], rvdict2['secondary'] = normalize_lv_for_unittests(rvdict2['primary'], rvdict2['secondary'])
-
-        desired_delta = 0.02
-        assert_array_less(np.abs(rvdict1['primary'] - rvdict2['primary']), desired_delta * np.ones(self.phases.shape))
-        assert_array_less(np.abs(rvdict2['secondary'] - rvdict2['secondary']),
-                          desired_delta * np.ones(self.phases.shape))
+        self.check_consistency(binary_kwargs, 0.02, spots_primary=SPOTS_META['primary'])
 
     def test_rv_consistency_circular_contact(self):
         binary_kwargs = BINARY_SYSTEM_PARAMS["over-contact"]
         binary_kwargs['inclination'] = 10 * u.deg
 
-        s = prepare_binary_system(binary_kwargs, spots_primary=SPOTS_META['primary'])
-        rvdict1 = s.compute_rv(position_method=s.calculate_orbital_motion, phases=self.phases, method='point_mass')
-        rvdict2 = s.compute_rv(position_method=s.calculate_orbital_motion, phases=self.phases, method='radiometric')
+        self.check_consistency(binary_kwargs, 0.033, spots_primary=SPOTS_META['primary'])
 
-        rvdict1['primary'], rvdict1['secondary'] = normalize_lv_for_unittests(rvdict1['primary'],
-                                                                              rvdict1['secondary'])
-        rvdict2['primary'], rvdict2['secondary'] = normalize_lv_for_unittests(rvdict2['primary'],
-                                                                              rvdict2['secondary'])
+    def test_rv_consistency_eccentric_approx_zero(self):
+        config.POINTS_ON_ECC_ORBIT = -1
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(rvmp)
 
-        desired_delta = 0.033
-        assert_array_less(np.abs(rvdict1['primary'] - rvdict2['primary']),
-                          desired_delta * np.ones(self.phases.shape))
-        assert_array_less(np.abs(rvdict2['secondary'] - rvdict2['secondary']),
-                          desired_delta * np.ones(self.phases.shape))
+        binary_kwargs = BINARY_SYSTEM_PARAMS["detached-physical"]
+        binary_kwargs['inclination'] = 70 * u.deg
+        binary_kwargs['eccentricity'] = 0.3
+
+        self.check_consistency(binary_kwargs, 0.005)
 
 
 class ComputeRadiometricRVTestCase(ElisaTestCase):
@@ -247,3 +244,12 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
                                    spots_primary=SPOTS_META["primary"])
 
         self.do_comparison(bs, "detached.circ.spotty.async.json")
+
+    def test_eccentric_synchronous_detached_system_no_approximation(self):
+        config.POINTS_ON_ECC_ORBIT = -1
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(rvmp)
+
+        bs = prepare_binary_system(self.params["eccentric"])
+
+        self.do_comparison(bs, "detached.ecc.sync.json")
