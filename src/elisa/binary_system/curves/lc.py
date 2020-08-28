@@ -102,15 +102,15 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
 
 def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     """
-    Function returns light curve of assynchronous systems with circular orbits and spots.
+    Function returns light curve of asynchronous systems with circular orbits and spots.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param kwargs: Dict;
     :**kwargs options**:
-        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** * - float
-        * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
     :return: Dict; fluxes for each filter
     """
     lc_labels = list(kwargs["passband"].keys())
@@ -119,10 +119,22 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
                                                    lc_labels, **kwargs)
 
 
-def compute_eccentric_lightcurve(binary, **kwargs):
+def compute_eccentric_lightcurve_no_spots(binary, **kwargs):
+    """
+    General function for generating light curves of binaries with eccentric orbit and no spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs:  Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+    :return: Dict; fluxes for each filter
+    """
     lc_labels = list(kwargs["passband"].keys())
 
-    return curves.produce_ecc_curves(binary, lcmp.compute_lc_on_pos, lc_labels, **kwargs)
+    return curves.produce_ecc_curves_no_spots(binary, lcmp.compute_lc_on_pos, lc_labels, **kwargs)
 
 
 def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_geometry_mask, **kwargs):
@@ -139,10 +151,10 @@ def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_ge
     :param new_geometry_mask: numpy.array;
     :param kwargs: Dict;
     :**kwargs options**:
-        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** * - float
-        * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
     :return: Dict[str, numpy.array];
     """
 

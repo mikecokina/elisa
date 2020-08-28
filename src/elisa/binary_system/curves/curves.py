@@ -148,7 +148,7 @@ def produce_circ_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
         * ** atlas ** * - str
-    :return: Dict; fluxes for each filter
+    :return: Dict; curves
     """
     phases = kwargs.pop("phases")
     position_method = kwargs.pop("position_method")
@@ -178,7 +178,22 @@ def produce_circ_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
     return band_curves
 
 
-def produce_ecc_curves(binary, curve_fn, crv_labels, **kwargs):
+def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
+    """
+    Function for generating curves of binaries with eccentric orbit and no spots where different curve
+    integration approximations are evaluated and performed.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param curve_fn: curve generator function
+    :param crv_labels: labels of the calculated curves (passbands, components,...)
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa .observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
+    :return: Dict; curves
+    """
     phases = kwargs.pop("phases")
 
     # this condition checks if even to attempt to utilize apsidal line symmetry approximations
@@ -209,12 +224,12 @@ def produce_ecc_curves(binary, curve_fn, crv_labels, **kwargs):
 
 def integrate_eccentric_curve_exactly(binary, orbital_motion, phases, crv_labels, curve_fn, **kwargs):
     """
-    Function calculates LC for eccentric orbit for selected filters.
-    LC is calculated exactly for each OrbitalPosition.
+    Function calculates curves for eccentric orbit for selected filters.
+    Curve is calculated exactly for each OrbitalPosition.
     It is very slow and it should be used only as a benchmark.
 
     :param binary: elisa.binary_system.system.BinarySystem; instance
-    :param orbital_motion: list of all OrbitalPositions at which LC will be calculated
+    :param orbital_motion: list of all OrbitalPositions at which curve will be calculated
     :param phases: phases in which the phase curve will be calculated
     :param kwargs: kwargs taken from `produce_eccentric_curve` function
     :param crv_labels: labels of the calculated curves (passbands, components,...)

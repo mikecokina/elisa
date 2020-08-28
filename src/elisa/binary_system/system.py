@@ -994,7 +994,7 @@ class BinarySystem(System):
         return lc.compute_eccentric_spotty_lightcurve(self, **kwargs)
 
     def _compute_eccentric_lightcurve(self, **kwargs):
-        return lc.compute_eccentric_lightcurve(self, **kwargs)
+        return lc.compute_eccentric_lightcurve_no_spots(self, **kwargs)
 
     # radial velocity curves *******************************************************************************************
     def compute_rv(self, **kwargs):

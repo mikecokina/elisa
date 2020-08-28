@@ -122,7 +122,7 @@ def eval_approximation_one(phases, phases_span_test):
     """
     Test if it is appropriate to compute eccentric binary system with approximation approximation one.
 
-    :param binary: elisa.binary_system.system.BinarySystem;
+    :param phases_span_test: bool; test for sufficient phase span of observations
     :param phases: numpy.array;
     :return: bool;
     """

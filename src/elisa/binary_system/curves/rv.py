@@ -109,18 +109,18 @@ def include_passband_data_to_kwargs(**kwargs):
 
 def compute_circular_synchronous_rv_curve(binary, **kwargs):
     """
-        Compute radial velocity curve for synchronous circular binary system.
+    Compute radial velocity curve for synchronous circular binary system.
 
-        :param binary: elisa.binary_system.system.BinarySystem;
-        :param kwargs: Dict;
-                * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-                * ** left_bandwidth ** * - float
-                * ** right_bandwidth ** * - float
-                * ** atlas ** * - str
-                * ** position_method** * - function definition; to evaluate orbital positions
-                * ** phases ** * - numpy.array
-        :return: Dict[str, numpy.array];
-        """
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+            * ** left_bandwidth ** * - float
+            * ** right_bandwidth ** * - float
+            * ** atlas ** * - str
+            * ** position_method** * - function definition; to evaluate orbital positions
+            * ** phases ** * - numpy.array
+    :return: Dict[str, numpy.array];
+    """
     initial_system = curves.prep_initial_system(binary)
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
@@ -129,15 +129,39 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
 
 
 def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
+    """
+    Function returns rv curve of asynchronous systems with circular orbits and spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+    :return: Dict; rv for each component
+    """
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
     return curves.produce_circ_spotty_async_curves(binary, rvmp.compute_rv_at_pos, rv_labels, **kwargs)
 
 
 def compute_eccentric_rv_curve(binary, **kwargs):
+    """
+    General function for generating rv curves of binaries with eccentric orbit and no spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+    :return: Dict; rv for each component
+    """
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
-    return curves.produce_ecc_curves(binary, rvmp.compute_rv_at_pos, rv_labels, **kwargs)
+    return curves.produce_ecc_curves_no_spots(binary, rvmp.compute_rv_at_pos, rv_labels, **kwargs)
 
 
 def compute_eccentric_spotty_rv_curve(binary, **kwargs):
