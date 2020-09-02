@@ -95,6 +95,7 @@ def produce_circ_spotty_async_curves_mp(*args):
         initial_system.time = initial_system.set_time()
         # setup component necessary to build/rebuild
 
+        # require_build = "all"
         require_build = "all" if combined_reducer[pos_idx] \
             else "primary" if primary_reducer[pos_idx] \
             else "secondary" if secondary_reducer[pos_idx] \
@@ -109,12 +110,15 @@ def produce_circ_spotty_async_curves_mp(*args):
             initial_system.secondary.points = copy(base_points['secondary'])
 
         # assigning new longitudes for each spot
-        dynamic.assign_spot_longitudes(initial_system, spots_longitudes, index=pos_idx, component="all")
+        dynamic.assign_spot_longitudes(initial_system, spots_longitudes, index=pos_idx, component=require_build)
 
         # build the spots points
         surface.mesh.add_spots_to_mesh(initial_system, orbital_position.distance, component=require_build)
         # build the rest of the surface based on preset surface points
-        initial_system.build_from_points(components_distance=orbital_position.distance, component=require_build)
+        initial_system.build_from_points_to_temperatures(components_distance=orbital_position.distance,
+                                                         component=require_build)
+        initial_system.build_full_temperature_distribution(components_distance=orbital_position.distance,
+                                                           component='all')
 
         on_pos = butils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
 

@@ -12,6 +12,7 @@ from elisa.conf import config
 from elisa.observer.observer import Observer
 from elisa.binary_system.orbit.container import OrbitalSupplements
 from elisa.binary_system import surface
+from elisa.binary_system.curves import utils as crv_utils
 from elisa.base import surface as basesurface
 from elisa.base.container import PositionContainer
 
@@ -155,7 +156,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         mock_supplements = OrbitalSupplements([[1., 10.]], [[1., 10.]])
         expected = np.array([[0.1111, 0.0625, 0.4118, 0.4333], [0.0909, 0.1579, 0.525, 0.2121]])
         with mock.patch('elisa.binary_system.radius.calculate_forward_radii', MockSelf.calculate_forward_radii):
-            obtained = np.round(lc._compute_rel_d_radii(MockSelf, mock_supplements.body[:, 1]), 4)
+            obtained = np.round(crv_utils.compute_rel_d_radii(MockSelf, mock_supplements.body[:, 1]), 4)
         self.assertTrue(np.all(expected == obtained))
 
     def _test_find_apsidally_corresponding_positions(self, arr1, arr2, expected, tol=1e-10):
