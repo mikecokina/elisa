@@ -141,6 +141,24 @@ def produce_circ_spotty_async_curves_mp(*args):
 
 
 def integrate_eccentric_curve_exactly(*args):
+    """
+    Curve generator function for exact integration of eccentric orbits.
+
+    :param args: Tuple;
+
+    ::
+
+        Tuple[
+                binary: elisa.binary_system.BinarySystem,
+                potentials: dict; corrected surface potentials
+                phase_batch: numpy.array; phases at which to calculate curves,
+                crv_labels: List;
+                curves_fn: function to calculate curve points at given orbital positions,
+                kwargs: Dict,
+            ]
+
+    :return:
+    """
     binary, potentials, motion_batch, crv_labels, curve_fn, kwargs = args
     curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
     for run_idx, position in enumerate(motion_batch):
@@ -157,5 +175,5 @@ def integrate_eccentric_curve_exactly(*args):
         surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True,
                                                   return_values=False, write_to_containers=True)
 
-        curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
+        curves = curve_fn(curves, run_idx, crv_labels, on_pos)
     return curves
