@@ -886,13 +886,7 @@ def renormalize_async_result(result):
     :param result: List;
     :return: Dict[str; numpy.array]
     """
-    # todo: come with something more sophisticated
-    placeholder = {key: np.array([]) for key in result[-1]}
-    for record in result:
-        for passband in placeholder:
-            placeholder[passband] = record[passband] if is_empty(placeholder[passband]) else np.hstack(
-                (placeholder[passband], record[passband]))
-    return placeholder
+    return {key: np.concatenate([record[key] for record in result], axis=0) for key in result[-1].keys()}
 
 
 def random_sign():
