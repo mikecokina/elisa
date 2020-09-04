@@ -404,7 +404,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         bs = prepare_binary_system(self.params["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.json", TOL, -0.2, 1.2, 0.1)
 
-    def test_eccentric_synchronous_detached_system_approximation_one(self):
+    def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
         reload(lc)
@@ -425,7 +425,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.assertTrue(np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
         self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
 
-    def test_eccentric_synchronous_detached_system_approximation_two(self):
+    def test_eccentric_system_approximation_two(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
@@ -455,7 +455,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
         # plt.show()
 
-    def test_eccentric_synchronous_detached_system_approximation_three(self):
+    def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         reload(lc)
