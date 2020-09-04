@@ -4,7 +4,6 @@ import astropy.units as u
 from copy import copy
 from scipy.spatial.qhull import Delaunay
 from elisa.base import spot
-from elisa.pulse import pulsations
 from elisa.utils import is_empty
 from elisa.binary_system import utils as bsutils
 from elisa.binary_system.orbit import orbit

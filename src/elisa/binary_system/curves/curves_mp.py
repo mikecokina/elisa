@@ -5,8 +5,9 @@ from elisa.conf import config
 from elisa.binary_system import (
     utils as butils,
     dynamic,
-    surface
 )
+from elisa.binary_system.surface.mesh import add_spots_to_mesh
+from elisa.binary_system.surface.coverage import compute_surface_coverage
 from elisa.binary_system.curves import utils as crv_utils
 from elisa.binary_system.container import OrbitalPositionContainer
 
@@ -46,8 +47,8 @@ def produce_circ_sync_curves_mp(*args):
     for pos_idx, position in enumerate(orbital_motion):
         on_pos = butils.move_sys_onpos(initial_system, position)
 
-        surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
-                                                  return_values=False, write_to_containers=True)
+        compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
+                                 return_values=False, write_to_containers=True)
 
         curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
 
@@ -113,7 +114,7 @@ def produce_circ_spotty_async_curves_mp(*args):
         dynamic.assign_spot_longitudes(initial_system, spots_longitudes, index=pos_idx, component=require_build)
 
         # build the spots points
-        surface.mesh.add_spots_to_mesh(initial_system, orbital_position.distance, component=require_build)
+        add_spots_to_mesh(initial_system, orbital_position.distance, component=require_build)
         # build the rest of the surface based on preset surface points
         initial_system.build_from_points_to_temperatures(components_distance=orbital_position.distance,
                                                          component=require_build)
@@ -132,8 +133,8 @@ def produce_circ_spotty_async_curves_mp(*args):
                 setattr(star, 'normal_radiance', normal_radiance[component])
                 setattr(star, 'ld_cfs', ld_cfs[component])
 
-        surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
-                                                  return_values=False, write_to_containers=True)
+        compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
+                                 return_values=False, write_to_containers=True)
 
         curves = curve_fn(curves, pos_idx, crv_labels, on_pos)
 
@@ -172,8 +173,8 @@ def integrate_eccentric_curve_exactly(*args):
 
         crv_utils.prep_surface_params(on_pos, return_values=False, write_to_containers=True, **kwargs)
         # TODO: properly calculate in_eclipse parameter
-        surface.coverage.compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True,
-                                                  return_values=False, write_to_containers=True)
+        compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True, return_values=False,
+                                 write_to_containers=True)
 
         curves = curve_fn(curves, run_idx, crv_labels, on_pos)
     return curves

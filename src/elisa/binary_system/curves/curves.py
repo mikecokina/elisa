@@ -204,7 +204,7 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
 
     try_to_find_appx = curve_approx.look_for_approximation(not binary.has_pulsations())
 
-    curve_fn_list = [integrate_eccentric_curve_exactly]
+    curve_fn_list = [integrate_eccentric_curve_exactly, curve_approx.integrate_eccentric_curve_appx_one]
 
     appx_uid, run = curve_approx.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
                                                                   phases_span_test, curve_fn_list, crv_labels, curve_fn,
@@ -245,4 +245,3 @@ def integrate_eccentric_curve_exactly(binary, orbital_motion, phases, crv_labels
                                       position=orbital_motion,
                                       **kwargs)
     return band_curves
-

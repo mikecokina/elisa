@@ -1,15 +1,11 @@
-from multiprocessing.pool import Pool
-
 import numpy as np
 
 from copy import (
     deepcopy,
-    copy
 )
 from scipy.interpolate import Akima1DInterpolator
 
 from ...logger import getLogger
-from ...conf import config
 from ...binary_system.container import OrbitalPositionContainer
 from ...binary_system.orbit.container import OrbitalSupplements
 from ...binary_system.surface.coverage import calculate_coverage_with_cosines
@@ -17,9 +13,7 @@ from ...binary_system.curves import (
     lcmp,
     curves,
     utils as crv_utils,
-    curve_approx
 )
-from elisa.observer.mp import manage_observations
 
 from ... import (
     umpy as up,
@@ -29,7 +23,6 @@ from ... import (
 from ...binary_system import (
     utils as bsutils,
     dynamic,
-    surface
 )
 
 
@@ -137,81 +130,6 @@ def compute_eccentric_lightcurve_no_spots(binary, **kwargs):
     return curves.produce_ecc_curves_no_spots(binary, lcmp.compute_lc_on_pos, lc_labels, **kwargs)
 
 
-def _integrate_eccentric_lc_appx_one(binary, phases, orbital_supplements, new_geometry_mask, **kwargs):
-    """
-    Function calculates light curves for eccentric orbits for selected filters using approximation
-    where light curve points on the one side of the apsidal line are calculated exactly and the second
-    half of the light curve points are calculated by mirroring the surface geometries of the first
-    half of the points to the other side of the apsidal line. Since those mirrored
-    points are not alligned with desired phases, the fluxes for each phase is interpolated if missing.
-
-    :param binary: elisa.binary_system.system.BinarySystem;
-    :param phases: numpy.array;
-    :param orbital_supplements: elisa.binary_system.orbit.container.OrbitalSupplements;
-    :param new_geometry_mask: numpy.array;
-    :param kwargs: Dict;
-    :**kwargs options**:
-        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
-        * ** left_bandwidth ** - float
-        * ** right_bandwidth ** - float
-        * ** atlas ** - str
-    :return: Dict[str, numpy.array];
-    """
-
-    band_curves = {key: list() for key in kwargs["passband"]}
-    band_curves_body, band_curves_mirror = deepcopy(band_curves), deepcopy(band_curves)
-
-    # surface potentials with constant volume of components
-    potentials = binary.correct_potentials(orbital_supplements.body[:, 4], component="all", iterations=2)
-
-    # prepare initial orbital position container
-    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
-    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
-
-    # both, body and mirror should be defined in this approximation (those points are created in way to be mirrored
-    # one to another), if it is not defined, there is most likely issue with method `_prepare_geosymmetric_orbit`
-    ld_cfs, normal_radiance = None, None
-    for idx, position_pair in enumerate(orbital_supplements):
-        body, mirror = position_pair
-        body_orb_pos, mirror_orb_pos = utils.convert_binary_orbital_motion_arr_to_positions([body, mirror])
-        require_geometry_rebuild = new_geometry_mask[idx]
-
-        initial_system.set_on_position_params(body_orb_pos, potentials['primary'][idx], potentials['secondary'][idx])
-        initial_system = _update_surface_in_ecc_orbits(initial_system, body_orb_pos, require_geometry_rebuild)
-
-        on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos)
-        on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos)
-
-        if require_geometry_rebuild:
-            normal_radiance, ld_cfs = crv_utils.prep_surface_params(on_pos_body, **kwargs)
-
-        coverage_b, cosines_b = calculate_coverage_with_cosines(on_pos_body, binary.semi_major_axis, in_eclipse=True)
-        coverage_m, cosines_m = calculate_coverage_with_cosines(on_pos_mirror, binary.semi_major_axis, in_eclipse=True)
-
-        for band in kwargs["passband"].keys():
-            band_curves_body[band].append(curves._calculate_lc_point(band, ld_cfs, normal_radiance,
-                                                                     coverage_b, cosines_b))
-            band_curves_mirror[band].append(curves._calculate_lc_point(band, ld_cfs, normal_radiance,
-                                                                       coverage_m, cosines_m))
-
-    # interpolation of the points in the second half of the light curves using splines
-    x = up.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4] % 1))
-    sort_idx = np.argsort(x)
-    x = x[sort_idx]
-    x = up.concatenate(([x[-1] - 1], x, [x[0] + 1]))
-
-    for band in kwargs["passband"]:
-        y = up.concatenate((band_curves_body[band], band_curves_mirror[band]))
-        y = y[sort_idx]
-        y = up.concatenate(([y[-1]], y, [y[0]]))
-
-        i = Akima1DInterpolator(x, y)
-        f = i(phases)
-        band_curves[band] = f
-
-    return band_curves
-
-
 def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_geometry_mask, **kwargs):
     """
     Function calculates light curve for eccentric orbit for selected filters using
@@ -279,7 +197,7 @@ def _integrate_eccentric_lc_appx_two(binary, phases, orbital_supplements, new_ge
             on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, on_copy=True)
 
             _args = _args[:2] + calculate_coverage_with_cosines(on_pos_mirror, on_pos_mirror.semi_major_axis,
-                                                                 in_eclipse=True)
+                                                                in_eclipse=True)
             _produce_lc_point(mirror_orb_pos, *_args)
             used_phases += [mirror_orb_pos.phase]
 

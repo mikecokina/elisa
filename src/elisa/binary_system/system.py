@@ -1004,7 +1004,7 @@ class BinarySystem(System):
             fn_arr = (self._compute_circular_synchronous_rv_curve,
                       self._compute_circular_spotty_asynchronous_rv_curve,
                       self._compute_eccentric_spotty_rv_curve,
-                      self._compute_eccentric_rv_curve)
+                      self._compute_eccentric_rv_curve_no_spots)
             curve_fn = curves.resolve_curve_method(self, fn_arr)
 
             kwargs = rv.include_passband_data_to_kwargs(**kwargs)
@@ -1019,7 +1019,7 @@ class BinarySystem(System):
     def _compute_eccentric_spotty_rv_curve(self, **kwargs):
         return rv.compute_eccentric_spotty_rv_curve(self, **kwargs)
 
-    def _compute_eccentric_rv_curve(self, **kwargs):
-        return rv.compute_eccentric_rv_curve(self, **kwargs)
+    def _compute_eccentric_rv_curve_no_spots(self, **kwargs):
+        return rv.compute_eccentric_rv_curve_no_spots(self, **kwargs)
 
 

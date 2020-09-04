@@ -1,10 +1,18 @@
 import numpy as np
+from copy import deepcopy
+from scipy.interpolate import Akima1DInterpolator
 
 from elisa import utils, const
 from elisa.conf import config
 from elisa.binary_system import dynamic
-from elisa.binary_system.curves import utils as crv_utils
+from elisa.binary_system.curves import (
+    utils as crv_utils,
+    curve_approx_mp
+)
 from ...binary_system.orbit.container import OrbitalSupplements
+from ...binary_system.container import OrbitalPositionContainer
+from ...binary_system import utils as bsutils
+from elisa.observer.mp import manage_observations
 
 
 def look_for_approximation(not_pulsations_test):
@@ -73,14 +81,8 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
     appx_one = eval_approximation_one(phases, phases_span_test)
 
     if appx_one:
-        orbital_supplements = OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
-        orbital_supplements.sort(by='distance')
-        rel_d_radii = crv_utils.compute_rel_d_radii(binary, orbital_supplements.body[:, 1])
-        new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(),
-                                                                   orbital_supplements.size(), rel_d_radii)
-
-        return 'one', lambda: approx_method_list[1](binary, phases, orbital_supplements,
-                                                    new_geometry_mask, **kwargs)
+        return 'one', lambda: approx_method_list[1](binary, phases, reduced_orbit_arr, counterpart_postion_arr,
+                                                    crv_labels, curve_fn, **kwargs)
 
     # APPX TWO *********************************************************************************************************
     # create object of separated objects and supplements to bodies
@@ -148,3 +150,52 @@ def eval_approximation_two(rel_d, phases_span_test):
 
 
 # *******************************************approximation curve_methods************************************************
+def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counterpart_postion_arr, crv_labels, curve_fn,
+                                       **kwargs):
+    """
+    Function calculates curves for eccentric orbits for selected filters using approximation
+    where curve points on the one side of the apsidal line are calculated exactly and the second
+    half of the curve points are calculated by mirroring the surface geometries of the first
+    half of the points to the other side of the apsidal line. Since those mirrored
+    points are not alligned with desired phases, the fluxes for each phase is interpolated.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param phases: numpy.array;
+    :param reduced_orbit_arr: numpy.array; base orbital positions
+    :param counterpart_postion_arr: numpy.array; orbital positions symmetric to the `reduced_orbit_arr`
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+    :return: Dict[str, numpy.array];
+    """
+    orbital_supplements = OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
+    orbital_supplements.sort(by='distance')
+
+    orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
+    fn_args = (binary, crv_labels, curve_fn)
+
+    stacked_band_curves = manage_observations(fn=curve_approx_mp.integrate_eccentric_curve_appx_one,
+                                              fn_args=fn_args,
+                                              position=orbital_positions,
+                                              **kwargs)
+
+    # interpolation of the points in the second half of the light curves using splines
+    x = np.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4] % 1))
+    sort_idx = np.argsort(x)
+    x = x[sort_idx]
+    x = np.concatenate(([x[-1] - 1], x, [x[0] + 1]))
+
+    band_curves = dict()
+    for curve in crv_labels:
+        y = np.concatenate((stacked_band_curves[curve][:, 0], stacked_band_curves[curve][:, 1]))
+        y = y[sort_idx]
+        y = np.concatenate(([y[-1]], y, [y[0]]))
+
+        i = Akima1DInterpolator(x, y)
+        f = i(phases)
+        band_curves[curve] = f
+
+    return band_curves

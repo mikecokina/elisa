@@ -146,7 +146,7 @@ def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
     return curves.produce_circ_spotty_async_curves(binary, rvmp.compute_rv_at_pos, rv_labels, **kwargs)
 
 
-def compute_eccentric_rv_curve(binary, **kwargs):
+def compute_eccentric_rv_curve_no_spots(binary, **kwargs):
     """
     General function for generating rv curves of binaries with eccentric orbit and no spots.
 
