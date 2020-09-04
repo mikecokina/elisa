@@ -15,7 +15,8 @@ from unittests.utils import (
 from elisa.observer.observer import Observer
 from elisa.binary_system.curves import (
     rv,
-    rvmp
+    rvmp,
+    curve_approx
 )
 from elisa.conf import config
 from elisa import umpy as up, const
@@ -253,3 +254,12 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         bs = prepare_binary_system(self.params["eccentric"])
 
         self.do_comparison(bs, "detached.ecc.sync.json")
+
+    def test_eccentric_system_approximation_one(self):
+        config.POINTS_ON_ECC_ORBIT = 5
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(curve_approx)
+
+        bs = prepare_binary_system(self.params["eccentric"])
+
+        self.do_comparison(bs, "detached.ecc.appx_one.json")

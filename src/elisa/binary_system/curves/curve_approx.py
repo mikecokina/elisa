@@ -1,8 +1,7 @@
 import numpy as np
-from copy import deepcopy
 from scipy.interpolate import Akima1DInterpolator
 
-from elisa import utils, const
+from elisa import utils
 from elisa.conf import config
 from elisa.binary_system import dynamic
 from elisa.binary_system.curves import (
@@ -10,8 +9,6 @@ from elisa.binary_system.curves import (
     curve_approx_mp
 )
 from ...binary_system.orbit.container import OrbitalSupplements
-from ...binary_system.container import OrbitalPositionContainer
-from ...binary_system import utils as bsutils
 from elisa.observer.mp import manage_observations
 
 

@@ -36,7 +36,8 @@ from elisa import (
     utils)
 from elisa.binary_system.curves import (
     lc,
-    lcmp
+    lcmp,
+    curve_approx
 )
 
 TOL = 5e-3
@@ -399,7 +400,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_synchronous_detached_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(lcmp)
+        reload(curve_approx)
 
         bs = prepare_binary_system(self.params["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.json", TOL, -0.2, 1.2, 0.1)
@@ -407,7 +408,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(lc)
+        reload(curve_approx)
 
         bs = prepare_binary_system(self.params["eccentric"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
@@ -458,7 +459,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload(lc)
+        reload(curve_approx)
 
         bs = prepare_binary_system(self.params["eccentric"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
