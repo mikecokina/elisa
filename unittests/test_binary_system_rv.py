@@ -1,6 +1,7 @@
 import numpy as np
 import os.path as op
 
+from os import cpu_count
 from importlib import reload
 
 from numpy.testing import assert_array_equal, assert_array_less
@@ -13,6 +14,7 @@ from unittests.utils import (
     load_radial_curve
 )
 from elisa.observer.observer import Observer
+from elisa.observer import mp
 from elisa.binary_system.curves import (
     rv,
     rvmp,
@@ -24,6 +26,66 @@ from astropy import units as u
 
 
 TOL = 1e-3
+
+PARAMS = {
+    'detached': {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
+        "eccentricity": 0.0, "inclination": const.HALF_PI * u.rad, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 6500, "secondary_t_eff": 6500,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 1.0, "secondary_albedo": 1.0,
+    },
+    'detached-async-ecc': {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
+        "primary_synchronicity": 0.8, "secondary_synchronicity": 1.2,
+        "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
+        "eccentricity": 0.3, "inclination": const.HALF_PI * u.rad, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 6500, "secondary_t_eff": 6500,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 1.0, "secondary_albedo": 1.0,
+    },
+    'detached-async': {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
+        "primary_synchronicity": 0.8, "secondary_synchronicity": 1.2,
+        "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
+        "eccentricity": 0.0, "inclination": const.HALF_PI * u.rad, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 6500, "secondary_t_eff": 6500,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 1.0, "secondary_albedo": 1.0,
+    },
+    'over-contact': {
+        "primary_mass": 2.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 2.7,
+        "secondary_surface_potential": 2.7,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": 90 * u.deg, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 6000, "secondary_t_eff": 6000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 1.0, "secondary_albedo": 1.0
+    },
+    'eccentric': {
+        "primary_mass": 1.0, "secondary_mass": 1.0,
+        "primary_surface_potential": 8,
+        "secondary_surface_potential": 8,
+        "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+        "argument_of_periastron": 223 * u.deg, "gamma": 0.0, "period": 3.0,
+        "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+        "phase_shift": 0.0,
+        "primary_t_eff": 6000, "secondary_t_eff": 6000,
+        "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+        "primary_albedo": 1.0, "secondary_albedo": 1.0
+    }
+}
 
 
 class BinaryRadialCurvesTestCase(ElisaTestCase):
@@ -89,66 +151,6 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
 
 
 class ComputeRadiometricRVTestCase(ElisaTestCase):
-    params = {
-        'detached': {
-            "primary_mass": 2.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
-            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-            "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
-            "eccentricity": 0.0, "inclination": const.HALF_PI * u.rad, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6500, "secondary_t_eff": 6500,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0,
-        },
-        'detached-async-ecc': {
-            "primary_mass": 2.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
-            "primary_synchronicity": 0.8, "secondary_synchronicity": 1.2,
-            "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
-            "eccentricity": 0.3, "inclination": const.HALF_PI * u.rad, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6500, "secondary_t_eff": 6500,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0,
-        },
-        'detached-async': {
-            "primary_mass": 2.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
-            "primary_synchronicity": 0.8, "secondary_synchronicity": 1.2,
-            "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
-            "eccentricity": 0.0, "inclination": const.HALF_PI * u.rad, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6500, "secondary_t_eff": 6500,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0,
-        },
-        'over-contact': {
-            "primary_mass": 2.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 2.7,
-            "secondary_surface_potential": 2.7,
-            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-            "argument_of_periastron": 90 * u.deg, "gamma": 0.0, "period": 1.0,
-            "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6000, "secondary_t_eff": 6000,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0
-        },
-        'eccentric': {
-            "primary_mass": 1.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 8,
-            "secondary_surface_potential": 8,
-            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-            "argument_of_periastron": 223 * u.deg, "gamma": 0.0, "period": 3.0,
-            "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6000, "secondary_t_eff": 6000,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0
-        }
-    }
-
     def setUp(self):
         # raise unittest.SkipTest(message)
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
@@ -192,7 +194,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         """
         no assert here, it just has to pass without error
         """
-        bs = prepare_binary_system(self.params["detached"])
+        bs = prepare_binary_system(PARAMS["detached"])
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
         laws = config.LD_LAW_TO_FILE_PREFIX.keys()
@@ -207,21 +209,21 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         config.LIMB_DARKENING_LAW = "linear"
         reload(rv)
 
-        bs = prepare_binary_system(self.params["detached"])
+        bs = prepare_binary_system(PARAMS["detached"])
         self.do_comparison(bs, "detached.circ.sync.json")
 
     def test_circular_synchronous_overcontact_system(self):
         config.LIMB_DARKENING_LAW = "linear"
         reload(rv)
 
-        bs = prepare_binary_system(self.params["over-contact"])
+        bs = prepare_binary_system(PARAMS["over-contact"])
         self.do_comparison(bs, "overcontact.circ.sync.json")
 
     def test_circular_spotty_synchronous_detached_system(self):
         config.LIMB_DARKENING_LAW = "linear"
         reload(rv)
 
-        bs = prepare_binary_system(self.params["detached"],
+        bs = prepare_binary_system(PARAMS["detached"],
                                    spots_primary=SPOTS_META["primary"],
                                    spots_secondary=SPOTS_META["secondary"])
 
@@ -231,7 +233,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         config.LIMB_DARKENING_LAW = "linear"
         reload(rv)
 
-        bs = prepare_binary_system(self.params["over-contact"],
+        bs = prepare_binary_system(PARAMS["over-contact"],
                                    spots_primary=SPOTS_META["primary"],
                                    spots_secondary=SPOTS_META["secondary"])
 
@@ -241,7 +243,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
         reload(rv)
 
-        bs = prepare_binary_system(self.params["detached-async"],
+        bs = prepare_binary_system(PARAMS["detached-async"],
                                    spots_primary=SPOTS_META["primary"])
 
         self.do_comparison(bs, "detached.circ.spotty.async.json")
@@ -251,7 +253,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         config.MAX_RELATIVE_D_R_POINT = 0.0
         reload(rvmp)
 
-        bs = prepare_binary_system(self.params["eccentric"])
+        bs = prepare_binary_system(PARAMS["eccentric"])
 
         self.do_comparison(bs, "detached.ecc.sync.json")
 
@@ -260,6 +262,60 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         config.MAX_RELATIVE_D_R_POINT = 0.0
         reload(curve_approx)
 
-        bs = prepare_binary_system(self.params["eccentric"])
+        bs = prepare_binary_system(PARAMS["eccentric"])
 
         self.do_comparison(bs, "detached.ecc.appx_one.json")
+
+
+class CompareSingleVsMultiprocess(ElisaTestCase):
+    def do_comparison(self, system):
+        o = Observer(system=system)
+        start_phs, stop_phs, step = -0.2, 1.2, 0.1
+
+        sp_res = o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
+        sp_p = np.array(sp_res[1]['primary'])
+        sp_s = np.array(sp_res[1]['secondary'])
+        sp_p = sp_p[~np.isnan(sp_p)]
+        sp_s = sp_s[~np.isnan(sp_s)]
+
+        config.NUMBER_OF_PROCESSES = cpu_count()
+        reload(mp)
+        mp_res = o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
+        mp_p = np.array(mp_res[1]['primary'])
+        mp_s = np.array(mp_res[1]['secondary'])
+        mp_p = mp_p[~np.isnan(mp_p)]
+        mp_s = mp_s[~np.isnan(mp_s)]
+
+        self.assertTrue(np.all((up.abs(sp_p - mp_p) / np.abs(np.max(sp_p))) < 1e-8))
+        self.assertTrue(np.all((up.abs(sp_s - mp_s) / np.abs(np.max(sp_s))) < 1e-8))
+
+    def test_circ_sinc_rv(self):
+        config.LIMB_DARKENING_LAW = "linear"
+        reload(rv)
+
+        bs = prepare_binary_system(PARAMS["detached"])
+        self.do_comparison(bs)
+
+    def test_circ_spotty_async_lc(self):
+        config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
+        reload(rv)
+
+        bs = prepare_binary_system(PARAMS["detached-async"],
+                                   spots_primary=SPOTS_META["primary"])
+        self.do_comparison(bs)
+
+    def test_eccentric_system_no_approximation(self):
+        config.POINTS_ON_ECC_ORBIT = -1
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(curve_approx)
+
+        bs = prepare_binary_system(PARAMS["eccentric"])
+        self.do_comparison(bs)
+
+    def test_eccentric_system_approximation_one(self):
+        config.POINTS_ON_ECC_ORBIT = 5
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(curve_approx)
+
+        bs = prepare_binary_system(PARAMS["eccentric"])
+        self.do_comparison(bs)

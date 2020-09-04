@@ -1,5 +1,6 @@
 import os.path as op
 import numpy as np
+from os import cpu_count
 
 from importlib import reload
 from unittest import mock
@@ -10,6 +11,7 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.observer.observer import Observer
+from elisa.observer import mp
 from elisa.binary_system.orbit.container import OrbitalSupplements
 from elisa.binary_system import surface
 from elisa.binary_system.curves import utils as crv_utils
@@ -41,6 +43,67 @@ from elisa.binary_system.curves import (
 )
 
 TOL = 5e-3
+
+
+PARAMS = {
+        'detached': {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 5.0,
+            "eccentricity": 0.0, "inclination": const.HALF_PI * units.rad, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 6500, "secondary_t_eff": 6500,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 1.0, "secondary_albedo": 1.0,
+        },
+        'detached-async-ecc': {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
+            "primary_synchronicity": 0.8, "secondary_synchronicity": 1.2,
+            "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 5.0,
+            "eccentricity": 0.3, "inclination": const.HALF_PI * units.rad, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 6500, "secondary_t_eff": 6500,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 1.0, "secondary_albedo": 1.0,
+        },
+        'detached-async': {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
+            "primary_synchronicity": 0.8, "secondary_synchronicity": 1.2,
+            "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 5.0,
+            "eccentricity": 0.0, "inclination": const.HALF_PI * units.rad, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 6500, "secondary_t_eff": 6500,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 1.0, "secondary_albedo": 1.0,
+        },
+        'over-contact': {
+            "primary_mass": 2.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 2.7,
+            "secondary_surface_potential": 2.7,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": 90 * units.deg, "gamma": 0.0, "period": 1.0,
+            "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 6000, "secondary_t_eff": 6000,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 1.0, "secondary_albedo": 1.0
+        },
+        'eccentric': {
+            "primary_mass": 1.0, "secondary_mass": 1.0,
+            "primary_surface_potential": 8,
+            "secondary_surface_potential": 8,
+            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
+            "argument_of_periastron": 223 * units.deg, "gamma": 0.0, "period": 3.0,
+            "eccentricity": 0.3, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+            "phase_shift": 0.0,
+            "primary_t_eff": 6000, "secondary_t_eff": 6000,
+            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
+            "primary_albedo": 1.0, "secondary_albedo": 1.0
+        }
+    }
 
 
 class MockSelf(object):
@@ -280,66 +343,6 @@ class SupportMethodsTestCase(ElisaTestCase):
 
 
 class ComputeLightCurvesTestCase(ElisaTestCase):
-    params = {
-        'detached': {
-            "primary_mass": 2.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
-            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-            "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 5.0,
-            "eccentricity": 0.0, "inclination": const.HALF_PI * units.rad, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6500, "secondary_t_eff": 6500,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0,
-        },
-        'detached-async-ecc': {
-            "primary_mass": 2.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
-            "primary_synchronicity": 0.8, "secondary_synchronicity": 1.2,
-            "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 5.0,
-            "eccentricity": 0.3, "inclination": const.HALF_PI * units.rad, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6500, "secondary_t_eff": 6500,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0,
-        },
-        'detached-async': {
-            "primary_mass": 2.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 5.0, "secondary_surface_potential": 5.0,
-            "primary_synchronicity": 0.8, "secondary_synchronicity": 1.2,
-            "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 5.0,
-            "eccentricity": 0.0, "inclination": const.HALF_PI * units.rad, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6500, "secondary_t_eff": 6500,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0,
-        },
-        'over-contact': {
-            "primary_mass": 2.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 2.7,
-            "secondary_surface_potential": 2.7,
-            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-            "argument_of_periastron": 90 * units.deg, "gamma": 0.0, "period": 1.0,
-            "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6000, "secondary_t_eff": 6000,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0
-        },
-        'eccentric': {
-            "primary_mass": 1.0, "secondary_mass": 1.0,
-            "primary_surface_potential": 8,
-            "secondary_surface_potential": 8,
-            "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-            "argument_of_periastron": 223 * units.deg, "gamma": 0.0, "period": 3.0,
-            "eccentricity": 0.3, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
-            "phase_shift": 0.0,
-            "primary_t_eff": 6000, "secondary_t_eff": 6000,
-            "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-            "primary_albedo": 1.0, "secondary_albedo": 1.0
-        }
-    }
-
     def setUp(self):
         # raise unittest.SkipTest(message)
         self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
@@ -358,7 +361,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         """
         no assert here, it just has to pass without error
         """
-        bs = prepare_binary_system(self.params["detached"])
+        bs = prepare_binary_system(PARAMS["detached"])
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
         laws = config.LD_LAW_TO_FILE_PREFIX.keys()
@@ -387,14 +390,14 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         config.LIMB_DARKENING_LAW = "linear"
         reload(lc)
 
-        bs = prepare_binary_system(self.params["detached"])
+        bs = prepare_binary_system(PARAMS["detached"])
         self.do_comparison(bs, "detached.circ.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
     def test_circular_synchronous_overcontact_system(self):
         config.LIMB_DARKENING_LAW = "linear"
         reload(lc)
 
-        bs = prepare_binary_system(self.params["over-contact"])
+        bs = prepare_binary_system(PARAMS["over-contact"])
         self.do_comparison(bs, "overcontact.circ.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
     def test_eccentric_synchronous_detached_system_no_approximation(self):
@@ -402,7 +405,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         config.MAX_RELATIVE_D_R_POINT = 0.0
         reload(curve_approx)
 
-        bs = prepare_binary_system(self.params["eccentric"])
+        bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.json", TOL, -0.2, 1.2, 0.1)
 
     def test_eccentric_system_approximation_one(self):
@@ -410,7 +413,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         config.MAX_RELATIVE_D_R_POINT = 0.0
         reload(curve_approx)
 
-        bs = prepare_binary_system(self.params["eccentric"])
+        bs = prepare_binary_system(PARAMS["eccentric"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
@@ -432,7 +435,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
         reload(lc)
 
-        bs = prepare_binary_system(self.params["eccentric"])
+        bs = prepare_binary_system(PARAMS["eccentric"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
@@ -461,7 +464,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         config.MAX_RELATIVE_D_R_POINT = 0.05
         reload(curve_approx)
 
-        bs = prepare_binary_system(self.params["eccentric"])
+        bs = prepare_binary_system(PARAMS["eccentric"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
 
         start_phs, stop_phs, step = -0.0, 0.01, 0.002
@@ -485,7 +488,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         config.LIMB_DARKENING_LAW = "linear"
         reload(lc)
 
-        bs = prepare_binary_system(self.params["detached-async-ecc"])
+        bs = prepare_binary_system(PARAMS["detached-async-ecc"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
@@ -502,7 +505,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.assertTrue(np.all(np.round(obtained_flux, 3) - np.round(expected_flux, 3) < TOL))
 
     def test_circular_spotty_synchronous_detached_system(self):
-        bs = prepare_binary_system(self.params["detached"],
+        bs = prepare_binary_system(PARAMS["detached"],
                                    spots_primary=SPOTS_META["primary"],
                                    spots_secondary=SPOTS_META["secondary"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
@@ -521,7 +524,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.assertTrue(np.all(np.round(obtained_flux, 3) - np.round(expected_flux, 3) < TOL))
 
     def test_circular_spotty_synchronous_overcontact_system(self):
-        bs = prepare_binary_system(self.params["over-contact"],
+        bs = prepare_binary_system(PARAMS["over-contact"],
                                    spots_primary=SPOTS_META["primary"],
                                    spots_secondary=SPOTS_META["secondary"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
@@ -543,7 +546,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
         reload(lc)
 
-        bs = prepare_binary_system(self.params["detached-async"],
+        bs = prepare_binary_system(PARAMS["detached-async"],
                                    spots_primary=SPOTS_META["primary"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
         start_phs, stop_phs, step = -0.2, 1.2, 0.05
@@ -559,7 +562,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.assertTrue(np.all(np.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
 
     def test_eccentric_spotty_asynchronous_detached_system(self):
-        bs = prepare_binary_system(self.params["detached-async-ecc"],
+        bs = prepare_binary_system(PARAMS["detached-async-ecc"],
                                    spots_primary=SPOTS_META["primary"])
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
@@ -573,3 +576,50 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         self.assertTrue(np.all(np.round(obtained_phases, 3) - np.round(expected_phases, 3) < TOL))
         self.assertTrue(np.all(np.round(obtained_flux, 3) - np.round(expected_flux, 3) < TOL))
+
+
+class CompareSingleVsMultiprocess(ElisaTestCase):
+    def do_comparison(self, system):
+        o = Observer(passband=['Generic.Bessell.V'], system=system)
+        start_phs, stop_phs, step = -0.2, 1.2, 0.1
+
+        sp_res = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        sp_flux = normalize_lc_for_unittests(sp_res[1]["Generic.Bessell.V"])
+
+        config.NUMBER_OF_PROCESSES = cpu_count()
+        reload(mp)
+        mp_res = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
+        mp_flux = normalize_lc_for_unittests(mp_res[1]["Generic.Bessell.V"])
+
+        self.assertTrue(np.all(sp_flux - mp_flux < 1e-8))
+
+    def test_circ_sinc_lc(self):
+        config.LIMB_DARKENING_LAW = "linear"
+        reload(lc)
+
+        bs = prepare_binary_system(PARAMS["detached"])
+        self.do_comparison(bs)
+
+    def test_circ_spotty_async_lc(self):
+        config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
+        reload(lc)
+
+        bs = prepare_binary_system(PARAMS["detached-async"],
+                                   spots_primary=SPOTS_META["primary"])
+        self.do_comparison(bs)
+
+    def test_eccentric_system_no_approximation(self):
+        config.POINTS_ON_ECC_ORBIT = -1
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(curve_approx)
+
+        bs = prepare_binary_system(PARAMS["eccentric"])
+        self.do_comparison(bs)
+
+    def test_eccentric_system_approximation_one(self):
+        config.POINTS_ON_ECC_ORBIT = 5
+        config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(curve_approx)
+
+        bs = prepare_binary_system(PARAMS["eccentric"])
+        self.do_comparison(bs)
