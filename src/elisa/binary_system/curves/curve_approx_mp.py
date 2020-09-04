@@ -55,12 +55,12 @@ def integrate_eccentric_curve_appx_one(*args):
     """
     binary, crv_labels, orbital_positions, curve_fn, kwargs = args
 
-    rel_d_radii = crv_utils.compute_rel_d_radii(binary, orbital_positions[:, 0, 1])
-    new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(), orbital_positions.shape[0],
-                                                               rel_d_radii)
-
     # surface potentials with constant volume of components
     potentials = binary.correct_potentials(orbital_positions[:, 0, 4], component="all", iterations=2)
+
+    rel_d_radii = crv_utils.compute_rel_d_radii(binary, orbital_positions[:, 0, 1], potentials=potentials)
+    new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(), orbital_positions.shape[0],
+                                                               rel_d_radii)
 
     curves_body = {key: np.empty(orbital_positions.shape[0]) for key in crv_labels}
     curves_mirror = {key: np.empty(orbital_positions.shape[0]) for key in crv_labels}

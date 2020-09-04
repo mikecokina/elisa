@@ -204,7 +204,8 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
 
     try_to_find_appx = curve_approx.look_for_approximation(not binary.has_pulsations())
 
-    curve_fn_list = [integrate_eccentric_curve_exactly, curve_approx.integrate_eccentric_curve_appx_one]
+    curve_fn_list = [integrate_eccentric_curve_exactly, curve_approx.integrate_eccentric_curve_appx_one,
+                     curve_approx.integrate_eccentric_curve_appx_two]
 
     appx_uid, run = curve_approx.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
                                                                   phases_span_test, curve_fn_list, crv_labels, curve_fn,
@@ -214,7 +215,7 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
         'zero': 'curve will be calculated in a rigorous `phase to phase manner` without approximations',
         'one': 'one half of the curve points on the one side of the apsidal line will be interpolated',
         'two': 'geometry of the stellar surface on one half of the apsidal '
-               'line will be copied from their symmetrical counterparts',
+               'line will be copied from their close symmetrical counterparts',
         'three': 'surface geometry at some orbital positions will not be recalculated due to similarities to previous '
                  'orbital positions'
     }

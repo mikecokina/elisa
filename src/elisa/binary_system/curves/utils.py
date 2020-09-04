@@ -28,11 +28,11 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     retval = {}
     for cmpnt in components:
         retval[cmpnt] = ld.interpolate_on_ld_grid(
-                    temperature=getattr(system, cmpnt).temperatures,
-                    log_g=getattr(system, cmpnt).log_g,
-                    metallicity=getattr(system, cmpnt).metallicity,
-                    passband=kwargs["passband"]
-                )
+            temperature=getattr(system, cmpnt).temperatures,
+            log_g=getattr(system, cmpnt).log_g,
+            metallicity=getattr(system, cmpnt).metallicity,
+            passband=kwargs["passband"]
+        )
 
     return retval
 
@@ -180,28 +180,77 @@ def split_orbit_by_apse_line(orbital_motion, orbital_mask):
     return reduced_orbit_arr, supplement_to_reduced_arr
 
 
-def compute_rel_d_radii(binary, distances):
+def compute_rel_d_radii(binary, distances, potentials=None):
     """
     Requires `orbital_supplements` sorted by distance.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param distances: array; component distances of templates
+    :param potentials: array; corrected potentials, if None, they will be calculated from `distances`
     :return: numpy.array;
     """
-    # note: defined bodies/objects/templates in orbital supplements instance are sorted by distance (line above),
-    # what means that also radii computed from such values have to be already sorted by their own size (radius changes
-    # based on components distance and it is, on the half of orbit defined by apsidal line, monotonic function)
+    corrected_potentials = binary.correct_potentials(distances=distances, component="all", iterations=2) \
+        if potentials is None else potentials
 
-    q, d = binary.mass_ratio, distances
-    pargs = (d, binary.primary.surface_potential, q, binary.primary.synchronicity, "primary")
-    sargs = (d, binary.secondary.surface_potential, q, binary.secondary.synchronicity, "secondary")
-
-    fwd_radii = {
-        "primary": bsradius.calculate_forward_radii(*pargs),
-        "secondary": bsradius.calculate_forward_radii(*sargs)
-    }
-    fwd_radii = np.array(list(fwd_radii.values()))
+    pargs = (distances, corrected_potentials['primary'], binary.mass_ratio, binary.primary.synchronicity, "primary")
+    sargs = (distances, corrected_potentials['secondary'], binary.mass_ratio, binary.secondary.synchronicity,
+             "secondary")
+    fwd_radii = np.vstack((bsradius.calculate_forward_radii(*pargs), bsradius.calculate_forward_radii(*sargs)))
     return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii[:, 1:]
+
+
+def compute_rel_d_radii_from_counterparts(binary, base_distances, counterpart_distances, base_potentials=None,
+                                          counterpart_potentials=None):
+    """
+    Returns relative differences between forward radii between two orbital counterparts.
+
+    :param binary:  elisa.binary_system.system.BinarySystem;
+    :param base_distances: array; component distances of templates
+    :param counterpart_distances: array; component distances of counterparts
+    :param base_potentials: array; corrected base potentials, if None, they will be calculated from `base_distances`
+    :param counterpart_potentials: array;
+    :return: np.array; (2 * N)
+    """
+    base_potentials = binary.correct_potentials(distances=base_distances, component="all", iterations=2) \
+        if base_potentials is None else base_potentials
+    counterpart_potentials = binary.correct_potentials(distances=counterpart_distances, component="all", iterations=2) \
+        if counterpart_potentials is None else counterpart_potentials
+
+    pargs_base = (
+        base_distances,
+        base_potentials['primary'],
+        binary.mass_ratio,
+        binary.primary.synchronicity,
+        "primary"
+    )
+    sargs_base = (
+        base_distances,
+        base_potentials['secondary'],
+        binary.mass_ratio,
+        binary.secondary.synchronicity,
+        "secondary")
+
+    pargs_counterpart = (
+        counterpart_distances,
+        counterpart_potentials['primary'],
+        binary.mass_ratio,
+        binary.primary.synchronicity,
+        "primary"
+    )
+    sargs_counterpart = (
+        counterpart_distances,
+        counterpart_potentials['secondary'],
+        binary.mass_ratio,
+        binary.secondary.synchronicity,
+        "secondary")
+
+    fwd_radii_base = \
+        np.vstack((bsradius.calculate_forward_radii(*pargs_base), bsradius.calculate_forward_radii(*sargs_base)))
+
+    fwd_radii_counterpart = np.vstack((bsradius.calculate_forward_radii(*pargs_counterpart),
+                                       bsradius.calculate_forward_radii(*sargs_counterpart)))
+
+    return np.abs(fwd_radii_base - fwd_radii_counterpart) / fwd_radii_base
 
 
 def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
@@ -240,6 +289,3 @@ def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
                                         calculate_from='azimuth')
 
     return unique_phase_indices, orbital_motion_array_counterpart, unique_geometry
-
-
-

@@ -51,8 +51,8 @@ def get_eclipse_boundaries(binary, components_distance):
 def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr, supplement_constraint, supplement_arr,
                                            tol=1e-10, as_empty=None):
     """
-    Function is inteded to look for orbital positions from reduced_arr which
-    are supplementar to supplement_arr. Similarity to be a pair is based
+    Function is intended to look for orbital positions from reduced_arr which
+    are supplementary to supplement_arr. Similarity to be a pair is based
     on constraints from input arguments, usually it is current separation of
     primary and secondary component on orbit.
 
