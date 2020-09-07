@@ -142,6 +142,7 @@ def eval_approximation_two(binary, potentials, orbital_supplements, phases_span_
     base_potentials = {component: pot[np.array(orbital_supplements.body[:, 0], dtype=np.int)]
                        for component, pot in potentials.items()}
 
+    # removing invalid supplements indices
     idxs_where_nan = np.argwhere(np.isnan(orbital_supplements.mirror[:, 0]))
     idxs = np.array(orbital_supplements.mirror[:, 0], dtype=np.int)
     idxs[idxs_where_nan] = np.array(orbital_supplements.body[idxs_where_nan, 0], dtype=np.int)
@@ -150,6 +151,7 @@ def eval_approximation_two(binary, potentials, orbital_supplements, phases_span_
                                                             orbital_supplements.mirror[:, 1],
                                                             base_potentials=base_potentials,
                                                             counterpart_potentials=counterpart_potentials)
+
     # defined bodies/objects/templates in orbital supplements instance are sorted by distance,
     # That means that also radii `rel_d` computed from such values have to be already sorted by
     # their own size (forward radius changes based on components distance and it is monotonic function)
