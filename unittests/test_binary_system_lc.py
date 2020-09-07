@@ -406,7 +406,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         bs = prepare_binary_system(PARAMS["over-contact"])
         self.do_comparison(bs, "overcontact.circ.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
-    def test_eccentric_synchronous_detached_system_no_approximation(self):
+    def test_eccentric_synchronous_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
         reload(curve_approx)

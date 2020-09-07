@@ -205,7 +205,7 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
     try_to_find_appx = curve_approx.look_for_approximation(not binary.has_pulsations())
 
     curve_fn_list = [integrate_eccentric_curve_exactly, curve_approx.integrate_eccentric_curve_appx_one,
-                     curve_approx.integrate_eccentric_curve_appx_two]
+                     curve_approx.integrate_eccentric_curve_appx_two, curve_approx.integrate_eccentric_curve_appx_three]
 
     appx_uid, run = curve_approx.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
                                                                   phases_span_test, curve_fn_list, crv_labels, curve_fn,
@@ -223,7 +223,7 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
     return run()
 
 
-def integrate_eccentric_curve_exactly(binary, orbital_motion, phases, crv_labels, curve_fn, **kwargs):
+def integrate_eccentric_curve_exactly(binary, orbital_motion, potentials, crv_labels, curve_fn, **kwargs):
     """
     Function calculates curves for eccentric orbit for selected filters.
     Curve is calculated exactly for each OrbitalPosition.
@@ -231,14 +231,13 @@ def integrate_eccentric_curve_exactly(binary, orbital_motion, phases, crv_labels
 
     :param binary: elisa.binary_system.system.BinarySystem; instance
     :param orbital_motion: list of all OrbitalPositions at which curve will be calculated
-    :param phases: phases in which the phase curve will be calculated
+    :param potentials: dict; corrected potentials
     :param kwargs: kwargs taken from `produce_eccentric_curve` function
     :param crv_labels: labels of the calculated curves (passbands, components,...)
     :param curve_fn: curve function
     :return: Dict; dictionary of fluxes for each filter
     """
     # surface potentials with constant volume of components
-    potentials = binary.correct_potentials(phases, component="all", iterations=2)
     fn_args = (binary, potentials, crv_labels, curve_fn)
 
     band_curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly,

@@ -88,10 +88,12 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
             ]
     :return: Dict; curves
     """
-    binary, crv_labels, orbital_positions, curve_fn, kwargs = args
+    binary, all_potentials, orbital_positions, crv_labels, curve_fn, kwargs = args
 
-    # surface potentials with constant volume of components
-    potentials = binary.correct_potentials(orbital_positions[:, 0, 4], component="all", iterations=2)
+    # # surface potentials with constant volume of components
+    # potentials = binary.correct_potentials(orbital_positions[:, 0, 4], component="all", iterations=2)
+    potentials = {component: pot[np.array(orbital_positions[:, 0, 0], dtype=np.int)] for component, pot in
+                  all_potentials.items()}
 
     rel_d_radii = crv_utils.compute_rel_d_radii(binary, orbital_positions[:, 0, 1], potentials=potentials)
     new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(), orbital_positions.shape[0],
@@ -135,3 +137,7 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
             curve_fn(curves_mirror, idx, crv_labels, on_pos_mirror)
 
     return {key: np.stack((curves_body[key], curves_mirror[key]), axis=1) for key in crv_labels}
+
+
+def integrate_eccentric_curve_approx_three():
+    pass

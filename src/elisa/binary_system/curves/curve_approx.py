@@ -21,7 +21,7 @@ def look_for_approximation(not_pulsations_test):
     """
 
     return config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None \
-        and not_pulsations_test
+           and not_pulsations_test
 
 
 def resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx, phases_span_test,
@@ -51,6 +51,7 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
     params = dict(input_argument=phases, return_nparray=True, calculate_from='phase')
     all_orbital_pos_arr = position_method(**params)
     all_orbital_pos = utils.convert_binary_orbital_motion_arr_to_positions(all_orbital_pos_arr)
+    potentials = binary.correct_potentials(phases, component="all", iterations=2)
 
     azimuths = all_orbital_pos_arr[:, 2]
     reduced_phase_ids, counterpart_postion_arr, reduced_phase_mask = \
@@ -62,24 +63,15 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
 
     # APPX ZERO ********************************************************************************************************
     if not try_to_find_appx:
-        return 'zero', lambda: approx_method_list[0](binary, all_orbital_pos, phases, crv_labels, curve_fn, **kwargs)
-
-    # APPX THREE *******************************************************************************************************
-    if not phases_span_test:
-        sorted_all_orbital_pos_arr = all_orbital_pos_arr[all_orbital_pos_arr[:, 1].argsort()]
-        rel_d_radii = crv_utils.compute_rel_d_radii(binary, sorted_all_orbital_pos_arr[:, 1])
-        new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(),
-                                                                   all_orbital_pos_arr.shape[0], rel_d_radii)
-        approx_three = not (~new_geometry_mask).all()
-        if approx_three:
-            return 'three', lambda: approx_method_list[3](binary, phases, all_orbital_pos, new_geometry_mask, **kwargs)
+        return 'zero', lambda: approx_method_list[0](binary, all_orbital_pos, potentials, crv_labels, curve_fn,
+                                                     **kwargs)
 
     # APPX ONE *********************************************************************************************************
     appx_one = eval_approximation_one(phases, phases_span_test)
 
     if appx_one:
         return 'one', lambda: approx_method_list[1](binary, phases, reduced_orbit_arr, counterpart_postion_arr,
-                                                    crv_labels, curve_fn, **kwargs)
+                                                    potentials, crv_labels, curve_fn, **kwargs)
 
     # APPX TWO *********************************************************************************************************
     # create object of separated objects and supplements to bodies
@@ -90,14 +82,23 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
                                                                          tol=config.MAX_SUPPLEMENTAR_D_DISTANCE)
 
     orbital_supplements.sort(by='distance')
-    rel_d_radii = crv_utils.compute_rel_d_radii_from_counterparts(binary, orbital_supplements.body[:, 1],
-                                                                  orbital_supplements.mirror[:, 1])
-    appx_two = eval_approximation_two(rel_d_radii, phases_span_test)
+    appx_two = eval_approximation_two(binary, potentials, orbital_supplements, phases_span_test)
 
     if appx_two:
-        return 'two', lambda: approx_method_list[2](binary, phases, orbital_supplements, crv_labels, curve_fn, **kwargs)
+        return 'two', lambda: approx_method_list[2](binary, phases, orbital_supplements, potentials, crv_labels,
+                                                    curve_fn, **kwargs)
 
-    return 'zero', lambda: approx_method_list[0](binary, all_orbital_pos, phases, crv_labels, curve_fn, **kwargs)
+    # APPX THREE *******************************************************************************************************
+    sorted_all_orbital_pos_arr = all_orbital_pos_arr[all_orbital_pos_arr[:, 1].argsort()]
+    rel_d_radii = crv_utils.compute_rel_d_radii(binary, sorted_all_orbital_pos_arr[:, 1])
+    new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(),
+                                                               all_orbital_pos_arr.shape[0], rel_d_radii)
+    approx_three = not (~new_geometry_mask).all()
+    if approx_three:
+        return 'three', lambda: approx_method_list[3](binary, phases, all_orbital_pos, new_geometry_mask, crv_labels,
+                                                      curve_fn, **kwargs)
+
+    return 'zero', lambda: approx_method_list[0](binary, all_orbital_pos, potentials, crv_labels, curve_fn, **kwargs)
 
     # # attempt APPX_THREE if some phases allow else APPX ZERO once again *********************************************
     # sorted_all_orbital_pos_arr = all_orbital_pos_arr[all_orbital_pos_arr[:, 1].argsort()]
@@ -128,14 +129,27 @@ def eval_approximation_one(phases, phases_span_test):
     return False
 
 
-def eval_approximation_two(rel_d, phases_span_test):
+def eval_approximation_two(binary, potentials, orbital_supplements, phases_span_test):
     """
-    Test if it is appropriate to compute eccentric binary system with approximation approax two.
+    Test if it is appropriate to compute eccentric binary system with approximation approx two.
 
-    :param phases_span_test:
-    :param rel_d: numpy.array;
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param potentials: dict; corrected potentials
+    :param orbital_supplements: elisa.binary_system.orbit.container.OrbitalSupplements;
+    :param phases_span_test: bool;
     :return: bool;
     """
+    base_potentials = {component: pot[np.array(orbital_supplements.body[:, 0], dtype=np.int)]
+                       for component, pot in potentials.items()}
+
+    idxs_where_nan = np.argwhere(np.isnan(orbital_supplements.mirror[:, 0]))
+    idxs = np.array(orbital_supplements.mirror[:, 0], dtype=np.int)
+    idxs[idxs_where_nan] = np.array(orbital_supplements.body[idxs_where_nan, 0], dtype=np.int)
+    counterpart_potentials = {component: pot[idxs] for component, pot in potentials.items()}
+    rel_d = crv_utils.compute_rel_d_radii_from_counterparts(binary, orbital_supplements.body[:, 1],
+                                                            orbital_supplements.mirror[:, 1],
+                                                            base_potentials=base_potentials,
+                                                            counterpart_potentials=counterpart_potentials)
     # defined bodies/objects/templates in orbital supplements instance are sorted by distance,
     # That means that also radii `rel_d` computed from such values have to be already sorted by
     # their own size (forward radius changes based on components distance and it is monotonic function)
@@ -146,8 +160,8 @@ def eval_approximation_two(rel_d, phases_span_test):
 
 
 # *******************************************approximation curve_methods************************************************
-def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counterpart_postion_arr, crv_labels, curve_fn,
-                                       **kwargs):
+def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counterpart_postion_arr, potentials,
+                                       crv_labels, curve_fn, **kwargs):
     """
     Function calculates curves for eccentric orbits for selected filters using approximation
     where curve points on the one side of the apsidal line are calculated exactly and the second
@@ -159,6 +173,7 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     :param phases: numpy.array;
     :param reduced_orbit_arr: numpy.array; base orbital positions
     :param counterpart_postion_arr: numpy.array; orbital positions symmetric to the `reduced_orbit_arr`
+    :param potentials: dict; corrected potentials
     :param crv_labels: list; curve_labels
     :param curve_fn: curve integrator function
     :param kwargs: Dict;
@@ -173,7 +188,7 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     orbital_supplements.sort(by='distance')
 
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
-    fn_args = (binary, crv_labels, curve_fn)
+    fn_args = (binary, potentials, crv_labels, curve_fn)
 
     stacked_band_curves = manage_observations(fn=curve_approx_mp.integrate_eccentric_curve_w_orbital_symmetry,
                                               fn_args=fn_args,
@@ -199,7 +214,7 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     return band_curves
 
 
-def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, crv_labels, curve_fn, **kwargs):
+def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, potentials, crv_labels, curve_fn, **kwargs):
     """
     Function calculates curve for eccentric orbit using
     approximation where to each OrbitalPosition on one side of the apsidal line,
@@ -209,6 +224,7 @@ def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, crv_
     :param binary: elisa.binary_system.system.BinarySystem;
     :param phases: numpy.array;
     :param orbital_supplements: elisa.binary_system.orbit.container.OrbitalSupplements;
+    :param potentials: dict; corrected potentials
     :param crv_labels: list; curve_labels
     :param curve_fn: curve integrator function
     :param kwargs: Dict;
@@ -219,7 +235,7 @@ def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, crv_
     :return: Dict[str, numpy.array];
     """
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
-    fn_args = (binary, crv_labels, curve_fn)
+    fn_args = (binary, potentials, crv_labels, curve_fn)
 
     stacked_band_curves = manage_observations(fn=curve_approx_mp.integrate_eccentric_curve_w_orbital_symmetry,
                                               fn_args=fn_args,
@@ -235,4 +251,17 @@ def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, crv_
                 continue
             band_curves[lbl][int(orbital_supplements.mirror[idx, 0])] = stacked_band_curves[lbl][idx, 1]
 
+    return band_curves
+
+
+def integrate_eccentric_curve_appx_three(binary, phases, orbital_positions, new_geometry_mask, crv_labels, curve_fn,
+                                         **kwargs):
+    # surface potentials with constant volume of components
+    potentials = binary.correct_potentials(phases, component="all", iterations=2)
+    fn_args = (binary, potentials, new_geometry_mask, crv_labels, curve_fn)
+
+    band_curves = manage_observations(fn=curve_approx_mp.integrate_eccentric_curve_approx_three,
+                                      fn_args=fn_args,
+                                      position=orbital_positions,
+                                      **kwargs)
     return band_curves
