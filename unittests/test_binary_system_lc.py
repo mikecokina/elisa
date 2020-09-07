@@ -385,8 +385,12 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         obtained_phases = obtained[0]
         obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
-        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < f_tol))
+        self.assertTrue(np.all(up.abs(obtained_phases - expected_phases) < TOL))
+        self.assertTrue(np.all(up.abs(obtained_flux - expected_flux) < f_tol))
+
+        # from matplotlib import pyplot as plt
+        # plt.scatter(expected_phases, expected_flux, marker="o")
+        # plt.show()
 
     def test_circular_synchronous_detached_system(self):
         config.LIMB_DARKENING_LAW = "linear"
@@ -416,50 +420,16 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         reload(curve_approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
-
-        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-
-        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.appx_one.json")
-        expected_phases = expected[0]
-        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-
-        self.assertTrue(np.all(up.abs(np.round(obtained_phases, 3) - np.round(expected_phases, 3)) < TOL))
-        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
+        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_one.json", TOL, -0.2, 1.2, 0.1)
 
     def test_eccentric_system_approximation_two(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload(lc)
+        reload(curve_approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
-
-        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-
-        expected = load_light_curve("detached.ecc.sync.generic.bessell.v.appx_two.json")
-        expected_phases = expected[0]
-        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-
-        self.assertTrue(np.all(np.round(obtained_phases, 3) - np.round(expected_phases, 3) < TOL))
-        self.assertTrue(np.all(np.round(obtained_flux, 3) - np.round(expected_flux, 3) < TOL))
-
-        expected_exact = load_light_curve("detached.ecc.sync.generic.bessell.v.json")
-        expected_flux_exact = normalize_lc_for_unittests(expected_exact[1]["Generic.Bessell.V"])
-        self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux_exact, 3)) < 5e-3))
-
-        # from matplotlib import pyplot as plt
-        # plt.scatter(expected_phases_exact, expected_flux_exact, marker="o")
-        # plt.show()
+        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.2, 0.1)
 
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
@@ -621,6 +591,15 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(curve_approx)
+
+        bs = prepare_binary_system(PARAMS["eccentric"])
+        self.do_comparison(bs)
+
+    def test_eccentric_system_approximation_two(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.05
+        config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
         reload(curve_approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])

@@ -266,6 +266,16 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
         self.do_comparison(bs, "detached.ecc.appx_one.json")
 
+    def test_eccentric_system_approximation_two(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.05
+        config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
+        reload(curve_approx)
+
+        bs = prepare_binary_system(PARAMS["eccentric"])
+
+        self.do_comparison(bs, "detached.ecc.appx_two.json")
+
 
 class CompareSingleVsMultiprocess(ElisaTestCase):
     def do_comparison(self, system):
@@ -315,6 +325,15 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
+        reload(curve_approx)
+
+        bs = prepare_binary_system(PARAMS["eccentric"])
+        self.do_comparison(bs)
+
+    def test_eccentric_system_approximation_two(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.05
+        config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
         reload(curve_approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
