@@ -801,7 +801,7 @@ def is_even(x):
 
 
 def convert_binary_orbital_motion_arr_to_positions(arr):
-    return [const.Position(*[int(p[0])] + list(p[1:])) for p in arr]
+    return [const.Position(*[int(p[0]) if not np.isnan(p[0]) else p[0]] + list(p[1:])) for p in arr]
 
 
 def nested_dict_values(dictionary):

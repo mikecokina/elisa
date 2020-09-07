@@ -48,47 +48,49 @@ def get_eclipse_boundaries(binary, components_distance):
         return np.array([0, const.PI, const.PI, const.FULL_ARC])
 
 
-def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr, supplement_constraint, supplement_arr,
+def find_apsidally_corresponding_positions(base_constraint, base_arr, supplement_constraint, supplement_arr,
                                            tol=1e-10, as_empty=None):
     """
     Function is intended to look for the couples of orbital positions from both sides of apsidal line that are most
-    similar in terms of surface geometry (true_anomaly_1 = pi - true_anomaly_2.
+    similar in terms of surface geometry (eg.: components_distance_1 \approx components_distance_2).
 
-    :param reduced_constraint: numpy.array;
-    :param reduced_arr: numpy.array;
+    :param base_constraint: numpy.array;
+    :param base_arr: numpy.array;
     :param supplement_constraint: numpy.array;
     :param supplement_arr: numpy.array;
     :param tol: float;
-    :param as_empty: numpy.array; e.g. [np.nan, np.nan] depends on shape of reduced_arr item
+    :param as_empty: numpy.array; e.g. [np.nan, np.nan] depends on shape of base_arr item
     :return: elisa.binary_system.container.OrbitalSupplements;
     """
     if as_empty is None:
-        as_empty = [np.nan] * 5
+        as_empty = np.empty(5) * np.nan
 
-    ids_of_closest_reduced_values = utils.find_idx_of_nearest(reduced_constraint, supplement_constraint)
+    # finding indices of supplements_array closest to the base_array by comparing constraint parameters
+    ids_of_closest_reduced_values = utils.find_idx_of_nearest(base_constraint, supplement_constraint)
 
-    matrix_mask = abs(up.abs(reduced_constraint[np.newaxis, :] - supplement_constraint[:, np.newaxis])) <= tol
-    is_supplement = [matrix_mask[i][idx] for i, idx in enumerate(ids_of_closest_reduced_values)]
+    # making sure that found orbital positions are close enough to satisfy tolerance
+    is_supplement = np.abs(up.abs(base_constraint[ids_of_closest_reduced_values] - supplement_constraint)) <= tol
 
-    twin_in_reduced = np.array([-1] * len(ids_of_closest_reduced_values))
+    # crating array which crates valid orbital position couples
+    twin_in_reduced = -1 * np.ones(ids_of_closest_reduced_values.shape, dtype=np.int)
     twin_in_reduced[is_supplement] = ids_of_closest_reduced_values[is_supplement]
 
     supplements = OrbitalSupplements()
 
     for id_supplement, id_reduced in enumerate(twin_in_reduced):
-        args = (reduced_arr[id_reduced], supplement_arr[id_supplement]) \
+        args = (base_arr[id_reduced], supplement_arr[id_supplement]) \
             if id_reduced > -1 else (supplement_arr[id_supplement], as_empty)
         # if id_reduced > -1 else (as_empty, supplement_arr[id_supplement])
 
         if not utils.is_empty(args):
             supplements.append(*args)
 
-    reduced_all_ids = up.arange(0, len(reduced_arr))
+    reduced_all_ids = up.arange(0, len(base_arr))
     is_not_in = ~np.isin(reduced_all_ids, twin_in_reduced)
 
     for is_not_in_id in reduced_all_ids[is_not_in]:
-        if reduced_arr[is_not_in_id] not in supplement_arr:
-            supplements.append(*(reduced_arr[is_not_in_id], as_empty))
+        if base_arr[is_not_in_id] not in supplement_arr:
+            supplements.append(*(base_arr[is_not_in_id], as_empty))
 
     return supplements
 

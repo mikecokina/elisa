@@ -9,7 +9,7 @@ from ...binary_system import (
 from elisa.binary_system.curves import utils as crv_utils
 from ...binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.surface.coverage import compute_surface_coverage
-from elisa.binary_system.orbit import orbit
+from ...binary_system.orbit.container import OrbitalSupplements
 
 
 def update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
@@ -51,6 +51,8 @@ def update_ldc_and_radiance_on_orb_pair(new_geometry_test, base_container, mirro
     if new_geometry_test:
         normal_radiance, ld_cfs = crv_utils.prep_surface_params(base_container, return_values=True,
                                                                 write_to_containers=True, **kwargs)
+        if mirror_container is None:
+            return normal_radiance, ld_cfs
         for component in config.BINARY_COUNTERPARTS.keys():
             star = getattr(mirror_container, component)
             setattr(star, 'normal_radiance', normal_radiance[component])
@@ -58,6 +60,8 @@ def update_ldc_and_radiance_on_orb_pair(new_geometry_test, base_container, mirro
         return normal_radiance, ld_cfs
     else:
         for on_pos in [base_container, mirror_container]:
+            if on_pos is None:
+                continue
             for component in config.BINARY_COUNTERPARTS.keys():
                 star = getattr(on_pos, component)
                 setattr(star, 'normal_radiance', old_normal_radiance[component])
@@ -110,20 +114,24 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
         initial_system = update_surface_in_ecc_orbits(initial_system, base_orb_pos, new_geometry_mask[idx])
 
         on_pos_base = bsutils.move_sys_onpos(initial_system, base_orb_pos)
-        # orbital velocities are not symmetrical along apsidal lines
-        on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, recalculate_velocities=True)
+        compute_surface_coverage(on_pos_base, binary.semi_major_axis, in_eclipse=True,
+                                 return_values=False, write_to_containers=True)
+
+        if not OrbitalSupplements.is_empty(mirror):
+            # orbital velocities are not symmetrical along apsidal lines
+            on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, recalculate_velocities=True)
+            compute_surface_coverage(on_pos_mirror, binary.semi_major_axis, in_eclipse=True,
+                                     return_values=False, write_to_containers=True)
+        else:
+            on_pos_mirror = None
 
         # normal radiances and ld coefficients will be used for both base and mirror orbital positions
         normal_radiance, ld_cfs = update_ldc_and_radiance_on_orb_pair(new_geometry_mask[idx],
                                                                       on_pos_base, on_pos_mirror, normal_radiance,
                                                                       ld_cfs, **kwargs)
 
-        compute_surface_coverage(on_pos_base, binary.semi_major_axis, in_eclipse=True,
-                                 return_values=False, write_to_containers=True)
-        compute_surface_coverage(on_pos_mirror, binary.semi_major_axis, in_eclipse=True,
-                                 return_values=False, write_to_containers=True)
-
         curves_body = curve_fn(curves_body, idx, crv_labels, on_pos_base)
-        curves_mirror = curve_fn(curves_mirror, idx, crv_labels, on_pos_mirror)
+        curves_mirror = curves_mirror if on_pos_mirror is None else \
+            curve_fn(curves_mirror, idx, crv_labels, on_pos_mirror)
 
     return {key: np.stack((curves_body[key], curves_mirror[key]), axis=1) for key in crv_labels}

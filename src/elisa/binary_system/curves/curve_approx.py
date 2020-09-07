@@ -231,6 +231,8 @@ def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, crv_
     for idx in range(orbital_positions.shape[0]):
         for lbl in crv_labels:
             band_curves[lbl][int(orbital_supplements.body[idx, 0])] = stacked_band_curves[lbl][idx, 0]
+            if np.isnan(orbital_supplements.mirror[idx, 0]):
+                continue
             band_curves[lbl][int(orbital_supplements.mirror[idx, 0])] = stacked_band_curves[lbl][idx, 1]
 
     return band_curves

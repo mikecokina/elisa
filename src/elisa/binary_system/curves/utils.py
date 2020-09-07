@@ -1,4 +1,5 @@
 import numpy as np
+from copy import copy
 
 from elisa import atm, ld, const
 from elisa.binary_system import (
@@ -211,6 +212,14 @@ def compute_rel_d_radii_from_counterparts(binary, base_distances, counterpart_di
     :param counterpart_potentials: array;
     :return: np.array; (2 * N)
     """
+    # removing nans from arrays
+    base_distances = copy(base_distances)
+    base_distances_nans = np.argwhere(np.isnan(base_distances))
+    base_distances[base_distances_nans] = counterpart_distances[base_distances_nans]
+    counterpart_distances = copy(counterpart_distances)
+    counterpart_distances_nans = np.argwhere(np.isnan(counterpart_distances))
+    counterpart_distances[counterpart_distances_nans] = base_distances[counterpart_distances_nans]
+
     base_potentials = binary.correct_potentials(distances=base_distances, component="all", iterations=2) \
         if base_potentials is None else base_potentials
     counterpart_potentials = binary.correct_potentials(distances=counterpart_distances, component="all", iterations=2) \
