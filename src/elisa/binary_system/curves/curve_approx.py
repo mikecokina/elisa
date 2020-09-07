@@ -175,7 +175,7 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
     fn_args = (binary, crv_labels, curve_fn)
 
-    stacked_band_curves = manage_observations(fn=curve_approx_mp.integrate_eccentric_curve_appx_one,
+    stacked_band_curves = manage_observations(fn=curve_approx_mp.integrate_eccentric_curve_w_orbital_symmetry,
                                               fn_args=fn_args,
                                               position=orbital_positions,
                                               **kwargs)
@@ -221,45 +221,16 @@ def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, crv_
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
     fn_args = (binary, crv_labels, curve_fn)
 
-    new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(),
-                                                               orbital_supplements.size(), rel_d_radii)
-    # array `used_phases` is used to check, whether flux on given phase was already computed
-    # orbital supplementes tolarance test can lead
-    # to same phases in templates or mirrors
-    used_phases = []
-    band_curves = {key: np.zeros(phases.shape) for key in kwargs["passband"]}
+    stacked_band_curves = manage_observations(fn=curve_approx_mp.integrate_eccentric_curve_w_orbital_symmetry,
+                                              fn_args=fn_args,
+                                              position=orbital_positions,
+                                              **kwargs)
 
-    # surface potentials with constant volume of components
-    phases_to_correct = orbital_supplements.body[:, 4]
-    potentials = binary.correct_potentials(phases_to_correct, component="all", iterations=2)
+    band_curves = {key: np.empty(phases.shape) for key in crv_labels}
 
-    # prepare initial orbital position container
-    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
-    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
-
-    for idx, position_pair in enumerate(orbital_supplements):
-        body, mirror = position_pair
-        body_orb_pos, mirror_orb_pos = utils.convert_binary_orbital_motion_arr_to_positions([body, mirror])
-        require_geometry_rebuild = new_geometry_mask[idx]
-
-        initial_system.set_on_position_params(body_orb_pos, potentials['primary'][idx], potentials['secondary'][idx])
-        initial_system = _update_surface_in_ecc_orbits(initial_system, body_orb_pos, require_geometry_rebuild)
-
-        if body_orb_pos.phase not in used_phases:
-            on_pos_body = bsutils.move_sys_onpos(initial_system, body_orb_pos, on_copy=True)
-
-            # recalculating normal radiances only for new geometry
-            _args = _onpos_params(on_pos_body, **kwargs) if require_geometry_rebuild else \
-                _args[:2] + calculate_coverage_with_cosines(on_pos_body, on_pos_body.semi_major_axis, in_eclipse=True)
-            _produce_lc_point(body_orb_pos, *_args)
-            used_phases += [body_orb_pos.phase]
-
-        if (not OrbitalSupplements.is_empty(mirror)) and (mirror_orb_pos.phase not in used_phases):
-            on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, on_copy=True)
-
-            _args = _args[:2] + calculate_coverage_with_cosines(on_pos_mirror, on_pos_mirror.semi_major_axis,
-                                                                in_eclipse=True)
-            _produce_lc_point(mirror_orb_pos, *_args)
-            used_phases += [mirror_orb_pos.phase]
+    for idx in range(orbital_positions.shape[0]):
+        for lbl in crv_labels:
+            band_curves[lbl][int(orbital_supplements.body[idx, 0])] = stacked_band_curves[lbl][idx, 0]
+            band_curves[lbl][int(orbital_supplements.mirror[idx, 0])] = stacked_band_curves[lbl][idx, 1]
 
     return band_curves

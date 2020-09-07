@@ -34,7 +34,38 @@ def update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
     return system
 
 
-def integrate_eccentric_curve_appx_one(*args):
+def update_ldc_and_radiance_on_orb_pair(new_geometry_test, base_container, mirror_container, old_normal_radiance,
+                                        old_ld_cfs, **kwargs):
+    """
+    Function recalculates or assigns old values tp normal radiances or limb darkening coefficients.
+
+    :param new_geometry_test: bool; if True, parameters will be recalculated according to new geometry, otherwise they
+    will be copied
+    :param base_container: elisa.binary_system.container.OrbitalPositionContainer;
+    :param mirror_container: elisa.binary_system.container.OrbitalPositionContainer;
+    :param old_normal_radiance: dict; normal radiances to be copied if `new_geometry_test` is False
+    :param old_ld_cfs: dict; normal radiances to be copied if `new_geometry_test` is False
+    :param kwargs: kwargs;
+    :return:
+    """
+    if new_geometry_test:
+        normal_radiance, ld_cfs = crv_utils.prep_surface_params(base_container, return_values=True,
+                                                                write_to_containers=True, **kwargs)
+        for component in config.BINARY_COUNTERPARTS.keys():
+            star = getattr(mirror_container, component)
+            setattr(star, 'normal_radiance', normal_radiance[component])
+            setattr(star, 'ld_cfs', ld_cfs[component])
+        return normal_radiance, ld_cfs
+    else:
+        for on_pos in [base_container, mirror_container]:
+            for component in config.BINARY_COUNTERPARTS.keys():
+                star = getattr(on_pos, component)
+                setattr(star, 'normal_radiance', old_normal_radiance[component])
+                setattr(star, 'ld_cfs', old_ld_cfs[component])
+        return old_normal_radiance, old_ld_cfs
+
+
+def integrate_eccentric_curve_w_orbital_symmetry(*args):
     """
     Curve generator for eccentric curves without spots for couples of orbital positions that are symmetrically
     positioned around apsidal line and thus share the same surface geometry.
@@ -69,35 +100,23 @@ def integrate_eccentric_curve_appx_one(*args):
     from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
-    # both, body and mirror should be defined in this approximation (those objects are created to be mirrored
-    # one to another)
     ld_cfs, normal_radiance = None, None
     for idx in range(orbital_positions.shape[0]):
         body, mirror = orbital_positions[idx, 0, :], orbital_positions[idx, 1, :]
-        body_orb_pos, mirror_orb_pos = utils.convert_binary_orbital_motion_arr_to_positions([body, mirror])
+        base_orb_pos, mirror_orb_pos = utils.convert_binary_orbital_motion_arr_to_positions([body, mirror])
 
-        initial_system.set_on_position_params(body_orb_pos, potentials['primary'][idx],
+        initial_system.set_on_position_params(base_orb_pos, potentials['primary'][idx],
                                               potentials['secondary'][idx])
-        initial_system = update_surface_in_ecc_orbits(initial_system, body_orb_pos, new_geometry_mask[idx])
+        initial_system = update_surface_in_ecc_orbits(initial_system, base_orb_pos, new_geometry_mask[idx])
 
-        on_pos_base = bsutils.move_sys_onpos(initial_system, body_orb_pos)
+        on_pos_base = bsutils.move_sys_onpos(initial_system, base_orb_pos)
         # orbital velocities are not symmetrical along apsidal lines
         on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, recalculate_velocities=True)
 
         # normal radiances and ld coefficients will be used for both base and mirror orbital positions
-        if new_geometry_mask[idx]:
-            normal_radiance, ld_cfs = crv_utils.prep_surface_params(on_pos_base, return_values=True,
-                                                                    write_to_containers=True, **kwargs)
-            for component in config.BINARY_COUNTERPARTS.keys():
-                star = getattr(on_pos_mirror, component)
-                setattr(star, 'normal_radiance', normal_radiance[component])
-                setattr(star, 'ld_cfs', ld_cfs[component])
-        else:
-            for on_pos in [on_pos_base, on_pos_mirror]:
-                for component in config.BINARY_COUNTERPARTS.keys():
-                    star = getattr(on_pos, component)
-                    setattr(star, 'normal_radiance', normal_radiance[component])
-                    setattr(star, 'ld_cfs', ld_cfs[component])
+        normal_radiance, ld_cfs = update_ldc_and_radiance_on_orb_pair(new_geometry_mask[idx],
+                                                                      on_pos_base, on_pos_mirror, normal_radiance,
+                                                                      ld_cfs, **kwargs)
 
         compute_surface_coverage(on_pos_base, binary.semi_major_axis, in_eclipse=True,
                                  return_values=False, write_to_containers=True)
