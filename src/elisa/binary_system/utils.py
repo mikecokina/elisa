@@ -137,9 +137,9 @@ def move_sys_onpos(init_system, orbital_position, primary_potential=None, second
     """
     system = init_system.copy() if on_copy else init_system
     system.set_on_position_params(orbital_position, primary_potential, secondary_potential)
-    system.flatt_it()
     if recalculate_velocities:
         system.build_velocities(orbital_position.distance, 'all')
+    system.flatt_it()
     system.apply_rotation()
     system.add_secular_velocity()
     system.calculate_face_angles(line_of_sight=const.LINE_OF_SIGHT)
