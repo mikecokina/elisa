@@ -51,10 +51,8 @@ def get_eclipse_boundaries(binary, components_distance):
 def find_apsidally_corresponding_positions(reduced_constraint, reduced_arr, supplement_constraint, supplement_arr,
                                            tol=1e-10, as_empty=None):
     """
-    Function is intended to look for orbital positions from reduced_arr which
-    are supplementary to supplement_arr. Similarity to be a pair is based
-    on constraints from input arguments, usually it is current separation of
-    primary and secondary component on orbit.
+    Function is intended to look for the couples of orbital positions from both sides of apsidal line that are most
+    similar in terms of surface geometry (true_anomaly_1 = pi - true_anomaly_2.
 
     :param reduced_constraint: numpy.array;
     :param reduced_arr: numpy.array;
