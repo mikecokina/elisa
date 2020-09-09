@@ -1,14 +1,20 @@
 import json
 
 from abc import abstractmethod
-from typing import Union
+from typing import Union, Dict
 
+from elisa import units
+from elisa.conf.config import BINARY_COUNTERPARTS
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.analytics.params import parameters
 from elisa.analytics.binary_fit import least_squares
 from elisa.analytics.binary_fit import mcmc
 from elisa.analytics.binary_fit import io_tools
 from elisa.analytics.binary_fit.summary import fit_lc_summary_with_error_propagation, simple_lc_fit_summary
+from elisa.analytics.models import lc as lc_model
+from elisa.analytics.binary_fit.shared import check_for_boundary_surface_potentials
+from elisa.binary_system.surface.gravity import calculate_polar_gravity_acceleration
+
 
 from elisa.logger import getLogger
 
@@ -45,7 +51,7 @@ class LCFit(object):
             intro = (write_fn, 'Parameter', 'value', '-1 sigma', '+1 sigma', 'unit', 'status', line_sep)
             write_fn(f"\nBINARY SYSTEM{line_sep}")
             io_tools.write_ln(*intro)
-            write_fn(f"{'-' * DESH_N}{line_sep}")
+            write_fn(f"{'-' * DASH_N}{line_sep}")
 
             q_desig = 'Mass ratio (q=M_2/M_1):'
             a_desig = 'Semi major axis (a):'
@@ -80,14 +86,14 @@ class LCFit(object):
             # tool_shared.write_ln(write_fn, 'Morphology: ', binary_instance.morphology, '-', '-', '-', 'derived',
             #                      line_sep)
 
-            write_fn(f"{'-' * DESH_N}{line_sep}")
+            write_fn(f"{'-' * DASH_N}{line_sep}")
 
             for component in BINARY_COUNTERPARTS:
                 comp_n = 1 if component == 'primary' else 2
                 star_instance = getattr(binary_instance, component)
                 write_fn(f"{component.upper()} COMPONENT{line_sep}")
                 io_tools.write_ln(*intro)
-                write_fn(f"{'-' * DESH_N}{line_sep}")
+                write_fn(f"{'-' * DASH_N}{line_sep}")
 
                 m_desig = f'Mass (M_{comp_n}):'
                 if f'{component}@mass' in result_dict:
@@ -167,14 +173,14 @@ class LCFit(object):
                                       '-', '-', '-', 'Fixed', line_sep, 2)
 
                 if star_instance.has_spots():
-                    write_fn(f"{'-' * DESH_N}{line_sep}")
+                    write_fn(f"{'-' * DASH_N}{line_sep}")
                     write_fn(f"{component.upper()} SPOTS{line_sep}")
                     io_tools.write_ln(*intro)
 
                     for spot in self.result[component]["spots"]:
-                        write_fn(f'{"-" * DESH_N}{line_sep}')
+                        write_fn(f'{"-" * DASH_N}{line_sep}')
                         write_fn(f'Spot: {spot["label"]} {line_sep}')
-                        write_fn(f'{"-" * DESH_N}{line_sep}')
+                        write_fn(f'{"-" * DASH_N}{line_sep}')
 
                         io_tools.write_param_ln(spot, 'longitude', 'Longitude: ', write_fn, line_sep, 3)
                         io_tools.write_param_ln(spot, 'latitude', 'Latitude: ', write_fn, line_sep, 3)
@@ -183,14 +189,14 @@ class LCFit(object):
                                                 write_fn, line_sep, 3)
 
                 if star_instance.has_pulsations():
-                    write_fn(f"{'-' * DESH_N}{line_sep}")
+                    write_fn(f"{'-' * DASH_N}{line_sep}")
                     write_fn(f"{component.upper()} PULSATIONS{line_sep}")
                     io_tools.write_ln(*intro)
 
                     for mode in self.result[component]["pulsations"]:
-                        write_fn(f'{"-" * DESH_N}{line_sep}')
+                        write_fn(f'{"-" * DASH_N}{line_sep}')
                         write_fn(f'Pulsation: {mode["label"]} {line_sep}')
-                        write_fn(f'{"-" * DESH_N}{line_sep}')
+                        write_fn(f'{"-" * DASH_N}{line_sep}')
 
                         io_tools.write_param_ln(mode, 'l', 'Angular degree (l): ', write_fn, line_sep, 0)
                         io_tools.write_param_ln(mode, 'm', 'Azimuthal order (m): ', write_fn, line_sep, 0)
@@ -202,13 +208,13 @@ class LCFit(object):
                         io_tools.write_param_ln(mode, 'mode_axis_theta', 'Latitude of mode axis: ',
                                                 write_fn, line_sep, 1)
 
-                write_fn(f"{'-' * DESH_N}{line_sep}")
+                write_fn(f"{'-' * DASH_N}{line_sep}")
 
             if result_dict.get('r_squared', False):
                 if result_dict['r_squared']['value'] is not None:
                     io_tools.write_param_ln(result_dict, 'r_squared', 'Fit R^2: ', write_fn, line_sep, 6)
 
-                write_fn(f"{'-' * DESH_N}{line_sep}")
+                write_fn(f"{'-' * DASH_N}{line_sep}")
         finally:
             if f is not None:
                 f.close()
