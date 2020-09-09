@@ -446,22 +446,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         bs = prepare_binary_system(PARAMS["detached-async-ecc"])
 
-        # self.do_comparison(bs, "detached.ecc.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.1)
-
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
-
-        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
-
-        expected = load_light_curve("detached.ecc.async.generic.bessel.v.json")
-        expected_phases = expected[0]
-        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-
-        self.assertTrue(np.all(np.round(obtained_phases, 3) - np.round(expected_phases, 3) < TOL))
-        self.assertTrue(np.all(np.round(obtained_flux, 3) - np.round(expected_flux, 3) < TOL))
+        self.do_comparison(bs, "detached.ecc.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.1)
 
     def test_circular_spotty_synchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached"],
@@ -489,18 +474,8 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_spotty_asynchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached-async-ecc"],
                                    spots_primary=SPOTS_META["primary"])
-        o = Observer(passband=['Generic.Bessell.V'], system=bs)
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
-        obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        obtained_phases = obtained[0]
-        obtained_flux = normalize_lc_for_unittests(obtained[1]["Generic.Bessell.V"])
 
-        expected = load_light_curve("detached.ecc.spotty.async.generic.bessel.v.json")
-        expected_phases = expected[0]
-        expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
-
-        self.assertTrue(np.all(np.round(obtained_phases, 3) - np.round(expected_phases, 3) < TOL))
-        self.assertTrue(np.all(np.round(obtained_flux, 3) - np.round(expected_flux, 3) < TOL))
+        self.do_comparison(bs, "detached.ecc.spotty.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.1)
 
 
 class CompareSingleVsMultiprocess(ElisaTestCase):
@@ -564,3 +539,10 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, 0.0, 0.01, 0.002)
+
+    def test_eccentric_spotty_asynchronous_detached_system(self):
+        bs = prepare_binary_system(PARAMS["detached-async-ecc"],
+                                   spots_primary=SPOTS_META["primary"])
+
+        self.do_comparison(bs)
+

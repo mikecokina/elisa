@@ -304,6 +304,12 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
         self.do_comparison(bs, "ecc.appx_three.json", -0.0, 0.01, 0.002)
 
+    def test_eccentric_spotty_asynchronous_detached_system(self):
+        bs = prepare_binary_system(PARAMS["detached-async-ecc"],
+                                   spots_primary=SPOTS_META["primary"])
+
+        self.do_comparison(bs, "ecc.spotty.async.json")
+
 
 class CompareSingleVsMultiprocess(ElisaTestCase):
     def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1):
@@ -374,3 +380,9 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         bs = prepare_binary_system(PARAMS["eccentric"])
 
         self.do_comparison(bs, -0.0, 0.01, 0.002)
+
+    def test_eccentric_spotty_asynchronous_detached_system(self):
+        bs = prepare_binary_system(PARAMS["detached-async-ecc"],
+                                   spots_primary=SPOTS_META["primary"])
+
+        self.do_comparison(bs)
