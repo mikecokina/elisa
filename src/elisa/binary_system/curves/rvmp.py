@@ -5,7 +5,7 @@ from elisa.binary_system.curves import (
 )
 
 
-def calculate_rv_point(star):
+def _calculate_rv_point(star):
     """
     Calculates point on the rv curve for given component.
 
@@ -31,7 +31,7 @@ def compute_rv_at_pos(velocities, pos_idx, crv_labels, system):
     :return: Dict; updated {str; passband : numpy.array; rvs, ...}
     """
     for component in crv_labels:
-        velocities[component][pos_idx] = calculate_rv_point(getattr(system, component))
+        velocities[component][pos_idx] = _calculate_rv_point(getattr(system, component))
 
     return velocities
 

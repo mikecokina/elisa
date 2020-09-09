@@ -2,7 +2,7 @@ from elisa.binary_system.curves import utils as crv_utils
 from elisa.conf import config
 
 
-def calculate_lc_point(band, system):
+def _calculate_lc_point(band, system):
     """
     Calculates point on the light curve for given band.
 
@@ -31,6 +31,6 @@ def compute_lc_on_pos(band_curves, pos_idx, crv_labels, system):
     """
     # integrating resulting flux
     for band in crv_labels:
-        band_curves[band][pos_idx] = calculate_lc_point(band, system)
+        band_curves[band][pos_idx] = _calculate_lc_point(band, system)
 
     return band_curves

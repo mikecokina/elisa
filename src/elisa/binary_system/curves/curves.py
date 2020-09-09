@@ -20,35 +20,6 @@ from elisa.observer.mp import manage_observations
 logger = getLogger('binary_system.curves.shared')
 
 
-# TODO: soon to be removed
-def _calculate_lc_point(band, ld_cfs, normal_radiance, coverage, cosines):
-    """
-    Calculates point on the light curve for given band.
-
-    :param band: str; name of the photometric band
-    :param ld_cfs: Dict[str, Dict[str, pandas.DataFrame]];
-    :param normal_radiance: Dict[str, Dict[str, numpy.array]];
-    :param coverage: Dict[str, Dict[str, numpy.array]];
-    :param cosines: Dict[str, Dict[str, numpy.array]];
-    :return: float;
-    """
-    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-    ld_cors = {
-        component: ld.limb_darkening_factor(coefficients=ld_cfs[component][band][ld_law_cfs_columns].values,
-                                            limb_darkening_law=config.LIMB_DARKENING_LAW,
-                                            cos_theta=cosines[component])
-        for component in config.BINARY_COUNTERPARTS
-    }
-    flux = {
-        component:
-            np.sum(normal_radiance[component][band] * cosines[component] * coverage[component] * ld_cors[component])
-        for component in config.BINARY_COUNTERPARTS
-    }
-
-    flux = (flux['primary'] + flux['secondary'])
-    return flux
-
-
 def resolve_curve_method(system, fn_array):
     """
     Resolves which curve calculating method to use based on the type of the system.

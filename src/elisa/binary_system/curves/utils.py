@@ -38,7 +38,7 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     return retval
 
 
-def get_normal_radiance(system, component="all", **kwargs):
+def _get_normal_radiance(system, component="all", **kwargs):
     """
     Compute normal radiance for all faces and all components in SingleOrbitalPositionContainer.
 
@@ -140,7 +140,7 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
     # obtain limb darkening factor for each face
     ld_cfs = get_limbdarkening_cfs(system, **kwargs)
     # compute normal radiance for each face and each component
-    normal_radiance = get_normal_radiance(system, **kwargs)
+    normal_radiance = _get_normal_radiance(system, **kwargs)
 
     # checking if `bolometric`filter is already used
     if 'bolometric' in ld_cfs['primary'].keys():

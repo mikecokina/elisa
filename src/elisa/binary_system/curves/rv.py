@@ -2,42 +2,12 @@ import numpy as np
 from elisa import (
     umpy as up,
     units,
-    const
 )
-from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.binary_system import dynamic
 from elisa.binary_system.curves import rvmp
 from ...binary_system.curves import curves
 from elisa.observer.passband import init_rv_passband
 from elisa.conf import config
-from elisa.observer.mp import manage_observations
-
-
-def distance_to_center_of_mass(primary_mass, secondary_mass, positions):
-    """
-    Return distance from primary and from secondary component to center of mass.
-
-    :param primary_mass: float
-    :param secondary_mass: float
-    :param positions: numpy.array
-    :return: Tuple
-    """
-    distance = positions[:, 1]
-    mass = primary_mass + secondary_mass
-    com_from_primary = (distance * secondary_mass) / mass
-    return com_from_primary, distance - com_from_primary
-
-
-def orbital_semi_major_axes(r, eccentricity, true_anomaly):
-    """
-    Return orbital semi major axis for given parameter.
-
-    :param r: float or numpy.array; distane from center of mass to object
-    :param eccentricity: float or numpy.array; orbital eccentricity
-    :param true_anomaly: float or numpy.array; true anomaly of orbital motion
-    :return: Union[float, numpy.array]
-    """
-    return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
+from elisa.binary_system.orbit.orbit import distance_to_center_of_mass
 
 
 def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_periastron, period, true_anomaly):
@@ -72,10 +42,8 @@ def com_radial_velocity(binary, **kwargs):
     position_method = kwargs.pop("position_method")
     phases = kwargs.pop("phases")
     orbital_motion = position_method(input_argument=phases, return_nparray=True, calculate_from='phase')
-    r1, r2 = distance_to_center_of_mass(binary.primary.mass, binary.secondary.mass, orbital_motion)
 
-    sma_primary = orbital_semi_major_axes(r1[-1], binary.orbit.eccentricity, orbital_motion[:, 3][-1])
-    sma_secondary = orbital_semi_major_axes(r2[-1], binary.orbit.eccentricity, orbital_motion[:, 3][-1])
+    sma_primary, sma_secondary = distance_to_center_of_mass(binary.primary.mass, binary.secondary.mass, 1.0)
 
     # in base SI units
     sma_primary *= binary.semi_major_axis

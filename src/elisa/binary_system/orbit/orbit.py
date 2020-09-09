@@ -84,6 +84,33 @@ def create_orb_vel_vectors(system, components_distance):
     return velocity
 
 
+def distance_to_center_of_mass(primary_mass, secondary_mass, distance):
+    """
+    Return distance from primary and from secondary component to center of mass.
+
+    :param primary_mass: float
+    :param secondary_mass: float
+    :param distance: Union[float, numpy.array]
+    :return: Tuple
+    """
+    mass = primary_mass + secondary_mass
+    com_from_primary = (distance * secondary_mass) / mass
+    return com_from_primary, distance - com_from_primary
+
+
+def orbital_semi_major_axes(r, eccentricity, true_anomaly):
+    """
+    Return orbital semi major axis from component distance, eccentricity and true anomaly.
+
+    :param r: float or numpy.array; distance from center of mass to object
+    :param eccentricity: float or numpy.array; orbital eccentricity
+    :param true_anomaly: float or numpy.array; true anomaly of orbital motion
+    :return: Union[float, numpy.array]
+    """
+    return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
+
+
+
 class Orbit(object):
     """
     Model which represents orbit of binary system.

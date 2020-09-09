@@ -1,7 +1,6 @@
 import numpy as np
 from copy import copy
 
-from elisa.conf import config
 from elisa.binary_system import (
     utils as butils,
     dynamic,

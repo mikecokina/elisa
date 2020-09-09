@@ -1,5 +1,4 @@
 import numpy as np
-from copy import deepcopy
 
 from elisa import utils, const
 from elisa.conf import config
@@ -13,7 +12,7 @@ from elisa.binary_system.surface.coverage import compute_surface_coverage
 from elisa.binary_system.orbit.container import OrbitalSupplements
 
 
-def update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
+def _update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
     """
     Function decides how to update surface properties with respect to the degree of change
     in surface geometry given by new_geometry test.
@@ -35,8 +34,8 @@ def update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
     return system
 
 
-def update_ldc_and_radiance_on_orb_pair(new_geometry_test, base_container, mirror_container, old_normal_radiance,
-                                        old_ld_cfs, **kwargs):
+def _update_ldc_and_radiance_on_orb_pair(new_geometry_test, base_container, mirror_container, old_normal_radiance,
+                                         old_ld_cfs, **kwargs):
     """
     Function recalculates or assigns old values tp normal radiances or limb darkening coefficients.
 
@@ -114,7 +113,7 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
 
         initial_system.set_on_position_params(base_orb_pos, potentials['primary'][idx],
                                               potentials['secondary'][idx])
-        initial_system = update_surface_in_ecc_orbits(initial_system, base_orb_pos, new_geometry_mask[idx])
+        initial_system = _update_surface_in_ecc_orbits(initial_system, base_orb_pos, new_geometry_mask[idx])
 
         on_pos_base = bsutils.move_sys_onpos(initial_system, base_orb_pos)
         compute_surface_coverage(on_pos_base, binary.semi_major_axis, in_eclipse=True,
@@ -129,9 +128,9 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
             on_pos_mirror = None
 
         # normal radiances and ld coefficients will be used for both base and mirror orbital positions
-        normal_radiance, ld_cfs = update_ldc_and_radiance_on_orb_pair(new_geometry_mask[idx],
-                                                                      on_pos_base, on_pos_mirror, normal_radiance,
-                                                                      ld_cfs, **kwargs)
+        normal_radiance, ld_cfs = _update_ldc_and_radiance_on_orb_pair(new_geometry_mask[idx],
+                                                                       on_pos_base, on_pos_mirror, normal_radiance,
+                                                                       ld_cfs, **kwargs)
 
         curves_body = curve_fn(curves_body, idx, crv_labels, on_pos_base)
         curves_mirror = curves_mirror if on_pos_mirror is None else \
@@ -177,7 +176,7 @@ def integrate_eccentric_curve_approx_three(*args):
         initial_system.set_on_position_params(position, potentials["primary"][pos_idx],
                                               potentials["secondary"][pos_idx])
 
-        update_surface_in_ecc_orbits(initial_system, orbital_position=position, new_geometry_test=require_rebuild)
+        _update_surface_in_ecc_orbits(initial_system, orbital_position=position, new_geometry_test=require_rebuild)
 
         on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=False, recalculate_velocities=True)
 
