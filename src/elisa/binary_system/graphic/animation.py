@@ -84,16 +84,6 @@ class Animation(object):
                     temperatures = star.temperatures
                     cmap[component][pos_idx] = temperatures if scale == 'linear' else up.log10(temperatures)
 
-                # rotating pints to correct place
-                # # rotation by azimuth
-                # points[component][pos_idx] = utils.around_axis_rotation(position.azimuth - const.HALF_PI,
-                #                                                         points[component][pos_idx],
-                #                                                         "z", False, False)
-                # # tilting the orbit due to inclination
-                # points[component][pos_idx] = utils.around_axis_rotation(const.HALF_PI - self.binary.inclination,
-                #                                                         points[component][pos_idx],
-                #                                                         "y", False, False)
-
         anim_kwargs.update({
             'morphology': self.binary.morphology,
             'start_phase': start_phase,

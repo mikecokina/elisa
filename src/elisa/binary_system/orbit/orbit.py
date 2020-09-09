@@ -35,6 +35,82 @@ def angular_velocity(period, eccentricity, distance):
         (1.0 - eccentricity) * (1.0 + eccentricity))  # $\rad.sec^{-1}$
 
 
+def primary_orbital_speed(m1, m2, a_red, components_distance):
+    """
+    Returns orbital speed of primary component with respect to the system centre of mass.
+
+    :param m1: float; primary mass
+    :param m2: float; secondary mass
+    :param a_red: float; semi major axis of the primary component with respect to the system centre of mass
+    :param components_distance: float;
+    :return: float;
+    """
+    m = m1 + m2
+    return m2 * np.sqrt((const.G / m) * ((2 / components_distance) - (m2 / (a_red * m))))
+
+
+def velocity_vector_angle(eccentricity, true_anomaly):
+    """
+    Returns sine and cosine of angle between velocity vector and join vector.
+
+    :param eccentricity: float;
+    :param true_anomaly: float;
+    :return: tuple;
+    """
+    den = np.sqrt(1 + eccentricity**2 + 2 * eccentricity * np.cos(true_anomaly))
+    sin = (1 + eccentricity * np.cos(true_anomaly)) / den
+    cos = - (eccentricity * np.sin(true_anomaly)) / den
+    return sin, cos
+
+
+def create_orb_vel_vectors(system, components_distance):
+    """
+    Returns orbital velocity vectors for both components in reference frame of centre of mass.
+
+    :param system: elisa.binary_system.container;
+    :param components_distance: float;
+    :return:
+    """
+    a_red = system.semi_major_axis * system.mass_ratio / (1 + system.mass_ratio)
+
+    speed = primary_orbital_speed(system.primary.mass, system.secondary.mass, a_red,
+                                  system.semi_major_axis * components_distance)
+
+    sin, cos = velocity_vector_angle(system.eccentricity, system.position.true_anomaly)
+
+    velocity = {'primary': np.array([-cos * speed, sin * speed, 0])}
+    velocity['secondary'] = - velocity['primary'] / system.mass_ratio
+
+    return velocity
+
+
+def distance_to_center_of_mass(primary_mass, secondary_mass, distance):
+    """
+    Return distance from primary and from secondary component to center of mass.
+
+    :param primary_mass: float
+    :param secondary_mass: float
+    :param distance: Union[float, numpy.array]
+    :return: Tuple
+    """
+    mass = primary_mass + secondary_mass
+    com_from_primary = (distance * secondary_mass) / mass
+    return com_from_primary, distance - com_from_primary
+
+
+def orbital_semi_major_axes(r, eccentricity, true_anomaly):
+    """
+    Return orbital semi major axis from component distance, eccentricity and true anomaly.
+
+    :param r: float or numpy.array; distance from center of mass to object
+    :param eccentricity: float or numpy.array; orbital eccentricity
+    :param true_anomaly: float or numpy.array; true anomaly of orbital motion
+    :return: Union[float, numpy.array]
+    """
+    return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
+
+
+
 class Orbit(object):
     """
     Model which represents orbit of binary system.

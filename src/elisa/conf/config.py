@@ -43,6 +43,9 @@ REFLECTION_EFFECT = True
 REFLECTION_EFFECT_ITERATIONS = 2
 LIMB_DARKENING_LAW = 'cosine'
 DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 2.0
+SURFACE_DISPLACEMENT_TOL = 1e-2
+RV_METHOD = 'point_mass'
+RV_LAMBDA_INTERVAL = (5500, 5600)
 
 # computational
 MAX_DISCRETIZATION_FACTOR = 20
@@ -156,6 +159,17 @@ def update_config():
         DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = \
             c_parse.getfloat('physics', 'default_temperature_perturbation_phase_shift',
                              fallback=DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT)
+
+        global SURFACE_DISPLACEMENT_TOL
+        SURFACE_DISPLACEMENT_TOL = \
+            c_parse.getfloat('physics', 'surface_displacement_tol', fallback=SURFACE_DISPLACEMENT_TOL)
+
+        global RV_METHOD
+        RV_METHOD = c_parse.getfloat('physics', 'rv_method', fallback=RV_METHOD)
+
+        global RV_LAMBDA_INTERVAL
+        RV_LAMBDA_INTERVAL = c_parse.getfloat('physics', 'rv_lambda_interval', fallback=RV_LAMBDA_INTERVAL)
+
     # ******************************************************************************************************************
 
     if c_parse.has_section('computational'):

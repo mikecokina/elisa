@@ -7,6 +7,7 @@ from multiprocessing.pool import Pool
 # from scipy import interpolate
 
 from elisa.binary_system.system import BinarySystem
+from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.single_system.system import SingleSystem
 from elisa.observer import (
     mp,
@@ -33,8 +34,8 @@ class Observables(object):
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
         return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize)
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
-        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize)
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None):
+        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize, method)
 
 
 class Observer(object):
@@ -160,21 +161,7 @@ class Observer(object):
             position_method=position_method
         )
 
-        if config.NUMBER_OF_PROCESSES > 1 and self._system.is_eccentric():
-            batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
-            phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
-            func = self._system.compute_lightcurve
-
-            pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-            result = [pool.apply_async(mp.observe_lc_worker, (func, batch_idx, batch, lc_kwargs))
-                      for batch_idx, batch in enumerate(phase_batches)]
-            pool.close()
-            pool.join()
-            # this will return output in same order as was given on apply_async init
-            result = [r.get() for r in result]
-            curves = utils.renormalize_async_result(result)
-        else:
-            curves = self._system.compute_lightcurve(**lc_kwargs)
+        curves = self._system.compute_lightcurve(**lc_kwargs)
 
         # remap unique phases back to original phase interval
         for items in curves:
@@ -194,7 +181,7 @@ class Observer(object):
         logger.info("observation finished")
         return self.phases, self.fluxes
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None):
         """
         Method for simulation of observation radial velocity curves.
 
@@ -203,20 +190,32 @@ class Observer(object):
         :param to_phase: float;
         :param phase_step: float;
         :param phases: Iterable float;
+        :param method: str; method for calculation of radial velocities, `point_mass` or `radiometric`
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
+        method = config.RV_METHOD if method is None else method
+
         if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
             phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
         phases = np.array(phases) - self._system.phase_shift
-        phases, self.radial_velocities = self._system.compute_rv(
+
+        # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
+        base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
+
+        self.radial_velocities = self._system.compute_rv(
             **dict(
-                phases=phases,
-                position_method=self._system.get_positions_method()
+                phases=base_phases,
+                position_method=self._system.get_positions_method(),
+                method=method
             )
         )
+
+        # remap unique phases back to original phase interval
+        for items in self.radial_velocities:
+            self.radial_velocities[items] = np.array(self.radial_velocities[items])[base_phases_to_origin]
 
         self.phases = phases + self._system.phase_shift
         self.rv_unit = units.m / units.s
@@ -267,5 +266,9 @@ class Observer(object):
             # in case of clear surface wo pulsations and spots, only single observation is needed
             else:
                 return np.zeros(1), np.zeros(phases.shape[0], dtype=int)
+
+        elif self._system_cls == RadialVelocitySystem or str(self._system_cls) == str(RadialVelocitySystem):
+            return phases, up.arange(phases.shape[0], dtype=np.int)
+
         else:
             raise NotImplemented("not implemented")

@@ -94,9 +94,9 @@ class PositionContainer(object):
         Rotate quantities defined in __PROPERTIES__ in case of components defined in __PROPERTIES__.
         Rotation is made in orbital plane and inclination direction in respective order.
         Angle are defined in self.position and self.inclination.
-        :return: self;
+        :return: base.container.SystemContainer;
         """
-        __PROPERTIES__ = ["points", "normals"]
+        __PROPERTIES__ = ["points", "normals", "velocities"]
 
         for component in self._components:
             star_container = getattr(self, component)
@@ -109,6 +109,17 @@ class PositionContainer(object):
                 args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
                 prop_value = utils.around_axis_rotation(*args)
                 setattr(star_container, prop, prop_value)
+        return self
+
+    def add_secular_velocity(self):
+        """
+        Addition of secular radial velocity of centre of mass to convert velocieties to reference frame of observer
+        :return:
+        """
+        gamma = getattr(self, "gamma")
+        for component in self._components:
+            star = getattr(self, component)
+            star.velocities[:, 0] += gamma
         return self
 
     def apply_darkside_filter(self):
@@ -165,6 +176,14 @@ class PositionContainer(object):
         # todo: require to resolve self shadowing in case of W UMa, but probably not here
         # recovering indices of points on near-side (from the point of view of observer)
         return up.arange(np.shape(cosines)[0])[cosines > 0]
+
+    def copy(self):
+        """
+        Return deepcopy of PositionContainer instance.
+
+        :return: elisa.base.container.PositionContainer;
+        """
+        return deepcopy(self)
 
 
 class StarContainer(object):
@@ -273,6 +292,7 @@ class StarContainer(object):
     def __init__(self,
                  points=None,
                  normals=None,
+                 velocities=None,
                  indices=None,
                  faces=None,
                  temperatures=None,
@@ -282,11 +302,15 @@ class StarContainer(object):
                  face_centres=None,
                  metallicity=None,
                  areas=None,
-                 potential_gradient_magnitudes=None):
+                 potential_gradient_magnitudes=None,
+                 ld_cfs=None,
+                 normal_radiance=None,
+                 los_cosines=None):
 
         self.points = points
         self.normals = normals
         self.faces = faces
+        self.velocities = velocities
         self.temperatures = temperatures
         self.log_g = log_g
         self.coverage = coverage
@@ -296,6 +320,9 @@ class StarContainer(object):
         self.metallicity = metallicity
         self.areas = areas
         self.potential_gradient_magnitudes = potential_gradient_magnitudes
+        self.ld_cfs = ld_cfs
+        self.normal_radiance = normal_radiance
+        self.los_cosines = los_cosines
 
         self.point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])
@@ -448,6 +475,7 @@ class StarContainer(object):
             spot_instance.areas = np.array([])
             spot_instance.potential_gradient_magnitudes = np.array([])
             spot_instance.temperatures = np.array([])
+            spot_instance.velocities = np.array([])
 
             spot_instance.log_g = np.array([])
 
@@ -458,7 +486,7 @@ class StarContainer(object):
 
         ::
 
-            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres, areas)
+            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres, areas, velocities)
         """
         points = self.points
         normals = self.normals
@@ -468,6 +496,7 @@ class StarContainer(object):
         rals = {mode_idx: None for mode_idx, mode in self.pulsations.items()}
         # rals = {mode_idx: mode.rals[0] for mode_idx, mode in self.pulsations.items()}
         centres = self.face_centres
+        velocities = self.velocities
         areas = self.areas
 
         if isinstance(self.spots, (dict,)):
@@ -477,12 +506,11 @@ class StarContainer(object):
                 normals = up.concatenate((normals, spot.normals), axis=0)
                 temperatures = up.concatenate((temperatures, spot.temperatures), axis=0)
                 log_g = up.concatenate((log_g, spot.log_g), axis=0)
-                # for mode_idx, mode in self.pulsations.items():
-                #     rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
                 centres = up.concatenate((centres, spot.face_centres), axis=0)
                 areas = up.concatenate((areas, spot.areas), axis=0)
+                velocities = up.concatenate((velocities, spot.velocities), axis=0)
 
-        return points, normals, faces, temperatures, log_g, rals, centres, areas
+        return points, normals, faces, temperatures, log_g, rals, centres, areas, velocities
 
     def flatt_it(self):
         """
@@ -495,7 +523,7 @@ class StarContainer(object):
         if self._flatten:
             return self
 
-        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas"]
+        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas", "velocities"]
         flat_props = self.get_flatten_properties()
         for prop, value in zip(props_list, flat_props):
             setattr(self, prop, value)
@@ -512,7 +540,6 @@ class StarContainer(object):
         :param com_x: float;
         :return: Tuple; spherical coordinates of star variable, dictionary of spherical coordinates of spot variable
         """
-        # fixme: remove from container, make it static in surface.mehs or similar
         # separating variables to convert
         centres_cartesian = copy(getattr(self, kind))
         centres_spot_cartesian = {spot_idx: copy(getattr(spot, kind)) for spot_idx, spot in self.spots.items()}

@@ -157,7 +157,10 @@ v0.3.1_
     - more suitable form of cost function for least squares fitting method
     - correcting secondary potential derivative component
     - libration motion accounted for in spot position in case of eccetric orbits
-    - volume conserved in eccentric spotty systems
+    - fix: volume conserved in eccentric spotty systems
+
+Future plans
+============
 
 v0.4
 ----
@@ -166,11 +169,14 @@ v0.4
 
 **Enhancements**
 
+    - radial velocity curves modelled based on radiometric quantities capable of modelling Rossitter effect and effect
+    of spots
+
 **Fixes**
 
+    - removed faulty curve points produced by multiprocessing curve integration methods
+    - component's volume conserved for eccentric spotty orbits
 
-Future plans
-============
 
 v0.5
 ----

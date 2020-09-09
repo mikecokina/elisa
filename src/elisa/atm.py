@@ -153,8 +153,6 @@ class NaiveInterpolatedAtm(object):
             * **passband** * -- Dict[str, elisa.observer.observer.PassbandContainer]
         :return: List;
         """
-        # fixme: uncomment following line
-        # validate_atm(temperature, log_g, metallicity, atlas)
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
         # related atmospheric files for each face (upper and lower)

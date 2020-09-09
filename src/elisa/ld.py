@@ -106,7 +106,9 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
     results = dict()
     logger.debug('interpolating limb darkening coefficients')
     for band in passband:
-        relevant_tables = get_relevant_ld_tables(passband=band, metallicity=metallicity, law=config.LIMB_DARKENING_LAW)
+        interp_band = 'bolometric' if band == 'rv_band' else band
+        relevant_tables = get_relevant_ld_tables(passband=interp_band, metallicity=metallicity,
+                                                 law=config.LIMB_DARKENING_LAW)
         csv_columns = config.LD_LAW_COLS_ORDER[config.LIMB_DARKENING_LAW]
         all_columns = csv_columns
         df = pd.DataFrame(columns=all_columns)

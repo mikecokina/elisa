@@ -95,10 +95,8 @@ class RadialVelocitySystem(object):
         phases = kwargs.pop("phases")
         position_method = kwargs.pop("position_method")
         orbital_motion = position_method(phase=phases)
-        r1, r2 = self.distance_to_center_of_mass(self.mass_ratio, orbital_motion)
 
-        sma_primary = rv.orbital_semi_major_axes(r1[-1], self.orbit.eccentricity, orbital_motion[:, 2][-1])
-        sma_secondary = rv.orbital_semi_major_axes(r2[-1], self.orbit.eccentricity, orbital_motion[:, 2][-1])
+        sma_primary, sma_secondary = self.distance_to_center_of_mass(self.mass_ratio, 1.0)
 
         period = np.float64((self.period * units.PERIOD_UNIT).to(units.s))
         asini = np.float64((self.asini * units.solRad).to(units.m))
@@ -114,11 +112,10 @@ class RadialVelocitySystem(object):
 
         rv_dict = {'primary':  primary_rv + self.gamma, 'secondary': secondary_rv + self.gamma}
 
-        return phases, rv_dict
+        return rv_dict
 
     @staticmethod
-    def distance_to_center_of_mass(q, positions):
-        distance = positions[:, 0]
+    def distance_to_center_of_mass(q, distance):
         com_from_primary = (q * distance) / (1.0 + q)
         return com_from_primary, distance - com_from_primary
 

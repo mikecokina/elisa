@@ -30,7 +30,6 @@ class AbstractFit(metaclass=ABCMeta):
         setattr(self, 'normalization', x0.get_normalization_map())
 
         observer = Observer(passband='bolometric' if passband is None else passband, system=None)
-        observer._system_cls = BinarySystem
         setattr(self, 'observer', observer)
 
         setattr(self, 'x_data', {key: val.x_data for key, val in data.items()})
@@ -134,14 +133,14 @@ def lc_r_squared(synthetic, *args, **x):
     :** x options**: kwargs of current parameters to compute binary system
     :return: float;
     """
-    x_data_reduced, y_data, passband, discretization, x_data_reducer, diff, interp_treshold = args
+    x_data_reduced, y_data, passband, discretization, x_data_reducer, diff, interp_treshold, cls = args
 
     x_data_reduced, kwargs = time_layer_resolver(x_data_reduced, pop=False, **x)
     fit_xs = np.linspace(np.min(x_data_reduced) - diff, np.max(x_data_reduced) + diff, num=interp_treshold + 2) \
         if np.shape(x_data_reduced)[0] > interp_treshold else x_data_reduced
 
     observer = Observer(passband=passband, system=None)
-    observer._system_cls = BinarySystem
+    observer._system_cls = cls
     synthetic = synthetic(fit_xs, discretization, observer, **x)
 
     if np.shape(fit_xs) != np.shape(x_data_reduced):
@@ -170,10 +169,10 @@ def rv_r_squared(synthetic, *args, **x):
     :** x options**: kwargs of current parameters to compute radial velocities curve
     :return: float;
     """
-    x_data_reduced, y_data, x_data_reducer = args
+    x_data_reduced, y_data, x_data_reducer, cls = args
 
     observer = Observer(passband='bolometric', system=None)
-    observer._system_cls = BinarySystem
+    observer._system_cls = cls
     synthetic = synthetic(x_data_reduced, observer, **x)
     synthetic = {comp: synthetic[comp][x_data_reducer[comp]] for comp in synthetic}
 

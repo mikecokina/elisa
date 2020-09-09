@@ -12,7 +12,6 @@
         "inclination",
         "period",
         "argument_of_periastron",
-        "gamma",
         "eccentricity",
         "semi_major_axis",
         "mass_ratio"

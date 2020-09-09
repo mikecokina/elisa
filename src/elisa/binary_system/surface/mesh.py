@@ -69,7 +69,8 @@ def build_pulsations_on_mesh(system, component, components_distance):
         if star.has_pulsations():
             phase = butils.calculate_rotational_phase(system, component)
             com_x = 0 if component == 'primary' else components_distance
-            star = pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, phase=phase, time=system.time)
+            star = pulsations.generate_harmonics(star, com_x=com_x, phase=phase, time=system.time)
+            star = pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x)
     return system
 
 

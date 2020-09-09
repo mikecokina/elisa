@@ -71,6 +71,8 @@ class Spot(object):
         self.faces = np.array([])
         self.face_centres = np.array([])
 
+        self.velocities = np.array([])
+
         self.areas = np.array([])
         self.potential_gradient_magnitudes = np.array([])
         self.temperatures = np.array([])

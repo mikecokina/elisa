@@ -24,6 +24,22 @@ def init_bolometric_passband():
     return bol_passband, right_bandwidth, left_bandwidth
 
 
+def init_rv_passband():
+    """
+    Initializing passband used to calculate radial velocities
+
+    :return: tuple
+    """
+    df = pd.DataFrame(
+        {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
+         config.PASSBAND_DATAFRAME_WAVE: config.RV_LAMBDA_INTERVAL})
+    right_bandwidth = config.RV_LAMBDA_INTERVAL[1]
+    left_bandwidth = config.RV_LAMBDA_INTERVAL[0]
+    psmbnd = PassbandContainer(table=df, passband='rv_band')
+
+    return psmbnd, right_bandwidth, left_bandwidth
+
+
 def bolometric(x):
     """
     Bolometric passband interpolation function in way of lambda x: 1.0
@@ -80,7 +96,7 @@ class PassbandContainer(object):
         :param df: pandas.DataFrame;
         """
         self._table = df
-        self.akima = bolometric if (self.passband.lower() in ['bolometric']) else \
+        self.akima = bolometric if (self.passband.lower() in ['bolometric', 'rv_band']) else \
             interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
                                             df[config.PASSBAND_DATAFRAME_THROUGHPUT])
         self.left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])

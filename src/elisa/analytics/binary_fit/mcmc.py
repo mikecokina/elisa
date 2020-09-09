@@ -25,6 +25,8 @@ from elisa.graphic.mcmc_graphics import Plot
 from elisa.logger import getPersistentLogger
 from elisa.analytics.binary_fit.shared import check_for_boundary_surface_potentials
 from elisa import const
+from elisa.binary_system.system import BinarySystem
+from elisa.binary_system.curves.community import RadialVelocitySystem
 
 logger = getPersistentLogger('analytics.binary_fit.mcmc')
 
@@ -180,7 +182,6 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         :param fit_id: str; id which identifies fit file (if not specified, current dateime is used)
         :return: emcee.EnsembleSampler; sampler instance
         """
-
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
                     interp_treshold=config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold)
@@ -200,7 +201,8 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         result_dict = self.eval_constrained_results(result_dict, self.constrained)
 
         r_squared_args = (self.x_data_reduced, self.y_data, self.observer.passband, discretization,
-                          self.x_data_reducer, 1.0 / self.interp_treshold, self.interp_treshold)
+                          self.x_data_reducer, 1.0 / self.interp_treshold, self.interp_treshold,
+                          self.observer._system_cls)
         r_dict = {key: value['value'] for key, value in result_dict.items()}
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result, "unit": None}
@@ -270,6 +272,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
         self.set_up(x0, data)
+        self.observer._system_cls = RadialVelocitySystem
 
         ndim = len(self.initial_vector)
         nwalkers = 2 * len(self.initial_vector) if nwalkers is None else nwalkers
@@ -288,7 +291,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         } for lbl, val in self.fixed.items()})
         result_dict = self.eval_constrained_results(result_dict, self.constrained)
 
-        r_squared_args = self.x_data_reduced, self.y_data, self.x_data_reducer
+        r_squared_args = self.x_data_reduced, self.y_data, self.x_data_reducer, self.observer._system_cls
         r_dict = {key: value['value'] for key, value in result_dict.items()}
 
         r_squared_result = rv_r_squared(rv_model.central_rv_synthetic, *r_squared_args, **r_dict)

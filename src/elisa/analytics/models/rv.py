@@ -58,6 +58,7 @@ def central_rv_synthetic(x_data, observer, **kwargs):
         raise InitialParamsError("Initial parameters led to unknown model.")
 
     observer._system = observable
+    observer._system_cls = RadialVelocitySystem
     _, rv = observer.observe.rv(phases=x_data, normalize=False)
 
     return rv
