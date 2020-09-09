@@ -166,7 +166,13 @@ v0.4
 
 **Enhancements**
 
+    - radial velocity curves modelled based on radiometric quantities capable of modelling Rossitter effect and effect
+    of spots
+
 **Fixes**
+
+    - removed faulty curve points produced by multiprocessing curve integration methods
+    - component's volume conserved for eccentric spotty orbits
 
 
 v0.5
