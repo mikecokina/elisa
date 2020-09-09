@@ -312,6 +312,18 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
 
 class CompareSingleVsMultiprocess(ElisaTestCase):
+    def setUp(self):
+        # raise unittest.SkipTest(message)
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves")
+        self.law = config.LIMB_DARKENING_LAW
+
+        config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
+        config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
+        config.ATM_ATLAS = "ck04"
+        config._update_atlas_to_base_dir()
+        config.RV_LAMBDA_INTERVAL = (5500, 5600)
+
     def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1):
         o = Observer(system=system)
 
