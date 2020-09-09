@@ -1,6 +1,7 @@
 import numpy as np
 import os.path as op
 
+from copy import copy
 from os import cpu_count
 from importlib import reload
 
@@ -89,7 +90,6 @@ PARAMS = {
 
 
 class BinaryRadialCurvesTestCase(ElisaTestCase):
-
     def setUp(self):
         self.phases = up.arange(-0.2, 1.25, 0.05)
 
@@ -112,42 +112,63 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
         s = prepare_binary_system(BINARY_SYSTEM_PARAMS["detached.ecc"])
         self.do_comparison(s, "detahed.ecc.json")
 
-    def check_consistency(self, binary_kwargs, desired_delta, spots_primary=None, spots_secondary=None):
+
+class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
+    @staticmethod
+    def check_consistency(binary_kwargs, desired_delta, spots_primary=None, spots_secondary=None, phases=None):
         system = prepare_binary_system(binary_kwargs, spots_primary=spots_primary, spots_secondary=spots_secondary)
-        rvdict1 = system.compute_rv(position_method=system.calculate_orbital_motion, phases=self.phases,
-                                    method='point_mass')
-        rvdict2 = system.compute_rv(position_method=system.calculate_orbital_motion, phases=self.phases,
-                                    method='radiometric')
+
+        o = Observer(system=system)
+        _, rvdict1 = o.rv(phases=phases, method='radiometric')
+        _, rvdict2 = o.rv(phases=phases, method='point_mass')
 
         rvdict1['primary'], rvdict1['secondary'] = normalize_lv_for_unittests(rvdict1['primary'], rvdict1['secondary'])
         rvdict2['primary'], rvdict2['secondary'] = normalize_lv_for_unittests(rvdict2['primary'], rvdict2['secondary'])
 
-        assert_array_less(np.abs(rvdict1['primary'] - rvdict2['primary']), desired_delta * np.ones(self.phases.shape))
+        assert_array_less(np.abs(rvdict1['primary'] - rvdict2['primary']),
+                          desired_delta * np.ones(phases.shape))
         assert_array_less(np.abs(rvdict2['secondary'] - rvdict2['secondary']),
-                          desired_delta * np.ones(self.phases.shape))
+                          desired_delta * np.ones(phases.shape))
+
+        # from matplotlib import pyplot as plt
+        # # plt.plot(self.phases, rvdict1['primary']-rvdict2['primary'], c='r')
+        # plt.plot(self.phases, rvdict1['primary'], c='r')
+        # plt.plot(self.phases, rvdict2['primary'], c='r', linestyle='dashed')
+        # # plt.plot(self.phases, rvdict1['secondary']-rvdict2['secondary'], c='b')
+        # plt.plot(self.phases, rvdict1['secondary'], c='b')
+        # plt.plot(self.phases, rvdict2['secondary'], c='b', linestyle='dashed')
+        # plt.show()
 
     def test_rv_consistency_circular_detached(self):
-        binary_kwargs = BINARY_SYSTEM_PARAMS["detached-physical"]
+        binary_kwargs = copy(BINARY_SYSTEM_PARAMS["detached-physical"])
         binary_kwargs['inclination'] = 70 * u.deg
+        reload(rv)
 
-        self.check_consistency(binary_kwargs, 0.02, spots_primary=SPOTS_META['primary'])
+        phases = np.array([0.15, 0.2, 0.25, 0.3, 0.4, 0.7, 0.75, 0.8, 0.85])
+
+        self.check_consistency(binary_kwargs, 0.02, spots_primary=SPOTS_META['primary'], phases=phases)
 
     def test_rv_consistency_circular_contact(self):
-        binary_kwargs = BINARY_SYSTEM_PARAMS["over-contact"]
+        binary_kwargs = copy(BINARY_SYSTEM_PARAMS["over-contact"])
         binary_kwargs['inclination'] = 10 * u.deg
+        reload(rv)
 
-        self.check_consistency(binary_kwargs, 0.033, spots_primary=SPOTS_META['primary'])
+        phases = np.array([0.15, 0.2, 0.25, 0.3, 0.4, 0.7, 0.75, 0.8, 0.85])
+
+        self.check_consistency(binary_kwargs, 0.033, spots_primary=SPOTS_META['primary'], phases=phases)
 
     def test_rv_consistency_eccentric_approx_zero(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(rvmp)
+        reload(rv)
 
-        binary_kwargs = BINARY_SYSTEM_PARAMS["detached-physical"]
+        phases = np.array([0.15, 0.2, 0.25, 0.3, 0.4, 0.7, 0.75, 0.8, 0.85])
+
+        binary_kwargs = copy(BINARY_SYSTEM_PARAMS["detached-physical"])
         binary_kwargs['inclination'] = 70 * u.deg
         binary_kwargs['eccentricity'] = 0.3
 
-        self.check_consistency(binary_kwargs, 0.005)
+        self.check_consistency(binary_kwargs, 0.005, phases=phases)
 
 
 class ComputeRadiometricRVTestCase(ElisaTestCase):
@@ -167,10 +188,8 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         config.LIMB_DARKENING_LAW = self.law
         reload(rv)
 
-    def do_comparison(self, bs, rv_file):
+    def do_comparison(self, bs, rv_file, start_phs=-0.2, stop_phs=1.2, step=0.1):
         o = Observer(system=bs)
-
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
         obtained = o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
         obt_phs = obtained[0]
@@ -276,11 +295,19 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
         self.do_comparison(bs, "detached.ecc.appx_two.json")
 
+    def test_eccentric_system_approximation_three(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.05
+        reload(curve_approx)
+
+        bs = prepare_binary_system(PARAMS["eccentric"])
+
+        self.do_comparison(bs, "ecc.appx_three.json", -0.0, 0.01, 0.002)
+
 
 class CompareSingleVsMultiprocess(ElisaTestCase):
-    def do_comparison(self, system):
+    def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1):
         o = Observer(system=system)
-        start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
         sp_res = o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
         sp_p = np.array(sp_res[1]['primary'])
@@ -338,3 +365,12 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
+
+    def test_eccentric_system_approximation_three(self):
+        config.POINTS_ON_ECC_ORBIT = int(1e6)
+        config.MAX_RELATIVE_D_R_POINT = 0.05
+        reload(curve_approx)
+
+        bs = prepare_binary_system(PARAMS["eccentric"])
+
+        self.do_comparison(bs, -0.0, 0.01, 0.002)

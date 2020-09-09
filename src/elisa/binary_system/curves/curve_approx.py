@@ -73,15 +73,9 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
                                                     potentials, crv_labels, curve_fn, **kwargs)
 
     # APPX TWO *********************************************************************************************************
-    # create object of separated objects and supplements to bodies
-    orbital_supplements = dynamic.find_apsidally_corresponding_positions(reduced_orbit_arr[:, 1],
-                                                                         reduced_orbit_arr,
-                                                                         reduced_orbit_supplement_arr[:, 1],
-                                                                         reduced_orbit_supplement_arr,
-                                                                         tol=config.MAX_SUPPLEMENTAR_D_DISTANCE)
 
-    orbital_supplements.sort(by='distance')
-    appx_two = eval_approximation_two(binary, potentials, orbital_supplements, phases_span_test)
+    appx_two, orbital_supplements = eval_approximation_two(binary, potentials, reduced_orbit_arr,
+                                                           reduced_orbit_supplement_arr, phases_span_test)
 
     if appx_two:
         return 'two', lambda: approx_method_list[2](binary, phases, orbital_supplements, potentials, crv_labels,
@@ -110,16 +104,29 @@ def eval_approximation_one(phases, phases_span_test):
     return False
 
 
-def eval_approximation_two(binary, potentials, orbital_supplements, phases_span_test):
+def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_arr, phases_span_test):
     """
     Test if it is possible to compute eccentric binary system with approximation approx two.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param potentials: dict; corrected potentials
-    :param orbital_supplements: elisa.binary_system.orbit.container.OrbitalSupplements;
+    :param base_orbit_arr: numpy.array;
+    :param orbit_supplement_arr: numpy.array;
     :param phases_span_test: bool;
-    :return: bool;
+    :return: Tuple; approximation test, orbital supplements
     """
+    if not phases_span_test:
+        return False, None
+
+    # create object of separated objects and supplements to bodies
+    orbital_supplements = dynamic.find_apsidally_corresponding_positions(base_orbit_arr[:, 1],
+                                                                         base_orbit_arr,
+                                                                         orbit_supplement_arr[:, 1],
+                                                                         orbit_supplement_arr,
+                                                                         tol=config.MAX_SUPPLEMENTAR_D_DISTANCE)
+
+    orbital_supplements.sort(by='distance')
+
     base_potentials = {component: pot[np.array(orbital_supplements.body[:, 0], dtype=np.int)]
                        for component, pot in potentials.items()}
 
@@ -138,8 +145,8 @@ def eval_approximation_two(binary, potentials, orbital_supplements, phases_span_
     # their own size (forward radius changes based on components distance and it is monotonic function)
 
     if np.max(rel_d) < config.MAX_RELATIVE_D_R_POINT and phases_span_test:
-        return True
-    return False
+        return True, orbital_supplements
+    return False, None
 
 
 def eval_approximation_three(binary, all_orbital_pos_arr):
@@ -171,7 +178,7 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     :param binary: elisa.binary_system.system.BinarySystem;
     :param phases: numpy.array;
     :param reduced_orbit_arr: numpy.array; base orbital positions
-    :param counterpart_postion_arr: numpy.array; orbital positions symmetric to the `reduced_orbit_arr`
+    :param counterpart_postion_arr: numpy.array; orbital positions symmetric to the `base_orbit_arr`
     :param potentials: dict; corrected potentials
     :param crv_labels: list; curve_labels
     :param curve_fn: curve integrator function
