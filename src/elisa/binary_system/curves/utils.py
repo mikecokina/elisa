@@ -167,6 +167,30 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
     return normal_radiance, ld_cfs if return_values else None
 
 
+def update_surface_params(require_rebuild, container, normal_radiance, ld_cfs, **kwargs):
+    """
+    Function either recalculates normal radiances and limb darkening coefficients or it assigns old values to the
+    container according to the `require_rebuild` condition.
+
+    :param require_rebuild: bool; testing condition for recalculation of surface parameters
+    :param container: elisa.binary_system.container.OrbitalPositionContainer;
+    :param normal_radiance: dict; old values of normal radiances
+    :param ld_cfs: dict; old values of limb darkening coefficients
+    :param kwargs: dict;
+    :return: Tuple; updated container and updated normal radiances and limb darkening coefficients
+    """
+    if require_rebuild:
+        normal_radiance, ld_cfs = \
+            prep_surface_params(container, return_values=True, write_to_containers=True, **kwargs)
+    else:
+        for component in config.BINARY_COUNTERPARTS.keys():
+            star = getattr(container, component)
+            setattr(star, 'normal_radiance', normal_radiance[component])
+            setattr(star, 'ld_cfs', ld_cfs[component])
+
+    return container, normal_radiance, ld_cfs
+
+
 def split_orbit_by_apse_line(orbital_motion, orbital_mask):
     """
     Split orbital positions represented by `orbital_motion` array on two groups separated by line of apsides.
