@@ -441,8 +441,9 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_three.json", TOL, -0.0, 0.01, 0.002)
 
     def test_eccentric_asynchronous_detached_system(self):
-        config.LIMB_DARKENING_LAW = "linear"
         reload(lc)
+        reload(curve_approx)
+        reload(config)
 
         bs = prepare_binary_system(PARAMS["detached-async-ecc"])
 
