@@ -148,6 +148,7 @@ def integrate_eccentric_curve_exactly(*args):
                 binary: elisa.binary_system.BinarySystem,
                 potentials: dict; corrected surface potentials
                 phase_batch: numpy.array; phases at which to calculate curves,
+                spots_longitudes: longitudes of each spots for each orbital position
                 crv_labels: List;
                 curves_fn: function to calculate curve points at given orbital positions,
                 kwargs: Dict,
@@ -155,12 +156,13 @@ def integrate_eccentric_curve_exactly(*args):
 
     :return:
     """
-    binary, potentials, motion_batch, crv_labels, curve_fn, kwargs = args
+    binary, potentials, motion_batch, spots_longitudes, crv_labels, curve_fn, kwargs = args
     curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
     for run_idx, position in enumerate(motion_batch):
         pos_idx = int(position.idx)
         from_this = dict(binary_system=binary, position=position)
         on_pos = OrbitalPositionContainer.from_binary_system(**from_this)
+        dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_idx, component="all")
         on_pos.set_on_position_params(position, potentials["primary"][pos_idx],
                                       potentials["secondary"][pos_idx])
         on_pos.build(components_distance=position.distance)

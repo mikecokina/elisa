@@ -238,10 +238,44 @@ def integrate_eccentric_curve_exactly(binary, orbital_motion, potentials, crv_la
     :return: Dict; dictionary of fluxes for each filter
     """
     # surface potentials with constant volume of components
-    fn_args = (binary, potentials, crv_labels, curve_fn)
+    fn_args = (binary, potentials, None, crv_labels, curve_fn)
 
     band_curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly,
                                       fn_args=fn_args,
                                       position=orbital_motion,
                                       **kwargs)
+    return band_curves
+
+
+def produce_ecc_curves_with_spots(binary, curve_fn, crv_labels, **kwargs):
+    """
+    Function for generating curves of binaries with eccentric orbit and spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param curve_fn: curve generator function
+    :param crv_labels: labels of the calculated curves (passbands, components,...)
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa .observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
+    :return: Dict; curves
+    """
+    phases = kwargs.pop("phases")
+    position_method = kwargs.pop("position_method")
+    orbital_motion = position_method(input_argument=phases, return_nparray=False, calculate_from='phase')
+
+    potentials = binary.correct_potentials(phases, component="all", iterations=2)
+
+    # pre-calculate the longitudes of each spot for each phase
+    spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all")
+
+    fn_args = (binary, potentials, spots_longitudes, crv_labels, curve_fn)
+
+    band_curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly,
+                                      fn_args=fn_args,
+                                      position=orbital_motion,
+                                      **kwargs)
+
     return band_curves

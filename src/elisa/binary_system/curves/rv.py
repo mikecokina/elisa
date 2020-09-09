@@ -165,6 +165,21 @@ def compute_eccentric_rv_curve_no_spots(binary, **kwargs):
 
 
 def compute_eccentric_spotty_rv_curve(binary, **kwargs):
-    pass
+    """
+    General function for generating rv curves of binaries with eccentric orbit and spots.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param kwargs: Dict;
+    :**kwargs options**:
+        * ** passband ** - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** - float
+        * ** right_bandwidth ** - float
+        * ** atlas ** - str
+    :return: Dict; rv for each component
+    """
+    rv_labels = list(config.BINARY_COUNTERPARTS.keys())
+
+    return curves.produce_ecc_curves_with_spots(binary, rvmp.compute_rv_at_pos, rv_labels, **kwargs)
+
 
 

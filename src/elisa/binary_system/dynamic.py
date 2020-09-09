@@ -229,8 +229,8 @@ def correct_spot_positions_for_libration(system, phases):
 
     :param system: Union[elisa.binary_system.system.BinarySystem,
                    elisa.binary_system.container.OrbitalPositionContainer];
-    :param phases: nympy.array;
-    :return: numpy.arrray; angular correction for each phase
+    :param phases: numpy.array;
+    :return: numpy.array; angular correction for each phase
     """
     # ensuring that phase = 0 is in dataset
     phases_p = [phases, ] if np.isscalar(phases) else copy(phases)
