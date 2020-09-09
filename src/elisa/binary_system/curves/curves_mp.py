@@ -124,14 +124,9 @@ def produce_circ_spotty_async_curves_mp(*args):
         on_pos = butils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
 
         # if None of components has to be rebuilt, use previously computed radiances and limbdarkening when available
-        if require_build is not None:
-            normal_radiance, ld_cfs = \
-                crv_utils.prep_surface_params(on_pos, return_values=True, write_to_containers=True, **kwargs)
-        else:
-            for component in config.BINARY_COUNTERPARTS.keys():
-                star = getattr(on_pos, component)
-                setattr(star, 'normal_radiance', normal_radiance[component])
-                setattr(star, 'ld_cfs', ld_cfs[component])
+        require_build_test = require_build is not None
+        on_pos, normal_radiance, ld_cfs = \
+            crv_utils.update_surface_params(require_build_test, on_pos, normal_radiance, ld_cfs, **kwargs)
 
         compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=in_eclipse[pos_idx],
                                  return_values=False, write_to_containers=True)

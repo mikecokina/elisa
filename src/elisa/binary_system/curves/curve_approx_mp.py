@@ -1,15 +1,16 @@
 import numpy as np
+from copy import deepcopy
 
 from elisa import utils, const
 from elisa.conf import config
-from ...binary_system import (
+from elisa.binary_system import (
     utils as bsutils,
     dynamic
 )
 from elisa.binary_system.curves import utils as crv_utils
-from ...binary_system.container import OrbitalPositionContainer
+from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.surface.coverage import compute_surface_coverage
-from ...binary_system.orbit.container import OrbitalSupplements
+from elisa.binary_system.orbit.container import OrbitalSupplements
 
 
 def update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
@@ -139,5 +140,53 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
     return {key: np.stack((curves_body[key], curves_mirror[key]), axis=1) for key in crv_labels}
 
 
-def integrate_eccentric_curve_approx_three():
-    pass
+def integrate_eccentric_curve_approx_three(*args):
+    """
+    Curve generator for eccentric curves without spots for orbital positions that are sufficiently similar that surfaces
+    does not have to be fully recalculated.
+
+    :param args: Tuple;
+
+    ::
+
+        Tuple[
+                binary: elisa.binary_system.BinarySystem,
+                potentials: dict; corrected surface potentials
+                motion_batch: numpy.array; orbital positions sorted by components distance
+                new_geometry_mask: bool; mask to `orbital_positions` which determines which surface geometry should be
+                fully recalculated
+                crv_labels: list; curve_labels
+                curves_fn: function to calculate curve points at given orbital positions,
+                kwargs: Dict,
+            ]
+    :return: Dict; curves
+    """
+    binary, potentials, motion_batch, new_geometry_mask, crv_labels, curve_fn, kwargs = args
+    curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
+    positions = utils.convert_binary_orbital_motion_arr_to_positions(motion_batch)
+
+    # prepare initial orbital position container
+    from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
+    initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
+
+    normal_radiance, ld_cfs = None, None
+    for run_idx, position in enumerate(positions):
+        pos_idx = int(position.idx)
+        require_rebuild = new_geometry_mask[pos_idx] or run_idx == 0
+
+        initial_system.set_on_position_params(position, potentials["primary"][pos_idx],
+                                              potentials["secondary"][pos_idx])
+
+        update_surface_in_ecc_orbits(initial_system, orbital_position=position, new_geometry_test=require_rebuild)
+
+        on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=False, recalculate_velocities=True)
+
+        on_pos, normal_radiance, ld_cfs = crv_utils.update_surface_params(require_rebuild, on_pos, normal_radiance,
+                                                                          ld_cfs, **kwargs)
+
+        # TODO: properly calculate in_eclipse parameter
+        compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True, return_values=False,
+                                 write_to_containers=True)
+
+        curves = curve_fn(curves, run_idx, crv_labels, on_pos)
+    return curves
