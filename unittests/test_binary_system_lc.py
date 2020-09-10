@@ -440,10 +440,10 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_three.json", TOL, -0.0, 0.01, 0.002)
 
-    def test_eccentric_asynchronous_detached_system(self):
-        bs = prepare_binary_system(PARAMS["detached-async-ecc"])
-
-        self.do_comparison(bs, "detached.ecc.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.1)
+    # def test_eccentric_asynchronous_detached_system(self):
+    #     bs = prepare_binary_system(PARAMS["detached-async-ecc"])
+    #
+    #     self.do_comparison(bs, "detached.ecc.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.1)
 
     def test_circular_spotty_synchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached"],
