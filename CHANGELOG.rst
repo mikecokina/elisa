@@ -171,6 +171,7 @@ v0.4
 
     - radial velocity curves modelled based on radiometric quantities capable of modelling Rossitter effect and effect
     of spots
+    - ability to display observation stored in DataSet class using DataSet.plot.display_observation()
 
 **Fixes**
 

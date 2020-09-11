@@ -12,6 +12,7 @@ from elisa.conf import config
 from abc import ABCMeta
 from elisa.utils import is_empty
 from copy import copy, deepcopy
+from elisa.analytics.dataset.graphic import plot
 
 logger = getLogger('analytics.dataset.base')
 
@@ -99,6 +100,7 @@ class DataSet(metaclass=ABCMeta):
     def __init__(self, name=None, **kwargs):
         # initial kwargs
         self.kwargs = copy(kwargs)
+        self.plot = plot.Plot(self)
 
         if is_empty(name):
             self.name = str(DataSet.ID)
