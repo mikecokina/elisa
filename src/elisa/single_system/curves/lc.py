@@ -16,11 +16,12 @@ def compute_light_curve_without_pulsations(single, **kwargs):
 
     :param single: elisa.single_system.system.SinarySystem;
     :param kwargs: Dict;
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
-            * ** position_method** * - function definition; to evaluate orbital positions
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
+        * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array];
     """
     from_this = dict(single_system=single, position=const.SinglePosition(0, 0.0, 0.0))

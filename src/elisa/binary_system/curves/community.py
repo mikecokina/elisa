@@ -1,6 +1,5 @@
 import numpy as np
 
-from elisa.binary_system.curves import rv
 from elisa.binary_system.orbit import orbit
 from elisa.binary_system.transform import RadialVelocityObserverProperties
 from elisa.logger import getLogger

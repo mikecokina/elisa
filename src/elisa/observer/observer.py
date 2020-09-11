@@ -69,6 +69,14 @@ class Observer(object):
         self.plot = Plot(self)
         self.observe = Observables(self)
 
+    @property
+    def system_cls(self):
+        return self._system_cls
+
+    @system_cls.setter
+    def system_cls(self, value):
+        self._system_cls = value
+
     def init_passband(self, passband):
         """
         Passband initializing method for Observer instance.

@@ -7,8 +7,8 @@ def phase_correction(phase):
     """
     Calculate phase correction for mode axis drift.
 
-    :param phase: rotation phase of the star
-    :return:
+    :param phase: float; rotation phase of the star
+    :return: float;
     """
     # return (synchronicity - 1) * phase * const.FULL_ARC if synchronicity is not np.nan else phase * const.FULL_ARC
     return phase * const.FULL_ARC
@@ -20,7 +20,7 @@ def generate_tilt_coordinates(star_container, phase):
 
     :param star_container: StarContainer;
     :param phase: float; rotational orbital phase of the star
-    :return:
+    :return: Tuple[float, float];
     """
     phi_corr = phase_correction(phase)
     # we presume that all modes have the same tilt
@@ -35,7 +35,7 @@ def generate_time_exponential(mode, time):
 
     :param mode: PulsationMode; PulsationMode; mode used to generate sph. harmonics
     :param time: float; time at which evaluate spherical harmonics
-    :return: np.float; complex time dependent exponential
+    :return: float; complex time dependent exponential
     """
     exponent = mode.angular_frequency * time + mode.start_phase
     return np.exp(complex(0, -exponent))
@@ -72,8 +72,8 @@ def derotate_surface_points(points_to_derotate, phi, theta, com_x):
     :param points_to_derotate: numpy.array; surface points in tilted spherical coordinates
     :param phi: float; azimuthal tilt of the input coordinate system
     :param theta: float; latitudinal tilt of the input coordinate system
-    :param com_x:
-    :return:
+    :param com_x: float;
+    :return: numpy.array;
     """
     derot_phi, derot_theta = \
         utils.derotation_in_spherical(points_to_derotate[:, 1],

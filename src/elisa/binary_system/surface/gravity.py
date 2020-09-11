@@ -132,7 +132,7 @@ def build_surface_gravity(system, components_distance, component="all"):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param component: str; `primary` or `secondary`
     :param components_distance: float;
-    :return: system: elisa.binary_system.container.OrbitalPositionContainer;;
+    :return: system: elisa.binary_system.container.OrbitalPositionContainer;
     """
     if is_empty(component):
         logger.debug("no component set to build surface gravity")
@@ -157,9 +157,9 @@ def build_surface_gravity(system, components_distance, component="all"):
         points, faces = bgravity.eval_args_for_magnitude_gradient(star)
 
         scaling_factor = const.G * system.primary.mass / system.semi_major_axis**2
-        g_acc_vector = scaling_factor * \
-                       calculate_potential_gradient(components_distance, component, points=points,
-                                                    synchronicity=synchronicity, mass_ratio=mass_ratio)
+        p_grad = calculate_potential_gradient(components_distance, component, points=points,
+                                              synchronicity=synchronicity, mass_ratio=mass_ratio)
+        g_acc_vector = scaling_factor * p_grad
 
         g_acc_vector_spot = dict()
         if star.has_spots():
@@ -168,10 +168,9 @@ def build_surface_gravity(system, components_distance, component="all"):
                 logger.debug(f'calculating distribution of potential gradient '
                              f'magnitudes of spot index: {spot_index} / {component} component')
 
-                g_acc_vector_spot.update(
-                    {spot_index: scaling_factor *
-                                 calculate_potential_gradient(components_distance, component, points=spot.points,
-                                                              synchronicity=synchronicity, mass_ratio=mass_ratio)})
+                p_grad = calculate_potential_gradient(components_distance, component, points=spot.points,
+                                                      synchronicity=synchronicity, mass_ratio=mass_ratio)
+                g_acc_vector_spot.update({spot_index: scaling_factor * p_grad})
 
         if star.has_pulsations():
             g_acc_vector, g_acc_vector_spot = \

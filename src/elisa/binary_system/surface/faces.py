@@ -388,10 +388,10 @@ def build_velocities(system, components_distance, component='all'):
     """
     Function calculates velocity vector for each face relative to the centre of mass.
 
-    :param system: elisa.binary_system.container.SystemContainer
+    :param system: elisa.binary_system.container.SystemContainer;
     :param components_distance: float;
     :param component: str;
-    :return: elisa.binary_system.container.SystemContainer
+    :return: elisa.binary_system.container.SystemContainer;
     """
     if is_empty(component):
         logger.debug("no component set to build face orientation")
@@ -415,10 +415,9 @@ def build_velocities(system, components_distance, component='all'):
         star.velocities = np.mean(p_velocities[star.faces], axis=1)
 
         if star.has_spots():
-            for spot in star.spots.values():
-                points = (spot.points - com_x[_component][None, :]) * system.semi_major_axis
+            for spot_inst in star.spots.values():
+                points = (spot_inst.points - com_x[_component][None, :]) * system.semi_major_axis
                 p_velocities = velocities[_component] + np.cross(points, omega, axisa=1)
-                spot.velocities = np.mean(p_velocities[spot.faces], axis=1)
+                spot_inst.velocities = np.mean(p_velocities[spot_inst.faces], axis=1)
 
     return system
-

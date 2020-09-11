@@ -31,6 +31,7 @@ class AbstractFit(metaclass=ABCMeta):
 
         observer = Observer(passband='bolometric' if passband is None else passband, system=None)
         setattr(self, 'observer', observer)
+        setattr(self.observer, 'system_cls', kwargs.get('observer_system_cls'))
 
         setattr(self, 'x_data', {key: val.x_data for key, val in data.items()})
         setattr(self, 'y_data', {key: val.y_data for key, val in data.items()})
@@ -99,7 +100,7 @@ class AbstractLCFit(AbstractFit):
                  'initial_vector', 'normalization', 'x_data', 'y_data']
 
     def set_up(self, x0: BinaryInitialParameters, data: Dict, passband: Iterable = None, **kwargs):
-        super().set_up(x0, data, passband)
+        super().set_up(x0, data, passband, observer_system_cls=kwargs.get('observer_system_cls'))
         setattr(self, 'discretization', kwargs.pop('discretization'))
         setattr(self, 'interp_treshold', kwargs.pop('interp_treshold'))
         self.normalize_data(kind='average')

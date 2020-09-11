@@ -34,4 +34,3 @@ def compute_rv_at_pos(velocities, pos_idx, crv_labels, system):
         velocities[component][pos_idx] = _calculate_rv_point(getattr(system, component))
 
     return velocities
-

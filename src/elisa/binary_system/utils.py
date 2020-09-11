@@ -12,8 +12,7 @@ from ..conf.config import SCHEMA_REGISTRY
 from ..binary_system import model
 from ..utils import is_empty
 from .. import (
-    umpy as up,
-    utils
+    umpy as up
 )
 
 

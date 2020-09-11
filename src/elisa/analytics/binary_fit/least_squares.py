@@ -97,8 +97,8 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         :return: Dict;
         """
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
-                    interp_treshold=config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold)
-        self.observer._system_cls = BinarySystem
+                    interp_treshold=config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
+                    observer_system_cls=BinarySystem)
         initial_vector = parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization)
 
         # evaluate least squares from scipy
@@ -133,7 +133,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
 
         r_squared_args = (self.x_data_reduced, self.y_data, self.observer.passband, discretization,
                           self.x_data_reducer, 1.0 / self.interp_treshold, self.interp_treshold,
-                          self.observer._system_cls)
+                          self.observer.system_cls)
 
         r_dict = {key: value['value'] for key, value in result_dict.items()}
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
@@ -183,9 +183,7 @@ class CentralRadialVelocity(AbstractRVFit):
                        scipy.optimize.least_squares method)
         :return: Dict;
         """
-        self.set_up(x0, data)
-        self.observer._system_cls = RadialVelocitySystem
-
+        self.set_up(x0, data, observer_system_cls=RadialVelocitySystem)
         logger.info("fitting radial velocity light curve...")
         func = self.central_rv_model_to_fit
         initial_vector = parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization)
@@ -217,7 +215,7 @@ class CentralRadialVelocity(AbstractRVFit):
         } for lbl, val in self.fixed.items()})
         result_dict = self.eval_constrained_results(result_dict, self.constrained)
 
-        r_squared_args = self.x_data_reduced, self.y_data, self.x_data_reducer, self.observer._system_cls
+        r_squared_args = self.x_data_reduced, self.y_data, self.x_data_reducer, self.observer.system_cls
         r_dict = {key: value['value'] for key, value in result_dict.items()}
 
         r_squared_result = rv_r_squared(rv_model.central_rv_synthetic, *r_squared_args, **r_dict)

@@ -55,7 +55,7 @@ def velocity_vector_angle(eccentricity, true_anomaly):
 
     :param eccentricity: float;
     :param true_anomaly: float;
-    :return: tuple;
+    :return: Tuple;
     """
     den = np.sqrt(1 + eccentricity**2 + 2 * eccentricity * np.cos(true_anomaly))
     sin = (1 + eccentricity * np.cos(true_anomaly)) / den
@@ -69,7 +69,7 @@ def create_orb_vel_vectors(system, components_distance):
 
     :param system: elisa.binary_system.container;
     :param components_distance: float;
-    :return:
+    :return: float;
     """
     a_red = system.semi_major_axis * system.mass_ratio / (1 + system.mass_ratio)
 
@@ -91,7 +91,7 @@ def distance_to_center_of_mass(primary_mass, secondary_mass, distance):
     :param primary_mass: float
     :param secondary_mass: float
     :param distance: Union[float, numpy.array]
-    :return: Tuple
+    :return: Tuple[Union[float, numpy.array]];
     """
     mass = primary_mass + secondary_mass
     com_from_primary = (distance * secondary_mass) / mass
@@ -108,7 +108,6 @@ def orbital_semi_major_axes(r, eccentricity, true_anomaly):
     :return: Union[float, numpy.array]
     """
     return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
-
 
 
 class Orbit(object):

@@ -94,7 +94,7 @@ class PositionContainer(object):
         Rotate quantities defined in __PROPERTIES__ in case of components defined in __PROPERTIES__.
         Rotation is made in orbital plane and inclination direction in respective order.
         Angle are defined in self.position and self.inclination.
-        :return: base.container.SystemContainer;
+        :return: elisa.base.PositionContainer;
         """
         __PROPERTIES__ = ["points", "normals", "velocities"]
 
@@ -114,7 +114,6 @@ class PositionContainer(object):
     def add_secular_velocity(self):
         """
         Addition of secular radial velocity of centre of mass to convert velocieties to reference frame of observer
-        :return:
         """
         gamma = getattr(self, "gamma")
         for component in self._components:
@@ -180,7 +179,6 @@ class PositionContainer(object):
     def copy(self):
         """
         Return deepcopy of PositionContainer instance.
-
         :return: elisa.base.container.PositionContainer;
         """
         return deepcopy(self)
