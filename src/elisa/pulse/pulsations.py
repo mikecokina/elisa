@@ -98,10 +98,10 @@ def incorporate_pulsations_to_mesh(star_container, com_x):
 def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
     """
 
-    :param star_container: add;
-    :param g_acc_vector: add;
-    :param g_acc_vector_spot: add;
-    :param phase: add;
+    :param star_container: base.container.StarContainer;
+    :param g_acc_vector: numpy.array;
+    :param g_acc_vector_spot: Dict;
+    :param phase: float;
     :return: Tuple;
     """
     g_sph = utils.cartesian_to_spherical(g_acc_vector)
