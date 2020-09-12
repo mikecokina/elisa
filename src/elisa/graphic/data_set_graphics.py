@@ -4,6 +4,11 @@ import matplotlib.pyplot as plt
 
 
 def display_observations(**kwargs):
+    """
+    Graphics method for displaying the DataSet content
+    :param kwargs: Dict;
+    :return:
+    """
     figure = plt.figure()
     if kwargs['y_err'] is not None:
         plt.errorbar(x=kwargs['x_data'], y=kwargs['y_data'], yerr=kwargs['y_err'], linestyle='none',

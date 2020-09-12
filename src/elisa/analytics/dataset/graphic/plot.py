@@ -6,6 +6,13 @@ class Plot(object):
         self.data_set = instance
 
     def display_observation(self, **plot_kwargs):
+        """
+        Function that will plot given DataSet observation for visual examination.
+
+        :param plot_kwargs: Dict; arguments passed to matplotlib.pyplot.scatter function (DataSet without errors) or
+        matplotlib.pyplot.errorbar function (DataSet with errors)
+        :return:
+        """
         obs_kwargs = dict()
 
         obs_kwargs.update({
