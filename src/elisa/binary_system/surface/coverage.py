@@ -99,6 +99,10 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_va
     undercover_object = getattr(system, config.BINARY_COUNTERPARTS[cover_component])
     undercover_visible_point_indices = np.unique(undercover_object.faces[undercover_object.indices])
 
+    # all surface values in sma unit which are smaller then following threshold are discarded (set to 0.0)
+    surface_noise_threshold = (2.0 * np.pi * np.power(undercover_object.polar_radius, 2) /
+                               len(undercover_object.faces)) / 1e6
+
     cover_object_obs_visible_projection = utils.get_visible_projection(cover_object)
     undercover_object_obs_visible_projection = utils.get_visible_projection(undercover_object)
     # get matplotlib boudary path defined by hull of projection
@@ -133,9 +137,11 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_va
             normals=partial_visible_normals,
             hull=bb_path.vertices
         )
+        partial_coverage[partial_coverage < surface_noise_threshold] = 0.0
     else:
         partial_coverage = None
 
+    # discard values of surface which are under threshold
     visible_coverage = undercover_object.areas[full_visible]
 
     undercover_obj_coverage = bcoverage.surface_area_coverage(

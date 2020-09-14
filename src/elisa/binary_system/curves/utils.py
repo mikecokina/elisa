@@ -143,9 +143,9 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
     normal_radiance = _get_normal_radiance(system, **kwargs)
 
     # checking if `bolometric`filter is already used
-    if 'bolometric' in ld_cfs['primary'].keys():
-        bol_ld_cfs = {component: {'bolometric': ld_cfs[component]['bolometric']} for component in
-                      config.BINARY_COUNTERPARTS.keys()}
+    if 'bolometric' in ld_cfs['primary']:
+        bol_ld_cfs = {component: {'bolometric': ld_cfs[component]['bolometric']}
+                      for component in config.BINARY_COUNTERPARTS.keys()}
     else:
         passband, left_bandwidth, right_bandwidth = init_bolometric_passband()
         bol_kwargs = {
