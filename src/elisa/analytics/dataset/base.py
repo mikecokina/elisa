@@ -127,7 +127,8 @@ class DataSet(metaclass=ABCMeta):
         if method == 'central_moving_average':
             n_bins = kwargs.get('n_bins', 100)
             radius = kwargs.get('radius', 2)
-            dutils.central_moving_average(self, n_bins=n_bins, radius=radius)
+            cyclic_boundaries = kwargs.get('cyclic_boundaries', True)
+            dutils.central_moving_average(self, n_bins=n_bins, radius=radius, cyclic_boundaries=cyclic_boundaries)
         else:
             raise NotImplementedError(f'Method {method} is not implemented. Try one of these: {available_methods}')
 
