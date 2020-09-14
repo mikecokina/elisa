@@ -80,7 +80,7 @@ PARAMS = {
         "secondary_surface_potential": 8,
         "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
         "argument_of_periastron": 223 * u.deg, "gamma": 0.0, "period": 3.0,
-        "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
+        "eccentricity": 0.3, "inclination": 85.0 * u.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
         "primary_t_eff": 6000, "secondary_t_eff": 6000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
