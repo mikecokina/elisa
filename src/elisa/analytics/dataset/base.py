@@ -98,7 +98,7 @@ class DataSet(metaclass=ABCMeta):
 
     def convert_to_phases(self, period, t0, centre=0.0):
         """
-        Function converts DataSet with x_data in time unit to dimensionless phase according to an ephemeris.
+        Function converts DataSet with x_data in time unit to dimensionless phases according to an ephemeris.
 
         :param period: float;
         :param t0: float;
@@ -110,9 +110,26 @@ class DataSet(metaclass=ABCMeta):
         self.x_data = ((self.x_data - t0) / period) % 1.0 + start_phase
         self.x_unit = units.dimensionless_unscaled
 
+    def convert_to_time(self, period, t0, to_unit=units.PERIOD_UNIT):
+        """
+        Function converts DataSet with x_data in dimensionless phases to time according to an ephemeris.
+
+        :param period:
+        :param t0:
+        :param to_unit:
+        :return:
+        """
+        self.x_data = self.x_data * period + t0
+        self.x_unit = to_unit
+
     def smooth(self, method='central_moving_average', **kwargs):
+        available_methods = ['central_moving_average']
         if method == 'central_moving_average':
-            dutils.central_moving_average(self, **kwargs)
+            n_bins = kwargs.get('n_bins', 100)
+            radius = kwargs.get('radius', 2)
+            dutils.central_moving_average(self, n_bins=n_bins, radius=radius)
+        else:
+            raise NotImplementedError(f'Method {method} is not implemented. Try one of these: {available_methods}')
 
 
 class RVData(DataSet):
