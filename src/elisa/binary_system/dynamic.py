@@ -127,8 +127,8 @@ def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
         d_long = np.row_stack((d_long, d_long))
 
         reducer[component] = _resolve_geometry_update(
-        has_spots=True, size=size, rel_d=d_long, resolve="spot",
-        max_allowed_difference=max_allowed_difference or config.MAX_SPOT_D_LONGITUDE
+            has_spots=True, size=size, rel_d=d_long, resolve="spot",
+            max_allowed_difference=max_allowed_difference or config.MAX_SPOT_D_LONGITUDE
         )
 
     return reducer['primary'], reducer['secondary']
@@ -255,7 +255,7 @@ def calculate_spot_longitudes(system, phases, component="all", correct_libration
     :param phases: numpy.array;
     :param component: str; 'primary' or 'secondary', if None both will be calculated
     :param correct_libration: bool; switch for calculation of correction for the libration motion of spots for EBs with
-    eccentric orbit
+                                    eccentric orbit
     :return: Dict; {component: {spot_idx: np.array([....]), ...}, ...}
     """
     components = bsutils.component_to_list(component)

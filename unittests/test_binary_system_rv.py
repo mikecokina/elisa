@@ -18,8 +18,8 @@ from elisa.observer.observer import Observer
 from elisa.observer import mp
 from elisa.binary_system.curves import (
     rv,
-    rvmp,
-    curve_approx
+    rv_point,
+    approx
 )
 from elisa.conf import config
 from elisa import umpy as up, const
@@ -220,7 +220,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
         for law in laws:
             config.LIMB_DARKENING_LAW = law
-            reload(rvmp)
+            reload(rv_point)
             o = Observer(system=bs)
             o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
 
@@ -270,7 +270,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
     def test_eccentric_synchronous_detached_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(rvmp)
+        reload(rv_point)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
@@ -279,7 +279,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
@@ -289,7 +289,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
@@ -298,7 +298,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
@@ -362,7 +362,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -370,7 +370,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -379,7 +379,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -387,7 +387,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 

@@ -38,8 +38,8 @@ from elisa import (
     utils)
 from elisa.binary_system.curves import (
     lc,
-    lcmp,
-    curve_approx
+    lc_point,
+    approx
 )
 
 TOL = 5e-3
@@ -370,7 +370,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         for law in laws:
             config.LIMB_DARKENING_LAW = law
-            reload(lcmp)
+            reload(lc_point)
             o = Observer(passband=['Generic.Bessell.V'], system=bs)
             o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
 
@@ -409,7 +409,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_synchronous_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.json", TOL, -0.2, 1.2, 0.1)
@@ -417,7 +417,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_one.json", TOL, -0.2, 1.2, 0.1)
@@ -426,7 +426,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.2, 0.1)
@@ -434,7 +434,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
@@ -517,7 +517,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -525,7 +525,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -534,7 +534,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -542,7 +542,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload(curve_approx)
+        reload(approx)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, 0.0, 0.01, 0.002)

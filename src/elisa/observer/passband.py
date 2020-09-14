@@ -12,7 +12,7 @@ def init_bolometric_passband():
     """
     initializing bolometric passband and its wavelength boundaries
 
-    :return: tuple;
+    :return: Tuple;
     """
     df = pd.DataFrame(
         {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
@@ -28,7 +28,7 @@ def init_rv_passband():
     """
     Initializing passband used to calculate radial velocities
 
-    :return: tuple
+    :return: Tuple
     """
     df = pd.DataFrame(
         {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],

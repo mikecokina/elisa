@@ -3,7 +3,7 @@ from elisa import (
     umpy as up,
     units,
 )
-from elisa.binary_system.curves import rvmp
+from elisa.binary_system.curves import rv_point
 from ...binary_system.curves import curves
 from elisa.observer.passband import init_rv_passband
 from elisa.conf import config
@@ -93,7 +93,7 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
     return curves.produce_circ_sync_curves(binary, initial_system, kwargs.pop("phases"),
-                                           rvmp.compute_rv_at_pos, rv_labels, **kwargs)
+                                           rv_point.compute_rv_at_pos, rv_labels, **kwargs)
 
 
 def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
@@ -111,7 +111,7 @@ def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
     """
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
-    return curves.produce_circ_spotty_async_curves(binary, rvmp.compute_rv_at_pos, rv_labels, **kwargs)
+    return curves.produce_circ_spotty_async_curves(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
 
 
 def compute_eccentric_rv_curve_no_spots(binary, **kwargs):
@@ -129,7 +129,7 @@ def compute_eccentric_rv_curve_no_spots(binary, **kwargs):
     """
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
-    return curves.produce_ecc_curves_no_spots(binary, rvmp.compute_rv_at_pos, rv_labels, **kwargs)
+    return curves.produce_ecc_curves_no_spots(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
 
 
 def compute_eccentric_spotty_rv_curve(binary, **kwargs):
@@ -147,7 +147,7 @@ def compute_eccentric_spotty_rv_curve(binary, **kwargs):
     """
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
 
-    return curves.produce_ecc_curves_with_spots(binary, rvmp.compute_rv_at_pos, rv_labels, **kwargs)
+    return curves.produce_ecc_curves_with_spots(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
 
 
 

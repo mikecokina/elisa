@@ -2,7 +2,7 @@ import numpy as np
 from copy import copy
 
 from elisa.conf import config
-from elisa import ld, const
+from elisa import const
 from elisa.logger import getLogger
 from elisa.binary_system import (
     dynamic,
@@ -11,13 +11,13 @@ from elisa.binary_system import (
 from elisa.binary_system.curves import (
     utils as crv_utils,
     curves_mp,
-    curve_approx
+    approx
 )
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.observer.mp import manage_observations
 
 
-logger = getLogger('binary_system.curves.shared')
+logger = getLogger('binary_system.curves.curves')
 
 
 def resolve_curve_method(system, fn_array):
@@ -36,29 +36,28 @@ def resolve_curve_method(system, fn_array):
     is_eccentric = 1 > system.eccentricity > 0
     assynchronous_spotty_p = system.primary.synchronicity != 1 and system.primary.has_spots()
     assynchronous_spotty_s = system.secondary.synchronicity != 1 and system.secondary.has_spots()
-    assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
+    asynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
 
     spotty_test_eccentric = system.primary.has_spots() or system.secondary.has_spots()
 
     if is_circular:
-        if not assynchronous_spotty_test and not system.has_pulsations():
-            logger.debug('Calculating curve for circular binary system without pulsations and without '
-                         'asynchronous spotty components.')
+        if not asynchronous_spotty_test and not system.has_pulsations():
+            logger.debug('Calculating curve for circular binary system without '
+                         'pulsations and without asynchronous spotty components.')
             return fn_array[0]
         else:
-            logger.debug('Calculating curve for circular binary system with pulsations or with asynchronous '
-                         'spotty components.')
+            logger.debug('Calculating curve for circular binary system with '
+                         'pulsations or with asynchronous spotty components.')
             return fn_array[1]
     elif is_eccentric:
         if spotty_test_eccentric:
             logger.debug('Calculating curve for eccentric binary system with spotty components.')
             return fn_array[2]
         else:
-            logger.debug('Calculating curve for eccentric binary system without spotty '
-                         'components.')
+            logger.debug('Calculating curve for eccentric binary system without spotty components.')
             return fn_array[3]
 
-    raise NotImplementedError("Orbit type not implemented or invalid")
+    raise NotImplementedError("Orbit type not implemented or invalid.")
 
 
 def prep_initial_system(binary):
@@ -71,19 +70,18 @@ def prep_initial_system(binary):
     from_this = dict(binary_system=binary, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
     initial_system.build(components_distance=1.0)
-
     return initial_system
 
 
 def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, crv_labels, **kwargs):
     """
-    Auxiliary function to produce curve from circular synchronous binary system
+    Auxiliary function to produce curve from circular synchronous binary system.
 
     :param binary: elisa.binary_system.system.BinarySystem;
-    :param initial_system: elisa.binary_system.container.OrbitalPositionContainer
-    :param phases: numpy.array
-    :param curve_fn: function to calculate given type of the curve
-    :param crv_labels: labels of the calculated curves (passbands, components,...)
+    :param initial_system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param phases: numpy.array;
+    :param curve_fn: callable; function to calculate given type of the curve
+    :param crv_labels: List; labels of the calculated curves (passbands, components,...)
     :param kwargs: Dict;
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
@@ -91,18 +89,12 @@ def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, crv_label
             * ** atlas ** * - str
             * ** position_method** * - function definition; to evaluate orbital positions
             * ** phases ** * - numpy.array
-    :return: dict; calculated curves
+    :return: Dict; calculated curves
     """
 
     crv_utils.prep_surface_params(initial_system.flatt_it(), return_values=False, write_to_containers=True, **kwargs)
-
     fn_args = (binary, initial_system, crv_labels, curve_fn)
-
-    curves = manage_observations(fn=curves_mp.produce_circ_sync_curves_mp,
-                                 fn_args=fn_args,
-                                 position=phases,
-                                 **kwargs)
-
+    curves = manage_observations(fn=curves_mp.produce_circ_sync_curves_mp, fn_args=fn_args, position=phases, **kwargs)
     return curves
 
 
@@ -140,13 +132,9 @@ def produce_circ_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
         setattr(star, "inverse_point_symmetry_matrix", _d)
 
     fn_args = binary, initial_system, points, ecl_boundaries, crv_labels, curve_fn
-
-    band_curves = manage_observations(fn=curves_mp.produce_circ_spotty_async_curves_mp,
-                                      fn_args=fn_args,
-                                      position=orbital_motion,
-                                      **kwargs)
-
-    return band_curves
+    curves = manage_observations(fn=curves_mp.produce_circ_spotty_async_curves_mp, fn_args=fn_args,
+                                 position=orbital_motion, **kwargs)
+    return curves
 
 
 def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
@@ -172,15 +160,17 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
     phases_span_test = np.max(phases) - np.min(phases) >= 0.8
 
     position_method = kwargs.pop("position_method")
+    try_to_find_appx = approx.look_for_approximation(not binary.has_pulsations())
 
-    try_to_find_appx = curve_approx.look_for_approximation(not binary.has_pulsations())
-
-    curve_fn_list = [integrate_eccentric_curve_exactly, curve_approx.integrate_eccentric_curve_appx_one,
-                     curve_approx.integrate_eccentric_curve_appx_two, curve_approx.integrate_eccentric_curve_appx_three]
-
-    appx_uid, run = curve_approx.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
-                                                                  phases_span_test, curve_fn_list, crv_labels, curve_fn,
-                                                                  **kwargs)
+    curve_fn_list = [
+        integrate_eccentric_curve_exactly,
+        approx.integrate_eccentric_curve_appx_one,
+        approx.integrate_eccentric_curve_appx_two,
+        approx.integrate_eccentric_curve_appx_three
+    ]
+    appx_uid, run = \
+        approx.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
+                                                phases_span_test, curve_fn_list, crv_labels, curve_fn, **kwargs)
 
     logger_messages = {
         'zero': 'curve will be calculated in a rigorous `phase to phase manner` without approximations',
@@ -210,12 +200,9 @@ def integrate_eccentric_curve_exactly(binary, orbital_motion, potentials, crv_la
     """
     # surface potentials with constant volume of components
     fn_args = (binary, potentials, None, crv_labels, curve_fn)
-
-    band_curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly,
-                                      fn_args=fn_args,
-                                      position=orbital_motion,
-                                      **kwargs)
-    return band_curves
+    curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly, fn_args=fn_args,
+                                 position=orbital_motion, **kwargs)
+    return curves
 
 
 def produce_ecc_curves_with_spots(binary, curve_fn, crv_labels, **kwargs):
@@ -241,12 +228,7 @@ def produce_ecc_curves_with_spots(binary, curve_fn, crv_labels, **kwargs):
 
     # pre-calculate the longitudes of each spot for each phase
     spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all")
-
     fn_args = (binary, potentials, spots_longitudes, crv_labels, curve_fn)
-
-    band_curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly,
-                                      fn_args=fn_args,
-                                      position=orbital_motion,
-                                      **kwargs)
-
-    return band_curves
+    curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly, fn_args=fn_args,
+                                 position=orbital_motion, **kwargs)
+    return curves

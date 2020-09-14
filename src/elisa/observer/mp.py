@@ -35,7 +35,7 @@ def manage_observations(fn, fn_args, position, **kwargs):
         phase_batches = utils.split_to_batches(array=position, n_proc=config.NUMBER_OF_PROCESSES)
         pool = Pool(processes=config.NUMBER_OF_PROCESSES)
 
-        result = [pool.apply_async(fn, args[:2] + (batch,) + args[2:]) for batch in phase_batches]
+        result = [pool.apply_async(fn, args[:2] + (batch, ) + args[2:]) for batch in phase_batches]
         pool.close()
         pool.join()
         # this will return output in same order as was given on apply_async init
@@ -43,5 +43,5 @@ def manage_observations(fn, fn_args, position, **kwargs):
         band_curves = utils.renormalize_async_result(result)
         return band_curves
     else:
-        args = args[:2] + (position,) + args[2:]
+        args = args[:2] + (position, ) + args[2:]
         return fn(*args)

@@ -123,6 +123,8 @@ def move_sys_onpos(init_system, orbital_position, primary_potential=None, second
         system.set_on_position_params()
         system.flatt_it()
         system.apply_rotation()
+        system.add_secular_velocity()
+        system.calculate_face_angles()
         system.apply_darkside_filter()
 
     :param init_system: elisa.binary_system.container.OrbitalPositionContainer;

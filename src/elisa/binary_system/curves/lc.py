@@ -1,7 +1,7 @@
 from ...logger import getLogger
 from ...binary_system.curves import (
-    lcmp,
-    curves,
+    lc_point,
+    curves
 )
 
 from ...binary_system import (
@@ -19,12 +19,13 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param kwargs: Dict;
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
-            * ** position_method** * - function definition; to evaluate orbital positions
-            * ** phases ** * - numpy.array
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
+        * ** position_method** * - function definition; to evaluate orbital positions
+        * ** phases ** * - numpy.array
     :return: Dict[str, numpy.array];
     """
 
@@ -36,7 +37,7 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     lc_labels = list(kwargs["passband"].keys())
 
     band_curves = curves.produce_circ_sync_curves(binary, initial_system, unique_phase_interval,
-                                                  lcmp.compute_lc_on_pos, lc_labels, **kwargs)
+                                                  lc_point.compute_lc_on_pos, lc_labels, **kwargs)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
     return band_curves
@@ -57,7 +58,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     """
     lc_labels = list(kwargs["passband"].keys())
 
-    return curves.produce_circ_spotty_async_curves(binary, lcmp.compute_lc_on_pos,
+    return curves.produce_circ_spotty_async_curves(binary, lc_point.compute_lc_on_pos,
                                                    lc_labels, **kwargs)
 
 
@@ -76,7 +77,7 @@ def compute_eccentric_lightcurve_no_spots(binary, **kwargs):
     """
     lc_labels = list(kwargs["passband"].keys())
 
-    return curves.produce_ecc_curves_no_spots(binary, lcmp.compute_lc_on_pos, lc_labels, **kwargs)
+    return curves.produce_ecc_curves_no_spots(binary, lc_point.compute_lc_on_pos, lc_labels, **kwargs)
 
 
 def compute_eccentric_spotty_lightcurve(binary, **kwargs):
@@ -94,4 +95,4 @@ def compute_eccentric_spotty_lightcurve(binary, **kwargs):
     """
     lc_labels = list(kwargs["passband"].keys())
 
-    return curves.produce_ecc_curves_with_spots(binary, lcmp.compute_lc_on_pos, lc_labels, **kwargs)
+    return curves.produce_ecc_curves_with_spots(binary, lc_point.compute_lc_on_pos, lc_labels, **kwargs)

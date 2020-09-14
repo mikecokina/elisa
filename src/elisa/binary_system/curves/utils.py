@@ -116,7 +116,7 @@ def flux_from_star_container(band, star):
 
     :param star: elisa.base.container.StarContainer; star container with all necessary parameters pre-calculated
     :param band: str; name of the photometric band compatibile with supported names in config
-    :return:
+    :return: numpy.array;
     """
 
     return np.sum(calculate_surface_element_fluxes(band, star))

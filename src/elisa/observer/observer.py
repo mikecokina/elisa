@@ -3,15 +3,11 @@ import sys
 import numpy as np
 import pandas as pd
 
-from multiprocessing.pool import Pool
-# from scipy import interpolate
-
 from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.curves.community import RadialVelocitySystem
 from elisa.single_system.system import SingleSystem
 from elisa.observer import (
-    mp,
-    utils as outils,
+    utils as outils
 )
 from elisa.observer.plot import Plot
 from elisa.observer.passband import PassbandContainer, init_bolometric_passband
@@ -20,8 +16,7 @@ from elisa.utils import is_empty
 from elisa.logger import getLogger
 from elisa import (
     units,
-    umpy as up,
-    utils
+    umpy as up
 )
 
 logger = getLogger('observer.observer')

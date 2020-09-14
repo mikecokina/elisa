@@ -177,15 +177,11 @@ def integrate_eccentric_curve_approx_three(*args):
                                               potentials["secondary"][pos_idx])
 
         _update_surface_in_ecc_orbits(initial_system, orbital_position=position, new_geometry_test=require_rebuild)
-
         on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=False, recalculate_velocities=True)
-
         on_pos, normal_radiance, ld_cfs = crv_utils.update_surface_params(require_rebuild, on_pos, normal_radiance,
                                                                           ld_cfs, **kwargs)
-
         # TODO: properly calculate in_eclipse parameter
         compute_surface_coverage(on_pos, binary.semi_major_axis, in_eclipse=True, return_values=False,
                                  write_to_containers=True)
-
         curves = curve_fn(curves, run_idx, crv_labels, on_pos)
     return curves

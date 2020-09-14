@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 import scipy
 from copy import deepcopy
@@ -91,7 +93,7 @@ class BinarySystem(System):
         self._components = dict(primary=self.primary, secondary=self.secondary)
 
         # default values of properties
-        self.orbit = None
+        self.orbit: Union[None, orbit.Orbit] = None
         self.period = np.nan
         self.eccentricity = np.nan
         self.argument_of_periastron = np.nan
@@ -744,9 +746,8 @@ class BinarySystem(System):
                     setattr(component_instance, 'forward_radius', r)
 
             # setting value of equivalent radius
-            setattr(component_instance, 'equivalent_radius',
-                    self.
-                    calculate_equivalent_radius(components=component)[component])
+            e_rad = self.calculate_equivalent_radius(components=component)[component]
+            setattr(component_instance, 'equivalent_radius', e_rad)
 
     @staticmethod
     def compute_filling_factor(surface_potential, lagrangian_points):
@@ -880,6 +881,8 @@ class BinarySystem(System):
         :param components_distance: float;
         :return: Tuple; (points on equator, points on meridian)
         """
+
+        forward_radius, x, a = None, None, None
         star = getattr(self, component)
         discretization_factor = star.discretization_factor
 
@@ -914,7 +917,7 @@ class BinarySystem(System):
             x_front = np.linspace(forward_radius, c, num=num + 1, endpoint=True)
             x = np.concatenate((x_front, x_back))
 
-        elif self.morphology == 'semi-detached' or self.morphology == 'double-contact':
+        elif self.morphology in ['semi-detached', 'double-contact']:
             num = int(const.HALF_PI // discretization_factor)
             theta = np.linspace(const.HALF_PI + discretization_factor, const.PI - discretization_factor, num=num,
                                 endpoint=True)
