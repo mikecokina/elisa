@@ -1,4 +1,3 @@
-from ...logger import getLogger
 from ...binary_system.curves import (
     lc_point,
     curves
@@ -7,9 +6,6 @@ from ...binary_system.curves import (
 from ...binary_system import (
     dynamic,
 )
-
-
-logger = getLogger('binary_system.curves.lc')
 
 
 def compute_circular_synchronous_lightcurve(binary, **kwargs):
