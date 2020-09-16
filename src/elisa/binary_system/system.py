@@ -1024,5 +1024,3 @@ class BinarySystem(System):
 
     def _compute_eccentric_rv_curve_no_spots(self, **kwargs):
         return rv.compute_eccentric_rv_curve_no_spots(self, **kwargs)
-
-

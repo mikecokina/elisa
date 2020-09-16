@@ -99,9 +99,33 @@ def reload_modules():
     reload(c_appx_router)
 
 
-class BinaryRadialCurvesTestCase(ElisaTestCase):
+class ResetClass(ElisaTestCase):
+    lc_base_path = None
+    default_law = None
+
+    def reset_config(self):
+        config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
+        config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
+        config.LIMB_DARKENING_LAW = self.default_law
+        config.ATM_ATLAS = "ck04"
+        config.NUMBER_OF_PROCESSES = -1
+        config.POINTS_ON_ECC_ORBIT = 118
+        config.MAX_RELATIVE_D_R_POINT = 3e-3
+        config.MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
+        config.MAX_SPOT_D_LONGITUDE = np.pi / 180.0
+        config._update_atlas_to_base_dir()
+        reload_modules()
+
+
+class BinaryRadialCurvesTestCase(ResetClass):
     def setUp(self):
         self.phases = up.arange(-0.2, 1.25, 0.05)
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.default_law = "cosine"
+        self.reset_config()
+
+    def tearDown(self):
+        self.reset_config()
 
     def do_comparison(self, system, file):
         rvdict = rv.com_radial_velocity(system, position_method=system.calculate_orbital_motion, phases=self.phases)
@@ -123,21 +147,14 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
         self.do_comparison(s, "detahed.ecc.json")
 
 
-class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
+class BinaryRadialCurvesConsistencyTestCase(ResetClass):
     def setUp(self):
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        self.law = "cosine"
-
-        config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
-        config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
-        config.LIMB_DARKENING_LAW = 'linear'
-        config.ATM_ATLAS = "ck04"
-        config._update_atlas_to_base_dir()
-        reload_modules()
+        self.default_law = "cosine"
+        self.reset_config()
 
     def tearDown(self):
-        config.LIMB_DARKENING_LAW = self.law
-        reload_modules()
+        self.reset_config()
 
     @staticmethod
     def check_consistency(binary_kwargs, desired_delta, spots_primary=None, spots_secondary=None, phases=None):
@@ -186,24 +203,15 @@ class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
         self.check_consistency(binary_kwargs, 0.005, phases=phases)
 
 
-class ComputeRadiometricRVTestCase(ElisaTestCase):
+class ComputeRadiometricRVTestCase(ResetClass):
     def setUp(self):
         # raise unittest.SkipTest(message)
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        self.rc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves")
         self.default_law = "cosine"
-
-        config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
-        config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
-        config.ATM_ATLAS = "ck04"
-        config._update_atlas_to_base_dir()
-        config.RV_LAMBDA_INTERVAL = (5500, 5600)
-
-        reload_modules()
+        self.reset_config()
 
     def tearDown(self):
-        config.LIMB_DARKENING_LAW = self.default_law
-        reload_modules()
+        self.reset_config()
 
     def do_comparison(self, bs, rv_file, start_phs=-0.2, stop_phs=1.2, step=0.1):
         o = observer.Observer(system=bs)
@@ -341,25 +349,16 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         self.do_comparison(bs, "ecc.spotty.async.json")
 
 
-class CompareSingleVsMultiprocess(ElisaTestCase):
+class CompareSingleVsMultiprocess(ResetClass):
     def setUp(self):
         # raise unittest.SkipTest(message)
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
         self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves")
-        self.law = "cosine"
-
-        config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
-        config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
-        config.ATM_ATLAS = "ck04"
-        config._update_atlas_to_base_dir()
-        config.RV_LAMBDA_INTERVAL = (5500, 5600)
-
-        reload_modules()
+        self.default_law = "cosine"
+        self.reset_config()
 
     def tearDown(self):
-        config.NUMBER_OF_PROCESSES = -1
-        config.read_and_update_config()
-        reload_modules()
+        self.reset_config()
 
     def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1):
         config.NUMBER_OF_PROCESSES = -1
@@ -385,14 +384,14 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.assertTrue(np.all((up.abs(sp_p - mp_p) / np.abs(np.max(sp_p))) < 1e-8))
         self.assertTrue(np.all((up.abs(sp_s - mp_s) / np.abs(np.max(sp_s))) < 1e-8))
 
-    def test_circ_sinc_rv(self):
+    def test_circular_sync_rv(self):
         config.LIMB_DARKENING_LAW = "linear"
         reload_modules()
 
         bs = prepare_binary_system(PARAMS["detached"])
         self.do_comparison(bs)
 
-    def test_circ_spotty_async_lc(self):
+    def test_circular_spotty_async_rv(self):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
         reload_modules()
 

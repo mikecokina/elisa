@@ -218,6 +218,7 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
 
 
 def get_bolometric_ld_coefficients(temperature, log_g, metallicity):
+    print(config.LD_LAW_CFS_COLUMNS, config.LIMB_DARKENING_LAW)
     columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
     coeffs = interpolate_on_ld_grid(temperature, log_g, metallicity, passband=["bolometric"])["bolometric"][columns]
     return np.array(coeffs).T

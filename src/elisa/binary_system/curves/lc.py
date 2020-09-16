@@ -5,6 +5,7 @@ from ...binary_system.curves import (
 )
 
 # main wrapper over lc computation
+from ...conf import config
 
 
 def compute_circular_synchronous_lightcurve(binary, **kwargs):
@@ -23,7 +24,6 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
         * ** phases ** * - numpy.array
     :return: Dict[str, numpy.array];
     """
-
     initial_system = c_router.prep_initial_system(binary)
 
     lc_labels = list(kwargs["passband"].keys())
