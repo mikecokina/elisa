@@ -1,6 +1,4 @@
 import numpy as np
-import astropy.units as au
-import pandas as pd
 
 from elisa.analytics.dataset.transform import (
     RVDataProperties,
@@ -13,84 +11,9 @@ from abc import ABCMeta
 from elisa.utils import is_empty
 from copy import copy, deepcopy
 from elisa.analytics.dataset.graphic import plot
+from elisa.analytics.dataset import utils as dutils
 
 logger = getLogger('analytics.dataset.base')
-
-
-def convert_data(data, unit, to_unit):
-    """
-    Converts data to desired format or leaves it dimensionless.
-
-    :param data: numpy.array;
-    :param unit: astropy.unit;
-    :param to_unit: astropy.unit;
-    :return: numpy.array;
-    """
-    return data if unit == au.dimensionless_unscaled else (data * unit).to(to_unit).value
-
-
-def convert_flux(data, unit, zero_point=None):
-    """
-    If data are in magnitudes, they are converted to normalized flux.
-
-    :param data: numpy.array;
-    :param unit: astropy.unit.Unit;
-    :param zero_point: float;
-    :return: numpy.array;
-    """
-    if unit == au.mag:
-        if zero_point is None:
-            raise ValueError('You supplied your data in magnitudes. Please also specify '
-                             'a zero point using keyword argument `reference_magnitude`.')
-        else:
-            data = utils.magnitude_to_flux(data, zero_point)
-
-    return data
-
-
-def convert_flux_error(error, unit, zero_point=None):
-    """
-    If data an its errors are in magnitudes, they are converted to normalized flux.
-
-    :param error: numpy.array;
-    :param unit: astropy.unit.Unit;
-    :param zero_point: float;
-    :return: numpy.array;
-    """
-    if unit == au.mag:
-        if zero_point is None:
-            raise ValueError('You supplied your data in magnitudes. Please also specify '
-                             'a zero point using keyword argument `reference_magnitude`.')
-        else:
-            error = utils.magnitude_error_to_flux_error(error)
-    return error
-
-
-def convert_unit(unit, to_unit):
-    """
-    Converts to desired unit  or leaves it dimensionless.
-
-    :param unit: astropy.unit;
-    :param to_unit: astropy.unit;
-    :return: astropy.unit;
-    """
-    return unit if unit == au.dimensionless_unscaled else to_unit
-
-
-def read_data_file(filename, data_columns, delimiter=config.DELIM_WHITESPACE):
-    """
-    Function loads observation datafile. Rows with column names and comments should start with `#`.
-    It deals with missing data by omitting given line
-
-    :param delimiter: str; regex to define columns separtor
-    :param filename: str;
-    :param data_columns: Tuple;
-    :return: numpy.array;
-    """
-    data = pd.read_csv(filename, header=None, comment='#', delimiter=delimiter,
-                       error_bad_lines=False, engine='python')[list(data_columns)]
-    data = data.apply(lambda s: pd.to_numeric(s, errors='coerce')).dropna()
-    return data.to_numpy(dtype=float)
 
 
 class DataSet(metaclass=ABCMeta):
@@ -111,6 +34,7 @@ class DataSet(metaclass=ABCMeta):
 
         # initializing parmas to default values
         self.x_data = np.array([])
+        self.x_unit = None
         self.y_data = np.array([])
         self.y_err = None
 
@@ -157,7 +81,7 @@ class DataSet(metaclass=ABCMeta):
         :return: Union[RVData, LCData];
         """
         data_columns = (0, 1, 2) if data_columns is None else data_columns
-        data = read_data_file(filename, data_columns, delimiter=delimiter)
+        data = dutils.read_data_file(filename, data_columns, delimiter=delimiter)
 
         try:
             errs = data[:, 2]
@@ -171,6 +95,42 @@ class DataSet(metaclass=ABCMeta):
                    **kwargs)
 
     from_file = load_from_file
+
+    def convert_to_phases(self, period, t0, centre=0.0):
+        """
+        Function converts DataSet with x_data in time unit to dimensionless phases according to an ephemeris.
+
+        :param period: float;
+        :param t0: float;
+        :param centre: float; phase curve will be centered around this phase
+        :return:
+        """
+        start_phase = centre - 0.5
+        t0 += start_phase * period
+        self.x_data = ((self.x_data - t0) / period) % 1.0 + start_phase
+        self.x_unit = units.dimensionless_unscaled
+
+    def convert_to_time(self, period, t0, to_unit=units.PERIOD_UNIT):
+        """
+        Function converts DataSet with x_data in dimensionless phases to time according to an ephemeris.
+
+        :param period:
+        :param t0:
+        :param to_unit:
+        :return:
+        """
+        self.x_data = self.x_data * period + t0
+        self.x_unit = to_unit
+
+    def smooth(self, method='central_moving_average', **kwargs):
+        available_methods = ['central_moving_average']
+        if method == 'central_moving_average':
+            n_bins = kwargs.get('n_bins', 100)
+            radius = kwargs.get('radius', 2)
+            cyclic_boundaries = kwargs.get('cyclic_boundaries', True)
+            dutils.central_moving_average(self, n_bins=n_bins, radius=radius, cyclic_boundaries=cyclic_boundaries)
+        else:
+            raise NotImplementedError(f'Method {method} is not implemented. Try one of these: {available_methods}')
 
 
 class RVData(DataSet):
@@ -222,16 +182,16 @@ class RVData(DataSet):
         :return: Dict;
         """
         # converting x-axis
-        kwargs['x_data'] = convert_data(kwargs['x_data'], kwargs['x_unit'], units.PERIOD_UNIT)
-        kwargs['x_unit'] = convert_unit(kwargs['x_unit'], units.PERIOD_UNIT)
+        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], units.PERIOD_UNIT)
+        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], units.PERIOD_UNIT)
 
         # converting y-axis
-        kwargs['y_data'] = convert_data(kwargs['y_data'], kwargs['y_unit'], units.VELOCITY_UNIT)
+        kwargs['y_data'] = dutils.convert_data(kwargs['y_data'], kwargs['y_unit'], units.VELOCITY_UNIT)
 
         # convert errors
         if 'y_err' in kwargs.keys():
-            kwargs['y_err'] = convert_data(kwargs['y_err'], kwargs['y_unit'], units.VELOCITY_UNIT)
-        kwargs['y_unit'] = convert_unit(kwargs['y_unit'], units.VELOCITY_UNIT)
+            kwargs['y_err'] = dutils.convert_data(kwargs['y_err'], kwargs['y_unit'], units.VELOCITY_UNIT)
+        kwargs['y_unit'] = dutils.convert_unit(kwargs['y_unit'], units.VELOCITY_UNIT)
 
         return kwargs
 
@@ -287,17 +247,18 @@ class LCData(DataSet):
         :return: Dict;
         """
         # converting x-axis
-        kwargs['x_data'] = convert_data(kwargs['x_data'], kwargs['x_unit'], units.PERIOD_UNIT)
-        kwargs['x_unit'] = convert_unit(kwargs['x_unit'], units.PERIOD_UNIT)
+        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], units.PERIOD_UNIT)
+        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], units.PERIOD_UNIT)
         kwargs['reference_magnitude'] = kwargs.get('reference_magnitude', None)
 
         # convert errors
         if 'y_err' in kwargs.keys():
-            kwargs['y_err'] = convert_flux_error(kwargs['y_err'], kwargs['y_unit'],
-                                                 zero_point=kwargs['reference_magnitude'])
+            kwargs['y_err'] = dutils.convert_flux_error(kwargs['y_err'], kwargs['y_unit'],
+                                                        zero_point=kwargs['reference_magnitude'])
 
         # converting y-axis
-        kwargs['y_data'] = convert_flux(kwargs['y_data'], kwargs['y_unit'], zero_point=kwargs['reference_magnitude'])
-        kwargs['y_unit'] = convert_unit(kwargs['y_unit'], units.dimensionless_unscaled)
+        kwargs['y_data'] = dutils.convert_flux(kwargs['y_data'], kwargs['y_unit'],
+                                               zero_point=kwargs['reference_magnitude'])
+        kwargs['y_unit'] = dutils.convert_unit(kwargs['y_unit'], units.dimensionless_unscaled)
 
         return kwargs
