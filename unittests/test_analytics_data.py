@@ -3,7 +3,7 @@ import astropy.units as au
 import numpy as np
 
 from numpy.testing import assert_array_equal
-from elisa.analytics.dataset.base import read_data_file
+from elisa.analytics.dataset.utils import read_data_file
 from unittests.utils import ElisaTestCase
 from elisa.analytics import RVData, LCData
 
