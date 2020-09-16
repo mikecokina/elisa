@@ -6,6 +6,7 @@ from numpy.testing import assert_array_equal
 from elisa.analytics.dataset.utils import read_data_file
 from unittests.utils import ElisaTestCase
 from elisa.analytics import RVData, LCData
+from elisa import units as u
 
 
 class DataTestCase(ElisaTestCase):
@@ -26,12 +27,12 @@ class DataReadTestCase(DataTestCase):
 class LVDataTestCase(DataTestCase):
     def test_from_file(self):
         fpath = op.join(self.DATA, "dummy.csv")
-        x_unit = au.dimensionless_unscaled
-        y_unit = au.km/au.s
+        x_unit = u.dimensionless_unscaled
+        y_unit = u.km/au.s
         rv_data = RVData.from_file(fpath, x_unit, y_unit=y_unit)
 
-        self.assertEqual(rv_data.y_unit, au.m / au.s)
-        self.assertEqual(rv_data.x_unit, au.dimensionless_unscaled)
+        self.assertEqual(rv_data.y_unit, u.m / au.s)
+        self.assertEqual(rv_data.x_unit, u.dimensionless_unscaled)
 
         assert_array_equal(rv_data.x_data, np.arange(0, 5, 1))
         assert_array_equal(rv_data.y_data, [100] * 5)
@@ -40,20 +41,20 @@ class LVDataTestCase(DataTestCase):
 class RVDataTestCase(DataTestCase):
     def test_from_file(self):
         fpath = op.join(self.DATA, "dummy.csv")
-        x_unit = au.dimensionless_unscaled
-        y_unit = au.dimensionless_unscaled
+        x_unit = u.dimensionless_unscaled
+        y_unit = u.dimensionless_unscaled
         lc_data = LCData.from_file(fpath, x_unit, y_unit=y_unit)
 
-        self.assertEqual(lc_data.y_unit, au.dimensionless_unscaled)
-        self.assertEqual(lc_data.x_unit, au.dimensionless_unscaled)
+        self.assertEqual(lc_data.y_unit, u.dimensionless_unscaled)
+        self.assertEqual(lc_data.x_unit, u.dimensionless_unscaled)
 
         assert_array_equal(lc_data.x_data, np.arange(0, 5, 1))
         assert_array_equal(lc_data.y_data, [0.1] * 5)
 
     def test_from_file_in_mag(self):
         fpath = op.join(self.DATA, "dummy.csv")
-        x_unit = au.dimensionless_unscaled
-        y_unit = au.mag
+        x_unit = u.dimensionless_unscaled
+        y_unit = u.mag
         lc_data = LCData.from_file(fpath, x_unit, y_unit=y_unit, reference_magnitude=1.0)
 
         assert_array_equal(lc_data.x_data, np.arange(0, 5, 1))

@@ -1,6 +1,7 @@
+from unittest import mock
+
 import numpy as np
 
-from unittest import mock
 from elisa import units
 from elisa.analytics import LCData, LCBinaryAnalyticsTask, RVData, RVBinaryAnalyticsTask
 from elisa.analytics.params.parameters import BinaryInitialParameters
@@ -140,7 +141,7 @@ class McMcLCTestCase(AbstractFitTestCase):
             lc_initial = BinaryInitialParameters(**dinit)
             task = LCBinaryAnalyticsTask(data={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b},
                                          expected_morphology="detached", method='mcmc')
-            result = task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
+            task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
 
     def test_mcmc_lc_fit_community_params_detached(self):
         dinit = {
@@ -232,7 +233,7 @@ class McMcLCTestCase(AbstractFitTestCase):
             lc_initial = BinaryInitialParameters(**dinit)
             task = LCBinaryAnalyticsTask(data={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b},
                                          expected_morphology="detached", method='mcmc')
-            result = task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
+            task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
 
 
 class RVTestCase(ElisaTestCase):

@@ -29,11 +29,11 @@ def get_metallicity_from_ld_table_filename(filename):
 
 def get_ld_table_filename(passband, metallicity, law=None):
     """
-    Get filename with stored coefficients for given passband, metallicity and limb darkening law.
+    Get filename with stored coefficients for given passband, metallicity and limb darkening default_law.
 
     :param passband: str
     :param metallicity: str
-    :param law: str; limb darkening law (`linear`, `cosine`, `logarithmic`, `square_root`)
+    :param law: str; limb darkening default_law (`linear`, `cosine`, `logarithmic`, `square_root`)
     :return: str
     """
     law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
@@ -46,7 +46,7 @@ def get_ld_table(passband, metallicity, law=None):
 
     :param passband: str;
     :param metallicity: str;
-    :param law: str; in not specified, default law specified in `elisa.conf.config` is used
+    :param law: str; in not specified, default default_law specified in `elisa.conf.config` is used
     :return: pandas.DataFrame;
     """
     law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
@@ -75,7 +75,7 @@ def get_relevant_ld_tables(passband, metallicity, law=None):
     """
     Get filename of van hamme tables for surrounded metallicities and given passband.
 
-    :param law: str; limb darkening law (`linear`, `cosine`, `logarithmic`, `square_root`)
+    :param law: str; limb darkening default_law (`linear`, `cosine`, `logarithmic`, `square_root`)
     :param passband: str;
     :param metallicity: str;
     :return: List;
@@ -147,9 +147,9 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
 
     shape::
 
-        - numpy.array[[c0, c2, c3, c4,..., cn]] for linear law
+        - numpy.array[[c0, c2, c3, c4,..., cn]] for linear default_law
         - numpy.array[[c0, c2, c3, c4,..., cn],
-                      [d0, d2, d3, c4,..., dn]] for sqrt and log law
+                      [d0, d2, d3, c4,..., dn]] for sqrt and log default_law
 
     :param limb_darkening_law: str;  `linear` or `cosine`, `logarithmic`, `square_root`
     :param cos_theta: numpy.array; if supplied, function will skip calculation of its own cos theta and will disregard

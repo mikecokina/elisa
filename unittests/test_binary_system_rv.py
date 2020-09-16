@@ -25,7 +25,7 @@ from elisa.binary_system.curves import (
 )
 from elisa.conf import config
 from elisa import umpy as up, const
-from astropy import units as u
+from elisa import units as u
 
 
 TOL = 1e-3
@@ -91,6 +91,14 @@ PARAMS = {
 }
 
 
+def reload_modules():
+    reload(mp_manager)
+    reload(observer)
+    reload(rv)
+    reload(rv_point)
+    reload(c_appx_router)
+
+
 class BinaryRadialCurvesTestCase(ElisaTestCase):
     def setUp(self):
         self.phases = up.arange(-0.2, 1.25, 0.05)
@@ -116,6 +124,21 @@ class BinaryRadialCurvesTestCase(ElisaTestCase):
 
 
 class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
+    def setUp(self):
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.law = "cosine"
+
+        config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
+        config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
+        config.LIMB_DARKENING_LAW = 'linear'
+        config.ATM_ATLAS = "ck04"
+        config._update_atlas_to_base_dir()
+        reload_modules()
+
+    def tearDown(self):
+        config.LIMB_DARKENING_LAW = self.law
+        reload_modules()
+
     @staticmethod
     def check_consistency(binary_kwargs, desired_delta, spots_primary=None, spots_secondary=None, phases=None):
         system = prepare_binary_system(binary_kwargs, spots_primary=spots_primary, spots_secondary=spots_secondary)
@@ -127,10 +150,8 @@ class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
         rvdict1['primary'], rvdict1['secondary'] = normalize_lv_for_unittests(rvdict1['primary'], rvdict1['secondary'])
         rvdict2['primary'], rvdict2['secondary'] = normalize_lv_for_unittests(rvdict2['primary'], rvdict2['secondary'])
 
-        assert_array_less(np.abs(rvdict1['primary'] - rvdict2['primary']),
-                          desired_delta * np.ones(phases.shape))
-        assert_array_less(np.abs(rvdict2['secondary'] - rvdict2['secondary']),
-                          desired_delta * np.ones(phases.shape))
+        assert_array_less(np.abs(rvdict1['primary'] - rvdict2['primary']), desired_delta * np.ones(phases.shape))
+        assert_array_less(np.abs(rvdict2['secondary'] - rvdict2['secondary']), desired_delta * np.ones(phases.shape))
 
         # from matplotlib import pyplot as plt
         # # plt.plot(self.phases, rvdict1['primary']-rvdict2['primary'], c='r')
@@ -144,32 +165,24 @@ class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
     def test_rv_consistency_circular_detached(self):
         binary_kwargs = copy(BINARY_SYSTEM_PARAMS["detached-physical"])
         binary_kwargs['inclination'] = 70 * u.deg
-        reload(rv)
-
         phases = np.array([0.15, 0.2, 0.25, 0.3, 0.4, 0.7, 0.75, 0.8, 0.85])
-
         self.check_consistency(binary_kwargs, 0.02, spots_primary=SPOTS_META['primary'], phases=phases)
 
     def test_rv_consistency_circular_contact(self):
         binary_kwargs = copy(BINARY_SYSTEM_PARAMS["over-contact"])
         binary_kwargs['inclination'] = 10 * u.deg
-        reload(rv)
-
         phases = np.array([0.15, 0.2, 0.25, 0.3, 0.4, 0.7, 0.75, 0.8, 0.85])
-
         self.check_consistency(binary_kwargs, 0.033, spots_primary=SPOTS_META['primary'], phases=phases)
 
     def test_rv_consistency_eccentric_approx_zero(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(rv)
+        reload_modules()
 
         phases = np.array([0.15, 0.2, 0.25, 0.3, 0.4, 0.7, 0.75, 0.8, 0.85])
-
         binary_kwargs = copy(BINARY_SYSTEM_PARAMS["detached-physical"])
-        binary_kwargs['inclination'] = 70 * u.deg
+        binary_kwargs['inclination'] = 70.0 * u.deg
         binary_kwargs['eccentricity'] = 0.3
-
         self.check_consistency(binary_kwargs, 0.005, phases=phases)
 
 
@@ -177,8 +190,8 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
     def setUp(self):
         # raise unittest.SkipTest(message)
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves")
-        self.law = config.LIMB_DARKENING_LAW
+        self.rc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves")
+        self.default_law = "cosine"
 
         config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
         config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
@@ -186,9 +199,11 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         config._update_atlas_to_base_dir()
         config.RV_LAMBDA_INTERVAL = (5500, 5600)
 
+        reload_modules()
+
     def tearDown(self):
-        config.LIMB_DARKENING_LAW = self.law
-        reload(rv)
+        config.LIMB_DARKENING_LAW = self.default_law
+        reload_modules()
 
     def do_comparison(self, bs, rv_file, start_phs=-0.2, stop_phs=1.2, step=0.1):
         o = observer.Observer(system=bs)
@@ -238,8 +253,8 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
                     config.ATM_ATLAS = "ck04"
                     config._update_atlas_to_base_dir()
 
-                    reload(rv_point)
-                    reload(observer)
+                    reload_modules()
+
                     o = observer.Observer(system=bs)
                     o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
         finally:
@@ -247,51 +262,47 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
     def test_circular_synchronous_detached_system(self):
         config.LIMB_DARKENING_LAW = "linear"
-        reload(rv)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["detached"])
         self.do_comparison(bs, "detached.circ.sync.json")
 
     def test_circular_synchronous_overcontact_system(self):
         config.LIMB_DARKENING_LAW = "linear"
-        reload(rv)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["over-contact"])
         self.do_comparison(bs, "overcontact.circ.sync.json")
 
     def test_circular_spotty_synchronous_detached_system(self):
         config.LIMB_DARKENING_LAW = "linear"
-        reload(rv)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["detached"],
                                    spots_primary=SPOTS_META["primary"],
                                    spots_secondary=SPOTS_META["secondary"])
-
         self.do_comparison(bs, "detached.circ.spotty.sync.json")
 
     def test_circular_spotty_synchronous_overcontact_system(self):
         config.LIMB_DARKENING_LAW = "linear"
-        reload(rv)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["over-contact"],
                                    spots_primary=SPOTS_META["primary"],
                                    spots_secondary=SPOTS_META["secondary"])
-
         self.do_comparison(bs, "overcontact.circ.spotty.sync.json")
 
     def test_cicular_spotty_asynchronous_detached_system(self):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
-        reload(rv)
+        reload_modules()
 
-        bs = prepare_binary_system(PARAMS["detached-async"],
-                                   spots_primary=SPOTS_META["primary"])
-
+        bs = prepare_binary_system(PARAMS["detached-async"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs, "detached.circ.spotty.async.json")
 
     def test_eccentric_synchronous_detached_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(rv_point)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
@@ -300,7 +311,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(c_appx_router)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
@@ -310,7 +321,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload(c_appx_router)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
@@ -319,16 +330,14 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload(c_appx_router)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
         self.do_comparison(bs, "ecc.appx_three.json", -0.0, 0.01, 0.002)
 
     def test_eccentric_spotty_asynchronous_detached_system(self):
-        bs = prepare_binary_system(PARAMS["detached-async-ecc"],
-                                   spots_primary=SPOTS_META["primary"])
-
+        bs = prepare_binary_system(PARAMS["detached-async-ecc"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs, "ecc.spotty.async.json")
 
 
@@ -337,7 +346,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         # raise unittest.SkipTest(message)
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
         self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves")
-        self.law = config.LIMB_DARKENING_LAW
+        self.law = "cosine"
 
         config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
         config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
@@ -345,11 +354,17 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         config._update_atlas_to_base_dir()
         config.RV_LAMBDA_INTERVAL = (5500, 5600)
 
+        reload_modules()
+
     def tearDown(self):
         config.NUMBER_OF_PROCESSES = -1
-        reload(mp_manager)
+        config.read_and_update_config()
+        reload_modules()
 
     def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1):
+        config.NUMBER_OF_PROCESSES = -1
+        reload_modules()
+
         o = observer.Observer(system=system)
 
         sp_res = o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
@@ -359,7 +374,8 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         sp_s = sp_s[~np.isnan(sp_s)]
 
         config.NUMBER_OF_PROCESSES = cpu_count()
-        reload(mp_manager)
+        reload_modules()
+
         mp_res = o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
         mp_p = np.array(mp_res[1]['primary'])
         mp_s = np.array(mp_res[1]['secondary'])
@@ -371,23 +387,22 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
 
     def test_circ_sinc_rv(self):
         config.LIMB_DARKENING_LAW = "linear"
-        reload(rv)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["detached"])
         self.do_comparison(bs)
 
     def test_circ_spotty_async_lc(self):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
-        reload(rv)
+        reload_modules()
 
-        bs = prepare_binary_system(PARAMS["detached-async"],
-                                   spots_primary=SPOTS_META["primary"])
+        bs = prepare_binary_system(PARAMS["detached-async"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs)
 
     def test_eccentric_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(c_appx_router)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -395,7 +410,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(c_appx_router)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -404,7 +419,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload(c_appx_router)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -412,14 +427,11 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload(c_appx_router)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-
         self.do_comparison(bs, -0.0, 0.01, 0.002)
 
     def test_eccentric_spotty_asynchronous_detached_system(self):
-        bs = prepare_binary_system(PARAMS["detached-async-ecc"],
-                                   spots_primary=SPOTS_META["primary"])
-
+        bs = prepare_binary_system(PARAMS["detached-async-ecc"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs)

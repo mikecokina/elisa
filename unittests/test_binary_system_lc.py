@@ -347,13 +347,15 @@ class SupportMethodsTestCase(ElisaTestCase):
 class ComputeLightCurvesTestCase(ElisaTestCase):
     def setUp(self):
         # raise unittest.SkipTest(message)
-        self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
         self.law = config.LIMB_DARKENING_LAW
 
-        config.LD_TABLES = op.join(self.base_path, "limbdarkening")
-        config.CK04_ATM_TABLES = op.join(self.base_path, "atmosphere")
+        config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
+        config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
+        config.LIMB_DARKENING_LAW = 'linear'
         config.ATM_ATLAS = "ck04"
         config._update_atlas_to_base_dir()
+        reload(lc)
 
     def tearDown(self):
         config.LIMB_DARKENING_LAW = self.law
@@ -440,11 +442,6 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_three.json", TOL, -0.0, 0.01, 0.002)
 
-    # def test_eccentric_asynchronous_detached_system(self):
-    #     bs = prepare_binary_system(PARAMS["detached-async-ecc"])
-    #
-    #     self.do_comparison(bs, "detached.ecc.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.1)
-
     def test_circular_spotty_synchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached"],
                                    spots_primary=SPOTS_META["primary"],
@@ -503,14 +500,14 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
 
         self.assertTrue(np.all(sp_flux - mp_flux < 1e-8))
 
-    def test_circ_sinc_lc(self):
+    def test_circulcar_sync_lc(self):
         config.LIMB_DARKENING_LAW = "linear"
         reload(lc)
 
         bs = prepare_binary_system(PARAMS["detached"])
         self.do_comparison(bs)
 
-    def test_circ_spotty_async_lc(self):
+    def test_circulcar_spotty_async_lc(self):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
         reload(lc)
 
@@ -555,4 +552,3 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         bs = prepare_binary_system(PARAMS["detached-async-ecc"],
                                    spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs)
-

@@ -345,7 +345,7 @@ class BinarySystem(System):
 
     def calculate_semi_major_axis(self):
         """
-        Calculates length semi major axis using 3rd kepler law.
+        Calculates length semi major axis using 3rd kepler default_law.
 
         :return: float;
         """

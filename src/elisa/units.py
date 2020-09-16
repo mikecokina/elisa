@@ -34,5 +34,6 @@ K = u.K
 dimensionless_unscaled = u.dimensionless_unscaled
 kg = u.kg
 dex = u.dex
+mag = u.mag
 
 Quantity = u.quantity.Quantity

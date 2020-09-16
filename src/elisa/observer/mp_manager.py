@@ -2,10 +2,8 @@ from multiprocessing.pool import Pool
 
 from elisa.logger import getLogger
 from elisa.conf import config
-from elisa import (
-    umpy as up,
-    utils
-)
+from elisa import utils
+
 
 logger = getLogger('observer.mp')
 
