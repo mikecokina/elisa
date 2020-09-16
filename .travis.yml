@@ -1,11 +1,15 @@
 language: python
+
+os:
+  - linux
+  - windows
+  
 python:
   - "3.6"
 
 install:
   - pip install -r requirements.txt
   - pip install .[test]
-# command to run tests
 
 script:
   - python -m unittest discover -s unittests -p "test_*.py"
