@@ -29,7 +29,7 @@ from elisa.binary_system import (
     radius as bsradius,
     model
 )
-from elisa.binary_system.curves import curves
+from elisa.binary_system.curves import c_router
 
 
 logger = getLogger('binary_system.system')
@@ -983,7 +983,7 @@ class BinarySystem(System):
                   self._compute_circular_spotty_asynchronous_lightcurve,
                   self._compute_eccentric_spotty_lightcurve,
                   self._compute_eccentric_lightcurve)
-        curve_fn = curves.resolve_curve_method(self, fn_arr)
+        curve_fn = c_router.resolve_curve_method(self, fn_arr)
 
         return curve_fn(**kwargs)
 
@@ -1008,7 +1008,7 @@ class BinarySystem(System):
                       self._compute_circular_spotty_asynchronous_rv_curve,
                       self._compute_eccentric_spotty_rv_curve,
                       self._compute_eccentric_rv_curve_no_spots)
-            curve_fn = curves.resolve_curve_method(self, fn_arr)
+            curve_fn = c_router.resolve_curve_method(self, fn_arr)
 
             kwargs = rv.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**kwargs)

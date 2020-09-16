@@ -146,6 +146,7 @@ v0.3.1_
 **Release date:** 2020-08-19
 
 **Enhancements**
+
     - fit_summary (result_summary) function now enables full propagation of errors using `propagate_errors` argument
 
 **Fixes**
@@ -167,16 +168,21 @@ v0.4
 
 **Release date:** ????-??-??
 
+
+**Features**
+
+    - radial velocity curves modelled based on radiometric quantities capable of modelling
+      Rossitter effect and effect of spots
+
 **Enhancements**
 
-    - radial velocity curves modelled based on radiometric quantities capable of modelling Rossitter effect and effect
-    of spots
     - ability to display observation stored in DataSet class using DataSet.plot.display_observation()
 
 **Fixes**
 
     - removed faulty curve points produced by multiprocessing curve integration methods
     - component's volume conserved for eccentric spotty orbits
+    - surface areas produced by numeric noise when total eclipse is occuring are mitigated
 
 
 v0.5

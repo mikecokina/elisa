@@ -10,11 +10,11 @@ from elisa.binary_system import (
 )
 from elisa.binary_system.curves import (
     utils as crv_utils,
-    curves_mp,
-    approx
+    c_managed,
+    c_appx_router
 )
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.observer.mp import manage_observations
+from elisa.observer.mp_manager import manage_observations
 
 
 logger = getLogger('binary_system.curves.curves')
@@ -73,7 +73,7 @@ def prep_initial_system(binary):
     return initial_system
 
 
-def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, crv_labels, **kwargs):
+def produce_circular_sync_curves(binary, initial_system, phases, curve_fn, crv_labels, **kwargs):
     """
     Auxiliary function to produce curve from circular synchronous binary system.
 
@@ -94,11 +94,11 @@ def produce_circ_sync_curves(binary, initial_system, phases, curve_fn, crv_label
 
     crv_utils.prep_surface_params(initial_system.flatt_it(), return_values=False, write_to_containers=True, **kwargs)
     fn_args = (binary, initial_system, crv_labels, curve_fn)
-    curves = manage_observations(fn=curves_mp.produce_circ_sync_curves_mp, fn_args=fn_args, position=phases, **kwargs)
+    curves = manage_observations(fn=c_managed.produce_circ_sync_curves_mp, fn_args=fn_args, position=phases, **kwargs)
     return curves
 
 
-def produce_circ_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
+def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
     """
     Function returns curve of assynchronous systems with circular orbits and spots.
 
@@ -132,7 +132,7 @@ def produce_circ_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):
         setattr(star, "inverse_point_symmetry_matrix", _d)
 
     fn_args = binary, initial_system, points, ecl_boundaries, crv_labels, curve_fn
-    curves = manage_observations(fn=curves_mp.produce_circ_spotty_async_curves_mp, fn_args=fn_args,
+    curves = manage_observations(fn=c_managed.produce_circ_spotty_async_curves_mp, fn_args=fn_args,
                                  position=orbital_motion, **kwargs)
     return curves
 
@@ -160,17 +160,17 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
     phases_span_test = np.max(phases) - np.min(phases) >= 0.8
 
     position_method = kwargs.pop("position_method")
-    try_to_find_appx = approx.look_for_approximation(not binary.has_pulsations())
+    try_to_find_appx = c_appx_router.look_for_approximation(not binary.has_pulsations())
 
     curve_fn_list = [
         integrate_eccentric_curve_exactly,
-        approx.integrate_eccentric_curve_appx_one,
-        approx.integrate_eccentric_curve_appx_two,
-        approx.integrate_eccentric_curve_appx_three
+        c_appx_router.integrate_eccentric_curve_appx_one,
+        c_appx_router.integrate_eccentric_curve_appx_two,
+        c_appx_router.integrate_eccentric_curve_appx_three
     ]
     appx_uid, run = \
-        approx.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
-                                                phases_span_test, curve_fn_list, crv_labels, curve_fn, **kwargs)
+        c_appx_router.resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx,
+                                                       phases_span_test, curve_fn_list, crv_labels, curve_fn, **kwargs)
 
     logger_messages = {
         'zero': 'curve will be calculated in a rigorous `phase to phase manner` without approximations',
@@ -200,7 +200,7 @@ def integrate_eccentric_curve_exactly(binary, orbital_motion, potentials, crv_la
     """
     # surface potentials with constant volume of components
     fn_args = (binary, potentials, None, crv_labels, curve_fn)
-    curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly, fn_args=fn_args,
+    curves = manage_observations(fn=c_managed.integrate_eccentric_curve_exactly, fn_args=fn_args,
                                  position=orbital_motion, **kwargs)
     return curves
 
@@ -229,6 +229,6 @@ def produce_ecc_curves_with_spots(binary, curve_fn, crv_labels, **kwargs):
     # pre-calculate the longitudes of each spot for each phase
     spots_longitudes = dynamic.calculate_spot_longitudes(binary, phases, component="all")
     fn_args = (binary, potentials, spots_longitudes, crv_labels, curve_fn)
-    curves = manage_observations(fn=curves_mp.integrate_eccentric_curve_exactly, fn_args=fn_args,
+    curves = manage_observations(fn=c_managed.integrate_eccentric_curve_exactly, fn_args=fn_args,
                                  position=orbital_motion, **kwargs)
     return curves

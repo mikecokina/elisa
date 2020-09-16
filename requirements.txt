@@ -4,8 +4,8 @@ corner==2.0.1
 emcee==3.0.1
 jsonschema==3.2.0
 matplotlib==2.1.0
-numpy==1.16.2
-pandas==0.24.0
+numpy>=1.16.2,<=1.19.2
+pandas>=0.24.0,<=1.1.2
 py==1.4.34
 pyparsing==2.2.0
 pypex==0.1.0
@@ -15,4 +15,4 @@ pytz==2017.2
 scipy==1.0.0
 six==1.11.0
 tqdm==4.43.0
-parameterized
+parameterized>=0.7.4

@@ -1,11 +1,10 @@
+from ...binary_system import dynamic
 from ...binary_system.curves import (
     lc_point,
-    curves
+    c_router
 )
 
-from ...binary_system import (
-    dynamic,
-)
+# main wrapper over lc computation
 
 
 def compute_circular_synchronous_lightcurve(binary, **kwargs):
@@ -25,15 +24,14 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
     :return: Dict[str, numpy.array];
     """
 
-    initial_system = curves.prep_initial_system(binary)
+    initial_system = c_router.prep_initial_system(binary)
 
+    lc_labels = list(kwargs["passband"].keys())
     phases = kwargs.pop("phases")
     unique_phase_interval, reverse_phase_map = dynamic.phase_crv_symmetry(initial_system, phases)
 
-    lc_labels = list(kwargs["passband"].keys())
-
-    band_curves = curves.produce_circ_sync_curves(binary, initial_system, unique_phase_interval,
-                                                  lc_point.compute_lc_on_pos, lc_labels, **kwargs)
+    band_curves = c_router.produce_circular_sync_curves(binary, initial_system, unique_phase_interval,
+                                                        lc_point.compute_lc_on_pos, lc_labels, **kwargs)
 
     band_curves = {band: band_curves[band][reverse_phase_map] for band in band_curves}
     return band_curves
@@ -53,9 +51,7 @@ def compute_circular_spotty_asynchronous_lightcurve(binary, **kwargs):
     :return: Dict; fluxes for each filter
     """
     lc_labels = list(kwargs["passband"].keys())
-
-    return curves.produce_circ_spotty_async_curves(binary, lc_point.compute_lc_on_pos,
-                                                   lc_labels, **kwargs)
+    return c_router.produce_circular_spotty_async_curves(binary, lc_point.compute_lc_on_pos, lc_labels, **kwargs)
 
 
 def compute_eccentric_lightcurve_no_spots(binary, **kwargs):
@@ -72,8 +68,7 @@ def compute_eccentric_lightcurve_no_spots(binary, **kwargs):
     :return: Dict; fluxes for each filter
     """
     lc_labels = list(kwargs["passband"].keys())
-
-    return curves.produce_ecc_curves_no_spots(binary, lc_point.compute_lc_on_pos, lc_labels, **kwargs)
+    return c_router.produce_ecc_curves_no_spots(binary, lc_point.compute_lc_on_pos, lc_labels, **kwargs)
 
 
 def compute_eccentric_spotty_lightcurve(binary, **kwargs):
@@ -90,5 +85,4 @@ def compute_eccentric_spotty_lightcurve(binary, **kwargs):
     :return: Dict; dictionary of fluxes for each filter
     """
     lc_labels = list(kwargs["passband"].keys())
-
-    return curves.produce_ecc_curves_with_spots(binary, lc_point.compute_lc_on_pos, lc_labels, **kwargs)
+    return c_router.produce_ecc_curves_with_spots(binary, lc_point.compute_lc_on_pos, lc_labels, **kwargs)

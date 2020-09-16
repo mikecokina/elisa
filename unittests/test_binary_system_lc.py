@@ -11,7 +11,7 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.conf import config
 from elisa.observer.observer import Observer
-from elisa.observer import mp
+from elisa.observer import mp_manager
 from elisa.binary_system.orbit.container import OrbitalSupplements
 from elisa.binary_system import surface
 from elisa.binary_system.curves import utils as crv_utils
@@ -39,7 +39,7 @@ from elisa import (
 from elisa.binary_system.curves import (
     lc,
     lc_point,
-    approx
+    c_appx_router
 )
 
 TOL = 5e-3
@@ -409,7 +409,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_synchronous_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(approx)
+        reload(c_appx_router)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.json", TOL, -0.2, 1.2, 0.1)
@@ -417,7 +417,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(approx)
+        reload(c_appx_router)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_one.json", TOL, -0.2, 1.2, 0.1)
@@ -426,7 +426,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload(approx)
+        reload(c_appx_router)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.2, 0.1)
@@ -434,7 +434,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload(approx)
+        reload(c_appx_router)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
@@ -486,6 +486,10 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         config.ATM_ATLAS = "ck04"
         config._update_atlas_to_base_dir()
 
+    def tearDown(self):
+        config.NUMBER_OF_PROCESSES = -1
+        reload(mp_manager)
+
     def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1):
         o = Observer(passband=['Generic.Bessell.V'], system=system)
 
@@ -493,7 +497,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         sp_flux = normalize_lc_for_unittests(sp_res[1]["Generic.Bessell.V"])
 
         config.NUMBER_OF_PROCESSES = cpu_count()
-        reload(mp)
+        reload(mp_manager)
         mp_res = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         mp_flux = normalize_lc_for_unittests(mp_res[1]["Generic.Bessell.V"])
 
@@ -517,7 +521,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(approx)
+        reload(c_appx_router)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -525,7 +529,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(approx)
+        reload(c_appx_router)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -534,7 +538,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
         config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload(approx)
+        reload(c_appx_router)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -542,7 +546,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload(approx)
+        reload(c_appx_router)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, 0.0, 0.01, 0.002)
@@ -550,6 +554,5 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_spotty_asynchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached-async-ecc"],
                                    spots_primary=SPOTS_META["primary"])
-
         self.do_comparison(bs)
 

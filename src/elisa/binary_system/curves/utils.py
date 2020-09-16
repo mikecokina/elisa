@@ -97,11 +97,11 @@ def calculate_surface_element_fluxes(band, star):
         :return: numpy.array
     """
     ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
-    indices = getattr(star, 'indices')
-    radiance = getattr(star, 'normal_radiance')[band][indices]
-    ld_cfs = getattr(star, 'ld_cfs')[band][ld_law_cfs_columns].values[indices]
-    cosines = getattr(star, 'los_cosines')[indices]
-    coverage = getattr(star, 'coverage')[indices]
+    indices = star.indices
+    radiance = star.normal_radiance[band][indices]
+    ld_cfs = star.ld_cfs[band][ld_law_cfs_columns].values[indices]
+    cosines = star.los_cosines[indices]
+    coverage = star.coverage[indices]
 
     ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs,
                                        limb_darkening_law=config.LIMB_DARKENING_LAW,

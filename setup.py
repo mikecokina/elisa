@@ -78,8 +78,8 @@ setup(
         'corner==2.0.1',
         'emcee==3.0.1',
         'matplotlib==2.1.0',
-        'numpy>=1.16.2',
-        'pandas==0.24.0',
+        'numpy>=1.16.2,<=1.19.2',
+        'pandas>=0.24.0,<=1.1.2',
         'py==1.4.34',
         'pyparsing==2.2.0',
         'pypex==0.1.0',
@@ -98,7 +98,7 @@ setup(
     # $ pip install -e .[dev,test]
     extras_require={
         'dev': [],
-        'test': ['coverage', 'parameterized'],
+        'test': ['coverage', 'parameterized>=0.7.4'],
     },
 
     # If there are data files included in your packages that need to be

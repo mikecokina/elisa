@@ -6,10 +6,10 @@ from elisa.conf import config
 from elisa.binary_system import dynamic
 from elisa.binary_system.curves import (
     utils as crv_utils,
-    approx_manged
+    c_managed
 )
 from ...binary_system.orbit.container import OrbitalSupplements
-from elisa.observer.mp import manage_observations
+from elisa.observer.mp_manager import manage_observations
 
 
 def look_for_approximation(not_pulsations_test):
@@ -196,7 +196,7 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
     fn_args = (binary, potentials, crv_labels, curve_fn)
 
-    stacked_band_curves = manage_observations(fn=approx_manged.integrate_eccentric_curve_w_orbital_symmetry,
+    stacked_band_curves = manage_observations(fn=c_managed.integrate_eccentric_curve_w_orbital_symmetry,
                                               fn_args=fn_args,
                                               position=orbital_positions,
                                               **kwargs)
@@ -243,7 +243,7 @@ def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, pote
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
     fn_args = (binary, potentials, crv_labels, curve_fn)
 
-    stacked_band_curves = manage_observations(fn=approx_manged.integrate_eccentric_curve_w_orbital_symmetry,
+    stacked_band_curves = manage_observations(fn=c_managed.integrate_eccentric_curve_w_orbital_symmetry,
                                               fn_args=fn_args,
                                               position=orbital_positions,
                                               **kwargs)
@@ -283,7 +283,7 @@ def integrate_eccentric_curve_appx_three(binary, orbital_positions, new_geometry
     """
     fn_args = (binary, potentials, new_geometry_mask, crv_labels, curve_fn)
 
-    band_curves_unsorted = manage_observations(fn=approx_manged.integrate_eccentric_curve_approx_three,
+    band_curves_unsorted = manage_observations(fn=c_managed.integrate_eccentric_curve_approx_three,
                                                fn_args=fn_args,
                                                position=orbital_positions,
                                                **kwargs)
