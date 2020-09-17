@@ -421,7 +421,7 @@ class CompareSingleVsMultiprocess(ResetClass):
         reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, tol=1e-3)
+        self.do_comparison(bs, tol=2e-4)
 
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
