@@ -148,7 +148,7 @@ class Orbit(object):
 
         self.periastron_distance = np.nan
         self.periastron_phase = np.nan
-        self.semimajor_axis = np.nan
+        self.semi_major_axis = np.nan
         self.phase_shift = 0.0
 
         # values of properties

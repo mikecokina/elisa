@@ -74,21 +74,15 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         'astropy>=2.0.2,<4.0.2',
-        'cycler==0.10.0',
-        'corner==2.0.1',
+        'corner>=2.0.1,<=2.1.0',
         'emcee==3.0.1',
+        'jsonschema>=3.2.0',
         'matplotlib==2.1.0',
         'numpy>=1.16.2,<=1.19.2',
         'pandas>=0.24.0,<=1.1.2',
-        'py==1.4.34',
-        'pyparsing==2.2.0',
         'pypex==0.1.0',
-        'pytest==3.2.3',
         'python-dateutil>=2.6.1,<=2.8.1',
-        'pytz==2017.2',
         'scipy==1.0.0',
-        'six>=1.11.0',
-        'jsonschema>=3.2.0',
         'tqdm>=4.43.0'
     ],
 
@@ -98,7 +92,7 @@ setup(
     # $ pip install -e .[dev,test]
     extras_require={
         'dev': [],
-        'test': ['coverage', 'parameterized>=0.7.4'],
+        'test': ['coverage', 'parameterized>=0.7.4', 'pytest==3.2.3'],
     },
 
     # If there are data files included in your packages that need to be
