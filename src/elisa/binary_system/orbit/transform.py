@@ -1,7 +1,7 @@
 import numpy as np
 
-from elisa import units
-from elisa.base.transform import (
+from ... import units
+from ... base.transform import (
     TransformProperties,
     quantity_transform,
     WHEN_FLOAT64

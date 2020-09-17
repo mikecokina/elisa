@@ -1,5 +1,5 @@
-from elisa.binary_system.curves import utils as crv_utils
-from elisa.conf import config
+from . import utils as crv_utils
+from ... conf import config
 
 
 def _calculate_lc_point(band, system):

@@ -1,20 +1,20 @@
 import numpy as np
 from copy import copy
 
-from elisa.conf import config
-from elisa import const
-from elisa.logger import getLogger
-from elisa.binary_system import (
-    dynamic,
-    surface
-)
-from elisa.binary_system.curves import (
+from . import (
     utils as crv_utils,
     c_managed,
     c_appx_router
 )
-from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.observer.mp_manager import manage_observations
+from .. import (
+    dynamic,
+    surface
+)
+from .. container import OrbitalPositionContainer
+from ... import const
+from ... observer.mp_manager import manage_observations
+from ... conf import config
+from ... logger import getLogger
 
 
 logger = getLogger('binary_system.curves.curves')

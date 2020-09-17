@@ -1,5 +1,5 @@
 import numpy as np
-from elisa.utils import is_empty
+from .. utils import is_empty
 
 
 def normalize_light_curve(y_data, y_err=None, kind='global_maximum', top_fraction_to_average=0.1):

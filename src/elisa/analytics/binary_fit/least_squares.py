@@ -6,22 +6,22 @@ from scipy import interpolate
 from abc import ABCMeta
 from scipy.optimize import least_squares
 
-from elisa.analytics.models import rv as rv_model
-from elisa.analytics.models import lc as lc_model
-
-from elisa.analytics import RVData, LCData
-from elisa.analytics.binary_fit.shared import (
+from . shared import (
     AbstractRVFit, AbstractLCFit,
     lc_r_squared, rv_r_squared, r_squared
 )
-from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.observer.utils import normalize_light_curve
-from elisa.logger import getPersistentLogger
-from elisa.analytics.params import parameters
-from elisa import const
-from elisa.conf import config
-from elisa.binary_system.system import BinarySystem
-from elisa.binary_system.curves.community import RadialVelocitySystem
+
+from .. import RVData, LCData
+from .. models import rv as rv_model
+from .. models import lc as lc_model
+from .. tools.utils import time_layer_resolver
+from .. params import parameters
+from ... observer.utils import normalize_light_curve
+from ... logger import getPersistentLogger
+from ... import const
+from ... conf import config
+from ... binary_system.system import BinarySystem
+from ... binary_system.curves.community import RadialVelocitySystem
 
 
 logger = getPersistentLogger('analytics.binary_fit.least_squares')

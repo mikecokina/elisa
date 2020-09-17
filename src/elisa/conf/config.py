@@ -7,7 +7,7 @@ import numpy as np
 from configparser import ConfigParser
 from logging import config as log_conf
 from os.path import dirname, isdir, pardir
-from ..schema_registry import registry
+from .. schema_registry import registry
 
 
 c_parse = ConfigParser()

@@ -1,5 +1,5 @@
 from elisa.graphic import graphics
-from astropy import units as u
+from .. import units as u
 
 
 class Plot(object):

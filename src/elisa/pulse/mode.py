@@ -1,8 +1,9 @@
 import numpy as np
-from elisa import utils, const as c
-from elisa.logger import getLogger
-from elisa.pulse.transform import PulsationModeProperties
-from elisa.conf import config
+
+from . transform import PulsationModeProperties
+from .. import utils, const as c
+from .. logger import getLogger
+from .. conf import config
 
 logger = getLogger('pulse.mode')
 

@@ -1,19 +1,17 @@
 import numpy as np
 
 from copy import deepcopy
-from elisa.logger import getLogger
-from elisa import (
-    utils
-)
-from elisa.base.container import (
-    StarContainer,
-    PositionContainer
-)
-from elisa.binary_system.surface import (
+from . surface import (
     mesh,
     faces,
     gravity,
     temperature
+)
+from .. logger import getLogger
+from .. import utils
+from .. base.container import (
+    StarContainer,
+    PositionContainer
 )
 
 logger = getLogger("binary_system.container")

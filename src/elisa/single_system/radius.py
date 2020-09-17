@@ -2,8 +2,8 @@ import numpy as np
 import scipy
 
 from scipy import optimize
-from elisa.single_system import model
-from elisa import (
+from . import model
+from .. import (
     const,
 )
 

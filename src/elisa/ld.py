@@ -2,11 +2,11 @@ import os
 import numpy as np
 import pandas as pd
 
-from elisa.base.error import LimbDarkeningError
-from elisa.logger import getLogger
 from scipy import interpolate
-from elisa.conf import config
-from elisa import (
+from . base.error import LimbDarkeningError
+from . logger import getLogger
+from . conf import config
+from . import (
     utils,
     const,
     umpy as up

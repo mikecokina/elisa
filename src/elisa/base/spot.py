@@ -2,9 +2,9 @@ import gc
 import numpy as np
 
 from copy import copy
-from ..base.transform import SpotProperties
-from ..utils import is_empty
-from ..logger import getLogger
+from .. base.transform import SpotProperties
+from .. utils import is_empty
+from .. logger import getLogger
 from .. import (
     utils,
     umpy as up

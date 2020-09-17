@@ -3,20 +3,20 @@ import json
 from abc import abstractmethod
 from typing import Union, Dict
 
-from elisa import units
-from elisa.conf.config import BINARY_COUNTERPARTS
-from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.analytics.params import parameters
-from elisa.analytics.binary_fit import least_squares
-from elisa.analytics.binary_fit import mcmc
-from elisa.analytics.binary_fit import io_tools
-from elisa.analytics.binary_fit.summary import fit_lc_summary_with_error_propagation, simple_lc_fit_summary
-from elisa.analytics.models import lc as lc_model
-from elisa.analytics.binary_fit.shared import check_for_boundary_surface_potentials
-from elisa.binary_system.surface.gravity import calculate_polar_gravity_acceleration
+from ... import units
+from ... conf.config import BINARY_COUNTERPARTS
+from ... binary_system.surface.gravity import calculate_polar_gravity_acceleration
+from ... logger import getLogger
 
+from .. params.parameters import BinaryInitialParameters
+from .. params import parameters
+from .. models import lc as lc_model
+from . summary import fit_lc_summary_with_error_propagation, simple_lc_fit_summary
+from . shared import check_for_boundary_surface_potentials
+from . import least_squares
+from . import mcmc
+from . import io_tools
 
-from elisa.logger import getLogger
 
 logger = getLogger('analytics.binary_fit.lc_fit')
 

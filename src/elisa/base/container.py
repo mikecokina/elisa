@@ -2,8 +2,8 @@ import numpy as np
 
 from abc import abstractmethod
 
-from elisa import const
-from ..logger import getLogger
+from .. import const
+from .. logger import getLogger
 from copy import (
     deepcopy,
     copy

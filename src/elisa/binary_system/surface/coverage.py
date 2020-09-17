@@ -3,17 +3,17 @@ import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
 
-from elisa.conf import config
-from elisa.logger import getLogger
-from elisa.binary_system import utils as bsutils
-from elisa import (
+from .. import utils as bsutils
+from ... conf import config
+from ... logger import getLogger
+from ... import (
     umpy as up,
     utils,
     const
 )
-from elisa.base.surface import coverage as bcoverage
+from ... base.surface import coverage as bcoverage
 
-logger = getLogger('binary_system.curves.lcmp')
+logger = getLogger('binary_system.surface.coverage')
 
 
 def partial_visible_faces_surface_coverage(points, faces, normals, hull):

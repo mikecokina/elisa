@@ -1,6 +1,5 @@
 import numpy as np
-
-from elisa import const, utils
+from .. import const, utils
 
 
 def phase_correction(phase):

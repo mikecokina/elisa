@@ -3,9 +3,7 @@ import numpy as np
 import pandas as pd
 
 from scipy import interpolate
-
-from elisa.conf import config
-from elisa.observer import utils as outils
+from .. conf import config
 
 
 def init_bolometric_passband():

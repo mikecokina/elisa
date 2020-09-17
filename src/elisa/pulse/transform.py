@@ -1,7 +1,7 @@
 import numpy as np
 
-from elisa.base.transform import SystemProperties
-from elisa import const as c, units
+from .. import const as c, units
+from .. base.transform import SystemProperties
 
 
 class PulsationModeProperties(SystemProperties):

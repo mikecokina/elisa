@@ -6,9 +6,9 @@ from abc import (
     abstractmethod
 )
 
-from ..utils import is_empty
-from ..base.spot import Spot
-from ..logger import getLogger
+from .. utils import is_empty
+from .. base.spot import Spot
+from .. logger import getLogger
 from .. import (
     units,
     umpy as up

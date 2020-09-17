@@ -1,7 +1,7 @@
 import numpy as np
 
-from elisa import umpy as up
-from elisa.base import error
+from .. import umpy as up
+from .. base import error
 
 
 def newton(func, x0, fprime, args=(), maxiter=50, rtol=0.0):

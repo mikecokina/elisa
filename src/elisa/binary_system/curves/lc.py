@@ -1,8 +1,9 @@
-from ...binary_system import dynamic
-from ...binary_system.curves import (
+from . import (
     lc_point,
     c_router
 )
+from ... binary_system import dynamic
+
 
 # main wrapper over lc computation
 from ...conf import config

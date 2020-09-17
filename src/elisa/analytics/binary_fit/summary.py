@@ -2,19 +2,19 @@ import numpy as np
 from tqdm import tqdm
 from multiprocessing.pool import Pool
 
-from elisa import units
-from elisa.conf import config
-from elisa.utils import split_to_batches
-from elisa.analytics.params import parameters
-from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.analytics.binary_fit import io_tools
-from elisa.analytics.models import lc as lc_model
-from elisa.logger import getLogger
-from elisa.binary_system.surface.gravity import calculate_polar_gravity_acceleration
-from elisa.base.error import MaxIterationError, MorphologyError
-from elisa.analytics.binary_fit.shared import check_for_boundary_surface_potentials
-from elisa.binary_system.curves.community import RadialVelocitySystem
-from elisa.analytics.models import serializers
+from . import io_tools
+from . shared import check_for_boundary_surface_potentials
+from .. params import parameters
+from .. params.parameters import BinaryInitialParameters
+from .. models import lc as lc_model
+from .. models import serializers
+from ... import units
+from ... conf import config
+from ... utils import split_to_batches
+from ... logger import getLogger
+from ... binary_system.surface.gravity import calculate_polar_gravity_acceleration
+from ... base.error import MaxIterationError, MorphologyError
+from ... binary_system.curves.community import RadialVelocitySystem
 
 
 logger = getLogger('analytics.binary_fit.summary')

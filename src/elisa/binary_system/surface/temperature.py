@@ -2,20 +2,18 @@
 import numpy as np
 
 from copy import copy
-from elisa.logger import getLogger
-from elisa.binary_system.surface import faces as bsfaces
-from elisa.binary_system import utils as bsutils
-from elisa.conf import config
-from elisa.utils import is_empty
-from elisa import (
+from .. surface import faces as bsfaces
+from .. import utils as bsutils
+from ... logger import getLogger
+from ... conf import config
+from ... utils import is_empty
+from ... base.surface import temperature as btemperature
+from ... pulse import pulsations
+from ... import (
     umpy as up,
     ld,
-    utils,
-    const
+    utils
 )
-from elisa.base.surface import temperature as btemperature
-from elisa.pulse import pulsations
-
 
 logger = getLogger("binary_system.surface.temperature")
 

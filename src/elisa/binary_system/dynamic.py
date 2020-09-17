@@ -1,15 +1,14 @@
 import numpy as np
 
-from elisa.binary_system.orbit.container import OrbitalSupplements
-from elisa.conf import config
-from elisa.binary_system import utils as bsutils
-from elisa import (
+from copy import copy
+from . orbit.container import OrbitalSupplements
+from . import utils as bsutils
+from .. conf import config
+from .. import (
     utils,
     const,
     umpy as up
 )
-
-from copy import copy
 
 
 def get_eclipse_boundaries(binary, components_distance):

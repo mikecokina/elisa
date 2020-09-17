@@ -1,20 +1,18 @@
 import numpy as np
 
-from elisa import const as c
-from elisa.logger import getLogger
-from elisa.base.surface import gravity as bgravity
-from elisa.utils import is_empty
-from elisa.pulse import pulsations
+from ... import const as c
+from ... logger import getLogger
+from ... base.surface import gravity as bgravity
+from ... utils import is_empty
+from ... pulse import pulsations
 
-logger = getLogger("binary-system-gravity-module")
+logger = getLogger("single_system.surface.gravity")
 
 
 def build_surface_gravity(system_container):
     """
-        function calculates gravity potential gradient magnitude (surface gravity) for each face
-
-        :return:
-        """
+    Function calculates gravity potential gradient magnitude (surface gravity) for each face.
+    """
     star_container = system_container.star
 
     polar_gravity = np.power(10, star_container.polar_log_g)
@@ -35,7 +33,8 @@ def build_surface_gravity(system_container):
 
             g_acc_vector_spot.update(
                 {spot_index:
-                     calculate_potential_gradient(spot.points, system_container.angular_velocity, star_container.mass)})
+                     calculate_potential_gradient(spot.points, system_container.angular_velocity, star_container.mass)}
+            )
 
     # TODO: here implement pulsations
     if star_container.has_pulsations():
@@ -59,7 +58,7 @@ def build_surface_gravity(system_container):
 
 def calculate_polar_potential_gradient_magnitude(polar_radius, mass):
     """
-    returns magnitude of polar gradient of gravitational potential
+    Returns magnitude of polar gradient of gravitational potential.
 
     :param polar_radius: float;
     :param mass: float;
@@ -74,7 +73,7 @@ def calculate_polar_potential_gradient_magnitude(polar_radius, mass):
 # deprecated
 def calculate_face_magnitude_gradient(points, faces, angular_velocity, mass, face_symmetry_vector=None):
     """
-    returns array of absolute values of potential gradients for corresponding faces
+    Returns array of absolute values of potential gradients for corresponding faces.
 
     :param points: numpy.array; points in which to calculate magnitude of gradient, if False/None take star points
     :param faces: numpy.array; faces corresponding to given points
@@ -92,12 +91,12 @@ def calculate_face_magnitude_gradient(points, faces, angular_velocity, mass, fac
 
 def calculate_potential_gradient(points, angular_velocity, mass):
     """
-    returns array of gravity potential gradients for corresponding faces
+    Returns array of gravity potential gradients for corresponding faces.
 
-    :param points: np.array; (N * 3) array of surface points
+    :param points: numpy.array; (N * 3) array of surface points
     :param angular_velocity: float; angular velocity of rotation
     :param mass: float; stellar mass
-    :return: np.array; gravity gradients for each face
+    :return: numpy.array; gravity gradients for each face
     """
     r3 = np.power(np.linalg.norm(points, axis=1), 3)
     points_gradients = np.empty(points.shape)

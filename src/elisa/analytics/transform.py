@@ -1,6 +1,6 @@
-from elisa.conf.config import BINARY_COUNTERPARTS, PASSBANDS
-from elisa.base.transform import TransformProperties
-from elisa.analytics.dataset.base import RVData, LCData
+from . dataset.base import RVData, LCData
+from .. conf.config import BINARY_COUNTERPARTS, PASSBANDS
+from .. base.transform import TransformProperties
 
 
 class RVBinaryAnalyticsTask(TransformProperties):

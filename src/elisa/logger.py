@@ -1,5 +1,5 @@
 import logging
-from elisa.conf import config
+from . conf import config
 
 config.set_up_logging()
 

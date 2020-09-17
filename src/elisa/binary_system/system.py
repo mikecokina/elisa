@@ -1,36 +1,35 @@
-from typing import Union
-
 import numpy as np
 import scipy
-from copy import deepcopy
 
+from typing import Union
+from copy import deepcopy
 from scipy import optimize
 
-from elisa.base.error import MorphologyError
-from elisa.binary_system.curves import lc, rv
-from elisa.base.container import SystemPropertiesContainer
-from elisa.base.system import System
-from elisa.base.star import Star
-from elisa.binary_system import graphic
-from elisa.binary_system.surface import mesh
-from elisa.binary_system.transform import BinarySystemProperties
+from . import graphic
+from . orbit import orbit
+from . curves import lc, rv
+from . surface import mesh
+from . transform import BinarySystemProperties
+from . curves import c_router
+from . import (
+    utils as bsutils,
+    radius as bsradius,
+    model
+)
 
-from elisa.conf import config
-from elisa.binary_system.orbit import orbit
-from elisa.logger import getLogger
-from elisa import (
+from .. base.error import MorphologyError
+from .. base.container import SystemPropertiesContainer
+from .. base.system import System
+from .. base.star import Star
+
+from .. conf import config
+from .. logger import getLogger
+from .. import (
     umpy as up,
     utils,
     const,
     units
 )
-from elisa.binary_system import (
-    utils as bsutils,
-    radius as bsradius,
-    model
-)
-from elisa.binary_system.curves import c_router
-
 
 logger = getLogger('binary_system.system')
 

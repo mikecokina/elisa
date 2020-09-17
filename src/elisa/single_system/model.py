@@ -1,5 +1,5 @@
 import numpy as np
-from elisa import const
+from .. import const
 
 
 def surface_potential_from_polar_log_g(polar_log_g, mass):

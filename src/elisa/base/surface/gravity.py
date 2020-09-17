@@ -1,5 +1,3 @@
-
-
 def eval_args_for_magnitude_gradient(star_container):
     """
     returns either all of the surface pints (not spots) in case of the surface with spots or just its symmetrical part

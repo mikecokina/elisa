@@ -1,11 +1,11 @@
 import numpy as np
 
 from .. import utils
-from ..base.body import Body
-from ..base.container import StarPropertiesContainer
-from ..base.transform import StarProperties
-from ..pulse.mode import PulsationMode
-from ..logger import getLogger
+from .. base.body import Body
+from .. base.container import StarPropertiesContainer
+from .. base.transform import StarProperties
+from .. pulse.mode import PulsationMode
+from .. logger import getLogger
 
 from copy import (
     copy,

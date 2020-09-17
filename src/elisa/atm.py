@@ -10,8 +10,8 @@ from threading import Thread
 from typing import Iterable
 from copy import deepcopy
 
-from elisa.logger import getLogger
-from elisa.base.error import (
+from . logger import getLogger
+from . base.error import (
     AtmosphereError,
     MetallicityError,
     TemperatureError,
@@ -20,8 +20,8 @@ from scipy import (
     integrate,
     interpolate
 )
-from elisa.conf import config
-from elisa import (
+from . conf import config
+from . import (
     umpy as up,
     utils,
     const,

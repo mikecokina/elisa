@@ -3,18 +3,16 @@ import sys
 import numpy as np
 import pandas as pd
 
-from elisa.binary_system.system import BinarySystem
-from elisa.binary_system.curves.community import RadialVelocitySystem
-from elisa.single_system.system import SingleSystem
-from elisa.observer import (
-    utils as outils
-)
-from elisa.observer.plot import Plot
-from elisa.observer.passband import PassbandContainer, init_bolometric_passband
-from elisa.conf import config
-from elisa.utils import is_empty
-from elisa.logger import getLogger
-from elisa import (
+from . import utils as outils
+from . plot import Plot
+from . passband import PassbandContainer, init_bolometric_passband
+from .. binary_system.system import BinarySystem
+from .. binary_system.curves.community import RadialVelocitySystem
+from .. single_system.system import SingleSystem
+from .. conf import config
+from .. utils import is_empty
+from .. logger import getLogger
+from .. import (
     units,
     umpy as up
 )

@@ -1,5 +1,4 @@
-from elisa.logger import getLogger
-
+from .. logger import getLogger
 
 logger = getLogger(__name__)
 

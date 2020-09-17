@@ -6,19 +6,19 @@ from scipy.interpolate import interp1d
 from copy import deepcopy
 from emcee.autocorr import integrated_time, function_1d
 
-from elisa.analytics.binary_fit import shared
-from elisa.analytics.binary_fit.mixins import MCMCMixin
-from elisa.analytics.models.lc import synthetic_binary
-from elisa.analytics.models.rv import central_rv_synthetic
-from elisa.observer.utils import normalize_light_curve
-from elisa.binary_system import t_layer
-from elisa import units as eu
-from elisa.binary_system.system import BinarySystem
-from elisa.graphic.mcmc_graphics import Plot as MCMCPlot
-from elisa.observer.observer import Observer
-from elisa.graphic import graphics
-from elisa.analytics.params import parameters, conf
-from elisa.logger import getLogger
+from . import shared
+from . mixins import MCMCMixin
+from .. models.lc import synthetic_binary
+from .. models.rv import central_rv_synthetic
+from .. params import parameters, conf
+from ... import units as eu
+from ... observer.utils import normalize_light_curve
+from ... binary_system import t_layer
+from ... binary_system.system import BinarySystem
+from ... graphic.mcmc_graphics import Plot as MCMCPlot
+from ... observer.observer import Observer
+from ... graphic import graphics
+from ... logger import getLogger
 
 
 logger = getLogger('analytics.binary_fit.plot')

@@ -1,9 +1,8 @@
 from multiprocessing.pool import Pool
 
-from elisa.logger import getLogger
-from elisa.conf import config
-from elisa import utils
-
+from .. import utils
+from .. logger import getLogger
+from .. conf import config
 
 logger = getLogger('observer.mp')
 

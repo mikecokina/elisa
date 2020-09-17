@@ -1,7 +1,7 @@
 import numpy as np
 from astropy import units as u
 
-from elisa.binary_system import t_layer
+from ... binary_system import t_layer
 
 
 def convert_dict_to_json_format(dictionary):

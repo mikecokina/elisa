@@ -1,9 +1,9 @@
 import numpy as np
 from astropy.time import Time
 
-from elisa.atm import atm_file_prefix_to_quantity_list
-from elisa.conf import config
-from elisa import units
+from ... import units
+from ... atm import atm_file_prefix_to_quantity_list
+from ... conf import config
 
 
 PARAM_PARSER = '@'

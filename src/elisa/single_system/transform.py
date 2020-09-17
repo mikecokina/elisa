@@ -1,5 +1,5 @@
-from elisa import units
-from elisa.base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
+from .. import units
+from .. base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
 
 
 class SingleSystemProperties(SystemProperties):

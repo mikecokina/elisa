@@ -1,14 +1,10 @@
 import numpy as np
 from scipy.spatial.qhull import Delaunay
 
-from elisa.base import spot
-from elisa.base.surface import faces as bfaces
-from elisa.pulse import pulsations
-from elisa.logger import getLogger
-
-from elisa.base.surface.faces import (
-    set_all_surface_centres,
-)
+from ... base import spot
+from ... base.surface import faces as bfaces
+from ... logger import getLogger
+from ... base.surface.faces import set_all_surface_centres
 
 logger = getLogger("single_system.surface.faces")
 

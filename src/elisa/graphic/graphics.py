@@ -7,12 +7,12 @@ import matplotlib.animation as animation
 import matplotlib.gridspec as gridspec
 
 from matplotlib import cm
-from elisa import (
+from .. import (
     umpy as up,
     utils,
     units
 )
-from astropy import units as u
+from .. import units as u
 
 
 def orbit(**kwargs):

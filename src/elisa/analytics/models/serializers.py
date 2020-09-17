@@ -1,7 +1,7 @@
 import re
 
-from elisa import const
-from elisa.analytics.params.parameters import deflate_phenomena
+from .. params.parameters import deflate_phenomena
+from ... import const
 
 
 def serialize_system_kwargs(**kwargs):

@@ -1,6 +1,5 @@
 import numpy as np
-
-from elisa.base import error
+from .. base import error
 
 
 def validate_period(period):

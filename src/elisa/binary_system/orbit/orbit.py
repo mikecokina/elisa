@@ -5,8 +5,8 @@ from ... import (
     const,
     umpy as up
 )
-from ...logger import getLogger
-from ...binary_system.orbit.transform import OrbitProperties
+from ... logger import getLogger
+from ... binary_system.orbit.transform import OrbitProperties
 
 logger = getLogger('binary_system.orbit.orbit')
 

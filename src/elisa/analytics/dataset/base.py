@@ -1,17 +1,17 @@
 import numpy as np
 
-from elisa.analytics.dataset.transform import (
+from abc import ABCMeta
+from copy import copy, deepcopy
+from . transform import (
     RVDataProperties,
     LCDataProperties
 )
-from elisa.logger import getLogger
-from elisa import utils, units
-from elisa.conf import config
-from abc import ABCMeta
-from elisa.utils import is_empty
-from copy import copy, deepcopy
-from elisa.analytics.dataset.graphic import plot
-from elisa.analytics.dataset import utils as dutils
+from .. dataset.graphic import plot
+from .. dataset import utils as dutils
+from ... logger import getLogger
+from ... import utils, units
+from ... conf import config
+from ... utils import is_empty
 
 logger = getLogger('analytics.dataset.base')
 

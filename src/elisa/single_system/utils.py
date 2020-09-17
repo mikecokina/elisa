@@ -1,5 +1,4 @@
-import numpy as np
-from elisa import const, utils
+from .. import const, utils
 
 
 def move_sys_onpos(system, position, on_copy=True):

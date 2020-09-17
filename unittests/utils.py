@@ -19,6 +19,7 @@ from elisa.conf import config
 from elisa.const import Position, SinglePosition
 from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
+from collections.abc import Iterable
 
 ax3 = Axes3D
 
@@ -436,3 +437,9 @@ IDENTICAL_BINARY = {
     "metallicity": 0.0
   }
 }
+
+
+def cutoff_float(x, keep_n):
+    if isinstance(x, Iterable):
+        return [float(format(x, f".{keep_n}")) for _x in x]
+    return float(format(x, f".{keep_n}"))

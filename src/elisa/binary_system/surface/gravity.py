@@ -1,17 +1,16 @@
 import numpy as np
 
-from elisa.utils import is_empty
-from elisa.binary_system import utils as bsutils
-from elisa.logger import getLogger
-from elisa.base.surface import gravity as bgravity
-from elisa.pulse import pulsations
-
-from elisa import (
+from .. import utils as bsutils
+from ... utils import is_empty
+from ... logger import getLogger
+from ... base.surface import gravity as bgravity
+from ... pulse import pulsations
+from ... import (
     umpy as up,
     const
 )
 
-logger = getLogger("binary-system-gravity-module")
+logger = getLogger("binary_system.surface.gravity")
 
 
 def calculate_potential_gradient(components_distance, component, points, synchronicity, mass_ratio):

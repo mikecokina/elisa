@@ -1,10 +1,8 @@
-import numpy as np
+from ... import utils
+from ... base.surface.coverage import surface_area_coverage
+from ... logger import getLogger
 
-from elisa import utils
-from elisa.base.surface.coverage import surface_area_coverage
-from elisa.logger import getLogger
-
-logger = getLogger('binary_system.curves.lcmp')
+logger = getLogger('single_system.surface.coverage')
 
 
 def compute_surface_coverage(system):

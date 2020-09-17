@@ -1,8 +1,8 @@
 import numpy as np
 
 from astropy import units as au
-from elisa import units
-from elisa.base.transform import (
+from ... import units
+from ... base.transform import (
     TransformProperties,
     WHEN_FLOAT64,
     WHEN_ARRAY

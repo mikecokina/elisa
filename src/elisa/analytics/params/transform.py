@@ -5,16 +5,18 @@ Transform to default float like units.
 
 import numpy as np
 
-from elisa import units, const
-from elisa.analytics.params import conf
-from elisa.base.transform import (
+from .. params import conf
+from ... import units
+from ... base.transform import (
     TransformProperties,
-    WHEN_FLOAT64, StarProperties, SpotProperties)
-from elisa.binary_system.transform import (
+    WHEN_FLOAT64,
+    StarProperties, SpotProperties
+)
+from ... binary_system.transform import (
     BinarySystemProperties,
     RadialVelocityObserverProperties
 )
-from elisa.pulse.transform import PulsationModeProperties
+from ... pulse.transform import PulsationModeProperties
 
 
 def angular(value):

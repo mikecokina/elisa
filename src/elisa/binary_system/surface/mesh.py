@@ -1,20 +1,18 @@
-import gc
 import numpy as np
 
-from elisa.base.error import MaxIterationError, SpotError
-from elisa.base.spot import incorporate_spots_mesh
-from elisa.conf import config
-from elisa.opt.fsolver import fsolver
-from elisa.utils import is_empty
-from elisa.logger import getLogger
-from elisa.pulse import pulsations
-from elisa.binary_system import utils as butils
-
-from elisa.binary_system import (
+from .. import utils as butils
+from .. import (
     utils as bsutils,
     model
 )
-from elisa import (
+from ... base.error import MaxIterationError, SpotError
+from ... base.spot import incorporate_spots_mesh
+from ... conf import config
+from ... opt.fsolver import fsolver
+from ... utils import is_empty
+from ... logger import getLogger
+from ... pulse import pulsations
+from ... import (
     umpy as up,
     utils,
     opt,

@@ -2,7 +2,7 @@ import numpy as np
 
 from elisa import umpy as up
 from scipy.optimize import fsolve
-from elisa.logger import getLogger
+from .. logger import getLogger
 
 logger = getLogger('opt.fsolver')
 

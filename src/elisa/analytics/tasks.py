@@ -2,12 +2,15 @@ import json
 from abc import ABCMeta
 from typing import Union, Dict
 
-from elisa.logger import getLogger
-from elisa import utils
-from elisa.analytics import transform
-from elisa.analytics.params import bonds, parameters
-from elisa.analytics.binary_fit import rv_fit, lc_fit
-from elisa.analytics.binary_fit.plot import RVPlotMCMC, RVPlotLsqr, LCPlotLsqr, LCPlotMCMC
+from . import transform
+from . params import bonds, parameters
+from . binary_fit import rv_fit, lc_fit
+from . binary_fit.plot import (
+    RVPlotMCMC, RVPlotLsqr,
+    LCPlotLsqr, LCPlotMCMC
+)
+from .. import utils
+from .. logger import getLogger
 
 logger = getLogger('analytics.tasks')
 

@@ -1,21 +1,20 @@
 import numpy as np
 import elisa.umpy as up
 
-from elisa.logger import getLogger
-from elisa.single_system import model
-from elisa.base.spot import incorporate_spots_mesh
-from elisa.base.error import MaxIterationError
-from elisa.single_system.radius import calculate_radius
-from elisa.conf import config
-from elisa.pulse import pulsations
-
-from elisa import (
-    const,
+from .. import model
+from .. radius import calculate_radius
+from ... logger import getLogger
+from ... base.spot import incorporate_spots_mesh
+from ... base.error import MaxIterationError
+from ... conf import config
+from ... pulse import pulsations
+from ... import (
     opt,
+    const,
     utils
 )
 
-logger = getLogger("single_system.mesh")
+logger = getLogger("single_system.surface.mesh")
 
 
 def build_mesh(system):

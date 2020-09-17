@@ -1,5 +1,5 @@
-from elisa.binary_system.system import BinarySystem
-from elisa.analytics.models.serializers import (
+from ... binary_system.system import BinarySystem
+from .. models.serializers import (
     serialize_primary_kwargs,
     serialize_secondary_kwargs,
     serialize_system_kwargs

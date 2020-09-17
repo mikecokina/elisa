@@ -1,5 +1,5 @@
 import numpy as np
-from elisa import umpy as up
+from .. import umpy as up
 
 
 def static_potential_primary_fn(radius, *args):

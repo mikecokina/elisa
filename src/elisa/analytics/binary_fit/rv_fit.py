@@ -1,16 +1,18 @@
 import json
-import numpy as np
 
-from typing import Union, Dict
-from elisa.analytics.params import parameters
-from elisa.logger import getLogger
-from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.analytics.binary_fit.mcmc import CentralRadialVelocity as MCMCCentralRV
-from elisa.analytics.binary_fit.least_squares import CentralRadialVelocity as LstSqrCentralRV
-from elisa.analytics.binary_fit import io_tools
-from elisa.analytics.binary_fit.summary import fit_rv_summary_with_error_propagation, \
-    fit_lc_summary_with_error_propagation, simple_rv_fit_summary
-from elisa.binary_system.utils import resolve_json_kind
+from typing import Union
+from . mcmc import CentralRadialVelocity as MCMCCentralRV
+from . least_squares import CentralRadialVelocity as LstSqrCentralRV
+from . import io_tools
+from . summary import (
+    fit_rv_summary_with_error_propagation,
+    fit_lc_summary_with_error_propagation,
+    simple_rv_fit_summary
+)
+from .. params import parameters
+from .. params.parameters import BinaryInitialParameters
+from ... binary_system.utils import resolve_json_kind
+from ... logger import getLogger
 
 logger = getLogger('analytics.binary_fit.rv_fit')
 

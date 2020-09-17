@@ -2,8 +2,8 @@ import astropy.units as au
 import pandas as pd
 import numpy as np
 
-from elisa import utils
-from elisa.conf import config
+from ... import utils
+from ... conf import config
 
 
 def convert_data(data, unit, to_unit):

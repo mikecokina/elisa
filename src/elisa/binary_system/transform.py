@@ -1,7 +1,7 @@
 import numpy as np
 
-from elisa import units, const
-from elisa.base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
+from .. import units, const
+from .. base.transform import SystemProperties, WHEN_FLOAT64, quantity_transform
 
 
 class BinarySystemProperties(SystemProperties):

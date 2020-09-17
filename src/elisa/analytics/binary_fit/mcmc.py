@@ -6,27 +6,27 @@ import emcee
 import numpy as np
 from scipy import interpolate
 
-from elisa.analytics import RVData, LCData
-from elisa.analytics.binary_fit.mixins import MCMCMixin
-from elisa.analytics.binary_fit.shared import (
-    lc_r_squared,
-    rv_r_squared,
-    AbstractLCFit,
-    AbstractRVFit,
-    AbstractFit)
-from elisa.analytics.models import lc as lc_model
-from elisa.analytics.models import rv as rv_model
-from elisa.analytics.params import parameters
-from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.observer.utils import normalize_light_curve
-from elisa.base.error import ElisaError
-from elisa.conf import config
-from elisa.graphic.mcmc_graphics import Plot
-from elisa.logger import getPersistentLogger
-from elisa.analytics.binary_fit.shared import check_for_boundary_surface_potentials
-from elisa import const
-from elisa.binary_system.system import BinarySystem
-from elisa.binary_system.curves.community import RadialVelocitySystem
+from . shared import check_for_boundary_surface_potentials
+from . mixins import MCMCMixin
+from . shared import (
+    lc_r_squared, rv_r_squared,
+    AbstractLCFit, AbstractRVFit, AbstractFit
+)
+
+from .. import RVData, LCData
+from .. models import lc as lc_model
+from .. models import rv as rv_model
+from .. params import parameters
+from .. tools.utils import time_layer_resolver
+
+from ... import const
+from ... observer.utils import normalize_light_curve
+from ... base.error import ElisaError
+from ... conf import config
+from ... graphic.mcmc_graphics import Plot
+from ... logger import getPersistentLogger
+from ... binary_system.system import BinarySystem
+from ... binary_system.curves.community import RadialVelocitySystem
 
 logger = getPersistentLogger('analytics.binary_fit.mcmc')
 

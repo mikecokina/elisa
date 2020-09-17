@@ -6,9 +6,9 @@ import os.path as op
 from datetime import datetime
 from typing import Dict
 
-from elisa.conf import config
-from elisa.logger import getPersistentLogger
-from elisa.analytics.params import parameters
+from .. params import parameters
+from ... conf import config
+from ... logger import getPersistentLogger
 
 
 logger = getPersistentLogger('analytics.binary_fit.mixins')

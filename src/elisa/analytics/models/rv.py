@@ -1,9 +1,9 @@
-from elisa.analytics.models import serializers
-from elisa.analytics.tools.utils import time_layer_resolver
-from elisa.base.error import InitialParamsError
-from elisa.binary_system.curves.community import RadialVelocitySystem
-from elisa.binary_system.system import BinarySystem
-from elisa.binary_system.utils import resolve_json_kind
+from .. models import serializers
+from .. tools.utils import time_layer_resolver
+from ... base.error import InitialParamsError
+from ... binary_system.curves.community import RadialVelocitySystem
+from ... binary_system.system import BinarySystem
+from ... binary_system.utils import resolve_json_kind
 
 
 def central_rv_synthetic(x_data, observer, **kwargs):

@@ -6,14 +6,12 @@ from jsonschema import (
     ValidationError
 )
 
-from elisa import units, const
-from elisa.base.error import YouHaveNoIdeaError
-from ..conf.config import SCHEMA_REGISTRY
-from ..binary_system import model
-from ..utils import is_empty
-from .. import (
-    umpy as up
-)
+from .. import units, const
+from .. import umpy as up
+from .. base.error import YouHaveNoIdeaError
+from .. conf.config import SCHEMA_REGISTRY
+from .. binary_system import model
+from .. utils import is_empty
 
 
 def potential_from_radius(component, radius, phi, theta, component_distance, mass_ratio, synchronicity):

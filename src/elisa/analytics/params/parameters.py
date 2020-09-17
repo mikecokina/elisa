@@ -9,21 +9,22 @@ from typing import Dict
 from astropy import units as au
 from jsonschema import ValidationError
 
-from elisa import utils
-from elisa.analytics.params import conf
-from elisa.analytics.params import bonds
-from elisa.analytics.params.bonds import (
+from .. params import conf
+from .. params import bonds
+from .. params.bonds import (
     ALLOWED_CONSTRAINT_METHODS,
     ALLOWED_CONSTRAINT_CHARS,
     TRANSFORM_TO_METHODS)
-from elisa.analytics.params.transform import (
+from .. params.transform import (
     BinaryInitialProperties,
     StarInitialProperties,
     SpotInitialProperties,
-    PulsationModeInitialProperties)
-from elisa.base.error import InitialParamsError
-from elisa.conf.config import BINARY_COUNTERPARTS
-from elisa.utils import is_empty
+    PulsationModeInitialProperties
+)
+from ... import utils
+from ... base.error import InitialParamsError
+from ... conf.config import BINARY_COUNTERPARTS
+from ... utils import is_empty
 
 
 def deflate_phenomena(flatten):

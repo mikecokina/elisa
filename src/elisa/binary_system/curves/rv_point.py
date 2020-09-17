@@ -1,8 +1,5 @@
 import numpy as np
-
-from elisa.binary_system.curves import (
-    utils as crv_utils
-)
+from . import utils as crv_utils
 
 
 def _calculate_rv_point(star):

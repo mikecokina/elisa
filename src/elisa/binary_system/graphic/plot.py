@@ -1,18 +1,17 @@
 import numpy as np
 
+from .. import utils as butils, dynamic
+from ... base import transform
+from .. container import OrbitalPositionContainer
+from ... const import Position
+from ... utils import is_empty
+from ... graphic import graphics
 
-from elisa.base import transform
-from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.const import Position
-from elisa.binary_system import utils as butils, dynamic
-from elisa.utils import is_empty
-from elisa.graphic import graphics
-
-from elisa import (
+from ... import (
     umpy as up,
+    units as eu,
     utils,
-    const,
-    units as eu
+    const
 )
 
 

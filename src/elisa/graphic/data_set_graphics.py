@@ -1,6 +1,5 @@
-from astropy import units
-
 import matplotlib.pyplot as plt
+from .. import units
 
 
 def display_observations(**kwargs):

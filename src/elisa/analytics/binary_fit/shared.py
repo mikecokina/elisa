@@ -4,17 +4,18 @@ from typing import Iterable, Dict
 from scipy import interpolate
 from abc import ABCMeta, abstractmethod
 
-from elisa.utils import is_empty
-from elisa.conf import config
-from elisa.analytics.params import parameters
-from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa.analytics.tools.utils import (
+from .. params import parameters
+from .. params.parameters import BinaryInitialParameters
+from .. tools.utils import (
     radialcurves_mean_error,
     lightcurves_mean_error,
-    time_layer_resolver)
-from elisa.observer.observer import Observer
-from elisa.observer.utils import normalize_light_curve
-from elisa.binary_system.system import BinarySystem
+    time_layer_resolver
+)
+from ... utils import is_empty
+from ... conf import config
+from ... observer.observer import Observer
+from ... observer.utils import normalize_light_curve
+from ... binary_system.system import BinarySystem
 
 
 class AbstractFit(metaclass=ABCMeta):

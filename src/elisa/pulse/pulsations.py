@@ -1,11 +1,9 @@
 import numpy as np
 
-from elisa import utils, const, umpy as up
-from elisa.umpy import sph_harm
-from elisa.conf import config
-from elisa.logger import getLogger
-from elisa.pulse import utils as putils
-
+from .. import utils, const, umpy as up
+from .. umpy import sph_harm
+from .. conf import config
+from .. logger import getLogger
 
 logger = getLogger('pulse.pulsations')
 

@@ -1,13 +1,14 @@
 import numpy as np
-from elisa import (
+
+from . import rv_point
+from . import c_router
+from .. orbit.orbit import distance_to_center_of_mass
+from ... observer.passband import init_rv_passband
+from ... conf import config
+from ... import (
     umpy as up,
     units
 )
-from elisa.binary_system.curves import rv_point
-from ...binary_system.curves import c_router
-from elisa.observer.passband import init_rv_passband
-from elisa.conf import config
-from elisa.binary_system.orbit.orbit import distance_to_center_of_mass
 
 
 def _radial_velocity(semi_major_axis, inclination, eccentricity, argument_of_periastron, period, true_anomaly):

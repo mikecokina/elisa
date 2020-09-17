@@ -1,18 +1,17 @@
 import numpy as np
 from copy import copy
 
-from elisa.binary_system.surface.mesh import add_spots_to_mesh
-
-from elisa import utils, const
-from elisa.conf import config
-from elisa.binary_system import (
+from . import utils as crv_utils
+from .. surface.mesh import add_spots_to_mesh
+from .. import (
     utils as bsutils,
     dynamic
 )
-from elisa.binary_system.curves import utils as crv_utils
-from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.binary_system.surface.coverage import compute_surface_coverage
-from elisa.binary_system.orbit.container import OrbitalSupplements
+from .. container import OrbitalPositionContainer
+from .. surface.coverage import compute_surface_coverage
+from .. orbit.container import OrbitalSupplements
+from ... import utils, const
+from ... conf import config
 
 
 def produce_circ_sync_curves_mp(*args):

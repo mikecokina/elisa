@@ -1,15 +1,15 @@
 import numpy as np
 from scipy.interpolate import Akima1DInterpolator
 
-from elisa import utils
-from elisa.conf import config
-from elisa.binary_system import dynamic
-from elisa.binary_system.curves import (
+from .. import dynamic
+from .. curves import (
     utils as crv_utils,
     c_managed
 )
-from ...binary_system.orbit.container import OrbitalSupplements
-from elisa.observer.mp_manager import manage_observations
+from ... import utils
+from ... conf import config
+from ... binary_system.orbit.container import OrbitalSupplements
+from ... observer.mp_manager import manage_observations
 
 
 def look_for_approximation(not_pulsations_test):

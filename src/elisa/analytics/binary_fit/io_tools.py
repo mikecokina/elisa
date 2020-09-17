@@ -1,9 +1,10 @@
 import numpy as np
 
-from elisa.analytics.binary_fit.mixins import MCMCMixin
-from elisa.analytics.params import parameters
-from elisa.analytics.params.parameters import ParameterMeta, BinaryInitialParameters
-from elisa.analytics.binary_fit.shared import AbstractFit
+from . mixins import MCMCMixin
+from . shared import AbstractFit
+
+from .. params import parameters
+from .. params.parameters import ParameterMeta, BinaryInitialParameters
 
 
 def write_ln(write_fn, designation, value, bot, top, unit, status, line_sep, precision=8):

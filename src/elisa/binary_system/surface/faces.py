@@ -3,18 +3,17 @@ import astropy.units as u
 
 from copy import copy
 from scipy.spatial.qhull import Delaunay
-from elisa.base import spot
-from elisa.utils import is_empty
-from elisa.binary_system import utils as bsutils
-from elisa.binary_system.orbit import orbit
-from elisa.logger import getLogger
-
-from elisa import (
+from .. import utils as bsutils
+from .. orbit import orbit
+from ... base import spot
+from ... utils import is_empty
+from ... logger import getLogger
+from ... import (
     umpy as up,
     const,
     units
 )
-from elisa.base.surface.faces import (
+from ... base.surface.faces import (
     initialize_model_container,
     split_spots_and_component_faces,
     set_all_surface_centres,

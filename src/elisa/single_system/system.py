@@ -2,23 +2,22 @@ import numpy as np
 import scipy
 
 from scipy import optimize
-from elisa.single_system.orbit import orbit
-from elisa.single_system.curves import lc
-from elisa.logger import getLogger
-from elisa.single_system.transform import SingleSystemProperties
-from elisa import const
-
-from elisa import (
-    utils,
-    const as c,
-)
-from elisa.base.system import System
-from elisa.single_system import (
+from . orbit import orbit
+from . curves import lc
+from . transform import SingleSystemProperties
+from . import (
     model,
     graphic,
     radius as sradius,
     utils as sys_utils
 )
+from .. logger import getLogger
+from .. import const
+from .. import (
+    utils,
+    const as c,
+)
+from .. base.system import System
 
 logger = getLogger('single_system.system')
 

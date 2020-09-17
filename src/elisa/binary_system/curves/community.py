@@ -1,10 +1,9 @@
 import numpy as np
 
-from elisa.binary_system.orbit import orbit
-from elisa.binary_system.transform import RadialVelocityObserverProperties
-from elisa.logger import getLogger
-
-from elisa import (
+from .. orbit import orbit
+from .. transform import RadialVelocityObserverProperties
+from ... logger import getLogger
+from ... import (
     umpy as up,
     units,
     const

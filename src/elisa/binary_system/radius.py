@@ -2,8 +2,8 @@ import numpy as np
 import scipy
 
 from scipy import optimize
-from elisa.binary_system import model
-from elisa import (
+from . import model
+from .. import (
     const,
     umpy as up
 )

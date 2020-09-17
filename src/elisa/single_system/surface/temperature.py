@@ -1,6 +1,6 @@
-from elisa.logger import getLogger
-from elisa.base.surface import temperature as btemperature
-from elisa.pulse import pulsations
+from ... logger import getLogger
+from ... base.surface import temperature as btemperature
+from ... pulse import pulsations
 
 logger = getLogger("single_system.surface.temperature")
 
