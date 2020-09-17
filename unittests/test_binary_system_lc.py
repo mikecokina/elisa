@@ -504,7 +504,7 @@ class CompareSingleVsMultiprocess(ResetClass):
     def tearDown(self):
         self.reset_config()
 
-    def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1):
+    def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1, tol=1e-8):
         o = Observer(passband=['Generic.Bessell.V'], system=system)
 
         sp_res = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
@@ -515,7 +515,7 @@ class CompareSingleVsMultiprocess(ResetClass):
         mp_res = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         mp_flux = normalize_lc_for_unittests(mp_res[1]["Generic.Bessell.V"])
 
-        self.assertTrue(np.all(sp_flux - mp_flux < 1e-8))
+        self.assertTrue(np.all(sp_flux - mp_flux < tol))
 
     @skip
     def test_circulcar_sync_lc(self):
@@ -549,7 +549,7 @@ class CompareSingleVsMultiprocess(ResetClass):
         reload(c_appx_router)
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs)
+        self.do_comparison(bs, tol=1e-4)
 
     @skip
     def test_eccentric_system_approximation_two(self):
@@ -559,7 +559,7 @@ class CompareSingleVsMultiprocess(ResetClass):
         reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs)
+        self.do_comparison(bs, tol=1e-4)
 
     @skip
     def test_eccentric_system_approximation_three(self):
@@ -568,7 +568,7 @@ class CompareSingleVsMultiprocess(ResetClass):
         reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, 0.0, 0.01, 0.002)
+        self.do_comparison(bs, 0.0, 0.01, 0.002, tol=1e-4)
 
     @skip
     def test_eccentric_spotty_asynchronous_detached_system(self):

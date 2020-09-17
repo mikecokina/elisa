@@ -360,7 +360,7 @@ class CompareSingleVsMultiprocess(ResetClass):
     def tearDown(self):
         self.reset_config()
 
-    def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1):
+    def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1, tol=1e-8):
         config.NUMBER_OF_PROCESSES = -1
         reload_modules()
 
@@ -381,8 +381,8 @@ class CompareSingleVsMultiprocess(ResetClass):
         mp_p = mp_p[~np.isnan(mp_p)]
         mp_s = mp_s[~np.isnan(mp_s)]
 
-        self.assertTrue(np.all((up.abs(sp_p - mp_p) / np.abs(np.max(sp_p))) < 1e-8))
-        self.assertTrue(np.all((up.abs(sp_s - mp_s) / np.abs(np.max(sp_s))) < 1e-8))
+        self.assertTrue(np.all((up.abs(sp_p - mp_p) / np.abs(np.max(sp_p))) < tol))
+        self.assertTrue(np.all((up.abs(sp_s - mp_s) / np.abs(np.max(sp_s))) < tol))
 
     def test_circular_sync_rv(self):
         config.LIMB_DARKENING_LAW = "linear"
@@ -412,7 +412,7 @@ class CompareSingleVsMultiprocess(ResetClass):
         reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs)
+        self.do_comparison(bs, tol=1e-4)
 
     def test_eccentric_system_approximation_two(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
@@ -421,7 +421,7 @@ class CompareSingleVsMultiprocess(ResetClass):
         reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs)
+        self.do_comparison(bs, tol=1e-4)
 
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
@@ -429,7 +429,7 @@ class CompareSingleVsMultiprocess(ResetClass):
         reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, -0.0, 0.01, 0.002)
+        self.do_comparison(bs, -0.0, 0.01, 0.002, tol=1e-4)
 
     def test_eccentric_spotty_asynchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached-async-ecc"], spots_primary=SPOTS_META["primary"])

@@ -139,7 +139,7 @@ def single_star_mesh(**kwargs):
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
-    ax.set_aspect('equal', adjustable='box')
+    ax.set_box_aspect([1, 1, 1])
     if kwargs['plot_axis']:
         unit = str(kwargs['axis_unit'])
         x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
@@ -167,7 +167,7 @@ def binary_mesh(**kwargs):
 
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_aspect('equal')
+    ax.set_box_aspect([1, 1, 1])
     ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
     if kwargs['components_to_plot'] in ['primary', 'both']:
@@ -220,7 +220,7 @@ def single_star_surface(**kwargs):
 
     fig = plt.figure(figsize=(7, 7))
     ax = axes3d.Axes3D(fig)
-    ax.set_aspect('equal')
+    ax.set_box_aspect([1, 1, 1])
     ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
@@ -292,7 +292,7 @@ def binary_surface(**kwargs):
 
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_aspect('equal')
+    ax.set_box_aspect([1, 1, 1])
     ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
@@ -504,7 +504,7 @@ def single_star_wireframe(**kwargs):
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_zlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
-    ax.set_aspect('equal', adjustable='box')
+    ax.set_box_aspect([1, 1, 1])
     if kwargs['plot_axis']:
         unit = str(kwargs['axis_unit'])
         x_label, y_label, z_label = r'x/' + unit, r'y/' + unit, r'z/' + unit
@@ -532,7 +532,7 @@ def binary_wireframe(**kwargs):
     """
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_aspect('equal')
+    ax.set_box_aspect([1, 1, 1])
     ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
@@ -622,7 +622,7 @@ def binary_surface_anim(**kwargs):
 
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_aspect('equal')
+    ax.set_box_aspect([1, 1, 1])
 
     ax.set_xlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
     ax.set_ylim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
