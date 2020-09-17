@@ -11,8 +11,8 @@ install:
   - pip install .[test]
 
 script:
-    - python -m unittest discover -s unittests -p "test_*.py"
-#     - python -m pytest unittests
+#     - python -m unittest discover -s unittests -p "test_*.py"
+    - python -m pytest unittests
 
 notifications:
   email:
