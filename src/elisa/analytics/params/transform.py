@@ -6,7 +6,7 @@ Transform to default float like units.
 import numpy as np
 
 from .. params import conf
-from ... import units
+from ... import units as u
 from ... base.transform import (
     TransformProperties,
     WHEN_FLOAT64,
@@ -26,7 +26,7 @@ def angular(value):
     :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
     :return: float;
     """
-    if isinstance(value, units.Quantity):
+    if isinstance(value, u.Quantity):
         value = np.float64(value.to(conf.DEFAULT_FLOAT_ANGULAR_UNIT))
     elif isinstance(value, WHEN_FLOAT64):
         value = np.float64(value)
@@ -39,8 +39,8 @@ def angular(value):
 class BinaryInitialProperties(TransformProperties):
     @staticmethod
     def semi_major_axis(value):
-        if isinstance(value, units.Quantity):
-            value = np.float64(value.to(units.solRad))
+        if isinstance(value, u.Quantity):
+            value = np.float64(value.to(u.solRad))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64(value)
         else:
@@ -52,7 +52,7 @@ class BinaryInitialProperties(TransformProperties):
 
     @staticmethod
     def mass(value):
-        if isinstance(value, units.Quantity):
+        if isinstance(value, u.Quantity):
             value = np.float64(value.to(conf.DEFAULT_FLOAT_MASS_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64(value)

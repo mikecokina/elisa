@@ -7,7 +7,7 @@ from unittests.utils import ElisaTestCase, prepare_single_system
 
 from elisa.single_system import model
 from elisa.utils import is_empty, find_nearest_dist_3d
-from elisa import umpy as up, units
+from elisa import umpy as up, units as u
 
 
 class BuildMeshSpotsFreeTestCase(ElisaTestCase):
@@ -67,12 +67,12 @@ class MeshUtilsTestCase(ElisaTestCase):
             # solar model
             {
                 "mass": 1.0,
-                "t_eff": 5772 * units.K,
+                "t_eff": 5772 * u.K,
                 "gravity_darkening": 0.32,
                 "polar_log_g": 4.43775,
                 "gamma": 0.0,
-                "inclination": 90.0 * units.deg,
-                "rotation_period": 25.38 * units.d,
+                "inclination": 90.0 * u.deg,
+                "rotation_period": 25.38 * u.d,
             },
         ]
 

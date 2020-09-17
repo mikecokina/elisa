@@ -1,8 +1,5 @@
-from elisa import (
-    atm,
-    ld
-)
-from elisa.observer.passband import init_bolometric_passband
+from ... import atm, ld
+from ... observer.passband import init_bolometric_passband
 
 
 def prep_surface_params(system, **kwargs):

@@ -1,7 +1,13 @@
+import sys
 import builtins
+from importlib import import_module
 builtins._ASTROPY_SETUP_ = True
 
-from astropy import units as u
+
+if 'astropy.units' in sys.modules:
+    u = sys.modules['astropy.units']
+else:
+    u = import_module('astropy.units')
 
 # DO NOT CHANGE THIS!!!
 MASS_UNIT = u.kg
@@ -36,4 +42,5 @@ kg = u.kg
 dex = u.dex
 mag = u.mag
 
+Unit = u.Unit
 Quantity = u.quantity.Quantity

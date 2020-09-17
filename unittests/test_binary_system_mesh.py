@@ -3,7 +3,7 @@ from unittest import skip
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from elisa import umpy as up, const, units
+from elisa import umpy as up, const, units as u
 from elisa.base.container import StarContainer
 from elisa.binary_system import model
 from elisa.binary_system.container import OrbitalPositionContainer
@@ -244,8 +244,8 @@ class MeshUtilsTestCase(ElisaTestCase):
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
              "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-             "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
-             "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+             "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": const.HALF_PI * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -256,8 +256,8 @@ class MeshUtilsTestCase(ElisaTestCase):
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
              "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
-             "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
-             "eccentricity": 0.3, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+             "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,

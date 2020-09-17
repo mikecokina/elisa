@@ -2,7 +2,7 @@ from unittest import mock
 
 import numpy as np
 
-from elisa import units
+from elisa import units as u
 from elisa.analytics import LCData, LCBinaryAnalyticsTask, RVData, RVBinaryAnalyticsTask
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.binary_system import t_layer
@@ -125,15 +125,15 @@ class McMcLCTestCase(AbstractFitTestCase):
         lc_v = LCData(
             x_data=self.phases['Generic.Bessell.V'],
             y_data=self.flux['Generic.Bessell.V'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.dimensionless_unscaled
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
         )
 
         lc_b = LCData(
             x_data=self.phases['Generic.Bessell.B'],
             y_data=self.flux['Generic.Bessell.B'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.dimensionless_unscaled
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
         )
 
         self.model_generator.keep_out = True
@@ -216,16 +216,16 @@ class McMcLCTestCase(AbstractFitTestCase):
         lc_v = LCData(
             x_data=self.phases['Generic.Bessell.V'],
             y_data=self.flux['Generic.Bessell.V'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.dimensionless_unscaled
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
 
         )
 
         lc_b = LCData(
             x_data=self.phases['Generic.Bessell.B'],
             y_data=self.flux['Generic.Bessell.B'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.dimensionless_unscaled
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
         )
 
         self.model_generator.keep_out = True
@@ -291,15 +291,15 @@ class McMcRVTestCase(RVTestCase):
         rv_primary = RVData(
             x_data=phases,
             y_data=self.rv['primary'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.m / units.s
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
         )
 
         rv_secondary = RVData(
             x_data=phases,
             y_data=self.rv['secondary'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.m / units.s
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
         )
 
         initial_parameters = {
@@ -355,15 +355,15 @@ class LeastSqaureRVTestCase(RVTestCase):
         rv_primary = RVData(
             x_data=xs['primary'],
             y_data=rvs['primary'],
-            x_unit=units.d,
-            y_unit=units.m / units.s
+            x_unit=u.d,
+            y_unit=u.m / u.s
         )
 
         rv_secondary = RVData(
             x_data=xs['secondary'],
             y_data=rvs['secondary'],
-            x_unit=units.d,
-            y_unit=units.m / units.s
+            x_unit=u.d,
+            y_unit=u.m / u.s
         )
 
         initial_parameters = {
@@ -432,15 +432,15 @@ class LeastSqaureRVTestCase(RVTestCase):
         rv_primary = RVData(
             x_data=phases,
             y_data=rvs['primary'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.m / units.s
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
         )
 
         rv_secondary = RVData(
             x_data=phases,
             y_data=rvs['secondary'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.m / units.s
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
         )
 
         initial_parameters = {
@@ -499,15 +499,15 @@ class LeastSqaureRVTestCase(RVTestCase):
         rv_primary = RVData(
             x_data=phases,
             y_data=rvs['primary'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.m / units.s
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
         )
 
         rv_secondary = RVData(
             x_data=phases,
             y_data=rvs['secondary'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.m / units.s
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
         )
 
         initial_parameters = {
@@ -625,15 +625,15 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
         lc_v = LCData(
             x_data=self.phases['Generic.Bessell.V'],
             y_data=self.flux['Generic.Bessell.V'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.dimensionless_unscaled
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
         )
 
         lc_b = LCData(
             x_data=self.phases['Generic.Bessell.B'],
             y_data=self.flux['Generic.Bessell.B'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.dimensionless_unscaled
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
         )
 
         self.model_generator.keep_out = True
@@ -719,15 +719,15 @@ class LeastSqaureLCTestCase(AbstractFitTestCase):
         lc_v = LCData(
             x_data=self.phases['Generic.Bessell.V'],
             y_data=self.flux['Generic.Bessell.V'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.dimensionless_unscaled
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
         )
 
         lc_b = LCData(
             x_data=self.phases['Generic.Bessell.B'],
             y_data=self.flux['Generic.Bessell.B'],
-            x_unit=units.dimensionless_unscaled,
-            y_unit=units.dimensionless_unscaled
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
         )
 
         self.model_generator.keep_out = True

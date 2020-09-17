@@ -2,7 +2,7 @@ import numpy as np
 
 from elisa import (
     umpy as up,
-    units,
+    units as u,
     const
 )
 from elisa.binary_system.curves import rv
@@ -24,11 +24,11 @@ class RadialVelocityObserverTestCase(ElisaTestCase):
     def test_all_init_values_in_expected_units(self):
         init_kwargs = dict(
             eccentricity=0.1,
-            argument_of_periastron=90 * units.deg,
+            argument_of_periastron=90 * u.deg,
             period=10.0,
             mass_ratio=0.5,
-            asini=9 * units.solRad,
-            gamma=11 * units.m / units.s
+            asini=9 * u.solRad,
+            gamma=11 * u.m / u.s
         )
 
         expected = np.round([0.1, const.HALF_PI, 10.0, 0.5, 9.0, 11], 4)
@@ -43,7 +43,7 @@ class RadialVelocityObserverTestCase(ElisaTestCase):
         s.init()
         std_rvdict = rv.com_radial_velocity(s, position_method=s.calculate_orbital_motion, phases=self.phases)
 
-        asini = np.float64((s.semi_major_axis * np.sin(s.inclination) * units.m).to(units.solRad))
+        asini = np.float64((s.semi_major_axis * np.sin(s.inclination) * u.m).to(u.solRad))
 
         rv_system = RadialVelocitySystem(eccentricity=s.eccentricity,
                                          argument_of_periastron=np.degrees(s.argument_of_periastron),

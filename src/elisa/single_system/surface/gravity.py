@@ -105,4 +105,3 @@ def calculate_potential_gradient(points, angular_velocity, mass):
     points_gradients[:, 2] = c.G * mass * points[:, 2] / r3
 
     return - points_gradients
-

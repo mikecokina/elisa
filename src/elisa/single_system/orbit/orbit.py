@@ -1,13 +1,12 @@
 import numpy as np
 
-from elisa import (
+from . transform import OrbitProperties
+from ... import (
     const as c,
-    units,
+    units as u,
     utils
 )
-
-from elisa.logger import getLogger
-from elisa.single_system.orbit.transform import OrbitProperties
+from ... logger import getLogger
 
 logger = getLogger('single_system.orbit.orbit')
 
@@ -19,7 +18,7 @@ def angular_velocity(rotation_period):
     :param rotation_period: float;
     :return: float;
     """
-    return c.FULL_ARC / (rotation_period * units.PERIOD_UNIT).to(units.s).value
+    return c.FULL_ARC / (rotation_period * u.PERIOD_UNIT).to(u.s).value
 
 
 def true_phase_to_azimuth(phase):

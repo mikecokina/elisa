@@ -7,7 +7,7 @@ from ... observer.passband import init_rv_passband
 from ... conf import config
 from ... import (
     umpy as up,
-    units
+    units as u
 )
 
 
@@ -49,7 +49,7 @@ def com_radial_velocity(binary, **kwargs):
     # in base SI units
     sma_primary *= binary.semi_major_axis
     sma_secondary *= binary.semi_major_axis
-    period = np.float64((binary.period * units.PERIOD_UNIT).to(units.s))
+    period = np.float64((binary.period * u.PERIOD_UNIT).to(u.s))
 
     rv_primary = _radial_velocity(sma_primary, binary.inclination, binary.eccentricity,
                                   binary.argument_of_periastron, period, orbital_motion[:, 3]) * -1.0
@@ -145,6 +145,3 @@ def compute_eccentric_spotty_rv_curve(binary, **kwargs):
     """
     rv_labels = list(config.BINARY_COUNTERPARTS.keys())
     return c_router.produce_ecc_curves_with_spots(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
-
-
-

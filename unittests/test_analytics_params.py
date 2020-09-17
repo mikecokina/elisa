@@ -2,7 +2,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 from parameterized import parameterized
 
-from elisa import units
+from elisa import units as u
 from elisa.analytics.params import conf, parameters
 from elisa.analytics.params.parameters import xs_reducer
 from elisa.conf.config import BINARY_COUNTERPARTS
@@ -16,37 +16,37 @@ class ConfTestCase(ElisaTestCase):
     def test_DEFAULT_FLOAT_UNITS():
         # this is important, do not mess up default units in analytics
         expected = {
-            'inclination': units.deg,
+            'inclination': u.deg,
             'eccentricity': None,
-            'argument_of_periastron': units.deg,
-            'gamma': units.VELOCITY_UNIT,
-            'mass': units.solMass,
-            't_eff': units.TEMPERATURE_UNIT,
+            'argument_of_periastron': u.deg,
+            'gamma': u.VELOCITY_UNIT,
+            'mass': u.solMass,
+            't_eff': u.TEMPERATURE_UNIT,
             'metallicity': None,
             'surface_potential': None,
             'albedo': None,
             'gravity_darkening': None,
             'synchronicity': None,
             'mass_ratio': None,
-            'semi_major_axis': units.solRad,
-            'asini': units.solRad,
-            'period': units.PERIOD_UNIT,
-            'primary_minimum_time': units.PERIOD_UNIT,
+            'semi_major_axis': u.solRad,
+            'asini': u.solRad,
+            'period': u.PERIOD_UNIT,
+            'primary_minimum_time': u.PERIOD_UNIT,
             'additional_light': None,
             'phase_shift': None,
             # SPOTS
-            'latitude': units.deg,
-            'longitude': units.deg,
-            'angular_radius': units.deg,
+            'latitude': u.deg,
+            'longitude': u.deg,
+            'angular_radius': u.deg,
             'temperature_factor': None,
             # PULSATIONS
             'l': None,
             'm': None,
-            'amplitude': units.VELOCITY_UNIT,
-            'frequency': units.FREQUENCY_UNIT,
-            'start_phase': units.deg,
-            'mode_axis_theta': units.deg,
-            'mode_axis_phi': units.deg,
+            'amplitude': u.VELOCITY_UNIT,
+            'frequency': u.FREQUENCY_UNIT,
+            'start_phase': u.deg,
+            'mode_axis_theta': u.deg,
+            'mode_axis_phi': u.deg,
         }
         # in python3.6 >= order is maintain
         assert_array_equal(list(conf.DEFAULT_FLOAT_UNITS.values()), list(expected.values()))
@@ -58,11 +58,11 @@ class ConfTestCase(ElisaTestCase):
 
     @staticmethod
     def test_DEFAULT_FLOAT_ANGULAR_UNIT():
-        assert conf.DEFAULT_FLOAT_ANGULAR_UNIT, units.deg
+        assert conf.DEFAULT_FLOAT_ANGULAR_UNIT, u.deg
 
     @staticmethod
     def test_DEFAULT_FLOAT_MASS_UNIT():
-        assert conf.DEFAULT_FLOAT_MASS_UNIT, units.solMass
+        assert conf.DEFAULT_FLOAT_MASS_UNIT, u.solMass
 
 
 class ParamsSupportTestCase(ElisaTestCase):
@@ -973,14 +973,14 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                     "fixed": False,
                     "min": 0.0,
                     "max": 0.5,
-                    "unit": units.dimensionless_unscaled
+                    "unit": u.dimensionless_unscaled
                 },
                 "asini": {
                     "value": 2785360000,
                     "fixed": False,
                     "min": 2785360000 - 10000,
                     "max": 2785360000 + 10000,
-                    "unit": units.m
+                    "unit": u.m
                 },
                 "mass_ratio": {
                     "value": 3,
@@ -991,19 +991,19 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "argument_of_periastron": {
                     "value": 0.0,
                     "fixed": True,
-                    "unit": units.ARC_UNIT
+                    "unit": u.ARC_UNIT
                 },
                 "gamma": {
                     "value": 300.0,
                     "fixed": False,
                     "min": 100.0,
                     "max": 500.0,
-                    "unit": units.km / units.s
+                    "unit": u.km / u.s
                 },
                 "period": {
                     "value": 4.5,
                     "fixed": True,
-                    "unit": units.PERIOD_UNIT
+                    "unit": u.PERIOD_UNIT
                 }
             }
         }
@@ -1014,10 +1014,10 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
         self.assertTrue(round(initial_parametres.data["system@asini"].value) == 4.0)
         self.assertTrue(round(initial_parametres.data["system@argument_of_periastron"].value) == 0.0)
 
-        self.assertTrue(initial_parametres.data["system@gamma"].unit == units.m / units.s)
-        self.assertTrue(initial_parametres.data["system@period"].unit == units.d)
-        self.assertTrue(initial_parametres.data["system@asini"].unit == units.solRad)
-        self.assertTrue(initial_parametres.data["system@argument_of_periastron"].unit == units.deg)
+        self.assertTrue(initial_parametres.data["system@gamma"].unit == u.m / u.s)
+        self.assertTrue(initial_parametres.data["system@period"].unit == u.d)
+        self.assertTrue(initial_parametres.data["system@asini"].unit == u.solRad)
+        self.assertTrue(initial_parametres.data["system@argument_of_periastron"].unit == u.deg)
 
     @parameterized.expand([['eccentricity'], ['argument_of_periastron'], ['gamma']])
     def test_validate_mandatory_rv_parameters(self, param):

@@ -58,7 +58,7 @@ class Animation(object):
             on_pos.time = 86400 * self.binary.period * position.phase
             dynamic.assign_spot_longitudes(on_pos, spots_longitudes, index=pos_idx, component="all")
             on_pos.set_on_position_params(position, potentials["primary"][pos_idx],
-                                           potentials["secondary"][pos_idx])
+                                          potentials["secondary"][pos_idx])
             on_pos.build(components_distance=position.distance)
             on_pos = butils.move_sys_onpos(on_pos, position, potentials["primary"][pos_idx],
                                            potentials["secondary"][pos_idx], on_copy=False)
@@ -94,4 +94,3 @@ class Animation(object):
         })
         logger.debug('Passing parameters to graphics module')
         graphics.binary_surface_anim(**anim_kwargs)
-

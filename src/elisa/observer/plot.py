@@ -37,8 +37,8 @@ class Plot(object):
             "legend_location": legend_location
         }
         if isinstance(unit, type(u.W/u.m**2)) and fluxes is None:
-            for filter, fluxes in kwargs['fluxes'].items():
-                kwargs['fluxes'][filter] = (fluxes*self.observer.fluxes_unit).to(unit).value
+            for _filter, fluxes in kwargs['fluxes'].items():
+                kwargs['fluxes'][_filter] = (fluxes*self.observer.fluxes_unit).to(unit).value
 
         graphics.phase_curve(**kwargs)
 

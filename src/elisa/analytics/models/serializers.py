@@ -62,6 +62,3 @@ def serialize_primary_kwargs(**kwargs):
 
 def serialize_secondary_kwargs(**kwargs):
     return _serialize_star_kwargs(component='secondary', **kwargs)
-
-
-

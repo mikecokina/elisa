@@ -13,9 +13,9 @@ from unittests.utils import (
     SOLAR_MODEL
 )
 from elisa import (
-    units,
+    units as u,
     umpy as up,
-const as c
+    const as c
 )
 from elisa.single_system.curves import (
     lc
@@ -29,13 +29,13 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         'solar':
         {
             "mass": 1.0,
-            "t_eff": 5772 * units.K,
+            "t_eff": 5772 * u.K,
             "gravity_darkening": 0.32,
-            "polar_log_g": 4.43775*units.dex(units.cm/units.s**2),
+            "polar_log_g": 4.43775*u.dex(u.cm/u.s**2),
             "gamma": 0.0,
             # "inclination": 82.5 * units.deg,
-            "inclination": 90.0 * units.deg,
-            "rotation_period": 25.38 * units.d,
+            "inclination": 90.0 * u.deg,
+            "rotation_period": 25.38 * u.d,
         },
     }
 

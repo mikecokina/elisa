@@ -1,15 +1,12 @@
 import numpy as np
 
-from elisa.conf import config
-from elisa.single_system import (
+from . import shared
+from ... import ld
+from ... conf import config
+from ... single_system import (
     utils as ssutils,
     surface
 )
-from elisa import (
-    ld,
-    const as c
-)
-from elisa.single_system.curves import shared
 
 
 def compute_non_pulsating_lightcurve(*args):

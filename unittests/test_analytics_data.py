@@ -1,5 +1,4 @@
 import os.path as op
-import astropy.units as au
 import numpy as np
 
 from numpy.testing import assert_array_equal
@@ -28,10 +27,10 @@ class LVDataTestCase(DataTestCase):
     def test_from_file(self):
         fpath = op.join(self.DATA, "dummy.csv")
         x_unit = u.dimensionless_unscaled
-        y_unit = u.km/au.s
+        y_unit = u.km/u.s
         rv_data = RVData.from_file(fpath, x_unit, y_unit=y_unit)
 
-        self.assertEqual(rv_data.y_unit, u.m / au.s)
+        self.assertEqual(rv_data.y_unit, u.m / u.s)
         self.assertEqual(rv_data.x_unit, u.dimensionless_unscaled)
 
         assert_array_equal(rv_data.x_data, np.arange(0, 5, 1))

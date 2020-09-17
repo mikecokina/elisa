@@ -160,8 +160,8 @@ def build_velocities(system):
     star.velocities = np.mean(p_velocities[star.faces], axis=1)
 
     if star.has_spots():
-        for spot in star.spots.values():
-            p_velocities = np.cross(spot.points, omega, axisa=1)
-            spot.velocities = np.mean(p_velocities[spot.faces], axis=1)
+        for _spot in star.spots.values():
+            p_velocities = np.cross(_spot.points, omega, axisa=1)
+            _spot.velocities = np.mean(p_velocities[_spot.faces], axis=1)
 
     return system

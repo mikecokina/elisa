@@ -1,6 +1,6 @@
 import numpy as np
-from astropy import units as u
 
+from ... import units as u
 from ... binary_system import t_layer
 
 

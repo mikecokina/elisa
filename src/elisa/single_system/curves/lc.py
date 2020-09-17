@@ -1,11 +1,8 @@
-from elisa import (
-    const
-)
-from elisa.logger import getLogger
-from elisa.single_system.container import SystemContainer
-from elisa.single_system.curves import shared, lcmp
-from elisa.observer.mp_manager import manage_observations
-
+from . import shared, lcmp
+from .. container import SystemContainer
+from ... import const
+from ... logger import getLogger
+from ... observer.mp_manager import manage_observations
 
 logger = getLogger('single_system.curves.lc')
 

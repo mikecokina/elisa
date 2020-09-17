@@ -3,10 +3,8 @@ import numpy as np
 from abc import ABCMeta, abstractmethod
 from .. base.body import Body
 from .. logger import getLogger
-from .. import (
-    utils
-)
-from elisa.pulse import pulsations
+from .. import utils
+from .. pulse import pulsations
 
 logger = getLogger('base.system')
 

@@ -1,7 +1,7 @@
-import astropy.units as au
 import pandas as pd
 import numpy as np
 
+from ... import units as u
 from ... import utils
 from ... conf import config
 
@@ -15,7 +15,7 @@ def convert_data(data, unit, to_unit):
     :param to_unit: astropy.unit;
     :return: numpy.array;
     """
-    return data if unit == au.dimensionless_unscaled else (data * unit).to(to_unit).value
+    return data if unit == u.dimensionless_unscaled else (data * unit).to(to_unit).value
 
 
 def convert_flux(data, unit, zero_point=None):
@@ -27,7 +27,7 @@ def convert_flux(data, unit, zero_point=None):
     :param zero_point: float;
     :return: numpy.array;
     """
-    if unit == au.mag:
+    if unit == u.mag:
         if zero_point is None:
             raise ValueError('You supplied your data in magnitudes. Please also specify '
                              'a zero point using keyword argument `reference_magnitude`.')
@@ -46,7 +46,7 @@ def convert_flux_error(error, unit, zero_point=None):
     :param zero_point: float;
     :return: numpy.array;
     """
-    if unit == au.mag:
+    if unit == u.mag:
         if zero_point is None:
             raise ValueError('You supplied your data in magnitudes. Please also specify '
                              'a zero point using keyword argument `reference_magnitude`.')
@@ -63,7 +63,7 @@ def convert_unit(unit, to_unit):
     :param to_unit: astropy.unit;
     :return: astropy.unit;
     """
-    return unit if unit == au.dimensionless_unscaled else to_unit
+    return unit if unit == u.dimensionless_unscaled else to_unit
 
 
 def read_data_file(filename, data_columns, delimiter=config.DELIM_WHITESPACE):

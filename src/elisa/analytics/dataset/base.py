@@ -9,7 +9,7 @@ from . transform import (
 from .. dataset.graphic import plot
 from .. dataset import utils as dutils
 from ... logger import getLogger
-from ... import utils, units
+from ... import utils, units as u
 from ... conf import config
 from ... utils import is_empty
 
@@ -108,9 +108,9 @@ class DataSet(metaclass=ABCMeta):
         start_phase = centre - 0.5
         t0 += start_phase * period
         self.x_data = ((self.x_data - t0) / period) % 1.0 + start_phase
-        self.x_unit = units.dimensionless_unscaled
+        self.x_unit = u.dimensionless_unscaled
 
-    def convert_to_time(self, period, t0, to_unit=units.PERIOD_UNIT):
+    def convert_to_time(self, period, t0, to_unit=u.PERIOD_UNIT):
         """
         Function converts DataSet with x_data in dimensionless phases to time according to an ephemeris.
 
@@ -182,16 +182,16 @@ class RVData(DataSet):
         :return: Dict;
         """
         # converting x-axis
-        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], units.PERIOD_UNIT)
-        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], units.PERIOD_UNIT)
+        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.PERIOD_UNIT)
+        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.PERIOD_UNIT)
 
         # converting y-axis
-        kwargs['y_data'] = dutils.convert_data(kwargs['y_data'], kwargs['y_unit'], units.VELOCITY_UNIT)
+        kwargs['y_data'] = dutils.convert_data(kwargs['y_data'], kwargs['y_unit'], u.VELOCITY_UNIT)
 
         # convert errors
         if 'y_err' in kwargs.keys():
-            kwargs['y_err'] = dutils.convert_data(kwargs['y_err'], kwargs['y_unit'], units.VELOCITY_UNIT)
-        kwargs['y_unit'] = dutils.convert_unit(kwargs['y_unit'], units.VELOCITY_UNIT)
+            kwargs['y_err'] = dutils.convert_data(kwargs['y_err'], kwargs['y_unit'], u.VELOCITY_UNIT)
+        kwargs['y_unit'] = dutils.convert_unit(kwargs['y_unit'], u.VELOCITY_UNIT)
 
         return kwargs
 
@@ -247,8 +247,8 @@ class LCData(DataSet):
         :return: Dict;
         """
         # converting x-axis
-        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], units.PERIOD_UNIT)
-        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], units.PERIOD_UNIT)
+        kwargs['x_data'] = dutils.convert_data(kwargs['x_data'], kwargs['x_unit'], u.PERIOD_UNIT)
+        kwargs['x_unit'] = dutils.convert_unit(kwargs['x_unit'], u.PERIOD_UNIT)
         kwargs['reference_magnitude'] = kwargs.get('reference_magnitude', None)
 
         # convert errors
@@ -259,6 +259,6 @@ class LCData(DataSet):
         # converting y-axis
         kwargs['y_data'] = dutils.convert_flux(kwargs['y_data'], kwargs['y_unit'],
                                                zero_point=kwargs['reference_magnitude'])
-        kwargs['y_unit'] = dutils.convert_unit(kwargs['y_unit'], units.dimensionless_unscaled)
+        kwargs['y_unit'] = dutils.convert_unit(kwargs['y_unit'], u.dimensionless_unscaled)
 
         return kwargs

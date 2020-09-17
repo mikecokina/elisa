@@ -1,7 +1,7 @@
 import numpy as np
 from astropy.time import Time
 
-from ... import units
+from ... import units as u
 from ... atm import atm_file_prefix_to_quantity_list
 from ... conf import config
 
@@ -61,41 +61,41 @@ DEFAULT_NORMALIZATION_SYSTEM = {
 SPOTS_PARAMETERS = ['longitude', 'latitude', 'angular_radius', 'temperature_factor', 'angular_radius']
 PULSATIONS_PARAMETERS = ['l', 'm', 'amplitude', 'frequency', 'start_phase', 'mode_axis_phi', 'mode_axis_theta']
 
-DEFAULT_FLOAT_ANGULAR_UNIT = units.deg
-DEFAULT_FLOAT_MASS_UNIT = units.solMass
+DEFAULT_FLOAT_ANGULAR_UNIT = u.deg
+DEFAULT_FLOAT_MASS_UNIT = u.solMass
 
 DEFAULT_FLOAT_UNITS = {
-    'inclination': units.deg,
+    'inclination': u.deg,
     'eccentricity': None,
-    'argument_of_periastron': units.deg,
-    'gamma': units.VELOCITY_UNIT,
-    'mass': units.solMass,
-    't_eff': units.TEMPERATURE_UNIT,
+    'argument_of_periastron': u.deg,
+    'gamma': u.VELOCITY_UNIT,
+    'mass': u.solMass,
+    't_eff': u.TEMPERATURE_UNIT,
     'metallicity': None,
     'surface_potential': None,
     'albedo': None,
     'gravity_darkening': None,
     'synchronicity': None,
     'mass_ratio': None,
-    'semi_major_axis': units.solRad,
-    'asini': units.solRad,
-    'period': units.PERIOD_UNIT,
-    'primary_minimum_time': units.PERIOD_UNIT,
+    'semi_major_axis': u.solRad,
+    'asini': u.solRad,
+    'period': u.PERIOD_UNIT,
+    'primary_minimum_time': u.PERIOD_UNIT,
     'additional_light': None,
     'phase_shift': None,
     # SPOTS
-    'latitude': units.deg,
-    'longitude': units.deg,
-    'angular_radius': units.deg,
+    'latitude': u.deg,
+    'longitude': u.deg,
+    'angular_radius': u.deg,
     'temperature_factor': None,
     # PULSATIONS
     'l': None,
     'm': None,
-    'amplitude': units.VELOCITY_UNIT,
-    'frequency': units.FREQUENCY_UNIT,
-    'start_phase': units.deg,
-    'mode_axis_theta': units.deg,
-    'mode_axis_phi': units.deg,
+    'amplitude': u.VELOCITY_UNIT,
+    'frequency': u.FREQUENCY_UNIT,
+    'start_phase': u.deg,
+    'mode_axis_theta': u.deg,
+    'mode_axis_phi': u.deg,
 }
 
 PARAMS_KEY_TEX_MAP = {

@@ -3,7 +3,7 @@ import json
 from abc import abstractmethod
 from typing import Union, Dict
 
-from ... import units
+from ... import units as u
 from ... conf.config import BINARY_COUNTERPARTS
 from ... binary_system.surface.gravity import calculate_polar_gravity_acceleration
 from ... logger import getLogger
@@ -61,7 +61,7 @@ class LCFit(object):
                 io_tools.write_param_ln(result_dict, 'system@semi_major_axis', a_desig, write_fn, line_sep, 3)
             else:
                 io_tools.write_ln(write_fn, q_desig, binary_instance.mass_ratio, '', '', '', 'derived', line_sep, 3)
-                sma = (binary_instance.semi_major_axis * units.DISTANCE_UNIT).to(units.solRad).value
+                sma = (binary_instance.semi_major_axis * u.DISTANCE_UNIT).to(u.solRad).value
                 io_tools.write_ln(write_fn, a_desig, sma, '', '', 'AU', 'derived', line_sep, 3)
 
             io_tools.write_param_ln(result_dict, 'system@inclination', 'Inclination (i):', write_fn, line_sep, 2)
@@ -99,21 +99,23 @@ class LCFit(object):
                 if f'{component}@mass' in result_dict:
                     io_tools.write_param_ln(result_dict, f'{component}@mass', m_desig, write_fn, line_sep, 3)
                 else:
-                    io_tools.write_ln(write_fn, m_desig, (star_instance.mass * units.MASS_UNIT).to(units.solMass).value,
+                    io_tools.write_ln(write_fn, m_desig, (star_instance.mass * u.MASS_UNIT).to(u.solMass).value,
                                       '-', '-', 'solMass', 'Derived', line_sep, 3)
 
                 io_tools.write_param_ln(result_dict, f'{component}@surface_potential',
                                         f'Surface potential (Omega_{comp_n}):', write_fn, line_sep, 4)
 
                 crit_pot = binary_instance.critical_potential(component, 1.0 - binary_instance.eccentricity)
-                io_tools.write_ln(write_fn, 'Critical potential at L_1:', crit_pot, '-', '-', '-', 'Derived', line_sep, 4)
+                io_tools.write_ln(write_fn, 'Critical potential at L_1:', crit_pot,
+                                  '-', '-', '-', 'Derived', line_sep, 4)
 
                 f_desig = f'Synchronicity (F_{comp_n}):'
 
                 if f'{component}@synchronicity' in result_dict:
                     io_tools.write_param_ln(result_dict, f'{component}@synchronicity', f_desig, write_fn, line_sep, 3)
                 else:
-                    io_tools.write_ln(write_fn, f_desig, star_instance.synchronicity, '-', '-', '-', 'Fixed', line_sep, 3)
+                    io_tools.write_ln(write_fn, f_desig, star_instance.synchronicity,
+                                      '-', '-', '-', 'Fixed', line_sep, 3)
 
                 polar_g = calculate_polar_gravity_acceleration(star_instance,
                                                                1 - binary_instance.eccentricity,
@@ -126,19 +128,19 @@ class LCFit(object):
                 io_tools.write_ln(write_fn, 'Polar gravity (log g):', polar_g, '-', '-', 'cgs', 'Derived', line_sep, 3)
 
                 r_equiv = (star_instance.equivalent_radius * binary_instance.semi_major_axis *
-                           units.DISTANCE_UNIT).to(units.solRad).value
+                           u.DISTANCE_UNIT).to(u.solRad).value
 
                 io_tools.write_ln(write_fn, 'Equivalent radius (R_equiv):', r_equiv,
                                   '-', '-', 'solRad', 'Derived', line_sep, 5)
 
                 write_fn(f"\nPeriastron radii{line_sep}")
                 polar_r = (star_instance.polar_radius * binary_instance.semi_major_axis
-                           * units.DISTANCE_UNIT).to(units.solRad).value
+                           * u.DISTANCE_UNIT).to(u.solRad).value
 
                 back_r = (star_instance.backward_radius * binary_instance.semi_major_axis
-                          * units.DISTANCE_UNIT).to(units.solRad).value
+                          * u.DISTANCE_UNIT).to(u.solRad).value
                 side_r = (star_instance.side_radius * binary_instance.semi_major_axis
-                          * units.DISTANCE_UNIT).to(units.solRad).value
+                          * u.DISTANCE_UNIT).to(u.solRad).value
 
                 io_tools.write_ln(write_fn, 'Polar radius:', polar_r, '-', '-', 'solRad', 'Derived', line_sep, 5)
                 io_tools.write_ln(write_fn, 'Backward radius:', back_r, '-', '-', 'solRad', 'Derived', line_sep, 5)
@@ -146,7 +148,7 @@ class LCFit(object):
 
                 if getattr(star_instance, 'forward_radius', None) is not None:
                     forward_r = (star_instance.forward_radius * binary_instance.semi_major_axis
-                                 * units.DISTANCE_UNIT).to(units.solRad).value
+                                 * u.DISTANCE_UNIT).to(u.solRad).value
                     io_tools.write_ln(write_fn, 'Forward radius:', forward_r, '-',
                                       '-', 'solRad', 'Derived', line_sep, 5)
 
@@ -156,7 +158,7 @@ class LCFit(object):
                                         write_fn, line_sep, 0)
 
                 l_bol = (binary_instance.calculate_bolometric_luminosity(components=component)[component] *
-                         units.LUMINOSITY_UNIT).to('L_sun').value
+                         u.LUMINOSITY_UNIT).to('L_sun').value
 
                 io_tools.write_ln(write_fn, 'Bolometric luminosity (L_bol): ', l_bol,
                                   '-', '-', 'L_Sol', 'Derived', line_sep, 2)

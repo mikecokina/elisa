@@ -9,7 +9,7 @@ from ... graphic import graphics
 
 from ... import (
     umpy as up,
-    units as eu,
+    units as u,
     utils,
     const
 )
@@ -34,7 +34,7 @@ class Plot(object):
         self.binary = instance
 
     def orbit(self, start_phase=0.0, stop_phase=1.0, number_of_points=300,
-              axis_units=eu.solRad, frame_of_reference='primary', legend=True):
+              axis_units=u.solRad, frame_of_reference='primary', legend=True):
         """
         Function for quick 2D plot of the orbital motion in the orbital plane.
 
@@ -48,15 +48,15 @@ class Plot(object):
         """
         orbit_kwargs = dict()
         if axis_units in ['dimensionless', 'SMA']:
-            axis_units = eu.dimensionless_unscaled
+            axis_units = u.dimensionless_unscaled
 
         # orbit calculation for given phases
         phases = np.linspace(start_phase, stop_phase, number_of_points)
         ellipse = self.binary.orbit.orbital_motion(phase=phases)
 
         # if axis are without unit a = 1
-        if axis_units != eu.dimensionless_unscaled:
-            a = self.binary.semi_major_axis * eu.DISTANCE_UNIT.to(axis_units)
+        if axis_units != u.dimensionless_unscaled:
+            a = self.binary.semi_major_axis * u.DISTANCE_UNIT.to(axis_units)
             radius = a * ellipse[:, 0]
         else:
             radius = ellipse[:, 0]
@@ -130,11 +130,11 @@ class Plot(object):
         """
 
         binary_mesh_kwargs = dict()
-        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
 
-        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else up.degrees(azim) - 90
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
@@ -173,10 +173,10 @@ class Plot(object):
         """
 
         binary_wireframe_kwargs = dict()
-        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
-        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else up.degrees(azim) - 90
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
@@ -211,7 +211,7 @@ class Plot(object):
 
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
                 face_mask_primary=None, face_mask_secondary=None, inclination=None, azimuth=None, units='cgs',
-                axis_unit=eu.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
+                axis_unit=u.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
                 surface_colors=('g', 'r')):
         """
         function creates plot of binary system components
@@ -235,10 +235,10 @@ class Plot(object):
         """
         surface_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else up.degrees(self.binary.inclination)
         components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
-        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else up.degrees(azim) - 90
 
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
@@ -283,8 +283,8 @@ class Plot(object):
                     f'{component}_arrows': star.normals
                 })
 
-            if axis_unit != eu.dimensionless_unscaled:
-                sma = (self.binary.semi_major_axis * eu.DISTANCE_UNIT).to(axis_unit).value
+            if axis_unit != u.dimensionless_unscaled:
+                sma = (self.binary.semi_major_axis * u.DISTANCE_UNIT).to(axis_unit).value
                 surface_kwargs[f'points_{component}'] *= sma
 
                 if normals:

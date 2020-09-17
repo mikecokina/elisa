@@ -1,6 +1,6 @@
 import numpy as np
 
-from ... import units
+from ... import units as u
 from ... base.transform import (
     TransformProperties,
     quantity_transform,
@@ -32,7 +32,7 @@ class OrbitProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.PERIOD_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def argument_of_periastron(value):
@@ -42,7 +42,7 @@ class OrbitProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def inclination(value):
@@ -52,4 +52,4 @@ class OrbitProperties(TransformProperties):
         :param value: Union[float, astropy.units.Quantity]
         :return: float
         """
-        return quantity_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.ARC_UNIT, WHEN_FLOAT64)

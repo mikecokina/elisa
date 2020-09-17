@@ -1,11 +1,9 @@
 import numpy as np
-import astropy.units as u
 
 from numpy.testing import assert_array_equal
-
 from unittests.utils import ElisaTestCase
-
 from elisa.analytics.dataset.base import RVData, LCData
+from elisa import units as u
 
 
 class RVDatasetTestCase(ElisaTestCase):

@@ -1,5 +1,4 @@
 import numpy as np
-import astropy.units as u
 
 from copy import copy
 from scipy.spatial.qhull import Delaunay
@@ -9,9 +8,9 @@ from ... base import spot
 from ... utils import is_empty
 from ... logger import getLogger
 from ... import (
-    umpy as up,
     const,
-    units
+    umpy as up,
+    units as u
 )
 from ... base.surface.faces import (
     initialize_model_container,
@@ -401,7 +400,7 @@ def build_velocities(system, components_distance, component='all'):
 
     velocities = orbit.create_orb_vel_vectors(system, components_distance)
 
-    orb_period = (system.period * units.PERIOD_UNIT).to(u.s).value
+    orb_period = (system.period * u.PERIOD_UNIT).to(u.s).value
     omega_orb = np.array([0, 0, const.FULL_ARC / orb_period])
 
     for _component in component:

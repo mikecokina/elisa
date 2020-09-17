@@ -7,7 +7,6 @@ from typing import Sized
 from queue import Empty
 from numpy.linalg import norm
 from scipy.spatial import distance_matrix as dstm
-from scipy.optimize import brute, fmin
 from matplotlib.cbook import flatten
 
 from copy import (

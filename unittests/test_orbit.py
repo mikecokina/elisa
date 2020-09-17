@@ -1,9 +1,9 @@
 import numpy as np
 import elisa.const as c
 
-from astropy import units as u
 from numpy.testing import assert_array_equal
 from elisa.binary_system.orbit import orbit
+from elisa import units as u
 from unittests.utils import ElisaTestCase
 
 

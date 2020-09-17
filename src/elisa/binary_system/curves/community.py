@@ -5,7 +5,7 @@ from .. transform import RadialVelocityObserverProperties
 from ... logger import getLogger
 from ... import (
     umpy as up,
-    units,
+    units as u,
     const
 )
 
@@ -54,7 +54,7 @@ class RadialVelocitySystem(object):
         self.asini = np.nan
         self.gamma = np.nan
         self.orbit = None
-        self.rv_unit = units.dimensionless_unscaled
+        self.rv_unit = u.dimensionless_unscaled
 
         self.init_properties(**kwargs)
         self.init_orbit()
@@ -96,8 +96,8 @@ class RadialVelocitySystem(object):
 
         sma_primary, sma_secondary = self.distance_to_center_of_mass(self.mass_ratio, 1.0)
 
-        period = np.float64((self.period * units.PERIOD_UNIT).to(units.s))
-        asini = np.float64((self.asini * units.solRad).to(units.m))
+        period = np.float64((self.period * u.PERIOD_UNIT).to(u.s))
+        asini = np.float64((self.asini * u.solRad).to(u.m))
 
         sma_primary *= asini
         sma_secondary *= asini

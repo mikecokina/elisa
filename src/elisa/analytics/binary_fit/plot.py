@@ -1,7 +1,6 @@
 import re
 
 import numpy as np
-from astropy import units as u
 from scipy.interpolate import interp1d
 from copy import deepcopy
 from emcee.autocorr import integrated_time, function_1d
@@ -11,7 +10,7 @@ from . mixins import MCMCMixin
 from .. models.lc import synthetic_binary
 from .. models.rv import central_rv_synthetic
 from .. params import parameters, conf
-from ... import units as eu
+from ... import units as u
 from ... observer.utils import normalize_light_curve
 from ... binary_system import t_layer
 from ... binary_system.system import BinarySystem
@@ -24,10 +23,10 @@ from ... logger import getLogger
 logger = getLogger('analytics.binary_fit.plot')
 
 PLOT_UNITS = {
-    'system@asini': eu.solRad,
-    'system@argument_of_periastron': eu.degree,
-    'system@gamma': eu.km/eu.s,
-    'system@primary_minimum_time': eu.d
+    'system@asini': u.solRad,
+    'system@argument_of_periastron': u.degree,
+    'system@gamma': u.km/u.s,
+    'system@primary_minimum_time': u.d
 }
 
 
@@ -39,6 +38,8 @@ class MCMCPlotMixin(object):
         """
         Plots complete correlation plot from supplied parameters. Usefull only for MCMC method.
 
+        :param sigma_clip: bool;
+        :param sigma: int;
         :param flat_chain: numpy.array; flattened chain of all parameters, use only if you want display your own chain
         :param variable_labels: List; list of variables during a MCMC run, which is used to identify columns in
                                      `flat_chain`, use only if you want display your own chain
@@ -96,7 +97,7 @@ class RVPlot(object):
         self.fit = instance
         self.data = data
 
-    def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, y_axis_unit=eu.km / eu.s, **kwargs):
+    def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, y_axis_unit=u.km / u.s, **kwargs):
         """
         Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
@@ -148,7 +149,7 @@ class RVPlot(object):
             del kwargs_to_replot['system@primary_minimum_time']
         synth_phases = np.linspace(start_phase, stop_phase, number_of_points)
         rv_fit = central_rv_synthetic(synth_phases, Observer(), **kwargs_to_replot)
-        rv_fit = {component: (data * eu.VELOCITY_UNIT).to(y_axis_unit).value for component, data in rv_fit.items()}
+        rv_fit = {component: (data * u.VELOCITY_UNIT).to(y_axis_unit).value for component, data in rv_fit.items()}
 
         interp_fn = {component: interp1d(synth_phases, rv_fit[component])
                      for component in self.data.keys()}
@@ -364,7 +365,7 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
     if sigma_clip:
         for ii, lbl in enumerate(variable_labels):
             tol = 0.5 * sigma * np.abs(flat_result[lbl]["confidence_interval"]['max'] -
-                                         flat_result[lbl]["confidence_interval"]['min'])
+                                       flat_result[lbl]["confidence_interval"]['min'])
             mask = np.logical_and(flat_chain[:, ii] > flat_result[lbl]['value'] - tol,
                                   flat_chain[:, ii] < flat_result[lbl]['value'] + tol)
             flat_chain = flat_chain[mask]

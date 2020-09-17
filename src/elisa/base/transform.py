@@ -1,7 +1,7 @@
 import numpy as np
 
 from .. import (
-    units,
+    units as u,
     const
 )
 
@@ -18,7 +18,7 @@ def quantity_transform(value, unit, when_float64):
     :param when_float64: Tuple(Types)
     :return: float
     """
-    if isinstance(value, units.Quantity):
+    if isinstance(value, u.Quantity):
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
         value = np.float64(value)
@@ -29,10 +29,10 @@ def quantity_transform(value, unit, when_float64):
 
 
 def deg_transform(value, unit, when_float64):
-    if isinstance(value, units.Quantity):
+    if isinstance(value, u.Quantity):
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
-        value = np.float64(value)*units.deg.to(unit)
+        value = np.float64(value)*u.deg.to(unit)
     else:
         raise TypeError('Input of variable `longitude` is not (numpy.)int or (numpy.)float '
                         'nor astropy.unit.quantity.Quantity instance.')
@@ -63,10 +63,10 @@ class SystemProperties(TransformProperties):
         :param value:
         :return: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         """
-        if isinstance(value, units.Quantity):
-            value = np.float64(value.to(units.ARC_UNIT))
+        if isinstance(value, u.Quantity):
+            value = np.float64(value.to(u.ARC_UNIT))
         elif isinstance(value, (int, np.int, float, np.float)):
-            value = np.float64((value * units.deg).to(units.ARC_UNIT))
+            value = np.float64((value * u.deg).to(u.ARC_UNIT))
         else:
             raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -84,7 +84,7 @@ class SystemProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, units.PERIOD_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.PERIOD_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def gamma(value):
@@ -96,7 +96,7 @@ class SystemProperties(TransformProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
-        return quantity_transform(value, units.VELOCITY_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.VELOCITY_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def additional_light(value):
@@ -134,10 +134,10 @@ class BodyProperties(TransformProperties):
        :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
        :return: float
        """
-        if isinstance(value, units.Quantity):
-            value = np.float64(value.to(units.MASS_UNIT))
+        if isinstance(value, u.Quantity):
+            value = np.float64(value.to(u.MASS_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
-            value = np.float64(value * units.solMass.to(units.MASS_UNIT))
+            value = np.float64(value * u.solMass.to(u.MASS_UNIT))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
                             'nor astropy.unit.quantity.Quantity instance.')
@@ -166,7 +166,7 @@ class BodyProperties(TransformProperties):
         :param value: Union[float, astropy.quantity.Quantity]
         :return: float
         """
-        value = deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        value = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
         if value > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
         return value
@@ -180,7 +180,7 @@ class BodyProperties(TransformProperties):
         :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
         :return: float
         """
-        return quantity_transform(value, units.TEMPERATURE_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.TEMPERATURE_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def polar_radius(value):
@@ -191,7 +191,7 @@ class BodyProperties(TransformProperties):
         :param value: float
         :return:
         """
-        return quantity_transform(value, units.DISTANCE_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.DISTANCE_UNIT, WHEN_FLOAT64)
 
 
 class StarProperties(BodyProperties):
@@ -222,7 +222,7 @@ class StarProperties(BodyProperties):
         :param value: float or astropy.unit.quantity.Quantity
         :return: float
         """
-        return quantity_transform(value, units.LOG_ACCELERATION_UNIT, WHEN_FLOAT64)
+        return quantity_transform(value, u.LOG_ACCELERATION_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def gravity_darkening(value):
@@ -246,7 +246,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def longitude(value):
@@ -256,7 +256,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return: float
         """
-        return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def angular_radius(value):
@@ -266,7 +266,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
         :return:
         """
-        return deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        return deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
 
     @staticmethod
     def temperature_factor(value):
@@ -289,7 +289,7 @@ class SpotProperties(BodyProperties):
         :param value: Union[float, astropy.quantity.Quantity]
         :return: float
         """
-        value = deg_transform(value, units.ARC_UNIT, WHEN_FLOAT64)
+        value = deg_transform(value, u.ARC_UNIT, WHEN_FLOAT64)
         if value > const.HALF_PI:
             raise ValueError("Invalid value of alpha parameter. Use value less than 90.")
         return value

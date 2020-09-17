@@ -26,9 +26,9 @@ from .. conf import config
 from .. logger import getLogger
 from .. import (
     umpy as up,
+    units as u,
     utils,
-    const,
-    units
+    const
 )
 
 logger = getLogger('binary_system.system')
@@ -242,31 +242,31 @@ class BinarySystem(System):
 
         return {
             "system": {
-                "inclination":  (self.inclination * units.rad).to(units.deg).value,
+                "inclination":  (self.inclination * u.rad).to(u.deg).value,
                 "period": self.period,
-                "argument_of_periastron": (self.argument_of_periastron * units.rad).to(units.deg).value,
+                "argument_of_periastron": (self.argument_of_periastron * u.rad).to(u.deg).value,
                 "gamma": self.gamma,
                 "eccentricity": self.eccentricity,
                 "primary_minimum_time": self.primary_minimum_time,
                 "phase_shift": self.phase_shift
             },
             "primary": {
-                "mass": (self.primary.mass * units.kg).to(units.solMass).value,
+                "mass": (self.primary.mass * u.kg).to(u.solMass).value,
                 "surface_potential": self.primary.surface_potential,
                 "synchronicity": self.primary.synchronicity,
                 "t_eff": self.primary.t_eff,
                 "gravity_darkening": self.primary.gravity_darkening,
-                "discretization_factor": (self.primary.discretization_factor * units.rad).to(units.deg).value,
+                "discretization_factor": (self.primary.discretization_factor * u.rad).to(u.deg).value,
                 "albedo": self.primary.albedo,
                 "metallicity": self.primary.metallicity
             },
             "secondary": {
-                "mass": (self.secondary.mass * units.kg).to(units.solMass).value,
+                "mass": (self.secondary.mass * u.kg).to(u.solMass).value,
                 "surface_potential": self.secondary.surface_potential,
                 "synchronicity": self.secondary.synchronicity,
                 "t_eff": self.secondary.t_eff,
                 "gravity_darkening": self.primary.gravity_darkening,
-                "discretization_factor": (self.secondary.discretization_factor * units.rad).to(units.deg).value,
+                "discretization_factor": (self.secondary.discretization_factor * u.rad).to(u.deg).value,
                 "albedo": self.secondary.albedo,
                 "metallicity": self.secondary.metallicity
             },
@@ -297,7 +297,7 @@ class BinarySystem(System):
         serialized_kwargs = dict()
         for kwarg in self.ALL_KWARGS:
             if kwarg in ['argument_of_periastron', 'inclination']:
-                serialized_kwargs[kwarg] = getattr(self, kwarg) * units.ARC_UNIT
+                serialized_kwargs[kwarg] = getattr(self, kwarg) * u.ARC_UNIT
             else:
                 serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
@@ -348,7 +348,7 @@ class BinarySystem(System):
 
         :return: float;
         """
-        period = np.float64((self.period * units.PERIOD_UNIT).to(units.s))
+        period = np.float64((self.period * u.PERIOD_UNIT).to(u.s))
         return (const.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * const.PI ** 2)) ** (1.0 / 3)
 
     def compute_morphology(self):
@@ -418,7 +418,7 @@ class BinarySystem(System):
         """
         if not self.secondary.kwargs.get('discretization_factor'):
             self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
-                                                    / self.secondary.polar_radius * units.rad).value
+                                                    / self.secondary.polar_radius * u.rad).value
 
             if self.secondary.discretization_factor > np.radians(config.MAX_DISCRETIZATION_FACTOR):
                 self.secondary.discretization_factor = np.radians(config.MAX_DISCRETIZATION_FACTOR)

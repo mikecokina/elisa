@@ -8,7 +8,7 @@ from .. params import parameters
 from .. params.parameters import BinaryInitialParameters
 from .. models import lc as lc_model
 from .. models import serializers
-from ... import units
+from ... import units as u
 from ... conf import config
 from ... utils import split_to_batches
 from ... logger import getLogger
@@ -143,29 +143,29 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
                                  'system@mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep, '-')
 
     sma = (full_chain_results[:, param_columns['system@semi_major_axis']] *
-           units.DISTANCE_UNIT).to(units.solRad).value
+           u.DISTANCE_UNIT).to(u.solRad).value
     io_tools.write_propagated_ln(sma, flat_params, 'system@semi_major_axis', 'Semi major axis (a):', write_fn, line_sep,
                                  'solRad')
 
     sma = (full_chain_results[:, param_columns['system@asini']] *
-           units.DISTANCE_UNIT).to(units.solRad).value
+           u.DISTANCE_UNIT).to(u.solRad).value
     io_tools.write_propagated_ln(sma, flat_params, 'system@asini', 'a*sin(i):', write_fn,
                                  line_sep, 'solRad')
 
     incl = (full_chain_results[:, param_columns['system@inclination']] *
-            units.ARC_UNIT).to(units.deg).value
+            u.ARC_UNIT).to(u.deg).value
     io_tools.write_propagated_ln(incl, flat_params, 'system@inclination', 'Inclination (i):', write_fn, line_sep, 'deg')
 
     io_tools.write_propagated_ln(full_chain_results[:, param_columns['system@eccentricity']], flat_params,
                                  'system@eccentricity', 'Eccentricity (e):', write_fn, line_sep, '-')
 
     omega = (full_chain_results[:, param_columns['system@argument_of_periastron']] *
-             units.ARC_UNIT).to(units.deg).value
+             u.ARC_UNIT).to(u.deg).value
     io_tools.write_propagated_ln(omega, flat_params, 'system@argument_of_periastron', 'Argument of periastron (omega):',
                                  write_fn, line_sep, 'deg')
 
     gamma = (full_chain_results[:, param_columns['system@gamma']] *
-             units.VELOCITY_UNIT).to(units.km / units.s).value
+             u.VELOCITY_UNIT).to(u.km / u.s).value
     io_tools.write_propagated_ln(gamma, flat_params, 'system@gamma', 'Centre of mass velocity (gamma):',
                                  write_fn, line_sep, 'km/s')
 
@@ -192,7 +192,7 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
         io_tools.write_ln(*intro)
         write_fn(f"{'-' * DASH_N}{line_sep}")
 
-        mass = (full_chain_results[:, param_columns[f'{component}@mass']] * units.MASS_UNIT).to(units.solMass).value
+        mass = (full_chain_results[:, param_columns[f'{component}@mass']] * u.MASS_UNIT).to(u.solMass).value
         io_tools.write_propagated_ln(mass, flat_params, f'{component}@mass', f'Mass (M_{comp_n}):', write_fn, line_sep,
                                      'solMas')
 
@@ -237,7 +237,7 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
                                      write_fn, line_sep, 'K')
 
         l_bol = (full_chain_results[:, param_columns[f'{component}@bolometric_luminosity']] *
-                 units.LUMINOSITY_UNIT).to('L_sun').value
+                 u.LUMINOSITY_UNIT).to('L_sun').value
         io_tools.write_propagated_ln(l_bol, flat_params, f'{component}@bolometric_luminosity',
                                      'Bolometric luminosity (L_bol): ', write_fn, line_sep, 'L_sol')
         io_tools.write_propagated_ln(full_chain_results[:, param_columns[f'{component}@gravity_darkening']],
@@ -257,15 +257,15 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
 
             for spot_lbl in spot_lbls[component]:
                 longitude = (full_chain_results[:, param_columns[f'{component}@spot@{spot_lbl}@longitude']] *
-                             units.ARC_UNIT).to(units.deg).value
+                             u.ARC_UNIT).to(u.deg).value
                 io_tools.write_propagated_ln(longitude, flat_params, f'{component}@spot@{spot_lbl}@longitude',
                                              'Longitude: ', write_fn, line_sep, 'deg')
                 latitude = (full_chain_results[:, param_columns[f'{component}@spot@{spot_lbl}@latitude']] *
-                            units.ARC_UNIT).to(units.deg).value
+                            u.ARC_UNIT).to(u.deg).value
                 io_tools.write_propagated_ln(latitude, flat_params, f'{component}@spot@{spot_lbl}@latitude',
                                              'Latitude: ', write_fn, line_sep, 'deg')
                 ang_rad = (full_chain_results[:, param_columns[f'{component}@spot@{spot_lbl}@angular_radius']] *
-                           units.ARC_UNIT).to(units.deg).value
+                           u.ARC_UNIT).to(u.deg).value
                 io_tools.write_propagated_ln(ang_rad, flat_params, f'{component}@spot@{spot_lbl}@angular_radius',
                                              'Angular radius: ', write_fn, line_sep, 'deg')
                 io_tools.write_propagated_ln(
@@ -306,14 +306,14 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
                 )
                 mode_phi = (full_chain_results[:,
                             param_columns[f'{component}@spot@{pulse_lbl}@mode_axis_phi']] *
-                            units.ARC_UNIT).to(units.deg).value
+                            u.ARC_UNIT).to(u.deg).value
                 io_tools.write_propagated_ln(
                     mode_phi, flat_params, f'{component}@pulsation@{pulse_lbl}@mode_axis_phi',
                     'Longitude of mode axis: ', write_fn, line_sep, 'deg'
                 )
                 mode_theta = (full_chain_results[:,
                               param_columns[f'{component}@spot@{pulse_lbl}@mode_axis_theta']] *
-                              units.ARC_UNIT).to(units.deg).value
+                              u.ARC_UNIT).to(u.deg).value
                 io_tools.write_propagated_ln(
                     mode_theta, flat_params, f'{component}@pulsation@{pulse_lbl}@mode_axis_theta',
                     'Latitude of mode axis: ', write_fn, line_sep, 'deg'
@@ -360,8 +360,8 @@ def evaluate_binary_params(*args):
 
             for component in config.BINARY_COUNTERPARTS.keys():
                 star_instance = getattr(binary_instance, component)
-                for var_label in list(param_columns.keys())[stop_idx[f'{component}_params'] - cpl:
-                stop_idx[f'{component}_params'] - 3]:
+                for var_label in list(param_columns.keys())[stop_idx[f'{component}_params'] -
+                                                            cpl:stop_idx[f'{component}_params'] - 3]:
                     full_chain[ii, param_columns[var_label]] = getattr(star_instance, var_label.split('@')[1], None)
 
                 polar_g = calculate_polar_gravity_acceleration(star_instance,
@@ -441,7 +441,7 @@ def simple_lc_fit_summary(fit_instance, path):
             io_tools.write_param_ln(result_dict, 'system@semi_major_axis', a_desig, write_fn, line_sep, 3)
         else:
             io_tools.write_ln(write_fn, q_desig, binary_instance.mass_ratio, '', '', '', 'derived', line_sep, 3)
-            sma = (binary_instance.semi_major_axis * units.DISTANCE_UNIT).to(units.solRad).value
+            sma = (binary_instance.semi_major_axis * u.DISTANCE_UNIT).to(u.solRad).value
             io_tools.write_ln(write_fn, a_desig, sma, '', '', 'AU', 'derived', line_sep, 3)
 
         io_tools.write_param_ln(result_dict, 'system@inclination', 'Inclination (i):', write_fn, line_sep, 2)
@@ -476,7 +476,7 @@ def simple_lc_fit_summary(fit_instance, path):
             if f'{component}@mass' in result_dict:
                 io_tools.write_param_ln(result_dict, f'{component}@mass', m_desig, write_fn, line_sep, 3)
             else:
-                mass = (star_instance.mass * units.MASS_UNIT).to(units.solMass).value
+                mass = (star_instance.mass * u.MASS_UNIT).to(u.solMass).value
                 io_tools.write_ln(write_fn, m_desig, mass,
                                   '-', '-', 'solMass', 'Derived', line_sep, 3)
 
@@ -505,19 +505,19 @@ def simple_lc_fit_summary(fit_instance, path):
                               line_sep, 3)
 
             r_equiv = (star_instance.equivalent_radius * binary_instance.semi_major_axis *
-                       units.DISTANCE_UNIT).to(units.solRad).value
+                       u.DISTANCE_UNIT).to(u.solRad).value
 
             io_tools.write_ln(write_fn, 'Equivalent radius (R_equiv):', r_equiv,
                               '-', '-', 'solRad', 'Derived', line_sep, 5)
 
             write_fn(f"\nPeriastron radii{line_sep}")
             polar_r = (star_instance.polar_radius * binary_instance.semi_major_axis
-                       * units.DISTANCE_UNIT).to(units.solRad).value
+                       * u.DISTANCE_UNIT).to(u.solRad).value
 
             back_r = (star_instance.backward_radius * binary_instance.semi_major_axis
-                      * units.DISTANCE_UNIT).to(units.solRad).value
+                      * u.DISTANCE_UNIT).to(u.solRad).value
             side_r = (star_instance.side_radius * binary_instance.semi_major_axis
-                      * units.DISTANCE_UNIT).to(units.solRad).value
+                      * u.DISTANCE_UNIT).to(u.solRad).value
 
             io_tools.write_ln(write_fn, 'Polar radius:', polar_r, '-', '-', 'solRad', 'Derived', line_sep, 5)
             io_tools.write_ln(write_fn, 'Backward radius:', back_r, '-', '-', 'solRad', 'Derived', line_sep, 5)
@@ -525,7 +525,7 @@ def simple_lc_fit_summary(fit_instance, path):
 
             if getattr(star_instance, 'forward_radius', None) is not None:
                 forward_r = (star_instance.forward_radius * binary_instance.semi_major_axis
-                             * units.DISTANCE_UNIT).to(units.solRad).value
+                             * u.DISTANCE_UNIT).to(u.solRad).value
                 io_tools.write_ln(write_fn, 'Forward radius:', forward_r, '-',
                                   '-', 'solRad', 'Derived', line_sep, 5)
 
@@ -535,7 +535,7 @@ def simple_lc_fit_summary(fit_instance, path):
                                     write_fn, line_sep, 0)
 
             l_bol = (binary_instance.calculate_bolometric_luminosity(components=component)[component] *
-                     units.LUMINOSITY_UNIT).to('L_sun').value
+                     u.LUMINOSITY_UNIT).to('L_sun').value
 
             io_tools.write_ln(write_fn, 'Bolometric luminosity (L_bol): ', l_bol,
                               '-', '-', 'L_Sol', 'Derived', line_sep, 2)
@@ -725,7 +725,7 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
                                  'system@mass_ratio', 'Mass ratio (q=M_2/M_1):', write_fn, line_sep, '-')
 
     sma = (full_chain_results[:, param_columns['system@asini']] *
-           units.DISTANCE_UNIT).to(units.solRad).value
+           u.DISTANCE_UNIT).to(u.solRad).value
     io_tools.write_propagated_ln(sma, flat_params, 'system@asini', 'a*sin(i):', write_fn,
                                  line_sep, 'solRad')
 
@@ -733,12 +733,12 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
                                  'system@eccentricity', 'Eccentricity (e):', write_fn, line_sep, '-')
 
     omega = (full_chain_results[:, param_columns['system@argument_of_periastron']] *
-             units.ARC_UNIT).to(units.deg).value
+             u.ARC_UNIT).to(u.deg).value
     io_tools.write_propagated_ln(omega, flat_params, 'system@argument_of_periastron', 'Argument of periastron (omega):',
                                  write_fn, line_sep, 'deg')
 
     omega = (full_chain_results[:, param_columns['system@gamma']] *
-             units.VELOCITY_UNIT).to(units.km/units.s).value
+             u.VELOCITY_UNIT).to(u.km/u.s).value
     io_tools.write_propagated_ln(omega, flat_params, 'system@gamma', 'Centre of mass velocity (gamma):',
                                  write_fn, line_sep, 'km/s')
 

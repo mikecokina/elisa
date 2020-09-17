@@ -13,7 +13,7 @@ from .. conf import config
 from .. utils import is_empty
 from .. logger import getLogger
 from .. import (
-    units,
+    units as u,
     umpy as up
 )
 
@@ -175,10 +175,10 @@ class Observer(object):
         self.phases = phases + self._system.phase_shift
         if normalize:
             self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum', top_fraction_to_average=0.0)
-            self.fluxes_unit = units.dimensionless_unscaled
+            self.fluxes_unit = u.dimensionless_unscaled
         else:
             self.fluxes = curves
-            self.fluxes_unit = units.W / units.m**2
+            self.fluxes_unit = u.W / u.m**2
         logger.info("observation finished")
         return self.phases, self.fluxes
 
@@ -219,9 +219,9 @@ class Observer(object):
             self.radial_velocities[items] = np.array(self.radial_velocities[items])[base_phases_to_origin]
 
         self.phases = phases + self._system.phase_shift
-        self.rv_unit = units.m / units.s
+        self.rv_unit = u.m / u.s
         if normalize:
-            self.rv_unit = units.dimensionless_unscaled
+            self.rv_unit = u.dimensionless_unscaled
             _max = np.max([np.max(item) for item in self.radial_velocities.values()])
             self.radial_velocities = {key: value/_max for key, value in self.radial_velocities.items()}
 

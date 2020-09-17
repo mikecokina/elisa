@@ -1,12 +1,11 @@
 import numpy as np
 
-from elisa.base import transform
-from elisa.single_system.container import SystemContainer
-from elisa.const import SinglePosition
-from elisa.graphic import graphics
-
-from elisa import units as eu
-from elisa.utils import is_empty
+from .. container import SystemContainer
+from ... import units as u
+from ... base import transform
+from ... const import SinglePosition
+from ... graphic import graphics
+from ... utils import is_empty
 
 
 class Plot(object):
@@ -25,7 +24,7 @@ class Plot(object):
     def __init__(self, instance):
         self.single = instance
 
-    def equipotential(self, axis_unit=eu.solRad):
+    def equipotential(self, axis_unit=u.solRad):
         """
         Function for quick 2D plot of equipotential cross-section in xz plane.
 
@@ -34,7 +33,7 @@ class Plot(object):
         equipotential_kwargs = dict()
 
         points = self.single.calculate_equipotential_boundary()
-        points = (points * eu.DISTANCE_UNIT).to(axis_unit)
+        points = (points * u.DISTANCE_UNIT).to(axis_unit)
 
         equipotential_kwargs.update({
             'points': points,
@@ -42,7 +41,7 @@ class Plot(object):
         })
         graphics.equipotential_single_star(**equipotential_kwargs)
 
-    def mesh(self, phase=0.0, plot_axis=True, axis_unit=eu.solRad, inclination=None, azimuth=None):
+    def mesh(self, phase=0.0, plot_axis=True, axis_unit=u.solRad, inclination=None, azimuth=None):
         """
         Function plots 3D scatter plot of the surface points.
 
@@ -54,10 +53,10 @@ class Plot(object):
         """
         single_mesh_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else np.degrees(self.single.inclination)
         azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
-        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else np.degrees(azim) - 90
 
         position_container = SystemContainer.from_single_system(self.single, self.defpos)
@@ -65,9 +64,9 @@ class Plot(object):
         position_container.build_pulsations_on_mesh()
 
         mesh = position_container.star.get_flatten_parameter('points')
-        denominator = (1 * axis_unit.to(eu.DISTANCE_UNIT))
+        denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))
         mesh /= denominator
-        equatorial_radius = position_container.star.equatorial_radius * eu.DISTANCE_UNIT.to(axis_unit)
+        equatorial_radius = position_container.star.equatorial_radius * u.DISTANCE_UNIT.to(axis_unit)
 
         single_mesh_kwargs.update({
             'phase': phase,
@@ -81,7 +80,7 @@ class Plot(object):
 
         graphics.single_star_mesh(**single_mesh_kwargs)
 
-    def wireframe(self, phase=0.0, plot_axis=True, axis_unit=eu.solRad, inclination=None, azimuth=None):
+    def wireframe(self, phase=0.0, plot_axis=True, axis_unit=u.solRad, inclination=None, azimuth=None):
         """
         Returns 3D wireframe of the object.
 
@@ -93,10 +92,10 @@ class Plot(object):
         """
         wireframe_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else np.degrees(self.single.inclination)
         azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
-        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else np.degrees(azim) - 90
 
         position_container = SystemContainer.from_single_system(self.single, self.defpos)
@@ -104,9 +103,9 @@ class Plot(object):
         position_container.build_faces()
 
         points, faces = position_container.star.surface_serializer()
-        denominator = (1 * axis_unit.to(eu.DISTANCE_UNIT))
+        denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))
         points /= denominator
-        equatorial_radius = position_container.star.equatorial_radius * eu.DISTANCE_UNIT.to(axis_unit)
+        equatorial_radius = position_container.star.equatorial_radius * u.DISTANCE_UNIT.to(axis_unit)
 
         wireframe_kwargs.update({
             'phase': phase,
@@ -122,14 +121,14 @@ class Plot(object):
         graphics.single_star_wireframe(**wireframe_kwargs)
 
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
-                inclination=None, azimuth=None, units='cgs', axis_unit=eu.solRad,
+                inclination=None, azimuth=None, units='cgs', axis_unit=u.solRad,
                 colorbar_orientation='vertical', colorbar=True, scale='linear'):
         surface_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if inclination is not None else np.degrees(self.single.inclination)
         azim = self.single.orbit.rotational_motion(phase=phase)[0][0]
-        azimuth = transform.deg_transform(azimuth, eu.deg, when_float64=transform.WHEN_FLOAT64) \
+        azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else np.degrees(azim) - 90
 
         position_container = SystemContainer.from_single_system(self.single, self.defpos)
@@ -168,7 +167,7 @@ class Plot(object):
             })
 
         # normals
-        mult = (1*eu.DISTANCE_UNIT).to(axis_unit).value
+        mult = (1*u.DISTANCE_UNIT).to(axis_unit).value
         surface_kwargs['points'] *= mult
 
         if normals:
@@ -188,6 +187,6 @@ class Plot(object):
             'colorbar_orientation': colorbar_orientation,
             'colorbar': colorbar,
             'scale': scale,
-            'equatorial_radius': (star_container.equatorial_radius*eu.DISTANCE_UNIT).to(axis_unit).value
+            'equatorial_radius': (star_container.equatorial_radius*u.DISTANCE_UNIT).to(axis_unit).value
         })
         graphics.single_star_surface(**surface_kwargs)

@@ -4,6 +4,7 @@ from .. import utils, const, umpy as up
 from .. umpy import sph_harm
 from .. conf import config
 from .. logger import getLogger
+from . import utils as putils
 
 logger = getLogger('pulse.pulsations')
 
@@ -52,8 +53,8 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
     theta_test = np.logical_and(thetas != 0.0, thetas != const.PI)
     derivative = np.zeros(phis.shape)
     derivative[theta_test] = mode.m * np.real(harmonics[0][theta_test] / np.tan(thetas[theta_test])) + \
-                        np.sqrt((mode.l - mode.m) * (mode.l + mode.m + 1)) * \
-                        np.real(np.exp((0 - 1j) * phis[theta_test]) * harmonics[1][theta_test])
+                             np.sqrt((mode.l - mode.m) * (mode.l + mode.m + 1)) * \
+                             np.real(np.exp((0 - 1j) * phis[theta_test]) * harmonics[1][theta_test])
     return derivative
 
 

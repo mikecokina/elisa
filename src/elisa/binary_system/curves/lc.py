@@ -4,9 +4,7 @@ from . import (
 )
 from ... binary_system import dynamic
 
-
 # main wrapper over lc computation
-from ...conf import config
 
 
 def compute_circular_synchronous_lightcurve(binary, **kwargs):

@@ -6,7 +6,6 @@ import numpy as np
 
 from collections import Iterable
 from typing import Dict
-from astropy import units as au
 from jsonschema import ValidationError
 
 from .. params import conf
@@ -21,6 +20,7 @@ from .. params.transform import (
     SpotInitialProperties,
     PulsationModeInitialProperties
 )
+from ... import units as u
 from ... import utils
 from ... base.error import InitialParamsError
 from ... conf.config import BINARY_COUNTERPARTS
@@ -327,8 +327,8 @@ class InitialParameter(object):
         self.max = None
 
         # units transformaton
-        self.unit = au.Unit(self.unit) if self.unit is not None else self.unit
-        if self.unit is not None and self.unit is not au.dimensionless_unscaled and self.constraint is None:
+        self.unit = u.Unit(self.unit) if self.unit is not None else self.unit
+        if self.unit is not None and self.unit is not u.dimensionless_unscaled and self.constraint is None:
             kwargs.update({
                 "value": kwargs.get("value") * self.unit,
                 "min": kwargs.get("min") * self.unit,
