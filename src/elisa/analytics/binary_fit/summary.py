@@ -27,10 +27,10 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
     Function propagates errors of fitted parameters during MCMC fit by evaluating the corresponding
     chain.
 
-    :param fit_instance: LCFitMCMC or RVFitMCMC instance
-    :param path:
-    :param percentiles:
-    :return:
+    :param fit_instance: elisa.analytics.binary_fit.lc_fit.LCFit
+    :param path: str; results will be written here
+    :param percentiles: List; [bottom, middle, top] percentiles used for the creation of confidence intervals
+    :return: None;
     """
     f = None
     if path is not None:
@@ -105,19 +105,7 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
 
     # obtaining binary parameters for each item in MCMC chain
     args = (fit_instance, param_columns, stop_idx, spot_numbers, pulsation_numbers, len(component_param_list))
-    if config.NUMBER_OF_MCMC_PROCESSES > 1:
-        logger.info("starting multiprocessor workers for error propagation technique")
-        batch_size = int(renormalized_chain.shape[0] / config.NUMBER_OF_MCMC_PROCESSES) + 1
-        batches = split_to_batches(batch_size=batch_size, array=renormalized_chain)
-        pool = Pool(processes=config.NUMBER_OF_MCMC_PROCESSES)
-        result = [pool.apply_async(evaluate_binary_params, args + (batch,)) for batch in batches]
-        pool.close()
-        pool.join()
-        result = [r.get() for r in result]
-        full_chain = np.row_stack(result)
-    else:
-        args += (renormalized_chain,)
-        full_chain = evaluate_binary_params(*args)
+    full_chain = _manage_chain_evaluation(renormalized_chain, evaluate_binary_params, *args)
 
     full_chain_mask = (~np.isnan(full_chain)).any(axis=1)
     full_chain = full_chain[full_chain_mask]
@@ -653,6 +641,14 @@ def simple_rv_fit_summary(fit_instance, path):
 
 
 def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
+    """
+    Performs error propagation using provided MCMC results in form of flat chain stored in `fit_instance`.
+
+    :param fit_instance: elisa.analytics.binary_fit.rv_fit.RVFit;
+    :param path: str; results will be written here
+    :param percentiles: List; [bottom, middle, top] percentiles used for the creation of confidence intervals
+    :return: None;
+    """
     f = None
     if path is not None:
         f = open(path, 'w')
@@ -690,19 +686,7 @@ def fit_rv_summary_with_error_propagation(fit_instance, path, percentiles):
     param_columns = {lbl: ii for ii, lbl in enumerate(complete_param_list)}
 
     args = (fit_instance, param_columns, stop_idx)
-    if config.NUMBER_OF_MCMC_PROCESSES > 1:
-        logger.info("starting multiprocessor workers for error propagation technique")
-        batch_size = int(renormalized_chain.shape[0] / config.NUMBER_OF_MCMC_PROCESSES) + 1
-        batches = split_to_batches(batch_size=batch_size, array=renormalized_chain)
-        pool = Pool(processes=config.NUMBER_OF_MCMC_PROCESSES)
-        result = [pool.apply_async(evaluate_rv_params, args + (batch,)) for batch in batches]
-        pool.close()
-        pool.join()
-        result = [r.get() for r in result]
-        full_chain = np.row_stack(result)
-    else:
-        args += (renormalized_chain,)
-        full_chain = evaluate_rv_params(*args)
+    full_chain = _manage_chain_evaluation(renormalized_chain, evaluate_rv_params, *args)
 
     full_chain_mask = (~np.isnan(full_chain)).any(axis=1)
     full_chain = full_chain[full_chain_mask]
@@ -768,3 +752,25 @@ def evaluate_rv_params(*args):
         full_chain[ii, param_columns['system@primary_minimum_time']] = init_rv_kwargs['system@primary_minimum_time']
 
     return full_chain
+
+
+def _manage_chain_evaluation(renormalized_chain, eval_function, *args):
+    """
+    Function manages evaluations of system parameters from flat chains provided by MCMC.
+
+    :param renormalized_chain: numpy.array; glat chain provided by MCMC
+    :param eval_function: function;
+    :return: numpy.array; array of binary parameters
+    """
+    if config.NUMBER_OF_MCMC_PROCESSES > 1:
+        logger.info("starting multiprocessor workers for error propagation technique")
+        batches = split_to_batches(array=renormalized_chain, n_proc=config.NUMBER_OF_MCMC_PROCESSES)
+        pool = Pool(processes=config.NUMBER_OF_MCMC_PROCESSES)
+        result = [pool.apply_async(eval_function, args + (batch,)) for batch in batches]
+        pool.close()
+        pool.join()
+        result = [r.get() for r in result]
+        return np.row_stack(result)
+    else:
+        args += (renormalized_chain,)
+        return evaluate_rv_params(*args)

@@ -109,7 +109,8 @@ class RVFitMCMC(RVFit):
             * ** percentiles ** * - List -- percentiles used to evaluate confidence intervals from forward distribution
                                             of EB parameters. Useless if `propagate_errors` is False.
         """
-        propagate_errors, percentiles = kwargs.get('propagate_errors', False), kwargs.get('percentiles', [16, 50, 84])
+        propagate_errors = kwargs.get('propagate_errors', False)
+        percentiles = kwargs.get('percentiles', [16, 50, 84])
         if not propagate_errors:
             simple_rv_fit_summary(self, path)
             return
