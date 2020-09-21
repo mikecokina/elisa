@@ -1,24 +1,25 @@
-language: shell
+language: python
 
-os:
-  - linux
+jobs:
+  include:
+    - name: "Python 3.6.X on Windows"
+      os: windows
+      language: shell
+      before_install:
+        - choco install python --version 3.6.12
+        - python -m pip install --upgrade pip
+      env: PATH=/c/Python36:/c/Python36/Scripts:$PATH
 
-python:
-  - "3.6"
-
-#before_install:
-#  -
-#    case $TRAVIS_OS_NAME in
-#      windows)
-#    esac
+#python:
+#  - "3.6"
 
 install:
-  - pip install -r requirements.txt
-  - pip install .[test]
+  - pip3 install -r requirements.txt
+  - pip3 install .[test]
 
 script:
 #     - python -m unittest discover -s unittests -p "test_*.py"
-    - python -m pytest unittests
+    - python3 -m pytest unittests
 
 notifications:
   email:
