@@ -2,8 +2,8 @@ language: python
 
 jobs:
   include:
-    - name: "Python 3.6 on Ubuntu"
-      python: 3.6
+#    - name: "Python 3.6 on Ubuntu"
+#      python: 3.6
     - name: "Python 3.6.8 on Windows"
       os: windows
       language: shell

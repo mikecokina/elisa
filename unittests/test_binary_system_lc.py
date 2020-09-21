@@ -404,7 +404,7 @@ class ComputeLightCurvesTestCase(ResetClass):
 
         for law in laws:
             config.LIMB_DARKENING_LAW = law
-            reload(lc_point)
+            reload_modules()
             o = Observer(passband=['Generic.Bessell.V'], system=bs)
             o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
 
@@ -483,7 +483,7 @@ class ComputeLightCurvesTestCase(ResetClass):
 
     def test_cicular_spotty_asynchronous_detached_system(self):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
-        reload(lc)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["detached-async"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs, "detached.circ.spotty.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.2)
@@ -512,7 +512,7 @@ class CompareSingleVsMultiprocess(ResetClass):
         sp_flux = normalize_lc_for_unittests(sp_res[1]["Generic.Bessell.V"])
 
         config.NUMBER_OF_PROCESSES = cpu_count()
-        reload(mp_manager)
+        reload_modules()
         mp_res = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         mp_flux = normalize_lc_for_unittests(mp_res[1]["Generic.Bessell.V"])
 
@@ -520,14 +520,14 @@ class CompareSingleVsMultiprocess(ResetClass):
 
     def test_circulcar_sync_lc(self):
         config.LIMB_DARKENING_LAW = "linear"
-        reload(lc)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["detached"])
         self.do_comparison(bs)
 
     def test_circulcar_spotty_async_lc(self):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
-        reload(lc)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["detached-async"],
                                    spots_primary=SPOTS_META["primary"])
@@ -536,7 +536,7 @@ class CompareSingleVsMultiprocess(ResetClass):
     def test_eccentric_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(c_appx_router)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -544,7 +544,7 @@ class CompareSingleVsMultiprocess(ResetClass):
     def test_eccentric_system_approximation_one(self):
         config.POINTS_ON_ECC_ORBIT = 5
         config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload(c_appx_router)
+        reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, tol=1e-4)
