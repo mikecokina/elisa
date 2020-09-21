@@ -105,7 +105,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
         obtained = ld.interpolate_on_ld_grid(temperature, log_g, metallicity, passband)
         obtained = np.round(obtained["Generic.Bessell.B"].xlin.values, 5)
 
-        self.assertTrue(np.all(obtained == expected))
+        self.assertTrue(np.all(obtained - expected) < 1e-5)
 
     def test_interpolate_on_ld_grid_log(self):
         config.LD_TABLES = os.path.join(self.base_path, "data", "light_curves", "limbdarkening")
