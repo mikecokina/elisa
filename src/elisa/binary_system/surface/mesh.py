@@ -8,7 +8,7 @@ from .. import (
 from ... base.error import MaxIterationError, SpotError
 from ... base.spot import incorporate_spots_mesh
 from ... conf import config
-from ... opt.fsolver import fsolver
+from ... opt.fsolver import fsolver, fsolve
 from ... utils import is_empty
 from ... logger import getLogger
 from ... pulse import pulsations
@@ -811,8 +811,7 @@ def calculate_neck_position(system, return_polynomial=False):
             args, use = (components_distance, angle, const.HALF_PI), False
             scipy_solver_init_value = np.array([components_distance / 10000.0])
             args = ((system.mass_ratio,) + precalc_fn(*((synchronicity, q) + args)), potential)
-            solution, _, ier, _ = up.optimize.fsolve(fn, scipy_solver_init_value,
-                                                     full_output=True, args=args, xtol=1e-12)
+            solution, _, ier, _ = fsolve(fn, scipy_solver_init_value, full_output=True, args=args, xtol=1e-12)
 
             # check for regular solution
             if ier == 1 and not up.isnan(solution[0]):

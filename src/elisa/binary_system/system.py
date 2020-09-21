@@ -30,6 +30,7 @@ from .. import (
     utils,
     const
 )
+from .. opt.fsolver import fsolve
 
 logger = getLogger('binary_system.system')
 
@@ -595,8 +596,7 @@ class BinarySystem(System):
                 continue
 
             try:
-                solution, _, ier, _ = scipy.optimize.fsolve(potential_dx, x_val, full_output=True, args=args_val,
-                                                            xtol=1e-12)
+                solution, _, ier, _ = fsolve(potential_dx, x_val, full_output=True, args=args_val, xtol=1e-12)
                 if ier == 1:
                     if round(solution[0], 5) not in points:
                         try:
@@ -648,8 +648,8 @@ class BinarySystem(System):
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
                 aux_args = (self.mass_ratio,) + fn_map[component][1](*args)
                 args = (aux_args, component_instance.surface_potential)
-                solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
-                                                            full_output=True, args=args, xtol=1e-12)
+                solution, _, ier, _ = fsolve(fn_map[component][0], scipy_solver_init_value,
+                                             full_output=True, args=args, xtol=1e-12)
 
                 # check for regular solution
                 if ier == 1 and not up.isnan(solution[0]):

@@ -1,11 +1,8 @@
 import numpy as np
-import scipy
 
-from scipy import optimize
 from . import model
-from .. import (
-    const,
-)
+from .. import const
+from .. opt.fsolver import fsolve
 
 
 def calculate_radius(mass, angular_velocity, surface_potential, *args):
@@ -33,20 +30,19 @@ def calculate_radius(mass, angular_velocity, surface_potential, *args):
     init_val = - const.G * mass / surface_potential
     scipy_solver_init_value = np.array([init_val])
     argss = (precalc(*precalc_args), surface_potential)
-    solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value,
-                                                full_output=True, args=argss, xtol=1e-10)
+    solution, _, ier, _ = fsolve(fn, scipy_solver_init_value, full_output=True, args=argss, xtol=1e-10)
     # check for regular solution
-    if ier == 1 and not np.isnan(solution[0]) and 5*init_val >= solution[0] >= 0:
+    if ier == 1 and not np.isnan(solution[0]) and 5 * init_val >= solution[0] >= 0:
         return solution[0]
     else:
-        if 0 < solution[0] < 5*init_val:
+        if 0 < solution[0] < 5 * init_val:
             return solution[0]
         else:
             raise ValueError(f'Invalid value of radius {solution} was calculated.')
 
 
 def calculate_polar_radius(mass, angular_velocity, surface_potential):
-    args = (0.0,)
+    args = (0.0, )
     return calculate_radius(mass, angular_velocity, surface_potential, *args)
 
 
