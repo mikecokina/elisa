@@ -333,7 +333,7 @@ class ComputeRadiometricRVTestCase(ResetClass):
 
         bs = prepare_binary_system(PARAMS["eccentric"])
 
-        self.do_comparison(bs, "detached.ecc.appx_two.json")
+        self.do_comparison(bs, "detached.ecc.appx_two.json", start_phs=-0.2, stop_phs=1.2, step=0.05)
 
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)

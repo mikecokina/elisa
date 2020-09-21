@@ -393,7 +393,6 @@ class ComputeLightCurvesTestCase(ResetClass):
         config.read_and_update_config()
         self.reset_config()
 
-    @skip
     def test_light_curve_pass_on_all_ld_law(self):
         """
         no assert here, it just has to pass without error
@@ -420,6 +419,12 @@ class ComputeLightCurvesTestCase(ResetClass):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
+        # import matplotlib.pyplot as plt
+        # plt.plot(expected_phases, expected_flux, label='expected')
+        # plt.plot(obtained_phases, obtained_flux, label='obtained')
+        # plt.legend()
+        # plt.plot()
+
         self.assertTrue(np.all(up.abs(obtained_phases - expected_phases) < TOL))
         self.assertTrue(np.all(up.abs(obtained_flux - expected_flux) < f_tol))
 
@@ -431,7 +436,6 @@ class ComputeLightCurvesTestCase(ResetClass):
         bs = prepare_binary_system(PARAMS["over-contact"])
         self.do_comparison(bs, "overcontact.circ.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
-    @skip
     def test_eccentric_synchronous_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
@@ -455,7 +459,7 @@ class ComputeLightCurvesTestCase(ResetClass):
         reload_modules()
 
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.2, 0.1)
+        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.2, 0.02)
 
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
@@ -465,7 +469,6 @@ class ComputeLightCurvesTestCase(ResetClass):
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_three.json", TOL, -0.0, 0.01, 0.002)
 
-    @skip
     def test_circular_spotty_synchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached"],
                                    spots_primary=SPOTS_META["primary"],
@@ -478,7 +481,6 @@ class ComputeLightCurvesTestCase(ResetClass):
                                    spots_secondary=SPOTS_META["secondary"])
         self.do_comparison(bs, "overcontact.circ.spotty.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
-    @skip
     def test_cicular_spotty_asynchronous_detached_system(self):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
         reload(lc)
@@ -486,7 +488,6 @@ class ComputeLightCurvesTestCase(ResetClass):
         bs = prepare_binary_system(PARAMS["detached-async"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs, "detached.circ.spotty.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.2)
 
-    @skip
     def test_eccentric_spotty_asynchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached-async-ecc"],
                                    spots_primary=SPOTS_META["primary"])
@@ -517,7 +518,6 @@ class CompareSingleVsMultiprocess(ResetClass):
 
         self.assertTrue(np.all(sp_flux - mp_flux < tol))
 
-    @skip
     def test_circulcar_sync_lc(self):
         config.LIMB_DARKENING_LAW = "linear"
         reload(lc)
@@ -525,7 +525,6 @@ class CompareSingleVsMultiprocess(ResetClass):
         bs = prepare_binary_system(PARAMS["detached"])
         self.do_comparison(bs)
 
-    @skip
     def test_circulcar_spotty_async_lc(self):
         config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
         reload(lc)
@@ -534,7 +533,6 @@ class CompareSingleVsMultiprocess(ResetClass):
                                    spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs)
 
-    @skip
     def test_eccentric_system_no_approximation(self):
         config.POINTS_ON_ECC_ORBIT = -1
         config.MAX_RELATIVE_D_R_POINT = 0.0
@@ -551,7 +549,6 @@ class CompareSingleVsMultiprocess(ResetClass):
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, tol=1e-4)
 
-    @skip
     def test_eccentric_system_approximation_two(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
@@ -561,7 +558,6 @@ class CompareSingleVsMultiprocess(ResetClass):
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, tol=1e-4)
 
-    @skip
     def test_eccentric_system_approximation_three(self):
         config.POINTS_ON_ECC_ORBIT = int(1e6)
         config.MAX_RELATIVE_D_R_POINT = 0.05
@@ -570,7 +566,6 @@ class CompareSingleVsMultiprocess(ResetClass):
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, 0.0, 0.01, 0.002, tol=1e-4)
 
-    @skip
     def test_eccentric_spotty_asynchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached-async-ecc"],
                                    spots_primary=SPOTS_META["primary"])
