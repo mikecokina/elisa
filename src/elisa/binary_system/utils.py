@@ -8,8 +8,8 @@ from jsonschema import (
 
 from .. import units, const
 from .. import umpy as up
+from .. import settings
 from .. base.error import YouHaveNoIdeaError
-from .. conf.config import SCHEMA_REGISTRY
 from .. binary_system import model
 from .. utils import is_empty
 
@@ -166,8 +166,8 @@ def validate_binary_json(data):
     :return: bool; return True if valid schema, othervise raise error
     :raise: ValidationError;
     """
-    schema_std = SCHEMA_REGISTRY.get_schema("binary_system_std")
-    schema_community = SCHEMA_REGISTRY.get_schema("binary_system_community")
+    schema_std = settings.SCHEMA_REGISTRY.get_schema("binary_system_std")
+    schema_community = settings.SCHEMA_REGISTRY.get_schema("binary_system_community")
     std_valid, community_valid = False, False
 
     try:

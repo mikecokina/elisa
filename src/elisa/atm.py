@@ -20,7 +20,7 @@ from scipy import (
     integrate,
     interpolate
 )
-from . conf import config
+from . import settings
 from . import (
     umpy as up,
     utils,
@@ -49,14 +49,14 @@ class AtmModel(object):
 
     @classmethod
     def from_dataframe(cls, df):
-        return cls(flux=np.array(df[config.ATM_MODEL_DATAFRAME_FLUX], dtype=float),
-                   wavelength=np.array(df[config.ATM_MODEL_DATAFRAME_WAVE], dtype=float))
+        return cls(flux=np.array(df[settings.ATM_MODEL_DATAFRAME_FLUX], dtype=float),
+                   wavelength=np.array(df[settings.ATM_MODEL_DATAFRAME_WAVE], dtype=float))
 
     def to_dataframe(self):
         return pd.DataFrame(
             {
-                config.ATM_MODEL_DATAFRAME_FLUX: self.flux,
-                config.ATM_MODEL_DATAFRAME_WAVE: self.wavelength
+                settings.ATM_MODEL_DATAFRAME_FLUX: self.flux,
+                settings.ATM_MODEL_DATAFRAME_WAVE: self.wavelength
             }
         )
 
@@ -266,8 +266,8 @@ class NaiveInterpolatedAtm(object):
                 interpolation_weights, top_flux, bottom_flux
             )
             interp_band[band] = {
-                config.ATM_MODEL_DATAFRAME_FLUX: flux,
-                config.ATM_MODEL_DATAFRAME_WAVE: find_atm_defined_wavelength(top_atm)
+                settings.ATM_MODEL_DATAFRAME_FLUX: flux,
+                settings.ATM_MODEL_DATAFRAME_WAVE: find_atm_defined_wavelength(top_atm)
             }
         return interp_band
 
@@ -318,7 +318,7 @@ class NaiveInterpolatedAtm(object):
             domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
             domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
 
-        return list(os.path.join(str(config.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
+        return list(os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
 
 
 def arange_atm_to_same_wavelength(atm_containers):
@@ -665,7 +665,7 @@ def atm_file_prefix_to_quantity_list(qname: str, atlas: str):
     :return: List
     """
     atlas = validated_atlas(atlas)
-    return getattr(const, f"{str(atlas).upper()}_{str(config.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname])}")
+    return getattr(const, f"{str(atlas).upper()}_{str(settings.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname])}")
 
 
 def validated_atlas(atlas):
@@ -677,9 +677,9 @@ def validated_atlas(atlas):
     :return: str;
     """
     try:
-        return config.ATLAS_TO_ATM_FILE_PREFIX[atlas]
+        return settings.ATLAS_TO_ATM_FILE_PREFIX[atlas]
     except KeyError:
-        raise KeyError(f'Incorrect atlas. Following are allowed: {", ".join(config.ATLAS_TO_ATM_FILE_PREFIX.keys())}')
+        raise KeyError(f'Incorrect atlas. Following are allowed: {", ".join(settings.ATLAS_TO_ATM_FILE_PREFIX.keys())}')
 
 
 def parse_domain_quantities_from_atm_table_filename(filename: str):
@@ -769,12 +769,12 @@ def get_atm_table(temperature, log_g, metallicity, atlas):
     """
     directory = get_atm_directory(metallicity, atlas)
     filename = get_atm_table_filename(temperature, log_g, metallicity, atlas)
-    path = os.path.join(config.ATLAS_TO_BASE_DIR[atlas], directory, filename) if directory is not None else \
-        os.path.join(config.ATLAS_TO_BASE_DIR[atlas], filename)
+    path = os.path.join(settings.ATLAS_TO_BASE_DIR[atlas], directory, filename) if directory is not None else \
+        os.path.join(settings.ATLAS_TO_BASE_DIR[atlas], filename)
 
     if not os.path.isfile(path):
         raise FileNotFoundError(f"there is no file like {path}")
-    return pd.read_csv(path, dtype=config.ATM_MODEL_DATAFARME_DTYPES)
+    return pd.read_csv(path, dtype=settings.ATM_MODEL_DATAFARME_DTYPES)
 
 
 def get_list_of_all_atm_tables(atlas):
@@ -784,7 +784,7 @@ def get_list_of_all_atm_tables(atlas):
     :param atlas: str; e.g. `castelli` or `ck04`
     :return: List[str];
     """
-    source = config.ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
+    source = settings.ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
     matches = list()
     for root, dirnames, filenames in os.walk(source):
         for filename in filenames:
@@ -829,7 +829,7 @@ def multithread_atm_tables_reader_runner(fpaths):
     :param fpaths: Iterable[str];
     :return: Queue;
     """
-    n_threads = config.NUMBER_OF_THREADS
+    n_threads = settings.NUMBER_OF_THREADS
 
     path_queue = Queue(maxsize=len(fpaths) + n_threads)
     result_queue = Queue()
@@ -877,8 +877,8 @@ def compute_normal_intensities(matrices_dict, flux_mult=1.0, wave_mult=1.0):
     """
     return {
         band: compute_normal_intensity(
-            spectral_flux=dflux[config.ATM_MODEL_DATAFRAME_FLUX],
-            wavelength=dflux[config.ATM_MODEL_DATAFRAME_WAVE],
+            spectral_flux=dflux[settings.ATM_MODEL_DATAFRAME_FLUX],
+            wavelength=dflux[settings.ATM_MODEL_DATAFRAME_WAVE],
             flux_mult=flux_mult,
             wave_mult=wave_mult
         )
@@ -1063,9 +1063,9 @@ def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
     :return: dict;
     """
     for star, component_normal_radiances in normal_radiances.items():
-        ld_coefficients = ld_cfs[star]['bolometric'][config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].values.T
+        ld_coefficients = ld_cfs[star]['bolometric'][settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]].values.T
 
-        coeff = ld.calculate_bolometric_limb_darkening_factor(limb_darkening_law=config.LIMB_DARKENING_LAW,
+        coeff = ld.calculate_bolometric_limb_darkening_factor(limb_darkening_law=settings.LIMB_DARKENING_LAW,
                                                               coefficients=ld_coefficients)
 
         normal_radiances[star] = {filter: normal_radiance / coeff for filter, normal_radiance in

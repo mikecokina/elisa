@@ -104,7 +104,10 @@ class TransformBodyPropertiesTestCase(ElisaTestCase):
         valid_values = [1.0, 1.0 * u.solMass, 30. * u.MASS_UNIT]
         obtained = np.array([BodyProperties.mass(val) for val in valid_values])
         expected = np.array([1.98847542e+30, 1.98847542e+30, 3.00000000e+01])
-        self.assertTrue(np.all(expected - obtained < 1e22))
+        print(obtained)
+        print(expected)
+        print(abs((expected - obtained) / expected))
+        self.assertTrue(np.all(abs((expected - obtained) / expected) < 1e-8))
 
     def test_mass_raise(self):
         generate_raise_test(self, -0.14, BodyProperties.mass, "Invalid mass")

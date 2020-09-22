@@ -1,5 +1,5 @@
 from . import utils as crv_utils
-from ... conf import config
+from ... import settings
 
 
 def _calculate_lc_point(band, system):
@@ -11,7 +11,7 @@ def _calculate_lc_point(band, system):
     :return: float;
     """
     flux = 0.0
-    for component in config.BINARY_COUNTERPARTS.keys():
+    for component in settings.BINARY_COUNTERPARTS.keys():
         star = getattr(system, component)
         flux += crv_utils.flux_from_star_container(band, star)
     return flux

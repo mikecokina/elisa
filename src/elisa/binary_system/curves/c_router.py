@@ -13,7 +13,7 @@ from .. import (
 from .. container import OrbitalPositionContainer
 from ... import const
 from ... observer.mp_manager import manage_observations
-from ... conf import config
+from ... import settings
 from ... logger import getLogger
 
 
@@ -122,7 +122,7 @@ def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs)
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
     points = dict()
-    for component in config.BINARY_COUNTERPARTS:
+    for component in settings.BINARY_COUNTERPARTS:
         star = getattr(initial_system, component)
         _a, _b, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
         points[component] = _a

@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
-from elisa.conf import config
+from elisa.conf import settings
 from elisa.binary_system.system import BinarySystem
 from elisa.base.star import Star
 from elisa.observer.observer import Observer
@@ -13,8 +13,8 @@ import elisa.const as c
 import pickle
 
 
-config.LOG_CONFIG = '/home/miro/ELISa/my_logging.json'
-config.NUMBER_OF_PROCESSES = os.cpu_count()
+settings.LOG_CONFIG = '/home/miro/ELISa/my_logging.json'
+settings.NUMBER_OF_PROCESSES = os.cpu_count()
 
 
 # parameters of the composite spot

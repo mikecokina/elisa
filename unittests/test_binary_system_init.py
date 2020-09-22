@@ -10,6 +10,7 @@ from unittests.utils import ElisaTestCase, prepare_binary_system
 
 class BinarySystemInitTestCase(ElisaTestCase):
     def setUp(self):
+        super(BinarySystemInitTestCase, self).setUp()
         self.params_combination = [
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
@@ -184,6 +185,7 @@ class ValidityTestCase(ElisaTestCase):
     MANDATORY_KWARGS = ['inclination', 'period', 'eccentricity', 'argument_of_periastron']
 
     def setUp(self):
+        super(ValidityTestCase, self).setUp()
         self._initial_params = {
             "primary_mass": 2.0, "secondary_mass": 1.0,
             "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
@@ -279,6 +281,7 @@ class ValidityTestCase(ElisaTestCase):
 
 class BinarySystemSerializersTestCase(ElisaTestCase):
     def setUp(self):
+        super(BinarySystemSerializersTestCase, self).setUp()
         self.params_combination = [
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,

@@ -6,7 +6,7 @@ from .. radius import calculate_radius
 from ... logger import getLogger
 from ... base.spot import incorporate_spots_mesh
 from ... base.error import MaxIterationError
-from ... conf import config
+from ... import settings
 from ... pulse import pulsations
 from ... import (
     opt,
@@ -233,7 +233,7 @@ def get_surface_points_radii(*args):
     precalc_vals = precalc_fn(*(mass, angular_velocity, theta,), return_as_tuple=True)
     x0 = x0 * np.ones(theta.shape)
     radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn,
-                               maxiter=config.MAX_SOLVER_ITERS, args=(precalc_vals, surface_potential), rtol=1e-10)
+                               maxiter=settings.MAX_SOLVER_ITERS, args=(precalc_vals, surface_potential), rtol=1e-10)
     return radius
 
 

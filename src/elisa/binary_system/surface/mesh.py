@@ -7,7 +7,7 @@ from .. import (
 )
 from ... base.error import MaxIterationError, SpotError
 from ... base.spot import incorporate_spots_mesh
-from ... conf import config
+from ... import settings
 from ... opt.fsolver import fsolver, fsolve
 from ... utils import is_empty
 from ... logger import getLogger
@@ -286,7 +286,7 @@ def get_surface_points(*args):
     :return: numpy.array
     """
     phi, theta, x0, components_distance, precalc_fn, potential_fn, fprime, potential, q, synchronicity = args
-    max_iter = config.MAX_SOLVER_ITERS
+    max_iter = settings.MAX_SOLVER_ITERS
     precalc_vals = precalc_fn(*(synchronicity, q, components_distance, phi, theta), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
     radius_kwargs = dict(fprime=fprime, maxiter=max_iter, args=((q, ) + precalc_vals, potential), rtol=1e-10)
@@ -320,7 +320,7 @@ def get_surface_points_cylindrical(*args):
     :return: numpy.array;
     """
     phi, z, components_distance, x0, precalc_fn, potential_fn, fprime, potential, q, synchronicity = args
-    max_iter = config.MAX_SOLVER_ITERS
+    max_iter = settings.MAX_SOLVER_ITERS
     precalc_vals = precalc_fn(*(synchronicity, q, phi, z, components_distance), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
     radius_kwargs = dict(fprime=fprime, maxiter=max_iter, rtol=1e-10, args=((q,) + precalc_vals, potential))

@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from elisa import const, units as u
+from elisa import const, units as u, settings
 from elisa import umpy as up
 from elisa.base.container import StarContainer
 from elisa.base.star import Star
@@ -15,17 +15,12 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.single_system.container import SystemContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.single_system.system import SingleSystem
-from elisa.conf import config
 from elisa.const import Position, SinglePosition
 from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
 from collections.abc import Iterable
 
 ax3 = Axes3D
-
-
-def reset_config():
-    config.read_and_update_config(conf_path=None)
 
 
 def plot_points(points_1, points_2, label):
@@ -271,9 +266,14 @@ def surface_closed(faces, points):
 
 class ElisaTestCase(unittest.TestCase):
     def setUpClass(*args, **kwargs):
-        reset_config()
         logging.disable(logging.CRITICAL)
         # logging.disable(logging.NOTSET)
+
+    def setUp(self):
+        settings.configure(**settings.DEFAULT_SETTINGS)
+
+    def tearDown(self):
+        settings.configure(**settings.DEFAULT_SETTINGS)
 
 
 BINARY_SYSTEM_PARAMS = {

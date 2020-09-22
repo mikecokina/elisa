@@ -19,6 +19,7 @@ TOL = 5e-3
 
 class RadialVelocityObserverTestCase(ElisaTestCase):
     def setUp(self):
+        super(RadialVelocityObserverTestCase, self).setUp()
         self.phases = up.arange(-0.2, 1.25, 0.05)
 
     def test_all_init_values_in_expected_units(self):

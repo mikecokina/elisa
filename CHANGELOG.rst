@@ -176,6 +176,8 @@ v0.4
 
 **Enhancements**
 
+    - configuration module uses singleton instead of global variables
+      >>> from elisa import settings
     - ability to display observation stored in DataSet class using DataSet.plot.display_observation()
 
 **Fixes**

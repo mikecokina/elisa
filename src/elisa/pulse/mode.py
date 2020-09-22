@@ -3,7 +3,7 @@ import numpy as np
 from . transform import PulsationModeProperties
 from .. import utils, const as c
 from .. logger import getLogger
-from .. conf import config
+from .. import settings
 
 logger = getLogger('pulse.mode')
 
@@ -34,7 +34,7 @@ class PulsationMode(object):
         self.start_phase = 0
         self.mode_axis_theta = 0
         self.mode_axis_phi = 0
-        self.temperature_perturbation_phase_shift = config.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT
+        self.temperature_perturbation_phase_shift = settings.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT
         # phase shift in radians between surface geometry
         # perturbation and temperature perturbations
 

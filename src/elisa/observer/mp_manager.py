@@ -2,7 +2,7 @@ from multiprocessing.pool import Pool
 
 from .. import utils
 from .. logger import getLogger
-from .. conf import config
+from .. import settings
 
 logger = getLogger('observer.mp')
 
@@ -27,10 +27,10 @@ def manage_observations(fn, fn_args, position, **kwargs):
     :return: Dict; calculated curves (in each passbands)
     """
     args = fn_args + (kwargs, )
-    if len(position) >= config.NUMBER_OF_PROCESSES > 1:
+    if len(position) >= settings.NUMBER_OF_PROCESSES > 1:
         logger.info("starting multiprocessor workers")
-        phase_batches = utils.split_to_batches(array=position, n_proc=config.NUMBER_OF_PROCESSES)
-        pool = Pool(processes=config.NUMBER_OF_PROCESSES)
+        phase_batches = utils.split_to_batches(array=position, n_proc=settings.NUMBER_OF_PROCESSES)
+        pool = Pool(processes=settings.NUMBER_OF_PROCESSES)
 
         result = [pool.apply_async(fn, args[:2] + (batch, ) + args[2:]) for batch in phase_batches]
         pool.close()

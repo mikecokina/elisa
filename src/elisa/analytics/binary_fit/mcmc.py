@@ -22,7 +22,7 @@ from .. tools.utils import time_layer_resolver
 from ... import const
 from ... observer.utils import normalize_light_curve
 from ... base.error import ElisaError
-from ... conf import config
+from ... import settings
 from ... graphic.mcmc_graphics import Plot
 from ... logger import getPersistentLogger
 from ... binary_system.system import BinarySystem
@@ -81,8 +81,8 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         lnf = self.ln_probability
 
         logger.info('starting mcmc')
-        if config.NUMBER_OF_MCMC_PROCESSES > 1:
-            with Pool(processes=config.NUMBER_OF_MCMC_PROCESSES) as pool:
+        if settings.NUMBER_OF_MCMC_PROCESSES > 1:
+            with Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES) as pool:
                 logger.info('starting parallel mcmc')
                 sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf, pool=pool)
                 self.worker(sampler, p0, nsteps, nsteps_burn_in, progress=progress)
@@ -184,7 +184,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
-                    interp_treshold=config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
+                    interp_treshold=settings.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
                     observer_system_cls=BinarySystem)
 
         ndim = len(self.initial_vector)

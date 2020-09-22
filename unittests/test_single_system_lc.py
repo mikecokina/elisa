@@ -1,9 +1,7 @@
 import os.path as op
 import numpy as np
 
-from importlib import reload
-
-from elisa.conf import config
+from elisa import settings
 from elisa.observer.observer import Observer
 from unittests.utils import (
     ElisaTestCase,
@@ -17,9 +15,6 @@ from elisa import (
     umpy as up,
     const as c
 )
-from elisa.single_system.curves import (
-    lc
-)
 
 TOL = 5e-3
 
@@ -27,50 +22,44 @@ TOL = 5e-3
 class ComputeLightCurvesTestCase(ElisaTestCase):
     PARAMS = {
         'solar':
-        {
-            "mass": 1.0,
-            "t_eff": 5772 * u.K,
-            "gravity_darkening": 0.32,
-            "polar_log_g": 4.43775*u.dex(u.cm/u.s**2),
-            "gamma": 0.0,
-            # "inclination": 82.5 * units.deg,
-            "inclination": 90.0 * u.deg,
-            "rotation_period": 25.38 * u.d,
-        },
+            {
+                "mass": 1.0,
+                "t_eff": 5772 * u.K,
+                "gravity_darkening": 0.32,
+                "polar_log_g": 4.43775 * u.dex(u.cm / u.s ** 2),
+                "gamma": 0.0,
+                # "inclination": 82.5 * units.deg,
+                "inclination": 90.0 * u.deg,
+                "rotation_period": 25.38 * u.d,
+            },
     }
 
     SPOTS_META = {
-    "standard":
-        [
-            {"longitude": 80,
-             "latitude": 58,
-             "angular_radius": 5,
-             "temperature_factor": 0.7},
-            {"longitude": 60,
-             "latitude": 53,
-             "angular_radius": 6,
-             "temperature_factor": 0.68},
-        ],
+        "standard":
+            [
+                {"longitude": 80,
+                 "latitude": 58,
+                 "angular_radius": 5,
+                 "temperature_factor": 0.7},
+                {"longitude": 60,
+                 "latitude": 53,
+                 "angular_radius": 6,
+                 "temperature_factor": 0.68},
+            ],
     }
 
     def setUp(self):
-        # raise unittest.SkipTest(message)
+        super(ComputeLightCurvesTestCase, self).setUp()
         self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        self.law = config.LIMB_DARKENING_LAW
 
-        config.LD_TABLES = op.join(self.base_path, "limbdarkening")
-        config.CK04_ATM_TABLES = op.join(self.base_path, "atmosphere")
-        config.ATM_ATLAS = "ck04"
-        config._update_atlas_to_base_dir()
-
-    def tearDown(self):
-        config.LIMB_DARKENING_LAW = self.law
-        reload(lc)
+        settings.configure(**{
+            "LD_TABLES": op.join(self.base_path, "limbdarkening"),
+            "CK04_ATM_TABLES": op.join(self.base_path, "atmosphere"),
+            "ATM_ATLAS": "ck04",
+            "LIMB_DARKENING_LAW": "linear"
+        })
 
     def test_clear_single_system(self):
-        config.LIMB_DARKENING_LAW = "linear"
-        reload(lc)
-
         s = prepare_single_system(self.PARAMS['solar'])
         o = Observer(passband=['Generic.Bessell.V'], system=s)
 
@@ -88,9 +77,6 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
 
     def test_spotty_single_system(self):
-        config.LIMB_DARKENING_LAW = "linear"
-        reload(lc)
-
         s = prepare_single_system(self.PARAMS['solar'], spots=self.SPOTS_META["standard"])
         o = Observer(passband=['Generic.Bessell.V'], system=s)
 
@@ -108,9 +94,6 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.assertTrue(np.all(up.abs(np.round(obtained_flux, 3) - np.round(expected_flux, 3)) < TOL))
 
     def test_solar_constant(self):
-        config.LIMB_DARKENING_LAW = "linear"
-        reload(lc)
-
         s = prepare_single_system(SOLAR_MODEL)
         o = Observer(passband=['bolometric'], system=s)
 

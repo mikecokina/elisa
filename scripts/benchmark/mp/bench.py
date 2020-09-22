@@ -6,7 +6,7 @@ import os
 
 from time import time
 from elisa.binary_system import system
-from elisa.conf import config
+from elisa.conf import settings
 from elisa.observer import observer
 from elisa.logger import getLogger
 from matplotlib import pyplot as plt
@@ -51,8 +51,8 @@ class BenchMark(object):
         self.mp_result = {"cores": int(os.cpu_count()), "n_phases": [], "elapsed_time": []}
         self.sc_result = {"cores": 1, "n_phases": [], "elapsed_time": []}
 
-        config.POINTS_ON_ECC_ORBIT = -1
-        config.MAX_RELATIVE_D_R_POINT = 0.0
+        settings.POINTS_ON_ECC_ORBIT = -1
+        settings.MAX_RELATIVE_D_R_POINT = 0.0
 
         self._multiprocess = True
         setattr(self, "multiprocess", multiprocess)
@@ -64,7 +64,7 @@ class BenchMark(object):
     @multiprocess.setter
     def multiprocess(self, value):
         self._multiprocess = value
-        config.NUMBER_OF_PROCESSES = int(os.cpu_count()) if self.multiprocess else 1
+        settings.NUMBER_OF_PROCESSES = int(os.cpu_count()) if self.multiprocess else 1
         reload(system)
         reload(observer)
 

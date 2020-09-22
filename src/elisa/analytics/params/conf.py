@@ -3,13 +3,13 @@ from astropy.time import Time
 
 from ... import units as u
 from ... atm import atm_file_prefix_to_quantity_list
-from ... conf import config
+from ... import settings
 
 
 PARAM_PARSER = '@'
 
-TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", config.ATM_ATLAS)
-METALLICITY = atm_file_prefix_to_quantity_list("metallicity", config.ATM_ATLAS)
+TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", settings.ATM_ATLAS)
+METALLICITY = atm_file_prefix_to_quantity_list("metallicity", settings.ATM_ATLAS)
 
 
 COMPOSITE_FLAT_PARAMS = [

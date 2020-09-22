@@ -2,7 +2,7 @@ import numpy as np
 
 from .. import utils, const, umpy as up
 from .. umpy import sph_harm
-from .. conf import config
+from .. import settings
 from .. logger import getLogger
 from . import utils as putils
 
@@ -153,10 +153,10 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
         mode.horizontal_amplitude = np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2
 
         surf_ampl = mode.radial_amplitude * mode.horizontal_amplitude
-        if surf_ampl > config.SURFACE_DISPLACEMENT_TOL:
+        if surf_ampl > settings.SURFACE_DISPLACEMENT_TOL:
             prec = int(- np.log10(surf_ampl) + 2)
             logger.warning(f'Surface displacement amplitude ({round(surf_ampl, prec)}) for the mode {mode_index} '
-                           f'exceeded safe tolerances ({config.SURFACE_DISPLACEMENT_TOL}) given by the use of linear '
+                           f'exceeded safe tolerances ({settings.SURFACE_DISPLACEMENT_TOL}) given by the use of linear '
                            f'approximation. This can lead to invalid surface discretization. Use this result with '
                            f'caution.')
 

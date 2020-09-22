@@ -10,7 +10,7 @@ from .. dataset.graphic import plot
 from .. dataset import utils as dutils
 from ... logger import getLogger
 from ... import utils, units as u
-from ... conf import config
+from ... import settings
 from ... utils import is_empty
 
 logger = getLogger('analytics.dataset.base')
@@ -65,7 +65,7 @@ class DataSet(metaclass=ABCMeta):
 
     @classmethod
     def load_from_file(cls, filename, x_unit=None, y_unit=None, data_columns=None,
-                       delimiter=config.DELIM_WHITESPACE, **kwargs):
+                       delimiter=settings.DELIM_WHITESPACE, **kwargs):
         """
         Function loads a RV/LC measurements from text file.
 
@@ -148,8 +148,8 @@ class RVData(DataSet):
     :param y_unit: astropy.unit.Unit; velocity unit of the observed radial velocities and its errors
     """
 
-    MANDATORY_KWARGS = config.DATASET_MANDATORY_KWARGS
-    OPTIONAL_KWARGS = config.DATASET_OPTIONAL_KWARGS
+    MANDATORY_KWARGS = settings.DATASET_MANDATORY_KWARGS
+    OPTIONAL_KWARGS = settings.DATASET_OPTIONAL_KWARGS
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
     TRANSFORM_PROPERTIES_CLS = RVDataProperties
 
@@ -210,8 +210,8 @@ class LCData(DataSet):
                                           to days, the `x_data` are regarded to be in JD
         :param y_unit: astropy.unit.Unit; velocity unit of the observed flux and its errors
     """
-    MANDATORY_KWARGS = config.DATASET_MANDATORY_KWARGS
-    OPTIONAL_KWARGS = config.DATASET_OPTIONAL_KWARGS + ['reference_magnitude', 'passband']
+    MANDATORY_KWARGS = settings.DATASET_MANDATORY_KWARGS
+    OPTIONAL_KWARGS = settings.DATASET_OPTIONAL_KWARGS + ['reference_magnitude', 'passband']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
     TRANSFORM_PROPERTIES_CLS = LCDataProperties
 

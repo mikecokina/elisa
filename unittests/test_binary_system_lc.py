@@ -2,16 +2,14 @@ import os.path as op
 import numpy as np
 from os import cpu_count
 
-from importlib import reload
-from unittest import mock, skip
+from unittest import mock
 from numpy.testing import assert_array_equal
 from pypex.poly2d import polygon
 
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
-from elisa.conf import config
+from elisa import settings
 from elisa.observer.observer import Observer
-from elisa.observer import mp_manager
 from elisa.binary_system.orbit.container import OrbitalSupplements
 from elisa.binary_system import surface
 from elisa.binary_system.curves import utils as crv_utils
@@ -36,14 +34,9 @@ from elisa import (
     units as u,
     const,
     utils)
-from elisa.binary_system.curves import (
-    lc,
-    lc_point,
-    c_appx_router
-)
+
 
 TOL = 5e-3
-
 
 PARAMS = {
         'detached': {
@@ -106,13 +99,6 @@ PARAMS = {
     }
 
 
-def reload_modules():
-    reload(lc)
-    reload(lc_point)
-    reload(mp_manager)
-    reload(c_appx_router)
-
-
 class MockSelf(object):
     class StarMock(object):
         synchronicity = 1.0
@@ -136,32 +122,9 @@ class MockSelf(object):
         return np.array([0.4, 0.45, 0.48, 0.34, 0.6]) if c == "primary" else np.array([0.2, 0.22, 0.19, 0.4, 0.33])
 
 
-class ResetClass(ElisaTestCase):
-    lc_base_path = None
-    default_law = None
-
-    def reset_config(self):
-        config.CK04_ATM_TABLES = op.join(self.lc_base_path, "atmosphere")
-        config.LD_TABLES = op.join(self.lc_base_path, "limbdarkening")
-        config.LIMB_DARKENING_LAW = self.default_law
-        config.ATM_ATLAS = "ck04"
-        config.NUMBER_OF_PROCESSES = -1
-        config.POINTS_ON_ECC_ORBIT = 118
-        config.MAX_RELATIVE_D_R_POINT = 3e-3
-        config.MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
-        config.MAX_SPOT_D_LONGITUDE = np.pi / 180.0
-        config._update_atlas_to_base_dir()
-        reload_modules()
-
-
-class SupportMethodsTestCase(ResetClass):
+class SupportMethodsTestCase(ElisaTestCase):
     def setUp(self):
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        self.default_law = "cosine"
-        self.reset_config()
-
-    def tearDown(self):
-        self.reset_config()
 
     def test_compute_filling_factor(self):
         potential, l_points = 100.0, [2.4078, 2.8758, 2.5772]
@@ -302,20 +265,13 @@ class SupportMethodsTestCase(ResetClass):
         self.assertTrue(np.all(~up.isnan(obtained.body)))
 
     def test_resolve_object_geometry_update(self):
-        val_backup = config.MAX_RELATIVE_D_R_POINT
-        config.MAX_RELATIVE_D_R_POINT = 0.1
-        reload_modules()
-
+        settings.configure(**{"MAX_RELATIVE_D_R_POINT": 0.1})
         rel_d_radii = np.array([
             [0.05, 0.04, 0.02, 0.01, 0.1, 1.1, 98, 0.00001],
             [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.12]
         ])
-
         expected = np.array([True, False, False, True, False, True, True, True, True], dtype=bool)
         obtained = dynamic.resolve_object_geometry_update(False, rel_d_radii.shape[1] + 1, rel_d_radii)
-        config.MAX_RELATIVE_D_R_POINT = val_backup
-        reload_modules()
-
         self.assertTrue(np.all(expected == obtained))
 
     def test_get_visible_projection(self):
@@ -336,15 +292,11 @@ class SupportMethodsTestCase(ResetClass):
 
         obtained = np.round(surface.coverage.partial_visible_faces_surface_coverage(points, faces, normals, hull), 10)
         expected = np.round(0.5 / up.cos(up.pi / 4.0), 10)
-
         self.assertTrue(np.all(obtained == expected))
 
     @staticmethod
     def test_resolve_spots_geometry_update():
-        backup_max_spot_d_longitude = config.MAX_SPOT_D_LONGITUDE
-        config.MAX_SPOT_D_LONGITUDE = 0.06
-        reload_modules()
-
+        settings.configure(**{"MAX_SPOT_D_LONGITUDE": 0.06})
         spots_longitudes = {
             'primary': {
                 0: np.array([0.5, 0.55, 0.6, 0.75, 0.76, 0.77]),
@@ -353,14 +305,10 @@ class SupportMethodsTestCase(ResetClass):
             'secondary': {}
         }
 
-        try:
-            pulsation_tests = {'primary': False, 'secondary': False}
-            obtained = np.array(dynamic.resolve_spots_geometry_update(spots_longitudes, 6, pulsation_tests), dtype=bool)
-            expected = np.array([[True, False, True, True, False, False], [True] + [False] * 5], dtype=bool)
-            assert_array_equal(expected, obtained)
-        finally:
-            config.MAX_SPOT_D_LONGITUDE = backup_max_spot_d_longitude
-            reload_modules()
+        pulsation_tests = {'primary': False, 'secondary': False}
+        obtained = np.array(dynamic.resolve_spots_geometry_update(spots_longitudes, 6, pulsation_tests), dtype=bool)
+        expected = np.array([[True, False, True, True, False, False], [True] + [False] * 5], dtype=bool)
+        assert_array_equal(expected, obtained)
 
     def test_phase_crv_symmetry(self):
         phase = up.arange(0, 1.2, 0.2)
@@ -373,6 +321,11 @@ class SupportMethodsTestCase(ResetClass):
         self.assertTrue(np.all(up.arange(0, 1.2, 0.2) == phase))
 
     def test_visible_indices_when_darkside_filter_apply(self):
+        settings.configure(**{
+            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
+            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
+        })
+
         bs = prepare_binary_system(BINARY_SYSTEM_PARAMS['detached-physical'])
         from_this = dict(binary_system=bs, position=const.Position(0, 1.0, 0.0, 0.0, 0.0))
         system = OrbitalPositionContainer.from_binary_system(**from_this)
@@ -382,16 +335,14 @@ class SupportMethodsTestCase(ResetClass):
         self.assertTrue((not is_empty(system.primary.indices)) and (not is_empty(system.secondary.indices)))
 
 
-class ComputeLightCurvesTestCase(ResetClass):
+class ComputeLightCurvesTestCase(ElisaTestCase):
     def setUp(self):
-        # raise unittest.SkipTest(message)
+        super(ComputeLightCurvesTestCase, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        self.default_law = "cosine"
-        self.reset_config()
-
-    def tearDown(self):
-        config.read_and_update_config()
-        self.reset_config()
+        settings.configure(**{
+            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
+            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
+        })
 
     def test_light_curve_pass_on_all_ld_law(self):
         """
@@ -399,12 +350,8 @@ class ComputeLightCurvesTestCase(ResetClass):
         """
         bs = prepare_binary_system(PARAMS["detached"])
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
-
-        laws = config.LD_LAW_TO_FILE_PREFIX.keys()
-
-        for law in laws:
-            config.LIMB_DARKENING_LAW = law
-            reload_modules()
+        for law in settings.LD_LAW_TO_FILE_PREFIX.keys():
+            settings.configure(**{"LIMB_DARKENING_LAW": law})
             o = Observer(passband=['Generic.Bessell.V'], system=bs)
             o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
 
@@ -437,35 +384,24 @@ class ComputeLightCurvesTestCase(ResetClass):
         self.do_comparison(bs, "overcontact.circ.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
     def test_eccentric_synchronous_system_no_approximation(self):
-        config.POINTS_ON_ECC_ORBIT = -1
-        config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload_modules()
-
+        settings.configure(**{"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0})
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.json", TOL, -0.2, 1.2, 0.1)
 
     def test_eccentric_system_approximation_one(self):
-        config.POINTS_ON_ECC_ORBIT = 5
-        config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload_modules()
-
+        settings.configure(**{"POINTS_ON_ECC_ORBIT": 5, "MAX_RELATIVE_D_R_POINT": 0.0})
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_one.json", TOL, -0.2, 1.2, 0.1)
 
     def test_eccentric_system_approximation_two(self):
-        config.POINTS_ON_ECC_ORBIT = int(1e6)
-        config.MAX_RELATIVE_D_R_POINT = 0.05
-        config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload_modules()
-
+        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6),
+                              "MAX_RELATIVE_D_R_POINT": 0.05,
+                              "MAX_SUPPLEMENTAR_D_DISTANCE": 0.05})
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.2, 0.02)
 
     def test_eccentric_system_approximation_three(self):
-        config.POINTS_ON_ECC_ORBIT = int(1e6)
-        config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload_modules()
-
+        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.05})
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_three.json", TOL, -0.0, 0.01, 0.002)
 
@@ -482,91 +418,69 @@ class ComputeLightCurvesTestCase(ResetClass):
         self.do_comparison(bs, "overcontact.circ.spotty.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
     def test_cicular_spotty_asynchronous_detached_system(self):
-        config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
-        reload_modules()
-
+        settings.configure(**{"MAX_SPOT_D_LONGITUDE": up.pi / 45.0})
         bs = prepare_binary_system(PARAMS["detached-async"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs, "detached.circ.spotty.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.2)
 
     def test_eccentric_spotty_asynchronous_detached_system(self):
-        bs = prepare_binary_system(PARAMS["detached-async-ecc"],
-                                   spots_primary=SPOTS_META["primary"])
-
+        bs = prepare_binary_system(PARAMS["detached-async-ecc"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs, "detached.ecc.spotty.async.generic.bessel.v.json", TOL, -0.2, 1.2, 0.1)
 
 
-class CompareSingleVsMultiprocess(ResetClass):
+class CompareSingleVsMultiprocess(ElisaTestCase):
     def setUp(self):
-        # raise unittest.SkipTest(message)
+        super(CompareSingleVsMultiprocess, self).setUp()
         self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
-        self.default_law = "cosine"
-        self.reset_config()
-
-    def tearDown(self):
-        self.reset_config()
+        settings.configure(**{
+            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
+            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
+        })
 
     def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1, tol=1e-8):
         o = Observer(passband=['Generic.Bessell.V'], system=system)
-
         sp_res = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
-        sp_flux = normalize_lc_for_unittests(sp_res[1]["Generic.Bessell.V"])
+        sp_flux = normalize_lc_for_unittests(sp_res[1]["Generic.Bessell.V"])\
 
-        config.NUMBER_OF_PROCESSES = cpu_count()
-        reload_modules()
+        settings.configure(**{"NUMBER_OF_PROCESSES": cpu_count()})
+
         mp_res = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         mp_flux = normalize_lc_for_unittests(mp_res[1]["Generic.Bessell.V"])
 
+        print(sp_flux - mp_flux)
         self.assertTrue(np.all(sp_flux - mp_flux < tol))
 
     def test_circulcar_sync_lc(self):
-        config.LIMB_DARKENING_LAW = "linear"
-        reload_modules()
-
         bs = prepare_binary_system(PARAMS["detached"])
         self.do_comparison(bs)
 
     def test_circulcar_spotty_async_lc(self):
-        config.MAX_SPOT_D_LONGITUDE = up.pi / 45.0
-        reload_modules()
-
-        bs = prepare_binary_system(PARAMS["detached-async"],
-                                   spots_primary=SPOTS_META["primary"])
+        settings.configure(**{"MAX_SPOT_D_LONGITUDE": up.pi / 45.0})
+        bs = prepare_binary_system(PARAMS["detached-async"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs)
 
     def test_eccentric_system_no_approximation(self):
-        config.POINTS_ON_ECC_ORBIT = -1
-        config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload_modules()
-
+        settings.configure(**{"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0})
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
 
     def test_eccentric_system_approximation_one(self):
-        config.POINTS_ON_ECC_ORBIT = 5
-        config.MAX_RELATIVE_D_R_POINT = 0.0
-        reload_modules()
-
+        settings.configure(**{"POINTS_ON_ECC_ORBIT": 5, "MAX_RELATIVE_D_R_POINT": 0.0})
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, tol=1e-4)
 
     def test_eccentric_system_approximation_two(self):
-        config.POINTS_ON_ECC_ORBIT = int(1e6)
-        config.MAX_RELATIVE_D_R_POINT = 0.05
-        config.MAX_SUPPLEMENTAR_D_DISTANCE = 0.05
-        reload_modules()
-
+        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6),
+                              "MAX_RELATIVE_D_R_POINT": 0.05,
+                              "MAX_SUPPLEMENTAR_D_DISTANCE": 0.05})
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, tol=1e-4)
 
     def test_eccentric_system_approximation_three(self):
-        config.POINTS_ON_ECC_ORBIT = int(1e6)
-        config.MAX_RELATIVE_D_R_POINT = 0.05
-        reload_modules()
-
+        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6),
+                              "MAX_RELATIVE_D_R_POINT": 0.05})
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, 0.0, 0.01, 0.002, tol=1e-4)
 
     def test_eccentric_spotty_asynchronous_detached_system(self):
-        bs = prepare_binary_system(PARAMS["detached-async-ecc"],
-                                   spots_primary=SPOTS_META["primary"])
+        bs = prepare_binary_system(PARAMS["detached-async-ecc"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs)

@@ -11,7 +11,7 @@ from .. container import OrbitalPositionContainer
 from .. surface.coverage import compute_surface_coverage
 from .. orbit.container import OrbitalSupplements
 from ... import utils, const
-from ... conf import config
+from ... import settings
 
 
 def produce_circ_sync_curves_mp(*args):
@@ -222,7 +222,7 @@ def _update_ldc_and_radiance_on_orb_pair(new_geometry_test, base_container, mirr
                                                                 write_to_containers=True, **kwargs)
         if mirror_container is None:
             return normal_radiance, ld_cfs
-        for component in config.BINARY_COUNTERPARTS.keys():
+        for component in settings.BINARY_COUNTERPARTS.keys():
             star = getattr(mirror_container, component)
             setattr(star, 'normal_radiance', normal_radiance[component])
             setattr(star, 'ld_cfs', ld_cfs[component])
@@ -231,7 +231,7 @@ def _update_ldc_and_radiance_on_orb_pair(new_geometry_test, base_container, mirr
         for on_pos in [base_container, mirror_container]:
             if on_pos is None:
                 continue
-            for component in config.BINARY_COUNTERPARTS.keys():
+            for component in settings.BINARY_COUNTERPARTS.keys():
                 star = getattr(on_pos, component)
                 setattr(star, 'normal_radiance', old_normal_radiance[component])
                 setattr(star, 'ld_cfs', old_ld_cfs[component])

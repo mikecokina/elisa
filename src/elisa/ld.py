@@ -5,7 +5,7 @@ import pandas as pd
 from scipy import interpolate
 from . base.error import LimbDarkeningError
 from . logger import getLogger
-from . conf import config
+from . import settings
 from . import (
     utils,
     const,
@@ -36,8 +36,8 @@ def get_ld_table_filename(passband, metallicity, law=None):
     :param law: str; limb darkening default_law (`linear`, `cosine`, `logarithmic`, `square_root`)
     :return: str
     """
-    law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
-    return f"{config.LD_LAW_TO_FILE_PREFIX[law]}.{passband}.{utils.numeric_metallicity_to_string(metallicity)}.csv"
+    law = law if not utils.is_empty(law) else settings.LIMB_DARKENING_LAW
+    return f"{settings.LD_LAW_TO_FILE_PREFIX[law]}.{passband}.{utils.numeric_metallicity_to_string(metallicity)}.csv"
 
 
 def get_ld_table(passband, metallicity, law=None):
@@ -49,9 +49,9 @@ def get_ld_table(passband, metallicity, law=None):
     :param law: str; in not specified, default default_law specified in `elisa.conf.config` is used
     :return: pandas.DataFrame;
     """
-    law = law if not utils.is_empty(law) else config.LIMB_DARKENING_LAW
+    law = law if not utils.is_empty(law) else settings.LIMB_DARKENING_LAW
     filename = get_ld_table_filename(passband, metallicity, law=law)
-    path = os.path.join(config.LD_TABLES, filename)
+    path = os.path.join(settings.LD_TABLES, filename)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"There is no file like {path}.")
     return pd.read_csv(path)
@@ -65,7 +65,7 @@ def get_ld_table_by_name(fname):
     :return: pandas.DataFrame;
     """
     logger.debug(f"accessing limb darkening file {fname}")
-    path = os.path.join(config.LD_TABLES, fname)
+    path = os.path.join(settings.LD_TABLES, fname)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"There is no file like {path}.")
     return pd.read_csv(path)
@@ -108,8 +108,8 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
     for band in passband:
         interp_band = 'bolometric' if band == 'rv_band' else band
         relevant_tables = get_relevant_ld_tables(passband=interp_band, metallicity=metallicity,
-                                                 law=config.LIMB_DARKENING_LAW)
-        csv_columns = config.LD_LAW_COLS_ORDER[config.LIMB_DARKENING_LAW]
+                                                 law=settings.LIMB_DARKENING_LAW)
+        csv_columns = settings.LD_LAW_COLS_ORDER[settings.LIMB_DARKENING_LAW]
         all_columns = csv_columns
         df = pd.DataFrame(columns=all_columns)
 
@@ -118,15 +118,15 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
             df = df.append(_df)
 
         df = df.drop_duplicates()
-        xyz_domain = df[config.LD_DOMAIN_COLS].values
-        xyz_values = df[config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]].values
+        xyz_domain = df[settings.LD_DOMAIN_COLS].values
+        xyz_values = df[settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]].values
 
         uvw_domain = np.column_stack((temperature, log_g))
         uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
 
         result_df = pd.DataFrame({"temperature": temperature, "log_g": log_g})
 
-        for col, vals in zip(config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW], uvw_values.T):
+        for col, vals in zip(settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW], uvw_values.T):
             if np.any(up.isnan(vals)):
                 raise LimbDarkeningError("Limb darkening interpolation lead to numpy.nan/None value. "
                                          "It might be caused by definition of unphysical object on input.")
@@ -218,6 +218,6 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
 
 
 def get_bolometric_ld_coefficients(temperature, log_g, metallicity):
-    columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+    columns = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
     coeffs = interpolate_on_ld_grid(temperature, log_g, metallicity, passband=["bolometric"])["bolometric"][columns]
     return np.array(coeffs).T

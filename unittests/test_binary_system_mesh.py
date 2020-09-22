@@ -1,5 +1,3 @@
-from unittest import skip
-
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -203,6 +201,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
 
 class MeshUtilsTestCase(ElisaTestCase):
     def setUp(self):
+        super(MeshUtilsTestCase, self).setUp()
         self.params_combination = [
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
