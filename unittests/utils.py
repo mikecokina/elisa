@@ -1,6 +1,8 @@
 import json
 import logging
+import os
 import os.path as op
+import tempfile
 import unittest
 import numpy as np
 
@@ -265,15 +267,34 @@ def surface_closed(faces, points):
 
 
 class ElisaTestCase(unittest.TestCase):
+    CONFIG_FILE = op.join(tempfile.gettempdir(), "elisa.ini")
+
+    def touch_default_config(self):
+        with open(self.CONFIG_FILE, "w") as f:
+            f.write("")
+
+    def write_default_support(self, ld_tables, atm_tables):
+        # because of stupid windows MP implementation
+        content = f'[support]\n' \
+                  f'ld_tables={ld_tables}\n' \
+                  f'castelli_kurucz_04_atm_tables={atm_tables}\n\n'
+        with open(self.CONFIG_FILE, "w") as f:
+            f.write(content)
+
     def setUpClass(*args, **kwargs):
         logging.disable(logging.CRITICAL)
         # logging.disable(logging.NOTSET)
 
     def setUp(self):
+        os.environ["ELISA_CONFIG"] = self.CONFIG_FILE
         settings.configure(**settings.DEFAULT_SETTINGS)
+        self.touch_default_config()
+        settings.configure(**{"CONFIG_FILE": ElisaTestCase.CONFIG_FILE})
 
     def tearDown(self):
         settings.configure(**settings.DEFAULT_SETTINGS)
+        if op.isfile(self.CONFIG_FILE):
+            os.remove(self.CONFIG_FILE)
 
 
 BINARY_SYSTEM_PARAMS = {

@@ -767,10 +767,10 @@ def get_atm_table(temperature, log_g, metallicity, atlas):
     :param atlas: str - e.g. `castelli` or `ck04`
     :return: pandas.DataFrame;
     """
+    source = settings.ATLAS_TO_BASE_DIR[atlas]
     directory = get_atm_directory(metallicity, atlas)
     filename = get_atm_table_filename(temperature, log_g, metallicity, atlas)
-    path = os.path.join(settings.ATLAS_TO_BASE_DIR[atlas], directory, filename) if directory is not None else \
-        os.path.join(settings.ATLAS_TO_BASE_DIR[atlas], filename)
+    path = os.path.join(source, directory, filename) if directory is not None else os.path.join(source, filename)
 
     if not os.path.isfile(path):
         raise FileNotFoundError(f"there is no file like {path}")

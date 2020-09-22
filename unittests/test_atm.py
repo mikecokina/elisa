@@ -23,8 +23,6 @@ class TestMapDict(ElisaTestCase):
         assert_array_equal(obtained, expected)
 
     def test_ATLAS_TO_BASE_DIR(self):
-        ck04, k93 = settings.CK04_ATM_TABLES, settings.K93_ATM_TABLES
-
         settings.configure(**{
             "CK04_ATM_TABLES": os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ck04'),
             "K93_ATM_TABLES": os.path.join(os.path.dirname(os.path.abspath(__file__)), 'k93')
@@ -33,8 +31,6 @@ class TestMapDict(ElisaTestCase):
         expected = [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ck04')] * 4 + \
                    [os.path.join(os.path.dirname(os.path.abspath(__file__)), 'k93')] * 3
         obtained = [settings.ATLAS_TO_BASE_DIR[s] for s in supplied]
-        settings.CK04_ATM_TABLES, settings.K93_ATM_TABLES = ck04, k93
-
         assert_array_equal(obtained, expected)
 
     def test_ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX(self):

@@ -1,9 +1,8 @@
+import os
 import numpy as np
 import os.path as op
 
 from copy import copy
-from os import cpu_count
-
 from numpy.testing import assert_array_equal, assert_array_less
 from unittests.utils import (
     ElisaTestCase,
@@ -208,16 +207,28 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
         laws = settings.LD_LAW_TO_FILE_PREFIX.keys()
 
-        for cpu_core in [-1, cpu_count()]:
+        # idea is to update configuration content for problematic values in default configuration file
+        content_tempalte = "[physics]\n" \
+                           "limb_darkening_law={ld_law}\n" \
+                           "[computational]\n" \
+                           "number_of_processes={cpu}\n"
+
+        for cpu_core in [-1, 2]:
             for law in laws:
                 settings.configure(**{"NUMBER_OF_PROCESSES": cpu_core,
                                       "LIMB_DARKENING_LAW": law,
                                       "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
                                       "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere"),
                                       "ATM_ATLAS": "ck04"})
+                self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
+                with open(self.CONFIG_FILE, "a") as f:
+                    f.write(content_tempalte.format(ld_law=law, cpu=cpu_core))
 
                 o = observer.Observer(system=bs)
                 o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
+
+                if op.isfile(self.CONFIG_FILE):
+                    os.remove(self.CONFIG_FILE)
 
     def test_circular_synchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached"])
@@ -283,6 +294,10 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
             "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
             "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
         })
+        self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
+
+    def tearDown(self):
+        super(CompareSingleVsMultiprocess, self).tearDown()
 
     def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1, tol=1e-8):
         settings.configure(**{"NUMBER_OF_PROCESSES": -1})
@@ -295,7 +310,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         sp_p = sp_p[~np.isnan(sp_p)]
         sp_s = sp_s[~np.isnan(sp_s)]
 
-        settings.configure(**{"NUMBER_OF_PROCESSES": cpu_count()})
+        settings.configure(**{"NUMBER_OF_PROCESSES":  2})
 
         mp_res = o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
         mp_p = np.array(mp_res[1]['primary'])
@@ -312,16 +327,36 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
 
     def test_circular_spotty_async_rv(self):
         settings.configure(**{"MAX_SPOT_D_LONGITUDE": up.pi / 45.0})
+
+        # write config for stupid windows multiprocessing
+        with open(self.CONFIG_FILE, "a") as f:
+            f.write(f"[computational]"
+                    f"\nmax_spot_d_longitude={settings.MAX_SPOT_D_LONGITUDE}"
+                    f"\n")
+
         bs = prepare_binary_system(PARAMS["detached-async"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs)
 
     def test_eccentric_system_no_approximation(self):
         settings.configure(**{"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0})
+
+        with open(self.CONFIG_FILE, "a") as f:
+            f.write(f"[computational]"
+                    f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
+                    f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
+                    f"\n")
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
 
     def test_eccentric_system_approximation_one(self):
         settings.configure(**{"POINTS_ON_ECC_ORBIT": 5, "MAX_RELATIVE_D_R_POINT": 0.0})
+
+        with open(self.CONFIG_FILE, "a") as f:
+            f.write(f"[computational]"
+                    f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
+                    f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
+                    f"\n")
+
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, tol=1e-4)
 
@@ -329,11 +364,25 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6),
                               "MAX_RELATIVE_D_R_POINT": 0.05,
                               "MAX_SUPPLEMENTAR_D_DISTANCE": 0.05})
+
+        with open(self.CONFIG_FILE, "a") as f:
+            f.write(f"[computational]"
+                    f"\nmax_supplementar_d_distance={settings.MAX_SUPPLEMENTAR_D_DISTANCE}"
+                    f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
+                    f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
+                    f"\n")
+
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, tol=2e-3)
 
     def test_eccentric_system_approximation_three(self):
         settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.05})
+
+        with open(self.CONFIG_FILE, "a") as f:
+            f.write(f"[computational]"
+                    f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
+                    f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}")
+
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, -0.0, 0.01, 0.002, tol=1e-4)
 

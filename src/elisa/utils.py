@@ -2,6 +2,7 @@ import re
 import numpy as np
 import pandas as pd
 import scipy as sp
+import os.path as op
 
 from typing import Sized
 from queue import Empty
@@ -15,7 +16,7 @@ from copy import (
 )
 from . import (
     const,
-    umpy as up
+    umpy as up, settings
 )
 
 # auxiliary variable

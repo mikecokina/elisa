@@ -247,6 +247,7 @@ class Settings(_Const):
 
         c_parse.read(conf_path)
         cls.update_config()
+        cls._update_atlas_to_base_dir()
         cls._create_home()
 
     @classmethod
