@@ -7,8 +7,8 @@ from jsonschema import (
 )
 
 from .. import units, const
-from .. import umpy as up
 from .. import settings
+from .. import umpy as up
 from .. base.error import YouHaveNoIdeaError
 from .. binary_system import model
 from .. utils import is_empty
