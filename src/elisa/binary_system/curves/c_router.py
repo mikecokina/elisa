@@ -157,7 +157,10 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
 
     # this condition checks if even to attempt to utilize apsidal line symmetry approximations
     # curve has to have enough point on orbit and have to span at least in 0.8 phase
-    phases_span_test = np.max(phases) - np.min(phases) >= 0.8
+
+    # this will remove large gap in phases
+    max_diff = np.diff(np.sort(phases), n=1).max()
+    phases_span_test = np.max(phases) - np.min(phases) - max_diff >= 0.79
 
     position_method = kwargs.pop("position_method")
     try_to_find_appx = c_appx_router.look_for_approximation(not binary.has_pulsations())

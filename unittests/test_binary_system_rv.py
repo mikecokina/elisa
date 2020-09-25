@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import os.path as op
+from unittest import skip
 
 from copy import copy
 from numpy.testing import assert_array_equal, assert_array_less
@@ -10,9 +11,10 @@ from unittests.utils import (
     BINARY_SYSTEM_PARAMS,
     SPOTS_META,
     normalize_lv_for_unittests,
-    load_radial_curve
+    load_radial_curve,
+    APPROX_SETTINGS
 )
-from elisa.observer import observer
+from elisa.observer.observer import Observer
 from elisa.binary_system.curves import rv
 from elisa import settings
 from elisa import umpy as up, const
@@ -125,7 +127,7 @@ class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
     def check_consistency(binary_kwargs, desired_delta, spots_primary=None, spots_secondary=None, phases=None):
         system = prepare_binary_system(binary_kwargs, spots_primary=spots_primary, spots_secondary=spots_secondary)
 
-        o = observer.Observer(system=system)
+        o = Observer(system=system)
         _, rvdict1 = o.rv(phases=phases, method='radiometric')
         _, rvdict2 = o.rv(phases=phases, method='point_mass')
 
@@ -178,7 +180,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         })
 
     def do_comparison(self, bs, rv_file, start_phs=-0.2, stop_phs=1.2, step=0.1):
-        o = observer.Observer(system=bs)
+        o = Observer(system=bs)
 
         obtained = o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
         obt_phs = obtained[0]
@@ -193,6 +195,15 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         exp_s = np.array(expected['secondary'])
         exp_p = exp_p[~np.isnan(exp_p)]
         exp_s = exp_s[~np.isnan(exp_s)]
+
+        # from matplotlib import pyplot as plt
+        # plt.plot(obt_phs, (obt_p-exp_p)/obt_p.max(), c='r')
+        # # plt.plot(obt_phs, obt_p, c='r')
+        # # plt.plot(exp_phs, exp_p, c='r', linestyle='dashed')
+        # plt.plot(obt_phs, (obt_s-exp_s)/obt_p.max(), c='b')
+        # # plt.plot(obt_phs, obt_s, c='b')
+        # # plt.plot(exp_phs, exp_s, c='b', linestyle='dashed')
+        # plt.show()
 
         self.assertTrue(np.all(up.abs(obt_phs - np.round(exp_phs, 3)) < TOL))
         self.assertTrue(np.all((up.abs(obt_p - exp_p) / np.abs(np.max(obt_p))) < TOL))
@@ -224,7 +235,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
                 with open(self.CONFIG_FILE, "a") as f:
                     f.write(content_tempalte.format(ld_law=law, cpu=cpu_core))
 
-                o = observer.Observer(system=bs)
+                o = Observer(system=bs)
                 o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
 
                 if op.isfile(self.CONFIG_FILE):
@@ -256,26 +267,22 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         self.do_comparison(bs, "detached.circ.spotty.async.json")
 
     def test_eccentric_synchronous_detached_system_no_approximation(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0})
+        settings.configure(**APPROX_SETTINGS["no_approx"])
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.json")
 
     def test_eccentric_system_approximation_one(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": 5, "MAX_RELATIVE_D_R_POINT": 0.0})
+        settings.configure(**APPROX_SETTINGS["approx_one"])
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.appx_one.json")
 
     def test_eccentric_system_approximation_two(self):
-        settings.configure(**{
-            "POINTS_ON_ECC_ORBIT": int(1e6),
-            "MAX_RELATIVE_D_R_POINT": 0.05,
-            "MAX_SUPPLEMENTAR_D_DISTANCE": 0.05
-        })
+        settings.configure(**APPROX_SETTINGS["approx_two"])
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.appx_two.json", start_phs=-0.2, stop_phs=1.2, step=0.05)
 
     def test_eccentric_system_approximation_three(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.05})
+        settings.configure(**APPROX_SETTINGS["approx_three"])
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "ecc.appx_three.json", -0.0, 0.01, 0.002)
 
@@ -302,7 +309,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def do_comparison(self, system, start_phs=-0.2, stop_phs=1.2, step=0.1, tol=1e-8):
         settings.configure(**{"NUMBER_OF_PROCESSES": -1})
 
-        o = observer.Observer(system=system)
+        o = Observer(system=system)
 
         sp_res = o.rv(from_phase=start_phs, to_phase=stop_phs, phase_step=step, method='radiometric')
         sp_p = np.array(sp_res[1]['primary'])
@@ -338,7 +345,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs)
 
     def test_eccentric_system_no_approximation(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0})
+        settings.configure(**APPROX_SETTINGS["no_approx"])
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
@@ -349,7 +356,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs)
 
     def test_eccentric_system_approximation_one(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": 5, "MAX_RELATIVE_D_R_POINT": 0.0})
+        settings.configure(**APPROX_SETTINGS["approx_one"])
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
@@ -361,9 +368,8 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs, tol=1e-4)
 
     def test_eccentric_system_approximation_two(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6),
-                              "MAX_RELATIVE_D_R_POINT": 0.05,
-                              "MAX_SUPPLEMENTAR_D_DISTANCE": 0.05})
+        settings.configure(**APPROX_SETTINGS["approx_two"])
+        settings.configure(**{"MAX_RELATIVE_D_R_POINT": 0.0})
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
@@ -376,7 +382,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs, tol=2e-3)
 
     def test_eccentric_system_approximation_three(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.05})
+        settings.configure(**APPROX_SETTINGS["approx_three"])
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
@@ -389,3 +395,111 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_spotty_asynchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached-async-ecc"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs)
+
+
+class CompareApproxVsExact(ElisaTestCase):
+    def setUp(self):
+        super(CompareApproxVsExact, self).setUp()
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        self.base_path = op.join(op.dirname(op.abspath(__file__)), "data", "radial_curves")
+
+        settings.configure(**{
+            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
+            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
+        })
+        self.write_default_support(ld_tables=settings.LD_TABLES, atm_tables=settings.CK04_ATM_TABLES)
+
+    @skip
+    def test_approximation_one(self):
+        bs = prepare_binary_system(PARAMS["eccentric"])
+
+        phase_step = 1.0/120
+        settings.configure(**APPROX_SETTINGS["approx_one"])
+        settings.configure(**{"NUMBER_OF_PROCESSES": 4})
+        o = Observer(system=bs)
+        ap_res = o.rv(from_phase=-0.1, to_phase=1.1, phase_step=phase_step, method='radiometric')
+        ap_p = np.array(ap_res[1]['primary'])
+        ap_s = np.array(ap_res[1]['secondary'])
+        ap_p = ap_p[~np.isnan(ap_p)]
+        ap_s = ap_s[~np.isnan(ap_s)]
+
+        settings.configure(**APPROX_SETTINGS["no_approx"])
+        o = Observer(system=bs)
+        ex_res = o.rv(from_phase=-0.1, to_phase=1.1, phase_step=phase_step, method='radiometric')
+        ex_p = np.array(ex_res[1]['primary'])
+        ex_s = np.array(ex_res[1]['secondary'])
+        ex_p = ex_p[~np.isnan(ex_p)]
+        ex_s = ex_s[~np.isnan(ex_s)]
+
+        # import matplotlib.pyplot as plt
+        # plt.plot(ex_res[0], (ex_p-ap_p)/ex_p.max(), label='primary')
+        # plt.plot(ex_res[0], (ex_s-ap_s)/ex_p.max(), label='secondary')
+        # plt.legend()
+        # plt.show()
+
+        self.assertTrue(np.all((up.abs(ex_p - ap_p) / np.abs(np.max(ex_p))) < 3e-3))
+        self.assertTrue(np.all((up.abs(ex_s - ap_s) / np.abs(np.max(ex_s))) < 3e-3))
+
+    @skip
+    def test_approximation_two(self):
+        bs = prepare_binary_system(PARAMS["eccentric"])
+
+        settings.configure(**APPROX_SETTINGS["approx_two"])
+        settings.configure(**{"NUMBER_OF_PROCESSES": 4})
+        o = Observer(system=bs)
+        ap_res = o.rv(from_phase=-0.1, to_phase=1.1, phase_step=0.01, method='radiometric')
+        ap_p = np.array(ap_res[1]['primary'])
+        ap_s = np.array(ap_res[1]['secondary'])
+        ap_p = ap_p[~np.isnan(ap_p)]
+        ap_s = ap_s[~np.isnan(ap_s)]
+
+        settings.configure(**APPROX_SETTINGS["no_approx"])
+        o = Observer(system=bs)
+        ex_res = o.rv(from_phase=-0.1, to_phase=1.1, phase_step=0.01, method='radiometric')
+        ex_p = np.array(ex_res[1]['primary'])
+        ex_s = np.array(ex_res[1]['secondary'])
+        ex_p = ex_p[~np.isnan(ex_p)]
+        ex_s = ex_s[~np.isnan(ex_s)]
+
+        # import matplotlib.pyplot as plt
+        # plt.plot(ex_res[0], ex_p / ex_s.max())
+        # plt.plot(ex_res[0], ap_p / ex_s.max())
+        # plt.plot(ex_res[0], ex_s / ex_s.max())
+        # plt.plot(ex_res[0], ap_s / ex_s.max())
+        # plt.plot(ex_res[0], (ex_p - ap_p) / ex_s.max(), label='primary')
+        # plt.plot(ex_res[0], (ex_s - ap_s) / ex_s.max(), label='secondary')
+        # plt.legend()
+        # plt.show()
+
+        self.assertTrue(np.all((up.abs(ex_p - ap_p) / np.abs(np.max(ex_s))) < 3e-3))
+        self.assertTrue(np.all((up.abs(ex_s - ap_s) / np.abs(np.max(ex_s))) < 3e-3))
+
+    @skip
+    def test_approximation_three(self):
+        bs = prepare_binary_system(PARAMS["eccentric"])
+
+        settings.configure(**APPROX_SETTINGS["approx_three"])
+        settings.configure(**{"NUMBER_OF_PROCESSES": 4})
+        o = Observer(system=bs)
+        ap_res = o.rv(from_phase=-0.1, to_phase=0.6, phase_step=0.01, method='radiometric')
+        ap_p = np.array(ap_res[1]['primary'])
+        ap_s = np.array(ap_res[1]['secondary'])
+        ap_p = ap_p[~np.isnan(ap_p)]
+        ap_s = ap_s[~np.isnan(ap_s)]
+
+        settings.configure(**APPROX_SETTINGS["no_approx"])
+        o = Observer(system=bs)
+        ex_res = o.rv(from_phase=-0.1, to_phase=0.6, phase_step=0.01, method='radiometric')
+        ex_p = np.array(ex_res[1]['primary'])
+        ex_s = np.array(ex_res[1]['secondary'])
+        ex_p = ex_p[~np.isnan(ex_p)]
+        ex_s = ex_s[~np.isnan(ex_s)]
+
+        # import matplotlib.pyplot as plt
+        # plt.plot(ex_res[0], (ex_p - ap_p) / ex_p.max(), label='primary')
+        # plt.plot(ex_res[0], (ex_s - ap_s) / ex_p.max(), label='secondary')
+        # plt.legend()
+        # plt.show()
+
+        self.assertTrue(np.all((up.abs(ex_p - ap_p) / np.abs(np.max(ex_p))) < 3e-3))
+        self.assertTrue(np.all((up.abs(ex_s - ap_s) / np.abs(np.max(ex_s))) < 3e-3))

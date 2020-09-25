@@ -1,5 +1,5 @@
 import numpy as np
-from copy import copy
+from copy import copy, deepcopy
 
 from . import utils as crv_utils
 from .. surface.mesh import add_spots_to_mesh
@@ -259,7 +259,7 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
     """
     binary, all_potentials, orbital_positions, crv_labels, curve_fn, kwargs = args
 
-    # # surface potentials with constant volume of components
+    # surface potentials with constant volume of components
     # potentials = binary.correct_potentials(orbital_positions[:, 0, 4], component="all", iterations=2)
     potentials = {component: pot[np.array(orbital_positions[:, 0, 0], dtype=np.int)] for component, pot in
                   all_potentials.items()}
@@ -284,17 +284,20 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
                                               potentials['secondary'][idx])
         initial_system = _update_surface_in_ecc_orbits(initial_system, base_orb_pos, new_geometry_mask[idx])
 
-        on_pos_base = bsutils.move_sys_onpos(initial_system, base_orb_pos)
+        on_pos_base = bsutils.move_sys_onpos(initial_system, base_orb_pos, on_copy=True)
         compute_surface_coverage(on_pos_base, binary.semi_major_axis, in_eclipse=True,
                                  return_values=False, write_to_containers=True)
 
-        if not OrbitalSupplements.is_empty(mirror):
+        if OrbitalSupplements.is_empty(mirror):
+            on_pos_mirror = None
+        else:
             # orbital velocities are not symmetrical along apsidal lines
-            on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, recalculate_velocities=True)
+            d_distance = mirror_orb_pos.distance - base_orb_pos.distance
+            initial_system.secondary.points[:, 0] += d_distance
+            on_pos_mirror = bsutils.move_sys_onpos(initial_system, mirror_orb_pos, recalculate_velocities=True,
+                                                   on_copy=True)
             compute_surface_coverage(on_pos_mirror, binary.semi_major_axis, in_eclipse=True,
                                      return_values=False, write_to_containers=True)
-        else:
-            on_pos_mirror = None
 
         # normal radiances and ld coefficients will be used for both base and mirror orbital positions
         normal_radiance, ld_cfs = _update_ldc_and_radiance_on_orb_pair(new_geometry_mask[idx],
@@ -346,7 +349,7 @@ def integrate_eccentric_curve_approx_three(*args):
                                               potentials["secondary"][pos_idx])
 
         _update_surface_in_ecc_orbits(initial_system, orbital_position=position, new_geometry_test=require_rebuild)
-        on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=False, recalculate_velocities=True)
+        on_pos = bsutils.move_sys_onpos(initial_system, position, on_copy=True, recalculate_velocities=True)
         on_pos, normal_radiance, ld_cfs = crv_utils.update_surface_params(require_rebuild, on_pos, normal_radiance,
                                                                           ld_cfs, **kwargs)
         # TODO: properly calculate in_eclipse parameter

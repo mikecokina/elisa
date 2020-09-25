@@ -219,7 +219,7 @@ def compute_rel_d_radii(binary, distances, potentials=None):
     sargs = (distances, corrected_potentials['secondary'], binary.mass_ratio, binary.secondary.synchronicity,
              "secondary")
     fwd_radii = np.vstack((bsradius.calculate_forward_radii(*pargs), bsradius.calculate_forward_radii(*sargs)))
-    return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii[:, 1:]
+    return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii.mean(axis=1)[:, np.newaxis]
 
 
 def compute_rel_d_radii_from_counterparts(binary, base_distances, counterpart_distances, base_potentials=None,
@@ -281,7 +281,7 @@ def compute_rel_d_radii_from_counterparts(binary, base_distances, counterpart_di
     fwd_radii_counterpart = np.vstack((bsradius.calculate_forward_radii(*pargs_counterpart),
                                        bsradius.calculate_forward_radii(*sargs_counterpart)))
 
-    return np.abs(fwd_radii_base - fwd_radii_counterpart) / fwd_radii_base
+    return np.abs(fwd_radii_base - fwd_radii_counterpart) / fwd_radii_base.mean(axis=1)[:, np.newaxis]
 
 
 def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):

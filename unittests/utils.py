@@ -459,6 +459,17 @@ IDENTICAL_BINARY = {
   }
 }
 
+APPROX_SETTINGS = \
+    {"no_approx":
+         {"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.0},
+     "approx_one":
+         {"POINTS_ON_ECC_ORBIT": 1, "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.001},
+     "approx_two":
+         {"POINTS_ON_ECC_ORBIT": 1e6, "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.001},
+     "approx_three":
+         {"POINTS_ON_ECC_ORBIT": 1e6, "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.0}
+     }
+
 
 def cutoff_float(x, keep_n):
     if isinstance(x, Iterable):

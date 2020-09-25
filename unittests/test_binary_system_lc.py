@@ -1,7 +1,8 @@
 import os.path as op
 import numpy as np
+from os import cpu_count
 
-from unittest import mock
+from unittest import mock, skip
 from numpy.testing import assert_array_equal
 from pypex.poly2d import polygon
 
@@ -26,7 +27,8 @@ from unittests.utils import (
     load_light_curve,
     normalize_lc_for_unittests,
     SPOTS_META,
-    BINARY_SYSTEM_PARAMS
+    BINARY_SYSTEM_PARAMS,
+    APPROX_SETTINGS
 )
 from elisa import (
     umpy as up,
@@ -209,7 +211,7 @@ class SupportMethodsTestCase(ElisaTestCase):
     def test__compute_rel_d_radii(self):
         mock_supplements = OrbitalSupplements([[1., 10.]], [[1., 10.]])
         corrected_potentials = {'primary': [], 'secondary': []}
-        expected = np.array([[0.1111, 0.0625, 0.4118, 0.4333], [0.0909, 0.1579, 0.525, 0.2121]])
+        expected = np.array([[0.1101, 0.0661, 0.3084, 0.5727], [0.0746, 0.1119, 0.7836, 0.2612]])
         with mock.patch('elisa.binary_system.radius.calculate_forward_radii', MockSelf.calculate_forward_radii):
             obtained = \
                 np.round(crv_utils.compute_rel_d_radii(MockSelf, mock_supplements.body[:, 1], corrected_potentials), 4)
@@ -373,11 +375,11 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        # import matplotlib.pyplot as plt
-        # plt.plot(expected_phases, expected_flux, label='expected')
-        # plt.plot(obtained_phases, obtained_flux, label='obtained')
-        # plt.legend()
-        # plt.plot()
+        import matplotlib.pyplot as plt
+        plt.plot(expected_phases, expected_flux, label='expected')
+        plt.plot(obtained_phases, obtained_flux, label='obtained')
+        plt.legend()
+        plt.plot()
 
         self.assertTrue(np.all(up.abs(obtained_phases - expected_phases) < TOL))
         self.assertTrue(np.all(up.abs(obtained_flux - expected_flux) < f_tol))
@@ -391,24 +393,22 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         self.do_comparison(bs, "overcontact.circ.sync.generic.bessel.v.json", TOL, -0.2, 1.2, 0.01)
 
     def test_eccentric_synchronous_system_no_approximation(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0})
+        settings.configure(**APPROX_SETTINGS["no_approx"])
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.json", TOL, -0.2, 1.2, 0.1)
 
     def test_eccentric_system_approximation_one(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": 5, "MAX_RELATIVE_D_R_POINT": 0.0})
+        settings.configure(**APPROX_SETTINGS["approx_one"])
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_one.json", TOL, -0.2, 1.2, 0.1)
 
     def test_eccentric_system_approximation_two(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6),
-                              "MAX_RELATIVE_D_R_POINT": 0.05,
-                              "MAX_SUPPLEMENTAR_D_DISTANCE": 0.05})
+        settings.configure(**APPROX_SETTINGS["approx_two"])
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.2, 0.02)
+        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.2, 0.05)
 
     def test_eccentric_system_approximation_three(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.05})
+        settings.configure(**APPROX_SETTINGS["approx_three"])
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_three.json", TOL, -0.0, 0.01, 0.002)
 
@@ -458,7 +458,14 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         mp_res = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         mp_flux = normalize_lc_for_unittests(mp_res[1]["Generic.Bessell.V"])
 
-        print(sp_flux - mp_flux)
+        # print(np.max(sp_flux - mp_flux))
+        #
+        # import matplotlib.pyplot as plt
+        # plt.plot(sp_res[0], sp_flux, label='single')
+        # plt.plot(mp_res[0], mp_flux, label='multi')
+        # plt.legend()
+        # plt.show()
+
         self.assertTrue(np.all(sp_flux - mp_flux < tol))
 
     def test_circulcar_sync_lc(self):
@@ -478,7 +485,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs)
 
     def test_eccentric_system_no_approximation(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0})
+        settings.configure(**APPROX_SETTINGS["no_approx"])
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
                     f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
@@ -488,19 +495,18 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         self.do_comparison(bs)
 
     def test_eccentric_system_approximation_one(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": 5, "MAX_RELATIVE_D_R_POINT": 0.0})
+        settings.configure(**APPROX_SETTINGS["approx_one"])
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
                     f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
                     f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
                     f"\n")
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, tol=1e-4)
+        self.do_comparison(bs, start_phs=-0.2, stop_phs=1.2, step=0.1)
 
     def test_eccentric_system_approximation_two(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6),
-                              "MAX_RELATIVE_D_R_POINT": 0.05,
-                              "MAX_SUPPLEMENTAR_D_DISTANCE": 0.05})
+        settings.configure(**APPROX_SETTINGS["approx_two"])
+        settings.configure(**{"MAX_RELATIVE_D_R_POINT": 0.0})
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
@@ -509,11 +515,10 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
                     f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
                     f"\n")
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, tol=1e-4)
+        self.do_comparison(bs, start_phs=-0.2, stop_phs=1.2, step=0.1)
 
     def test_eccentric_system_approximation_three(self):
-        settings.configure(**{"POINTS_ON_ECC_ORBIT": int(1e6),
-                              "MAX_RELATIVE_D_R_POINT": 0.05})
+        settings.configure(**APPROX_SETTINGS["approx_three"])
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
@@ -525,3 +530,90 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
     def test_eccentric_spotty_asynchronous_detached_system(self):
         bs = prepare_binary_system(PARAMS["detached-async-ecc"], spots_primary=SPOTS_META["primary"])
         self.do_comparison(bs)
+
+
+class CompareApproxVsExact(ElisaTestCase):
+    def setUp(self):
+        super(CompareApproxVsExact, self).setUp()
+        self.lc_base_path = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves")
+        settings.configure(**{
+            "LD_TABLES": op.join(self.lc_base_path, "limbdarkening"),
+            "CK04_ATM_TABLES": op.join(self.lc_base_path, "atmosphere")
+        })
+
+    @skip
+    def test_approximation_one(self):
+        bs = prepare_binary_system(PARAMS["eccentric"])
+
+        phase_step = 1.0/120
+        settings.configure(**APPROX_SETTINGS["approx_one"])
+        settings.configure(**{"NUMBER_OF_PROCESSES": 4})
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+        ap_res = o.lc(from_phase=-0.1, to_phase=1.1, phase_step=phase_step)
+        ap_flux = normalize_lc_for_unittests(ap_res[1]["Generic.Bessell.V"])
+        # ap_flux = ap_res[1]["Generic.Bessell.V"]
+
+        settings.configure(**APPROX_SETTINGS["no_approx"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+        ex_res = o.lc(from_phase=-0.1, to_phase=1.1, phase_step=phase_step)
+        ex_flux = normalize_lc_for_unittests(ex_res[1]["Generic.Bessell.V"])
+        # ex_flux = ex_res[1]["Generic.Bessell.V"]
+
+        # import matplotlib.pyplot as plt
+        # plt.plot(ex_res[0], ex_flux, label='exact')
+        # plt.plot(ap_res[0], ap_flux, label='approx')
+        # plt.plot(ap_res[0], ex_flux-ap_flux+1, label='diff')
+        # plt.legend()
+        # plt.show()
+
+        self.assertTrue(np.all(ex_flux - ap_flux < 3e-3))
+
+    @skip
+    def test_approximation_two(self):
+        bs = prepare_binary_system(PARAMS["eccentric"])
+
+        settings.configure(**APPROX_SETTINGS["approx_two"])
+        settings.configure(**{"NUMBER_OF_PROCESSES": 4})
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+        ap_res = o.lc(from_phase=-0.1, to_phase=1.1, phase_step=0.01)
+        ap_flux = normalize_lc_for_unittests(ap_res[1]["Generic.Bessell.V"])
+
+        settings.configure(**APPROX_SETTINGS["no_approx"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+        ex_res = o.lc(from_phase=-0.1, to_phase=1.1, phase_step=0.01)
+        ex_flux = normalize_lc_for_unittests(ex_res[1]["Generic.Bessell.V"])
+
+        import matplotlib.pyplot as plt
+        plt.plot(ex_res[0], ex_flux, label='exact')
+        plt.plot(ap_res[0], ap_flux, label='approx')
+        plt.plot(ap_res[0], ex_flux-ap_flux+1, label='diff')
+        plt.legend()
+        plt.show()
+
+        self.assertTrue(np.all(ex_flux - ap_flux < 3e-3))
+
+    @skip
+    def test_approximation_three(self):
+        bs = prepare_binary_system(PARAMS["eccentric"])
+
+        settings.configure(**APPROX_SETTINGS["approx_three"])
+        settings.configure(**{"NUMBER_OF_PROCESSES": 4})
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+        ap_res = o.lc(from_phase=-0.1, to_phase=0.6, phase_step=0.01)
+        ap_flux = normalize_lc_for_unittests(ap_res[1]["Generic.Bessell.V"])
+        # ap_flux = ap_res[1]["Generic.Bessell.V"]
+
+        settings.configure(**APPROX_SETTINGS["no_approx"])
+        o = Observer(passband=['Generic.Bessell.V'], system=bs)
+        ex_res = o.lc(from_phase=-0.1, to_phase=0.6, phase_step=0.01)
+        ex_flux = normalize_lc_for_unittests(ex_res[1]["Generic.Bessell.V"])
+        # ex_flux = ex_res[1]["Generic.Bessell.V"]
+
+        # import matplotlib.pyplot as plt
+        # plt.plot(ex_res[0], ex_flux, label='exact')
+        # plt.plot(ap_res[0], ap_flux, label='approx')
+        # plt.plot(ap_res[0], ex_flux-ap_flux+1, label='diff')
+        # plt.legend()
+        # plt.show()
+
+        self.assertTrue(np.all(ex_flux - ap_flux < 3e-3))
