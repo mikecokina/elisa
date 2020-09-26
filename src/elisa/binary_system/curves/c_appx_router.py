@@ -136,6 +136,7 @@ def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_
     # removing invalid supplements indices
     idxs_where_nan = np.argwhere(np.isnan(orbital_supplements.mirror[:, 0]))
     idxs = np.array(orbital_supplements.mirror[:, 0], dtype=np.int)
+    # replace all nan values with corresponding body
     idxs[idxs_where_nan] = np.array(orbital_supplements.body[idxs_where_nan, 0], dtype=np.int)
     counterpart_potentials = {component: pot[idxs] for component, pot in potentials.items()}
     rel_d = crv_utils.compute_rel_d_radii_from_counterparts(binary, orbital_supplements.body[:, 1],

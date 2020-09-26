@@ -284,6 +284,7 @@ class ElisaTestCase(unittest.TestCase):
     def setUpClass(*args, **kwargs):
         logging.disable(logging.CRITICAL)
         # logging.disable(logging.NOTSET)
+        pass
 
     def setUp(self):
         os.environ["ELISA_CONFIG"] = self.CONFIG_FILE
@@ -465,9 +466,9 @@ APPROX_SETTINGS = \
      "approx_one":
          {"POINTS_ON_ECC_ORBIT": 1, "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.001},
      "approx_two":
-         {"POINTS_ON_ECC_ORBIT": 1e6, "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.001},
+         {"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.001},
      "approx_three":
-         {"POINTS_ON_ECC_ORBIT": 1e6, "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.0}
+         {"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.0}
      }
 
 

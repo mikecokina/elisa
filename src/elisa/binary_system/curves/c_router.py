@@ -34,9 +34,9 @@ def resolve_curve_method(system, fn_array):
     """
     is_circular = system.eccentricity == 0
     is_eccentric = 1 > system.eccentricity > 0
-    assynchronous_spotty_p = system.primary.synchronicity != 1 and system.primary.has_spots()
-    assynchronous_spotty_s = system.secondary.synchronicity != 1 and system.secondary.has_spots()
-    asynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
+    asynchronous_spotty_p = system.primary.synchronicity != 1 and system.primary.has_spots()
+    asynchronous_spotty_s = system.secondary.synchronicity != 1 and system.secondary.has_spots()
+    asynchronous_spotty_test = asynchronous_spotty_p or asynchronous_spotty_s
 
     spotty_test_eccentric = system.primary.has_spots() or system.secondary.has_spots()
 
