@@ -74,6 +74,8 @@ class _Const(object):
         "square_root": "sqrt",
     }
 
+    AVAILABLE_LD_LAWS = list(LD_LAW_TO_FILE_PREFIX.keys())
+
     LD_LAW_CFS_COLUMNS = {
         "linear": ["xlin"],
         "cosine": ["xlin"],
