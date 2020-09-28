@@ -135,6 +135,8 @@ def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_
 
     # removing invalid supplements indices
     idxs_where_nan = np.argwhere(np.isnan(orbital_supplements.mirror[:, 0]))
+    if idxs_where_nan.shape[0] == orbital_supplements.mirror.shape[0]:
+        return False, None
     idxs = np.array(orbital_supplements.mirror[:, 0], dtype=np.int)
     # replace all nan values with corresponding body
     idxs[idxs_where_nan] = np.array(orbital_supplements.body[idxs_where_nan, 0], dtype=np.int)

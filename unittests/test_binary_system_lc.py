@@ -6,6 +6,7 @@ from unittest import mock, skip
 from numpy.testing import assert_array_equal
 from pypex.poly2d import polygon
 
+from elisa import units as u
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa import settings
@@ -375,11 +376,11 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
-        import matplotlib.pyplot as plt
-        plt.plot(expected_phases, expected_flux, label='expected')
-        plt.plot(obtained_phases, obtained_flux, label='obtained')
-        plt.legend()
-        plt.plot()
+        # import matplotlib.pyplot as plt
+        # plt.plot(expected_phases, expected_flux, label='expected')
+        # plt.plot(obtained_phases, obtained_flux, label='obtained')
+        # plt.legend()
+        # plt.plot()
 
         self.assertTrue(np.all(up.abs(obtained_phases - expected_phases) < TOL))
         self.assertTrue(np.all(up.abs(obtained_flux - expected_flux) < f_tol))
@@ -404,8 +405,10 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
     def test_eccentric_system_approximation_two(self):
         settings.configure(**APPROX_SETTINGS["approx_two"])
-        bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.2, 0.05)
+        ec_params = PARAMS["eccentric"].copy()
+        ec_params["argument_of_periastron"] = 90 * u.deg
+        bs = prepare_binary_system(ec_params)
+        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_two.json", TOL, -0.2, 1.15, 0.05)
 
     def test_eccentric_system_approximation_three(self):
         settings.configure(**APPROX_SETTINGS["approx_three"])

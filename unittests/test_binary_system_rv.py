@@ -197,12 +197,12 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
         exp_s = exp_s[~np.isnan(exp_s)]
 
         # from matplotlib import pyplot as plt
-        # plt.plot(obt_phs, (obt_p-exp_p)/obt_p.max(), c='r')
-        # # plt.plot(obt_phs, obt_p, c='r')
-        # # plt.plot(exp_phs, exp_p, c='r', linestyle='dashed')
-        # plt.plot(obt_phs, (obt_s-exp_s)/obt_p.max(), c='b')
-        # # plt.plot(obt_phs, obt_s, c='b')
-        # # plt.plot(exp_phs, exp_s, c='b', linestyle='dashed')
+        # # plt.plot(obt_phs, (obt_p-exp_p)/obt_p.max(), c='r')
+        # plt.plot(obt_phs, obt_p, c='r')
+        # plt.plot(exp_phs, exp_p, c='r', linestyle='dashed')
+        # # plt.plot(obt_phs, (obt_s-exp_s)/obt_p.max(), c='b')
+        # plt.plot(obt_phs, obt_s, c='b')
+        # plt.plot(exp_phs, exp_s, c='b', linestyle='dashed')
         # plt.show()
 
         self.assertTrue(np.all(up.abs(obt_phs - np.round(exp_phs, 3)) < TOL))
@@ -278,7 +278,9 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
 
     def test_eccentric_system_approximation_two(self):
         settings.configure(**APPROX_SETTINGS["approx_two"])
-        bs = prepare_binary_system(PARAMS["eccentric"])
+        ec_params = PARAMS["eccentric"].copy()
+        ec_params["argument_of_periastron"] = 90 * u.deg
+        bs = prepare_binary_system(ec_params)
         self.do_comparison(bs, "detached.ecc.appx_two.json", start_phs=-0.2, stop_phs=1.2, step=0.05)
 
     def test_eccentric_system_approximation_three(self):
