@@ -1,5 +1,4 @@
 import numpy as np
-import scipy
 
 from scipy import optimize
 from . orbit import orbit
@@ -18,6 +17,7 @@ from .. import (
     const as c,
 )
 from .. base.system import System
+from .. opt.fsolver import fsolve
 
 logger = getLogger('single_system.system')
 
@@ -200,8 +200,7 @@ class SingleSystem(System):
         for angle in angles:
             precalc_args = (self.star.mass, self.angular_velocity, angle)
             argss = (model.pre_calculate_for_potential_value(*precalc_args), self.star.surface_potential)
-            solution, _, ier, _ = scipy.optimize.fsolve(model.potential_fn, scipy_solver_init_value,
-                                                        full_output=True, args=argss)
+            solution, _, ier, _ = fsolve(model.potential_fn, scipy_solver_init_value, full_output=True, args=argss)
             if ier == 1 and not np.isnan(solution[0]):
                 solution = solution[0]
             else:

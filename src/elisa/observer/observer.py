@@ -9,7 +9,7 @@ from . passband import PassbandContainer, init_bolometric_passband
 from .. binary_system.system import BinarySystem
 from .. binary_system.curves.community import RadialVelocitySystem
 from .. single_system.system import SingleSystem
-from .. conf import config
+from .. import settings
 from .. utils import is_empty
 from .. logger import getLogger
 from .. import (
@@ -36,7 +36,7 @@ class Observer(object):
         """
         Initializer for observer class.
 
-        :param passband: string; for valid filter name see config.py file
+        :param passband: string; for valid filter name see settings.py file
         :param system: system instance (BinarySystem or SingleSystem)
         """
         if passband is None:
@@ -89,8 +89,8 @@ class Observer(object):
                 psbnd, right_bandwidth, left_bandwidth = init_bolometric_passband()
             else:
                 df = self.get_passband_df(band)
-                left_bandwidth = df[config.PASSBAND_DATAFRAME_WAVE].min()
-                right_bandwidth = df[config.PASSBAND_DATAFRAME_WAVE].max()
+                left_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].min()
+                right_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].max()
                 psbnd = PassbandContainer(table=df, passband=band)
 
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
@@ -119,11 +119,11 @@ class Observer(object):
         :param passband: str;
         :return: pandas.DataFrame;
         """
-        if passband not in config.PASSBANDS:
+        if passband not in settings.PASSBANDS:
             raise ValueError('Invalid or unsupported passband function')
-        file_path = os.path.join(config.PASSBAND_TABLES, str(passband) + '.csv')
+        file_path = os.path.join(settings.PASSBAND_TABLES, str(passband) + '.csv')
         df = pd.read_csv(file_path)
-        df[config.PASSBAND_DATAFRAME_WAVE] = df[config.PASSBAND_DATAFRAME_WAVE] * 10.0
+        df[settings.PASSBAND_DATAFRAME_WAVE] = df[settings.PASSBAND_DATAFRAME_WAVE] * 10.0
         return df
 
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
@@ -157,7 +157,7 @@ class Observer(object):
             passband=self.passband,
             left_bandwidth=self.left_bandwidth,
             right_bandwidth=self.right_bandwidth,
-            atlas=config.ATM_ATLAS,
+            atlas=settings.ATM_ATLAS,
             phases=base_phases,
             position_method=position_method
         )
@@ -194,7 +194,7 @@ class Observer(object):
         :param method: str; method for calculation of radial velocities, `point_mass` or `radiometric`
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
-        method = config.RV_METHOD if method is None else method
+        method = settings.RV_METHOD if method is None else method
 
         if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")

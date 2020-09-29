@@ -22,7 +22,7 @@ from .. base.container import SystemPropertiesContainer
 from .. base.system import System
 from .. base.star import Star
 
-from .. conf import config
+from .. import settings
 from .. logger import getLogger
 from .. import (
     umpy as up,
@@ -30,6 +30,7 @@ from .. import (
     utils,
     const
 )
+from .. opt.fsolver import fsolve
 
 logger = getLogger('binary_system.system')
 
@@ -420,16 +421,16 @@ class BinarySystem(System):
             self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
                                                     / self.secondary.polar_radius * u.rad).value
 
-            if self.secondary.discretization_factor > np.radians(config.MAX_DISCRETIZATION_FACTOR):
-                self.secondary.discretization_factor = np.radians(config.MAX_DISCRETIZATION_FACTOR)
-            if self.secondary.discretization_factor < np.radians(config.MIN_DISCRETIZATION_FACTOR):
-                self.secondary.discretization_factor = np.radians(config.MIN_DISCRETIZATION_FACTOR)
+            if self.secondary.discretization_factor > np.radians(settings.MAX_DISCRETIZATION_FACTOR):
+                self.secondary.discretization_factor = np.radians(settings.MAX_DISCRETIZATION_FACTOR)
+            if self.secondary.discretization_factor < np.radians(settings.MIN_DISCRETIZATION_FACTOR):
+                self.secondary.discretization_factor = np.radians(settings.MIN_DISCRETIZATION_FACTOR)
 
             logger.info(f"setting discretization factor of secondary component to "
                         f"{up.degrees(self.secondary.discretization_factor):.2f} "
                         f"according to discretization factor of the primary component.")
 
-        for component in config.BINARY_COUNTERPARTS.keys():
+        for component in settings.BINARY_COUNTERPARTS.keys():
             instance = getattr(self, component)
             if instance.has_spots():
                 for spot in instance.spots.values():
@@ -450,7 +451,7 @@ class BinarySystem(System):
         Compute and set critical surface potential for both components.
         Critical surface potential is for component defined as potential when component fill its Roche lobe.
         """
-        for component in config.BINARY_COUNTERPARTS:
+        for component in settings.BINARY_COUNTERPARTS:
             setattr(
                 getattr(self, component), "critical_surface_potential",
                 self.critical_potential(component=component, components_distance=1.0 - self.eccentricity)
@@ -595,8 +596,7 @@ class BinarySystem(System):
                 continue
 
             try:
-                solution, _, ier, _ = scipy.optimize.fsolve(potential_dx, x_val, full_output=True, args=args_val,
-                                                            xtol=1e-12)
+                solution, _, ier, _ = fsolve(potential_dx, x_val, full_output=True, args=args_val, xtol=1e-12)
                 if ier == 1:
                     if round(solution[0], 5) not in points:
                         try:
@@ -648,8 +648,8 @@ class BinarySystem(System):
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
                 aux_args = (self.mass_ratio,) + fn_map[component][1](*args)
                 args = (aux_args, component_instance.surface_potential)
-                solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
-                                                            full_output=True, args=args, xtol=1e-12)
+                solution, _, ier, _ = fsolve(fn_map[component][0], scipy_solver_init_value,
+                                             full_output=True, args=args, xtol=1e-12)
 
                 # check for regular solution
                 if ier == 1 and not up.isnan(solution[0]):

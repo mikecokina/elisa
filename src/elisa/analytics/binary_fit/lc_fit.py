@@ -4,7 +4,7 @@ from abc import abstractmethod
 from typing import Union, Dict
 
 from ... import units as u
-from ... conf.config import BINARY_COUNTERPARTS
+from ... import settings
 from ... binary_system.surface.gravity import calculate_polar_gravity_acceleration
 from ... logger import getLogger
 
@@ -88,7 +88,7 @@ class LCFit(object):
 
             write_fn(f"{'-' * DASH_N}{line_sep}")
 
-            for component in BINARY_COUNTERPARTS:
+            for component in settings.BINARY_COUNTERPARTS:
                 comp_n = 1 if component == 'primary' else 2
                 star_instance = getattr(binary_instance, component)
                 write_fn(f"{component.upper()} COMPONENT{line_sep}")

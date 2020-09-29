@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from scipy import interpolate
-from .. conf import config
+from .. import settings
 
 
 def init_bolometric_passband():
@@ -13,8 +13,8 @@ def init_bolometric_passband():
     :return: Tuple;
     """
     df = pd.DataFrame(
-        {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
-         config.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
+        {settings.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
+         settings.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
     right_bandwidth = sys.float_info.max
     left_bandwidth = 0.0
     bol_passband = PassbandContainer(table=df, passband='bolometric')
@@ -29,10 +29,10 @@ def init_rv_passband():
     :return: Tuple
     """
     df = pd.DataFrame(
-        {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
-         config.PASSBAND_DATAFRAME_WAVE: config.RV_LAMBDA_INTERVAL})
-    right_bandwidth = config.RV_LAMBDA_INTERVAL[1]
-    left_bandwidth = config.RV_LAMBDA_INTERVAL[0]
+        {settings.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
+         settings.PASSBAND_DATAFRAME_WAVE: settings.RV_LAMBDA_INTERVAL})
+    right_bandwidth = settings.RV_LAMBDA_INTERVAL[1]
+    left_bandwidth = settings.RV_LAMBDA_INTERVAL[0]
     psmbnd = PassbandContainer(table=df, passband='rv_band')
 
     return psmbnd, right_bandwidth, left_bandwidth
@@ -95,7 +95,7 @@ class PassbandContainer(object):
         """
         self._table = df
         self.akima = bolometric if (self.passband.lower() in ['bolometric', 'rv_band']) else \
-            interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
-                                            df[config.PASSBAND_DATAFRAME_THROUGHPUT])
-        self.left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
-        self.right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
+            interpolate.Akima1DInterpolator(df[settings.PASSBAND_DATAFRAME_WAVE],
+                                            df[settings.PASSBAND_DATAFRAME_THROUGHPUT])
+        self.left_bandwidth = min(df[settings.PASSBAND_DATAFRAME_WAVE])
+        self.right_bandwidth = max(df[settings.PASSBAND_DATAFRAME_WAVE])

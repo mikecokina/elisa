@@ -13,7 +13,7 @@ from .. import (
 from .. container import OrbitalPositionContainer
 from ... import const
 from ... observer.mp_manager import manage_observations
-from ... conf import config
+from ... import settings
 from ... logger import getLogger
 
 
@@ -34,9 +34,9 @@ def resolve_curve_method(system, fn_array):
     """
     is_circular = system.eccentricity == 0
     is_eccentric = 1 > system.eccentricity > 0
-    assynchronous_spotty_p = system.primary.synchronicity != 1 and system.primary.has_spots()
-    assynchronous_spotty_s = system.secondary.synchronicity != 1 and system.secondary.has_spots()
-    asynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
+    asynchronous_spotty_p = system.primary.synchronicity != 1 and system.primary.has_spots()
+    asynchronous_spotty_s = system.secondary.synchronicity != 1 and system.secondary.has_spots()
+    asynchronous_spotty_test = asynchronous_spotty_p or asynchronous_spotty_s
 
     spotty_test_eccentric = system.primary.has_spots() or system.secondary.has_spots()
 
@@ -122,7 +122,7 @@ def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs)
     initial_system = OrbitalPositionContainer.from_binary_system(**from_this)
 
     points = dict()
-    for component in config.BINARY_COUNTERPARTS:
+    for component in settings.BINARY_COUNTERPARTS:
         star = getattr(initial_system, component)
         _a, _b, _c, _d = surface.mesh.mesh_detached(initial_system, 1.0, component, symmetry_output=True)
         points[component] = _a
@@ -157,7 +157,10 @@ def produce_ecc_curves_no_spots(binary, curve_fn, crv_labels, **kwargs):
 
     # this condition checks if even to attempt to utilize apsidal line symmetry approximations
     # curve has to have enough point on orbit and have to span at least in 0.8 phase
-    phases_span_test = np.max(phases) - np.min(phases) >= 0.8
+
+    # this will remove large gap in phases
+    max_diff = np.diff(np.sort(phases), n=1).max()
+    phases_span_test = np.max(phases) - np.min(phases) - max_diff >= 0.79
 
     position_method = kwargs.pop("position_method")
     try_to_find_appx = c_appx_router.look_for_approximation(not binary.has_pulsations())

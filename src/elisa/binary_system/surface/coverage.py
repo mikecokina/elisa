@@ -4,7 +4,7 @@ import matplotlib.path as mpltpath
 from scipy.spatial.qhull import ConvexHull
 
 from .. import utils as bsutils
-from ... conf import config
+from ... import settings
 from ... logger import getLogger
 from ... import (
     umpy as up,
@@ -96,7 +96,7 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_va
     logger.debug(f"computing surface coverage for {system.position}")
     cover_component = 'secondary' if 0.0 < system.position.azimuth < const.PI else 'primary'
     cover_object = getattr(system, cover_component)
-    undercover_object = getattr(system, config.BINARY_COUNTERPARTS[cover_component])
+    undercover_object = getattr(system, settings.BINARY_COUNTERPARTS[cover_component])
     undercover_visible_point_indices = np.unique(undercover_object.faces[undercover_object.indices])
 
     # all surface values in sma unit which are smaller then following threshold are discarded (set to 0.0)
@@ -163,7 +163,7 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_va
 
     return {
         cover_component: cover_obj_coverage,
-        config.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
+        settings.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
     } if return_values else None
 
 

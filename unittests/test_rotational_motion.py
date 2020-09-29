@@ -8,6 +8,7 @@ from unittests.utils import ElisaTestCase
 
 class RotationalMotionTestCase(ElisaTestCase):
     def setUp(self):
+        super(RotationalMotionTestCase, self).setUp()
         self.params_combination = np.array(
             [{"phase_shift": 0, "rotation_period": 0.9, "inclination": c.HALF_PI},
 

@@ -6,12 +6,13 @@ from elisa import units as u
 from elisa.analytics import LCData, LCBinaryAnalyticsTask, RVData, RVBinaryAnalyticsTask
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.binary_system import t_layer
-from elisa.conf.config import BINARY_COUNTERPARTS
+from elisa import settings
 from unittests.utils import ElisaTestCase
 
 
 class AbstractFitTestCase(ElisaTestCase):
     def setUp(self):
+        super(AbstractFitTestCase, self).setUp()
         self.model_generator = ModelSimulator()
 
     phases = {'Generic.Bessell.V': np.arange(-0.6, 0.62, 0.02),
@@ -238,6 +239,7 @@ class McMcLCTestCase(AbstractFitTestCase):
 
 class RVTestCase(ElisaTestCase):
     def setUp(self):
+        super(RVTestCase, self).setUp()
         self.model_generator = ModelSimulator()
 
     rv = {'primary': -1 * np.array([111221.02018955, 102589.40515112, 92675.34114568,
@@ -346,7 +348,7 @@ class LeastSqaureRVTestCase(RVTestCase):
         period, t0 = 0.6, 12.0
         phases = np.arange(-0.6, 0.62, 0.02)
         jd = t_layer.phase_to_jd(t0, period, phases)
-        xs = {comp: jd for comp in BINARY_COUNTERPARTS}
+        xs = {comp: jd for comp in settings.BINARY_COUNTERPARTS}
 
         model_generator = ModelSimulator()
         model_generator.keep_out = True
@@ -828,5 +830,5 @@ class ModelSimulator(object):
     def rv_generator(self, *args, **kwargs):
         add = self.rv_mean * self.error
         rv = {component: self.rv[component] + np.random.normal(0, add, len(self.rv[component]))
-              for component in BINARY_COUNTERPARTS}
+              for component in settings.BINARY_COUNTERPARTS}
         return rv

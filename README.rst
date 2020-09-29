@@ -1,4 +1,4 @@
-|Travis build|  |GitHub version|  |Licence GPLv2| |Python version|
+|Travis build|  |GitHub version|  |Licence GPLv2| |Python version| |OS|
 
 .. |Travis build| image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
     :target: https://travis-ci.org/mikecokina/elisa
@@ -6,10 +6,13 @@
 .. |GitHub version| image:: https://img.shields.io/badge/version-0.4.dev0-yellow.svg
    :target: https://github.com/Naereen/StrapDown.js
 
-.. |Python version| image:: https://img.shields.io/badge/python-3.6-red.svg
+.. |Python version| image:: https://img.shields.io/badge/python-3.6|3.7|3.8-orange.svg
    :target: https://github.com/Naereen/StrapDown.js
 
-.. |Licence GPLv2| image:: https://img.shields.io/badge/License-GNU/GPLv2-blue.svg
+.. |Licence GPLv2| image:: https://img.shields.io/badge/license-GNU/GPLv2-blue.svg
+   :target: https://github.com/Naereen/StrapDown.js
+
+.. |OS| image:: https://img.shields.io/badge/os-Linux|Windows-magenta.svg
    :target: https://github.com/Naereen/StrapDown.js
 
 .. _example_scripts: https://github.com/mikecokina/elisa/tree/master/scripts/analytics
@@ -46,24 +49,19 @@ Requirements
 
 **ELISa** is a python package which requires ``python v3.6+`` and has following dependencies::
 
-    astropy==2.0.2
-    cycler==0.10.0
-    corner==2.0.1
+    astropy>=4.0.1.post1
+    corner>=2.0.1,<=2.1.0
     emcee==3.0.1
-    jsonschema==3.2.0
-    matplotlib==2.1.0
-    numpy==1.16.2
-    pandas==0.24.0
-    py==1.4.34
-    pyparsing==2.2.0
+    jsonschema>=3.2.0
+    matplotlib==3.3.2
+    numpy>=1.16.2,<=1.19.2
+    pandas>=0.24.0,<=1.1.2
     pypex==0.1.0
     pytest==3.2.3
-    python-dateutil==2.6.1
-    pytz==2017.2
-    scipy==1.0.0
-    six==1.11.0
+    python-dateutil>=2.6.1,<=2.8.1
+    scipy>=1.0.0,<=1.5.2
     tqdm==4.43.0
-
+    parameterized>=0.7.4
 
 and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
 

@@ -9,7 +9,7 @@ from .. params.parameters import BinaryInitialParameters
 from .. models import lc as lc_model
 from .. models import serializers
 from ... import units as u
-from ... conf import config
+from ... import settings
 from ... utils import split_to_batches
 from ... logger import getLogger
 from ... binary_system.surface.gravity import calculate_polar_gravity_acceleration
@@ -77,7 +77,7 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
     spot_numbers, pulsation_numbers = {}, {}
     spot_lbls, pulse_lbls = {}, {}
 
-    for component in config.BINARY_COUNTERPARTS.keys():
+    for component in settings.BINARY_COUNTERPARTS.keys():
         complete_param_list += [f'{component}@{prm}' for prm in component_param_list]
 
         stop_idx[f'{component}_params'] = len(complete_param_list)
@@ -174,7 +174,7 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
 
     write_fn(f"{'-' * DASH_N}{line_sep}")
 
-    for component in config.BINARY_COUNTERPARTS.keys():
+    for component in settings.BINARY_COUNTERPARTS.keys():
         comp_n = 1 if component == 'primary' else 2
         write_fn(f"{component.upper()} COMPONENT{line_sep}")
         io_tools.write_ln(*intro)
@@ -346,7 +346,7 @@ def evaluate_binary_params(*args):
             for var_label in list(param_columns.keys())[:stop_idx['system']]:
                 full_chain[ii, param_columns[var_label]] = getattr(binary_instance, var_label.split('@')[1], None)
 
-            for component in config.BINARY_COUNTERPARTS.keys():
+            for component in settings.BINARY_COUNTERPARTS.keys():
                 star_instance = getattr(binary_instance, component)
                 for var_label in list(param_columns.keys())[stop_idx[f'{component}_params'] -
                                                             cpl:stop_idx[f'{component}_params'] - 3]:
@@ -453,7 +453,7 @@ def simple_lc_fit_summary(fit_instance, path):
 
         write_fn(f"{'-' * DASH_N}{line_sep}")
 
-        for component in config.BINARY_COUNTERPARTS:
+        for component in settings.BINARY_COUNTERPARTS:
             comp_n = 1 if component == 'primary' else 2
             star_instance = getattr(binary_instance, component)
             write_fn(f"{component.upper()} COMPONENT{line_sep}")
@@ -762,10 +762,10 @@ def _manage_chain_evaluation(renormalized_chain, eval_function, *args):
     :param eval_function: function;
     :return: numpy.array; array of binary parameters
     """
-    if config.NUMBER_OF_MCMC_PROCESSES > 1:
+    if settings.NUMBER_OF_MCMC_PROCESSES > 1:
         logger.info("starting multiprocessor workers for error propagation technique")
-        batches = split_to_batches(array=renormalized_chain, n_proc=config.NUMBER_OF_MCMC_PROCESSES)
-        pool = Pool(processes=config.NUMBER_OF_MCMC_PROCESSES)
+        batches = split_to_batches(array=renormalized_chain, n_proc=settings.NUMBER_OF_MCMC_PROCESSES)
+        pool = Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES)
         result = [pool.apply_async(eval_function, args + (batch,)) for batch in batches]
         pool.close()
         pool.join()

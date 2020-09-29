@@ -3,7 +3,7 @@ import numpy as np
 from copy import copy
 from . orbit.container import OrbitalSupplements
 from . import utils as bsutils
-from .. conf import config
+from .. import settings
 from .. import (
     utils,
     const,
@@ -68,7 +68,7 @@ def find_apsidally_corresponding_positions(base_constraint, base_arr, supplement
     ids_of_closest_reduced_values = utils.find_idx_of_nearest(base_constraint, supplement_constraint)
 
     # making sure that found orbital positions are close enough to satisfy tolerance
-    is_supplement = np.abs(up.abs(base_constraint[ids_of_closest_reduced_values] - supplement_constraint)) <= tol
+    is_supplement = up.abs(base_constraint[ids_of_closest_reduced_values] - supplement_constraint) <= tol
 
     # crating array which crates valid orbital position couples
     twin_in_reduced = -1 * np.ones(ids_of_closest_reduced_values.shape, dtype=np.int)
@@ -100,7 +100,7 @@ def resolve_object_geometry_update(has_spots, size, rel_d, max_allowed_differenc
     Evaluation depends on difference of relative radii between upcomming orbital positions.
     """
     return _resolve_geometry_update(has_spots=has_spots, size=size, rel_d=rel_d, resolve="object",
-                                    max_allowed_difference=max_allowed_difference or config.MAX_RELATIVE_D_R_POINT)
+                                    max_allowed_difference=max_allowed_difference or settings.MAX_RELATIVE_D_R_POINT)
 
 
 def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
@@ -110,7 +110,7 @@ def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
     Evaluation depends on difference of spots longitudes between upcomming orbital positions.
     """
     reducer = {}
-    for component in config.BINARY_COUNTERPARTS.keys():
+    for component in settings.BINARY_COUNTERPARTS.keys():
         if pulsations_tests[component]:
             # in case of pulsations, the geometry is recalculated always
             reducer[component] = np.ones(size, dtype=np.bool)
@@ -127,7 +127,7 @@ def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
 
         reducer[component] = _resolve_geometry_update(
             has_spots=True, size=size, rel_d=d_long, resolve="spot",
-            max_allowed_difference=max_allowed_difference or config.MAX_SPOT_D_LONGITUDE
+            max_allowed_difference=max_allowed_difference or settings.MAX_SPOT_D_LONGITUDE
         )
 
     return reducer['primary'], reducer['secondary']

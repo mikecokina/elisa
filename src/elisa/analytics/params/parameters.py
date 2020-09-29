@@ -22,8 +22,8 @@ from .. params.transform import (
 )
 from ... import units as u
 from ... import utils
+from ... import settings
 from ... base.error import InitialParamsError
-from ... conf.config import BINARY_COUNTERPARTS
 from ... utils import is_empty
 
 
@@ -118,7 +118,7 @@ def serialize_result(result_dict: Dict) -> Dict:
             })
 
     # renormalize spots and pulastions if presented
-    for component in BINARY_COUNTERPARTS:
+    for component in settings.BINARY_COUNTERPARTS:
         if component in ret_dict:
             for phenomena in ['spots', 'pulsations']:
                 if phenomena in ret_dict[component]:
@@ -481,7 +481,7 @@ class BinaryInitialParameters(InitialParameters):
             value = self.init_parameter(parameter, items)
             setattr(self, parameter, value)
 
-        for component in BINARY_COUNTERPARTS:
+        for component in settings.BINARY_COUNTERPARTS:
             props = getattr(self, f'_{component}')
             if is_empty(props):
                 continue
@@ -510,7 +510,7 @@ class BinaryInitialParameters(InitialParameters):
 
     def unique_labels_validation(self):
         def _test(_what):
-            for component in BINARY_COUNTERPARTS:
+            for component in settings.BINARY_COUNTERPARTS:
                 if hasattr(self, component):
                     inst = getattr(self, component)
                     if hasattr(inst, _what):
@@ -615,13 +615,13 @@ class BinaryInitialParameters(InitialParameters):
                                 'system@period', 'system@inclination', 'system@period'] + \
                                [f'{component}@{param}'
                                 for param in ['t_eff', 'surface_potential', 'gravity_darkening', 'albedo']
-                                for component in BINARY_COUNTERPARTS]
+                                for component in settings.BINARY_COUNTERPARTS]
 
         optional_fit_params = ['system@semi_major_axis', 'system@primary_minimum_time', 'system@phase_shift',
                                'system@asini', 'system@mass_ratio', 'system@additional_light'] + \
                               [f'{component}@{param}'
                                for param in ['mass', 'synchronicity', 'metallicity', 'spots', 'pulsations']
-                               for component in BINARY_COUNTERPARTS]
+                               for component in settings.BINARY_COUNTERPARTS]
 
         all_fit_params = mandatory_fit_params + optional_fit_params
         utils.check_missing_kwargs(mandatory_fit_params, self.data, instance_of=self.__class__)

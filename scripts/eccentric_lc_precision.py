@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from time import time
 import logging
 from elisa.observer.observer import Observer
-from elisa.conf import config
+from elisa.conf import settings
 import matplotlib.gridspec as gridspec
 
 """script aims to test the precision of various aproximations taken during eccentric lc calculation compared to exact 
@@ -69,7 +69,7 @@ o = Observer(passband=['Generic.Bessell.V',
 start_phs = -0.6
 stop_phs = 0.6
 step = 0.005
-config.POINTS_ON_ECC_ORBIT = 50
+settings.POINTS_ON_ECC_ORBIT = 50
 
 start_time = time()
 for _ in range(N):
@@ -80,8 +80,8 @@ for _ in range(N):
 interp_time = (time() - start_time) / N
 print('Elapsed time for approx one LC gen: {:.6f}'.format(interp_time))
 
-config.POINTS_ON_ECC_ORBIT = 9999
-config.MAX_RELATIVE_D_R_POINT = 0.005
+settings.POINTS_ON_ECC_ORBIT = 9999
+settings.MAX_RELATIVE_D_R_POINT = 0.005
 start_time = time()
 
 for _ in range(N):
@@ -93,7 +93,7 @@ sim_geom_time = (time() - start_time) / N
 print('Elapsed time for approx two LC gen: {:.6f}'.format(sim_geom_time))
 
 
-config.MAX_RELATIVE_D_R_POINT = 1e-8
+settings.MAX_RELATIVE_D_R_POINT = 1e-8
 
 start_time = time()
 for _ in range(N):

@@ -6,12 +6,13 @@ from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from elisa import const, ld
-from elisa.conf import config
+from elisa import settings
 from unittests.utils import ElisaTestCase
 
 
 class TestLimbDarkeningModule(ElisaTestCase):
     def setUp(self):
+        super(TestLimbDarkeningModule, self).setUp()
         self.base_path = os.path.dirname(os.path.abspath(__file__))
 
     def test_get_metallicity_from_ld_table_filename(self):
@@ -33,7 +34,6 @@ class TestLimbDarkeningModule(ElisaTestCase):
             dict(passband="Generic.Bessell.B", metallicity=1.0, law="square_root")
         ]
         obtained = [ld.get_ld_table_filename(**param) for param in params]
-
         assert_array_equal(expected, obtained)
 
     def expected_ld_tables(self):
@@ -41,7 +41,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
         return [pd.read_csv(os.path.join(path, file)) for file in sorted(os.listdir(path))]
 
     def test_get_ld_table(self):
-        config.LD_TABLES = os.path.join(self.base_path, "data", "vh93")
+        settings.configure(LD_TABLES=os.path.join(self.base_path, "data", "vh93"))
         params = [
             dict(passband="Generic.Bessell.B", metallicity=-0.2, law="cosine"),
             dict(passband="Kepler", metallicity=-4, law="logarithmic")
@@ -54,7 +54,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
             assert_frame_equal(e, o, check_less_precise=True, check_dtype=False, check_exact=True)
 
     def test_get_ld_table_by_name(self):
-        config.LD_TABLES = os.path.join(self.base_path, "data", "vh93")
+        settings.configure(**{"LD_TABLES": os.path.join(self.base_path, "data", "vh93")})
         filenames = ["lin.Generic.Bessell.B.m02.csv", "log.Kepler.m40.csv"]
 
         expected = self.expected_ld_tables()
@@ -64,6 +64,7 @@ class TestLimbDarkeningModule(ElisaTestCase):
             assert_frame_equal(e, o, check_less_precise=True, check_dtype=False, check_exact=True)
 
     def test_get_ld_table_by_name_same_as_get_ld_table(self):
+        settings.configure(**{"LD_TABLES": os.path.join(self.base_path, "data", "vh93")})
         params = [
             dict(passband="Generic.Bessell.B", metallicity=-0.2, law="cosine"),
             dict(passband="Kepler", metallicity=-4, law="logarithmic")
@@ -93,8 +94,8 @@ class TestLimbDarkeningModule(ElisaTestCase):
         assert_array_equal(obtained, expected)
 
     def test_interpolate_on_ld_grid_lin(self):
-        config.LIMB_DARKENING_LAW = "cosine"
-        config.LD_TABLES = os.path.join(self.base_path, "data", "ld_grid")
+        settings.configure(**{"LIMB_DARKENING_LAW": "cosine",
+                              "LD_TABLES": os.path.join(self.base_path, "data", "ld_grid")})
         temperature = np.array([5500, 5561, 5582, 5932])
         log_g = np.array([4.2, 4.21, 4.223, 4.199]) - 2.0
         metallicity = -0.1
@@ -105,12 +106,11 @@ class TestLimbDarkeningModule(ElisaTestCase):
         obtained = ld.interpolate_on_ld_grid(temperature, log_g, metallicity, passband)
         obtained = np.round(obtained["Generic.Bessell.B"].xlin.values, 5)
 
-        self.assertTrue(np.all(obtained == expected))
+        self.assertTrue(np.all(obtained - expected) < 1e-5)
 
     def test_interpolate_on_ld_grid_log(self):
-        config.LD_TABLES = os.path.join(self.base_path, "data", "light_curves", "limbdarkening")
-        config.LIMB_DARKENING_LAW = "logarithmic"
-
+        settings.configure(**{"LIMB_DARKENING_LAW": "logarithmic",
+                              "LD_TABLES": os.path.join(self.base_path, "data", "light_curves", "limbdarkening")})
         temperature = np.array([5500, 5561, 5582, 5932])
         log_g = np.array([4.2, 4.21, 4.223, 4.199]) - 2.0
         metallicity = 0.0

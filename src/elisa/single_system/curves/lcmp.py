@@ -2,7 +2,7 @@ import numpy as np
 
 from . import shared
 from ... import ld
-from ... conf import config
+from ... import settings
 from ... single_system import (
     utils as ssutils,
     surface
@@ -42,10 +42,10 @@ def compute_non_pulsating_lightcurve(*args):
 
         # integrating resulting flux
         for band in kwargs["passband"].keys():
-            ld_law_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+            ld_law_columns = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
             ld_cors = ld.limb_darkening_factor(
                 coefficients=ld_cfs['star'][band][ld_law_columns].values[visibility_indices],
-                limb_darkening_law=config.LIMB_DARKENING_LAW,
+                limb_darkening_law=settings.LIMB_DARKENING_LAW,
                 cos_theta=cosines)
 
             band_curves[band][pos_idx] = np.sum(normal_radiance['star'][band][visibility_indices] * cosines *
@@ -82,10 +82,10 @@ def compute_pulsating_light_curve(*args):
 
         # integrating resulting flux
         for band in kwargs["passband"].keys():
-            ld_law_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+            ld_law_columns = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
             ld_cors = ld.limb_darkening_factor(
                 coefficients=ld_cfs['star'][band][ld_law_columns].values[visibility_indices],
-                limb_darkening_law=config.LIMB_DARKENING_LAW,
+                limb_darkening_law=settings.LIMB_DARKENING_LAW,
                 cos_theta=cosines)
 
             band_curves[band][pos_idx] = np.sum(normal_radiance['star'][band][visibility_indices] * cosines *

@@ -1,7 +1,6 @@
-from elisa import (
-    umpy as up,
-    utils
-)
+import os.path as op
+
+from elisa import umpy as up, settings
 from elisa.base.container import (
     StarContainer,
     StarPropertiesContainer,
@@ -68,12 +67,14 @@ class OrbitalPositionContainerSerDeTestCase(ElisaTestCase):
 
 class IndempotenceTestCase(ElisaTestCase):
     def setUp(self):
+        super(IndempotenceTestCase, self).setUp()
         self.s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS['detached-physical'],
                                                  testutils.SPOTS_META["primary"])
         self.s.primary.discretization_factor = up.radians(10)
-
         self.single = testutils.prepare_single_system(testutils.SINGLE_SYSTEM_PARAMS['spherical'],
                                                       testutils.SPOTS_META["primary"])
+        self.base_path = op.dirname(op.abspath(__file__))
+        settings.configure(LD_TABLES=op.join(self.base_path, "data", "light_curves", "limbdarkening"))
 
     def test_star_container_is_indempotent(self):
         system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
@@ -85,6 +86,8 @@ class IndempotenceTestCase(ElisaTestCase):
         self.assertTrue(len(flatt_1.points) == len(flatt_2.points))
 
     def test_orbital_position_container_is_indempotent(self):
+        settings.configure(LD_TABLES=op.join(self.base_path, "data", "light_curves", "limbdarkening"))
+
         system = OrbitalPositionContainer.from_binary_system(self.s, Position(0, 1.0, 0.0, 0.0, 0.0))
         system.build(components_distance=1.0)
         flatt_1 = system.flatt_it()

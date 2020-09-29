@@ -1,13 +1,15 @@
 import json
 import logging
+import os
 import os.path as op
+import tempfile
 import unittest
 import numpy as np
 
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from elisa import const, units as u
+from elisa import const, units as u, settings
 from elisa import umpy as up
 from elisa.base.container import StarContainer
 from elisa.base.star import Star
@@ -15,17 +17,12 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.single_system.container import SystemContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.single_system.system import SingleSystem
-from elisa.conf import config
 from elisa.const import Position, SinglePosition
 from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
 from collections.abc import Iterable
 
 ax3 = Axes3D
-
-
-def reset_config():
-    config.read_and_update_config(conf_path=None)
 
 
 def plot_points(points_1, points_2, label):
@@ -270,10 +267,35 @@ def surface_closed(faces, points):
 
 
 class ElisaTestCase(unittest.TestCase):
+    CONFIG_FILE = op.join(tempfile.gettempdir(), "elisa.ini")
+
+    def touch_default_config(self):
+        with open(self.CONFIG_FILE, "w") as f:
+            f.write("")
+
+    def write_default_support(self, ld_tables, atm_tables):
+        # because of stupid windows MP implementation
+        content = f'[support]\n' \
+                  f'ld_tables={ld_tables}\n' \
+                  f'castelli_kurucz_04_atm_tables={atm_tables}\n\n'
+        with open(self.CONFIG_FILE, "w") as f:
+            f.write(content)
+
     def setUpClass(*args, **kwargs):
-        reset_config()
         logging.disable(logging.CRITICAL)
         # logging.disable(logging.NOTSET)
+        pass
+
+    def setUp(self):
+        os.environ["ELISA_CONFIG"] = self.CONFIG_FILE
+        settings.configure(**settings.DEFAULT_SETTINGS)
+        self.touch_default_config()
+        settings.configure(**{"CONFIG_FILE": ElisaTestCase.CONFIG_FILE})
+
+    def tearDown(self):
+        settings.configure(**settings.DEFAULT_SETTINGS)
+        if op.isfile(self.CONFIG_FILE):
+            os.remove(self.CONFIG_FILE)
 
 
 BINARY_SYSTEM_PARAMS = {
@@ -437,6 +459,17 @@ IDENTICAL_BINARY = {
     "metallicity": 0.0
   }
 }
+
+APPROX_SETTINGS = \
+    {"no_approx":
+         {"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.0},
+     "approx_one":
+         {"POINTS_ON_ECC_ORBIT": 1, "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.001},
+     "approx_two":
+         {"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.001},
+     "approx_three":
+         {"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.0}
+     }
 
 
 def cutoff_float(x, keep_n):

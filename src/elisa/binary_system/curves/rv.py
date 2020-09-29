@@ -4,7 +4,7 @@ from . import rv_point
 from . import c_router
 from .. orbit.orbit import distance_to_center_of_mass
 from ... observer.passband import init_rv_passband
-from ... conf import config
+from ... import settings
 from ... import (
     umpy as up,
     units as u
@@ -72,7 +72,7 @@ def include_passband_data_to_kwargs(**kwargs):
     kwargs.update({'passband': {'rv_band': psbnd},
                    'left_bandwidth': left_bandwidth,
                    'right_bandwidth': right_bandwidth,
-                   'atlas': config.ATM_ATLAS})
+                   'atlas': settings.ATM_ATLAS})
     return kwargs
 
 
@@ -91,7 +91,7 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
     :return: Dict[str, numpy.array];
     """
     initial_system = c_router.prep_initial_system(binary)
-    rv_labels = list(config.BINARY_COUNTERPARTS.keys())
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
     return c_router.produce_circular_sync_curves(binary, initial_system, kwargs.pop("phases"),
                                                  rv_point.compute_rv_at_pos, rv_labels, **kwargs)
 
@@ -109,7 +109,7 @@ def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
         * ** atlas ** - str
     :return: Dict; rv for each component
     """
-    rv_labels = list(config.BINARY_COUNTERPARTS.keys())
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
     return c_router.produce_circular_spotty_async_curves(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
 
 
@@ -126,7 +126,7 @@ def compute_eccentric_rv_curve_no_spots(binary, **kwargs):
         * ** atlas ** - str
     :return: Dict; rv for each component
     """
-    rv_labels = list(config.BINARY_COUNTERPARTS.keys())
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
     return c_router.produce_ecc_curves_no_spots(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)
 
 
@@ -143,5 +143,5 @@ def compute_eccentric_spotty_rv_curve(binary, **kwargs):
         * ** atlas ** - str
     :return: Dict; rv for each component
     """
-    rv_labels = list(config.BINARY_COUNTERPARTS.keys())
+    rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
     return c_router.produce_ecc_curves_with_spots(binary, rv_point.compute_rv_at_pos, rv_labels, **kwargs)

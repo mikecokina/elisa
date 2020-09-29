@@ -1,2 +1,3 @@
 *.ipynb linguist-vendored
 *.rst linguist-vendored
+*.sc linguist-vendored

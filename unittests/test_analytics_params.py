@@ -5,7 +5,7 @@ from parameterized import parameterized
 from elisa import units as u
 from elisa.analytics.params import conf, parameters
 from elisa.analytics.params.parameters import xs_reducer
-from elisa.conf.config import BINARY_COUNTERPARTS
+from elisa import settings
 from unittests.utils import ElisaTestCase
 
 TOL = 1e-5
@@ -1042,13 +1042,13 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                            'system@period', 'system@inclination', 'system@period'] + \
                           [f'{component}@{param}'
                            for param in ['t_eff', 'surface_potential', 'gravity_darkening', 'albedo']
-                           for component in BINARY_COUNTERPARTS])
+                           for component in settings.BINARY_COUNTERPARTS])
     def test_validate_mandatory_lc_parameters(self, param):
         mandatory_fit_params = ['system@eccentricity', 'system@argument_of_periastron',
                                 'system@period', 'system@inclination', 'system@period'] + \
                                [f'{component}@{param}'
                                 for param in ['t_eff', 'surface_potential', 'gravity_darkening', 'albedo']
-                                for component in BINARY_COUNTERPARTS]
+                                for component in settings.BINARY_COUNTERPARTS]
 
         mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
         mock_data = {p: mock_value for p in mandatory_fit_params if p not in [param]}
@@ -1072,7 +1072,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                                 'system@period', 'system@inclination', 'system@period'] + \
                                [f'{component}@{param}'
                                 for param in ['t_eff', 'gravity_darkening', 'albedo']
-                                for component in BINARY_COUNTERPARTS]
+                                for component in settings.BINARY_COUNTERPARTS]
 
         mock_value = {"value": 0.25, "min": 0.00, "max": 0.99}
         mock_data = {p: mock_value for p in mandatory_fit_params}

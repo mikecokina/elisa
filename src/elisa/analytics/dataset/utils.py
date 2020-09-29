@@ -3,7 +3,7 @@ import numpy as np
 
 from ... import units as u
 from ... import utils
-from ... conf import config
+from ... import settings
 
 
 def convert_data(data, unit, to_unit):
@@ -66,7 +66,7 @@ def convert_unit(unit, to_unit):
     return unit if unit == u.dimensionless_unscaled else to_unit
 
 
-def read_data_file(filename, data_columns, delimiter=config.DELIM_WHITESPACE):
+def read_data_file(filename, data_columns, delimiter=settings.DELIM_WHITESPACE):
     """
     Function loads observation datafile. Rows with column names and comments should start with `#`.
     It deals with missing data by omitting given line

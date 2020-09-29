@@ -7,8 +7,8 @@ from .. import (
 )
 from ... base.error import MaxIterationError, SpotError
 from ... base.spot import incorporate_spots_mesh
-from ... conf import config
-from ... opt.fsolver import fsolver
+from ... import settings
+from ... opt.fsolver import fsolver, fsolve
 from ... utils import is_empty
 from ... logger import getLogger
 from ... pulse import pulsations
@@ -286,7 +286,7 @@ def get_surface_points(*args):
     :return: numpy.array
     """
     phi, theta, x0, components_distance, precalc_fn, potential_fn, fprime, potential, q, synchronicity = args
-    max_iter = config.MAX_SOLVER_ITERS
+    max_iter = settings.MAX_SOLVER_ITERS
     precalc_vals = precalc_fn(*(synchronicity, q, components_distance, phi, theta), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
     radius_kwargs = dict(fprime=fprime, maxiter=max_iter, args=((q, ) + precalc_vals, potential), rtol=1e-10)
@@ -320,7 +320,7 @@ def get_surface_points_cylindrical(*args):
     :return: numpy.array;
     """
     phi, z, components_distance, x0, precalc_fn, potential_fn, fprime, potential, q, synchronicity = args
-    max_iter = config.MAX_SOLVER_ITERS
+    max_iter = settings.MAX_SOLVER_ITERS
     precalc_vals = precalc_fn(*(synchronicity, q, phi, z, components_distance), return_as_tuple=True)
     x0 = x0 * np.ones(phi.shape)
     radius_kwargs = dict(fprime=fprime, maxiter=max_iter, rtol=1e-10, args=((q,) + precalc_vals, potential))
@@ -811,8 +811,7 @@ def calculate_neck_position(system, return_polynomial=False):
             args, use = (components_distance, angle, const.HALF_PI), False
             scipy_solver_init_value = np.array([components_distance / 10000.0])
             args = ((system.mass_ratio,) + precalc_fn(*((synchronicity, q) + args)), potential)
-            solution, _, ier, _ = up.optimize.fsolve(fn, scipy_solver_init_value,
-                                                     full_output=True, args=args, xtol=1e-12)
+            solution, _, ier, _ = fsolve(fn, scipy_solver_init_value, full_output=True, args=args, xtol=1e-12)
 
             # check for regular solution
             if ier == 1 and not up.isnan(solution[0]):

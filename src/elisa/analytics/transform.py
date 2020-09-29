@@ -1,6 +1,6 @@
 from . dataset.base import RVData, LCData
-from .. conf.config import BINARY_COUNTERPARTS, PASSBANDS
 from .. base.transform import TransformProperties
+from .. import settings
 
 
 class RVBinaryAnalyticsTask(TransformProperties):
@@ -8,9 +8,9 @@ class RVBinaryAnalyticsTask(TransformProperties):
     def data(value):
         if isinstance(value, dict):
             for key, val in value.items():
-                if key not in BINARY_COUNTERPARTS:
+                if key not in settings.BINARY_COUNTERPARTS:
                     raise ValueError(f'{key} is invalid designation for radial velocity dataset. '
-                                     f'Please choose from {BINARY_COUNTERPARTS.keys()}')
+                                     f'Please choose from {settings.BINARY_COUNTERPARTS.keys()}')
                 elif not isinstance(val, RVData):
                     raise TypeError(f'{val} is not of instance of RVData class.')
             return value
@@ -22,9 +22,9 @@ class LCBinaryAnalyticsProperties(TransformProperties):
     def data(value):
         if isinstance(value, dict):
             for key, val in value.items():
-                if key not in PASSBANDS:
+                if key not in settings.PASSBANDS:
                     raise ValueError(f'{key} is invalid passband. Please choose '
-                                     f'from available passbands: \n{PASSBANDS}')
+                                     f'from available passbands: \n{settings.PASSBANDS}')
                 elif not isinstance(val, LCData):
                     raise TypeError(f'{val} is not of instance of LCData class.')
             return value

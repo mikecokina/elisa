@@ -5,7 +5,7 @@ from copy import copy
 from .. surface import faces as bsfaces
 from .. import utils as bsutils
 from ... logger import getLogger
-from ... conf import config
+from ... import settings
 from ... utils import is_empty
 from ... base.surface import temperature as btemperature
 from ... pulse import pulsations
@@ -47,7 +47,7 @@ def reflection_effect(system, components_distance, iterations):
     :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
 
-    if not config.REFLECTION_EFFECT:
+    if not settings.REFLECTION_EFFECT:
         logger.debug('reflection effect is switched off')
         return system
     if iterations <= 0:
@@ -108,7 +108,7 @@ def reflection_effect(system, components_distance, iterations):
 
     # calculating C_A = (albedo_A / D_intB) - scalar
     # D_intB - bolometric limb darkening factor
-    d_int = {cmp: ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc[cmp])
+    d_int = {cmp: ld.calculate_bolometric_limb_darkening_factor(settings.LIMB_DARKENING_LAW, ldc[cmp])
              for cmp in components}
     _c = {
         'primary': (system.primary.albedo / d_int['primary']),
@@ -117,7 +117,7 @@ def reflection_effect(system, components_distance, iterations):
 
     # setting reflection factor R = 1 + F_irradiated / F_original, initially equal to one everywhere - vector
     reflection_factor = {cmp: np.ones(np.sum(vis_test[cmp]), dtype=np.float) for cmp in components}
-    counterpart = config.BINARY_COUNTERPARTS
+    counterpart = settings.BINARY_COUNTERPARTS
 
     # for faster convergence, reflection effect is calculated first on cooler component
     components = ['primary', 'secondary'] if system.primary.t_eff <= system.secondary.t_eff else \
@@ -207,10 +207,10 @@ def reflection_effect(system, components_distance, iterations):
         # coefficients_primary = ld.interpolate_on_ld_grid()
         d_gamma = \
             {'primary': ld.limb_darkening_factor(coefficients=ldc['primary'][:, vis_test['primary']].T,
-                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                 limb_darkening_law=settings.LIMB_DARKENING_LAW,
                                                  cos_theta=gamma['primary']),
              'secondary': ld.limb_darkening_factor(coefficients=ldc['secondary'][:, vis_test['secondary']].T,
-                                                   limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                   limb_darkening_law=settings.LIMB_DARKENING_LAW,
                                                    cos_theta=gamma['secondary'].T).T
              }
 
@@ -219,7 +219,7 @@ def reflection_effect(system, components_distance, iterations):
 
         for _ in range(iterations):
             for component in components:
-                counterpart = config.BINARY_COUNTERPARTS[component]
+                counterpart = settings.BINARY_COUNTERPARTS[component]
 
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
@@ -304,9 +304,9 @@ def build_temperature_distribution(system, components_distance, component="all")
         renormalize_temperatures(star)
 
     if 'primary' in components and 'secondary' in components:
-        logger.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
+        logger.debug(f'calculating reflection effect with {settings.REFLECTION_EFFECT_ITERATIONS} '
                      f'iterations.')
-        reflection_effect(system, components_distance, config.REFLECTION_EFFECT_ITERATIONS)
+        reflection_effect(system, components_distance, settings.REFLECTION_EFFECT_ITERATIONS)
     return system
 
 
@@ -458,25 +458,25 @@ def get_symmetrical_d_gamma(shape, shape_reduced, ldc, gamma):
     cos_theta = gamma['primary'][:, :shape_reduced[1]]
     d_gamma['primary'][:, :shape_reduced[1]] = ld.limb_darkening_factor(
         coefficients=ldc['primary'][:, :shape[0]].T,
-        limb_darkening_law=config.LIMB_DARKENING_LAW,
+        limb_darkening_law=settings.LIMB_DARKENING_LAW,
         cos_theta=cos_theta)
 
     cos_theta = gamma['primary'][:shape_reduced[0], shape_reduced[1]:]
     d_gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = ld.limb_darkening_factor(
         coefficients=ldc['primary'][:, :shape_reduced[0]].T,
-        limb_darkening_law=config.LIMB_DARKENING_LAW,
+        limb_darkening_law=settings.LIMB_DARKENING_LAW,
         cos_theta=cos_theta)
 
     cos_theta = gamma['secondary'][:shape_reduced[0], :]
     d_gamma['secondary'][:shape_reduced[0], :] = ld.limb_darkening_factor(
         coefficients=ldc['secondary'][:, :shape[1]].T,
-        limb_darkening_law=config.LIMB_DARKENING_LAW,
+        limb_darkening_law=settings.LIMB_DARKENING_LAW,
         cos_theta=cos_theta.T).T
 
     cos_theta = gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]]
     d_gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
         coefficients=ldc['secondary'][:, :shape_reduced[1]].T,
-        limb_darkening_law=config.LIMB_DARKENING_LAW,
+        limb_darkening_law=settings.LIMB_DARKENING_LAW,
         cos_theta=cos_theta.T).T
 
     return d_gamma

@@ -12,7 +12,7 @@ from .. tools.utils import (
     time_layer_resolver
 )
 from ... utils import is_empty
-from ... conf import config
+from ... import settings
 from ... observer.observer import Observer
 from ... observer.utils import normalize_light_curve
 from ... binary_system.system import BinarySystem
@@ -222,7 +222,7 @@ def check_for_boundary_surface_potentials(result_dict):
     if "primary@surface_potential" not in result_dict.keys() or "secondary@surface_potential" not in result_dict.keys():
         return result_dict
 
-    for component in config.BINARY_COUNTERPARTS:
+    for component in settings.BINARY_COUNTERPARTS:
         pot = result_dict[f"{component}@surface_potential"]
         if "fixed" not in pot.keys() or "value" not in pot.keys():
             continue

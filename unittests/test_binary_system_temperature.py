@@ -1,9 +1,8 @@
 import numpy as np
 import os.path as op
 
-from importlib import reload
 from elisa import umpy as up
-from elisa.conf import config
+from elisa import settings
 from elisa.utils import is_empty
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
@@ -11,9 +10,11 @@ from unittests.utils import ElisaTestCase
 
 class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
     def generator_test_temperatures(self, key, allowed_range=None):
-        config.LIMB_DARKENING_LAW = 'linear'
-        config.LD_TABLES = op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
-        reload(testutils)
+
+        settings.configure(**{
+            "LIMB_DARKENING_LAW": "linear",
+            "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
+        })
 
         s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key])
         s.primary.discretization_factor = up.radians(10)
@@ -49,10 +50,17 @@ class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
         self.generator_test_temperatures('over-contact', [[4160, 5415], [4110, 5450]])
 
     def test_build_temperatures_semi_detached(self):
-        self.generator_test_temperatures('semi-detached', [[3767, 5335], [3872, 5453]])
+        self.generator_test_temperatures('semi-detached', [[3767, 5335], [3871, 5453]])
 
 
 class BuildSpottyTemperatureTestCase(ElisaTestCase):
+    def setUp(self):
+        super(BuildSpottyTemperatureTestCase, self).setUp()
+        settings.configure(**{
+            "LIMB_DARKENING_LAW": "linear",
+            "LD_TABLES": op.join(op.dirname(op.abspath(__file__)), "data", "light_curves", "limbdarkening")
+        })
+    
     def generator_test_temperatures(self, key):
         s = testutils.prepare_binary_system(testutils.BINARY_SYSTEM_PARAMS[key],
                                             spots_primary=testutils.SPOTS_META["primary"],

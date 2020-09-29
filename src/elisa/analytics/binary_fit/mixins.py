@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict
 
 from .. params import parameters
-from ... conf import config
+from ... import settings
 from ... logger import getPersistentLogger
 
 
@@ -76,7 +76,7 @@ class MCMCMixin(object):
         :param fitable: Union[List, numpy.array]; labels of parameters in order of params in `flat_chain`
         """
 
-        home = config.HOME
+        home = settings.HOME
         if fit_id is not None:
             if op.isdir(op.dirname(fit_id)):
                 fdir = op.dirname(fit_id)
@@ -87,11 +87,11 @@ class MCMCMixin(object):
                 fname = f'{str(fit_id)}.json'
         else:
             now = datetime.now()
-            fdir = now.strftime(config.DATE_MASK)
-            fname = f'{now.strftime(config.DATETIME_MASK)}.json'
+            fdir = now.strftime(settings.DATE_MASK)
+            fname = f'{now.strftime(settings.DATETIME_MASK)}.json'
 
         fpath = op.join(home, fdir, fname)
-        os.makedirs(op.join(config.HOME, fdir), exist_ok=True)
+        os.makedirs(op.join(settings.HOME, fdir), exist_ok=True)
         data = {
             "flat_chain": flat_chain.tolist() if isinstance(flat_chain, np.ndarray) else flat_chain,
             "fitable_parameters": list(fitable.keys()),
@@ -119,11 +119,11 @@ class MCMCMixin(object):
             fpath = fname
         else:
             # expect timestamp default name
-            fdir = fit_id[:len(config.DATE_MASK) + 2]
-            fpath = op.join(config.HOME, fdir, fname)
+            fdir = fit_id[:len(settings.DATE_MASK) + 2]
+            fpath = op.join(settings.HOME, fdir, fname)
             if not os.path.isfile(fpath):
                 # expected user defined fit_id
-                fpath = op.join(config.HOME, fit_id, fname)
+                fpath = op.join(settings.HOME, fit_id, fname)
 
         with open(fpath, "r") as f:
             return json.loads(f.read())

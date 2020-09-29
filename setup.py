@@ -73,7 +73,7 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'astropy>=2.0.2,<4.0.2',
+        'astropy>>=4.0.1.post1',
         'corner>=2.0.1,<=2.1.0',
         'emcee==3.0.1',
         'jsonschema>=3.2.0',
@@ -82,7 +82,7 @@ setup(
         'pandas>=0.24.0,<=1.1.2',
         'pypex==0.1.0',
         'python-dateutil>=2.6.1,<=2.8.1',
-        'scipy==1.0.0',
+        'scipy>=1.0.0,<=1.5.2',
         'tqdm>=4.43.0'
     ],
 

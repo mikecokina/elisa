@@ -7,7 +7,7 @@ from .. curves import (
     c_managed
 )
 from ... import utils
-from ... conf import config
+from ... import settings
 from ... binary_system.orbit.container import OrbitalSupplements
 from ... observer.mp_manager import manage_observations
 
@@ -19,8 +19,11 @@ def look_for_approximation(not_pulsations_test):
     :param not_pulsations_test: bool;
     :return: bool;
     """
-
-    return config.POINTS_ON_ECC_ORBIT > 0 and config.POINTS_ON_ECC_ORBIT is not None and not_pulsations_test
+    appx_one = settings.POINTS_ON_ECC_ORBIT > 0 and settings.POINTS_ON_ECC_ORBIT is not None
+    appx_two = settings.MAX_SUPPLEMENTAR_D_DISTANCE > 0 and settings.MAX_SUPPLEMENTAR_D_DISTANCE is not None
+    appx_three = settings.MAX_RELATIVE_D_R_POINT > 0 and settings.MAX_RELATIVE_D_R_POINT is not None
+    appx = appx_one or appx_two or appx_three
+    return appx and not_pulsations_test
 
 
 def resolve_ecc_approximation_method(binary, phases, position_method, try_to_find_appx, phases_span_test,
@@ -99,7 +102,7 @@ def eval_approximation_one(phases, phases_span_test):
     :param phases: numpy.array;
     :return: bool;
     """
-    if len(phases) > config.POINTS_ON_ECC_ORBIT and phases_span_test:
+    if len(phases) > settings.POINTS_ON_ECC_ORBIT > 0 and phases_span_test:
         return True
     return False
 
@@ -123,7 +126,7 @@ def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_
                                                                          base_orbit_arr,
                                                                          orbit_supplement_arr[:, 1],
                                                                          orbit_supplement_arr,
-                                                                         tol=config.MAX_SUPPLEMENTAR_D_DISTANCE)
+                                                                         tol=settings.MAX_SUPPLEMENTAR_D_DISTANCE)
 
     orbital_supplements.sort(by='distance')
 
@@ -132,7 +135,10 @@ def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_
 
     # removing invalid supplements indices
     idxs_where_nan = np.argwhere(np.isnan(orbital_supplements.mirror[:, 0]))
+    if idxs_where_nan.shape[0] == orbital_supplements.mirror.shape[0]:
+        return False, None
     idxs = np.array(orbital_supplements.mirror[:, 0], dtype=np.int)
+    # replace all nan values with corresponding body
     idxs[idxs_where_nan] = np.array(orbital_supplements.body[idxs_where_nan, 0], dtype=np.int)
     counterpart_potentials = {component: pot[idxs] for component, pot in potentials.items()}
     rel_d = crv_utils.compute_rel_d_radii_from_counterparts(binary, orbital_supplements.body[:, 1],
@@ -144,7 +150,7 @@ def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_
     # That means that also radii `rel_d` computed from such values have to be already sorted by
     # their own size (forward radius changes based on components distance and it is monotonic function)
 
-    if np.max(rel_d) < config.MAX_RELATIVE_D_R_POINT and phases_span_test:
+    if np.max(rel_d) < settings.MAX_SUPPLEMENTAR_D_DISTANCE and phases_span_test:
         return True, orbital_supplements
     return False, None
 
@@ -205,13 +211,13 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     x = np.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4] % 1))
     sort_idx = np.argsort(x)
     x = x[sort_idx]
-    x = np.concatenate(([x[-1] - 1], x, [x[0] + 1]))
+    x = np.concatenate((x[-5:] - 1, x, x[:5] + 1))
 
     band_curves = dict()
     for curve in crv_labels:
         y = np.concatenate((stacked_band_curves[curve][:, 0], stacked_band_curves[curve][:, 1]))
         y = y[sort_idx]
-        y = np.concatenate(([y[-1]], y, [y[0]]))
+        y = np.concatenate((y[-5:], y, y[:5]))
 
         i = Akima1DInterpolator(x, y)
         f = i(phases)

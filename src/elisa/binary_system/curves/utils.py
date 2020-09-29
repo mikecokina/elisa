@@ -3,7 +3,7 @@ from copy import copy
 
 from .. import utils as butils
 from ... import atm, ld, const
-from ... conf import config
+from ... import settings
 from ... observer.passband import init_bolometric_passband
 from ... binary_system import radius as bsradius
 
@@ -94,7 +94,7 @@ def calculate_surface_element_fluxes(band, star):
         :param band: str; name of the photometric band compatibile with supported names in config
         :return: numpy.array
     """
-    ld_law_cfs_columns = config.LD_LAW_CFS_COLUMNS[config.LIMB_DARKENING_LAW]
+    ld_law_cfs_columns = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
     indices = star.indices
     radiance = star.normal_radiance[band][indices]
     ld_cfs = star.ld_cfs[band][ld_law_cfs_columns].values[indices]
@@ -102,7 +102,7 @@ def calculate_surface_element_fluxes(band, star):
     coverage = star.coverage[indices]
 
     ld_cors = ld.limb_darkening_factor(coefficients=ld_cfs,
-                                       limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                       limb_darkening_law=settings.LIMB_DARKENING_LAW,
                                        cos_theta=cosines)
 
     return radiance * cosines * coverage * ld_cors
@@ -143,7 +143,7 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
     # checking if `bolometric`filter is already used
     if 'bolometric' in ld_cfs['primary']:
         bol_ld_cfs = {component: {'bolometric': ld_cfs[component]['bolometric']}
-                      for component in config.BINARY_COUNTERPARTS.keys()}
+                      for component in settings.BINARY_COUNTERPARTS.keys()}
     else:
         passband, left_bandwidth, right_bandwidth = init_bolometric_passband()
         bol_kwargs = {
@@ -157,7 +157,7 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
     normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, bol_ld_cfs)
 
     if write_to_containers:
-        for component in config.BINARY_COUNTERPARTS.keys():
+        for component in settings.BINARY_COUNTERPARTS.keys():
             star = getattr(system, component)
             setattr(star, 'normal_radiance', normal_radiance[component])
             setattr(star, 'ld_cfs', ld_cfs[component])
@@ -181,7 +181,7 @@ def update_surface_params(require_rebuild, container, normal_radiance, ld_cfs, *
         normal_radiance, ld_cfs = \
             prep_surface_params(container, return_values=True, write_to_containers=True, **kwargs)
     else:
-        for component in config.BINARY_COUNTERPARTS.keys():
+        for component in settings.BINARY_COUNTERPARTS.keys():
             star = getattr(container, component)
             setattr(star, 'normal_radiance', normal_radiance[component])
             setattr(star, 'ld_cfs', ld_cfs[component])
@@ -219,7 +219,7 @@ def compute_rel_d_radii(binary, distances, potentials=None):
     sargs = (distances, corrected_potentials['secondary'], binary.mass_ratio, binary.secondary.synchronicity,
              "secondary")
     fwd_radii = np.vstack((bsradius.calculate_forward_radii(*pargs), bsradius.calculate_forward_radii(*sargs)))
-    return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii[:, 1:]
+    return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii.mean(axis=1)[:, np.newaxis]
 
 
 def compute_rel_d_radii_from_counterparts(binary, base_distances, counterpart_distances, base_potentials=None,
@@ -281,7 +281,7 @@ def compute_rel_d_radii_from_counterparts(binary, base_distances, counterpart_di
     fwd_radii_counterpart = np.vstack((bsradius.calculate_forward_radii(*pargs_counterpart),
                                        bsradius.calculate_forward_radii(*sargs_counterpart)))
 
-    return np.abs(fwd_radii_base - fwd_radii_counterpart) / fwd_radii_base
+    return np.abs(fwd_radii_base - fwd_radii_counterpart) / fwd_radii_base.mean(axis=1)[:, np.newaxis]
 
 
 def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):

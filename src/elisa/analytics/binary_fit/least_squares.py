@@ -19,7 +19,7 @@ from .. params import parameters
 from ... observer.utils import normalize_light_curve
 from ... logger import getPersistentLogger
 from ... import const
-from ... conf import config
+from ... import settings
 from ... binary_system.system import BinarySystem
 from ... binary_system.curves.community import RadialVelocitySystem
 
@@ -97,7 +97,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         :return: Dict;
         """
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
-                    interp_treshold=config.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
+                    interp_treshold=settings.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
                     observer_system_cls=BinarySystem)
         initial_vector = parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization)
 

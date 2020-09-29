@@ -2,7 +2,7 @@ import json
 from time import time
 from elisa.binary_system import system
 from elisa.observer.observer import Observer
-from elisa.conf import config
+from elisa.conf import settings
 import matplotlib.pyplot as plt
 import numpy as np
 from elisa.binary_system.container import OrbitalPositionContainer
@@ -28,7 +28,7 @@ def get_data(data, phs):
         phases=phs
     )
 
-config.LIMB_DARKENING_LAW = 'logarithmic'
+settings.LIMB_DARKENING_LAW = 'logarithmic'
 
 data_circ = get_params('data/test_binary_circ.json')
 data_ecc = get_params('data/test_binary_ecc.json')

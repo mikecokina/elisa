@@ -63,6 +63,7 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
 
 class MeshUtilsTestCase(ElisaTestCase):
     def setUp(self):
+        super(MeshUtilsTestCase, self).setUp()
         self.params_combination = [
             # solar model
             {
