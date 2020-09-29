@@ -5,7 +5,7 @@ from .. import umpy as up
 def static_potential_primary_fn(radius, *args):
     """
     Pontetial function which defines surface of primary component of binary system in spherical coordinates.
-    It is exposed for multiprocessing to avoid pickleing of classes, loggers, etc.
+    It is exposed for multiprocessing to avoid pickling of classes, loggers, etc.
 
     :param radius: float;
     :param args: Tuple; (mass_ratio, surface_potential, b, c, d, e)
@@ -25,7 +25,7 @@ def static_potential_primary_fn(radius, *args):
 def static_potential_secondary_fn(radius, *args):
     """
     Pontetial function which defines surface of primary component of binary system in spherical coordinates.
-    It is exposed for multiprocessing to avoid pickleing of classes, loggers, etc.
+    It is exposed for multiprocessing to avoid pickling of classes, loggers, etc.
 
     :param radius: float;
     :param args: Tuple; (mass_ratio, surface_potential, b, c, d, e, f)
