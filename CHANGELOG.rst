@@ -163,10 +163,12 @@ v0.3.1_
 Future plans
 ============
 
-v0.4
-----
+v0.4_
+-----
 
-**Release date:** ????-??-??
+.. v0.4_: https://github.com/mikecokina/elisa/commits/release/0.3.1
+
+**Release date:** 2020-09-30
 
 
 **Features**
@@ -176,6 +178,8 @@ v0.4
 
 **Enhancements**
 
+    - dependencies updates
+    - support Python 3.6|3.7|3.8
     - configuration module uses singleton instead of global variables
       >>> from elisa import settings
     - ability to display observation stored in DataSet class using DataSet.plot.display_observation()

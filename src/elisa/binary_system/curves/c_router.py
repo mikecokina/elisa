@@ -25,11 +25,15 @@ def resolve_curve_method(system, fn_array):
     Resolves which curve calculating method to use based on the type of the system.
 
     :param system: elisa.binary_system.BinarySystem;
-    :param fn_array: tuple; list of curve calculating functions in specific order
-    (circular synchronous or circular assynchronous without spots,
-     circular assynchronous with spots,
-     eccentric synchronous or eccentric assynchronous without spots,
-     eccentric assynchronous with spots)
+    :param fn_array: Tuple; list of curve calculating functions in specific order
+
+    ::
+
+        (circular synchronous or circular assynchronous without spots,
+         circular assynchronous with spots,
+         eccentric synchronous or eccentric assynchronous without spots,
+         eccentric assynchronous with spots)
+
     :return: curve calculating method chosen from `fn_array`
     """
     is_circular = system.eccentricity == 0
@@ -83,12 +87,13 @@ def produce_circular_sync_curves(binary, initial_system, phases, curve_fn, crv_l
     :param curve_fn: callable; function to calculate given type of the curve
     :param crv_labels: List; labels of the calculated curves (passbands, components,...)
     :param kwargs: Dict;
-            * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
-            * ** left_bandwidth ** * - float
-            * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
-            * ** position_method** * - function definition; to evaluate orbital positions
-            * ** phases ** * - numpy.array
+    :**kwargs options**:
+        * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
+        * ** left_bandwidth ** * - float
+        * ** right_bandwidth ** * - float
+        * ** atlas ** * - str
+        * ** position_method** * - function definition; to evaluate orbital positions
+        * ** phases ** * - numpy.array
     :return: Dict; calculated curves
     """
 

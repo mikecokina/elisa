@@ -112,7 +112,7 @@ def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_
     Test if it is possible to compute eccentric binary system with approximation approx two.
 
     :param binary: elisa.binary_system.system.BinarySystem;
-    :param potentials: dict; corrected potentials
+    :param potentials: Dict; corrected potentials
     :param base_orbit_arr: numpy.array;
     :param orbit_supplement_arr: numpy.array;
     :param phases_span_test: bool;
@@ -275,8 +275,8 @@ def integrate_eccentric_curve_appx_three(binary, orbital_positions, new_geometry
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param orbital_positions: numpy.array; orbital positions sorted by components distance
-    :param new_geometry_mask: bool; mask to `orbital_positions` which determines which surface geometry should be fully
-    recalculated
+    :param new_geometry_mask: bool; mask to `orbital_positions` which determines which surface
+                                    geometry should be fully recalculated
     :param potentials: dict; corrected surface potentials
     :param crv_labels: list; curve_labels
     :param curve_fn: curve integrator function
