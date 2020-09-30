@@ -47,10 +47,10 @@ class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
         self.generator_test_temperatures('detached-physical', [[4998, 5002], [4999, 5004]])
 
     def test_build_temperatures_over_contact(self):
-        self.generator_test_temperatures('over-contact', [[4160, 5415], [4110, 5450]])
+        self.generator_test_temperatures('over-contact', [[4155, 5405], [4250, 5435]])
 
     def test_build_temperatures_semi_detached(self):
-        self.generator_test_temperatures('semi-detached', [[3767, 5335], [3871, 5453]])
+        self.generator_test_temperatures('semi-detached', [[3760, 5335], [3865, 5450]])
 
 
 class BuildSpottyTemperatureTestCase(ElisaTestCase):

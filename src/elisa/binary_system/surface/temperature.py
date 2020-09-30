@@ -14,6 +14,8 @@ from ... import (
     ld,
     utils
 )
+from elisa.base.surface.temperature import renormalize_temperatures
+
 
 logger = getLogger("binary_system.surface.temperature")
 
@@ -240,31 +242,6 @@ def reflection_effect(system, components_distance, iterations):
     # redistributing temperatures back to the parent objects
     redistribute_temperatures(system, temperatures)
     return system
-
-
-def renormalize_temperatures(star):
-    """
-    In case of spot presence, renormalize temperatures to fit effective temperature again,
-    since spots disrupt effective temperature of Star as entity.
-    """
-    # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
-    total_surface = np.sum(star.areas)
-    if star.has_spots():
-        for spot_index, spot in star.spots.items():
-            total_surface += np.sum(spot.areas)
-    desired_flux_value = total_surface * star.t_eff
-
-    current_flux = np.sum(star.areas * star.temperatures)
-    if star.spots:
-        for spot_index, spot in star.spots.items():
-            current_flux += np.sum(spot.areas * spot.temperatures)
-
-    coefficient = up.power(desired_flux_value / current_flux, 0.25)
-    logger.debug(f'surface temperature map renormalized by a factor {coefficient}')
-    star.temperatures *= coefficient
-    if star.spots:
-        for spot_index, spot in star.spots.items():
-            spot.temperatures *= coefficient
 
 
 def build_temperature_distribution(system, components_distance, component="all"):
