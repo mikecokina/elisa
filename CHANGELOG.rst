@@ -189,6 +189,7 @@ v0.4_
     - removed faulty curve points produced by multiprocessing curve integration methods
     - component's volume conserved for eccentric spotty orbits
     - surface areas produced by numeric noise when total eclipse is occuring are mitigated
+    - renormalization of temperature (temperatures powered to exponent of 4)
 
 
 v0.5
