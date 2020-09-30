@@ -22,7 +22,7 @@ logger = getLogger('binary_system.curves.curves')
 
 def resolve_curve_method(system, fn_array):
     """
-    Resolves which curve calculating method to use based on the type of the system.
+    Resolves which curve calculating method to use based on the properties of the BinarySystem.
 
     :param system: elisa.binary_system.BinarySystem;
     :param fn_array: tuple; list of curve calculating functions in specific order

@@ -264,7 +264,7 @@ class Observer(object):
             elif has_spot_test and not has_pulsation_test:
                 base_interval = np.round(phases % 1, 9)
                 return np.unique(base_interval, return_inverse=True)
-            # in case of clear surface wo pulsations and spots, only single observation is needed
+            # in case of clear surface no pulsations and spots, only single observation is needed
             else:
                 return np.zeros(1), np.zeros(phases.shape[0], dtype=int)
 

@@ -1,4 +1,4 @@
-from . import utils as crv_utils
+from elisa.base.curves import utils as crv_utils
 from ... import settings
 
 

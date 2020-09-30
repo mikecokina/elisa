@@ -2,7 +2,7 @@ import numpy as np
 
 from scipy import optimize
 from . orbit import orbit
-from . curves import lc
+from . curves import lc, c_router
 from . transform import SingleSystemProperties
 from . import (
     model,
@@ -299,12 +299,11 @@ class SingleSystem(System):
             * ** position_method ** * - method
         :return: Dict
         """
-        if self.star.has_pulsations():
-            logger.debug('calculating light curve for a non pulsating single star system')
-            return self._compute_light_curve_with_pulsations(**kwargs)
-        else:
-            logger.debug('calculating light curve for star system with pulsations')
-            return self._compute_light_curve_without_pulsations(**kwargs)
+        fn_arr = (self._compute_light_curve_without_pulsations,
+                  self._compute_light_curve_with_pulsations)
+
+        curve_fn = c_router.resolve_curve_method(self, fn_arr)
+        return curve_fn(**kwargs)
 
     def _compute_light_curve_with_pulsations(self, **kwargs):
         return lc.compute_light_curve_with_pulsations(self, **kwargs)

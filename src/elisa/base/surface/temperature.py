@@ -56,12 +56,12 @@ def renormalize_temperatures(star):
     if star.has_spots():
         for spot_index, spot in star.spots.items():
             total_surface += np.sum(spot.areas)
-    desired_flux_value = total_surface * star.t_eff**4
+    desired_flux_value = total_surface * up.power(star.t_eff, 4)
 
-    current_flux = np.sum(star.areas * star.temperatures**4)
+    current_flux = np.sum(star.areas * up.power(star.temperatures, 4))
     if star.spots:
         for spot_index, spot in star.spots.items():
-            current_flux += np.sum(spot.areas * spot.temperatures**4)
+            current_flux += np.sum(spot.areas * up.power(spot.temperatures, 4))
 
     coefficient = up.power(desired_flux_value / current_flux, 0.25)
     logger.debug(f'surface temperature map renormalized by a factor {coefficient}')
