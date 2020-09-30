@@ -27,6 +27,11 @@ class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
         orbital_position_container.build_faces_orientation(components_distance=1.0)
         orbital_position_container.build_temperature_distribution(components_distance=1.0)
 
+        print()
+        i = np.argsort(orbital_position_container.secondary.temperatures)
+        print(orbital_position_container.secondary.points[orbital_position_container.secondary.faces[i[:10]]])
+
+        print()
         if allowed_range:
             obtained_primary = [np.min(orbital_position_container.primary.temperatures),
                                 np.max(orbital_position_container.primary.temperatures)]
@@ -47,7 +52,7 @@ class BuildSpotFreeTemperatureTestCase(ElisaTestCase):
         self.generator_test_temperatures('detached-physical', [[4998, 5002], [4999, 5004]])
 
     def test_build_temperatures_over_contact(self):
-        self.generator_test_temperatures('over-contact', [[4150, 5410], [4245, 5440]])
+        self.generator_test_temperatures('over-contact', [[4155, 5405], [4240, 5435]])
 
     def test_build_temperatures_semi_detached(self):
         self.generator_test_temperatures('semi-detached', [[3760, 5335], [3865, 5450]])
