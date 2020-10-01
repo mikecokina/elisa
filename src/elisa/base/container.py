@@ -484,7 +484,7 @@ class StarContainer(object):
 
         ::
 
-            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres, areas, velocities)
+            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres, areas, velocities, face_centres)
         """
         points = self.points
         normals = self.normals
@@ -496,6 +496,7 @@ class StarContainer(object):
         centres = self.face_centres
         velocities = self.velocities
         areas = self.areas
+        face_centres = self.face_centres
 
         if isinstance(self.spots, (dict,)):
             for idx, spot in self.spots.items():
@@ -507,8 +508,9 @@ class StarContainer(object):
                 centres = up.concatenate((centres, spot.face_centres), axis=0)
                 areas = up.concatenate((areas, spot.areas), axis=0)
                 velocities = up.concatenate((velocities, spot.velocities), axis=0)
+                face_centres = up.concatenate((face_centres, spot.face_centres), axis=0)
 
-        return points, normals, faces, temperatures, log_g, rals, centres, areas, velocities
+        return points, normals, faces, temperatures, log_g, rals, centres, areas, velocities, face_centres
 
     def flatt_it(self):
         """
@@ -521,7 +523,8 @@ class StarContainer(object):
         if self._flatten:
             return self
 
-        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas", "velocities"]
+        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas", "velocities",
+                      "face_centres"]
         flat_props = self.get_flatten_properties()
         for prop, value in zip(props_list, flat_props):
             setattr(self, prop, value)
