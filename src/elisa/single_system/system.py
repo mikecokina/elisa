@@ -310,3 +310,4 @@ class SingleSystem(System):
 
     def _compute_light_curve_without_pulsations(self, **kwargs):
         return lc.compute_light_curve_without_pulsations(self, **kwargs)
+

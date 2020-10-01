@@ -94,8 +94,7 @@ def produce_circular_sync_curves(binary, initial_system, phases, curve_fn, crv_l
 
     crv_utils.prep_surface_params(initial_system.flatt_it(), return_values=False, write_to_containers=True, **kwargs)
     fn_args = (binary, initial_system, crv_labels, curve_fn)
-    curves = manage_observations(fn=c_managed.produce_circ_sync_curves_mp, fn_args=fn_args, position=phases, **kwargs)
-    return curves
+    return manage_observations(fn=c_managed.produce_circ_sync_curves_mp, fn_args=fn_args, position=phases, **kwargs)
 
 
 def produce_circular_spotty_async_curves(binary, curve_fn, crv_labels, **kwargs):

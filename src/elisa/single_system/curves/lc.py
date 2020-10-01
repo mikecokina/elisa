@@ -1,9 +1,9 @@
-from . import shared, lcmp
+from . import utils, c_managed
 from .. container import SystemContainer
 from ... import const
 from ... logger import getLogger
 from ... observer.mp_manager import manage_observations
-from . import c_router
+from . import c_router, lc_point
 
 logger = getLogger('single_system.curves.lc')
 
@@ -22,22 +22,13 @@ def compute_light_curve_without_pulsations(single, **kwargs):
         * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array];
     """
-    lc_labels = list(kwargs["passband"].keys())
-    return c_router.produce_curves_wo_pulsations(single, lc_point.compute_lc_on_pos, lc_labels, **kwargs)
+    initial_system = c_router.prep_initial_system(single)
 
-    # from_this = dict(single_system=single, position=const.SinglePosition(0, 0.0, 0.0))
-    # initial_system = SystemContainer.from_single_system(**from_this)
-    # initial_system.build()
-    #
-    # phases = kwargs.pop("phases")
-    # normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
-    #
-    # fn_args = (single, initial_system, normal_radiance, ld_cfs)
-    # band_curves = manage_observations(fn=lcmp.compute_non_pulsating_lightcurve,
-    #                                   fn_args=fn_args,
-    #                                   position=phases,
-    #                                   **kwargs)
-    # return band_curves
+    lc_labels = list(kwargs["passband"].keys())
+    phases = kwargs.pop("phases")
+
+    return c_router.produce_curves_wo_pulsations(single, initial_system, phases, lc_point.compute_lc_on_pos,
+                                                 lc_labels, **kwargs)
 
 
 def compute_light_curve_with_pulsations(single, **kwargs):
@@ -48,7 +39,7 @@ def compute_light_curve_with_pulsations(single, **kwargs):
     phases = kwargs.pop("phases")
 
     fn_args = single, initial_system
-    band_curves = manage_observations(fn=lcmp.compute_pulsating_light_curve,
+    band_curves = manage_observations(fn=c_managed.compute_pulsating_light_curve,
                                       fn_args=fn_args,
                                       position=phases,
                                       **kwargs)

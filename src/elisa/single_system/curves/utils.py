@@ -2,11 +2,13 @@ from ... import atm, ld
 from ... observer.passband import init_bolometric_passband
 
 
-def prep_surface_params(system, **kwargs):
+def prep_surface_params(system, return_values=True, write_to_containers=False, **kwargs):
     """
     Prepares normal radiances and limb darkening coefficients variables.
 
     :param system: elisa.single_system.container.SystemContainer;
+    :param return_values: bool; return normal radiances and limb darkening coefficients
+    :param write_to_containers: bool; calculated values will be assigned to `system` container
     :param kwargs: Dict;
     :**kwargs options**:
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
@@ -35,7 +37,13 @@ def prep_surface_params(system, **kwargs):
         bol_ld_cfs = get_limbdarkening_cfs(system, **bol_kwargs)
 
     normal_radiance = atm.correct_normal_radiance_to_optical_depth(normal_radiance, bol_ld_cfs)
-    return normal_radiance, ld_cfs
+
+    if write_to_containers:
+        star = getattr(system, 'star')
+        setattr(star, 'normal_radiance', normal_radiance['star'])
+        setattr(star, 'ld_cfs', ld_cfs['star'])
+
+    return normal_radiance, ld_cfs if return_values else None
 
 
 def get_normal_radiance(system, **kwargs):
