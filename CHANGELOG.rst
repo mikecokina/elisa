@@ -168,7 +168,7 @@ v0.4_
 
 .. v0.4_: https://github.com/mikecokina/elisa/commits/release/0.3.1
 
-**Release date:** 2020-09-30
+**Release date:** 2020-10-01
 
 
 **Features**
