@@ -1,3 +1,3 @@
-__version__ = '0.4.dev0'
+__version__ = '0.4'
 
 from . conf.settings import settings

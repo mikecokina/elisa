@@ -4,10 +4,10 @@ elisa.conf package
 Submodules
 ----------
 
-elisa.conf.config module
-------------------------
+elisa.conf.settings module
+--------------------------
 
-.. automodule:: elisa.conf.config
+.. automodule:: elisa.conf.settings
    :members:
    :undoc-members:
    :show-inheritance:

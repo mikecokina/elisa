@@ -28,6 +28,14 @@ elisa.pulse.transform module
    :undoc-members:
    :show-inheritance:
 
+elisa.pulse.utils module
+------------------------
+
+.. automodule:: elisa.pulse.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------

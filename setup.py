@@ -15,7 +15,7 @@ from version import get_version
 here = path.dirname(__file__)
 
 # Get the long description from the README file
-with open(path.join(here, '_README.md'), encoding='utf-8') as f:
+with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = "For more information visit https://github.com/mikecokina/elisa/blob/master/README.rst"
 
 setup(
@@ -41,7 +41,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
 
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
@@ -54,6 +54,8 @@ setup(
         # that you indicate whether you support Python 2, Python 3 or both.
         # 'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
 
     # What does your project relate to?

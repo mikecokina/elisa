@@ -33,7 +33,8 @@ def produce_circ_sync_curves_mp(*args):
                 curves_fn: function to calculate curve points at given orbital positions,
                 kwargs: Dict,
             ]
-    :return:
+
+    :return: Dict;
     """
     binary, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
 
@@ -76,7 +77,7 @@ def produce_circ_spotty_async_curves_mp(*args):
                 kwargs: Dict,
             ]
 
-    :return:
+    :return: Dict;
     """
     binary, initial_system, motion_batch, base_points, ecl_boundaries, crv_labels, curve_fn, kwargs = args
 
@@ -156,7 +157,7 @@ def integrate_eccentric_curve_exactly(*args):
                 kwargs: Dict,
             ]
 
-    :return:
+    :return: Dict;
     """
     binary, potentials, motion_batch, spots_longitudes, crv_labels, curve_fn, kwargs = args
     curves = {key: np.empty(len(motion_batch)) for key in crv_labels}
@@ -208,14 +209,14 @@ def _update_ldc_and_radiance_on_orb_pair(new_geometry_test, base_container, mirr
     """
     Function recalculates or assigns old values tp normal radiances or limb darkening coefficients.
 
-    :param new_geometry_test: bool; if True, parameters will be recalculated according to new geometry, otherwise they
-    will be copied
+    :param new_geometry_test: bool; if True, parameters will be recalculated according
+                                    to new geometry, otherwise they will be copied
     :param base_container: elisa.binary_system.container.OrbitalPositionContainer;
     :param mirror_container: elisa.binary_system.container.OrbitalPositionContainer;
     :param old_normal_radiance: dict; normal radiances to be copied if `new_geometry_test` is False
     :param old_ld_cfs: dict; normal radiances to be copied if `new_geometry_test` is False
     :param kwargs: kwargs;
-    :return:
+    :return: Tuple;
     """
     if new_geometry_test:
         normal_radiance, ld_cfs = crv_utils.prep_surface_params(base_container, return_values=True,
@@ -255,6 +256,7 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
                 curves_fn: function to calculate curve points at given orbital positions,
                 kwargs: Dict,
             ]
+
     :return: Dict; curves
     """
     binary, all_potentials, orbital_positions, crv_labels, curve_fn, kwargs = args
@@ -324,12 +326,13 @@ def integrate_eccentric_curve_approx_three(*args):
                 binary: elisa.binary_system.BinarySystem,
                 potentials: dict; corrected surface potentials
                 motion_batch: numpy.array; orbital positions sorted by components distance
-                new_geometry_mask: bool; mask to `orbital_positions` which determines which surface geometry should be
-                fully recalculated
+                new_geometry_mask: bool; mask to `orbital_positions` which determines which surface
+                                         geometry should be fully recalculated
                 crv_labels: list; curve_labels
                 curves_fn: function to calculate curve points at given orbital positions,
                 kwargs: Dict,
             ]
+
     :return: Dict; curves
     """
     binary, potentials, motion_batch, new_geometry_mask, crv_labels, curve_fn, kwargs = args

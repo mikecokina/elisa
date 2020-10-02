@@ -4,10 +4,10 @@ elisa.observer package
 Submodules
 ----------
 
-elisa.observer.mp module
-------------------------
+elisa.observer.mp\_manager module
+---------------------------------
 
-.. automodule:: elisa.observer.mp
+.. automodule:: elisa.observer.mp_manager
    :members:
    :undoc-members:
    :show-inheritance:

@@ -265,11 +265,11 @@ def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
 
         (numpy.array, list, numpy.array)
 
-    - unique_phase_indices - numpy.array : indices that points to the orbital positions from one half of the
-    orbital motion divided by apsidal line
-    - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by
-    indices `unique_phase_indices`
-    - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
+        - unique_phase_indices - numpy.array : indices that points to the orbital positions from one half of the
+        orbital motion divided by apsidal line
+        - orbital_motion_counterpart - list - Positions produced by mirroring orbital positions given by
+        indices `unique_phase_indices`
+        - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
     """
     azimuth_boundaries = [binary.argument_of_periastron, (binary.argument_of_periastron + const.PI) % const.FULL_ARC]
     unique_geometry = np.logical_and(azimuths > azimuth_boundaries[0],

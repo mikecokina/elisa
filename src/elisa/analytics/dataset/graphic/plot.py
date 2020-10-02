@@ -10,8 +10,7 @@ class Plot(object):
         Function that will plot given DataSet observation for visual examination.
 
         :param plot_kwargs: Dict; arguments passed to matplotlib.pyplot.scatter function (DataSet without errors) or
-        matplotlib.pyplot.errorbar function (DataSet with errors)
-        :return:
+                                  matplotlib.pyplot.errorbar function (DataSet with errors)
         """
         obs_kwargs = dict()
 

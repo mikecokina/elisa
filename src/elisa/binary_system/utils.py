@@ -130,8 +130,8 @@ def move_sys_onpos(init_system, orbital_position, primary_potential=None, second
     :param primary_potential: float;
     :param secondary_potential: float;
     :param on_copy: bool;
-    :param recalculate_velocities: bool; if True, surface elements velocities are recalculated (usefull while using
-    apsidal symmetry)
+    :param recalculate_velocities: bool; if True, surface elements velocities are recalculated
+                                         (usefull while using apsidal symmetry)
     :return: container; elisa.binary_system.container.OrbitalPositionContainer;
     """
     system = init_system.copy() if on_copy else init_system
