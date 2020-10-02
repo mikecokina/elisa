@@ -21,6 +21,7 @@ from .. base.error import MorphologyError
 from .. base.container import SystemPropertiesContainer
 from .. base.system import System
 from .. base.star import Star
+from .. base.curves import rv as rv_base
 
 from .. import settings
 from .. logger import getLogger
@@ -1009,7 +1010,7 @@ class BinarySystem(System):
                       self._compute_eccentric_rv_curve_no_spots)
             curve_fn = c_router.resolve_curve_method(self, fn_arr)
 
-            kwargs = rv.include_passband_data_to_kwargs(**kwargs)
+            kwargs = rv_base.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**kwargs)
 
     def _compute_circular_synchronous_rv_curve(self, **kwargs):

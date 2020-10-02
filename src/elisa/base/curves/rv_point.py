@@ -1,4 +1,4 @@
-import numpy as np
+from ... import umpy as np
 from elisa.base.curves import utils as crv_utils
 
 

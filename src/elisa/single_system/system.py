@@ -2,7 +2,7 @@ import numpy as np
 
 from scipy import optimize
 from . orbit import orbit
-from . curves import lc, c_router
+from . curves import lc, rv, c_router
 from . transform import SingleSystemProperties
 from . import (
     model,
@@ -17,6 +17,7 @@ from .. import (
     const as c,
 )
 from .. base.system import System
+from .. base.curves import rv as rv_base
 from .. opt.fsolver import fsolve
 
 logger = getLogger('single_system.system')
@@ -311,3 +312,20 @@ class SingleSystem(System):
     def _compute_light_curve_without_pulsations(self, **kwargs):
         return lc.compute_light_curve_without_pulsations(self, **kwargs)
 
+    # radial velocity curves *******************************************************************************************
+    def compute_rv(self, **kwargs):
+        if kwargs['method'] == 'point_mass':
+            return rv.com_radial_velocity(self, **kwargs)
+        if kwargs['method'] == 'radiometric':
+            fn_arr = (self._compute_rv_curve_without_pulsations,
+                      self._compute_rv_curve_with_pulsations)
+            curve_fn = c_router.resolve_curve_method(self, fn_arr)
+
+            kwargs = rv_base.include_passband_data_to_kwargs(**kwargs)
+            return curve_fn(**kwargs)
+
+    def _compute_rv_curve_with_pulsations(self, **kwargs):
+        return rv.compute_rv_curve_with_pulsations(self, **kwargs)
+
+    def _compute_rv_curve_without_pulsations(self, **kwargs):
+        return rv.compute_rv_curve_without_pulsations(self, **kwargs)
