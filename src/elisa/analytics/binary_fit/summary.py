@@ -492,29 +492,19 @@ def simple_lc_fit_summary(fit_instance, path):
             io_tools.write_ln(write_fn, 'Polar gravity (log g):', polar_g, '-', '-', 'log(cgs)', 'Derived',
                               line_sep, 3)
 
-            r_equiv = (star_instance.equivalent_radius * binary_instance.semi_major_axis *
-                       u.DISTANCE_UNIT).to(u.solRad).value
-
-            io_tools.write_ln(write_fn, 'Equivalent radius (R_equiv):', r_equiv,
+            io_tools.write_ln(write_fn, 'Equivalent radius (R_equiv):', star_instance.equivalent_radius,
                               '-', '-', 'solRad', 'Derived', line_sep, 5)
 
             write_fn(f"\nPeriastron radii{line_sep}")
-            polar_r = (star_instance.polar_radius * binary_instance.semi_major_axis
-                       * u.DISTANCE_UNIT).to(u.solRad).value
 
-            back_r = (star_instance.backward_radius * binary_instance.semi_major_axis
-                      * u.DISTANCE_UNIT).to(u.solRad).value
-            side_r = (star_instance.side_radius * binary_instance.semi_major_axis
-                      * u.DISTANCE_UNIT).to(u.solRad).value
-
-            io_tools.write_ln(write_fn, 'Polar radius:', polar_r, '-', '-', 'solRad', 'Derived', line_sep, 5)
-            io_tools.write_ln(write_fn, 'Backward radius:', back_r, '-', '-', 'solRad', 'Derived', line_sep, 5)
-            io_tools.write_ln(write_fn, 'Side radius:', side_r, '-', '-', 'solRad', 'Derived', line_sep, 5)
+            io_tools.write_ln(write_fn, 'Polar radius:', star_instance.polar_radius, '-', '-', 'solRad', 'Derived',
+                              line_sep, 5)
+            io_tools.write_ln(write_fn, 'Backward radius:', star_instance.backward_radius, '-', '-', 'solRad',
+                              'Derived', line_sep, 5)
+            io_tools.write_ln(write_fn, 'Side radius:', star_instance.side_radius, '-', '-', 'solRad', 'Derived', line_sep, 5)
 
             if getattr(star_instance, 'forward_radius', None) is not None:
-                forward_r = (star_instance.forward_radius * binary_instance.semi_major_axis
-                             * u.DISTANCE_UNIT).to(u.solRad).value
-                io_tools.write_ln(write_fn, 'Forward radius:', forward_r, '-',
+                io_tools.write_ln(write_fn, 'Forward radius:', star_instance.forward_radius, '-',
                                   '-', 'solRad', 'Derived', line_sep, 5)
 
             write_fn(f"\nAtmospheric parameters{line_sep}")
