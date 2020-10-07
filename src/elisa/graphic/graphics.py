@@ -816,7 +816,8 @@ def binary_lc_fit_plot(**kwargs):
     ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
     for fltr, curve in kwargs['lcs'].items():
-        rasterize = np.shape(kwargs['x_data'][fltr])[0] > 300
+        # rasterize = np.shape(kwargs['x_data'][fltr])[0] > 300 if kwargs.get['rasterize']
+        rasterize = False
         (dt_clr, clr) = (datapoint_clrs[fltr], datapoint_clrs[fltr]) if len(kwargs['lcs']) > 1 else ('blue', 'red')
 
         if kwargs['y_err'][fltr] is None:
@@ -832,7 +833,7 @@ def binary_lc_fit_plot(**kwargs):
             ax2.errorbar(kwargs['x_data'][fltr], kwargs['residuals'][fltr], yerr=kwargs['y_err'][fltr],
                          linestyle='none', markersize=3, label=fltr + ' residual', color=dt_clr, rasterized=rasterize)
 
-        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic', color=clr)
+        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic', color=clr, linewidth=2)
 
     ax2.axhline(0, ls='dashed', c='black', lw=0.5)
 
