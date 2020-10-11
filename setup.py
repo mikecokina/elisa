@@ -105,7 +105,8 @@ setup(
             'passband/*',
             'conf/*',
             'schema_registry/*',
-            'schema_registry/schema_files/*'
+            'schema_registry/schema_files/*',
+            'data/*'
         ],
     },
 

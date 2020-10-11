@@ -110,8 +110,8 @@ def prepare_binary_system(params, spots_primary=None, spots_secondary=None):
     primary = Star(mass=params["primary_mass"], surface_potential=params["primary_surface_potential"],
                    synchronicity=params["primary_synchronicity"],
                    t_eff=params["primary_t_eff"], gravity_darkening=params["primary_gravity_darkening"],
-                   albedo=params['primary_albedo'],
-                   metallicity=0.0, spots=spots_primary)
+                   albedo=params['primary_albedo'], metallicity=0.0, spots=spots_primary,
+                   discretization_factor=params.get("primary_discretization_factor", 3))
 
     secondary = Star(mass=params["secondary_mass"], surface_potential=params["secondary_surface_potential"],
                      synchronicity=params["secondary_synchronicity"],

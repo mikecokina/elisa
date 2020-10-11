@@ -6,6 +6,7 @@ from .. base.container import StarPropertiesContainer
 from .. base.transform import StarProperties
 from .. pulse.mode import PulsationMode
 from .. logger import getLogger
+from .. import units as u
 
 from copy import (
     copy,
@@ -85,6 +86,37 @@ class Star(Body):
         for kwarg in Star.ALL_KWARGS:
             if kwarg in kwargs:
                 setattr(self, kwarg, kwargs[kwarg])
+
+    def kwargs_serializer(self):
+        """
+        Creating dictionary of keyword arguments in order to be able to
+        reinitialize the class instance in init().
+
+        :return: Dict;
+        """
+        default_units = {
+            "mass": u.kg,
+            "t_eff": u.K,
+            "discretization_factor": u.rad
+        }
+
+        serialized_kwargs = dict()
+        for kwarg in self.ALL_KWARGS:
+            if kwarg in ["spots"]:
+                # important: this relies on dict ordering
+                value = [spot.kwargs_serializer() for spot in getattr(self, kwarg).values()]
+            elif kwarg in default_units:
+                value = getattr(self, kwarg)
+                if not isinstance(value, u.Quantity):
+                    value = value * default_units[kwarg]
+            else:
+                value = getattr(self, kwarg)
+
+            serialized_kwargs[kwarg] = value
+        return serialized_kwargs
+
+    def init(self):
+        self.__init__(**self.kwargs_serializer())
 
     def has_pulsations(self):
         """

@@ -58,7 +58,7 @@ notifications:
 
 branches:
   only:
-  - pre04_code_review
+  - publish/horizon
   - master
   - dev
   - /^release.*$/
