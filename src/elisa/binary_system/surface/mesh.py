@@ -92,11 +92,11 @@ def pre_calc_azimuths_for_detached_points(discretization, synchronicity, mass_ra
                                                      component)
         rel_radii = (forward_radius - polar_radius) / polar_radius
         if rel_radii > 0.05 or settings.MESH_GENERATOR == 'auto':
-            side_radius = radius.calculate_forward_radius(synchronicity, mass_ratio, components_distance, potential,
-                                                          component)
-            backward_radius = radius.calculate_polar_radius(synchronicity, mass_ratio, components_distance, potential,
+            side_radius = radius.calculate_side_radius(synchronicity, mass_ratio, components_distance, potential,
+                                                       component)
+            backward_radius = radius.calculate_backward_radius(synchronicity, mass_ratio, components_distance, potential,
                                                             component)
-            return improved_trpaezoidal_mesh(discretization, forward_radius, polar_radius, side_radius, backward_radius)
+            return improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side_radius, backward_radius)
 
     return trapezoidal_mesh(discretization)
 
@@ -144,7 +144,74 @@ def trapezoidal_mesh(discretization):
     return phi, theta, separator
 
 
-def improved_trpaezoidal_mesh(discretization, forward_radius, polar_radius, side_radius, backward_radius):
+def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side_radius, backward_radius):
+    """
+    Caculates azimuths for every surface point using trapezoidal discretization. Function conserves areas of the
+    triangles better than trapezoidal method.
+
+    :param discretization:
+    :param forward_radius:
+    :param polar_radius:
+    :param side_radius:
+    :param backward_radius:
+    :return:
+    """
+    separator = []
+
+    r_eq = utils.calculate_equiv_radius(utils.calculate_ellipsoid_volume(0.5 * (forward_radius + backward_radius),
+                                                                         side_radius, polar_radius))
+
+    a1 = (forward_radius - side_radius) / r_eq
+    b1 = (backward_radius - side_radius) / r_eq
+    mult = 1 / (2*const.FULL_ARC)
+    # mult = 1.0
+
+    # azimuths for points on equator
+    num = int(const.PI // discretization)
+    phi = np.linspace(0., const.PI, num=num + 1)
+    inner_phis = phi[phi <= const.HALF_PI]
+    outer_phis = phi[phi > const.HALF_PI]
+    corr = mult * np.concatenate((a1 * np.cos(2*inner_phis), - b1 * np.cos(2*outer_phis)))
+    phi[1:-1] -= corr[1:-1]
+
+    theta = np.array([const.HALF_PI for _ in phi])
+    separator.append(np.shape(theta)[0])
+
+    # azimuths for points on meridian
+    num = int(const.HALF_PI // discretization)
+    phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
+    theta_meridian = up.concatenate((np.linspace(const.HALF_PI - discretization, discretization, num=num - 1),
+                                     np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
+
+    phi = up.concatenate((phi, phi_meridian))
+    theta = up.concatenate((theta, theta_meridian))
+    separator.append(np.shape(theta)[0])
+
+    # azimuths for rest of the quarter
+    num = int(const.HALF_PI // discretization)
+    thetas = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
+    phi_q, theta_q = [], []
+    for tht in thetas:
+        alpha_corrected = discretization / up.sin(tht)
+        num = int(const.PI // alpha_corrected)
+        alpha_corrected = const.PI / (num + 1)
+        phi_q_add = np.array([alpha_corrected * ii for ii in range(1, num + 1)])
+
+        # inner_phis = phi_q_add[phi_q_add <= const.HALF_PI]
+        # outer_phis = phi_q_add[phi_q_add > const.HALF_PI]
+        # corr = mult * np.concatenate((a1 * np.cos(2 * inner_phis), - b1 * np.cos(2 * outer_phis))) / np.sin(tht)
+        # phi_q_add -= corr
+
+        phi_q += list(phi_q_add)
+        theta_q += [tht for _ in phi_q_add]
+
+    phi = up.concatenate((phi, phi_q))
+    theta = up.concatenate((theta, theta_q))
+
+    return phi, theta, separator
+
+
+def improved_trpaezoidal_mesh1(discretization, forward_radius, polar_radius, side_radius, backward_radius):
     """
     Caculates azimuths for every surface point using trapezoidal discretization. Function conserves areas of the
     triangles better than trapezoidal method.
