@@ -49,9 +49,11 @@ container = OrbitalPositionContainer.from_binary_system(binary_system=bs, positi
 container.build()
 comp_instance = getattr(container, component)
 areas = comp_instance.areas
-percentiles = np.percentile(areas, [1-0.6827, 50, 0.6827])
-print(f'Standard deviation in triangle sizes: +{100*(percentiles[1] - percentiles[2]) / percentiles[1]}, '
-      f'- {100*(percentiles[0] - percentiles[1]) / percentiles[1]} %')
+# percentiles = np.percentile(areas, [100-68.27, 50, 68.27])
+percentiles = np.percentile(areas, [0.3, 50, 99.7])
+print(percentiles)
+print(f'Standard deviation in triangle sizes: +{100*(percentiles[2] - percentiles[1]) / percentiles[1]}, '
+      f' {100*(percentiles[0] - percentiles[1]) / percentiles[1]} %')
 
 plt.hist(comp_instance.areas, bins=100)
 plt.show()
