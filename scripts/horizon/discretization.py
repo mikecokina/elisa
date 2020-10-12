@@ -7,6 +7,8 @@ from elisa import BinarySystem
 from elisa.analytics.tools import horizon
 from elisa.const import FULL_ARC
 from matplotlib import pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy.interpolate import Akima1DInterpolator
 
 
 BINARY_DEFINITION = {
@@ -46,45 +48,59 @@ PHASE = 0.1
 
 def main():
     for df in DISCRETIZATION_FACTORS[1:2]:
+        # computational
         params = BINARY_DEFINITION.copy()
         params["primary"]["discretization_factor"] = df
         binary = BinarySystem.from_json(BINARY_DEFINITION)
 
         discrete_horizon = horizon.get_discrete_horizon(binary=binary, phase=PHASE, polar=True)
         phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
-        rs, phis = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
-        rs, phis = rs[:-1], phis[:-1]
-
-        plt.scatter(phis % FULL_ARC, rs * 10, s=12, c="k", label="discrete")
+        rs_d, phis_d = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
+        rs_d, phis_d = rs_d[:-1], phis_d[:-1]
 
         analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-3, polar=True,
                                                          phi_density=200, theta_density=10000)
+
         phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
         rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
         rs, phis = rs[:-1], phis[:-1]
+        # drop repeating value
+        remove = [True] + [True if phis[i] - phis[i+1] else False for i in range(0, len(phis)-1)]
+        rs, phis = rs[remove], phis[remove]
 
-        plt.plot(phis % FULL_ARC, rs * 10, c="r", label="analytic")
+        # interpolation
+        akima = Akima1DInterpolator(phis, rs)
 
+        # residua
+        residua = (rs_d - akima(phis_d)) / akima(phis_d)
+
+        # plot
+        ax1 = plt.subplot(111)
+        ax1.scatter(phis_d % FULL_ARC, rs_d * 10, s=12, c="k", label="discrete")
+        ax1.plot(phis % FULL_ARC, rs * 10, c="g", label="analytic")
+        # here comes residua
+        divider = make_axes_locatable(ax1)
+        ax2 = divider.append_axes("bottom", size=1, pad=0.1)
+        ax1.figure.add_axes(ax2)
+        ax2.plot(phis_d % FULL_ARC, residua, c="r")
+        ax1.legend(loc=2)
+
+        # settings
         axis_font = {'size': '12'}
-        plt.xlabel(r"$\theta$", **axis_font)
-        plt.ylabel(r"$\varrho$", **axis_font)
-        plt.legend()
+        ax1.set_ylabel(r"$\varrho$", **axis_font)
+        ax2.set_ylabel(r"$(\varrho - \varrho_d) / \varrho$", **axis_font)
 
-        params = {'legend.fontsize': 11,
-                  'legend.handlelength': 3}
+        ax2.set_xlabel(r"$\theta$", **axis_font)
+        params = {'legend.fontsize': 11, 'legend.handlelength': 3}
         plt.rcParams.update(params)
-        plt.rc('xtick', labelsize=10)  # fontsize of the tick labels
+        plt.rc('xtick', labelsize=10)
         plt.rc('ytick', labelsize=10)
-        plt.legend(loc=2)
 
-        ax = plt.subplot()
-        for label in (ax.get_xticklabels() + ax.get_yticklabels()):
-            label.set_fontsize(11)
-
-        plt.show()
+        for _ax in [ax1, ax2]:
+            for label in (_ax.get_xticklabels() + _ax.get_yticklabels()):
+                label.set_fontsize(11)
 
         plt.show()
-        plt.cla()
 
 
 
