@@ -3,7 +3,8 @@ import numpy as np
 from .. import utils as butils
 from .. import (
     utils as bsutils,
-    model
+    model,
+    radius
 )
 from ... base.error import MaxIterationError, SpotError
 from ... base.spot import incorporate_spots_mesh
@@ -72,7 +73,8 @@ def build_pulsations_on_mesh(system, component, components_distance):
     return system
 
 
-def pre_calc_azimuths_for_detached_points(discretization):
+def pre_calc_azimuths_for_detached_points(discretization, synchronicity, mass_ratio, potential, components_distance,
+                                          component):
     """
     Returns azimuths for the whole quarter surface in specific order::
 
@@ -82,6 +84,29 @@ def pre_calc_azimuths_for_detached_points(discretization):
 
     :param discretization: float; discretization factor
     :return: Tuple; (phi: numpy.array, theta: numpy.array, separator: numpy.array)
+    """
+    if settings.MESH_GENERATOR in ['auto', 'improved_trapezoidal']:
+        forward_radius = radius.calculate_forward_radius(synchronicity, mass_ratio, components_distance, potential,
+                                                         component)
+        polar_radius = radius.calculate_polar_radius(synchronicity, mass_ratio, components_distance, potential,
+                                                     component)
+        rel_radii = (forward_radius - polar_radius) / polar_radius
+        if rel_radii > 0.05 or settings.MESH_GENERATOR == 'auto':
+            side_radius = radius.calculate_forward_radius(synchronicity, mass_ratio, components_distance, potential,
+                                                          component)
+            backward_radius = radius.calculate_polar_radius(synchronicity, mass_ratio, components_distance, potential,
+                                                            component)
+            return improved_trpaezoidal_mesh(discretization, forward_radius, polar_radius, side_radius, backward_radius)
+
+    return trapezoidal_mesh(discretization)
+
+
+def trapezoidal_mesh(discretization):
+    """
+    Caculates azimuths for every surface point using trapezoidal discretization. Good for nearly spherical stars.
+
+    :param discretization: float;
+    :return: Tuple;
     """
     separator = []
 
@@ -112,6 +137,72 @@ def pre_calc_azimuths_for_detached_points(discretization):
         phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
         phi_q += phi_q_add
         theta_q += [tht for _ in phi_q_add]
+
+    phi = up.concatenate((phi, phi_q))
+    theta = up.concatenate((theta, theta_q))
+
+    return phi, theta, separator
+
+
+def improved_trpaezoidal_mesh(discretization, forward_radius, polar_radius, side_radius, backward_radius):
+    """
+    Caculates azimuths for every surface point using trapezoidal discretization. Function conserves areas of the
+    triangles better than trapezoidal method.
+
+    :param discretization:
+    :param forward_radius:
+    :param polar_radius:
+    :param side_radius:
+    :param backward_radius:
+    :return:
+    """
+    separator = []
+
+    r_eq = utils.calculate_equiv_radius(utils.calculate_ellipsoid_volume(0.5*(forward_radius+backward_radius),
+                                                                         side_radius, polar_radius))
+    d_alpha = r_eq * discretization
+
+    # azimuths for points on equator
+    phi = np.array([0.0])
+    while phi[-1] < const.PI - 0.5 * discretization:
+        r = np.sqrt(np.power(forward_radius * np.cos(phi[-1]), 2) + np.power(side_radius * np.sin(phi[-1]), 2))
+        d_phi = d_alpha / r
+        phi = np.append(phi, phi[-1] + d_phi)
+
+    phi = np.append(phi, const.PI)
+    theta = np.array([const.HALF_PI for _ in phi])
+    separator.append(np.shape(theta)[0])
+
+    # azimuths for points on meridian
+    num = int(const.HALF_PI // discretization)
+    phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
+    theta_meridian = up.concatenate((np.linspace(const.HALF_PI - discretization, discretization, num=num - 1),
+                                     np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
+
+    phi = up.concatenate((phi, phi_meridian))
+    theta = up.concatenate((theta, theta_meridian))
+    separator.append(np.shape(theta)[0])
+
+    # azimuths for rest of the quarter
+    num = int(const.HALF_PI // discretization)
+    thetas = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
+    phi_q, theta_q = [], []
+    for tht in thetas:
+        sin_theta = np.sin(tht)
+        phi_q_add = np.array([0.0])
+        alpha_corrected = discretization / sin_theta
+        side_corrected = side_radius * sin_theta
+        forward_corrected = forward_radius * sin_theta
+        while phi_q_add[-1] < const.PI - 0.3 * alpha_corrected:
+            r = np.sqrt(np.power(forward_corrected * np.cos(phi[-1]), 2) + np.power(side_corrected * np.sin(phi[-1]), 2))
+            d_phi = d_alpha / r
+            phi_q_add = np.append(phi_q_add, phi_q_add[-1] + d_phi)
+
+        # num = int(const.PI // alpha_corrected)
+        # alpha_corrected = const.PI / (num + 1)
+        # phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
+        phi_q = np.concatenate((phi_q, phi_q_add[:-1]))
+        theta_q += [tht for _ in phi_q_add[:-1]]
 
     phi = up.concatenate((phi, phi_q))
     theta = up.concatenate((theta, theta_q))
@@ -372,7 +463,8 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
     fprime = getattr(model, f"radial_{component}_potential_derivative")
 
     # pre calculating azimuths for surface points on quarter of the star surface
-    phi, theta, separator = pre_calc_azimuths_for_detached_points(discretization_factor)
+    phi, theta, separator = pre_calc_azimuths_for_detached_points(discretization_factor, synchronicity, mass_ratio,
+                                                                  potential, components_distance, component)
 
     # calculating mesh in cartesian coordinates for quarter of the star
     # args = phi, theta, components_distance, precalc_fn, potential_fn

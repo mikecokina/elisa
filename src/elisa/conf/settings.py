@@ -158,6 +158,8 @@ class Settings(_Const):
     MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
     MAX_SOLVER_ITERS = 100
     MAX_CURVE_DATA_POINTS = 300
+    MESH_GENERATOR = 'improved_trapezoidal'
+    # MESH_GENERATOR = 'trapezoidal'
 
     TIMER = 0.0
 
@@ -329,6 +331,7 @@ class Settings(_Const):
             cls.MAX_SOLVER_ITERS = c_parse.getfloat('computational', 'max_solver_iters', fallback=cls.MAX_SOLVER_ITERS)
             cls.MAX_CURVE_DATA_POINTS = c_parse.getfloat('computational', 'max_curve_datapoints',
                                                          fallback=cls.MAX_CURVE_DATA_POINTS)
+            cls.MESH_GENERATOR = c_parse.getfloat('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
         # ******************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)
