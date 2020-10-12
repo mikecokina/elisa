@@ -45,12 +45,6 @@ BINARY_DEFINITION = {
 
 
 def _horizon_base_component(binary, position, analytic=True):
-    if binary is None:
-        binary = BinarySystem.from_json(BINARY_DEFINITION)
-
-    if position is None:
-        position = Position(0, 1.0, 0.0, 0.0, 0.0)
-
     if analytic:
         binary.primary.discretization_factor = 1.0 * u.deg
         binary.secondary.discretization_factor = 10.0 * u.deg
@@ -96,9 +90,9 @@ def estimate_analytic_horizon(binary=None, phase=0.0, threshold=-1e-6, polar=Fal
 
     def _cosine_precision(cosine):
         precisions = reversed(1.0 / np.power(10, [x for x in range(1, 11)]))
-        for precision in precisions:
-            if np.sum(cosine > precision) == 0:
-                return precision
+        for _precision in precisions:
+            if np.sum(cosine > _precision) == 0:
+                return _precision
         return -1
 
     if binary is None:
@@ -208,46 +202,20 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
     return horizon_points
 
 
-def get_discrete_horizon(binary=None, position=None, threshold=-1e-6, polar=False):
+def get_discrete_horizon(binary=None, phase=0.0, threshold=-1e-6, polar=False):
     """
-    Get horizon of primary component.
+    Get discrete horizon of primary component.
     """
-    star_container = _horizon_base_component(binary, position, analytic=False).primary
-    visible_projection = utils.get_visible_projection(star_container)
+    if binary is None:
+        binary = BinarySystem.from_json(BINARY_DEFINITION)
+    position = Position(*((0,) + tuple(binary.orbit.orbital_motion(phase=phase)[0])))
+    position_container = _horizon_base_component(binary, position, analytic=False)
+    star = position_container.primary
+    visible_projection = utils.get_visible_projection(star)
 
     bb_path = get_eclipse_boundary_path(visible_projection)
     horizon_indices = up.invert(bb_path.contains_points(visible_projection, radius=threshold))
     horizon = visible_projection[horizon_indices]
-
-    # plt.scatter(horizon.T[0], horizon.T[1], s=2)
-    # plt.show()
-
-    # from mpl_toolkits.mplot3d import Axes3D
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-    #
-    # visible_point_indices = np.unique(star_container.faces[star_container.indices])
-    # var = star_container.points[visible_point_indices][horizon_indices]
-    #
-    # X = np.array(list(zip(*var))[0])
-    # Y = np.array(list(zip(*var))[1])
-    # Z = np.array(list(zip(*var))[2])
-    #
-    # scat = ax.scatter(X, Y, Z, s=3)
-    #
-    # max_range = np.array([X.max() - X.min(), Y.max() - Y.min(), Z.max() - Z.min()]).max() / 2.0
-    #
-    # mid_x = (X.max() + X.min()) * 0.5
-    # mid_y = (Y.max() + Y.min()) * 0.5
-    # mid_z = (Z.max() + Z.min()) * 0.5
-    # ax.set_xlim(mid_x - max_range, mid_x + max_range)
-    # ax.set_ylim(mid_y - max_range, mid_y + max_range)
-    # ax.set_zlim(mid_z - max_range, mid_z + max_range)
-    #
-    # ax.set_xlabel("x")
-    # ax.set_ylabel("y")
-    # ax.set_zlabel("z")
-    # plt.show()
 
     if polar:
         horizon = utils.cartesian_to_polar(horizon)
@@ -259,12 +227,21 @@ def get_discrete_horizon(binary=None, position=None, threshold=-1e-6, polar=Fals
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
 
-    analytic_horizon = get_analytics_horizon(phase=0.1, tol=1e-3, polar=True, theta_density=10000)
+    _phase = 0.0
+
+    discrete_horizon = get_discrete_horizon(phase=_phase, polar=True)
+    phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
+    rs, phis = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
+    rs, phis = rs[:-1], phis[:-1]
+
+    plt.scatter(phis % FULL_ARC, rs * 10, s=10, c="r")
+
+    analytic_horizon = get_analytics_horizon(phase=_phase, tol=1e-3, polar=True, phi_density=200, theta_density=10000)
     phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
     rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
     rs, phis = rs[:-1], phis[:-1]
 
-    plt.scatter(phis % FULL_ARC, rs * 10, s=4)
+    plt.plot(phis % FULL_ARC, rs * 10, c="b")
     plt.xlabel(r"$\theta$")
     plt.ylabel(r"$\varrho$")
     plt.legend()

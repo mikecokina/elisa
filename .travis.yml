@@ -58,7 +58,6 @@ notifications:
 
 branches:
   only:
-  - publish/horizon
   - master
   - dev
   - /^release.*$/
