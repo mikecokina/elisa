@@ -630,7 +630,8 @@ class BinarySystem(System):
         fn_map = {'primary': (model.potential_primary_fn, model.pre_calculate_for_potential_value_primary),
                   'secondary': (model.potential_secondary_fn, model.pre_calculate_for_potential_value_secondary)}
 
-        angles = np.linspace(-3 * const.HALF_PI, const.HALF_PI, 300, endpoint=True)
+        # angles = np.linspace(-3 * const.HALF_PI, const.HALF_PI, 300, endpoint=True)
+        angles = np.linspace(0, const.FULL_ARC, 500, endpoint=True)
         for component in components:
             component_instance = getattr(self, component)
             synchronicity = component_instance.synchronicity
