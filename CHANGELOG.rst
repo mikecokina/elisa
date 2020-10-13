@@ -206,6 +206,7 @@ v0.5
 **Fixes**
 
     - <binary_system>.init() reinitialize parameters corretly (require fix for pulsations)
+    - inclination rotation is provided in positive direction instead of negative
 
 
 v1.0
