@@ -64,7 +64,7 @@ def _horizon_base_component(binary, position, analytic=True):
             args = (position_container.position.azimuth - HALF_PI, prop_value, "z", False, False)
             prop_value = utils.around_axis_rotation(*args)
 
-            args = (HALF_PI - position_container.inclination, prop_value, "y", False, False)
+            args = (HALF_PI - position_container.inclination, prop_value, "y", True, False)
             prop_value = utils.around_axis_rotation(*args)
             setattr(position_container.primary, prop, prop_value)
 
@@ -146,10 +146,12 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
 
     # rotate line of sight to simulate phase and inclination
     r0 = np.array([0.0, 0.0, 1.0])
-    v = utils.around_axis_rotation(position.azimuth - HALF_PI, LINE_OF_SIGHT, axis="z", inverse=True)
-    v = utils.around_axis_rotation(HALF_PI - binary.inclination, v, axis="y")
+
+    v = utils.around_axis_rotation(HALF_PI - binary.inclination, LINE_OF_SIGHT, axis="y", inverse=False)
+    v = utils.around_axis_rotation(position.azimuth - HALF_PI, v, axis="z", inverse=True)
+
+    r0 = utils.around_axis_rotation(HALF_PI - binary.inclination, r0, axis="y", inverse=False)
     r0 = utils.around_axis_rotation(position.azimuth - HALF_PI, r0, axis="z", inverse=True)
-    r0 = utils.around_axis_rotation(HALF_PI - binary.inclination, r0, axis="y")
 
     potential_fn = potential_primary_fn
     precalc_fn = pre_calculate_for_potential_value_primary
@@ -190,8 +192,8 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
     if utils.is_empty(horizon_points):
         raise ValueError(f"No horizon points found in given tolerance {tol}. Decrease tolerance.")
 
-    horizon_points = utils.around_axis_rotation(HALF_PI - binary.inclination, horizon_points, axis="y", inverse=True)
     horizon_points = utils.around_axis_rotation(position.azimuth - HALF_PI, horizon_points, axis="z", inverse=False)
+    horizon_points = utils.around_axis_rotation(HALF_PI - binary.inclination, horizon_points, axis="y", inverse=True)
     horizon_points = horizon_points.T[1:3].T
 
     if polar:
