@@ -234,6 +234,35 @@ class BinarySystem(System):
         primary, secondary = Star(**data_cp["primary"]), Star(**data_cp["secondary"])
         return cls(primary=primary, secondary=secondary, **data_cp["system"])
 
+    @classmethod
+    def from_fit_results(cls, results):
+        """
+        Building binary system from standard fit results format.
+
+        :param results: Dict; {'component': {'param_name': {'value': value, fixed: ...}}}
+        :return: BinarySystem;
+        """
+        data = {}
+        for key, component in results.items():
+            if key != 'r_squared':
+                data[key] = {}
+            else:
+                continue
+
+            for param, content in component.items():
+                if param in ['spots', 'pulsations']:
+                    features = []
+                    for ii, feature in enumerate(content):
+                        features.append(dict())
+                        for f_param, f_content in feature.items():
+                            if f_param != 'label':
+                                features[ii][f_param] = f_content['value']
+                    data[key][param] = features
+                else:
+                    data[key][param] = content['value']
+
+        return BinarySystem.from_json(data=data)
+
     def to_json(self):
         """
         Serialize BinarySystem instance to json.
