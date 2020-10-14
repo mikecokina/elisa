@@ -245,9 +245,22 @@ class BinarySystem(System):
         """
         data = {}
         for key, component in results.items():
-            data[key] = {}
+            if key != 'r_squared':
+                data[key] = {}
+            else:
+                continue
+
             for param, content in component.items():
-                data[key][param] = content['value']
+                if param in ['spots', 'pulsations']:
+                    features = []
+                    for ii, feature in enumerate(content):
+                        features.append(dict())
+                        for f_param, f_content in feature.items():
+                            if f_param != 'label':
+                                features[ii][f_param] = f_content['value']
+                    data[key][param] = features
+                else:
+                    data[key][param] = content['value']
 
         return BinarySystem.from_json(data=data)
 

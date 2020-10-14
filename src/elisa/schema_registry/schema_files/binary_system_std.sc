@@ -70,9 +70,7 @@
           "minimum": 0.0
         },
         "t_eff": {
-          "type": "number",
-          "minimum": 3500.0,
-          "maximum": 50000.0
+          "type": "number"
         },
         "gravity_darkening": {
           "type": "number",
@@ -103,9 +101,7 @@
             ],
             "properties": {
               "longitude": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 360
+                "type": "number"
               },
               "latitude": {
                 "type": "number",
@@ -184,9 +180,7 @@
         "minimum": 0.0
       },
       "t_eff": {
-        "type": "number",
-        "minimum": 3500.0,
-        "maximum": 50000.0
+        "type": "number"
       },
       "gravity_darkening": {
         "type": "number",
@@ -217,9 +211,7 @@
           ],
           "properties": {
             "longitude": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 360
+              "type": "number"
             },
             "latitude": {
               "type": "number",
