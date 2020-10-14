@@ -3,7 +3,6 @@ import builtins
 from importlib import import_module
 builtins._ASTROPY_SETUP_ = True
 
-
 if 'astropy.units' in sys.modules:
     u = sys.modules['astropy.units']
 else:

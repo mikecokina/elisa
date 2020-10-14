@@ -58,7 +58,6 @@ notifications:
 
 branches:
   only:
-  - pre04_code_review
   - master
   - dev
   - /^release.*$/

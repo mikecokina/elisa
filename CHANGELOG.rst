@@ -160,9 +160,6 @@ v0.3.1_
     - libration motion accounted for in spot position in case of eccetric orbits
     - fix: volume conserved in eccentric spotty systems
 
-Future plans
-============
-
 v0.4_
 -----
 
@@ -191,11 +188,25 @@ v0.4_
     - surface areas produced by numeric noise when total eclipse is occuring are mitigated
     - renormalization of temperature (temperatures powered to exponent of 4)
 
+Future plans
+============
 
 v0.5
 ----
-    - genetic algorithm
-    - extended fitting methods
+
+**Release date:** ????-??-??
+
+**Features**
+    Expeceted
+        - genetic algorithm
+        - extended fitting methods
+
+**Enhancements**
+
+**Fixes**
+
+    - <binary_system>.init() reinitialize parameters corretly (require fix for pulsations)
+    - inclination rotation is provided in positive direction instead of negative
 
 
 v1.0

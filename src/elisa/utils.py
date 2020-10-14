@@ -141,6 +141,12 @@ def cartesian_to_spherical(points, degrees=False):
     return np.squeeze(return_val, axis=0) if np.shape(return_val)[0] == 1 else return_val
 
 
+def cartesian_to_polar(points, degrees=False):
+    points = np.insert(points, 2, np.zeros(len(points)), axis=1)
+    transform = cartesian_to_spherical(points, degrees=degrees)
+    return transform.T[:2].T
+
+
 def spherical_to_cartesian(spherical_points):
     """
     Converts spherical coordinates into cartesian.

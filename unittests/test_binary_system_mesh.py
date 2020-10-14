@@ -156,9 +156,6 @@ class BuildSpottyMeshTestCase(ElisaTestCase):
                                                 spots_primary=testutils.SPOTS_META["primary"],
                                                 spots_secondary=testutils.SPOTS_META["secondary"]
                                                 )
-            # reducing runtime of the test
-            s.primary.discretization_factor = up.radians(7)
-            s.init()
             components_distance = s.orbit.orbital_motion(phase=0.0)[0][0]
 
             orbital_position_container = OrbitalPositionContainer(

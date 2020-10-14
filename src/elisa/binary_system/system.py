@@ -1,5 +1,4 @@
 import numpy as np
-import scipy
 
 from typing import Union
 from copy import deepcopy
@@ -277,6 +276,10 @@ class BinarySystem(System):
         """
         Function to reinitialize BinarySystem class instance after changing parameter(s) of binary system.
         """
+        # reinitialize components (in case when value in component instance was changed)
+        for component in settings.BINARY_COUNTERPARTS:
+            getattr(self, component).init()
+
         self.__init__(primary=self.primary, secondary=self.secondary, **self.kwargs_serializer())
 
     @property
@@ -298,7 +301,10 @@ class BinarySystem(System):
         serialized_kwargs = dict()
         for kwarg in self.ALL_KWARGS:
             if kwarg in ['argument_of_periastron', 'inclination']:
-                serialized_kwargs[kwarg] = getattr(self, kwarg) * u.ARC_UNIT
+                value = getattr(self, kwarg)
+                if not isinstance(value, u.Quantity):
+                    value = value * u.ARC_UNIT
+                serialized_kwargs[kwarg] = value
             else:
                 serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
@@ -417,7 +423,8 @@ class BinarySystem(System):
         """
         If secondary discretization factor was not set, it will be now with respect to primary component.
         """
-        if not self.secondary.kwargs.get('discretization_factor'):
+
+        if self.secondary.kwargs.get('discretization_factor', None) is None:
             self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
                                                     / self.secondary.polar_radius * u.rad).value
 

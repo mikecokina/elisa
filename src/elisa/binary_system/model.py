@@ -366,7 +366,7 @@ def pre_calculate_for_potential_value_secondary_cylindrical(*args, return_as_tup
 
 def primary_potential_derivative_x(x, *args):
     """
-    Dderivative of potential function perspective of primary component along the x axis.
+    Derivative of potential function perspective of primary component along the x axis.
 
     :param x: (numpy.)float;
     :param args: Tuple (float, float, float); (synchronicity of primary component, mass ratio, components distance)
@@ -380,7 +380,7 @@ def primary_potential_derivative_x(x, *args):
 
 def secondary_potential_derivative_x(x, *args):
     """
-    Dderivative of potential function perspective of secondary component along the x axis.
+    Derivative of potential function perspective of secondary component along the x axis.
 
     :param x: (numpy.)float;
     :param args: Tuple (float, float, float); (synchronicity of secondary component, mass ratio, components distance)
