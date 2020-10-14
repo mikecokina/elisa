@@ -7,7 +7,7 @@ import os
 import numpy as np
 import os.path as op
 
-from elisa import BinarySystem
+from elisa import BinarySystem, Observer
 from elisa.analytics.tools import horizon
 from elisa.const import FULL_ARC
 from matplotlib import pyplot as plt
@@ -33,7 +33,7 @@ BINARY_DEFINITION = {
         "gravity_darkening": 0.09,
         "albedo": 0.5,
         "metallicity": 0.0,
-        "discretization_factor": 1
+        "discretization_factor": 5
     },
     "secondary": {
         "mass": 0.5,
@@ -46,25 +46,32 @@ BINARY_DEFINITION = {
     }
 }
 
-DISCRETIZATION_FACTORS = [2, 5, 7, 10, 12]
+INCLINATIONS = [90, 70, 50]
 PHASE = 0.1
 
 
 def single_main():
-    for df in DISCRETIZATION_FACTORS[1:2]:
+    for i in INCLINATIONS[1:2]:
         # computational
         params = BINARY_DEFINITION.copy()
-        params["primary"]["discretization_factor"] = df
+        params["system"]["inclination"] = 50
         binary = BinarySystem.from_json(params)
 
+        # observer = Observer(["Generic.Bessell.V"], binary)
+        # observer.observe.lc(phases=[0.1])
+
+        # discrete horizon
         discrete_horizon = horizon.get_discrete_horizon(binary=binary, phase=PHASE, polar=True)
         phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
         rs_d, phis_d = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
         rs_d, phis_d = rs_d[:-1], phis_d[:-1]
 
-        analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-3, polar=True,
-                                                         phi_density=200, theta_density=10000)
+        # plt.scatter(phis_d, rs_d)
+        # plt.show()
 
+        # analytic horizon
+        analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-3, polar=True,
+                                                         phi_density=200, theta_density=20000)
         phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
         rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
         rs, phis = rs[:-1], phis[:-1]
@@ -109,36 +116,20 @@ def single_main():
 
 def multiple_main():
     data = {}
-    data_path = "discretization.json"
+    data_path = "inclination.json"
     if op.isfile(data_path):
         os.remove(data_path)
-
-    # analytic horizon
-    binary = BinarySystem.from_json(BINARY_DEFINITION)
-
-    analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-3, polar=True,
-                                                     phi_density=200, theta_density=20000)
-
-    phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
-    rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
-    rs, phis = rs[:-1], phis[:-1]
-    # drop repeating value
-    remove = [True] + [True if phis[i] - phis[i + 1] else False for i in range(0, len(phis) - 1)]
-    rs, phis = rs[remove], phis[remove]
-
-    # interpolation
-    akima = Akima1DInterpolator(phis, rs)
 
     # define plot
     ax1 = plt.subplot(111)
 
     # run eval
-    for df in DISCRETIZATION_FACTORS:
-        data[df] = {}
+    for i in INCLINATIONS:
+        data[i] = {}
 
         # computational
         params = BINARY_DEFINITION.copy()
-        params["primary"]["discretization_factor"] = df
+        params["system"]["inclination"] = i
         binary = BinarySystem.from_json(params)
 
         discrete_horizon = horizon.get_discrete_horizon(binary=binary, phase=PHASE, polar=True)
@@ -146,14 +137,28 @@ def multiple_main():
         rs_d, phis_d = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
         rs_d, phis_d = rs_d[:-1], phis_d[:-1]
 
+        # analytic horizon
+        binary = BinarySystem.from_json(params)
+        analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-3, polar=True,
+                                                         phi_density=200, theta_density=20000)
+        phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
+        rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
+        rs, phis = rs[:-1], phis[:-1]
+        # drop repeating value
+        remove = [True] + [True if phis[i] - phis[i + 1] else False for i in range(0, len(phis) - 1)]
+        rs, phis = rs[remove], phis[remove]
+
+        # interpolation
+        akima = Akima1DInterpolator(phis, rs)
+
         # residua
         residua = (rs_d - akima(phis_d)) / akima(phis_d)
 
         # plot
-        ax1.plot(phis_d % FULL_ARC, residua, label=f"discretization: {df}")
+        ax1.plot(phis_d % FULL_ARC, residua, label=f"inclination: {i}" + r"$^\circ$")
 
-        data[df]["x"] = phis_d
-        data[df]["y"] = residua
+        data[i]["x"] = np.array(phis_d).tolist()
+        data[i]["y"] = np.array(residua).tolist()
 
     with open(data_path, "a+") as f:
         f.write(json.dumps(data, indent=4))
