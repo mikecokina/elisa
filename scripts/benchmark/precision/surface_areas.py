@@ -16,7 +16,7 @@ def sigmas(percentiles):
 # settings.configure(MESH_GENERATOR='trapezoidal')
 settings.configure(MESH_GENERATOR='improved_trapezoidal')
 
-surface_potential = 3.07
+surface_potential = 3.06
 primary = Star(
     mass=2.0 * u.solMass,
     surface_potential=surface_potential,
@@ -52,7 +52,8 @@ bs = BinarySystem(
     additional_light=0.1
 )
 
-component = 'primary'
+# component = 'primary'
+component = 'secondary'
 container = OrbitalPositionContainer.from_binary_system(binary_system=bs, position=const.Position(0, 1.0, 0, 0, 0))
 container.build()
 comp_instance = getattr(container, component)
@@ -69,7 +70,7 @@ plt.hist(comp_instance.areas, bins=100)
 plt.show()
 
 bs.plot.surface(
-    components_to_plot='primary',
+    # components_to_plot=component,
     phase=0.8,
     inclination=75,
     edges=True,

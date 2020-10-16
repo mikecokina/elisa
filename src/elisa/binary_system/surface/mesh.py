@@ -318,75 +318,65 @@ def pre_calc_azimuths_for_overcontact_neck_points(
     r_neck, separator = [], []
 
     if component == 'primary':
-        num = 15 * int(neck_position // (polar_radius * discretization))
+        num = 10 * int(neck_position // (polar_radius * discretization))
         # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
-        x_curve = np.linspace(0., neck_position, num=num, endpoint=True)
+        x_curve = neck_position * np.sin(np.linspace(0., const.HALF_PI, num=num, endpoint=True))
         z_curve = np.polyval(neck_polynomial, x_curve)
 
-        # radius on the neck
-        mid_r = np.min(z_curve)
-
         curve = np.column_stack((x_curve, z_curve))
-        neck_lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
-        neck_length = np.sum(neck_lengths)
-        segment = neck_length / (int(neck_length // delta_z))
+        lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
+        neck_lengths = np.cumsum(lengths)
+        num_z = int(neck_lengths[-1] // delta_z)
+        segments = np.linspace(0, neck_lengths[-1], num=num_z)[1:]
 
-        k = 1
-        z_ns, line_sum = [], 0.0
-        for ii in range(num - 2):
-            line_sum += neck_lengths[ii]
-            if line_sum > k * segment:
-                z_ns.append(x_curve[ii + 1])
-                r_neck.append(z_curve[ii])
-                k += 1
-        z_ns.append(neck_position)
-        r_neck.append(mid_r)
-        z_ns = np.array(z_ns)
+        z_ns = np.interp(segments, neck_lengths, x_curve[1:])
+        r_neck = np.polyval(neck_polynomial, z_ns)
     else:
-        num = 15 * int((1 - neck_position) // (polar_radius * discretization))
+        num = 10 * int((1 - neck_position) // (polar_radius * discretization))
         # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
         x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
+        # x_curve = neck_position + (1 - neck_position) * np.sin(np.linspace(const.HALF_PI, 0.0, num=num, endpoint=True))
         z_curve = np.polyval(neck_polynomial, x_curve)
 
-        # radius on the neck
-        mid_r = np.min(z_curve)
-
         curve = np.column_stack((x_curve, z_curve))
-        neck_lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
-        neck_length = np.sum(neck_lengths)
-        segment = neck_length / (int(neck_length // delta_z))
+        lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
+        neck_lengths = np.cumsum(lengths)
+        num_z = int(neck_lengths[-1] // delta_z)
+        segments = np.linspace(0, neck_lengths[-1], num=num_z)[:-1]
 
-        k = 1
-        z_ns, line_sum = [1 - neck_position], 0.0
-        r_neck.append(mid_r)
-        for ii in range(num - 2):
-            line_sum += neck_lengths[ii]
-            if line_sum > k * segment:
-                z_ns.append(1 - x_curve[ii + 1])
-                r_neck.append(z_curve[ii])
-                k += 1
+        z_ns = np.interp(segments, neck_lengths, x_curve[:-1])
+        r_neck = np.polyval(neck_polynomial, 1-z_ns)
 
-        z_ns = np.array(z_ns)
+        # k = 1
+        # z_ns, line_sum = [1 - neck_position], 0.0
+        # r_neck.append(mid_r)
+        # for ii in range(num - 2):
+        #     line_sum += neck_lengths[ii]
+        #     if line_sum > k * segment:
+        #         z_ns.append(1 - x_curve[ii + 1])
+        #         r_neck.append(z_curve[ii])
+        #         k += 1
+        #
+        # z_ns = np.array(z_ns)
 
     # equator azimuths
-    phi = np.array([const.HALF_PI for _ in z_ns])
+    phi = np.full(z_ns.shape, const.HALF_PI)
     z = z_ns
     separator.append(np.shape(z)[0])
     # meridian azimuths
-    phi = up.concatenate((phi, np.array([0 for _ in z_ns])))
+    phi = up.concatenate((phi, np.zeros(z_ns.shape)))
     z = up.concatenate((z, z_ns))
     separator.append(np.shape(z)[0])
 
-    phi_n, z_n = [], []
     for ii, zz in enumerate(z_ns):
-        num = int(0.93 * (const.HALF_PI * r_neck[ii] // delta_z))
-        num = 1 if num == 0 else num
-        start_val = const.HALF_PI / num
-        phis = np.linspace(start_val, const.HALF_PI, num=num - 1, endpoint=False)
-        z_n += [zz for _ in phis]
-        phi_n += [phi for phi in phis]
-    phi = up.concatenate((phi, np.array(phi_n)))
-    z = up.concatenate((z, np.array(z_n)))
+        num = int(np.ceil((0.93 * (const.HALF_PI * r_neck[ii] / delta_z))))
+        num = 2 if num < 2 else num
+        phis = np.linspace(0, const.HALF_PI, num=num, endpoint=False)[1:]
+        z_n = np.full(phis.shape, zz)
+
+        phi = np.concatenate((phi, phis))
+        z = up.concatenate((z, z_n))
+
     separator.append(np.shape(z)[0])
 
     return phi, z, separator
