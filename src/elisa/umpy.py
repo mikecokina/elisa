@@ -44,6 +44,7 @@ mod = np.mod
 equal = np.equal
 less = np.less
 ones = np.ones
+round = np.round
 
 # scipy
 sph_harm = special.sph_harm

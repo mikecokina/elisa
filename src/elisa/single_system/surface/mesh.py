@@ -205,8 +205,8 @@ def pre_calc_latitudes(alpha, polar_radius, equatorial_radius):
     num = int((const.HALF_PI - 2 * alpha) // alpha)
     thetas = np.linspace(alpha, const.HALF_PI - alpha, num=num, endpoint=True)
     # solving non uniform sampling along theta coordinates for squashed stars
-    thetas = thetas + up.arctan((equatorial_radius - polar_radius) * up.tan(thetas) /
-                                (polar_radius + equatorial_radius * up.tan(thetas)**2))
+    thetas += up.arctan((equatorial_radius - polar_radius) * up.tan(thetas) /
+                        (polar_radius + equatorial_radius * up.tan(thetas)**2))
     return thetas
 
 

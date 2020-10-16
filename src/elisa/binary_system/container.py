@@ -86,6 +86,10 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return mesh.build_mesh(self, components_distance, component)
 
+    def rebuild_symmetric_detached_mesh(self, components_distance=None, component="all"):
+        components_distance = self._components_distance(components_distance)
+        return mesh.rebuild_symmetric_detached_mesh(self, components_distance, component)
+
     def build_faces(self, components_distance=None, component="all"):
         components_distance = self._components_distance(components_distance)
         return faces.build_faces(self, components_distance, component)

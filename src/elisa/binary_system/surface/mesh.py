@@ -53,6 +53,25 @@ def build_mesh(system, components_distance, component="all"):
     return system
 
 
+def rebuild_symmetric_detached_mesh(system, components_distance, component):
+    """
+        Rebuild a mesh of a symmetrical surface using old mesh to provide azimuths for the new. This conserved number
+        of points and faces.
+
+        :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+        :param component: Union[str, None];
+        :param components_distance: float;
+        :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    """
+    components = bsutils.component_to_list(component)
+
+    for component in components:
+        star = getattr(system, component)
+        setattr(star, "points", rebuild_mesh_detached(system, components_distance, component))
+
+    return system
+
+
 def build_pulsations_on_mesh(system, component, components_distance):
     """
     adds position perturbations to container mesh
@@ -91,13 +110,15 @@ def pre_calc_azimuths_for_detached_points(discretization, synchronicity, mass_ra
         polar_radius = radius.calculate_polar_radius(synchronicity, mass_ratio, components_distance, potential,
                                                      component)
         rel_radii = (forward_radius - polar_radius) / polar_radius
-        if rel_radii > 0.05 or settings.MESH_GENERATOR == 'auto':
+        if rel_radii > 0.05 or settings.MESH_GENERATOR == 'improved_trapezoidal':
             side_radius = radius.calculate_side_radius(synchronicity, mass_ratio, components_distance, potential,
                                                        component)
             backward_radius = radius.calculate_backward_radius(synchronicity, mass_ratio, components_distance, potential,
                                                             component)
+            settings.USED_MESH_GENERATOR = 'improved_trapezoidal'
             return improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side_radius, backward_radius)
 
+    settings.USED_MESH_GENERATOR = 'trapezoidal'
     return trapezoidal_mesh(discretization)
 
 
@@ -118,7 +139,7 @@ def trapezoidal_mesh(discretization):
 
     # azimuths for points on meridian
     num = int(const.HALF_PI // discretization)
-    phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
+    phi_meridian = np.concatenate((const.PI * np.ones(num - 1), np.zeros(num)))
     theta_meridian = up.concatenate((np.linspace(const.HALF_PI - discretization, discretization, num=num - 1),
                                      np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
 
@@ -129,17 +150,13 @@ def trapezoidal_mesh(discretization):
     # azimuths for rest of the quarter
     num = int(const.HALF_PI // discretization)
     thetas = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
-    phi_q, theta_q = [], []
     for tht in thetas:
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.PI // alpha_corrected)
         alpha_corrected = const.PI / (num + 1)
-        phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
-        phi_q += phi_q_add
-        theta_q += [tht for _ in phi_q_add]
-
-    phi = up.concatenate((phi, phi_q))
-    theta = up.concatenate((theta, theta_q))
+        phi_q_add = alpha_corrected * np.arange(1, num+1)
+        phi = up.concatenate((phi, phi_q_add))
+        theta = up.concatenate((theta, tht*np.ones(phi_q_add.shape[0])))
 
     return phi, theta, separator
 
@@ -158,122 +175,77 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     """
     separator = []
 
-    r_eq = utils.calculate_equiv_radius(utils.calculate_ellipsoid_volume(0.5 * (forward_radius + backward_radius),
-                                                                         side_radius, polar_radius))
-
-    a1 = (forward_radius - side_radius) / r_eq
-    b1 = (backward_radius - side_radius) / r_eq
-    mult = 1 / (2*const.FULL_ARC)
-    # mult = 1.0
-
     # azimuths for points on equator
     num = int(const.PI // discretization)
     phi = np.linspace(0., const.PI, num=num + 1)
-    inner_phis = phi[phi <= const.HALF_PI]
-    outer_phis = phi[phi > const.HALF_PI]
-    corr = mult * np.concatenate((a1 * np.cos(2*inner_phis), - b1 * np.cos(2*outer_phis)))
-    phi[1:-1] -= corr[1:-1]
+    inner_mask = (phi < const.HALF_PI) & (phi > 0)
+    outer_mask = (phi > const.HALF_PI) & (phi < const.PI)
+    inner_phis = phi[inner_mask]
+    outer_phis = phi[outer_mask]
+
+    tan_phs1 = up.tan(inner_phis)
+    tan_phs2 = up.tan(outer_phis)
+    inner_corr = up.arctan((side_radius - forward_radius) * tan_phs1 /
+                           (side_radius + forward_radius * tan_phs1**2))
+    outer_corr = up.arctan((side_radius - backward_radius) * tan_phs2 /
+                           (side_radius + backward_radius * tan_phs2**2))
+    phi[inner_mask] += inner_corr
+    phi[outer_mask] += outer_corr
 
     theta = np.array([const.HALF_PI for _ in phi])
     separator.append(np.shape(theta)[0])
 
     # azimuths for points on meridian
     num = int(const.HALF_PI // discretization)
-    phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
+    phi_meridian = np.concatenate((const.PI * np.ones(num - 1), np.zeros(num)))
     theta_meridian = up.concatenate((np.linspace(const.HALF_PI - discretization, discretization, num=num - 1),
                                      np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
+
+    # azimuths for rest of the quarter
+    num = int(const.HALF_PI // discretization)
+    thetas_lin = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
+
+    # correcting theta for obliqueness
+    est_eqt_r = (side_radius + forward_radius + backward_radius) / 3.0
+    tan_tht = np.tan(theta_meridian)
+    theta_meridian += up.arctan((est_eqt_r - polar_radius) * tan_tht /
+                                (polar_radius + est_eqt_r * tan_tht ** 2))
 
     phi = up.concatenate((phi, phi_meridian))
     theta = up.concatenate((theta, theta_meridian))
     separator.append(np.shape(theta)[0])
 
-    # azimuths for rest of the quarter
-    num = int(const.HALF_PI // discretization)
-    thetas = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
-    phi_q, theta_q = [], []
-    for tht in thetas:
+
+    # correcting theta for obliqueness
+    tan_tht = np.tan(thetas_lin)
+    thetas = thetas_lin + up.arctan((est_eqt_r - polar_radius) * tan_tht /
+                                    (polar_radius + est_eqt_r * tan_tht ** 2))
+
+    for ii, tht in enumerate(thetas):
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.PI // alpha_corrected)
         alpha_corrected = const.PI / (num + 1)
-        phi_q_add = np.array([alpha_corrected * ii for ii in range(1, num + 1)])
+        phi_q_add = alpha_corrected * np.arange(1, num+1)
 
-        # inner_phis = phi_q_add[phi_q_add <= const.HALF_PI]
-        # outer_phis = phi_q_add[phi_q_add > const.HALF_PI]
-        # corr = mult * np.concatenate((a1 * np.cos(2 * inner_phis), - b1 * np.cos(2 * outer_phis))) / np.sin(tht)
-        # phi_q_add -= corr
+        # correction for obliqness
+        inner_mask = phi_q_add < const.HALF_PI
+        outer_mask = phi_q_add > const.HALF_PI
+        inner_phis = phi_q_add[inner_mask]
+        outer_phis = phi_q_add[outer_mask]
 
-        phi_q += list(phi_q_add)
-        theta_q += [tht for _ in phi_q_add]
+        tan_phs1 = up.tan(inner_phis)
+        tan_phs2 = up.tan(outer_phis)
+        scaling_factor = np.sin(tht)
+        inner_corr = np.arctan(scaling_factor * (side_radius - forward_radius) * tan_phs1 /
+                               (side_radius + forward_radius * tan_phs1 ** 2))
+        outer_corr = np.arctan(scaling_factor * (side_radius - backward_radius) * tan_phs2 /
+                               (side_radius + backward_radius * tan_phs2 ** 2))
+        phi_q_add[inner_mask] += inner_corr
+        phi_q_add[outer_mask] += outer_corr
 
-    phi = up.concatenate((phi, phi_q))
-    theta = up.concatenate((theta, theta_q))
-
-    return phi, theta, separator
-
-
-def improved_trpaezoidal_mesh1(discretization, forward_radius, polar_radius, side_radius, backward_radius):
-    """
-    Caculates azimuths for every surface point using trapezoidal discretization. Function conserves areas of the
-    triangles better than trapezoidal method.
-
-    :param discretization:
-    :param forward_radius:
-    :param polar_radius:
-    :param side_radius:
-    :param backward_radius:
-    :return:
-    """
-    separator = []
-
-    r_eq = utils.calculate_equiv_radius(utils.calculate_ellipsoid_volume(0.5*(forward_radius+backward_radius),
-                                                                         side_radius, polar_radius))
-    d_alpha = r_eq * discretization
-
-    # azimuths for points on equator
-    phi = np.array([0.0])
-    while phi[-1] < const.PI - 0.5 * discretization:
-        r = np.sqrt(np.power(forward_radius * np.cos(phi[-1]), 2) + np.power(side_radius * np.sin(phi[-1]), 2))
-        d_phi = d_alpha / r
-        phi = np.append(phi, phi[-1] + d_phi)
-
-    phi = np.append(phi, const.PI)
-    theta = np.array([const.HALF_PI for _ in phi])
-    separator.append(np.shape(theta)[0])
-
-    # azimuths for points on meridian
-    num = int(const.HALF_PI // discretization)
-    phi_meridian = np.array([const.PI for _ in range(num - 1)] + [0 for _ in range(num)])
-    theta_meridian = up.concatenate((np.linspace(const.HALF_PI - discretization, discretization, num=num - 1),
-                                     np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
-
-    phi = up.concatenate((phi, phi_meridian))
-    theta = up.concatenate((theta, theta_meridian))
-    separator.append(np.shape(theta)[0])
-
-    # azimuths for rest of the quarter
-    num = int(const.HALF_PI // discretization)
-    thetas = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
-    phi_q, theta_q = [], []
-    for tht in thetas:
-        sin_theta = np.sin(tht)
-        phi_q_add = np.array([0.0])
-        alpha_corrected = discretization / sin_theta
-        side_corrected = side_radius * sin_theta
-        forward_corrected = forward_radius * sin_theta
-        while phi_q_add[-1] < const.PI - 0.3 * alpha_corrected:
-            r = np.sqrt(np.power(forward_corrected * np.cos(phi[-1]), 2) + np.power(side_corrected * np.sin(phi[-1]), 2))
-            d_phi = d_alpha / r
-            phi_q_add = np.append(phi_q_add, phi_q_add[-1] + d_phi)
-
-        # num = int(const.PI // alpha_corrected)
-        # alpha_corrected = const.PI / (num + 1)
-        # phi_q_add = [alpha_corrected * ii for ii in range(1, num + 1)]
-        phi_q = np.concatenate((phi_q, phi_q_add[:-1]))
-        theta_q += [tht for _ in phi_q_add[:-1]]
-
-    phi = up.concatenate((phi, phi_q))
-    theta = up.concatenate((theta, theta_q))
-
+        phi = up.concatenate((phi, phi_q_add))
+        thetas_add = tht * np.ones(phi_q_add.shape[0])
+        theta = up.concatenate((theta, thetas_add))
     return phi, theta, separator
 
 
@@ -532,16 +504,108 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
     # pre calculating azimuths for surface points on quarter of the star surface
     phi, theta, separator = pre_calc_azimuths_for_detached_points(discretization_factor, synchronicity, mass_ratio,
                                                                   potential, components_distance, component)
-
+    setattr(star, "azimuths", (phi, theta, separator))
     # calculating mesh in cartesian coordinates for quarter of the star
-    # args = phi, theta, components_distance, precalc_fn, potential_fn
     args = phi, theta, star.side_radius, components_distance, precalc_fn, \
         potential_fn, fprime, potential, mass_ratio, synchronicity
 
     logger.debug(f'calculating surface points of {component} component in mesh_detached '
                  f'function using single process method')
     points_q = get_surface_points(*args)
+    points = stitch_quarters_in_detached(points_q, separator, component, components_distance)
 
+    if symmetry_output:
+        equator_length = separator[0] - 2
+        meridian_length = separator[1] - separator[0]
+        quarter_length = np.shape(points_q)[0] - separator[1]
+        quadrant_start = 2 + equator_length
+        base_symmetry_points_number = 2 + equator_length + quarter_length + meridian_length
+        symmetry_vector = up.concatenate((up.arange(base_symmetry_points_number),  # 1st quadrant
+                                          up.arange(quadrant_start, quadrant_start + quarter_length),
+                                          up.arange(2, quadrant_start),  # 2nd quadrant
+                                          up.arange(quadrant_start, base_symmetry_points_number),  # 3rd quadrant
+                                          up.arange(quadrant_start, quadrant_start + quarter_length)
+                                          ))
+
+        points_length = np.shape(points)[0]
+        inverse_symmetry_matrix = \
+            np.array([up.arange(base_symmetry_points_number),  # 1st quadrant
+                      up.concatenate(([0, 1],
+                                      up.arange(base_symmetry_points_number + quarter_length,
+                                                base_symmetry_points_number + quarter_length + equator_length),
+                                      up.arange(base_symmetry_points_number,
+                                                base_symmetry_points_number + quarter_length),
+                                      up.arange(base_symmetry_points_number - meridian_length,
+                                                base_symmetry_points_number))),  # 2nd quadrant
+                      up.concatenate(([0, 1],
+                                      up.arange(base_symmetry_points_number + quarter_length,
+                                                base_symmetry_points_number + quarter_length + equator_length),
+                                      up.arange(base_symmetry_points_number + quarter_length + equator_length,
+                                                base_symmetry_points_number + 2 * quarter_length + equator_length +
+                                                meridian_length))),  # 3rd quadrant
+                      up.concatenate((up.arange(2 + equator_length),
+                                      up.arange(points_length - quarter_length, points_length),
+                                      up.arange(base_symmetry_points_number + 2 * quarter_length + equator_length,
+                                                base_symmetry_points_number + 2 * quarter_length + equator_length +
+                                                meridian_length)))  # 4th quadrant
+                      ])
+
+        return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
+    else:
+        return points
+
+
+def rebuild_mesh_detached(system, components_distance, component):
+    """
+    Rebuilds symmetrical surface mesh of given binary star component in case of detached or semi-detached system.
+
+    :param system: elisa.binary_system.contaienr.OrbitalPositionContainer;
+    :param component: str; `primary` or `secondary`
+    :param components_distance: numpy.float
+    :return: Union[Tuple, numpy.array]; (if `symmetry_output` is False)
+
+    Array of surface points if symmetry_output = False::
+
+         numpy.array([[x1 y1 z1],
+                      [x2 y2 z2],
+                       ...
+                      [xN yN zN]])
+
+    """
+    star = getattr(system, component)
+    synchronicity = star.synchronicity
+    mass_ratio = system.mass_ratio
+    potential = star.surface_potential
+
+    if star.points is None:
+        raise RuntimeError('This function can be used only on container with already built mesh')
+    if star.base_symmetry_points_number == 0:
+        raise RuntimeError('This function can be used only on symmetrical meshes')
+
+    potential_fn = getattr(model, f"potential_{component}_fn")
+    precalc_fn = getattr(model, f"pre_calculate_for_potential_value_{component}")
+    fprime = getattr(model, f"radial_{component}_potential_derivative")
+
+    phi, theta, separator = star.azimuths
+
+    args = phi, theta, star.side_radius, components_distance, precalc_fn, \
+           potential_fn, fprime, potential, mass_ratio, synchronicity
+
+    logger.debug(f're_calculating surface points of {component} component in rebuild_mesh_detached ')
+    points_q = np.round(get_surface_points(*args), 15)
+    return stitch_quarters_in_detached(points_q, separator, component, components_distance)
+
+
+def stitch_quarters_in_detached(points_q, separator, component, components_distance):
+    """
+    Stitching together surface from symmetrical quarter
+
+    :param points_q: numpy.array; point on the symmetrical quarter including equator and meridian
+    :param separator: numpy.array; indices that separates equatorial meridian and inside points
+    :param component: str;
+    :param components_distance: numpy.float;
+    :return: numpy.array; stitched surface
+    """
     equator = points_q[:separator[0], :]
     # assigning equator points and nearside and farside points A and B
     x_a, x_eq, x_b = equator[0, 0], equator[1: -1, 0], equator[-1, 0]
@@ -573,46 +637,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
     z = up.concatenate((z, z_eq, z_q, z_meridian, z_q, z_eq, -z_q, -z_meridian, -z_q))
 
     x = -x + components_distance if component == 'secondary' else x
-    points = np.column_stack((x, y, z))
-    if symmetry_output:
-        equator_length = np.shape(x_eq)[0]
-        meridian_length = np.shape(x_meridian)[0]
-        quarter_length = np.shape(x_q)[0]
-        quadrant_start = 2 + equator_length
-        base_symmetry_points_number = 2 + equator_length + quarter_length + meridian_length
-        symmetry_vector = up.concatenate((up.arange(base_symmetry_points_number),  # 1st quadrant
-                                          up.arange(quadrant_start, quadrant_start + quarter_length),
-                                          up.arange(2, quadrant_start),  # 2nd quadrant
-                                          up.arange(quadrant_start, base_symmetry_points_number),  # 3rd quadrant
-                                          up.arange(quadrant_start, quadrant_start + quarter_length)
-                                          ))
-
-        points_length = np.shape(x)[0]
-        inverse_symmetry_matrix = \
-            np.array([up.arange(base_symmetry_points_number),  # 1st quadrant
-                      up.concatenate(([0, 1],
-                                      up.arange(base_symmetry_points_number + quarter_length,
-                                                base_symmetry_points_number + quarter_length + equator_length),
-                                      up.arange(base_symmetry_points_number,
-                                                base_symmetry_points_number + quarter_length),
-                                      up.arange(base_symmetry_points_number - meridian_length,
-                                                base_symmetry_points_number))),  # 2nd quadrant
-                      up.concatenate(([0, 1],
-                                      up.arange(base_symmetry_points_number + quarter_length,
-                                                base_symmetry_points_number + quarter_length + equator_length),
-                                      up.arange(base_symmetry_points_number + quarter_length + equator_length,
-                                                base_symmetry_points_number + 2 * quarter_length + equator_length +
-                                                meridian_length))),  # 3rd quadrant
-                      up.concatenate((up.arange(2 + equator_length),
-                                      up.arange(points_length - quarter_length, points_length),
-                                      up.arange(base_symmetry_points_number + 2 * quarter_length + equator_length,
-                                                base_symmetry_points_number + 2 * quarter_length + equator_length +
-                                                meridian_length)))  # 4th quadrant
-                      ])
-
-        return points, symmetry_vector, base_symmetry_points_number, inverse_symmetry_matrix
-    else:
-        return points
+    return np.column_stack((x, y, z))
 
 
 def mesh_over_contact(system, component="all", symmetry_output=False):

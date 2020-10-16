@@ -2,13 +2,21 @@ from elisa.binary_system.system import BinarySystem
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.base.star import Star
 from elisa import units as u
-from elisa import const
+from elisa import const, settings
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-surface_potential = 3.1
+def sigmas(percentiles):
+    return np.round([100 * (percentiles[2] - percentiles[1]) / percentiles[1],
+                     -100 * (percentiles[1] - percentiles[0]) / percentiles[1]], 2)
+
+
+# settings.configure(MESH_GENERATOR='trapezoidal')
+settings.configure(MESH_GENERATOR='improved_trapezoidal')
+
+surface_potential = 3.07
 primary = Star(
     mass=2.0 * u.solMass,
     surface_potential=surface_potential,
@@ -50,9 +58,12 @@ container.build()
 comp_instance = getattr(container, component)
 areas = comp_instance.areas
 percentiles = np.percentile(areas, [100-68.27, 50, 68.27])
-print(percentiles)
-print(f'Standard deviation in triangle sizes: +{100*(percentiles[2] - percentiles[1]) / percentiles[1]}, '
-      f' -{100*(percentiles[1] - percentiles[0]) / percentiles[1]} %')
+percentiles3 = np.percentile(areas, [100-99.7, 50, 99.7])
+
+s1 = sigmas(percentiles)
+s3 = sigmas(percentiles3)
+print(f'1 sigma deviation in triangle sizes: +{s1[0]}, {s1[1]} %')
+print(f'3 sigma deviation in triangle sizes: +{s3[0]}, {s3[1]} %')
 
 plt.hist(comp_instance.areas, bins=100)
 plt.show()

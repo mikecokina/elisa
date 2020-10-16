@@ -158,8 +158,7 @@ class Settings(_Const):
     MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
     MAX_SOLVER_ITERS = 100
     MAX_CURVE_DATA_POINTS = 300
-    MESH_GENERATOR = 'improved_trapezoidal'
-    # MESH_GENERATOR = 'trapezoidal'
+    MESH_GENERATOR = 'auto'
 
     TIMER = 0.0
 
@@ -223,7 +222,8 @@ class Settings(_Const):
             "LD_TABLES": cls.LD_TABLES,
             "CK04_ATM_TABLES": cls.CK04_ATM_TABLES,
             "K93_ATM_TABLES": cls.K93_ATM_TABLES,
-            "ATM_ATLAS": cls.ATM_ATLAS
+            "ATM_ATLAS": cls.ATM_ATLAS,
+            "MESH_GENERATOR": cls.MESH_GENERATOR
         }
 
     @classmethod

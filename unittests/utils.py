@@ -289,6 +289,7 @@ class ElisaTestCase(unittest.TestCase):
     def setUp(self):
         os.environ["ELISA_CONFIG"] = self.CONFIG_FILE
         settings.configure(**settings.DEFAULT_SETTINGS)
+        settings.configure(MESH_GENERATOR='trapezoidal')
         self.touch_default_config()
         settings.configure(**{"CONFIG_FILE": ElisaTestCase.CONFIG_FILE})
 

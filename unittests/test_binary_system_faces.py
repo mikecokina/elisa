@@ -6,6 +6,7 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.utils import is_empty
 from unittests import utils as testutils
 from unittests.utils import ElisaTestCase
+from elisa import settings
 
 
 class BuildFacesSpotsFreeTestCase(ElisaTestCase):
@@ -34,6 +35,10 @@ class BuildFacesSpotsFreeTestCase(ElisaTestCase):
 
     def test_build_faces_semi_detached(self):
         self.generator_test_faces('semi-detached', up.radians(10), [848, 848])
+
+    def test_build_faces_semi_detached2(self):
+        settings.configure(MESH_GENERATOR="improved_trapezoidal")
+        self.generator_test_faces('semi-detached', up.radians(10), [904, 904])
 
     def test_closed_surface_detached(self):
         orbital_position_container = self.build_system('detached', up.radians(10))
@@ -110,6 +115,10 @@ class BuildSpottyFacesTestCase(ElisaTestCase):
 
     def test_build_faces_semi_detached(self):
         self.generator_test_faces('semi-detached', up.radians(10), [785, 400, 97, 24])
+
+    def test_build_faces_semi_detached2(self):
+        settings.configure(MESH_GENERATOR="improved_trapezoidal")
+        self.generator_test_faces('semi-detached', up.radians(10), [841, 414, 97, 24])
 
     def test_closed_surface_detached(self):
         orbital_position_container = self.build_system('detached', up.radians(10))
