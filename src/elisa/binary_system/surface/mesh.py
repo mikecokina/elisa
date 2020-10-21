@@ -102,11 +102,9 @@ def pre_calc_azimuths_for_detached_points(discretization, star):
     if settings.MESH_GENERATOR in ['auto', 'improved_trapezoidal']:
         rel_radii = (star.forward_radius - star.polar_radius) / star.polar_radius
         if rel_radii > settings.DEFORMATION_TOL or settings.MESH_GENERATOR == 'improved_trapezoidal':
-            settings.USED_MESH_GENERATOR = 'improved_trapezoidal'
             return improved_trapezoidal_mesh(discretization, star.forward_radius, star.polar_radius, star.side_radius,
                                              star.backward_radius)
 
-    settings.USED_MESH_GENERATOR = 'trapezoidal'
     return trapezoidal_mesh(discretization)
 
 
@@ -249,14 +247,12 @@ def pre_calc_azimuths_for_overcontact_points(discretization, star, component, ne
     if settings.MESH_GENERATOR in ['auto', 'improved_trapezoidal']:
         rel_radii = (star.backward_radius - star.polar_radius) / star.polar_radius
         if rel_radii > settings.DEFORMATION_TOL or settings.MESH_GENERATOR == 'improved_trapezoidal':
-            settings.USED_MESH_GENERATOR = 'improved_trapezoidal'
             far_azim = improved_trapezoidal_overcontact_farside_points(discretization, star.polar_radius,
                                                                        star.side_radius, star.backward_radius)
             near_azim = improved_trapezoidal_overcontact_neck_points(discretization, neck_position, neck_polynomial,
                                                                      star.polar_radius, star.side_radius, component)
             return far_azim, near_azim
 
-    settings.USED_MESH_GENERATOR = 'trapezoidal'
     far_azim = trapezoidal_overcontact_farside_points(discretization)
     near_azim = trapezoidal_overcontact_neck_points(discretization, neck_position, neck_polynomial, star.polar_radius,
                                                     component)

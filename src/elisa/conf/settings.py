@@ -120,9 +120,6 @@ class _Const(object):
 
     DELIM_WHITESPACE = r'\s+|\t+|\s+\t+|\t+\s+'
 
-    # COMPUTATIONAL RELATED*********************************************************************************************
-    USED_MESH_GENERATOR = None
-
 
 class Settings(_Const):
     _instance = None
