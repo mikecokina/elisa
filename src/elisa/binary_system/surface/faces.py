@@ -254,48 +254,15 @@ def over_contact_system_surface(system, points=None, component="all", **kwargs):
     del kwargs
 
     component_instance = getattr(system, component)
-    if points is None:
-        points = component_instance.points
     if up.isnan(points).any():
         raise ValueError(f"{component} component, with class instance name {component_instance.name} "
                          f"contain any valid point to triangulate")
     # calculating position of the neck
     neck_x = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
-    # parameter k is used later to transform inner surface to quasi sphere (convex object) which will be then
-    # triangulated
-    k = neck_x / (neck_x + 0.01) if component == 'primary' else neck_x / ((1 - neck_x) + 0.01)
 
-    # projection of component's far side surface into ``sphere`` with radius r1
-    projected_points = up.zeros(np.shape(points), dtype=float)
-
-    # outside facing points are just inflated to match with transformed inner surface
-    # condition to select outward facing points
-    outside_points_test = points[:, 0] <= 0 if component == 'primary' else points[:, 0] >= 1
-    outside_points = points[outside_points_test]
-    if component == 'secondary':
-        outside_points[:, 0] -= 1
-    projected_points[outside_points_test] = neck_x * outside_points / np.linalg.norm(outside_points, axis=1)[:, None]
-    if component == 'secondary':
-        projected_points[:, 0] += 1
-
-    # condition to select inward facing points
-    inside_points_test = (points[:, 0] > 0) if component == 'primary' else (points[:, 0] < 1)
-
-    # if auxiliary point was used than  it is not appended to list of inner points to be transformed
-    # (it would cause division by zero error)
-    inside_points_test[-1] = False if \
-        np.array_equal(points[-1], np.array([neck_x, 0, 0])) else inside_points_test[-1]
-    inside_points = points[inside_points_test]
-    # scaling radii for each point in cylindrical coordinates
-    r = (neck_x ** 2 - (k * inside_points[:, 0]) ** 2) ** 0.5 if component == 'primary' else \
-        (neck_x ** 2 - (k * (1 - inside_points[:, 0])) ** 2) ** 0.5
-
-    length = np.linalg.norm(inside_points[:, 1:], axis=1)
-    projected_points[inside_points_test, 0] = inside_points[:, 0]
-    projected_points[inside_points_test, 1:] = r[:, None] * inside_points[:, 1:] / length[:, None]
-    # if auxiliary point was used, than it will be appended to list of transformed points
-    if np.array_equal(points[-1], np.array([neck_x, 0, 0])):
-        projected_points[-1] = points[-1]
+    projected_points = points.copy()
+    projected_points[:, 0] -= 1 if component == 'secondary' else 0
+    projected_points = neck_x * projected_points / np.linalg.norm(projected_points, axis=1)[:, None]
 
     triangulation = Delaunay(projected_points)
     triangles_indices = triangulation.convex_hull

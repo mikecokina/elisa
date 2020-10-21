@@ -159,6 +159,7 @@ class Settings(_Const):
     MAX_SOLVER_ITERS = 100
     MAX_CURVE_DATA_POINTS = 300
     MESH_GENERATOR = 'auto'
+    DEFORMATION_TOL = 0.05
 
     TIMER = 0.0
 
@@ -223,7 +224,8 @@ class Settings(_Const):
             "CK04_ATM_TABLES": cls.CK04_ATM_TABLES,
             "K93_ATM_TABLES": cls.K93_ATM_TABLES,
             "ATM_ATLAS": cls.ATM_ATLAS,
-            "MESH_GENERATOR": cls.MESH_GENERATOR
+            "MESH_GENERATOR": cls.MESH_GENERATOR,
+            "DEFORMATION_TOL": cls.DEFORMATION_TOL
         }
 
     @classmethod
@@ -332,6 +334,8 @@ class Settings(_Const):
             cls.MAX_CURVE_DATA_POINTS = c_parse.getfloat('computational', 'max_curve_datapoints',
                                                          fallback=cls.MAX_CURVE_DATA_POINTS)
             cls.MESH_GENERATOR = c_parse.getfloat('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
+            cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol',
+                                                   fallback=cls.DEFORMATION_TOL)
         # ******************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)

@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from elisa import umpy as up, const, units as u
+from elisa import umpy as up, const, units as u, settings
 from elisa.base.container import StarContainer
 from elisa.binary_system import model
 from elisa.binary_system.container import OrbitalPositionContainer
@@ -18,11 +18,9 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
         s.primary.discretization_factor = d
         s.secondary.discretization_factor = d
 
-        orbital_position_container = OrbitalPositionContainer(
-            primary=StarContainer.from_properties_container(s.primary.to_properties_container()),
-            secondary=StarContainer.from_properties_container(s.secondary.to_properties_container()),
+        orbital_position_container = OrbitalPositionContainer.from_binary_system(
+            binary_system=s,
             position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
-            **s.properties_serializer()
         )
         orbital_position_container.build_mesh(components_distance=1.0)
 
@@ -34,7 +32,11 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
         self.generator_test_mesh(key="detached", d=up.radians(10), length=[426, 426])
 
     def test_build_mesh_overcontact_no_spot(self):
-        self.generator_test_mesh(key="over-contact", d=up.radians(10), length=[413, 401])
+        self.generator_test_mesh(key="over-contact", d=up.radians(10), length=[385, 369])
+
+    def test_build_mesh_overcontact_no_spot2(self):
+        settings.configure(MESH_GENERATOR="improved_trapezoidal")
+        self.generator_test_mesh(key="over-contact", d=up.radians(10), length=[389, 373])
 
     def test_build_mesh_semi_detached_no_spot(self):
         self.generator_test_mesh(key="semi-detached", d=up.radians(10), length=[426, 426])

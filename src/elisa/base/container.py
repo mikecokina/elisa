@@ -338,6 +338,13 @@ class StarContainer(object):
         self.pulsations = dict()
         self.polar_potential_gradient_magnitude = np.nan
 
+        self.polar_radius = None
+        self.forward_radius = None
+        self.side_radius = None
+        self.backward_radius = None
+        self.equatorial_radius = None
+        self.equivalent_radius = None
+
         self._flatten = False
 
     @classmethod
@@ -396,7 +403,7 @@ class StarContainer(object):
 
     def get_flatten_points_map(self):
         """
-        Function returns all surface point and faces optionally with corresponding map of vertices.
+        Function returns all surface point and faces with corresponding map of vertices.
 
         :param self: Star instance
         :return: Tuple[numpy.array, Any]: [all surface points including star and surface points, vertices map or None]
@@ -557,3 +564,11 @@ class StarContainer(object):
                         centres_spot_cartesian.items()}
 
         return centres, centres_spot
+
+    def assign_radii(self, star):
+        self.polar_radius = getattr(star, 'polar_radius')
+        self.forward_radius = getattr(star, 'forward_radius')
+        self.side_radius = getattr(star, 'side_radius')
+        self.backward_radius = getattr(star, 'backward_radius')
+        self.equatorial_radius = getattr(star, 'equatorial_radius')
+        self.equivalent_radius = getattr(star, 'equivalent_radius')

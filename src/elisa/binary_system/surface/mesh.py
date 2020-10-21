@@ -92,31 +92,20 @@ def build_pulsations_on_mesh(system, component, components_distance):
     return system
 
 
-def pre_calc_azimuths_for_detached_points(discretization, synchronicity, mass_ratio, potential, components_distance,
-                                          component):
+def pre_calc_azimuths_for_detached_points(discretization, star):
     """
-    Returns azimuths for the whole quarter surface in specific order::
-
-        (near point, equator, far point and the rest)
-
-    separator gives you information about position of these sections.
+    Router for discretization method of detached surfaces.
 
     :param discretization: float; discretization factor
+    :param star:
     :return: Tuple; (phi: numpy.array, theta: numpy.array, separator: numpy.array)
     """
     if settings.MESH_GENERATOR in ['auto', 'improved_trapezoidal']:
-        forward_radius = radius.calculate_forward_radius(synchronicity, mass_ratio, components_distance, potential,
-                                                         component)
-        polar_radius = radius.calculate_polar_radius(synchronicity, mass_ratio, components_distance, potential,
-                                                     component)
-        rel_radii = (forward_radius - polar_radius) / polar_radius
-        if rel_radii > 0.05 or settings.MESH_GENERATOR == 'improved_trapezoidal':
-            side_radius = radius.calculate_side_radius(synchronicity, mass_ratio, components_distance, potential,
-                                                       component)
-            backward_radius = radius.calculate_backward_radius(synchronicity, mass_ratio, components_distance, potential,
-                                                            component)
+        rel_radii = (star.forward_radius - star.polar_radius) / star.polar_radius
+        if rel_radii > settings.DEFORMATION_TOL or settings.MESH_GENERATOR == 'improved_trapezoidal':
             settings.USED_MESH_GENERATOR = 'improved_trapezoidal'
-            return improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side_radius, backward_radius)
+            return improved_trapezoidal_mesh(discretization, star.forward_radius, star.polar_radius, star.side_radius,
+                                             star.backward_radius)
 
     settings.USED_MESH_GENERATOR = 'trapezoidal'
     return trapezoidal_mesh(discretization)
@@ -134,7 +123,7 @@ def trapezoidal_mesh(discretization):
     # azimuths for points on equator
     num = int(const.PI // discretization)
     phi = np.linspace(0., const.PI, num=num + 1)
-    theta = np.array([const.HALF_PI for _ in phi])
+    theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
 
     # azimuths for points on meridian
@@ -163,37 +152,36 @@ def trapezoidal_mesh(discretization):
 
 def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side_radius, backward_radius):
     """
-    Caculates azimuths for every surface point using trapezoidal discretization. Function conserves areas of the
+    Calculates azimuths for every surface point using trapezoidal discretization. Function conserves areas of the
     triangles better than trapezoidal method.
 
-    :param discretization:
-    :param forward_radius:
-    :param polar_radius:
-    :param side_radius:
-    :param backward_radius:
-    :return:
+    :param discretization: numpy.float;
+    :param forward_radius: numpy.float;
+    :param polar_radius: numpy.float;
+    :param side_radius: numpy.float;
+    :param backward_radius: numpy.float;
+    :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: list)
     """
     separator = []
 
     # azimuths for points on equator
     num = int(const.PI // discretization)
     phi = np.linspace(0., const.PI, num=num + 1)
+    theta = np.full(phi.shape, const.HALF_PI)
+    separator.append(np.shape(theta)[0])
+    # obliqueness correction
     inner_mask = (phi < const.HALF_PI) & (phi > 0)
     outer_mask = (phi > const.HALF_PI) & (phi < const.PI)
     inner_phis = phi[inner_mask]
     outer_phis = phi[outer_mask]
-
     tan_phs1 = up.tan(inner_phis)
     tan_phs2 = up.tan(outer_phis)
     inner_corr = up.arctan((side_radius - forward_radius) * tan_phs1 /
-                           (side_radius + forward_radius * tan_phs1**2))
+                           (side_radius + forward_radius * tan_phs1 ** 2))
     outer_corr = up.arctan((side_radius - backward_radius) * tan_phs2 /
-                           (side_radius + backward_radius * tan_phs2**2))
+                           (side_radius + backward_radius * tan_phs2 ** 2))
     phi[inner_mask] += inner_corr
     phi[outer_mask] += outer_corr
-
-    theta = np.array([const.HALF_PI for _ in phi])
-    separator.append(np.shape(theta)[0])
 
     # azimuths for points on meridian
     num = int(const.HALF_PI // discretization)
@@ -214,7 +202,6 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     phi = up.concatenate((phi, phi_meridian))
     theta = up.concatenate((theta, theta_meridian))
     separator.append(np.shape(theta)[0])
-
 
     # correcting theta for obliqueness
     tan_tht = np.tan(thetas_lin)
@@ -249,54 +236,204 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     return phi, theta, separator
 
 
-def pre_calc_azimuths_for_overcontact_farside_points(discretization):
+def pre_calc_azimuths_for_overcontact_points(discretization, star, component, neck_position, neck_polynomial):
+    """
+    Router for farside over-contact discretization methods.
+
+    :param discretization: numpy.float;
+    :param star: elisa.base.container.StarContainer;
+    :param component: str;;
+    :param neck_position: numpy.float;
+    :param neck_polynomial: numpy.polynomial.Polynomial;
+    :return: Tuple;
+    """
+    if settings.MESH_GENERATOR in ['auto', 'improved_trapezoidal']:
+        rel_radii = (star.backward_radius - star.polar_radius) / star.polar_radius
+        if rel_radii > settings.DEFORMATION_TOL or settings.MESH_GENERATOR == 'improved_trapezoidal':
+            settings.USED_MESH_GENERATOR = 'improved_trapezoidal'
+            far_azim = improved_trapezoidal_overcontact_farside_points(discretization, star.polar_radius,
+                                                                       star.side_radius, star.backward_radius)
+            near_azim = improved_trapezoidal_overcontact_neck_points(discretization, neck_position, neck_polynomial,
+                                                                     star.polar_radius, star.side_radius, component)
+            return far_azim, near_azim
+
+    settings.USED_MESH_GENERATOR = 'trapezoidal'
+    far_azim = trapezoidal_overcontact_farside_points(discretization)
+    near_azim = trapezoidal_overcontact_neck_points(discretization, neck_position, neck_polynomial, star.polar_radius,
+                                                    component)
+    return far_azim, near_azim
+
+
+def trapezoidal_overcontact_farside_points(discretization):
     """
     Calculates azimuths (directions) to the surface points of over-contact component on its far-side (convex part).
 
     :param discretization: float; discretization factor
-    :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: numpy.array)
+    :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: list)
     """
     separator = []
 
     # calculating points on farside equator
     num = int(const.HALF_PI // discretization)
-    phi = np.linspace(const.HALF_PI, const.PI, num=num + 1)
-    theta = np.array([const.HALF_PI for _ in phi])
+    phi = np.linspace(const.HALF_PI, const.PI, num=num + 2)
+    theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
 
     # calculating points on phi = pi meridian
-    phi_meridian1 = np.array([const.PI for _ in range(num)])
-    theta_meridian1 = np.linspace(0., const.HALF_PI - discretization, num=num)
+    phi_meridian1 = np.full(num - 1, const.PI)
+    theta_meridian1 = np.linspace(0., const.HALF_PI, num=num - 1, endpoint=False)
     phi = up.concatenate((phi, phi_meridian1))
     theta = up.concatenate((theta, theta_meridian1))
     separator.append(np.shape(theta)[0])
 
     # calculating points on phi = pi/2 meridian, perpendicular to component`s distance vector
     num -= 1
-    phi_meridian2 = np.array([const.HALF_PI for _ in range(num)])
-    theta_meridian2 = np.linspace(discretization, const.HALF_PI, num=num, endpoint=False)
+    phi_meridian2 = np.full(num - 1, const.HALF_PI)
+    theta_meridian2 = np.linspace(0, const.HALF_PI, num=num, endpoint=False)[1:]
     phi = up.concatenate((phi, phi_meridian2))
     theta = up.concatenate((theta, theta_meridian2))
     separator.append(np.shape(theta)[0])
 
     # calculating the rest of the surface on farside
-    thetas = np.linspace(discretization, const.HALF_PI, num=num, endpoint=False)
-    phi_q1, theta_q1 = [], []
+    thetas = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
     for tht in thetas:
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.HALF_PI // alpha_corrected)
         alpha_corrected = const.HALF_PI / (num + 1)
-        phi_q_add = [const.HALF_PI + alpha_corrected * ii for ii in range(1, num + 1)]
-        phi_q1 += phi_q_add
-        theta_q1 += [tht for _ in phi_q_add]
-    phi = up.concatenate((phi, phi_q1))
-    theta = up.concatenate((theta, theta_q1))
+        phi_q_add = const.HALF_PI + alpha_corrected * np.arange(1, num + 1)
+        phi = np.concatenate((phi, phi_q_add))
+        theta = np.concatenate((theta, np.full(phi_q_add.shape, tht)))
     separator.append(np.shape(theta)[0])
 
     return phi, theta, separator
 
 
-def pre_calc_azimuths_for_overcontact_neck_points(
+def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius, side_radius,
+                                                    backward_radius):
+    """
+    Calculates azimuths (directions) to the surface points of over-contact component on its far-side (convex part)
+    using improved trapezoidal mesh approach.
+
+    :param discretization: float; discretization factor
+    :param polar_radius: numpy.float;
+    :param side_radius: numpy.float;
+    :param backward_radius: numpy.float;
+    :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: list)
+    """
+    separator = []
+
+    # calculating points on farside equator
+    num = int(const.HALF_PI / discretization)
+    phi = np.linspace(const.HALF_PI, const.PI, num=num + 2)
+    theta = np.full(phi.shape, const.HALF_PI)
+    separator.append(np.shape(theta)[0])
+    # obliqueness correction
+    tan_phs = up.tan(phi)
+    corr = up.arctan((side_radius - backward_radius) * tan_phs /
+                     (side_radius + backward_radius * tan_phs ** 2))
+    phi += corr
+
+    # calculating points on phi = pi meridian
+    phi_meridian1 = np.full(num - 1, const.PI)
+    theta_meridian1 = np.linspace(0., const.HALF_PI, num=num - 1, endpoint=False)
+    # obliqueness correction
+    est_eqt_r = (side_radius + 2*backward_radius) / 3.0
+    tan_tht = np.tan(theta_meridian1)
+    theta_meridian1 += up.arctan((est_eqt_r - polar_radius) * tan_tht /
+                                 (polar_radius + est_eqt_r * tan_tht ** 2))
+
+    phi = up.concatenate((phi, phi_meridian1))
+    theta = up.concatenate((theta, theta_meridian1))
+    separator.append(np.shape(theta)[0])
+
+    # calculating points on phi = pi/2 meridian, perpendicular to component`s distance vector
+    num -= 1
+    phi_meridian2 = np.full(num - 1, const.HALF_PI)
+    theta_meridian2 = theta_meridian1[1:]
+    phi = up.concatenate((phi, phi_meridian2))
+    theta = up.concatenate((theta, theta_meridian2))
+    separator.append(np.shape(theta)[0])
+
+    # calculating the rest of the surface on farside
+    # thetas = np.linspace(discretization, const.HALF_PI, num=num, endpoint=False)
+    for tht in theta_meridian1[1:]:
+        alpha_corrected = discretization / up.sin(tht)
+        num = int(const.HALF_PI // alpha_corrected)
+        alpha_corrected = const.HALF_PI / (num + 1)
+        phi_q_add = const.HALF_PI + alpha_corrected * np.arange(1, num + 1)
+        # obliqueness correction
+        scaling_factor = np.sin(tht)
+        tan_phs = up.tan(phi_q_add)
+        corr = np.arctan(scaling_factor * (side_radius - backward_radius) * tan_phs /
+                         (side_radius + backward_radius * tan_phs ** 2))
+        phi_q_add += corr
+
+        phi = np.concatenate((phi, phi_q_add))
+        theta = np.concatenate((theta, np.full(phi_q_add.shape, tht)))
+    separator.append(np.shape(theta)[0])
+
+    return phi, theta, separator
+
+
+def _generate_neck_zs(delta_z, component, neck_position, neck_polynomial):
+    """
+    Common generating function for azimuths on the neck of over-contact systems.
+
+    :param delta_z: numpy.float;
+    :param component: str;
+    :param neck_position: numpy.float;
+    :param neck_polynomial: numpy.polynomial.Polynomial
+    :return:
+    """
+    # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
+    # z axis
+
+    # test radii on neck_position
+    separator = []
+
+    if component == 'primary':
+        num = 100 * int(neck_position // delta_z)
+        # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
+        x_curve = np.linspace(0., neck_position, num=num, endpoint=True)
+        z_curve = np.polyval(neck_polynomial, x_curve)
+
+        curve = np.column_stack((x_curve, z_curve))
+        lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
+        neck_lengths = np.cumsum(lengths)
+        num_z = int(neck_lengths[-1] // delta_z)
+        segments = np.linspace(0, neck_lengths[-1], num=num_z)[1:]
+
+        z_ns = np.interp(segments, neck_lengths, x_curve[1:])
+        r_neck = np.polyval(neck_polynomial, z_ns)
+    else:
+        num = 100 * int((1 - neck_position) // delta_z)
+        # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
+        x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
+        z_curve = np.polyval(neck_polynomial, x_curve)
+
+        curve = np.column_stack((x_curve, z_curve))
+        lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
+        neck_lengths = np.cumsum(lengths)
+        num_z = neck_lengths[-1] // delta_z
+        segments = np.linspace(0, neck_lengths[-1], num=num_z)[:-1]
+
+        z_ns = np.interp(segments, neck_lengths, x_curve[:-1])
+        r_neck = np.polyval(neck_polynomial, z_ns)
+        z_ns = 1 - z_ns
+
+    # equator azimuths
+    phi = np.full(z_ns.shape, const.HALF_PI)
+    z = z_ns
+    separator.append(np.shape(z)[0])
+    # meridian azimuths
+    phi = up.concatenate((phi, np.zeros(z_ns.shape)))
+    z = up.concatenate((z, z_ns))
+    separator.append(np.shape(z)[0])
+
+    return phi, z, z_ns, r_neck, separator
+
+
+def trapezoidal_overcontact_neck_points(
         discretization, neck_position, neck_polynomial, polar_radius, component):
     """
     Calculates azimuths (directions) to the surface points of over-contact component on neck.
@@ -309,69 +446,52 @@ def pre_calc_azimuths_for_overcontact_neck_points(
     :return: Tuple; (phi: numpy.array, z: numpy.array, separator: numpy.array)
     """
     # generating the neck
-
-    # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
-    # z axis
     delta_z = discretization * polar_radius
 
-    # test radii on neck_position
-    r_neck, separator = [], []
-
-    if component == 'primary':
-        num = 10 * int(neck_position // (polar_radius * discretization))
-        # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
-        x_curve = neck_position * np.sin(np.linspace(0., const.HALF_PI, num=num, endpoint=True))
-        z_curve = np.polyval(neck_polynomial, x_curve)
-
-        curve = np.column_stack((x_curve, z_curve))
-        lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
-        neck_lengths = np.cumsum(lengths)
-        num_z = int(neck_lengths[-1] // delta_z)
-        segments = np.linspace(0, neck_lengths[-1], num=num_z)[1:]
-
-        z_ns = np.interp(segments, neck_lengths, x_curve[1:])
-        r_neck = np.polyval(neck_polynomial, z_ns)
-    else:
-        num = 10 * int((1 - neck_position) // (polar_radius * discretization))
-        # position of z_n adapted to the slope of the neck, gives triangles with more similar areas
-        x_curve = np.linspace(neck_position, 1, num=num, endpoint=True)
-        # x_curve = neck_position + (1 - neck_position) * np.sin(np.linspace(const.HALF_PI, 0.0, num=num, endpoint=True))
-        z_curve = np.polyval(neck_polynomial, x_curve)
-
-        curve = np.column_stack((x_curve, z_curve))
-        lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
-        neck_lengths = np.cumsum(lengths)
-        num_z = int(neck_lengths[-1] // delta_z)
-        segments = np.linspace(0, neck_lengths[-1], num=num_z)[:-1]
-
-        z_ns = np.interp(segments, neck_lengths, x_curve[:-1])
-        r_neck = np.polyval(neck_polynomial, 1-z_ns)
-
-        # k = 1
-        # z_ns, line_sum = [1 - neck_position], 0.0
-        # r_neck.append(mid_r)
-        # for ii in range(num - 2):
-        #     line_sum += neck_lengths[ii]
-        #     if line_sum > k * segment:
-        #         z_ns.append(1 - x_curve[ii + 1])
-        #         r_neck.append(z_curve[ii])
-        #         k += 1
-        #
-        # z_ns = np.array(z_ns)
-
-    # equator azimuths
-    phi = np.full(z_ns.shape, const.HALF_PI)
-    z = z_ns
-    separator.append(np.shape(z)[0])
-    # meridian azimuths
-    phi = up.concatenate((phi, np.zeros(z_ns.shape)))
-    z = up.concatenate((z, z_ns))
-    separator.append(np.shape(z)[0])
+    phi, z, z_ns, r_neck, separator = _generate_neck_zs(delta_z, component, neck_position, neck_polynomial)
 
     for ii, zz in enumerate(z_ns):
-        num = int(np.ceil((0.93 * (const.HALF_PI * r_neck[ii] / delta_z))))
-        num = 2 if num < 2 else num
+        num = const.HALF_PI * r_neck[ii] // delta_z
+        num = num + 1 if num < 5 else num
         phis = np.linspace(0, const.HALF_PI, num=num, endpoint=False)[1:]
+        z_n = np.full(phis.shape, zz)
+
+        phi = np.concatenate((phi, phis))
+        z = up.concatenate((z, z_n))
+
+    separator.append(np.shape(z)[0])
+
+    return phi, z, separator
+
+
+def improved_trapezoidal_overcontact_neck_points(
+        discretization, neck_position, neck_polynomial, polar_radius, side_radius, component):
+    """
+    Calculates azimuths (directions) to the surface points of over-contact component on neck.
+
+    :param discretization: float; doscretization factor
+    :param neck_position: float; x position of neck of over-contact binary
+    :param neck_polynomial: numpy.polynomial.Polynomial; polynome that define neck profile in plane `xz`
+    :param polar_radius: float;
+    :param side_radius: float;
+    :param component: str; `primary` or `secondary`
+    :return: Tuple; (phi: numpy.array, z: numpy.array, separator: numpy.array)
+    """
+    # generating the neck
+    delta_z = discretization * polar_radius
+
+    phi, z, z_ns, r_neck, separator = _generate_neck_zs(delta_z, component, neck_position, neck_polynomial)
+
+    eq_coeff = side_radius / polar_radius
+    for ii, zz in enumerate(z_ns):
+        num = const.HALF_PI * r_neck[ii] // delta_z
+        num = num + 1 if num < 4 else num
+        phis = np.linspace(0, const.HALF_PI, num=num, endpoint=False)[1:]
+        # obliqueness correction
+        tan_phis = np.tan(phis)
+        phis += up.arctan((eq_coeff - 1) * tan_phis /
+                          (1 + eq_coeff * tan_phis ** 2))
+
         z_n = np.full(phis.shape, zz)
 
         phi = np.concatenate((phi, phis))
@@ -492,8 +612,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
     fprime = getattr(model, f"radial_{component}_potential_derivative")
 
     # pre calculating azimuths for surface points on quarter of the star surface
-    phi, theta, separator = pre_calc_azimuths_for_detached_points(discretization_factor, synchronicity, mass_ratio,
-                                                                  potential, components_distance, component)
+    phi, theta, separator = pre_calc_azimuths_for_detached_points(discretization_factor, star)
     setattr(star, "azimuths", (phi, theta, separator))
     # calculating mesh in cartesian coordinates for quarter of the star
     args = phi, theta, star.side_radius, components_distance, precalc_fn, \
@@ -677,18 +796,11 @@ def mesh_over_contact(system, component="all", symmetry_output=False):
     fprime = getattr(model, f"radial_{component}_potential_derivative")
     cylindrical_fprime = getattr(model, f"radial_{component}_potential_derivative_cylindrical")
 
-    # precalculating azimuths for farside points
-    phi_farside, theta_farside, separator_farside = \
-        pre_calc_azimuths_for_overcontact_farside_points(discretization_factor)
-
-    # generating the azimuths for neck
+    # precalculating azimuths for farside points and nearside points
     neck_position, neck_polynomial = calculate_neck_position(system, return_polynomial=True)
-    phi_neck, z_neck, separator_neck = \
-        pre_calc_azimuths_for_overcontact_neck_points(discretization_factor, neck_position, neck_polynomial,
-                                                      polar_radius=star.polar_radius,
-                                                      component=component)
+    (phi_farside, theta_farside, separator_farside), (phi_neck, z_neck, separator_neck) = \
+        pre_calc_azimuths_for_overcontact_points(discretization_factor, star, component, neck_position, neck_polynomial)
 
-    # solving points on farside
     # here implement multiprocessing
     args = phi_farside, theta_farside, r_polar, components_distance, precalc, fn, fprime, potential, q, synchronicity
     logger.debug(f'calculating farside points of {component} component in mesh_overcontact '
@@ -965,57 +1077,40 @@ def calculate_neck_position(system, return_polynomial=False):
 
         float
     """
-    neck_position = None
+    n_points = int(100 * np.radians(5) / system.primary.discretization_factor)
+    degree = 15
     components_distance = 1.0
-    components = ['primary', 'secondary']
-    points_primary, points_secondary = [], []
 
-    # generating only part of the surface that I'm interested in (neck in xy plane for x between 0 and 1)
-    angles = np.linspace(0., const.HALF_PI, 100, endpoint=True)
-    for component in components:
-        for angle in angles:
-            component_instance = getattr(system, component)
-            synchronicity = component_instance.synchronicity
-            q = system.mass_ratio
-            potential = component_instance.surface_potential
+    # solving for neck points
+    star = system.primary
+    precal_cylindrical = getattr(model, f"pre_calculate_for_potential_value_primary_cylindrical")
+    fn_cylindrical = getattr(model, f"potential_primary_cylindrical_fn")
+    cylindrical_fprime = getattr(model, f"radial_primary_potential_derivative_cylindrical")
 
-            fn = getattr(model, f"potential_{component}_fn")
-            precalc_fn = getattr(model, f"pre_calculate_for_potential_value_{component}")
+    phi = np.zeros(n_points)
+    # z = np.linspace(0, 1, num=n_points)
+    z = np.sin(np.linspace(0, const.PI, num=n_points))
+    args = phi, z, components_distance, star.polar_radius, \
+           precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
+           star.surface_potential, system.mass_ratio, 1.0
 
-            args, use = (components_distance, angle, const.HALF_PI), False
-            scipy_solver_init_value = np.array([components_distance / 10000.0])
-            args = ((system.mass_ratio,) + precalc_fn(*((synchronicity, q) + args)), potential)
-            solution, _, ier, _ = fsolve(fn, scipy_solver_init_value, full_output=True, args=args, xtol=1e-12)
+    points_neck = get_surface_points_cylindrical(*args)
+    x = np.abs(points_neck[:, 2])
+    r_c = np.abs(points_neck[:, 0])
 
-            # check for regular solution
-            if ier == 1 and not up.isnan(solution[0]):
-                solution = solution[0]
-                if 30 >= solution >= 0:
-                    use = True
-            else:
-                continue
-
-            if use:
-                if component == 'primary':
-                    points_primary.append([solution * up.cos(angle), solution * up.sin(angle)])
-                elif component == 'secondary':
-                    points_secondary.append([- (solution * up.cos(angle) - components_distance),
-                                             solution * up.sin(angle)])
-
-    neck_points = np.array(points_secondary + points_primary)
-    # fitting of the neck with polynomial in order to find minimum
-    polynomial_fit = np.polyfit(neck_points[:, 0], neck_points[:, 1], deg=15)
+    # fiting polynomial to the neck points and searching for neck
+    polynomial_fit = np.polyfit(x, r_c, deg=degree)
     polynomial_fit_differentiation = np.polyder(polynomial_fit)
     roots = np.roots(polynomial_fit_differentiation)
-    roots = [np.real(xx) for xx in roots if np.imag(xx) == 0]
+
+    # discarding imaginary solutions
+    roots = np.real(roots[np.imag(roots) == 0])
+
     # choosing root that is closest to the middle of the system, should work...
     # idea is to rule out roots near 0 or 1
-    comparision_value = 1
-    for root in roots:
-        new_value = abs(0.5 - root)
-        if new_value < comparision_value:
-            comparision_value = new_value
-            neck_position = root
+    dist_to_cntr = np.abs(roots - 0.5)
+    neck_position = roots[np.argmin(dist_to_cntr)]
+
     if return_polynomial:
         return neck_position, polynomial_fit
     else:
