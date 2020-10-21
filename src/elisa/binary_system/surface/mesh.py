@@ -4,12 +4,11 @@ from .. import utils as butils
 from .. import (
     utils as bsutils,
     model,
-    radius
 )
 from ... base.error import MaxIterationError, SpotError
 from ... base.spot import incorporate_spots_mesh
 from ... import settings
-from ... opt.fsolver import fsolver, fsolve
+from ... opt.fsolver import fsolver
 from ... utils import is_empty
 from ... logger import getLogger
 from ... pulse import pulsations
@@ -55,13 +54,13 @@ def build_mesh(system, components_distance, component="all"):
 
 def rebuild_symmetric_detached_mesh(system, components_distance, component):
     """
-        Rebuild a mesh of a symmetrical surface using old mesh to provide azimuths for the new. This conserved number
-        of points and faces.
+    Rebuild a mesh of a symmetrical surface using old mesh to provide azimuths for the new. This conserved number
+    of points and faces.
 
-        :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
-        :param component: Union[str, None];
-        :param components_distance: float;
-        :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param component: Union[str, None];
+    :param components_distance: float;
+    :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     components = bsutils.component_to_list(component)
 
@@ -160,7 +159,7 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     :param polar_radius: numpy.float;
     :param side_radius: numpy.float;
     :param backward_radius: numpy.float;
-    :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: list)
+    :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: List)
     """
     separator = []
 
@@ -308,8 +307,7 @@ def trapezoidal_overcontact_farside_points(discretization):
     return phi, theta, separator
 
 
-def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius, side_radius,
-                                                    backward_radius):
+def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius, side_radius, backward_radius):
     """
     Calculates azimuths (directions) to the surface points of over-contact component on its far-side (convex part)
     using improved trapezoidal mesh approach.
@@ -318,7 +316,7 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     :param polar_radius: numpy.float;
     :param side_radius: numpy.float;
     :param backward_radius: numpy.float;
-    :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: list)
+    :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: List)
     """
     separator = []
 
@@ -613,7 +611,7 @@ def mesh_detached(system, components_distance, component, symmetry_output=False)
 
     # pre calculating azimuths for surface points on quarter of the star surface
     phi, theta, separator = pre_calc_azimuths_for_detached_points(discretization_factor, star)
-    setattr(star, "azimuths", (phi, theta, separator))
+    setattr(star, "azimuth_args", (phi, theta, separator))
     # calculating mesh in cartesian coordinates for quarter of the star
     args = phi, theta, star.side_radius, components_distance, precalc_fn, \
         potential_fn, fprime, potential, mass_ratio, synchronicity
@@ -686,7 +684,7 @@ def rebuild_mesh_detached(system, components_distance, component):
     mass_ratio = system.mass_ratio
     potential = star.surface_potential
 
-    if star.points is None:
+    if is_empty(star.points):
         raise RuntimeError('This function can be used only on container with already built mesh')
     if star.base_symmetry_points_number == 0:
         raise RuntimeError('This function can be used only on symmetrical meshes')
@@ -695,12 +693,12 @@ def rebuild_mesh_detached(system, components_distance, component):
     precalc_fn = getattr(model, f"pre_calculate_for_potential_value_{component}")
     fprime = getattr(model, f"radial_{component}_potential_derivative")
 
-    phi, theta, separator = star.azimuths
+    phi, theta, separator = star.azimuth_args
 
     args = phi, theta, star.side_radius, components_distance, precalc_fn, \
            potential_fn, fprime, potential, mass_ratio, synchronicity
 
-    logger.debug(f're_calculating surface points of {component} component in rebuild_mesh_detached ')
+    logger.debug(f're calculating surface points of {component} component in rebuild_mesh_detached ')
     points_q = np.round(get_surface_points(*args), 15)
     return stitch_quarters_in_detached(points_q, separator, component, components_distance)
 

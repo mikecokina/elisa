@@ -332,7 +332,7 @@ class StarContainer(object):
         # those are used only if case of spots are NOT used
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
-        self.azimuths = np.array([])
+        self.azimuth_args = np.array([])
 
         self.spots = dict()
         self.pulsations = dict()

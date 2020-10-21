@@ -120,6 +120,9 @@ class _Const(object):
 
     DELIM_WHITESPACE = r'\s+|\t+|\s+\t+|\t+\s+'
 
+    # COMPUTATIONAL RELATED*********************************************************************************************
+    USED_MESH_GENERATOR = None
+
 
 class Settings(_Const):
     _instance = None
@@ -300,7 +303,7 @@ class Settings(_Const):
                 c_parse.getfloat('physics', 'surface_displacement_tol', fallback=cls.SURFACE_DISPLACEMENT_TOL)
             cls.RV_METHOD = c_parse.getfloat('physics', 'rv_method', fallback=cls.RV_METHOD)
             cls.RV_LAMBDA_INTERVAL = c_parse.getfloat('physics', 'rv_lambda_interval', fallback=cls.RV_LAMBDA_INTERVAL)
-        # ******************************************************************************************************************
+        # **************************************************************************************************************
         if c_parse.has_section('computational'):
             cls.MAX_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'max_discretization_factor',
                                                              fallback=cls.MAX_DISCRETIZATION_FACTOR)
@@ -334,9 +337,8 @@ class Settings(_Const):
             cls.MAX_CURVE_DATA_POINTS = c_parse.getfloat('computational', 'max_curve_datapoints',
                                                          fallback=cls.MAX_CURVE_DATA_POINTS)
             cls.MESH_GENERATOR = c_parse.getfloat('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
-            cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol',
-                                                   fallback=cls.DEFORMATION_TOL)
-        # ******************************************************************************************************************
+            cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol', fallback=cls.DEFORMATION_TOL)
+        # **************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)
 
