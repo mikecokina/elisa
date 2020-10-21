@@ -409,7 +409,7 @@ def _generate_neck_zs(delta_z, component, neck_position, neck_polynomial):
         lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
         neck_lengths = np.cumsum(lengths)
         num_z = neck_lengths[-1] // delta_z
-        segments = np.linspace(0, neck_lengths[-1], num=num_z)[:-1]
+        segments = np.linspace(0, neck_lengths[-1], num=int(num_z))[:-1]
 
         z_ns = np.interp(segments, neck_lengths, x_curve[:-1])
         r_neck = np.polyval(neck_polynomial, z_ns)
@@ -447,7 +447,7 @@ def trapezoidal_overcontact_neck_points(
     for ii, zz in enumerate(z_ns):
         num = const.HALF_PI * r_neck[ii] // delta_z
         num = num + 1 if num < 5 else num
-        phis = np.linspace(0, const.HALF_PI, num=num, endpoint=False)[1:]
+        phis = np.linspace(0, const.HALF_PI, num=int(num), endpoint=False)[1:]
         z_n = np.full(phis.shape, zz)
 
         phi = np.concatenate((phi, phis))
@@ -480,7 +480,7 @@ def improved_trapezoidal_overcontact_neck_points(
     for ii, zz in enumerate(z_ns):
         num = const.HALF_PI * r_neck[ii] // delta_z
         num = num + 1 if num < 4 else num
-        phis = np.linspace(0, const.HALF_PI, num=num, endpoint=False)[1:]
+        phis = np.linspace(0, const.HALF_PI, num=int(num), endpoint=False)[1:]
         # obliqueness correction
         tan_phis = np.tan(phis)
         phis += up.arctan((eq_coeff - 1) * tan_phis /
