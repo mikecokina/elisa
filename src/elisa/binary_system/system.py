@@ -1,5 +1,4 @@
 import numpy as np
-import scipy
 
 from typing import Union
 from copy import deepcopy
