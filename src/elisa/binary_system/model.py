@@ -234,12 +234,13 @@ def pre_calculate_for_potential_value_primary(*args, return_as_tuple=False):
     # synchronicity, mass_ratio, distance between components, azimuth angle, latitude angle (0,180)
     synchronicity, mass_ratio, distance, phi, theta = args
 
-    cs = up.cos(phi) * up.sin(theta)
+    sin_theta = up.sin(theta)
+    cs = up.cos(phi) * sin_theta
 
     b = up.power(distance, 2)
     c = 2 * distance * cs
     d = (mass_ratio * cs) / b
-    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(up.sin(theta), 2)
+    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(sin_theta, 2)
 
     if np.isscalar(phi):
         return b, c, d, e
@@ -261,12 +262,13 @@ def pre_calculate_for_potential_value_secondary(*args, return_as_tuple=False):
     # synchronicity, mass_ratio, distance between components, azimuth angle, latitude angle (0,180)
     synchronicity, mass_ratio, distance, phi, theta = args
 
-    cs = up.cos(phi) * up.sin(theta)
+    sin_theta = up.sin(theta)
+    cs = up.cos(phi) * sin_theta
 
     b = up.power(distance, 2)
     c = 2 * distance * cs
     d = cs / b
-    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(up.sin(theta), 2)
+    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(sin_theta, 2)
     f = 0.5 - 0.5 * mass_ratio
 
     if np.isscalar(phi):

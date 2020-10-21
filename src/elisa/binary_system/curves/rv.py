@@ -1,9 +1,8 @@
 import numpy as np
 
-from . import rv_point
+from ... base.curves import rv_point
 from . import c_router
 from .. orbit.orbit import distance_to_center_of_mass
-from ... observer.passband import init_rv_passband
 from ... import settings
 from ... import (
     umpy as up,
@@ -59,21 +58,6 @@ def com_radial_velocity(binary, **kwargs):
 
     rvs = {'primary': rv_primary + binary.gamma, 'secondary': rv_secondary + binary.gamma}
     return rvs
-
-
-def include_passband_data_to_kwargs(**kwargs):
-    """
-    Including dummy passband from which radiometric radial velocities will be calculated.
-
-    :param kwargs: Tuple;
-    :return: Tuple;
-    """
-    psbnd, right_bandwidth, left_bandwidth = init_rv_passband()
-    kwargs.update({'passband': {'rv_band': psbnd},
-                   'left_bandwidth': left_bandwidth,
-                   'right_bandwidth': right_bandwidth,
-                   'atlas': settings.ATM_ATLAS})
-    return kwargs
 
 
 def compute_circular_synchronous_rv_curve(binary, **kwargs):

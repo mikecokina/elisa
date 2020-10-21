@@ -46,8 +46,11 @@ class OrbitalPositionContainer(PositionContainer):
 
     @classmethod
     def from_binary_system(cls, binary_system, position):
+        binary_system.setup_components_radii(position.distance, calculate_equivalent_radius=False)
         primary = StarContainer.from_star_instance(binary_system.primary)
         secondary = StarContainer.from_star_instance(binary_system.secondary)
+        primary.assign_radii(binary_system.primary)
+        secondary.assign_radii(binary_system.secondary)
         return cls(primary, secondary, position, **binary_system.properties_serializer())
 
     def copy(self):
@@ -85,6 +88,10 @@ class OrbitalPositionContainer(PositionContainer):
     def build_mesh(self, components_distance=None, component="all"):
         components_distance = self._components_distance(components_distance)
         return mesh.build_mesh(self, components_distance, component)
+
+    def rebuild_symmetric_detached_mesh(self, components_distance=None, component="all"):
+        components_distance = self._components_distance(components_distance)
+        return mesh.rebuild_symmetric_detached_mesh(self, components_distance, component)
 
     def build_faces(self, components_distance=None, component="all"):
         components_distance = self._components_distance(components_distance)

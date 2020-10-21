@@ -6,6 +6,7 @@ from .. container import OrbitalPositionContainer
 from ... const import Position
 from ... utils import is_empty
 from ... graphic import graphics
+from ... base.surface.faces import correct_face_orientaton
 
 from ... import (
     umpy as up,
@@ -250,9 +251,13 @@ class Plot(object):
         # this part decides if both components need to be calculated at once (due to reflection effect)
         components = butils.component_to_list(components_to_plot)
 
+        com = {'primary': 0.0, 'secondary': components_distance}
         for component in components:
-            star = getattr(orbital_position_container, component)
+            star = getattr(orbital_position_container, component).flatt_it()
+
+            correct_face_orientaton(star, com=com[component])
             points, faces = star.surface_serializer()
+
             surface_kwargs.update({
                 f'points_{component}': points,
                 f'{component}_triangles': faces

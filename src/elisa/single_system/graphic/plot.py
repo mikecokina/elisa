@@ -6,6 +6,7 @@ from ... base import transform
 from ... const import SinglePosition
 from ... graphic import graphics
 from ... utils import is_empty
+from ... base.surface.faces import correct_face_orientaton
 
 
 class Plot(object):
@@ -122,7 +123,7 @@ class Plot(object):
 
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
                 inclination=None, azimuth=None, units='cgs', axis_unit=u.solRad,
-                colorbar_orientation='vertical', colorbar=True, scale='linear'):
+                colorbar_orientation='vertical', colorbar=True, scale='linear', surface_color='g'):
         surface_kwargs = dict()
 
         inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
@@ -133,9 +134,11 @@ class Plot(object):
 
         position_container = SystemContainer.from_single_system(self.single, self.defpos)
         position_container.build(phase=phase)
+        star_container = position_container.star.flatt_it()
 
-        star_container = position_container.star
+        correct_face_orientaton(star_container, com=0)
         points, faces = star_container.surface_serializer()
+
         surface_kwargs.update({
             'points': points,
             'triangles': faces
@@ -156,7 +159,8 @@ class Plot(object):
 
         if not is_empty(face_mask):
             surface_kwargs['triangles'] = surface_kwargs['triangles'][face_mask]
-            surface_kwargs['cmap'] = surface_kwargs['cmap'][face_mask]
+            if 'cmap' in surface_kwargs.keys():
+                surface_kwargs['cmap'] = surface_kwargs['cmap'][face_mask]
 
         if normals:
             face_centres = star_container.get_flatten_parameter('face_centres')
@@ -187,6 +191,7 @@ class Plot(object):
             'colorbar_orientation': colorbar_orientation,
             'colorbar': colorbar,
             'scale': scale,
-            'equatorial_radius': (star_container.equatorial_radius*u.DISTANCE_UNIT).to(axis_unit).value
+            'equatorial_radius': (star_container.equatorial_radius*u.DISTANCE_UNIT).to(axis_unit).value,
+            'surface_color': surface_color
         })
         graphics.single_star_surface(**surface_kwargs)

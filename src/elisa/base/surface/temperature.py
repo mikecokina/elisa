@@ -1,6 +1,10 @@
 import numpy as np
 from copy import copy
 from ... import umpy as up
+from ... logger import getLogger
+
+
+logger = getLogger("base.surface.temperature")
 
 
 def calculate_effective_temperatures(star_container, gradient_magnitudes):
@@ -40,3 +44,28 @@ def calculate_polar_effective_temperature(star_container):
                                                star_container.polar_potential_gradient_magnitude,
                                                star_container.gravity_darkening)),
                                            0.25)
+
+
+def renormalize_temperatures(star):
+    """
+    In case of spot presence, renormalize temperatures to fit effective temperature again,
+    since spots disrupt effective temperature of Star as entity.
+    """
+    # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
+    total_surface = np.sum(star.areas)
+    if star.has_spots():
+        for spot_index, spot in star.spots.items():
+            total_surface += np.sum(spot.areas)
+    desired_flux_value = total_surface * up.power(star.t_eff, 4)
+
+    current_flux = np.sum(star.areas * up.power(star.temperatures, 4))
+    if star.spots:
+        for spot_index, spot in star.spots.items():
+            current_flux += np.sum(spot.areas * up.power(spot.temperatures, 4))
+
+    coefficient = up.power(desired_flux_value / current_flux, 0.25)
+    logger.debug(f'surface temperature map renormalized by a factor {coefficient}')
+    star.temperatures *= coefficient
+    if star.spots:
+        for spot_index, spot in star.spots.items():
+            spot.temperatures *= coefficient

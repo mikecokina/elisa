@@ -135,11 +135,8 @@ def prepare_star(star_params):
 
 
 def prepare_orbital_position_container(system):
-    orbital_position_container = OrbitalPositionContainer(
-        primary=StarContainer.from_properties_container(system.primary.to_properties_container()),
-        secondary=StarContainer.from_properties_container(system.secondary.to_properties_container()),
-        position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
-        **system.properties_serializer()
+    orbital_position_container = OrbitalPositionContainer.from_binary_system(
+        binary_system=system, position=Position(*(0, 1.0, 0.0, 0.0, 0.0))
     )
     return orbital_position_container
 
@@ -289,6 +286,7 @@ class ElisaTestCase(unittest.TestCase):
     def setUp(self):
         os.environ["ELISA_CONFIG"] = self.CONFIG_FILE
         settings.configure(**settings.DEFAULT_SETTINGS)
+        settings.configure(MESH_GENERATOR='trapezoidal')
         self.touch_default_config()
         settings.configure(**{"CONFIG_FILE": ElisaTestCase.CONFIG_FILE})
 

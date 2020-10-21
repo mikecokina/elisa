@@ -34,7 +34,8 @@ class MCMCPlotMixin(object):
     fit = None
 
     def corner(self, flat_chain=None, variable_labels=None, normalization=None,
-               quantiles=None, truths=False, show_titles=True, plot_units=None, sigma_clip=False, sigma=5, **kwargs):
+               quantiles=None, truths=False, show_titles=True, plot_units=None, sigma_clip=False, sigma=5, n_bins=20,
+               **kwargs):
         """
         Plots complete correlation plot from supplied parameters. Usefull only for MCMC method.
 
@@ -55,10 +56,11 @@ class MCMCPlotMixin(object):
         :param show_titles: bool; If True, labels above histogram with name of the variable, value, errorss and units
                                   are displayed
         :param plot_units: Dict; Units in which to display the output {variable_name: unit, ...}
+        :param n_bins: int; positive, number of bins in each histogram
         """
         corner(self.fit, flat_chain=flat_chain, variable_labels=variable_labels, normalization=normalization,
                quantiles=quantiles, truths=truths, show_titles=show_titles, plot_units=plot_units,
-               sigma_clip=sigma_clip, sigma=sigma, **kwargs)
+               sigma_clip=sigma_clip, sigma=sigma, n_bins=n_bins, **kwargs)
 
     def autocorrelation(self, correlations_to_plot=None, flat_chain=None, variable_labels=None):
         """
@@ -310,7 +312,8 @@ def serialize_plot_labels(variable_labels):
 
 
 def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalization=None,
-           quantiles=None, truths=False, show_titles=True, plot_units=None, sigma_clip=False, sigma=5, **kwargs):
+           quantiles=None, truths=False, show_titles=True, plot_units=None, sigma_clip=False, sigma=5, n_bins=20,
+           **kwargs):
     """
     Plots complete correlation plot from supplied parameters. Usefull only for MCMC method
 
@@ -332,6 +335,7 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
     :param show_titles: bool; If True, labels above histogram with name of the variable, value,
                               errors and units are displayed
     :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
+    :param n_bins: int; positive, number of bins in each histogram
     """
     logger.debug('Producing/retrieving data for corner plot.')
     flat_chain = deepcopy(mcmc_fit_instance.flat_chain) if flat_chain is None else deepcopy(flat_chain)
@@ -377,7 +381,8 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
         'labels': plot_labels,
         'quantiles': quantiles,
         'show_titles': show_titles,
-        'fit_params': flat_result
+        'fit_params': flat_result,
+        'bins': n_bins
     })
     corner_plot_kwargs.update(**kwargs)
     logger.debug('Sending data to matplotlib interface.')

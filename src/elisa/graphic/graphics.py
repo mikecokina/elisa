@@ -224,8 +224,10 @@ def single_star_surface(**kwargs):
     ax.elev = 90 - kwargs['inclination']
     ax.azim = kwargs['azimuth']
 
+    clr = kwargs['surface_color']
+
     star_plot = ax.plot_trisurf(kwargs['points'][:, 0], kwargs['points'][:, 1], kwargs['points'][:, 2],
-                                triangles=kwargs['triangles'], antialiased=True, shade=False, color='g')
+                                triangles=kwargs['triangles'], antialiased=True, shade=True, color=clr)
     if kwargs['edges']:
         star_plot.set_edgecolor('black')
 
@@ -302,7 +304,7 @@ def binary_surface(**kwargs):
         plot = ax.plot_trisurf(
             kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
             kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
-            antialiased=True, shade=False, color=clr[0])
+            antialiased=True, shade=True, color=clr[0])
 
         if kwargs.get('normals', False):
             ax.quiver(
@@ -313,7 +315,7 @@ def binary_surface(**kwargs):
     elif kwargs['components_to_plot'] == 'secondary':
         plot = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
                                kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
-                               antialiased=True, shade=False, color=clr[1])
+                               antialiased=True, shade=True, color=clr[1])
 
         if kwargs.get('normals', False):
             ax.quiver(kwargs['secondary_centres'][:, 0], kwargs['secondary_centres'][:, 1],
@@ -329,14 +331,14 @@ def binary_surface(**kwargs):
                                     kwargs['secondary_triangles'] + np.shape(kwargs['points_primary'])[0]), axis=0)
 
             plot = ax.plot_trisurf(points[:, 0], points[:, 1], points[:, 2], triangles=triangles, antialiased=True,
-                                   shade=False, color=clr[0])
+                                   shade=True, color=clr[0])
         else:
             plot1 = ax.plot_trisurf(kwargs['points_primary'][:, 0], kwargs['points_primary'][:, 1],
                                     kwargs['points_primary'][:, 2], triangles=kwargs['primary_triangles'],
-                                    antialiased=True, shade=False, color=clr[0])
+                                    antialiased=True, shade=True, color=clr[0])
             plot2 = ax.plot_trisurf(kwargs['points_secondary'][:, 0], kwargs['points_secondary'][:, 1],
                                     kwargs['points_secondary'][:, 2], triangles=kwargs['secondary_triangles'],
-                                    antialiased=True, shade=False, color=clr[1])
+                                    antialiased=True, shade=True, color=clr[1])
         if kwargs.get('normals', False):
             centres = up.concatenate((kwargs['primary_centres'], kwargs['secondary_centres']), axis=0)
             arrows = up.concatenate((kwargs['primary_arrows'], kwargs['secondary_arrows']), axis=0)
@@ -814,7 +816,8 @@ def binary_lc_fit_plot(**kwargs):
     ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
     for fltr, curve in kwargs['lcs'].items():
-        rasterize = np.shape(kwargs['x_data'][fltr])[0] > 300
+        # rasterize = np.shape(kwargs['x_data'][fltr])[0] > 300 if kwargs.get['rasterize']
+        rasterize = False
         (dt_clr, clr) = (datapoint_clrs[fltr], datapoint_clrs[fltr]) if len(kwargs['lcs']) > 1 else ('blue', 'red')
 
         if kwargs['y_err'][fltr] is None:
@@ -830,7 +833,7 @@ def binary_lc_fit_plot(**kwargs):
             ax2.errorbar(kwargs['x_data'][fltr], kwargs['residuals'][fltr], yerr=kwargs['y_err'][fltr],
                          linestyle='none', markersize=3, label=fltr + ' residual', color=dt_clr, rasterized=rasterize)
 
-        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic', color=clr)
+        ax1.plot(kwargs['synth_phases'], curve, label=fltr + ' synthetic', color=clr, linewidth=2)
 
     ax2.axhline(0, ls='dashed', c='black', lw=0.5)
 
