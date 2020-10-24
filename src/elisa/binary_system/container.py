@@ -89,6 +89,9 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         return mesh.build_mesh(self, components_distance, component)
 
+    def correct_mesh(self, component="all"):
+        return mesh.correct_mesh(self, component=component)
+
     def rebuild_symmetric_detached_mesh(self, components_distance=None, component="all"):
         components_distance = self._components_distance(components_distance)
         return mesh.rebuild_symmetric_detached_mesh(self, components_distance, component)
@@ -137,6 +140,7 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_pulsations_on_mesh(component, components_distance)
         self.build_surface_gravity(components_distance, component)
         self.build_faces_orientation(components_distance, component)
+        self.correct_mesh(component)
         self.build_surface_areas(component)
 
         return self

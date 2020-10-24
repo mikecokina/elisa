@@ -934,3 +934,17 @@ def flux_to_magnitude(data, zero_point):
 
 def flux_error_to_magnitude_error(data, error):
     return 2.5 * np.log10(1 + (error / data))
+
+
+def discretization_correction_factor(discretization_factor):
+    """
+    Correction factor for the surface due to underestimation of the surface by the triangles.
+
+    :param discretization_factor: numpy.float;
+    :return:
+    """
+    # correction for non-equilateral triangles
+    alpha = 1.138 * discretization_factor
+    # correction fro surface underestimation
+    return np.sqrt((alpha * (1 - np.cos(alpha))) /
+                   (2.0 * np.power(np.sin(0.5 * alpha), 2) * np.sin(alpha)))

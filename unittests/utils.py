@@ -385,7 +385,7 @@ SOLAR_MODEL = {
     "mass": 1.0,
     "t_eff": 5772 * u.K,
     "gravity_darkening": 0.32,
-    "polar_log_g": 4.43775 * u.dex(u.cm / u.s ** 2),
+    "polar_log_g": 4.43728 * u.dex(u.cm / u.s ** 2),
     "gamma": 0.0,
     # "inclination": 82.5 * u.deg,
     "inclination": 90.0 * u.deg,

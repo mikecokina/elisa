@@ -99,7 +99,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         start_phs, stop_phs, step = 0.0, 0.1, 0.1
 
-        expected = 1361.0
+        expected = 1362.0
 
         obtained = o.lc(from_phase=start_phs, to_phase=stop_phs, phase_step=step)
         obtained_flux = obtained[1]["bolometric"][0] / np.power(c.AU, 2)

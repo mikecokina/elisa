@@ -14,11 +14,11 @@ def sigmas(percentiles):
 
 
 def main():
-    surface_potential = 3.0
-    # surface_potential = 3.055
+    # surface_potential = 3.0
+    surface_potential = 3.055
     # surface_potential = 3.06
     # surface_potential = 3.065
-    # surface_potential = 4.5
+    # surface_potential = 4.0
     primary = Star(
         mass=2.0 * u.solMass,
         surface_potential=surface_potential,
@@ -83,10 +83,12 @@ def main():
     plt.legend()
     plt.show()
 
+    settings.configure(MESH_GENERATOR='trapezoidal')
+    # settings.configure(MESH_GENERATOR='improved_trapezoidal')
     # bs.plot.mesh(components_to_plot=component,)
     # bs.plot.wireframe(components_to_plot=component,)
     bs.plot.surface(
-        # components_to_plot=component,
+        components_to_plot='primary',
         phase=0.8,
         inclination=75,
         edges=True,

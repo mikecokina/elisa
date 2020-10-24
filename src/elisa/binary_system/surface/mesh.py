@@ -7,6 +7,7 @@ from .. import (
 )
 from ... base.error import MaxIterationError, SpotError
 from ... base.spot import incorporate_spots_mesh
+from ... base.surface.mesh import correct_component_mesh
 from ... import settings
 from ... opt.fsolver import fsolver
 from ... utils import is_empty
@@ -115,6 +116,10 @@ def trapezoidal_mesh(discretization):
     :param discretization: float;
     :return: Tuple;
     """
+    # vertical alpha needs to be corrected to maintain similar sizes of triangle sizes
+    # vertical_alpha = const.POINT_ROW_SEPARATION_FACTOR * discretization
+    vertical_alpha = discretization
+
     separator = []
 
     # azimuths for points on equator
@@ -124,18 +129,18 @@ def trapezoidal_mesh(discretization):
     separator.append(np.shape(theta)[0])
 
     # azimuths for points on meridian
-    num = int(const.HALF_PI // discretization)
-    phi_meridian = np.concatenate((const.PI * np.ones(num - 1), np.zeros(num)))
-    theta_meridian = up.concatenate((np.linspace(const.HALF_PI - discretization, discretization, num=num - 1),
-                                     np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
+    v_num = int(const.HALF_PI // vertical_alpha)
+    # v_num = int(const.HALF_PI // discretization)
+    phi_meridian = np.concatenate((const.PI * np.ones(v_num - 1), np.zeros(v_num)))
+    theta_meridian = up.concatenate((np.linspace(const.HALF_PI, 0, num=v_num + 1)[1:-1],
+                                     np.linspace(0., const.HALF_PI, num=v_num, endpoint=False)))
 
     phi = up.concatenate((phi, phi_meridian))
     theta = up.concatenate((theta, theta_meridian))
     separator.append(np.shape(theta)[0])
 
     # azimuths for rest of the quarter
-    num = int(const.HALF_PI // discretization)
-    thetas = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
+    thetas = np.linspace(discretization, const.HALF_PI, num=v_num - 1, endpoint=False)
     for tht in thetas:
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.PI // alpha_corrected)
@@ -159,6 +164,10 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     :param backward_radius: numpy.float;
     :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: List)
     """
+    # vertical alpha needs to be corrected to maintain similar sizes of triangle sizes
+    # vertical_alpha = const.POINT_ROW_SEPARATION_FACTOR * discretization
+    vertical_alpha = discretization
+
     separator = []
 
     # azimuths for points on equator
@@ -181,14 +190,14 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     phi[outer_mask] += outer_corr
 
     # azimuths for points on meridian
-    num = int(const.HALF_PI // discretization)
-    phi_meridian = np.concatenate((const.PI * np.ones(num - 1), np.zeros(num)))
-    theta_meridian = up.concatenate((np.linspace(const.HALF_PI - discretization, discretization, num=num - 1),
-                                     np.linspace(0., const.HALF_PI, num=num, endpoint=False)))
+    v_num = int(const.HALF_PI // vertical_alpha)
+    # v_num = int(const.HALF_PI // discretization)
+    phi_meridian = np.concatenate((const.PI * np.ones(v_num - 1), np.zeros(v_num)))
+    theta_meridian = up.concatenate((np.linspace(const.HALF_PI, 0, num=v_num + 1)[1:-1],
+                                     np.linspace(0., const.HALF_PI, num=v_num, endpoint=False)))
 
     # azimuths for rest of the quarter
-    num = int(const.HALF_PI // discretization)
-    thetas_lin = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
+    thetas_lin = np.linspace(discretization, const.HALF_PI, num=v_num - 1, endpoint=False)
 
     # correcting theta for obliqueness
     est_eqt_r = (side_radius + forward_radius + backward_radius) / 3.0
@@ -266,6 +275,9 @@ def trapezoidal_overcontact_farside_points(discretization):
     :param discretization: float; discretization factor
     :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: list)
     """
+    # vertical alpha needs to be corrected to maintain similar sizes of triangle sizes
+    # vertical_alpha = const.POINT_ROW_SEPARATION_FACTOR * discretization
+    vertical_alpha = discretization
     separator = []
 
     # calculating points on farside equator
@@ -275,23 +287,23 @@ def trapezoidal_overcontact_farside_points(discretization):
     separator.append(np.shape(theta)[0])
 
     # calculating points on phi = pi meridian
-    phi_meridian1 = np.full(num - 1, const.PI)
-    theta_meridian1 = np.linspace(0., const.HALF_PI, num=num - 1, endpoint=False)
+    v_num = int(const.HALF_PI / vertical_alpha)
+    phi_meridian1 = np.full(v_num - 1, const.PI)
+    theta_meridian1 = np.linspace(0., const.HALF_PI, num=v_num - 1, endpoint=False)
     phi = up.concatenate((phi, phi_meridian1))
     theta = up.concatenate((theta, theta_meridian1))
     separator.append(np.shape(theta)[0])
 
     # calculating points on phi = pi/2 meridian, perpendicular to component`s distance vector
-    num -= 1
-    phi_meridian2 = np.full(num - 1, const.HALF_PI)
-    theta_meridian2 = np.linspace(0, const.HALF_PI, num=num, endpoint=False)[1:]
+    v_num -= 1
+    phi_meridian2 = np.full(v_num - 1, const.HALF_PI)
+    theta_meridian2 = np.linspace(0, const.HALF_PI, num=v_num, endpoint=False)[1:]
     phi = up.concatenate((phi, phi_meridian2))
     theta = up.concatenate((theta, theta_meridian2))
     separator.append(np.shape(theta)[0])
 
     # calculating the rest of the surface on farside
-    thetas = np.linspace(discretization, const.HALF_PI, num=num - 1, endpoint=False)
-    for tht in thetas:
+    for tht in theta_meridian1[1:]:
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.HALF_PI // alpha_corrected)
         alpha_corrected = const.HALF_PI / (num + 1)
@@ -314,6 +326,9 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     :param backward_radius: numpy.float;
     :return: Tuple; (phi: numpy.array, theta: numpy.array, separtor: List)
     """
+    # vertical alpha needs to be corrected to maintain similar sizes of triangle sizes
+    # vertical_alpha = const.POINT_ROW_SEPARATION_FACTOR * discretization
+    vertical_alpha = discretization
     separator = []
 
     # calculating points on farside equator
@@ -328,8 +343,9 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     phi += corr
 
     # calculating points on phi = pi meridian
-    phi_meridian1 = np.full(num - 1, const.PI)
-    theta_meridian1 = np.linspace(0., const.HALF_PI, num=num - 1, endpoint=False)
+    v_num = int(const.HALF_PI / vertical_alpha)
+    phi_meridian1 = np.full(v_num - 1, const.PI)
+    theta_meridian1 = np.linspace(0., const.HALF_PI, num=v_num - 1, endpoint=False)
     # obliqueness correction
     est_eqt_r = (side_radius + 2*backward_radius) / 3.0
     tan_tht = np.tan(theta_meridian1)
@@ -341,15 +357,14 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     separator.append(np.shape(theta)[0])
 
     # calculating points on phi = pi/2 meridian, perpendicular to component`s distance vector
-    num -= 1
-    phi_meridian2 = np.full(num - 1, const.HALF_PI)
+    v_num -= 1
+    phi_meridian2 = np.full(v_num - 1, const.HALF_PI)
     theta_meridian2 = theta_meridian1[1:]
     phi = up.concatenate((phi, phi_meridian2))
     theta = up.concatenate((theta, theta_meridian2))
     separator.append(np.shape(theta)[0])
 
     # calculating the rest of the surface on farside
-    # thetas = np.linspace(discretization, const.HALF_PI, num=num, endpoint=False)
     for tht in theta_meridian1[1:]:
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.HALF_PI // alpha_corrected)
@@ -381,6 +396,10 @@ def _generate_neck_zs(delta_z, component, neck_position, neck_polynomial):
     """
     # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
     # z axis
+
+    # alpha along cylindrical axis z needs to be corrected to maintain similar sizes of triangle sizes
+    # delta_z = const.POINT_ROW_SEPARATION_FACTOR * delta_z
+    delta_z = delta_z
 
     # test radii on neck_position
     separator = []
@@ -1132,3 +1151,21 @@ def add_spots_to_mesh(system, components_distance, component="all"):
         star = getattr(system, component)
         mesh_spots(system, components_distance=components_distance, component=component)
         incorporate_spots_mesh(star, component_com=component_com[component])
+
+
+def correct_mesh(system, component='all'):
+    """
+    Correcting the underestimation of the surface due to the discretization.
+
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
+    :param component: str;
+    :return: elisa.binary_system.container.OrbitalPositionContainer;
+    """
+    components = bsutils.component_to_list(component)
+
+    for component in components:
+        star = getattr(system, component)
+        correct_component_mesh(star)
+
+    return system
+
