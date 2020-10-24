@@ -180,6 +180,8 @@ v0.4_
     - configuration module uses singleton instead of global variables
       >>> from elisa import settings
     - ability to display observation stored in DataSet class using DataSet.plot.display_observation()
+    - solar constant conserved with different levels of surface discretization
+    - improvements to trapezoidal discretization
 
 **Fixes**
 
