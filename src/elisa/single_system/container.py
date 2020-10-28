@@ -41,6 +41,7 @@ class SystemContainer(PositionContainer):
     @classmethod
     def from_single_system(cls, single_system, position):
         star = StarContainer.from_star_instance(single_system.star)
+        star.assign_radii(single_system.star)
         return cls(star, position, **single_system.properties_serializer())
 
     def copy(self):
@@ -88,6 +89,9 @@ class SystemContainer(PositionContainer):
     def build_mesh(self):
         return mesh.build_mesh(self)
 
+    def correct_mesh(self):
+        return mesh.correct_mesh(self)
+
     def build_faces(self):
         return faces.build_faces(self)
 
@@ -121,6 +125,7 @@ class SystemContainer(PositionContainer):
         self.build_pulsations_on_mesh()
         self.build_surface_gravity()
         self.build_faces_orientation()
+        self.correct_mesh()
         self.build_surface_areas()
         self.build_temperature_distribution()
         self.build_temperature_perturbations()

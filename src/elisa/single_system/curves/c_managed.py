@@ -1,6 +1,6 @@
 import numpy as np
 
-from . import shared
+from . import utils
 from ... import ld
 from ... import settings
 from ... single_system import (
@@ -9,7 +9,7 @@ from ... single_system import (
 )
 
 
-def compute_non_pulsating_lightcurve(*args):
+def produce_curves_wo_pulsations_mp(*args):
     """
     Calculates LC for single system without pulsations (surface geometry is not changed).
 
@@ -18,40 +18,26 @@ def compute_non_pulsating_lightcurve(*args):
         * ** single_system ** * - elisa.single_system.system.SingleSystem
         * ** system_container ** * - elisa.single_system.container.SystemContainer
         * ** phases ** * - array; phases in which to calculate LC
-        * ** normal_radiance ** * - array;
-        * ** limb_darkening_coefficients ** * - array;
+        * ** crv_labels ** * - List;
+        * ** curves_fn ** * - function to calculate curve points at given orbital positions
         * ** kwargs ** * - Dict;
     :return:
     """
-    single, initial_system, phase_batch, normal_radiance, ld_cfs, kwargs = args
+    single, initial_system, phase_batch, crv_labels, curves_fn, kwargs = args
     position_method = kwargs.pop("position_method")
 
     rotational_motion = position_method(input_argument=phase_batch, return_nparray=False, calculate_from='phase')
-    band_curves = {key: np.zeros(phase_batch.shape) for key in kwargs["passband"].keys()}
+    curves = {key: np.zeros(phase_batch.shape) for key in crv_labels}
 
     for pos_idx, position in enumerate(rotational_motion):
         on_pos = ssutils.move_sys_onpos(initial_system, position)
         star = on_pos.star
 
-        # area of visible faces
-        coverage = surface.coverage.compute_surface_coverage(on_pos)
+        setattr(star, 'coverage', star.areas)
 
-        cosines = star.los_cosines
-        visibility_indices = star.indices
-        cosines = cosines[visibility_indices]
+        curves = curves_fn(curves, pos_idx, crv_labels, on_pos)
 
-        # integrating resulting flux
-        for band in kwargs["passband"].keys():
-            ld_law_columns = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
-            ld_cors = ld.limb_darkening_factor(
-                coefficients=ld_cfs['star'][band][ld_law_columns].values[visibility_indices],
-                limb_darkening_law=settings.LIMB_DARKENING_LAW,
-                cos_theta=cosines)
-
-            band_curves[band][pos_idx] = np.sum(normal_radiance['star'][band][visibility_indices] * cosines *
-                                                coverage['star'][visibility_indices] * ld_cors)
-
-    return band_curves
+    return curves
 
 
 def compute_pulsating_light_curve(*args):
@@ -69,7 +55,7 @@ def compute_pulsating_light_curve(*args):
         initial_system.build_from_points()
 
         on_pos = ssutils.move_sys_onpos(initial_system, position)
-        normal_radiance, ld_cfs = shared.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
+        normal_radiance, ld_cfs = utils.prep_surface_params(initial_system.copy().flatt_it(), **kwargs)
 
         star = on_pos.star
 

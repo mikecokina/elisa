@@ -1,5 +1,4 @@
 from elisa.base.curves import utils as crv_utils
-from ... import settings
 
 
 def _calculate_lc_point(band, system):
@@ -10,11 +9,8 @@ def _calculate_lc_point(band, system):
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :return: float;
     """
-    flux = 0.0
-    for component in settings.BINARY_COUNTERPARTS.keys():
-        star = getattr(system, component)
-        flux += crv_utils.flux_from_star_container(band, star)
-    return flux
+    star = getattr(system, 'star')
+    return crv_utils.flux_from_star_container(band, star)
 
 
 def compute_lc_on_pos(band_curves, pos_idx, crv_labels, system):

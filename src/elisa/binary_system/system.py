@@ -1,5 +1,4 @@
 import numpy as np
-import scipy
 
 from typing import Union
 from copy import deepcopy
@@ -21,6 +20,7 @@ from .. base.error import MorphologyError
 from .. base.container import SystemPropertiesContainer
 from .. base.system import System
 from .. base.star import Star
+from .. base.curves import rv as rv_base
 
 from .. import settings
 from .. logger import getLogger
@@ -306,6 +306,10 @@ class BinarySystem(System):
         """
         Function to reinitialize BinarySystem class instance after changing parameter(s) of binary system.
         """
+        # reinitialize components (in case when value in component instance was changed)
+        for component in settings.BINARY_COUNTERPARTS:
+            getattr(self, component).init()
+
         self.__init__(primary=self.primary, secondary=self.secondary, **self.kwargs_serializer())
 
     @property
@@ -327,7 +331,10 @@ class BinarySystem(System):
         serialized_kwargs = dict()
         for kwarg in self.ALL_KWARGS:
             if kwarg in ['argument_of_periastron', 'inclination']:
-                serialized_kwargs[kwarg] = getattr(self, kwarg) * u.ARC_UNIT
+                value = getattr(self, kwarg)
+                if not isinstance(value, u.Quantity):
+                    value = value * u.ARC_UNIT
+                serialized_kwargs[kwarg] = value
             else:
                 serialized_kwargs[kwarg] = getattr(self, kwarg)
         return serialized_kwargs
@@ -447,8 +454,8 @@ class BinarySystem(System):
         If secondary discretization factor was not set, it will be now with respect to primary component.
         """
         if not self.secondary.kwargs.get('discretization_factor'):
-            self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
-                                                    / self.secondary.polar_radius * u.rad).value
+            self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.equivalent_radius
+                                                    / self.secondary.equivalent_radius * u.rad).value
 
             if self.secondary.discretization_factor > np.radians(settings.MAX_DISCRETIZATION_FACTOR):
                 self.secondary.discretization_factor = np.radians(settings.MAX_DISCRETIZATION_FACTOR)
@@ -739,12 +746,13 @@ class BinarySystem(System):
         else:
             return [const.Position(*p) for p in positions]
 
-    def setup_components_radii(self, components_distance):
+    def setup_components_radii(self, components_distance, calculate_equivalent_radius=True):
         """
         Setup component radii.
         Use methods to calculate polar, side, backward and if not W UMa also
         forward radius and assign to component instance.
 
+        :param calculate_equivalent_radius: bool; some application do not require calculation of equivalent radius
         :param components_distance: float;
         """
         fns = [bsradius.calculate_polar_radius, bsradius.calculate_side_radius, bsradius.calculate_backward_radius]
@@ -775,8 +783,9 @@ class BinarySystem(System):
                     setattr(component_instance, 'forward_radius', r)
 
             # setting value of equivalent radius
-            e_rad = self.calculate_equivalent_radius(components=component)[component]
-            setattr(component_instance, 'equivalent_radius', e_rad)
+            if calculate_equivalent_radius:
+                e_rad = self.calculate_equivalent_radius(components=component)[component]
+                setattr(component_instance, 'equivalent_radius', e_rad)
 
     @staticmethod
     def compute_filling_factor(surface_potential, lagrangian_points):
@@ -1039,7 +1048,7 @@ class BinarySystem(System):
                       self._compute_eccentric_rv_curve_no_spots)
             curve_fn = c_router.resolve_curve_method(self, fn_arr)
 
-            kwargs = rv.include_passband_data_to_kwargs(**kwargs)
+            kwargs = rv_base.include_passband_data_to_kwargs(**kwargs)
             return curve_fn(**kwargs)
 
     def _compute_circular_synchronous_rv_curve(self, **kwargs):

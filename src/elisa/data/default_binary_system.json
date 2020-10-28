@@ -1,0 +1,30 @@
+{
+  "system": {
+    "argument_of_periastron": 90.0,
+    "gamma": 0.0,
+    "period": 5.0,
+    "eccentricity": 0.0,
+    "inclination": 90.0,
+    "primary_minimum_time": 0.0,
+    "phase_shift": 0.0
+  },
+  "primary": {
+    "mass": 2.0,
+    "surface_potential": 5.0,
+    "synchronicity": 1.0,
+    "t_eff": 6000.0,
+    "gravity_darkening": 0.09,
+    "albedo": 0.5,
+    "metallicity": 0.0,
+    "discretization_factor": 10
+  },
+  "secondary": {
+    "mass": 1.0,
+    "surface_potential": 5.0,
+    "synchronicity": 1.0,
+    "t_eff": 5000.0,
+    "gravity_darkening": 0.09,
+    "albedo": 0.5,
+    "metallicity": 0.0
+  }
+}

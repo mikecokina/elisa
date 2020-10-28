@@ -3,6 +3,7 @@ import numpy as np
 
 from copy import copy
 from .. base.transform import SpotProperties
+from .. import units as u
 from .. utils import is_empty
 from .. logger import getLogger
 from .. import (
@@ -107,7 +108,24 @@ class Spot(object):
 
         :return: Dict; { kwarg: value }
         """
-        return {kwarg: getattr(self, kwarg) for kwarg in self.MANDATORY_KWARGS if not is_empty(getattr(self, kwarg))}
+
+        default_units = {
+            "longitude": u.ARC_UNIT,
+            "latitude": u.ARC_UNIT,
+            "angular_radius": u.ARC_UNIT,
+            "discretization_factor": u.ARC_UNIT
+        }
+
+        serialized_kwargs = dict()
+        for kwarg in self.ALL_KWARGS:
+            if kwarg in default_units:
+                value = getattr(self, kwarg)
+                if not isinstance(value, u.Quantity):
+                    value = value * default_units[kwarg]
+                serialized_kwargs[kwarg] = value
+            else:
+                serialized_kwargs[kwarg] = getattr(self, kwarg)
+        return serialized_kwargs
 
 
 def split_points_of_spots_and_component(on_container, points, vertices_map):

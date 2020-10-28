@@ -14,10 +14,6 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
     def test_mesh_for_duplicate_points(self):
         for params in testutils.SINGLE_SYSTEM_PARAMS.values():
             s = prepare_single_system(params)
-            # reducing runtime of the test
-            s.star.discretization_factor = up.radians(7)
-            s.init()
-
             system_container = testutils.prepare_single_system_container(s)
 
             system_container.build_mesh()

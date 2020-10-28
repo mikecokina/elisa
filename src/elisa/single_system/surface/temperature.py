@@ -1,6 +1,7 @@
 from ... logger import getLogger
 from ... base.surface import temperature as btemperature
 from ... pulse import pulsations
+from elisa.base.surface.temperature import renormalize_temperatures
 
 logger = getLogger("single_system.surface.temperature")
 
@@ -26,6 +27,7 @@ def build_temperature_distribution(system_container):
             spot.temperatures = \
                 spot.temperature_factor * btemperature.calculate_effective_temperatures(star_container, pgms)
 
+    # renormalize_temperatures(star_container)
     return system_container
 
 

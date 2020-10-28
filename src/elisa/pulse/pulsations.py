@@ -149,28 +149,30 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
     r_equiv = star_container.equivalent_radius * normalization_constant
     mult = const.G * star_container.mass / r_equiv ** 3
     for mode_index, mode in star_container.pulsations.items():
-        mode.radial_amplitude = mode.amplitude / (r_equiv * mode.angular_frequency)
-        mode.horizontal_amplitude = np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2
+        mode.radial_amplitude = mode.amplitude / mode.angular_frequency
 
-        surf_ampl = mode.radial_amplitude * mode.horizontal_amplitude
+        # horizontal/radial amplitude
+        ampl_ratio = np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2
+        mode.horizontal_amplitude = ampl_ratio * mode.radial_amplitude / r_equiv
+
+        surf_ampl = mode.horizontal_amplitude
         if surf_ampl > settings.SURFACE_DISPLACEMENT_TOL:
             prec = int(- np.log10(surf_ampl) + 2)
-            logger.warning(f'Surface displacement amplitude ({round(surf_ampl, prec)}) for the mode {mode_index} '
+            logger.warning(f'Relative surface displacement amplitude ({round(surf_ampl, prec)}) for the mode {mode_index} '
                            f'exceeded safe tolerances ({settings.SURFACE_DISPLACEMENT_TOL}) given by the use of linear '
                            f'approximation. This can lead to invalid surface discretization. Use this result with '
                            f'caution.')
 
 
-def calculate_radial_displacement(mode, radii, harmonics):
+def calculate_radial_displacement(mode, harmonics):
     """
     Calculates radial displacement of surface points.
 
     :param mode: PulsationMode;
-    :param radii: numpy.array;
     :param harmonics: numpy.array; Y_l^m
     :return: numpy.array;
     """
-    return mode.radial_amplitude * radii * np.real(harmonics)
+    return mode.radial_amplitude * np.real(harmonics)
 
 
 def calculate_phi_displacement(mode, thetas, harmonics_derivatives):
@@ -186,7 +188,7 @@ def calculate_phi_displacement(mode, thetas, harmonics_derivatives):
     sin_test = sin_thetas != 0.0
     retval = np.zeros(thetas.shape)
     retval[sin_test] = \
-        mode.radial_amplitude * mode.horizontal_amplitude * np.real(harmonics_derivatives[sin_test]) \
+        mode.horizontal_amplitude * np.real(harmonics_derivatives[sin_test]) \
         / sin_thetas[sin_test]
     return retval
 
@@ -199,8 +201,7 @@ def calculate_theta_displacement(mode, harmonics_derivatives):
     :param mode: PulsationMode;
     :return: numpy.array;
     """
-    mult = mode.radial_amplitude * mode.horizontal_amplitude
-    return mult * np.real(harmonics_derivatives)
+    return mode.horizontal_amplitude * np.real(harmonics_derivatives)
 
 
 def calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives):
@@ -213,7 +214,7 @@ def calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives):
     :param harmonics_derivatives: numpy.array; [dY/dphi, dY/dtheta]
     :return: numpy.array;
     """
-    radial_displacement = calculate_radial_displacement(mode, points[:, 0], harmonics)
+    radial_displacement = calculate_radial_displacement(mode, harmonics)
     phi_displacement = calculate_phi_displacement(mode, points[:, 2], harmonics_derivatives[0])
     theta_displacement = calculate_theta_displacement(mode, harmonics_derivatives[1])
 

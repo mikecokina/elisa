@@ -180,3 +180,34 @@ def calculate_normals(points, faces, centres, com):
     # making sure that normals are properly oriented near the axial planes
     sgn = up.sign(np.sum(up.multiply(normals, corr_centres), axis=1))
     return normals * sgn[:, None]
+
+
+def correct_face_orientation(star_container, com=0):
+    """
+    Function corrects order if face indices in order to be consistent with outward facing normals.
+
+    :param star_container: elisa.base.container.StarContainer;
+    :param com: float; centre of mass x-position
+    :return:
+    """
+    def correct_orientation(object):
+        points = getattr(object, 'points')
+        faces = getattr(object, 'faces')
+        centres = getattr(object, 'face_centres')
+
+        a = points[faces[:, 1]] - points[faces[:, 0]]
+        b = points[faces[:, 2]] - points[faces[:, 0]]
+        normals = np.cross(a, b)
+
+        corr_centres = copy(centres) - np.array([com, 0, 0])[None, :]
+
+        sgn = up.sign(up.sum(up.multiply(normals, corr_centres), axis=1))
+        negative_sgn = sgn < 0
+        faces[negative_sgn] = faces[negative_sgn][:, [1, 0, 2]]
+
+    correct_orientation(star_container)
+    if star_container.has_spots():
+        for spot in star_container.spots.values():
+            correct_orientation(spot)
+
+    return star_container
