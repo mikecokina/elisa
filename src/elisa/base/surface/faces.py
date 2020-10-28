@@ -182,7 +182,7 @@ def calculate_normals(points, faces, centres, com):
     return normals * sgn[:, None]
 
 
-def correct_face_orientaton(star_container, com=0):
+def correct_face_orientation(star_container, com=0):
     """
     Function corrects order if face indices in order to be consistent with outward facing normals.
 

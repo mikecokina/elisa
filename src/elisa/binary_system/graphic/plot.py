@@ -6,7 +6,7 @@ from .. container import OrbitalPositionContainer
 from ... const import Position
 from ... utils import is_empty
 from ... graphic import graphics
-from ... base.surface.faces import correct_face_orientaton
+from ... base.surface.faces import correct_face_orientation
 
 from ... import (
     umpy as up,
@@ -255,7 +255,7 @@ class Plot(object):
         for component in components:
             star = getattr(orbital_position_container, component).flatt_it()
 
-            correct_face_orientaton(star, com=com[component])
+            correct_face_orientation(star, com=com[component])
             points, faces = star.surface_serializer()
 
             surface_kwargs.update({

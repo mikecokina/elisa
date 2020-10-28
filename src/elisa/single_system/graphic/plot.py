@@ -6,7 +6,7 @@ from ... base import transform
 from ... const import SinglePosition
 from ... graphic import graphics
 from ... utils import is_empty
-from ... base.surface.faces import correct_face_orientaton
+from ... base.surface.faces import correct_face_orientation
 
 
 class Plot(object):
@@ -136,7 +136,7 @@ class Plot(object):
         position_container.build(phase=phase)
         star_container = position_container.star.flatt_it()
 
-        correct_face_orientaton(star_container, com=0)
+        correct_face_orientation(star_container, com=0)
         points, faces = star_container.surface_serializer()
 
         surface_kwargs.update({
