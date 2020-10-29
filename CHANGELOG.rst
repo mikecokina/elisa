@@ -163,7 +163,7 @@ v0.3.1_
 v0.4_
 -----
 
-.. v0.4_: https://github.com/mikecokina/elisa/commits/release/0.3.1
+.. v0.4_: https://github.com/mikecokina/elisa/commits/release/0.4
 
 **Release date:** 2020-10-01
 
@@ -180,8 +180,6 @@ v0.4_
     - configuration module uses singleton instead of global variables
       >>> from elisa import settings
     - ability to display observation stored in DataSet class using DataSet.plot.display_observation()
-    - solar constant conserved with different levels of surface discretization
-    - improvements to trapezoidal discretization
 
 **Fixes**
 
@@ -204,12 +202,13 @@ v0.5
         - extended fitting methods
 
 **Enhancements**
+    - solar constant conserved with different levels of surface discretization
+    - improvements to trapezoidal discretization
 
 **Fixes**
 
     - <binary_system>.init() reinitialize parameters corretly (require fix for pulsations)
     - inclination rotation is provided in positive direction instead of negative
-
 
 v1.0
 ----
