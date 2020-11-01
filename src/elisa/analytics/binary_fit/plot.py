@@ -18,6 +18,7 @@ from ... graphic.mcmc_graphics import Plot as MCMCPlot
 from ... observer.observer import Observer
 from ... graphic import graphics
 from ... logger import getLogger
+from elisa.utils import is_empty
 
 
 logger = getLogger('analytics.binary_fit.plot')
@@ -244,7 +245,7 @@ class LCPlot(object):
             x_data[band] = phases_extended[phases_extended_filter]
 
             y_data[band] = np.tile(y_data[band], 3)[phases_extended_filter]
-            if y_err[band] is not None:
+            if not is_empty(y_err[band]):
                 y_err[band] = np.tile(y_err[band], 3)[phases_extended_filter]
 
         x_data, y_data, y_err = \

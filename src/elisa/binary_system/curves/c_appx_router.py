@@ -167,8 +167,13 @@ def eval_approximation_three(binary, all_orbital_pos_arr):
     rel_d_radii = crv_utils.compute_rel_d_radii(binary, sorted_all_orbital_pos_arr[:, 1])
     new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(),
                                                                all_orbital_pos_arr.shape[0], rel_d_radii)
-    approx_test = not new_geometry_mask.all()
-    return approx_test, new_geometry_mask, sorted_all_orbital_pos_arr
+
+    rel_irrad = crv_utils.compute_rel_d_irradiation(binary, all_orbital_pos_arr[:, 1])
+    new_irrad_mask = dynamic.resolve_irrad_update(rel_irrad, all_orbital_pos_arr.shape[0])
+    new_build_mask = np.logical_or(new_geometry_mask, new_irrad_mask)
+
+    approx_test = not new_build_mask.all()
+    return approx_test, new_build_mask, sorted_all_orbital_pos_arr
 
 
 # *******************************************approximation curve_methods************************************************

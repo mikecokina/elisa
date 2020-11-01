@@ -60,6 +60,9 @@ class Body(metaclass=ABCMeta):
     """
 
     ID = 1
+    MANDATORY_KWARGS = []
+    OPTIONAL_KWARGS = []
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name, **kwargs):
         """
@@ -84,6 +87,10 @@ class Body(metaclass=ABCMeta):
         self.polar_radius = np.nan
         self._spots = dict()
         self.equatorial_radius = np.nan
+
+    @abstractmethod
+    def init(self):
+        pass
 
     @abstractmethod
     def transform_input(self, *args, **kwargs):

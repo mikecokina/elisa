@@ -196,9 +196,10 @@ def _update_surface_in_ecc_orbits(system, orbital_position, new_geometry_test):
     if new_geometry_test:
         system.build(components_distance=orbital_position.distance)
     else:
-        system.build_mesh(component="all", components_distance=orbital_position.distance)
+        system.rebuild_symmetric_detached_mesh(component="all", components_distance=orbital_position.distance)
         system.build_velocities(components_distance=orbital_position.distance, component="all")
         system.build_faces_orientation(component="all", components_distance=orbital_position.distance)
+        system.correct_mesh("all")
         system.build_surface_areas(component="all")
 
     return system
@@ -269,6 +270,10 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
     rel_d_radii = crv_utils.compute_rel_d_radii(binary, orbital_positions[:, 0, 1], potentials=potentials)
     new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(), orbital_positions.shape[0],
                                                                rel_d_radii)
+    rel_irrad = crv_utils.compute_rel_d_irradiation(binary, orbital_positions[:, 0, 1])
+    new_irrad_mask = dynamic.resolve_irrad_update(rel_irrad, orbital_positions.shape[0])
+
+    new_build_mask = np.logical_or(new_geometry_mask, new_irrad_mask)
 
     curves_body = {key: np.empty(orbital_positions.shape[0]) for key in crv_labels}
     curves_mirror = {key: np.empty(orbital_positions.shape[0]) for key in crv_labels}
@@ -284,7 +289,7 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
 
         initial_system.set_on_position_params(base_orb_pos, potentials['primary'][idx],
                                               potentials['secondary'][idx])
-        initial_system = _update_surface_in_ecc_orbits(initial_system, base_orb_pos, new_geometry_mask[idx])
+        initial_system = _update_surface_in_ecc_orbits(initial_system, base_orb_pos, new_build_mask[idx])
 
         on_pos_base = bsutils.move_sys_onpos(initial_system, base_orb_pos, on_copy=True)
         compute_surface_coverage(on_pos_base, binary.semi_major_axis, in_eclipse=True,
@@ -302,7 +307,7 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
                                      return_values=False, write_to_containers=True)
 
         # normal radiances and ld coefficients will be used for both base and mirror orbital positions
-        normal_radiance, ld_cfs = _update_ldc_and_radiance_on_orb_pair(new_geometry_mask[idx],
+        normal_radiance, ld_cfs = _update_ldc_and_radiance_on_orb_pair(new_build_mask[idx],
                                                                        on_pos_base, on_pos_mirror, normal_radiance,
                                                                        ld_cfs, **kwargs)
 

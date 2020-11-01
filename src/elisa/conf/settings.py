@@ -158,6 +158,9 @@ class Settings(_Const):
     MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
     MAX_SOLVER_ITERS = 100
     MAX_CURVE_DATA_POINTS = 300
+    MESH_GENERATOR = 'auto'
+    DEFORMATION_TOL = 0.05
+    MAX_RELATIVE_D_IRRADIATION = 0.02
 
     TIMER = 0.0
 
@@ -221,7 +224,10 @@ class Settings(_Const):
             "LD_TABLES": cls.LD_TABLES,
             "CK04_ATM_TABLES": cls.CK04_ATM_TABLES,
             "K93_ATM_TABLES": cls.K93_ATM_TABLES,
-            "ATM_ATLAS": cls.ATM_ATLAS
+            "ATM_ATLAS": cls.ATM_ATLAS,
+            "MESH_GENERATOR": cls.MESH_GENERATOR,
+            "DEFORMATION_TOL": cls.DEFORMATION_TOL,
+            "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
         }
 
     @classmethod
@@ -296,7 +302,7 @@ class Settings(_Const):
                 c_parse.getfloat('physics', 'surface_displacement_tol', fallback=cls.SURFACE_DISPLACEMENT_TOL)
             cls.RV_METHOD = c_parse.getfloat('physics', 'rv_method', fallback=cls.RV_METHOD)
             cls.RV_LAMBDA_INTERVAL = c_parse.getfloat('physics', 'rv_lambda_interval', fallback=cls.RV_LAMBDA_INTERVAL)
-        # ******************************************************************************************************************
+        # **************************************************************************************************************
         if c_parse.has_section('computational'):
             cls.MAX_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'max_discretization_factor',
                                                              fallback=cls.MAX_DISCRETIZATION_FACTOR)
@@ -329,7 +335,11 @@ class Settings(_Const):
             cls.MAX_SOLVER_ITERS = c_parse.getfloat('computational', 'max_solver_iters', fallback=cls.MAX_SOLVER_ITERS)
             cls.MAX_CURVE_DATA_POINTS = c_parse.getfloat('computational', 'max_curve_datapoints',
                                                          fallback=cls.MAX_CURVE_DATA_POINTS)
-        # ******************************************************************************************************************
+            cls.MESH_GENERATOR = c_parse.getfloat('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
+            cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol', fallback=cls.DEFORMATION_TOL)
+            cls.MAX_RELATIVE_D_IRRADIATION = c_parse.getfloat('computational', 'max_relative_d_irradiation',
+                                                              fallback=cls.MAX_RELATIVE_D_IRRADIATION)
+        # **************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)
 

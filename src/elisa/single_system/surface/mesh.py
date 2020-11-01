@@ -5,6 +5,7 @@ from .. import model
 from .. radius import calculate_radius
 from ... logger import getLogger
 from ... base.spot import incorporate_spots_mesh
+from ... base.surface.mesh import correct_component_mesh
 from ... base.error import MaxIterationError
 from ... import settings
 from ... pulse import pulsations
@@ -202,11 +203,16 @@ def pre_calc_latitudes(alpha, polar_radius, equatorial_radius):
     :param alpha: float; angular distance of points
     :return: numpy.array; latitudes for mesh
     """
-    num = int((const.HALF_PI - 2 * alpha) // alpha)
-    thetas = np.linspace(alpha, const.HALF_PI - alpha, num=num, endpoint=True)
+    # alpha_corr = const.POINT_ROW_SEPARATION_FACTOR * alpha
+    alpha_corr = alpha
+    num = int(const.HALF_PI // alpha_corr)
+    thetas = np.linspace(0, const.HALF_PI, num=num, endpoint=True)[1:-1]
     # solving non uniform sampling along theta coordinates for squashed stars
-    thetas = thetas + up.arctan((equatorial_radius - polar_radius) * up.tan(thetas) /
-                                (polar_radius + equatorial_radius * up.tan(thetas)**2))
+    auto_test = settings.MESH_GENERATOR == 'auto' and \
+                (equatorial_radius - polar_radius) / polar_radius > settings.DEFORMATION_TOL
+    if auto_test or settings.MESH_GENERATOR == 'improved_trapezoidal':
+        thetas += up.arctan((equatorial_radius - polar_radius) * up.tan(thetas) /
+                            (polar_radius + equatorial_radius * up.tan(thetas)**2))
     return thetas
 
 
@@ -400,3 +406,16 @@ def add_spots_to_mesh(system):
     """
     mesh_spots(system)
     incorporate_spots_mesh(system.star, component_com=0.0)
+
+
+def correct_mesh(system):
+    """
+    Correcting the underestimation of the surface due to the discretization.
+
+    :param system: elisa.single_system.container.SystemContainer;
+    :return: elisa.single_system.container.SystemContainer;
+    """
+    star = getattr(system, 'star')
+    correct_component_mesh(star)
+
+    return system

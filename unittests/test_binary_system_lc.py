@@ -1,12 +1,10 @@
 import os.path as op
 import numpy as np
-from os import cpu_count
 
 from unittest import mock, skip
 from numpy.testing import assert_array_equal
 from pypex.poly2d import polygon
 
-from elisa import units as u
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa import settings
@@ -380,7 +378,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
         # plt.plot(expected_phases, expected_flux, label='expected')
         # plt.plot(obtained_phases, obtained_flux, label='obtained')
         # plt.legend()
-        # plt.plot()
+        # plt.show()
 
         self.assertTrue(np.all(up.abs(obtained_phases - expected_phases) < TOL))
         self.assertTrue(np.all(up.abs(obtained_flux - expected_flux) < f_tol))

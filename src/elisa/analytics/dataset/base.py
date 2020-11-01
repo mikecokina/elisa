@@ -50,7 +50,7 @@ class DataSet(metaclass=ABCMeta):
     def check_data_validity(**kwargs):
         if not np.shape(kwargs['x_data']) == np.shape(kwargs['y_data']):
             raise ValueError('`x_data` and `y_data` are not of the same shape.')
-        if 'y_err' in kwargs.keys():
+        if 'y_err' in kwargs.keys() and not utils.is_empty(kwargs['y_err']):
             if not np.shape(kwargs['x_data']) == np.shape(kwargs['y_err']):
                 raise ValueError('`y_err` are not of the same shape to `x_data` and `y_data`.')
 
@@ -59,7 +59,7 @@ class DataSet(metaclass=ABCMeta):
             raise ValueError('`x_data` contains NaN')
         if np.isnan(kwargs['y_data']).any():
             raise ValueError('`y_data` contains NaN')
-        if 'y_err' in kwargs.keys():
+        if 'y_err' in kwargs.keys() and not utils.is_empty(kwargs['y_err']):
             if np.isnan(kwargs['y_err']).any():
                 raise ValueError('`y_err` contains NaN')
 
