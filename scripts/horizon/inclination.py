@@ -10,7 +10,7 @@ import os.path as op
 from elisa import BinarySystem, Observer
 from elisa.analytics.tools import horizon
 from elisa.const import FULL_ARC
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, ticker
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.interpolate import Akima1DInterpolator
 
@@ -33,7 +33,7 @@ BINARY_DEFINITION = {
         "gravity_darkening": 0.09,
         "albedo": 0.5,
         "metallicity": 0.0,
-        "discretization_factor": 5
+        "discretization_factor": 10
     },
     "secondary": {
         "mass": 0.5,
@@ -46,7 +46,7 @@ BINARY_DEFINITION = {
     }
 }
 
-INCLINATIONS = [90, 70, 50]
+INCLINATIONS = [90, 70, 50, 10]
 PHASE = 0.1
 
 
@@ -61,10 +61,17 @@ def single_main():
         # observer.observe.lc(phases=[0.1])
 
         # discrete horizon
-        discrete_horizon = horizon.get_discrete_horizon(binary=binary, phase=PHASE, polar=True)
+        discrete_horizon, vertex_discrete_horizon = horizon.get_discrete_horizon(binary=binary, phase=PHASE, polar=True)
+
+        # edge based discrete horizon
         phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
         rs_d, phis_d = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
         rs_d, phis_d = rs_d[:-1], phis_d[:-1]
+
+        # vertices based discrete horizon
+        phi_argsort = np.argsort(vertex_discrete_horizon.T[1] % FULL_ARC)
+        rs_vd, phis_vd = vertex_discrete_horizon[phi_argsort].T[0], vertex_discrete_horizon[phi_argsort].T[1] % FULL_ARC
+        rs_vd, phis_vd = rs_vd[:-1], phis_vd[:-1]
 
         # plt.scatter(phis_d, rs_d)
         # plt.show()
@@ -86,23 +93,31 @@ def single_main():
         residua = (rs_d - akima(phis_d)) / akima(phis_d)
 
         # plot
-        ax1 = plt.subplot(111)
-        ax1.scatter(phis_d % FULL_ARC, rs_d * 10, s=12, c="k", label="discrete")
-        ax1.plot(phis % FULL_ARC, rs * 10, c="g", label="analytic")
+        figure, ax1 = plt.subplots(1, 1, figsize=(8, 5))
+
+        # discrete horizon plot
+        ax1.scatter(phis_vd % FULL_ARC, rs_vd * 10, s=12, c="b")
+        ax1.plot(phis_d % FULL_ARC, rs_d * 10, c="b", label="discrete", linewidth=1)
+
+        # analytics horizon plot
+        ax1.plot(phis % FULL_ARC, rs * 10, c="r", label="analytic")
+
         # here comes residua
         divider = make_axes_locatable(ax1)
         ax2 = divider.append_axes("bottom", size=1, pad=0.1)
         ax1.figure.add_axes(ax2)
-        ax2.plot(phis_d % FULL_ARC, residua, c="r")
+        ax2.plot(phis_d % FULL_ARC, residua, c="g")
         ax1.legend(loc=2)
 
         # settings
-        axis_font = {'size': '12'}
+        axis_font = {'size': '13'}
         ax1.set_ylabel(r"$\varrho$", **axis_font)
         ax2.set_ylabel(r"$(\varrho - \varrho_d) / \varrho$", **axis_font)
+        ax2.set_ylim([-0.001, 0.001])
 
         ax2.set_xlabel(r"$\theta$", **axis_font)
-        params = {'legend.fontsize': 11, 'legend.handlelength': 3}
+        ax2.axhline(y=0.0, color='k', linestyle='--')
+        params = {'legend.fontsize': 13, 'legend.handlelength': 3}
         plt.rcParams.update(params)
         plt.rc('xtick', labelsize=10)
         plt.rc('ytick', labelsize=10)
@@ -121,7 +136,7 @@ def multiple_main():
         os.remove(data_path)
 
     # define plot
-    ax1 = plt.subplot(111)
+    figure, ax1 = plt.subplots(1, 1, figsize=(8, 5))
 
     # run eval
     for i in INCLINATIONS:
@@ -132,10 +147,17 @@ def multiple_main():
         params["system"]["inclination"] = i
         binary = BinarySystem.from_json(params)
 
-        discrete_horizon = horizon.get_discrete_horizon(binary=binary, phase=PHASE, polar=True)
+        discrete_horizon, vertex_discrete_horizon = horizon.get_discrete_horizon(binary=binary, phase=PHASE, polar=True)
+
+        # edge based discrete horizon
         phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
         rs_d, phis_d = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
         rs_d, phis_d = rs_d[:-1], phis_d[:-1]
+
+        # vertices based discrete horizon
+        phi_argsort = np.argsort(vertex_discrete_horizon.T[1] % FULL_ARC)
+        rs_vd, phis_vd = vertex_discrete_horizon[phi_argsort].T[0], vertex_discrete_horizon[phi_argsort].T[1] % FULL_ARC
+        rs_vd, phis_vd = rs_vd[:-1], phis_vd[:-1]
 
         # analytic horizon
         binary = BinarySystem.from_json(params)
@@ -155,7 +177,9 @@ def multiple_main():
         residua = (rs_d - akima(phis_d)) / akima(phis_d)
 
         # plot
-        ax1.plot(phis_d % FULL_ARC, residua, label=f"inclination: {i}" + r"$^\circ$")
+        ax1.axhline(y=0.0, color='k', linestyle='--', linewidth=1)
+        ax1.plot(phis_d % FULL_ARC, residua, label=f"inclination: {i}" + r"$^\circ$", linewidth=1)
+        ax1.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.4f}"))
 
         data[i]["x"] = np.array(phis_d).tolist()
         data[i]["y"] = np.array(residua).tolist()
@@ -164,11 +188,11 @@ def multiple_main():
         f.write(json.dumps(data, indent=4))
 
     ax1.legend(loc=2)
-    axis_font = {'size': '12'}
+    axis_font = {'size': '13'}
     ax1.set_ylabel(r"$(\varrho - \varrho_d) / \varrho$", **axis_font)
     ax1.set_xlabel(r"$\theta$", **axis_font)
 
-    params = {'legend.fontsize': 11, 'legend.handlelength': 3}
+    params = {'legend.fontsize': 13, 'legend.handlelength': 3}
     plt.rcParams.update(params)
     plt.rc('xtick', labelsize=10)
     plt.rc('ytick', labelsize=10)

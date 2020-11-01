@@ -11,6 +11,8 @@ from elisa.const import Position, FULL_ARC, HALF_PI, LINE_OF_SIGHT
 from elisa import utils
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.surface.coverage import get_eclipse_boundary_path
+from pypex import Polygon
+
 
 BINARY_DEFINITION = {
     "system": {
@@ -204,6 +206,16 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
     return horizon_points
 
 
+def _cover_horizon_edges(horizon):
+    horizon_polygon = Polygon(horizon)
+    horizon = list()
+    for edge in horizon_polygon.edges(as_line=True):
+        parametrized = edge.parametrized()
+        for t in np.arange(0, 1, 0.01):
+            horizon.append(parametrized(t))
+    return np.array(horizon)
+
+
 def get_discrete_horizon(binary=None, phase=0.0, threshold=-1e-6, polar=False):
     """
     Get discrete horizon of primary component.
@@ -212,18 +224,25 @@ def get_discrete_horizon(binary=None, phase=0.0, threshold=-1e-6, polar=False):
         binary = BinarySystem.from_json(BINARY_DEFINITION)
     position = Position(*((0,) + tuple(binary.orbit.orbital_motion(phase=phase)[0])))
     position_container = _horizon_base_component(binary, position, analytic=False)
+    position_container.correct_mesh(component="primary")
     star = position_container.primary
     visible_projection = utils.get_visible_projection(star)
 
     bb_path = get_eclipse_boundary_path(visible_projection)
     horizon_indices = up.invert(bb_path.contains_points(visible_projection, radius=threshold))
     horizon = visible_projection[horizon_indices]
+    origin_horizon = horizon
+    horizon = _cover_horizon_edges(horizon)
 
     if polar:
         horizon = utils.cartesian_to_polar(horizon)
         horizon_argsort = np.argsort(horizon.T[1])
-        return horizon[horizon_argsort]
-    return horizon
+
+        origin_horizon = utils.cartesian_to_polar(origin_horizon)
+        origin_horizon_argsort = np.argsort(origin_horizon.T[1])
+        return horizon[horizon_argsort], origin_horizon[origin_horizon_argsort]
+
+    return horizon, origin_horizon
 
 
 if __name__ == "__main__":
@@ -231,14 +250,24 @@ if __name__ == "__main__":
 
     _phase = 0.0
 
-    discrete_horizon = get_discrete_horizon(phase=_phase, polar=True)
+    discrete_horizon, origin_discrete_horizon = get_discrete_horizon(phase=_phase, polar=True)
+
+    # show full path of discrete horizon
     phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
     rs, phis = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
     rs, phis = rs[:-1], phis[:-1]
 
-    plt.scatter(phis % FULL_ARC, rs * 10, s=10, c="r")
+    plt.plot(phis % FULL_ARC, rs * 10, c="r")
 
-    analytic_horizon = get_analytics_horizon(phase=_phase, tol=1e-3, polar=True, phi_density=200, theta_density=10000)
+    # show vertex path of discrete horizon
+    phi_argsort = np.argsort(origin_discrete_horizon.T[1] % FULL_ARC)
+    rs, phis = origin_discrete_horizon[phi_argsort].T[0], origin_discrete_horizon[phi_argsort].T[1] % FULL_ARC
+    rs, phis = rs[:-1], phis[:-1]
+
+    plt.scatter(phis % FULL_ARC, rs * 10, c="r")
+
+    # analytic horizon
+    analytic_horizon = get_analytics_horizon(phase=_phase, tol=1e-2, polar=True, phi_density=100, theta_density=1000)
     phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
     rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
     rs, phis = rs[:-1], phis[:-1]

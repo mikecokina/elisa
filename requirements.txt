@@ -5,7 +5,7 @@ jsonschema>=3.2.0
 matplotlib==3.3.2
 numpy>=1.16.2,<=1.19.2
 pandas>=0.24.0,<=1.1.2
-pypex==0.1.0
+pypex==0.2.0
 pytest==3.2.3
 python-dateutil>=2.6.1,<=2.8.1
 scipy>=1.0.0,<=1.5.2
