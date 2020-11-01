@@ -205,6 +205,9 @@ v0.5
 
 **Enhancements**
 
+    - additional constraints for approximations used during integration of eccentric light curves,
+    relative change in irradiation is checked when similar orbital positions are evaluated, improves precision
+
 **Fixes**
 
     - <binary_system>.init() reinitialize parameters corretly (require fix for pulsations)
