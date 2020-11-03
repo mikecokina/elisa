@@ -1,6 +1,7 @@
 include data/*
 include passband/*
 include conf/*
+include conf/logging_schemas/*
 include version.py
 include setup.py
 include setup.cfg

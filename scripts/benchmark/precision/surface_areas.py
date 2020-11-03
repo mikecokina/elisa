@@ -97,8 +97,11 @@ def main():
         ax[jj].legend()
 
     # plt.legend()
+    ax[0].text(0.00040, 350, s='a', fontsize=18)
+    ax[1].text(0.00062, 146, s='b', fontsize=18)
+    
     ax[0].set_xlim(0.00037, 0.00083)
-    ax[1].set_xlim(0.00057, 0.00103)
+    ax[1].set_xlim(0.00059, 0.00105)
 
     ax[0].set_ylabel('No. of faces')
     ax[0].set_xlabel('Areas')
