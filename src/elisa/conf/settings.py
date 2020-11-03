@@ -230,24 +230,28 @@ class Settings(_Const):
             "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
         }
 
+    @staticmethod
+    def load_conf(path):
+        with open(path) as f:
+            conf_dict = json.loads(f.read())
+        log_conf.dictConfig(conf_dict)
+
     @classmethod
     def set_up_logging(cls):
         if os.path.isfile(cls.LOG_CONFIG):
-            with open(cls.LOG_CONFIG) as f:
-                conf_dict = json.loads(f.read())
-            log_conf.dictConfig(conf_dict)
+            cls.load_conf(cls.LOG_CONFIG)
+            return
         elif cls.LOG_CONFIG == 'default':
             cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
                                           'logging_schemas/default.json')
-            cls.set_up_logging()
         elif cls.LOG_CONFIG == 'fit':
             cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
                                           'logging_schemas/fit.json')
-            cls.set_up_logging()
         else:
             cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
                                           'logging_schemas/default.json')
-            cls.set_up_logging()
+
+        cls.load_conf(cls.LOG_CONFIG)
 
     @classmethod
     def read_and_update_config(cls, conf_path=None):
