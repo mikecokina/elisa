@@ -204,12 +204,11 @@ v0.5
 **Enhancements**
     - solar constant conserved with different levels of surface discretization
     - improvements to trapezoidal discretization
-
     - additional constraints for approximations used during integration of eccentric light curves,
-    relative change in irradiation is checked when similar orbital positions are evaluated, improves precision
+      relative change in irradiation is checked when similar orbital positions are evaluated, improves precision
     - pre-build logging schemas added, that are accesible via LOG_CONFIG parameter with options 'default' or 'fit' or
-    path to custom configuration file. 'fit' schema will suppress all logging messages except for messages from
-    analytics class.
+      path to custom configuration file. 'fit' schema will suppress all logging messages except for messages from
+      analytics class.
 
 **Fixes**
 
