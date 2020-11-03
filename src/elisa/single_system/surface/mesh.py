@@ -208,8 +208,11 @@ def pre_calc_latitudes(alpha, polar_radius, equatorial_radius):
     num = int(const.HALF_PI // alpha_corr)
     thetas = np.linspace(0, const.HALF_PI, num=num, endpoint=True)[1:-1]
     # solving non uniform sampling along theta coordinates for squashed stars
-    thetas += up.arctan((equatorial_radius - polar_radius) * up.tan(thetas) /
-                        (polar_radius + equatorial_radius * up.tan(thetas)**2))
+    auto_test = settings.MESH_GENERATOR == 'auto' and \
+                (equatorial_radius - polar_radius) / polar_radius > settings.DEFORMATION_TOL
+    if auto_test or settings.MESH_GENERATOR == 'improved_trapezoidal':
+        thetas += up.arctan((equatorial_radius - polar_radius) * up.tan(thetas) /
+                            (polar_radius + equatorial_radius * up.tan(thetas)**2))
     return thetas
 
 

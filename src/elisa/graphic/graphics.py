@@ -806,6 +806,7 @@ def binary_lc_fit_plot(**kwargs):
         'Generic.Stromgren.y': '#00b300',
         'Kepler': '#890000',
         'GaiaDR2': 'gray',
+        'TESS': '#006989'
     }
 
     matplotlib.rcParams.update({'errorbar.capsize': 2})

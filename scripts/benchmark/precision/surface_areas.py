@@ -14,11 +14,11 @@ def sigmas(percentiles):
 
 
 def main():
-    # surface_potential = 3.0
-    surface_potential = 3.055
+    # surface_potential = 2.9
+    # surface_potential = 3.055
     # surface_potential = 3.06
     # surface_potential = 3.065
-    # surface_potential = 4.0
+    surface_potential = 3.2
     primary = Star(
         mass=2.0 * u.solMass,
         surface_potential=surface_potential,
@@ -59,42 +59,68 @@ def main():
     # component = ['secondary']
 
     discretization_methods = ['trapezoidal', 'improved_trapezoidal']
-    alphas = [1.0, 0.8]
-    container = OrbitalPositionContainer.from_binary_system(binary_system=bs, position=const.Position(0, 1.0, 0, 0, 0))
+    alphas = [1.0, 0.75]
+    # clrs = ['blue', 'green']
+    clrs = ['gray', 'black']
+
+    fig, ax = plt.subplots(nrows=1, ncols=2)
+    fig.set_size_inches(10, 5)
+
     bins = 100
-    for ii, discretization_method in enumerate(discretization_methods):
-        settings.configure(MESH_GENERATOR=discretization_method)
-        container.build_mesh()
-        container.build_faces()
-        container.build_surface_areas()
+    for jj, pot in enumerate([3.2, 2.9]):
+        bs.primary.surface_potential = pot
+        bs.secondary.surface_potential = pot
+        bs.init()
+        container = \
+            OrbitalPositionContainer.from_binary_system(binary_system=bs, position=const.Position(0, 1.0, 0, 0, 0))
 
-        areas = np.concatenate([getattr(container, com).areas for com in component])
-        percentiles = np.percentile(areas, [100-68.27, 50, 68.27])
-        percentiles3 = np.percentile(areas, [100-95, 50, 95])
+        for ii, discretization_method in enumerate(discretization_methods):
+            settings.configure(MESH_GENERATOR=discretization_method)
+            container.build_mesh()
+            container.build_faces()
+            container.build_surface_areas()
 
-        s1 = sigmas(percentiles)
-        s3 = sigmas(percentiles3)
-        print(f'1 sigma deviation in triangle sizes for {discretization_method} method: +{s1[0]}, {s1[1]} %')
-        print(f'95 percentile in triangle sizes for {discretization_method} method: +{s3[0]}, {s3[1]} %')
+            areas = np.concatenate([getattr(container, com).areas for com in component])
+            percentiles = np.percentile(areas, [100-68.27, 50, 68.27])
+            percentiles3 = np.percentile(areas, [100-95, 50, 95])
 
-        hist = plt.hist(areas, bins=bins, label=discretization_method.replace('_', ' '), alpha=alphas[ii])
-        bins = hist[1]
+            s1 = sigmas(percentiles)
+            s3 = sigmas(percentiles3)
+            print(f'1 sigma deviation in triangle sizes for {discretization_method} method: +{s1[0]}, {s1[1]} %')
+            print(f'95 percentile in triangle sizes for {discretization_method} method: +{s3[0]}, {s3[1]} %')
+            if pot == 2.9 and discretization_method == 'trapezoidal':
+                continue
+            hist = ax[jj].hist(areas, bins=bins, label=discretization_method.replace('_', ' '), alpha=alphas[ii],
+                               color=clrs[ii])
+            bins = hist[1]
+        bins += 0.0002
+        ax[jj].legend()
 
-    plt.legend()
+    # plt.legend()
+    ax[0].set_xlim(0.00037, 0.00083)
+    ax[1].set_xlim(0.00057, 0.00103)
+
+    ax[0].set_ylabel('No. of faces')
+    ax[0].set_xlabel('Areas')
+    ax[1].set_xlabel('Areas')
+    ax[1].yaxis.tick_right()
+    plt.subplots_adjust(left=0.07, right=0.95, top=0.98, bottom=0.09, wspace=0.02)
+
     plt.show()
 
-    settings.configure(MESH_GENERATOR='trapezoidal')
+    # settings.configure(MESH_GENERATOR='trapezoidal')
     # settings.configure(MESH_GENERATOR='improved_trapezoidal')
     # bs.plot.mesh(components_to_plot=component,)
     # bs.plot.wireframe(components_to_plot=component,)
-    bs.plot.surface(
-        components_to_plot='primary',
-        phase=0.8,
-        inclination=75,
-        edges=True,
-        colormap=None,
-        surface_colors=('gray', 'gray'),
-                    )
+    # bs.plot.surface(
+    #     # components_to_plot='primary',
+    #     components_to_plot='secondary',
+    #     phase=0.8,
+    #     inclination=75,
+    #     edges=True,
+    #     colormap=None,
+    #     surface_colors=('gray', 'gray'),
+    #                 )
 
 
 if __name__ == '__main__':

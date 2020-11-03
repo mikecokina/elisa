@@ -172,6 +172,28 @@ def _resolve_geometry_update(has_spots, size, rel_d, max_allowed_difference, res
     return require_new_geo
 
 
+def resolve_irrad_update(rel_d_irrad, size):
+    """
+    Evaluate where new temperature distribution should be calculated
+
+    :param rel_d_irrad: numpy.array;
+    :param size: int;
+    :return: numpy.array; bool array
+    """
+    require_new_build = np.ones(size, dtype=np.bool)
+
+    cumulative_sum = np.array([0.0, 0.0])
+    for i in range(1, size):
+        cumulative_sum += rel_d_irrad[:, i - 1]
+        if (cumulative_sum <= settings.MAX_RELATIVE_D_IRRADIATION).all():
+            require_new_build[i] = False
+        else:
+            require_new_build[i] = True
+            cumulative_sum = np.array([0.0, 0.0])
+
+    return require_new_build
+
+
 def phase_crv_symmetry(self, phase):
     """
     Utilizing symmetry of circular systems without spots and pulastions where you need to evaluate only half

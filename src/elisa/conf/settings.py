@@ -132,7 +132,7 @@ class Settings(_Const):
 
     # basic app configuration
     CONFIG_FILE = config_file
-    LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging.json')
+    LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging_schemas/default.json')
     SUPPRESS_WARNINGS = False
     SUPPRESS_LOGGER = None
     HOME = os.path.expanduser(os.path.join("~", '.elisa'))
@@ -160,6 +160,7 @@ class Settings(_Const):
     MAX_CURVE_DATA_POINTS = 300
     MESH_GENERATOR = 'auto'
     DEFORMATION_TOL = 0.05
+    MAX_RELATIVE_D_IRRADIATION = 0.02
 
     TIMER = 0.0
 
@@ -225,7 +226,8 @@ class Settings(_Const):
             "K93_ATM_TABLES": cls.K93_ATM_TABLES,
             "ATM_ATLAS": cls.ATM_ATLAS,
             "MESH_GENERATOR": cls.MESH_GENERATOR,
-            "DEFORMATION_TOL": cls.DEFORMATION_TOL
+            "DEFORMATION_TOL": cls.DEFORMATION_TOL,
+            "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
         }
 
     @classmethod
@@ -234,8 +236,18 @@ class Settings(_Const):
             with open(cls.LOG_CONFIG) as f:
                 conf_dict = json.loads(f.read())
             log_conf.dictConfig(conf_dict)
+        elif cls.LOG_CONFIG == 'default':
+            cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
+                                          'logging_schemas/default.json')
+            cls.set_up_logging()
+        elif cls.LOG_CONFIG == 'fit':
+            cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
+                                          'logging_schemas/fit.json')
+            cls.set_up_logging()
         else:
-            logging.basicConfig(level=logging.INFO)
+            cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
+                                          'logging_schemas/default.json')
+            cls.set_up_logging()
 
     @classmethod
     def read_and_update_config(cls, conf_path=None):
@@ -275,10 +287,7 @@ class Settings(_Const):
             cls.SUPPRESS_WARNINGS = c_parse.getboolean('general', 'suppress_warnings', fallback=cls.SUPPRESS_WARNINGS)
             cls.LOG_CONFIG = c_parse.get('general', 'log_config', fallback=cls.LOG_CONFIG)
 
-            if not os.path.isfile(cls.LOG_CONFIG):
-                if not cls.SUPPRESS_WARNINGS:
-                    warnings.warn(f"log config `{cls.LOG_CONFIG}` doesn't exist, rollback to default")
-                cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging.json')
+            cls.set_up_logging()
 
             cls.SUPPRESS_LOGGER = c_parse.getboolean('general', 'suppress_logger', fallback=cls.SUPPRESS_LOGGER)
             cls.HOME = c_parse.getboolean('general', 'home', fallback=cls.HOME)
@@ -335,6 +344,8 @@ class Settings(_Const):
                                                          fallback=cls.MAX_CURVE_DATA_POINTS)
             cls.MESH_GENERATOR = c_parse.getfloat('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
             cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol', fallback=cls.DEFORMATION_TOL)
+            cls.MAX_RELATIVE_D_IRRADIATION = c_parse.getfloat('computational', 'max_relative_d_irradiation',
+                                                              fallback=cls.MAX_RELATIVE_D_IRRADIATION)
         # **************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)
