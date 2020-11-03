@@ -129,17 +129,22 @@ def single_main():
         plt.show()
 
 
-def multiple_main():
+def multiple_main(single_plot=False):
+    axis_font = {'size': '13'}
+    colors = ["red", "blue", "green", "orange"]
     data = {}
     data_path = "inclination.json"
     if op.isfile(data_path):
         os.remove(data_path)
 
     # define plot
-    figure, ax1 = plt.subplots(1, 1, figsize=(8, 5))
+    if single_plot:
+        figure, ax1 = plt.subplots(1, 1, figsize=(8, 5))
+    else:
+        figure, axes = plt.subplots(4, 1, figsize=(8, 5))
 
     # run eval
-    for i in INCLINATIONS:
+    for idx, i in enumerate(INCLINATIONS):
         data[i] = {}
 
         # computational
@@ -161,7 +166,7 @@ def multiple_main():
 
         # analytic horizon
         binary = BinarySystem.from_json(params)
-        analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-3, polar=True,
+        analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-2, polar=True,
                                                          phi_density=200, theta_density=20000)
         phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
         rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
@@ -177,9 +182,20 @@ def multiple_main():
         residua = (rs_d - akima(phis_d)) / akima(phis_d)
 
         # plot
-        ax1.axhline(y=0.0, color='k', linestyle='--', linewidth=1)
-        ax1.plot(phis_d % FULL_ARC, residua, label=f"inclination: {i}" + r"$^\circ$", linewidth=1)
-        ax1.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.4f}"))
+        if single_plot:
+            ax1.axhline(y=0.0, color='k', linestyle='--', linewidth=1)
+            ax1.plot(phis_d % FULL_ARC, residua, label=f"inclination: {i}" + r"$^\circ$", linewidth=1)
+            ax1.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.4f}"))
+        else:
+            ax = axes[idx]
+            ax.axhline(y=0.0, color='k', linestyle='--', linewidth=1)
+            ax.plot(phis_d % FULL_ARC, residua, label=f"inclination: {i}" + r"$^\circ$", linewidth=1, c=colors[idx])
+            ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.4f}"))
+
+            if idx < len(axes) - 1:
+                xticks = [""] * len(phis_d)
+                ax.set_xticklabels(xticks)
+                ax.set_xlabel("", **axis_font)
 
         data[i]["x"] = np.array(phis_d).tolist()
         data[i]["y"] = np.array(residua).tolist()
@@ -187,18 +203,26 @@ def multiple_main():
     with open(data_path, "a+") as f:
         f.write(json.dumps(data, indent=4))
 
-    ax1.legend(loc=2)
-    axis_font = {'size': '13'}
-    ax1.set_ylabel(r"$(\varrho - \varrho_d) / \varrho$", **axis_font)
-    ax1.set_xlabel(r"$\theta$", **axis_font)
+    if single_plot:
+        ax1.legend(loc=2)
+        ax1.set_ylabel(r"$(\varrho - \varrho_d) / \varrho$", **axis_font)
+        ax1.set_xlabel(r"$\theta$", **axis_font)
+    else:
+        for idx, _ in enumerate(INCLINATIONS):
+            ax = axes[idx]
+            ax.legend(loc=2)
+            ax.set_ylabel("", **axis_font)
+        figure.text(0.02, 0.5, r"$(\varrho - \varrho_d) / \varrho$", va='center', rotation='vertical')
+        figure.text(0.5, 0.04, r"$\theta$", ha='center')
 
     params = {'legend.fontsize': 13, 'legend.handlelength': 3}
     plt.rcParams.update(params)
     plt.rc('xtick', labelsize=10)
     plt.rc('ytick', labelsize=10)
 
-    for label in (ax1.get_xticklabels() + ax1.get_yticklabels()):
-        label.set_fontsize(11)
+    if single_plot:
+        for label in (ax1.get_xticklabels() + ax1.get_yticklabels()):
+            label.set_fontsize(11)
 
     plt.show()
     plt.cla()

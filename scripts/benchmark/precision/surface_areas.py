@@ -112,15 +112,15 @@ def main():
     # settings.configure(MESH_GENERATOR='improved_trapezoidal')
     # bs.plot.mesh(components_to_plot=component,)
     # bs.plot.wireframe(components_to_plot=component,)
-    # bs.plot.surface(
-    #     # components_to_plot='primary',
-    #     components_to_plot='secondary',
-    #     phase=0.8,
-    #     inclination=75,
-    #     edges=True,
-    #     colormap=None,
-    #     surface_colors=('gray', 'gray'),
-    #                 )
+    bs.plot.surface(
+        # components_to_plot='primary',
+        components_to_plot='secondary',
+        phase=0.8,
+        inclination=75,
+        edges=True,
+        colormap=None,
+        surface_colors=('gray', 'gray'),
+                    )
 
 
 if __name__ == '__main__':
