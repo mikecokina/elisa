@@ -104,6 +104,7 @@ setup(
         'elisa': [
             'passband/*',
             'conf/*',
+            'conf/logging_schemas/*',
             'schema_registry/*',
             'schema_registry/schema_files/*',
             'data/*'
