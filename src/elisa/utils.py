@@ -19,8 +19,7 @@ from . import (
     umpy as up, settings
 )
 
-# auxiliary variable
-CUMULATIVE_TIME = 0.0
+from elisa.numba_functions import operations
 
 
 def polar_to_cartesian(radius, phi):
@@ -391,11 +390,19 @@ def calculate_distance_matrix(points1, points2, return_join_vector_matrix=False)
     :return: Tuple[numpy.array, Union[numpy.array, None]]
     """
     # pairwise distance vector matrix
-    distance_vector_matrix = points2[None, :, :] - points1[:, None, :]
-    distance_matrix = np.linalg.norm(distance_vector_matrix, axis=2)
+    # distance_vector_matrix = points2[None, :, :] - points1[:, None, :]
+    distance_vector_matrix = operations.create_distance_vector_matrix(points1, points2)
 
-    return (distance_matrix, distance_vector_matrix / distance_matrix[:, :, None]) if return_join_vector_matrix \
-        else (distance_matrix, None)
+    # distance_matrix = np.linalg.norm(distance_vector_matrix, axis=2)
+    distance_matrix = operations.calculate_lengths_in_3d_array(distance_vector_matrix)
+
+    # return (distance_matrix, distance_vector_matrix / distance_matrix[:, :, None]) if return_join_vector_matrix \
+    #     else (distance_matrix, None)
+
+    normalized_distance_vectors = \
+        operations.divide_points_in_array_by_constants(distance_vector_matrix, distance_matrix)
+    return (distance_matrix, normalized_distance_vectors) if return_join_vector_matrix \
+            else (distance_matrix, None)
 
 
 def find_face_centres(faces):

@@ -2,20 +2,22 @@
 import numpy as np
 
 from copy import copy
-from .. surface import faces as bsfaces
+from ..surface import faces as bsfaces
 from .. import utils as bsutils
-from ... logger import getLogger
+from ...logger import getLogger
 from ... import settings
-from ... utils import is_empty
-from ... base.surface import temperature as btemperature
-from ... pulse import pulsations
+from ...utils import is_empty
+from ...base.surface import temperature as btemperature
+from ...pulse import pulsations
 from ... import (
     umpy as up,
     ld,
     utils
 )
 from elisa.base.surface.temperature import renormalize_temperatures
+from elisa.numba_functions import reflection_effect as re_numba
 
+from time import time
 
 logger = getLogger("binary_system.surface.temperature")
 
@@ -82,7 +84,7 @@ def reflection_effect(system, components_distance, iterations):
         star = getattr(system, component)
 
         points[component], faces[component], centres[component], normals[component], temperatures[component], \
-            areas[component], log_g[component] = init_surface_variables(star)
+        areas[component], log_g[component] = init_surface_variables(star)
 
         # test for visibility of star faces
         vis_test[component], vis_test_symmetry[component] = bsfaces.get_visibility_tests(centres[component],
@@ -97,7 +99,7 @@ def reflection_effect(system, components_distance, iterations):
 
                 # merge surface and spot face parameters into one variable
                 centres[component], normals[component], temperatures[component], areas[component], \
-                    vis_test[component], log_g[component] = \
+                vis_test[component], log_g[component] = \
                     include_spot_to_surface_variables(centres[component], spot.face_centres,
                                                       normals[component], spot.normals,
                                                       temperatures[component], spot.temperatures,
@@ -351,21 +353,20 @@ def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis
         distance - distance matrix
         join vector - matrix of unit vectors pointing between each two faces on opposite stars
     """
-    distance = np.empty(shape=shape[:2], dtype=np.float)
-    join_vector = np.empty(shape=shape, dtype=np.float)
-
-    # in case of symmetries, you need to calculate only minority part of distance matrix connected with base
+    # in case of symmetries, you need to calculate only minor part of distance matrix connected with base
     # symmetry part of the both surfaces
-    distance[:shape_reduced[0], :], join_vector[:shape_reduced[0], :, :] = \
-        utils.calculate_distance_matrix(points1=centres['primary'][vis_test_symmetry['primary']],
-                                        points2=centres['secondary'][vis_test['secondary']],
-                                        return_join_vector_matrix=True)
+
+    dist1, join_vect1 = utils.calculate_distance_matrix(points1=centres['primary'][vis_test_symmetry['primary']],
+                                                        points2=centres['secondary'][vis_test['secondary']],
+                                                        return_join_vector_matrix=True)
 
     aux = centres['primary'][vis_test['primary']]
-    distance[shape_reduced[0]:, :shape_reduced[1]], join_vector[shape_reduced[0]:, :shape_reduced[1], :] = \
-        utils.calculate_distance_matrix(points1=aux[shape_reduced[0]:],
-                                        points2=centres['secondary'][vis_test_symmetry['secondary']],
-                                        return_join_vector_matrix=True)
+    dist2, join_vect2 = utils.calculate_distance_matrix(points1=aux[shape_reduced[0]:],
+                                                        points2=centres['secondary'][vis_test_symmetry['secondary']],
+                                                        return_join_vector_matrix=True)
+
+    distance, join_vector = \
+        re_numba.write_distances_to_common_array(dist1, dist2, join_vect1, join_vect2, shape, shape_reduced)
 
     return distance, join_vector
 
@@ -518,5 +519,3 @@ def build_temperature_perturbations(system, components_distance, component):
             com_x = 0 if component == 'primary' else components_distance
             star = pulsations.incorporate_temperature_perturbations(star, com_x=com_x, phase=phase, time=system.time)
     return system
-
-
