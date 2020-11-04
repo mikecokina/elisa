@@ -2,7 +2,7 @@ from numba import jit
 import numpy as np
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def write_distances_to_common_array(dist1, dist2, join1, join2, shape, shape_reduced):
     """
     Writing partial distance matrices and join vector.

@@ -2,7 +2,7 @@ from numba import jit
 import numpy as np
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def create_distance_vector_matrix(points1, points2):
     """
     Calculates distances between every point couple in arrays points1 and points2
@@ -18,7 +18,7 @@ def create_distance_vector_matrix(points1, points2):
     return result
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def calculate_lengths_in_3d_array(matrix):
     """
     Calculates lengths of each 3d vector stored in (a, b, 3) array.
@@ -34,7 +34,7 @@ def calculate_lengths_in_3d_array(matrix):
     return result
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def divide_points_in_array_by_constants(matrix, coefficients):
     """
     Divide 3D points in matrix by a separate coefficient (e.g. their norm).
