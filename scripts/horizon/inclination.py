@@ -33,7 +33,7 @@ BINARY_DEFINITION = {
         "gravity_darkening": 0.09,
         "albedo": 0.5,
         "metallicity": 0.0,
-        "discretization_factor": 10
+        "discretization_factor": 5
     },
     "secondary": {
         "mass": 0.5,
@@ -130,6 +130,7 @@ def single_main():
 
 
 def multiple_main(single_plot=False):
+    _residua = []
     axis_font = {'size': '13'}
     colors = ["red", "blue", "green", "orange"]
     data = {}
@@ -166,7 +167,7 @@ def multiple_main(single_plot=False):
 
         # analytic horizon
         binary = BinarySystem.from_json(params)
-        analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-2, polar=True,
+        analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-3, polar=True,
                                                          phi_density=200, theta_density=20000)
         phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
         rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
@@ -185,12 +186,13 @@ def multiple_main(single_plot=False):
         if single_plot:
             ax1.axhline(y=0.0, color='k', linestyle='--', linewidth=1)
             ax1.plot(phis_d % FULL_ARC, residua, label=f"inclination: {i}" + r"$^\circ$", linewidth=1)
-            ax1.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.4f}"))
+            ax1.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3f}"))
         else:
             ax = axes[idx]
             ax.axhline(y=0.0, color='k', linestyle='--', linewidth=1)
             ax.plot(phis_d % FULL_ARC, residua, label=f"inclination: {i}" + r"$^\circ$", linewidth=1, c=colors[idx])
-            ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.4f}"))
+            ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3f}"))
+            _residua += residua[~np.isnan(residua)].tolist()
 
             if idx < len(axes) - 1:
                 xticks = [""] * len(phis_d)
@@ -208,10 +210,14 @@ def multiple_main(single_plot=False):
         ax1.set_ylabel(r"$(\varrho - \varrho_d) / \varrho$", **axis_font)
         ax1.set_xlabel(r"$\theta$", **axis_font)
     else:
+        bound = max(abs(np.array(_residua))) * 1.2
         for idx, _ in enumerate(INCLINATIONS):
             ax = axes[idx]
             ax.legend(loc=2)
             ax.set_ylabel("", **axis_font)
+
+            ax.set_ylim([-bound, bound])
+
         figure.text(0.02, 0.5, r"$(\varrho - \varrho_d) / \varrho$", va='center', rotation='vertical')
         figure.text(0.5, 0.04, r"$\theta$", ha='center')
 

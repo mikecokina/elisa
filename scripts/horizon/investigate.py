@@ -14,7 +14,7 @@ def main():
         y = np.array(_data["y"])
         y = np.abs(y[~np.isnan(y)])
 
-        results[i] = {q: "{:.5f}".format(val) for q, val in zip(qs, np.percentile(y, qs).tolist())}
+        results[i] = {q: "{:.6f}".format(val) for q, val in zip(qs, np.percentile(y, qs).tolist())}
 
     print(json.dumps(results, indent=4))
 
