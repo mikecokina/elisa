@@ -29,7 +29,7 @@ def calculate_lengths_in_3d_array(matrix):
     result = np.empty(matrix.shape[:-1])
     for ii in range(matrix.shape[0]):
         for jj in range(matrix.shape[1]):
-            result[ii, jj] = (matrix[ii, jj, 0]**2 + matrix[ii, jj, 1]**2 + matrix[ii, jj, 2]**2)**0.5
+            result[ii, jj] = (matrix[ii, jj, 0] ** 2 + matrix[ii, jj, 1] ** 2 + matrix[ii, jj, 2] ** 2) ** 0.5
 
     return result
 
@@ -51,3 +51,14 @@ def divide_points_in_array_by_constants(matrix, coefficients):
 
     return result
 
+
+@jit(nopython=True, cache=True)
+def dot_product_on_matrix(matrix1, matrix2, mult_factor=1):
+    result = np.empty(matrix1.shape[:-1])
+    for ii in range(matrix1.shape[0]):
+        for jj in range(matrix1.shape[1]):
+            result[ii, jj] = mult_factor * (matrix1[ii, jj, 0] * matrix2[ii, jj, 0] + \
+                                            matrix1[ii, jj, 1] * matrix2[ii, jj, 1] + \
+                                            matrix1[ii, jj, 2] * matrix2[ii, jj, 2])
+
+    return result

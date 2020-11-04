@@ -15,7 +15,7 @@ from ... import (
     utils
 )
 from elisa.base.surface.temperature import renormalize_temperatures
-from elisa.numba_functions import reflection_effect as re_numba
+from elisa.numba_functions import reflection_effect as re_numba, operations
 
 from time import time
 
@@ -388,19 +388,36 @@ def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test,
              'secondary': np.empty(shape=shape, dtype=np.float)}
 
     # calculating only necessary components of the matrix (near left and upper edge) because of surface symmetry
+    # gamma['primary'][:, :shape_reduced[1]] = \
+    #     np.sum(up.multiply(normals['primary'][vis_test['primary']][:, None, :],
+    #                        join_vector[:, :shape_reduced[1], :]), axis=2)
+    # gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = \
+    #     np.sum(up.multiply(normals['primary'][vis_test_symmetry['primary']][:, None, :],
+    #                        join_vector[:shape_reduced[0], shape_reduced[1]:, :]), axis=2)
+    #
+    # gamma['secondary'][:shape_reduced[0], :] = \
+    #     np.sum(up.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
+    #                        -join_vector[:shape_reduced[0], :, :]), axis=2)
+    # gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = \
+    #     np.sum(up.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
+    #                        -join_vector[shape_reduced[0]:, :shape_reduced[1], :]), axis=2)
+
+    time_inc = time()
     gamma['primary'][:, :shape_reduced[1]] = \
-        np.sum(up.multiply(normals['primary'][vis_test['primary']][:, None, :],
-                           join_vector[:, :shape_reduced[1], :]), axis=2)
+        operations.dot_product_on_matrix(normals['primary'][vis_test['primary']][:, None, :],
+                                         join_vector[:, :shape_reduced[1], :])
     gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = \
-        np.sum(up.multiply(normals['primary'][vis_test_symmetry['primary']][:, None, :],
-                           join_vector[:shape_reduced[0], shape_reduced[1]:, :]), axis=2)
+        operations.dot_product_on_matrix(normals['primary'][vis_test_symmetry['primary']][:, None, :],
+                                         join_vector[:shape_reduced[0], shape_reduced[1]:, :])
 
     gamma['secondary'][:shape_reduced[0], :] = \
-        np.sum(up.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
-                           -join_vector[:shape_reduced[0], :, :]), axis=2)
+        operations.dot_product_on_matrix(normals['secondary'][vis_test['secondary']][None, :, :],
+                                         join_vector[:shape_reduced[0], :, :], mult_factor=-1)
     gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = \
-        np.sum(up.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
-                           -join_vector[shape_reduced[0]:, :shape_reduced[1], :]), axis=2)
+        operations.dot_product_on_matrix(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
+                                         join_vector[shape_reduced[0]:, :shape_reduced[1], :], mult_factor=-1)
+    settings.TIMER += time() - time_inc
+
     return gamma
 
 
