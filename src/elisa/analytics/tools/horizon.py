@@ -147,23 +147,35 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
     position = Position(*((0,) + tuple(binary.orbit.orbital_motion(phase=phase)[0])))
 
     # rotate line of sight to simulate phase and inclination
-    r0 = np.array([0.0, 0.0, 1.0])
+    zv = np.array([0.0, 0.0, 1.0])
 
-    v = utils.around_axis_rotation(HALF_PI - binary.inclination, LINE_OF_SIGHT, axis="y", inverse=False)
-    v = utils.around_axis_rotation(position.azimuth - HALF_PI, v, axis="z", inverse=True)
+    xv = utils.around_axis_rotation(HALF_PI - binary.inclination, LINE_OF_SIGHT, axis="y", inverse=False)
+    xv = utils.around_axis_rotation(position.azimuth - HALF_PI, xv, axis="z", inverse=True)
 
-    r0 = utils.around_axis_rotation(HALF_PI - binary.inclination, r0, axis="y", inverse=False)
-    r0 = utils.around_axis_rotation(position.azimuth - HALF_PI, r0, axis="z", inverse=True)
+    zv = utils.around_axis_rotation(HALF_PI - binary.inclination, zv, axis="y", inverse=False)
+    zv = utils.around_axis_rotation(position.azimuth - HALF_PI, zv, axis="z", inverse=True)
+
+    # perpendicular vector to find theta-like rotation
+    yv = np.cross(zv, xv)
 
     potential_fn = potential_primary_fn
     precalc_fn = pre_calculate_for_potential_value_primary
     fprime = radial_primary_potential_derivative
 
-    # prepare suitable radius vectors about positions where horizon should be hidden
-    theta_range = np.linspace(np.radians(-5), np.radians(5), theta_density)
+    # prepare-phi like vector
     phi_range = np.linspace(np.radians(0), np.radians(360), phi_density)
-    vectors = [utils.around_axis_rotation(d_theta, r0, axis="y") for d_theta in theta_range]
-    vectors = [utils.arbitrary_rotation(d_phi, v, vector=r_0) for d_phi in phi_range for r_0 in vectors]
+    theta_range = np.linspace(np.radians(-5), np.radians(5), theta_density)
+
+    # prepare theta-like vectors via rotation around phi and then aroun yv in -/+ range
+    vectors = []
+    for d_phi in phi_range:
+        # girst rotate zv about phi around vector `xv`
+        inner_vectors = []
+        vector = utils.arbitrary_rotation(d_phi, xv, vector=zv)
+        _yv = utils.arbitrary_rotation(d_phi, xv, vector=yv)
+        for d_theta in theta_range:
+            vectors.append(utils.arbitrary_rotation(d_theta, _yv, vector=vector))
+
     vectors = np.array(utils.cartesian_to_spherical(vectors))
 
     phi, theta = vectors[:, 1], vectors[:, 2]
@@ -177,7 +189,7 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
     points = utils.spherical_to_cartesian(np.array([radius, phi, theta]).T)
     normals = calculate_potential_gradient(1.0, "primary", points, star.synchronicity, binary.mass_ratio)
 
-    cosines = np.inner(normals, v)
+    cosines = np.inner(normals, xv)
     cosines = cosines.reshape(phi_density, theta_density)
     cosines_gtz = [up.arange(np.shape(row)[0])[row > 0] for row in cosines]
     # take only smallest values (but greater than zero) in each theta line

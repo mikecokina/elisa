@@ -5,7 +5,6 @@ import json
 import os
 
 import numpy as np
-import pandas as pd
 import os.path as op
 
 from elisa import BinarySystem

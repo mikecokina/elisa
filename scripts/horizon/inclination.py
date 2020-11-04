@@ -47,7 +47,7 @@ BINARY_DEFINITION = {
 }
 
 INCLINATIONS = [90, 70, 50, 10]
-PHASE = 0.1
+PHASE = 0.3
 
 
 def single_main():
@@ -77,8 +77,8 @@ def single_main():
         # plt.show()
 
         # analytic horizon
-        analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-3, polar=True,
-                                                         phi_density=200, theta_density=20000)
+        analytic_horizon = horizon.get_analytics_horizon(binary=binary, phase=PHASE, tol=1e-2, polar=True,
+                                                         phi_density=50, theta_density=20000)
         phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
         rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
         rs, phis = rs[:-1], phis[:-1]
@@ -235,4 +235,4 @@ def multiple_main(single_plot=False):
 
 
 if __name__ == '__main__':
-    multiple_main()
+    single_main()
