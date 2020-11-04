@@ -50,15 +50,3 @@ def divide_points_in_array_by_constants(matrix, coefficients):
                 result[ii, jj, kk] = matrix[ii, jj, kk] / coefficients[ii, jj]
 
     return result
-
-
-@jit(nopython=True, cache=True)
-def dot_product_on_matrix(matrix1, matrix2, mult_factor=1):
-    result = np.empty(matrix1.shape[:-1])
-    for ii in range(matrix1.shape[0]):
-        for jj in range(matrix1.shape[1]):
-            result[ii, jj] = mult_factor * (matrix1[ii, jj, 0] * matrix2[ii, jj, 0] + \
-                                            matrix1[ii, jj, 1] * matrix2[ii, jj, 1] + \
-                                            matrix1[ii, jj, 2] * matrix2[ii, jj, 2])
-
-    return result

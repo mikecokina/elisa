@@ -193,9 +193,8 @@ def reflection_effect(system, components_distance, iterations):
 
         # calculating cos of angle gamma between face normal and join vector
         gamma = \
-            {'primary': np.sum(up.multiply(normals['primary'][vis_test['primary']][:, None, :], join_vector), axis=2),
-             'secondary': np.sum(up.multiply(normals['secondary'][vis_test['secondary']][None, :, :], -join_vector),
-                                 axis=2)}
+            {'primary': re_numba.gamma_primary(normals['primary'][vis_test['primary']], join_vector),
+             'secondary': re_numba.gamma_secondary(normals['secondary'][vis_test['secondary']], join_vector)}
         # negative sign is there because of reversed distance vector used for secondary component
 
         # testing mutual visibility of faces by assigning 0 to non visible face combination
@@ -355,18 +354,20 @@ def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis
     """
     # in case of symmetries, you need to calculate only minor part of distance matrix connected with base
     # symmetry part of the both surfaces
+    distance = np.empty(shape=shape[:-1])
+    join_vector = np.empty(shape=shape)
 
-    dist1, join_vect1 = utils.calculate_distance_matrix(points1=centres['primary'][vis_test_symmetry['primary']],
-                                                        points2=centres['secondary'][vis_test['secondary']],
-                                                        return_join_vector_matrix=True)
+    distance[:shape_reduced[0], :], join_vector[:shape_reduced[0], :, :] = \
+        utils.calculate_distance_matrix(
+            points1=centres['primary'][vis_test_symmetry['primary']],
+            points2=centres['secondary'][vis_test['secondary']],
+            return_join_vector_matrix=True)
 
     aux = centres['primary'][vis_test['primary']]
-    dist2, join_vect2 = utils.calculate_distance_matrix(points1=aux[shape_reduced[0]:],
-                                                        points2=centres['secondary'][vis_test_symmetry['secondary']],
-                                                        return_join_vector_matrix=True)
-
-    distance, join_vector = \
-        re_numba.write_distances_to_common_array(dist1, dist2, join_vect1, join_vect2, shape, shape_reduced)
+    distance[shape_reduced[0]:, :shape_reduced[1]], join_vector[shape_reduced[0]:, :shape_reduced[1], :] = \
+        utils.calculate_distance_matrix(points1=aux[shape_reduced[0]:],
+                                        points2=centres['secondary'][vis_test_symmetry['secondary']],
+                                        return_join_vector_matrix=True)
 
     return distance, join_vector
 
@@ -387,36 +388,19 @@ def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test,
     gamma = {'primary': np.empty(shape=shape, dtype=np.float),
              'secondary': np.empty(shape=shape, dtype=np.float)}
 
-    # calculating only necessary components of the matrix (near left and upper edge) because of surface symmetry
-    # gamma['primary'][:, :shape_reduced[1]] = \
-    #     np.sum(up.multiply(normals['primary'][vis_test['primary']][:, None, :],
-    #                        join_vector[:, :shape_reduced[1], :]), axis=2)
-    # gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = \
-    #     np.sum(up.multiply(normals['primary'][vis_test_symmetry['primary']][:, None, :],
-    #                        join_vector[:shape_reduced[0], shape_reduced[1]:, :]), axis=2)
-    #
-    # gamma['secondary'][:shape_reduced[0], :] = \
-    #     np.sum(up.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
-    #                        -join_vector[:shape_reduced[0], :, :]), axis=2)
-    # gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = \
-    #     np.sum(up.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
-    #                        -join_vector[shape_reduced[0]:, :shape_reduced[1], :]), axis=2)
-
-    time_inc = time()
     gamma['primary'][:, :shape_reduced[1]] = \
-        operations.dot_product_on_matrix(normals['primary'][vis_test['primary']][:, None, :],
-                                         join_vector[:, :shape_reduced[1], :])
+        re_numba.gamma_primary(normals['primary'][vis_test['primary']],
+                               join_vector[:, :shape_reduced[1], :])
     gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = \
-        operations.dot_product_on_matrix(normals['primary'][vis_test_symmetry['primary']][:, None, :],
-                                         join_vector[:shape_reduced[0], shape_reduced[1]:, :])
+        re_numba.gamma_primary(normals['primary'][vis_test_symmetry['primary']],
+                               join_vector[:shape_reduced[0], shape_reduced[1]:, :])
 
     gamma['secondary'][:shape_reduced[0], :] = \
-        operations.dot_product_on_matrix(normals['secondary'][vis_test['secondary']][None, :, :],
-                                         join_vector[:shape_reduced[0], :, :], mult_factor=-1)
+        re_numba.gamma_secondary(normals['secondary'][vis_test['secondary']],
+                                 join_vector[:shape_reduced[0], :, :])
     gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = \
-        operations.dot_product_on_matrix(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
-                                         join_vector[shape_reduced[0]:, :shape_reduced[1], :], mult_factor=-1)
-    settings.TIMER += time() - time_inc
+        re_numba.gamma_secondary(normals['secondary'][vis_test_symmetry['secondary']],
+                                 join_vector[shape_reduced[0]:, :shape_reduced[1], :])
 
     return gamma
 
