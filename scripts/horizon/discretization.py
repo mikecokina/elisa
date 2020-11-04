@@ -48,7 +48,7 @@ BINARY_DEFINITION = {
 }
 
 DISCRETIZATION_FACTORS = [3, 5, 7, 10]
-PHASE = 0.1
+PHASE = 0.5 * 6 / 360.0
 
 
 def single_main():

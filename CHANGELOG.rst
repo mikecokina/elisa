@@ -209,6 +209,8 @@ v0.5
     - pre-build logging schemas added, that are accesible via LOG_CONFIG parameter with options 'default' or 'fit' or
       path to custom configuration file. 'fit' schema will suppress all logging messages except for messages from
       analytics class.
+    - utilizing numba for computationally heavy tasks such as reflection effect (preparation for GPU ready version of
+      ELISa)
 
 **Fixes**
 
