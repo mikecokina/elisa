@@ -85,7 +85,8 @@ setup(
         'pypex==0.1.0',
         'python-dateutil>=2.6.1,<=2.8.1',
         'scipy>=1.0.0,<=1.5.2',
-        'tqdm>=4.43.0'
+        'tqdm>=4.43.0',
+        'numba==0.51.2'
     ],
 
     # List additional groups of dependencies here (e.g. development
