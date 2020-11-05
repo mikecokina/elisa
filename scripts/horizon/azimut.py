@@ -49,10 +49,12 @@ BINARY_DEFINITION = {
 
 DISCRETIZATION_FACTORS = [3, 5, 7, 10]
 PHASE = 0.5 * 6 / 360.0
-PHASES = [0.0, 0.25, 0.3, 0.5]
+# PHASES = [0.0, 0.25, 0.3, 0.5]
+PHASES = [0.0, 0.15, 0.25, 0.45]
 
 
 def multiple_main():
+    _residua = []
     axis_font = {'size': '13'}
     colors = ["red", "blue", "green", "orange"]
     ylims = 0.0012
@@ -98,9 +100,10 @@ def multiple_main():
 
         ax = axes[idx]
         ax.axhline(y=0.0, color='k', linestyle='--', linewidth=1)
-        ax.plot(phis_d % FULL_ARC, residua, label=f"phase: {np.round(phs, 2)}" + r"$^\circ$", linewidth=1,
+        ax.plot(phis_d % FULL_ARC, residua, label=f"phase: {np.round(phs, 2)}", linewidth=1,
                 c=colors[idx])
-        ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.4f}"))
+        ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3f}"))
+        _residua += residua[~np.isnan(residua)].tolist()
 
         ax.set_ylim(-ylims, ylims)
         if idx < len(axes) - 1:
@@ -114,10 +117,12 @@ def multiple_main():
     with open(data_path, "a+") as f:
         f.write(json.dumps(data, indent=4))
 
+    bound = max(abs(np.array(_residua))) * 1.2
     for idx, _ in enumerate(PHASES):
         ax = axes[idx]
         ax.legend(loc=2)
         ax.set_ylabel("", **axis_font)
+        ax.set_ylim([-bound, bound])
     figure.text(0.02, 0.5, r"$(\varrho - \varrho_d) / \varrho$", va='center', rotation='vertical')
     figure.text(0.5, 0.04, r"$\theta$", ha='center')
 

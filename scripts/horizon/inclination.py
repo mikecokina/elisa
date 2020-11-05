@@ -46,8 +46,8 @@ BINARY_DEFINITION = {
     }
 }
 
-INCLINATIONS = [90, 70, 50, 10]
-PHASE = 0.3
+INCLINATIONS = [80, 50, 30, 10]
+PHASE = 0.0
 
 
 def single_main():
@@ -132,6 +132,7 @@ def single_main():
 def multiple_main(single_plot=False):
     _residua = []
     axis_font = {'size': '13'}
+    ylims = 0.0012
     colors = ["red", "blue", "green", "orange"]
     data = {}
     data_path = "inclination.json"
@@ -159,11 +160,6 @@ def multiple_main(single_plot=False):
         phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
         rs_d, phis_d = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
         rs_d, phis_d = rs_d[:-1], phis_d[:-1]
-
-        # vertices based discrete horizon
-        phi_argsort = np.argsort(vertex_discrete_horizon.T[1] % FULL_ARC)
-        rs_vd, phis_vd = vertex_discrete_horizon[phi_argsort].T[0], vertex_discrete_horizon[phi_argsort].T[1] % FULL_ARC
-        rs_vd, phis_vd = rs_vd[:-1], phis_vd[:-1]
 
         # analytic horizon
         binary = BinarySystem.from_json(params)
@@ -194,6 +190,7 @@ def multiple_main(single_plot=False):
             ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.3f}"))
             _residua += residua[~np.isnan(residua)].tolist()
 
+            ax.set_ylim(-ylims, ylims)
             if idx < len(axes) - 1:
                 xticks = [""] * len(phis_d)
                 ax.set_xticklabels(xticks)
@@ -230,9 +227,11 @@ def multiple_main(single_plot=False):
         for label in (ax1.get_xticklabels() + ax1.get_yticklabels()):
             label.set_fontsize(11)
 
+    plt.subplots_adjust(wspace=0.0, hspace=0.0, top=0.98, right=0.98)
     plt.show()
     plt.cla()
 
 
 if __name__ == '__main__':
-    single_main()
+    # single_main()
+    multiple_main()
