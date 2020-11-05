@@ -21,7 +21,7 @@ BINARY_DEFINITION = {
         "gamma": 0.0,
         "period": 5.0,
         "eccentricity": 0.0,
-        "inclination": 90.0,
+        "inclination": 60.0,
         "primary_minimum_time": 0.0,
         "phase_shift": 0.0
     },
@@ -46,7 +46,7 @@ BINARY_DEFINITION = {
     }
 }
 
-DISCRETIZATION_FACTORS = [3, 5, 7, 10]
+DISCRETIZATION_FACTORS = [10, 7, 5, 3]
 PHASE = 0.5 * 6 / 360.0
 PHASES = [0, 0.25, 0.3, 0.5]
 
@@ -192,6 +192,8 @@ def multiple_main():
     for label in (ax1.get_xticklabels() + ax1.get_yticklabels()):
         label.set_fontsize(11)
 
+    plt.subplots_adjust(wspace=0.0, hspace=0.0, top=0.98, right=0.98)
+
     plt.show()
     plt.cla()
 
@@ -276,4 +278,6 @@ def multiple_main2():
 
 
 if __name__ == '__main__':
-    multiple_main2()
+    # single_main()
+    multiple_main()
+    # multiple_main2()

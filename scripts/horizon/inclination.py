@@ -46,7 +46,7 @@ BINARY_DEFINITION = {
     }
 }
 
-INCLINATIONS = [80, 50, 30, 10]
+INCLINATIONS = [80, 60, 30, 0]
 PHASE = 0.0
 
 
@@ -54,7 +54,7 @@ def single_main():
     for i in INCLINATIONS[1:2]:
         # computational
         params = BINARY_DEFINITION.copy()
-        params["system"]["inclination"] = 50
+        params["system"]["inclination"] = 0
         binary = BinarySystem.from_json(params)
 
         # observer = Observer(["Generic.Bessell.V"], binary)
@@ -213,7 +213,7 @@ def multiple_main(single_plot=False):
             ax.legend(loc=2)
             ax.set_ylabel("", **axis_font)
 
-            ax.set_ylim([-bound, bound])
+            ax.set_ylim([-0.0012, 0.0012])
 
         figure.text(0.02, 0.5, r"$(\varrho - \varrho_d) / \varrho$", va='center', rotation='vertical')
         figure.text(0.5, 0.04, r"$\theta$", ha='center')

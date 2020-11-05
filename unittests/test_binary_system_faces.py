@@ -30,21 +30,21 @@ class BuildFacesSpotsFreeTestCase(ElisaTestCase):
                             len(orbital_position_container.secondary.faces)], length)
 
     def test_build_faces_detached(self):
-        self.generator_test_faces('detached', [848, 848])
+        self.generator_test_faces('detached', [832, 832])
 
     def test_build_faces_over_contact(self):
-        self.generator_test_faces('over-contact', [760, 724])
+        self.generator_test_faces('over-contact', [736, 708])
 
     def test_build_faces_over_contact2(self):
         settings.configure(MESH_GENERATOR="improved_trapezoidal")
-        self.generator_test_faces('over-contact', [760, 728])
+        self.generator_test_faces('over-contact', [736, 712])
 
     def test_build_faces_semi_detached(self):
-        self.generator_test_faces('semi-detached', [848, 848])
+        self.generator_test_faces('semi-detached', [832, 832])
 
     def test_build_faces_semi_detached2(self):
         settings.configure(MESH_GENERATOR="improved_trapezoidal")
-        self.generator_test_faces('semi-detached', [904, 904])
+        self.generator_test_faces('semi-detached', [888, 888])
 
     def test_closed_surface_detached(self):
         orbital_position_container = self.build_system('detached')
@@ -115,21 +115,21 @@ class BuildSpottyFacesTestCase(ElisaTestCase):
                             len(orbital_position_container.secondary.spots[0].faces)], length)
 
     def test_build_faces_detached(self):
-        self.generator_test_faces('detached', [785, 186, 97, 6])
+        self.generator_test_faces('detached', [773, 182, 97, 6])
 
     def test_build_faces_over_contact(self):
-        self.generator_test_faces('over-contact', [703, 350, 97, 24])
+        self.generator_test_faces('over-contact', [683, 350, 97, 24])
 
     def test_build_faces_over_contact2(self):
         settings.configure(MESH_GENERATOR="improved_trapezoidal")
-        self.generator_test_faces('over-contact', [705, 346, 97, 24])
+        self.generator_test_faces('over-contact', [685, 346, 97, 24])
 
     def test_build_faces_semi_detached(self):
-        self.generator_test_faces('semi-detached', [785, 400, 97, 24])
+        self.generator_test_faces('semi-detached', [773, 396, 97, 24])
 
     def test_build_faces_semi_detached2(self):
         settings.configure(MESH_GENERATOR="improved_trapezoidal")
-        self.generator_test_faces('semi-detached', [841, 414, 97, 24])
+        self.generator_test_faces('semi-detached', [827, 410, 97, 24])
 
     def test_closed_surface_detached(self):
         orbital_position_container = self.build_system('detached')

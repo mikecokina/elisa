@@ -21,6 +21,7 @@ from ... import (
 )
 
 logger = getLogger("binary_system.surface.mesh")
+SEAM_CONST = 1.08
 
 
 def build_mesh(system, components_distance, component="all"):
@@ -123,13 +124,13 @@ def trapezoidal_mesh(discretization):
     separator = []
 
     # azimuths for points on equator
-    num = int(const.PI // discretization)
+    num = int(const.PI // (SEAM_CONST * discretization))
     phi = np.linspace(0., const.PI, num=num + 1)
     theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
 
     # azimuths for points on meridian
-    v_num = int(const.HALF_PI // vertical_alpha)
+    v_num = int(const.HALF_PI // (SEAM_CONST * vertical_alpha))
     # v_num = int(const.HALF_PI // discretization)
     phi_meridian = np.concatenate((const.PI * np.ones(v_num - 1), np.zeros(v_num)))
     theta_meridian = up.concatenate((np.linspace(const.HALF_PI, 0, num=v_num + 1)[1:-1],
@@ -139,6 +140,7 @@ def trapezoidal_mesh(discretization):
     theta = up.concatenate((theta, theta_meridian))
     separator.append(np.shape(theta)[0])
 
+    v_num = int(const.HALF_PI // vertical_alpha)
     # azimuths for rest of the quarter
     thetas = np.linspace(discretization, const.HALF_PI, num=v_num - 1, endpoint=False)
     for tht in thetas:
@@ -171,7 +173,7 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     separator = []
 
     # azimuths for points on equator
-    num = int(const.PI // discretization)
+    num = int(const.PI // (SEAM_CONST * discretization))
     phi = np.linspace(0., const.PI, num=num + 1)
     theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
@@ -190,13 +192,14 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     phi[outer_mask] += outer_corr
 
     # azimuths for points on meridian
-    v_num = int(const.HALF_PI // vertical_alpha)
+    v_num = int(const.HALF_PI // (1.07*vertical_alpha))
     # v_num = int(const.HALF_PI // discretization)
     phi_meridian = np.concatenate((const.PI * np.ones(v_num - 1), np.zeros(v_num)))
     theta_meridian = up.concatenate((np.linspace(const.HALF_PI, 0, num=v_num + 1)[1:-1],
                                      np.linspace(0., const.HALF_PI, num=v_num, endpoint=False)))
 
     # azimuths for rest of the quarter
+    v_num = int(const.HALF_PI // vertical_alpha)
     thetas_lin = np.linspace(discretization, const.HALF_PI, num=v_num - 1, endpoint=False)
 
     # correcting theta for obliqueness
@@ -281,13 +284,13 @@ def trapezoidal_overcontact_farside_points(discretization):
     separator = []
 
     # calculating points on farside equator
-    num = int(const.HALF_PI // discretization)
+    num = int(const.HALF_PI // (SEAM_CONST * discretization))
     phi = np.linspace(const.HALF_PI, const.PI, num=num + 2)
     theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
 
     # calculating points on phi = pi meridian
-    v_num = int(const.HALF_PI / vertical_alpha)
+    v_num = int(const.HALF_PI / (SEAM_CONST * vertical_alpha))
     phi_meridian1 = np.full(v_num - 1, const.PI)
     theta_meridian1 = np.linspace(0., const.HALF_PI, num=v_num - 1, endpoint=False)
     phi = up.concatenate((phi, phi_meridian1))
@@ -302,8 +305,10 @@ def trapezoidal_overcontact_farside_points(discretization):
     theta = up.concatenate((theta, theta_meridian2))
     separator.append(np.shape(theta)[0])
 
+    v_num = int(const.HALF_PI / vertical_alpha)
+    theta_meridian = np.linspace(0., const.HALF_PI, num=v_num - 1, endpoint=False)
     # calculating the rest of the surface on farside
-    for tht in theta_meridian1[1:]:
+    for tht in theta_meridian[1:]:
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.HALF_PI // alpha_corrected)
         alpha_corrected = const.HALF_PI / (num + 1)
@@ -332,7 +337,7 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     separator = []
 
     # calculating points on farside equator
-    num = int(const.HALF_PI / discretization)
+    num = int(const.HALF_PI / (SEAM_CONST * discretization))
     phi = np.linspace(const.HALF_PI, const.PI, num=num + 2)
     theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
@@ -343,7 +348,7 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     phi += corr
 
     # calculating points on phi = pi meridian
-    v_num = int(const.HALF_PI / vertical_alpha)
+    v_num = int(const.HALF_PI / (SEAM_CONST * vertical_alpha))
     phi_meridian1 = np.full(v_num - 1, const.PI)
     theta_meridian1 = np.linspace(0., const.HALF_PI, num=v_num - 1, endpoint=False)
     # obliqueness correction
@@ -364,8 +369,13 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     theta = up.concatenate((theta, theta_meridian2))
     separator.append(np.shape(theta)[0])
 
+    v_num = int(const.HALF_PI / vertical_alpha)
+    theta_meridian = np.linspace(0., const.HALF_PI, num=v_num - 1, endpoint=False)
+    tan_tht = np.tan(theta_meridian)
+    theta_meridian += up.arctan((est_eqt_r - polar_radius) * tan_tht /
+                                (polar_radius + est_eqt_r * tan_tht ** 2))
     # calculating the rest of the surface on farside
-    for tht in theta_meridian1[1:]:
+    for tht in theta_meridian[1:]:
         alpha_corrected = discretization / up.sin(tht)
         num = int(const.HALF_PI // alpha_corrected)
         alpha_corrected = const.HALF_PI / (num + 1)
@@ -400,7 +410,7 @@ def _generate_neck_zs(delta_z, component, neck_position, neck_polynomial):
     # alpha along cylindrical axis z needs to be corrected to maintain similar sizes of triangle sizes
     # delta_z = const.POINT_ROW_SEPARATION_FACTOR * delta_z
     delta_z = delta_z
-
+    delta_z_polar = SEAM_CONST * delta_z
     # test radii on neck_position
     separator = []
 
@@ -414,9 +424,12 @@ def _generate_neck_zs(delta_z, component, neck_position, neck_polynomial):
         lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
         neck_lengths = np.cumsum(lengths)
         num_z = int(neck_lengths[-1] // delta_z)
+        num_z_polar = int(neck_lengths[-1] // delta_z_polar)
         segments = np.linspace(0, neck_lengths[-1], num=num_z)[1:]
+        segments_polar = np.linspace(0, neck_lengths[-1], num=num_z_polar)[1:]
 
         z_ns = np.interp(segments, neck_lengths, x_curve[1:])
+        z_ns_polar = np.interp(segments_polar, neck_lengths, x_curve[1:])
         r_neck = np.polyval(neck_polynomial, z_ns)
     else:
         num = 100 * int((1 - neck_position) // delta_z)
@@ -428,19 +441,23 @@ def _generate_neck_zs(delta_z, component, neck_position, neck_polynomial):
         lengths = up.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
         neck_lengths = np.cumsum(lengths)
         num_z = int(neck_lengths[-1] // delta_z)
+        num_z_polar = int(neck_lengths[-1] // delta_z_polar)
         segments = np.linspace(0, neck_lengths[-1], num=num_z)[:-1]
+        segments_polar = np.linspace(0, neck_lengths[-1], num=num_z_polar)[:-1]
 
         z_ns = np.interp(segments, neck_lengths, x_curve[:-1])
+        z_ns_polar = np.interp(segments_polar, neck_lengths, x_curve[:-1])
         r_neck = np.polyval(neck_polynomial, z_ns)
         z_ns = 1 - z_ns
+        z_ns_polar = 1 - z_ns_polar
 
     # equator azimuths
-    phi = np.full(z_ns.shape, const.HALF_PI)
-    z = z_ns
+    phi = np.full(z_ns_polar.shape, const.HALF_PI)
+    z = z_ns_polar
     separator.append(np.shape(z)[0])
     # meridian azimuths
-    phi = up.concatenate((phi, np.zeros(z_ns.shape)))
-    z = up.concatenate((z, z_ns))
+    phi = up.concatenate((phi, np.zeros(z_ns_polar.shape)))
+    z = up.concatenate((z, z_ns_polar))
     separator.append(np.shape(z)[0])
 
     return phi, z, z_ns, r_neck, separator
@@ -1016,6 +1033,7 @@ def mesh_spots(system, components_distance, component="all"):
             num_radial = int(np.round(spot_radius / alpha)) + 1
             logger.debug(f'number of rings in spot {spot_instance.kwargs_serializer()} is {num_radial}')
             thetas = np.linspace(lat, lat + spot_radius, num=num_radial, endpoint=True)
+# star.points[seam_points_mask] *= utils.discretization_correction_factor(star.discretization_factor/1.003)
 
             num_azimuthal = [1 if i == 0 else int(i * 2.0 * const.PI * x0 // x0) for i in range(0, len(thetas))]
             deltas = [np.linspace(0., const.FULL_ARC, num=num, endpoint=False) for num in num_azimuthal]
