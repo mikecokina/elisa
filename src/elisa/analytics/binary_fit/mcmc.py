@@ -39,6 +39,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.flat_chain_path = ''
         self.eval_counter = 0
         self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
+        self.error_penalization = 0
 
     @staticmethod
     def ln_prior(xn):
@@ -55,12 +56,10 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         :param synthetic: Dict; {'dataset_name': numpy.array, }
         :return: float;
         """
-        lh = - 0.5 * np.sum(
-            [np.sum(
-                np.power((self.y_data[item] - synthetic[item][self.x_data_reducer[item]]) / self.y_err[item], 2)
-                + np.log(2 * const.PI * np.power(self.y_err[item], 2))
-            )
-                for item, value in synthetic.items()])
+        lh = - 0.5 * (np.sum(
+            [np.sum(np.power((self.y_data[item] - synthetic[item][self.x_data_reducer[item]]) / self.y_err[item], 2))
+             for item, value in synthetic.items()]
+        ) + self.error_penalization)
 
         self._last_known_lhood = lh if lh < self._last_known_lhood else self._last_known_lhood
         return lh
@@ -124,6 +123,15 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
             initial_state[initial_state > 1] = 1.0
             return initial_state
 
+    def calculate_error_penalization(self):
+        """
+        Calculates constant component to the likelihood function derived from the errors
+
+        :return: np.float;
+        """
+        return np.sum([np.sum(np.log(2 * const.PI * np.power(value, 2)))
+                       for value in self.y_err.values()])
+
 
 class LightCurveFit(MCMCFit, AbstractLCFit):
     MORPHOLOGY = None
@@ -186,6 +194,8 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
                     interp_treshold=settings.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
                     observer_system_cls=BinarySystem)
+
+        self.error_penalization = self.calculate_error_penalization()
 
         ndim = len(self.initial_vector)
         nwalkers = 2 * len(self.initial_vector) if nwalkers is None else nwalkers
@@ -273,6 +283,8 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
         self.set_up(x0, data, observer_system_cls=RadialVelocitySystem)
+
+        self.error_penalization = self.calculate_error_penalization()
 
         ndim = len(self.initial_vector)
         nwalkers = 2 * len(self.initial_vector) if nwalkers is None else nwalkers
