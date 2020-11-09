@@ -15,7 +15,12 @@ def _default_binary():
     return BinarySystem.from_json(data=model_definition)
 
 
+def _default_observer():
+    return Observer(passband=["Generic.Bessell.U", "Generic.Bessell.V", "Generic.Bessell.R"], system=_default_binary())
+
+
 default_binary = _default_binary
+default_observer = _default_observer
 
 # prepare units as u for simpler import
 u = units

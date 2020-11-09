@@ -72,6 +72,7 @@ def _get_normal_radiance(system, component="all", **kwargs):
                     temperature=temperatures[cpmnt],
                     log_g=log_g[cpmnt],
                     metallicity=getattr(system, cpmnt).metallicity,
+                    atlas=settings.ATM_ATLAS,
                     **kwargs
                 )
             ) for cpmnt in components

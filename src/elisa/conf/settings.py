@@ -105,6 +105,11 @@ class _Const(object):
         "k93": "k"
     }
 
+    ATM_ATLAS_NORMALIZER = {
+        **ATLAS_TO_ATM_FILE_PREFIX,
+        **{"bb": "bb", "black_body": "bb"}
+    }
+
     ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
         "temperature": "TEMPERATURE_LIST_ATM",
         "gravity": "GRAVITY_LIST_ATM",
@@ -118,6 +123,7 @@ class _Const(object):
     DATASET_OPTIONAL_KWARGS = ['y_err']
 
     DELIM_WHITESPACE = r'\s+|\t+|\s+\t+|\t+\s+'
+    DATA_PATH = os.path.join(dirname(dirname(__file__)), "data")
 
 
 class Settings(_Const):
@@ -168,7 +174,7 @@ class Settings(_Const):
     LD_TABLES = os.path.join(HOME, "limbdarkening", "ld")
     CK04_ATM_TABLES = os.path.join(HOME, "atmosphere", "ck04")
     K93_ATM_TABLES = os.path.join(HOME, "atmosphere", "k93")
-    ATM_ATLAS = "ck04"
+    ATM_ATLAS = "bb"
     ATLAS_TO_BASE_DIR = {
         "castelli": CK04_ATM_TABLES,
         "castelli-kurucz": CK04_ATM_TABLES,
