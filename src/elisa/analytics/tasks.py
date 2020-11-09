@@ -63,6 +63,7 @@ class AnalyticsTask(metaclass=ABCMeta):
 
     def load_result(self, filename):
         self.fit_cls.load_result(filename)
+        return self.fit_cls.get_result()
 
     def save_result(self, filename):
         self.fit_cls.save_result(filename)
