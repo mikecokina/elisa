@@ -206,7 +206,7 @@ v0.5
     - improvements to trapezoidal discretization
     - additional constraints for approximations used during integration of eccentric light curves,
       relative change in irradiation is checked when similar orbital positions are evaluated, improves precision
-    - pre-build logging schemas added, that are accesible via LOG_CONFIG parameter with options 'default' or 'fit' or
+    - pre-build logging schemas added, that are accessible via LOG_CONFIG parameter with options 'default' or 'fit' or
       path to custom configuration file. 'fit' schema will suppress all logging messages except for messages from
       analytics class.
     - utilizing numba for computationally heavy tasks such as reflection effect (preparation for GPU ready version of
