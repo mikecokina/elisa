@@ -174,7 +174,7 @@ class Settings(_Const):
     LD_TABLES = os.path.join(HOME, "limbdarkening", "ld")
     CK04_ATM_TABLES = os.path.join(HOME, "atmosphere", "ck04")
     K93_ATM_TABLES = os.path.join(HOME, "atmosphere", "k93")
-    ATM_ATLAS = "bb"
+    ATM_ATLAS = "ck04"
     ATLAS_TO_BASE_DIR = {
         "castelli": CK04_ATM_TABLES,
         "castelli-kurucz": CK04_ATM_TABLES,
