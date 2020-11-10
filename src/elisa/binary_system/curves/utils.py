@@ -19,7 +19,6 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
     :return: Dict[str, numpy.array];
     """
     components = butils.component_to_list(component)
@@ -47,7 +46,6 @@ def _get_normal_radiance(system, component="all", **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
     :return: Dict[String, dict]
     """
     components = butils.component_to_list(component)
@@ -99,7 +97,6 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
     :return:
     """
     # obtain limb darkening factor for each face

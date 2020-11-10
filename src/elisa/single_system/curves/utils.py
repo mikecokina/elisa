@@ -1,4 +1,5 @@
 from ... import atm, ld
+from ... import settings
 from ... observer.passband import init_bolometric_passband
 
 
@@ -14,7 +15,6 @@ def prep_surface_params(system, return_values=True, write_to_containers=False, *
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
     :return:
     """
     # obtain limb darkening factor for each face
@@ -56,7 +56,6 @@ def get_normal_radiance(system, **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
     :return: Dict[String, numpy.array]
     """
     star = system.star
@@ -77,14 +76,14 @@ def get_normal_radiance(system, **kwargs):
                         temperature=temperatures,
                         log_g=log_g,
                         metallicity=star.metallicity,
+                        atlas=settings.ATM_ATLAS,
                         **kwargs
                     )
                 )
     }
 
     if symmetry_test:
-        retval['star'] = {filter: vals[star.face_symmetry_vector] for
-                          filter, vals in retval['star'].items()}
+        retval['star'] = {band: vals[star.face_symmetry_vector] for band, vals in retval['star'].items()}
 
     return retval
 
@@ -99,7 +98,6 @@ def get_limbdarkening_cfs(system, **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
     :return: Dict[str, numpy.array];
     """
     star_container = system.star

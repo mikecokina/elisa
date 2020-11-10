@@ -1012,7 +1012,6 @@ class BinarySystem(System):
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
             * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
             * ** phases ** * - numpy.array
             * ** position_method ** * - method
         :return: Dict

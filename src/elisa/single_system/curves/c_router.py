@@ -53,7 +53,6 @@ def produce_curves_wo_pulsations(single, initial_system, phases, curve_fn, crv_l
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
             * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
             * ** position_method** * - function definition; to evaluate orbital positions
             * ** phases ** * - numpy.array
     :return: Dict; calculated curves

@@ -18,7 +18,6 @@ def compute_circular_synchronous_lightcurve(binary, **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
         * ** position_method** * - function definition; to evaluate orbital positions
         * ** phases ** * - numpy.array
     :return: Dict[str, numpy.array];
