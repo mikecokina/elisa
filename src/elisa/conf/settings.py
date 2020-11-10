@@ -375,14 +375,22 @@ class Settings(_Const):
             if not os.path.isdir(cls.K93_ATM_TABLES):
                 warnings.warn(f"path {cls.K93_ATM_TABLES}\n"
                               "to kurucz 1993 atmosphere atlas doesn't exists\n"
-                              "Specifiy it in elisa_conf.ini file")
+                              "Specifiy it in elisa_conf.ini file", UserWarning)
 
+            if c_parse.get('support', 'atlas'):
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    warnings.simplefilter("always", DeprecationWarning)
+                    warnings.warn("Variable `atlas` in configuration section `support` is not "
+                                  "longer supported and will be removed in future version.\n"
+                                  "Use atmosphere definition as initial parameter "
+                                  "for given celestial object", DeprecationWarning)
+                    warnings.simplefilter("ignore", DeprecationWarning)
             cls.ATM_ATLAS = c_parse.get('support', 'atlas', fallback=cls.ATM_ATLAS)
             cls.PASSBAND_TABLES = c_parse.get('support', 'passband_tables', fallback=cls.PASSBAND_TABLES)
 
             if not isdir(cls.PASSBAND_TABLES) and not cls.SUPPRESS_WARNINGS:
                 warnings.warn(f"path {cls.PASSBAND_TABLES} to passband tables doesn't exists\n"
-                              f"Specifiy it in elisa_conf.ini file")
+                              f"Specifiy it in elisa_conf.ini file", UserWarning)
         # ******************************************************************************************************************
 
     @classmethod

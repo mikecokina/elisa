@@ -39,6 +39,7 @@ class Body(metaclass=ABCMeta):
     :param polar_radius: Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise
                          TypeError will be raised. If quantity is not specified, default distance unit is assumed.
     :param spots: List[Dict[str, float]]; Spots definitions. Example of defined spots
+    :param atmosphere: str; atmosphere to use for given object instance
 
         ::
 
@@ -87,6 +88,7 @@ class Body(metaclass=ABCMeta):
         self.polar_radius = np.nan
         self._spots = dict()
         self.equatorial_radius = np.nan
+        self.atmosphere = ""
 
     @abstractmethod
     def init(self):
@@ -107,7 +109,7 @@ class Body(metaclass=ABCMeta):
     def spots(self, spots):
         # todo: update example
         """
-        example of defined spots
+        Example of defined spots
 
         ::
 
@@ -136,7 +138,7 @@ class Body(metaclass=ABCMeta):
         """
         Find whether object has defined spots.
 
-        :return: bool
+        :return: bool;
         """
         return len(self._spots) > 0
 
@@ -144,7 +146,7 @@ class Body(metaclass=ABCMeta):
         """
         Remove n-th spot index of object.
 
-        :param spot_index: int
+        :param spot_index: int;
         """
         del (self._spots[spot_index])
 
@@ -156,7 +158,7 @@ class Body(metaclass=ABCMeta):
             - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
               0.5 * spot_instance.angular_diameter
 
-        :param spot_instance: Spot
+        :param spot_instance: elisa.base.body.Spot;
         :param spot_index: int; spot index (has no affect on process, used for logging)
         :return: elisa.base.spot.Spot;
         """

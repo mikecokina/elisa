@@ -37,7 +37,8 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
 
 def _get_normal_radiance(system, component="all", **kwargs):
     """
-    Compute normal radiance for all faces and all components in SingleOrbitalPositionContainer.
+    Compute normal radiance for all faces and all components
+    in elisa.binary_system.container.OrbitalPositionContainer.
 
     :param component: str;
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
@@ -49,9 +50,11 @@ def _get_normal_radiance(system, component="all", **kwargs):
     :return: Dict[String, dict]
     """
     components = butils.component_to_list(component)
-    symmetry_test = {cmpnt: not getattr(system, cmpnt).has_spots() and not getattr(system, cmpnt).has_pulsations() for
-                     cmpnt in components}
-    temperatures, log_g = {}, {}
+    symmetry_test = {
+        component: not getattr(system, component).has_spots() and not getattr(system, component).has_pulsations()
+        for component in components
+    }
+    temperatures, log_g = dict(), dict()
 
     # utilizing surface symmetry in case of a clear surface
     for cmpnt in components:
@@ -64,16 +67,16 @@ def _get_normal_radiance(system, component="all", **kwargs):
             log_g[cmpnt] = component_instance.log_g
 
     retval = {
-        cpmnt:
+        component:
             atm.NaiveInterpolatedAtm.radiance(
                 **dict(
-                    temperature=temperatures[cpmnt],
-                    log_g=log_g[cpmnt],
-                    metallicity=getattr(system, cpmnt).metallicity,
-                    atlas=settings.ATM_ATLAS,
+                    temperature=temperatures[component],
+                    log_g=log_g[component],
+                    metallicity=getattr(system, component).metallicity,
+                    atlas=getattr(getattr(system, component), "atmosphere") or settings.ATM_ATLAS,
                     **kwargs
                 )
-            ) for cpmnt in components
+            ) for component in components
     }
 
     # mirroring symmetrical part back to the rest of the surface
