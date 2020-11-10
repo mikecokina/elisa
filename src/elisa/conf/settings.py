@@ -377,7 +377,7 @@ class Settings(_Const):
                               "to kurucz 1993 atmosphere atlas doesn't exists\n"
                               "Specifiy it in elisa_conf.ini file", UserWarning)
 
-            if c_parse.get('support', 'atlas'):
+            if c_parse.get('support', 'atlas', fallback=None):
                 with np.errstate(divide='ignore', invalid='ignore'):
                     warnings.simplefilter("always", DeprecationWarning)
                     warnings.warn("Variable `atlas` in configuration section `support` is not "
