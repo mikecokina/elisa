@@ -91,16 +91,17 @@ class PositionContainer(object):
 
     def apply_rotation(self):
         """
-        Rotate quantities defined in __PROPERTIES__ in case of components defined in __PROPERTIES__.
+        Rotate quantities defined in __PROPERTIES_TO_ROTATE__ in case of
+        components defined in __PROPERTIES_TO_ROTATE__.
         Rotation is made in orbital plane and inclination direction in respective order.
         Angle are defined in self.position and self.inclination.
         :return: elisa.base.PositionContainer;
         """
-        __PROPERTIES__ = ["points", "normals", "velocities"]
+        __PROPERTIES_TO_ROTATE__ = ["points", "normals", "velocities"]
 
         for component in self._components:
             star_container = getattr(self, component)
-            for prop in __PROPERTIES__:
+            for prop in __PROPERTIES_TO_ROTATE__:
                 prop_value = getattr(star_container, prop)
 
                 args = (self.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
@@ -138,10 +139,9 @@ class PositionContainer(object):
 
     def calculate_face_angles(self, line_of_sight):
         """
-        calculates angles between normals and line_of_sight vector for all components of the system
+        Calculates angles between normals and line_of_sight vector for all components of the system.
 
         :param line_of_sight: np.array;
-        :return:
         """
         for component in self._components:
             star_container = getattr(self, component)
@@ -192,10 +192,10 @@ class StarContainer(object):
     Following parameters are gathered from Star object
 
     'mass', 't_eff', 'synchronicity', 'albedo', 'discretization_factor', 'name', 'spots'
-    'polar_radius', 'equatorial_radius', 'gravity_darkening', 'surface_potential',
+    'polar_radius', 'equatorial_radius', 'gravity_darkening', 'surface_potential', 'atmosphere',
     'pulsations', 'metallicity', 'polar_log_g', 'critical_surface_potential', 'side_radius'
 
-    If you are experienced used, you can create instance directly by calling
+    If you are experienced user, you can create instance directly by calling
 
     >>> from elisa.base.container import StarContainer
     >>> kwargs = {}
@@ -218,6 +218,9 @@ class StarContainer(object):
         * **metallicity** * -- float;
         * **areas** * -- numpy.array;
         * **potential_gradient_magnitudes** * -- numpy.array;
+        * **ld_cfs** * -- numpy.array;
+        * **normal_radiance** * -- numpy.array;
+        * **los_cosines** * -- numpy.array;
 
 
     Output parameters (obtained by applying given methods upon container).
@@ -285,6 +288,9 @@ class StarContainer(object):
     :base_symmetry_points: numpy.array;
     :base_symmetry_faces: numpy.array;
     :polar_potential_gradient_magnitude: numpy.array;
+    :ld_cfs: numpy.array;
+    :normal_radiance: numpy.array;
+    :los_cosines: numpy.array;
     """
 
     def __init__(self,
@@ -329,21 +335,25 @@ class StarContainer(object):
         self.face_symmetry_vector = np.array([])
         self.base_symmetry_faces_number = 0
 
-        # those are used only if case of spots are NOT used
+        # those are used only if case of spots are NOT used ------------------------------------------------------------
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
         self.azimuth_args = np.array([])
+        # --------------------------------------------------------------------------------------------------------------
 
         self.spots = dict()
         self.pulsations = dict()
         self.polar_potential_gradient_magnitude = np.nan
 
+        # all star radii in any position (set on fly) ------------------------------------------------------------------
+        # set only via `assign_radii()` method
         self.polar_radius = None
         self.forward_radius = None
         self.side_radius = None
         self.backward_radius = None
         self.equatorial_radius = None
         self.equivalent_radius = None
+        # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
 
@@ -356,8 +366,8 @@ class StarContainer(object):
         """
         Create StarContainer from properties container.
 
-        :param properties_container:
-        :return: elisa.base.container.StarContainer
+        :param properties_container: elisa.base.container.StarPropertiesContainer;
+        :return: elisa.base.container.StarContainer;
         """
         container = cls()
         container.__dict__.update(properties_container.__dict__)

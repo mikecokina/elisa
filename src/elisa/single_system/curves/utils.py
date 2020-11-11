@@ -76,7 +76,7 @@ def get_normal_radiance(system, **kwargs):
                         temperature=temperatures,
                         log_g=log_g,
                         metallicity=star.metallicity,
-                        atlas=settings.ATM_ATLAS,
+                        atlas=star.atmosphere or settings.ATM_ATLAS,
                         **kwargs
                     )
                 )

@@ -197,9 +197,9 @@ v0.5
 **Release date:** ????-??-??
 
 **Features**
-    Expeceted
-        - genetic algorithm
-        - extended fitting methods
+
+    - added `black_body` as one of possibilities for atmospheres
+    - support different atmospheres for celestial objects
 
 **Enhancements**
     - solar constant conserved with different levels of surface discretization
