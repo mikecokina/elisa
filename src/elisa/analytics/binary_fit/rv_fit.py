@@ -55,7 +55,7 @@ class RVFit(object):
             raise IOError("No result to store.")
 
         with open(path, 'w') as f:
-            json.dump(self.result, f, separators=(',\n', ': '))
+            json.dump(self.result, f, separators=(',', ': '), indent=4)
 
 
 class RVFitMCMC(RVFit):
