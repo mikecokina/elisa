@@ -13,6 +13,7 @@ from .. params import parameters
 from .. params.parameters import BinaryInitialParameters
 from ... binary_system.utils import resolve_json_kind
 from ... logger import getLogger
+from .shared import eval_constraint_in_dict
 
 logger = getLogger('analytics.binary_fit.rv_fit')
 
@@ -40,6 +41,7 @@ class RVFit(object):
         """
         with open(path, 'r') as f:
             loaded_result = json.load(f)
+        loaded_result = eval_constraint_in_dict(loaded_result)
         self.result = loaded_result
         self.flat_result = parameters.deserialize_result(self.result)
 

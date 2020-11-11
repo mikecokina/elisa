@@ -12,7 +12,7 @@ from .. params.parameters import BinaryInitialParameters
 from .. params import parameters
 from .. models import lc as lc_model
 from . summary import fit_lc_summary_with_error_propagation, simple_lc_fit_summary
-from . shared import check_for_boundary_surface_potentials
+from . shared import check_for_boundary_surface_potentials, eval_constraint_in_dict
 from . import least_squares
 from . import mcmc
 from . import io_tools
@@ -236,6 +236,7 @@ class LCFit(object):
         """
         with open(path, 'r') as f:
             loaded_result = json.load(f)
+        loaded_result = eval_constraint_in_dict(loaded_result)
         self.result = loaded_result
         self.flat_result = parameters.deserialize_result(self.result)
 

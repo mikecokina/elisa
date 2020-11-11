@@ -269,3 +269,25 @@ def check_for_boundary_surface_potentials(result_dict):
             pot["value"] = l2 - 1e-5 * sigma
 
     return result_dict
+
+
+def eval_constraint_in_dict(input_dict):
+    params = BinaryInitialParameters(**input_dict)
+    result_dict = params.get_fitable(jsonify=True)
+    result_dict.update(params.get_fixed(jsonify=True))
+
+    reduced_dict = {key: val['value'] for key, val in result_dict.items()}
+    constraints = params.get_constrained(jsonify=False)
+
+    constrained_values = parameters.constraints_evaluator(reduced_dict, constraints)
+    result_dict.update(
+        {
+            key: {
+                'value': val,
+                'constraint': constraints[key].constraint,
+                'unit': constraints[key].to_dict()['unit']
+            } for key, val in constrained_values.items()
+        })
+
+    result_dict = parameters.serialize_result(result_dict)
+    return result_dict
