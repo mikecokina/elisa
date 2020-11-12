@@ -5,6 +5,7 @@ import os.path as op
 from . conf.settings import settings
 from . binary_system.system import BinarySystem
 from . single_system.system import SingleSystem
+from . base.star import Star
 from . observer.observer import Observer
 from . import units
 

@@ -272,6 +272,12 @@ def check_for_boundary_surface_potentials(result_dict):
 
 
 def eval_constraint_in_dict(input_dict):
+    """
+    Evaluates constraints defined bt the user in fit json.
+
+    :param input_dict: Dict;
+    :return: Dict; dict with constraints that have values assigned
+    """
     input_dict1 = parameters.deserialize_result(input_dict)
     result_dict = {key: val for key, val in input_dict1.items() if 'fixed' in val}
 
