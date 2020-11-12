@@ -282,9 +282,9 @@ def eval_constraint_in_dict(input_dict):
     result_dict.update(
         {
             key: {
-                'value': val,
-                'constraint': constraints[key].constraint,
-                'unit': constraints[key].to_dict()['unit']
+                'value': constrained_values[key]['value'],
+                'constraint': constraints[key]['constraint'],
+                'unit': constraints[key]['unit']
             } for key, val in constrained_values.items()
         })
 
