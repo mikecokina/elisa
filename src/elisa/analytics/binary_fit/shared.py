@@ -272,12 +272,11 @@ def check_for_boundary_surface_potentials(result_dict):
 
 
 def eval_constraint_in_dict(input_dict):
-    params = BinaryInitialParameters(**input_dict)
-    result_dict = params.get_fitable(jsonify=True)
-    result_dict.update(params.get_fixed(jsonify=True))
+    input_dict1 = parameters.deserialize_result(input_dict)
+    result_dict = {key: val for key, val in input_dict1.items() if 'fixed' in val}
 
     reduced_dict = {key: val['value'] for key, val in result_dict.items()}
-    constraints = params.get_constrained(jsonify=False)
+    constraints = {key: val for key, val in input_dict1.items() if 'constraint' in val}
 
     constrained_values = parameters.constraints_evaluator(reduced_dict, constraints)
     result_dict.update(
