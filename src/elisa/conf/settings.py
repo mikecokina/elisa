@@ -283,6 +283,8 @@ class Settings(_Const):
             if not hasattr(cls, key):
                 raise ValueError("You are about to set configuration which doesn't exist")
             setattr(cls, key, value)
+            if key == 'LOG_CONFIG':
+                cls.set_up_logging()
         cls._update_atlas_to_base_dir()
 
     @classmethod

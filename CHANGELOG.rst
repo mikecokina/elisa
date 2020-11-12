@@ -212,6 +212,7 @@ v0.5
     - utilizing numba for computationally heavy tasks such as reflection effect (preparation for GPU ready version of
       ELISa)
     - function elisa.analytics.tasks.load_results() returns results in form of dict
+    - command set_up_logging() not needed anymore while changing logging schemas
 
 **Fixes**
 
