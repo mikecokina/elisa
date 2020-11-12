@@ -276,15 +276,17 @@ def eval_constraint_in_dict(input_dict):
     result_dict = {key: val for key, val in input_dict1.items() if 'fixed' in val}
 
     reduced_dict = {key: val['value'] for key, val in result_dict.items()}
-    constraints = {key: val for key, val in input_dict1.items() if 'constraint' in val}
+
+    b_parameters = BinaryInitialParameters(**input_dict)
+    constraints = b_parameters.get_constrained(jsonify=False)
 
     constrained_values = parameters.constraints_evaluator(reduced_dict, constraints)
     result_dict.update(
         {
             key: {
-                'value': constrained_values[key]['value'],
-                'constraint': constraints[key]['constraint'],
-                'unit': constraints[key]['unit']
+                'value': constrained_values[key],
+                'constraint': constraints[key].constraint,
+                'unit': constraints[key].unit
             } for key, val in constrained_values.items()
         })
 
