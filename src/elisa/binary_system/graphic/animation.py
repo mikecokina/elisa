@@ -115,7 +115,7 @@ class Animation(object):
             'axis_lim': 0.7,
             'savepath': savepath,
             'colormap': colormap,
-            "separate_colormaps": separate_colormaps
+            "separate_colormaps": separate_colormaps,
         })
         logger.debug('Passing parameters to graphics module')
         graphics.binary_surface_anim(**anim_kwargs)

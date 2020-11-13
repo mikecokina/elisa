@@ -628,8 +628,11 @@ def binary_surface_anim(**kwargs):
                                 triangles=_faces[ii][frame_number],
                                 antialiased=True, shade=False, color=_clr[ii])
             if kwargs.get('colormap', False):
-                p.set_cmap(cmap=cm.jet_r)
+                p.set_cmap(cmap=cm.jet)
                 p.set_array(_cmaps[ii][frame_number])
+
+            ax.text(-kwargs['axis_lim'], 0.9*kwargs['axis_lim'], 0.8*kwargs['axis_lim'],
+                    f"{kwargs['phases'][frame_number]%1.0:.2f}")
 
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
@@ -675,6 +678,59 @@ def binary_surface_anim(**kwargs):
             cmaps = [kwargs['primary_cmap'], kwargs['secondary_cmap']]
             plot[0].set_array(cmaps[0][0])
             plot[1].set_array(cmaps[1][0])
+
+    args = (points, faces, clr, cmaps, plot)
+    ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
+    plt.show() if not kwargs['savepath'] else ani.save(kwargs['savepath'], writer='ffmpeg', fps=20, dpi=300)
+
+
+def single_surface_anim(**kwargs):
+    def update_plot(frame_number, _points, _faces, _clr, _cmaps, _plot):
+        for _, _ in enumerate(_plot):
+            p = ax.clear()
+        for ii, p in enumerate(_plot):
+            ax.set_xlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+            ax.set_ylim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+            ax.set_zlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+            ax.set_xlabel('x')
+            ax.set_ylabel('y')
+            ax.set_zlabel('z')
+
+            p = ax.plot_trisurf(_points[ii][frame_number][:, 0],
+                                _points[ii][frame_number][:, 1],
+                                _points[ii][frame_number][:, 2],
+                                triangles=_faces[ii][frame_number],
+                                antialiased=True, shade=False, color=_clr[ii])
+            if kwargs.get('colormap', False):
+                p.set_cmap(cmap=cm.jet)
+                p.set_array(_cmaps[ii][frame_number])
+
+            ax.text(-kwargs['axis_lim'], 0.9 * kwargs['axis_lim'], 0.8 * kwargs['axis_lim'],
+                    f"{kwargs['phases'][frame_number]%1.0:.2f}")
+
+    fig = plt.figure(figsize=(7, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_box_aspect([1, 1, 1])
+    ax.elev = 0
+    ax.azim = 180
+
+    ax.set_xlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+    ax.set_ylim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+    ax.set_zlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
+
+    clr = ['g', 'r']
+    cmaps = []
+
+    points = [kwargs['points']]
+    faces = [kwargs['faces']]
+
+    plot = [ax.plot_trisurf(points[0][0][:, 0], points[0][0][:, 1], points[0][0][:, 2],
+                            triangles=faces[0][0], antialiased=True,
+                            shade=False, color=clr[0])]
+    if kwargs.get('colormap', False):
+        plot[0].set_cmap(cmap=CMAPS[kwargs['colormap']])
+        cmaps = [kwargs['cmap']]
+        plot[0].set_array(cmaps[0][0])
 
     args = (points, faces, clr, cmaps, plot)
     ani = animation.FuncAnimation(fig, update_plot, kwargs['n_frames'], fargs=args, interval=20)
@@ -860,3 +916,4 @@ def binary_lc_fit_plot(**kwargs):
 
     plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
     plt.show()
+
