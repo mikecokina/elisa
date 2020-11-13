@@ -249,7 +249,7 @@ class Plot(object):
 
         if separate_colormaps is None:
             separate_colormaps = self.binary.morphology != 'over-contact' and \
-                                 colormap not in ['velocity', 'radial_velocity']
+                                 colormap not in ['velocity', 'radial_velocity'] and components_to_plot == 'both'
 
         potentials = self.binary.correct_potentials([phase, ], component="all", iterations=2)
         
