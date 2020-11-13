@@ -15,6 +15,12 @@ from .. import (
 from .. import units as u
 
 
+CMAPS = {'temperature': cm.jet_r,
+         'gravity_acceleration': cm.jet,
+         'velocity': cm.jet,
+         'radial_velocity': cm.jet}
+
+
 def orbit(**kwargs):
     """
     Graphics part of the function for quick 2D plot of the orbital motion in the orbital plane.
@@ -242,11 +248,7 @@ def single_star_surface(**kwargs):
                         'radial_velocity': set_vrad_colorbar_label}
     set_colorbar_fn = set_colorbar_fns[kwargs['colormap']]
 
-    cmaps = {'temperature': cm.jet_r,
-             'gravity_acceleration': cm.jet,
-             'velocity': cm.jet,
-             'radial_velocity': cm.jet}
-    cmap = cmaps[kwargs['colormap']]
+    cmap = CMAPS[kwargs['colormap']]
 
     if kwargs.get('colormap', False):
         star_plot.set_cmap(cmap=cmap)
@@ -366,11 +368,7 @@ def binary_surface(**kwargs):
                         'velocity': set_v_colorbar_label,
                         'radial_velocity': set_vrad_colorbar_label}
 
-    cmaps = {'temperature': cm.jet_r,
-             'gravity_acceleration': cm.jet,
-             'velocity': cm.jet,
-             'radial_velocity': cm.jet}
-    cmap = cmaps[kwargs['colormap']]
+    cmap = CMAPS[kwargs['colormap']]
     if kwargs.get('colormap', False):
         if kwargs['separate_colormaps']:
             plot1.set_cmap(cmap=cmap)
@@ -612,6 +610,7 @@ def binary_surface_anim(**kwargs):
         * **plot_axis** * -- bool, if False, axis will not be displayed
         * **colormap** * -- `temperature`, `gravity_acceleration` or None,
         * **savepath** * -- string or None, animation will be stored to `savepath`
+        * **separate_colormaps** * -- bool; if True, figure will contain separate colormap for each component
     """
     def update_plot(frame_number, _points, _faces, _clr, _cmaps, _plot):
         for _, _ in enumerate(_plot):
@@ -636,6 +635,8 @@ def binary_surface_anim(**kwargs):
     fig = plt.figure(figsize=(7, 7))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_box_aspect([1, 1, 1])
+    ax.elev = 0
+    ax.azim = 180
 
     ax.set_xlim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
     ax.set_ylim3d(-kwargs['axis_lim'], kwargs['axis_lim'])
@@ -644,7 +645,7 @@ def binary_surface_anim(**kwargs):
     clr = ['g', 'r']
     cmaps = []
 
-    if kwargs['morphology'] == 'over-contact':
+    if not kwargs['separate_colormaps']:
         points = [[up.concatenate((kwargs['points_primary'][ii], kwargs['points_secondary'][ii]), axis=0)
                   for ii in range(kwargs['n_frames'])]]
         faces = [[up.concatenate((kwargs['faces_primary'][ii],
@@ -656,7 +657,7 @@ def binary_surface_anim(**kwargs):
                                 triangles=faces[0][0], antialiased=True,
                                 shade=False, color=clr[0])]
         if kwargs.get('colormap', False):
-            plot[0].set_cmap(cmap=cm.jet_r)
+            plot[0].set_cmap(cmap=CMAPS[kwargs['colormap']])
             cmaps = [[up.concatenate((kwargs['primary_cmap'][ii], kwargs['secondary_cmap'][ii]), axis=0)
                       for ii in range(kwargs['n_frames'])]]
             plot[0].set_array(cmaps[0][0])
@@ -670,8 +671,8 @@ def binary_surface_anim(**kwargs):
                                 kwargs['points_secondary'][0][:, 2], triangles=kwargs['faces_secondary'][0],
                                 antialiased=True, shade=False, color=clr[1])]
         if kwargs.get('colormap', False):
-            plot[0].set_cmap(cmap=cm.jet_r)
-            plot[1].set_cmap(cmap=cm.jet_r)
+            plot[0].set_cmap(cmap=CMAPS[kwargs['colormap']])
+            plot[1].set_cmap(cmap=CMAPS[kwargs['colormap']])
             cmaps = [kwargs['primary_cmap'], kwargs['secondary_cmap']]
             plot[0].set_array(cmaps[0][0])
             plot[1].set_array(cmaps[1][0])
