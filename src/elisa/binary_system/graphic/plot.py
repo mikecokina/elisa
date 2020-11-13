@@ -215,24 +215,24 @@ class Plot(object):
                 axis_unit=u.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
                 surface_colors=('g', 'r'), separate_colormaps=None):
         """
-        function creates plot of binary system components
+        Function creates plot of binary system components
 
-        :param phase: float -- phase at which plot the system, important for eccentric orbits
+        :param phase: float; phase at which plot the system, important for eccentric orbits
         :param components_to_plot: str; `primary`, `secondary` or `both` (default),
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
-        :param colormap: str; 'gravity_acceleration`, `temperature` or None(default)
+        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity` or None(default)
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask_primary: array[bool]; mask to select which faces to display
         :param face_mask_secondary: array[bool]: mask to select which faces to display
         :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
-        :param units: str; units of gravity acceleration colormap  `SI` or `cgs`
+        :param units: str; unit system of colormap  `SI` or `cgs`
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param colorbar_orientation: str; `horizontal` or `vertical` (default)
-        :param colorbar: bool; colorabar on/off switchic
+        :param colorbar: bool; colorbar on/off switch
         :param scale: str; `linear` or `log`
-        :param surface_colors: tuple; tuple of colors for components if colormaps are not specified
+        :param surface_colors: tuple; tuple of colors for components if `colormap` are not specified
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         """
         surface_kwargs = dict()

@@ -125,6 +125,24 @@ class Plot(object):
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
                 elevation=None, azimuth=None, units='SI', axis_unit=u.solRad,
                 colorbar_orientation='vertical', colorbar=True, scale='linear', surface_color='g'):
+        """
+        Function creates plot of single system components.
+
+        :param phase: float; phase at which plot the system, important for eccentric orbits
+        :param normals: bool; plot normals of the surface phases as arrows
+        :param edges: bool; highlight edges of surface faces
+        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity` or None(default)
+        :param plot_axis: bool; if False, axis will be hidden
+        :param face_mask: array[bool]; mask to select which faces to display
+        :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera
+        :param azimuth: Union[float, astropy.Quantity]; camera azimuth
+        :param units: str; unit system of colormap  `SI` or `cgs`
+        :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
+        :param colorbar_orientation: `horizontal` or `vertical` (default)
+        :param colorbar: bool; colorbar on/off switch
+        :param scale: str; `linear` or `log`
+        :param surface_color: tuple; tuple of colors for components if `colormap` is not specified
+        """
         surface_kwargs = dict()
 
         elevation = transform.deg_transform(elevation, u.deg, when_float64=transform.WHEN_FLOAT64) \
