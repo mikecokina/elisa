@@ -82,7 +82,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
 
         start_phs, stop_phs, step = -0.2, 1.2, 0.1
 
-        expected = load_light_curve("single.clear.v.json")
+        expected = load_light_curve("single.spotted.v.json")
         expected_phases = expected[0]
         expected_flux = normalize_lc_for_unittests(expected[1]["Generic.Bessell.V"])
 
