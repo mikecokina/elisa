@@ -248,9 +248,8 @@ def single_star_surface(**kwargs):
                         'radial_velocity': set_vrad_colorbar_label}
     set_colorbar_fn = set_colorbar_fns[kwargs['colormap']]
 
-    cmap = CMAPS[kwargs['colormap']]
-
     if kwargs.get('colormap', False):
+        cmap = CMAPS[kwargs['colormap']]
         star_plot.set_cmap(cmap=cmap)
         star_plot.set_array(kwargs['cmap'])
         if kwargs['colorbar']:
@@ -368,8 +367,8 @@ def binary_surface(**kwargs):
                         'velocity': set_v_colorbar_label,
                         'radial_velocity': set_vrad_colorbar_label}
 
-    cmap = CMAPS[kwargs['colormap']]
     if kwargs.get('colormap', False):
+        cmap = CMAPS[kwargs['colormap']]
         if kwargs['separate_colormaps']:
             plot1.set_cmap(cmap=cmap)
             plot2.set_cmap(cmap=cmap)
