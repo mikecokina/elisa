@@ -200,6 +200,8 @@ v0.5
 
     - added `black_body` as one of possibilities for atmospheres
     - support different atmospheres for celestial objects
+    - `velocity` and `radial_velocity` option for `colormap` argument added to BinarySystem.plot.surface() and
+      SingleSystem.plot.surface()
 
 **Enhancements**
     - solar constant conserved with different levels of surface discretization
@@ -213,6 +215,7 @@ v0.5
       ELISa)
     - function elisa.analytics.tasks.load_results() returns results in form of dict
     - command set_up_logging() not needed anymore while changing logging schemas
+
 
 **Fixes**
 

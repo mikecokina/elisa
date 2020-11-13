@@ -175,18 +175,6 @@ class SingleSystem(System):
         """
         return self._components
 
-    def kwargs_serializer(self):
-        """
-        creating dictionary of keyword arguments of SingleSystem class in order to be able to reinitialize the class
-        instance in init()
-
-        :return: dict
-        """
-        serialized_kwargs = {}
-        for kwarg in self.ALL_KWARGS:
-            serialized_kwargs[kwarg] = getattr(self, kwarg)
-        return serialized_kwargs
-
     def calculate_equipotential_boundary(self):
         """
         calculates a equipotential boundary of star in zx(yz) plane

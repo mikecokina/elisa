@@ -5,6 +5,7 @@ from .. base.body import Body
 from .. logger import getLogger
 from .. import utils
 from .. pulse import pulsations
+from elisa import units as u
 
 logger = getLogger('base.system')
 
@@ -127,3 +128,21 @@ class System(metaclass=ABCMeta):
             if len(missing_kwargs) != 0:
                 raise ValueError(f'Mising argument(s): {", ".join(missing_kwargs)} '
                                  f'in {component} component Star class')
+
+    def kwargs_serializer(self):
+        """
+        Creating dictionary of keyword arguments of System class in order to be able to reinitialize the class
+        instance in init().
+
+        :return: Dict;
+        """
+        serialized_kwargs = dict()
+        for kwarg in self.ALL_KWARGS:
+            if kwarg in ['argument_of_periastron', 'inclination']:
+                value = getattr(self, kwarg)
+                if not isinstance(value, u.Quantity):
+                    value = value * u.ARC_UNIT
+                serialized_kwargs[kwarg] = value
+            else:
+                serialized_kwargs[kwarg] = getattr(self, kwarg)
+        return serialized_kwargs

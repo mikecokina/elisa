@@ -211,7 +211,7 @@ class Plot(object):
         graphics.binary_wireframe(**binary_wireframe_kwargs)
 
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
-                face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, units='cgs',
+                face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, units='SI',
                 axis_unit=u.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
                 surface_colors=('g', 'r'), separate_colormaps=None):
         """
@@ -261,17 +261,17 @@ class Plot(object):
                                                           potentials["secondary"][0])
         orbital_position_container.build(components_distance=components_distance, components='both')
 
-        orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=False)
+        orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
         # this part decides if both components need to be calculated at once (due to reflection effect)
         components = butils.component_to_list(components_to_plot)
 
         com = {'primary': 0.0, 'secondary': components_distance}
         mult = np.array([-1, -1, 1.0])[None, :]
         for component in components:
-            star = getattr(orbital_position_container, component).flatt_it()
+            star = getattr(orbital_position_container, component)
 
             correct_face_orientation(star, com=com[component])
-            points, faces = star.surface_serializer()
+            points, faces = star.points, star.faces
 
             surface_kwargs.update({
                 f'points_{component}': mult * points,
@@ -279,27 +279,27 @@ class Plot(object):
             })
 
             if colormap == 'gravity_acceleration':
-                log_g = star.get_flatten_parameter('log_g')
+                log_g = getattr(star, 'log_g')
                 value = log_g if units == 'SI' else log_g + 2
                 surface_kwargs.update({
                     f'{component}_cmap': value if scale == 'log' else up.power(10, value)
                 })
 
             elif colormap == 'temperature':
-                temperatures = star.get_flatten_parameter('temperatures')
+                temperatures = getattr(star, 'temperatures')
                 surface_kwargs.update({
                     f'{component}_cmap': temperatures if scale == 'linear' else up.log10(temperatures)
                 })
 
             elif colormap == 'velocity':
-                velocities = np.linalg.norm(star.get_flatten_parameter('velocities'), axis=1)
+                velocities = np.linalg.norm(getattr(star, 'velocities'), axis=1)
                 velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
                 surface_kwargs.update({
                     f'{component}_cmap': velocities if scale == 'linear' else up.log10(velocities)
                 })
 
             elif colormap == 'radial_velocity':
-                velocities = star.get_flatten_parameter('velocities')[:, 0]
+                velocities = getattr(star, 'velocities')[:, 0]
                 velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
                 surface_kwargs.update({
                     f'{component}_cmap': velocities

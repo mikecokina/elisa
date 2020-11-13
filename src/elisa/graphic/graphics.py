@@ -221,7 +221,7 @@ def single_star_surface(**kwargs):
     fig = plt.figure(figsize=(7, 7))
     ax = axes3d.Axes3D(fig)
     ax.set_box_aspect([1, 1, 1])
-    ax.elev = 90 - kwargs['inclination']
+    ax.elev = kwargs['elevation']
     ax.azim = kwargs['azimuth']
 
     clr = kwargs['surface_color']
@@ -236,22 +236,24 @@ def single_star_surface(**kwargs):
                   kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
                   length=0.1 * kwargs['equatorial_radius'])
 
-    if kwargs.get('colormap', False):
-        if kwargs['colormap'] == 'temperature':
-            star_plot.set_cmap(cmap=cm.jet_r)
-            star_plot.set_array(kwargs['cmap'])
-            if kwargs['colorbar']:
-                colorbar = fig.colorbar(star_plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
-                set_t_colorbar_label(colorbar, kwargs['units'], kwargs['scale'])
+    set_colorbar_fns = {'temperature': set_t_colorbar_label,
+                        'gravity_acceleration': set_g_colorbar_label,
+                        'velocity': set_v_colorbar_label,
+                        'radial_velocity': set_vrad_colorbar_label}
+    set_colorbar_fn = set_colorbar_fns[kwargs['colormap']]
 
-        elif kwargs['colormap'] == 'gravity_acceleration':
-            try:
-                star_plot.set_cmap(cmap=cm.jet_r)
-            except:
-                pass
-            star_plot.set_array(kwargs['cmap'])
-            colorbar = fig.colorbar(star_plot, shrink=0.7, orientation=kwargs['colorbar_orientation'])
-            set_g_colorbar_label(colorbar, kwargs['units'], kwargs['scale'])
+    cmaps = {'temperature': cm.jet_r,
+             'gravity_acceleration': cm.jet,
+             'velocity': cm.jet,
+             'radial_velocity': cm.jet}
+    cmap = cmaps[kwargs['colormap']]
+
+    if kwargs.get('colormap', False):
+        star_plot.set_cmap(cmap=cmap)
+        star_plot.set_array(kwargs['cmap'])
+        if kwargs['colorbar']:
+            colorbar = fig.colorbar(star_plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
+            set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'])
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
