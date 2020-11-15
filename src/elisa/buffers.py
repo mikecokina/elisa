@@ -2,6 +2,7 @@ MAX_STORAGE = 300
 
 
 LD_CFS_TABLES = dict()
+ATMOSPHERE_TABLES = dict()
 
 
 def reduce_buffer(storage):

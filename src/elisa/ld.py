@@ -13,8 +13,6 @@ from . import (
     buffers
 )
 
-from time import time
-
 logger = getLogger(__name__)
 
 

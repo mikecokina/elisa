@@ -26,9 +26,11 @@ from . import (
     umpy as up,
     utils,
     const,
-    ld
+    ld,
+    buffers
 )
 
+from time import time
 logger = getLogger(__name__)
 
 
@@ -324,6 +326,7 @@ class NaiveInterpolatedAtm(object):
 
     @staticmethod
     def atm_tables(fpaths):
+        # TODO: NOT USED??
         """
         Read atmosphere tables as pandas.DataFrame's.
 
@@ -1040,8 +1043,25 @@ def read_unique_atm_tables(fpaths):
         indices where it occures)
     """
     fpaths, fpaths_map = unique_atm_fpaths(fpaths)
-    result_queue = multithread_atm_tables_reader_runner(fpaths)
-    models = [qval[1] for qval in utils.IterableQueue(result_queue) if qval[1] is not None]
+
+    # check if the atm table is in the buffer
+    models, load_fpaths = [], []
+    for fpath in fpaths:
+        if fpath in buffers.ATMOSPHERE_TABLES:
+            models.append(buffers.ATMOSPHERE_TABLES[fpath])
+        else:
+            load_fpaths.append(fpath)
+
+    if len(load_fpaths) > 0:
+        result_queue = multithread_atm_tables_reader_runner(load_fpaths)
+        loaded_models = [qval[1] for qval in utils.IterableQueue(result_queue) if qval[1] is not None]
+        # add loaded atmospheres to atm buffer
+        for ii, fpath in enumerate(load_fpaths):
+            # TODO: will this always be True??
+            buffers.ATMOSPHERE_TABLES[fpath] = loaded_models[ii]
+        models += loaded_models
+    # clean buffer
+    buffers.reduce_buffer(buffers.ATMOSPHERE_TABLES)
     return models, fpaths_map
 
 
