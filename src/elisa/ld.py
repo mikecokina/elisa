@@ -9,9 +9,9 @@ from . import settings
 from . import (
     utils,
     const,
-    umpy as up,
-    buffers
+    umpy as up
 )
+from . buffer import buffer
 
 logger = getLogger(__name__)
 
@@ -117,13 +117,13 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
 
         # for table in relevant_tables:
         for table in relevant_tables:
-            if table in buffers.LD_CFS_TABLES:
-                _df = buffers.LD_CFS_TABLES[table]
+            if table in buffer.LD_CFS_TABLES:
+                _df = buffer.LD_CFS_TABLES[table]
             else:
                 _df = get_ld_table_by_name(table)[csv_columns]
-                buffers.LD_CFS_TABLES[table] = _df
+                buffer.LD_CFS_TABLES[table] = _df
             df = df.append(_df)
-        buffers.reduce_buffer(buffers.LD_CFS_TABLES)
+        buffer.reduce_buffer(buffer.LD_CFS_TABLES)
 
         df = df.drop_duplicates()
 

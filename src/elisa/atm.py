@@ -27,8 +27,8 @@ from . import (
     utils,
     const,
     ld,
-    buffers
 )
+from . buffer import buffer
 
 from time import time
 logger = getLogger(__name__)
@@ -1047,8 +1047,8 @@ def read_unique_atm_tables(fpaths):
     # check if the atm table is in the buffer
     models, load_fpaths = [], []
     for fpath in fpaths:
-        if fpath in buffers.ATMOSPHERE_TABLES:
-            models.append(buffers.ATMOSPHERE_TABLES[fpath])
+        if fpath in buffer.ATMOSPHERE_TABLES:
+            models.append(buffer.ATMOSPHERE_TABLES[fpath])
         else:
             load_fpaths.append(fpath)
 
@@ -1057,11 +1057,10 @@ def read_unique_atm_tables(fpaths):
         loaded_models = [qval[1] for qval in utils.IterableQueue(result_queue) if qval[1] is not None]
         # add loaded atmospheres to atm buffer
         for ii, fpath in enumerate(load_fpaths):
-            # TODO: will this always be True??
-            buffers.ATMOSPHERE_TABLES[fpath] = loaded_models[ii]
+            buffer.ATMOSPHERE_TABLES[fpath] = loaded_models[ii]
         models += loaded_models
     # clean buffer
-    buffers.reduce_buffer(buffers.ATMOSPHERE_TABLES)
+    buffer.reduce_buffer(buffer.ATMOSPHERE_TABLES)
     return models, fpaths_map
 
 
