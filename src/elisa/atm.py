@@ -160,7 +160,7 @@ class NaiveInterpolatedAtm(object):
     @staticmethod
     def black_body_radiance(temperature, **kwargs):
         # setup multiplicators to convert quantities to SI
-        flux_mult, wave_mult = 1.0 / const.PI, 1e-10
+        flux_mult, wave_mult = const.PI, 1e-10
         # obtain localized atmospheres in matrix
         localized_atms = NaiveInterpolatedAtm.arange_black_body_localized_atms(temperature, kwargs["passband"])
         # integrate flux
@@ -183,7 +183,13 @@ class NaiveInterpolatedAtm(object):
                                   np.greater_equal(standard_wavelength, pb_container.left_bandwidth))
             hm_waves = len(standard_wavelength[mask])
             # wavelenghts in angstrom
-            wavelengths = np.linspace(pb_container.left_bandwidth, pb_container.right_bandwidth, hm_waves, True)
+            wavelengths = np.sort(np.unique(
+                np.concatenate(
+                    [np.linspace(pb_container.left_bandwidth, pb_container.right_bandwidth, hm_waves, True),
+                     standard_wavelength[mask]])
+                )
+            )
+
             # compute flux in flam, apply passband and replace possible NaNs
             flux = np.nan_to_num([
                 pb_container.akima(wavelengths) *
@@ -193,7 +199,7 @@ class NaiveInterpolatedAtm(object):
             # sometimes, there are small negative values on the boundwidth boundaries due to akima interpolation
             flux[np.less(flux, 0)] = 0.0
             # broadcast and fill localized atms
-            localized_atms[band] = {"flux": flux[reverse_map], "wave": np.tile(wavelengths, (initial_shape, 1))}
+            localized_atms[band] = {"flux": flux[reverse_map], "wave": wavelengths}
 
         return localized_atms
 
