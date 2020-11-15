@@ -9,8 +9,11 @@ from . import settings
 from . import (
     utils,
     const,
-    umpy as up
+    umpy as up,
+    buffers
 )
+
+from time import time
 
 logger = getLogger(__name__)
 
@@ -111,13 +114,21 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
                                                  law=settings.LIMB_DARKENING_LAW)
         csv_columns = settings.LD_LAW_COLS_ORDER[settings.LIMB_DARKENING_LAW]
         all_columns = csv_columns
+
         df = pd.DataFrame(columns=all_columns)
 
+        # for table in relevant_tables:
         for table in relevant_tables:
-            _df = get_ld_table_by_name(table)[csv_columns]
+            if table in buffers.LD_CFS_TABLES:
+                _df = buffers.LD_CFS_TABLES[table]
+            else:
+                _df = get_ld_table_by_name(table)[csv_columns]
+                buffers.LD_CFS_TABLES[table] = _df
             df = df.append(_df)
+        buffers.reduce_buffer(buffers.LD_CFS_TABLES)
 
         df = df.drop_duplicates()
+
         xyz_domain = df[settings.LD_DOMAIN_COLS].values
         xyz_values = df[settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]].values
 
