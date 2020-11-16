@@ -763,4 +763,4 @@ def _manage_chain_evaluation(renormalized_chain, eval_function, *args):
         return np.row_stack(result)
     else:
         args += (renormalized_chain,)
-        return evaluate_rv_params(*args)
+        return eval_function(*args)

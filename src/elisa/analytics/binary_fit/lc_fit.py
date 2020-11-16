@@ -301,7 +301,7 @@ class LCFitMCMC(LCFit):
         """
         return io_tools.load_chain(self, filename, discard, percentiles)
 
-    def fit_summary(self, path=None, **kwargs):
+    def fit_summary(self, filename=None, **kwargs):
         """
         Function produces detailed summary about the current LC fitting task with complete error propagation for the LC
         parameters if `propagate_errors` is True.
@@ -317,10 +317,10 @@ class LCFitMCMC(LCFit):
         """
         propagate_errors, percentiles = kwargs.get('propagate_errors', False), kwargs.get('percentiles', [16, 50, 84])
         if not propagate_errors:
-            simple_lc_fit_summary(self, path)
+            simple_lc_fit_summary(self, filename)
             return
 
-        fit_lc_summary_with_error_propagation(self, path, percentiles)
+        fit_lc_summary_with_error_propagation(self, filename, percentiles)
 
 
 class LCFitLeastSquares(LCFit):
