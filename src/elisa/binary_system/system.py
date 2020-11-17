@@ -455,13 +455,6 @@ class BinarySystem(System):
                     if not spot.kwargs.get('discretization_factor'):
                         spot.discretization_factor = instance.discretization_factor
 
-        for component in config.BINARY_COUNTERPARTS:
-            instance = getattr(self, component)
-            if instance.has_spots():
-                for spot in instance.spots.values():
-                    if not spot.kwargs.get('discretization_factor'):
-                        spot.discretization_factor = instance.discretization_factor
-
     def transform_input(self, **kwargs):
         """
         Transform and validate input kwargs.

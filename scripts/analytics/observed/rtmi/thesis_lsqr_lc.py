@@ -3,7 +3,9 @@ import json
 import numpy as np
 import os.path as op
 
-from elisa.analytics.binary.least_squares import binary_overcontact
+from elisa import units
+from elisa.analytics import LCData, LCBinaryAnalyticsTask
+from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.binary_system import t_layer
 from matplotlib import pyplot as plt
 
@@ -82,93 +84,104 @@ def main():
     ys = {band: ys[band][phase_mask[band]] for band in passbands}
     yerrs = {band: yerrs[band][phase_mask[band]] for band in passbands}
 
-    lc_initial = [
-        {
-            'value': 85.0,
-            'param': 'inclination',
-            'fixed': False,
-            'min': 80,
-            'max': 90
-        },
-        {
-            'value': 0.38,
-            'param': 'mass_ratio',
-            'fixed': True
-        },
-        {
-            'value': 0.0,
-            'param': 'argument_of_periastron',
-            'fixed': True
-        },
-        {
-            'value': 2.63,
-            'param': 'semi_major_axis',
-            'constraint': '2.68 / sin(radians({inclination}))'
-        },
-        {
-            'value': 0.0,
-            'param': 'eccentricity',
-            'fixed': True
-        },
-        {
-            'value': 6400.0,
-            'param': 'p__t_eff',
-            'fixed': False,
-            'min': 6000.0,
-            'max': 6500.0
-        },
-        {
-            'value': 2.55,
-            'param': 'p__surface_potential',
-            'fixed': False,
-            'min': 2.0,
-            'max': 3.0
-        },
-        {
-            'value': 0.32,
-            'param': 'p__gravity_darkening',
-            'fixed': False,
-            'min': 0.3,
-            'max': 1.0
-        },
-        {
-            'value': 0.6,
-            'param': 'p__albedo',
-            'fixed': False,
-            'min': 0.5,
-            'max': 1.0
-        },
-        {
-            'value': 6400.0,
-            'param': 's__t_eff',
-            'fixed': False,
-            'min': 6000.0,
-            'max': 6500.0
-        },
-        {
-            'value': 2.55,
-            'param': 's__surface_potential',
-            'constraint': '{p__surface_potential}',
-        },
-        {
-            'value': 0.32,
-            'param': 's__gravity_darkening',
-            'fixed': False,
-            'min': 0.3,
-            'max': 1.0
-        },
-        {
-            'value': 0.6,
-            'param': 's__albedo',
-            'fixed': False,
-            'min': 0.5,
-            'max': 1.0
-        }
-    ]
+    data = {passband: LCData(**{
+        "x_data": xs[passband],
+        "y_data": ys[passband],
+        "y_err": yerrs[passband],
+        "x_unit": units.dimensionless_unscaled,
+        "y_unit": units.dimensionless_unscaled,
+        "passband": passband
+    }) for passband in xs}
 
-    result = binary_overcontact.fit(xs=xs, ys=ys, period=P, discretization=5.0, x0=lc_initial,
-                                    yerrs=yerrs, xtol=1e-10, diff_step=0.001)
+    lc_initial = {
+        "system": {
+            "semi_major_axis": {
+                "value": 2.69,
+                "constraint": "2.69 / sin(radians(system@inclination))"
+            },
+            "inclination": {
+                "value": 85.0,
+                "fixed": False,
+                "min": 80,
+                "max": 90
+            },
+            "argument_of_periastron": {
+                "value": 0.0,
+                "fixed": True
+            },
+            "mass_ratio": {
+                "value": 0.391,
+                "fixed": True
+            },
+            "eccentricity": {
+                "value": 0.0,
+                "fixed": True
+            },
+            "period": {
+                "value": 4.5,
+                "fixed": True,
+                "unit": units.d
+            }
+        },
+        "primary": {
+            "t_eff": {
+                "value": 6400.0,
+                "fixed": False,
+                'min': 6000.0,
+                'max': 6500.0,
+                "unit": units.K
+            },
+            "surface_potential": {
+                "value": 2.55,
+                "fixed": False,
+                'min': 2.0,
+                'max': 3.0
+            },
+            "gravity_darkening": {
+                "value": 0.32,
+                "fixed": False,
+                'min': 0.3,
+                'max': 1.0
+            },
+            "albedo": {
+                "value": 0.6,
+                "fixed": False,
+                'min': 0.5,
+                'max': 1.0
+            },
+        },
+        "secondary": {
+            "t_eff": {
+                "value": 6400.0,
+                "fixed": False,
+                'min': 6000.0,
+                'max': 6500.0
+            },
+            "surface_potential": {
+                "value": 2.55,
+                'constraint': 'primary@surface_potential',
+            },
+            "gravity_darkening": {
+                "value": 0.32,
+                "fixed": False,
+                'min': 0.3,
+                'max': 1.0
+            },
+            "albedo": {
+                "value": 0.6,
+                'fixed': False,
+                'min': 0.5,
+                'max': 1.0
+            }
+        }
+    }
+
+    lc_initial = BinaryInitialParameters(**lc_initial)
+    task = LCBinaryAnalyticsTask(data=data, method='least_squares', expected_morphology="over-contact")
+    result = task.fit(x0=lc_initial)
     print(json.dumps(result, indent=4))
+
+    task.plot.model()
 
 
 if __name__ == '__main__':

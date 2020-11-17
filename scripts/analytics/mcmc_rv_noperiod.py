@@ -42,10 +42,8 @@ def main():
     rv_initial = {
         "system": {
             "eccentricity": {
-                "value": 0.25,
-                "fixed": False,
-                "min": 0.0,
-                "max": 0.5
+                "value": 0.0,
+                "fixed": True
             },
             "asini": {
                 "value": 15.0,
@@ -57,14 +55,11 @@ def main():
                 "value": 0.6,
                 "fixed": False,
                 "min": 0.1,
-                "max": 1.0
+                "max": 10.0
             },
             "argument_of_periastron": {
                 "value": 0.0,
-                "fixed": False,
-                "min": 0,
-                "max": 360,
-                "units": units.deg
+                "fixed": True
             },
             "gamma": {
                 "value": 30000.0,
@@ -90,8 +85,9 @@ def main():
 
     rv_initial = BinaryInitialParameters(**rv_initial)
     task = RVBinaryAnalyticsTask(data=data, method='mcmc')
-    task.fit(x0=rv_initial, nsteps=2000, burn_in=1000, save=True, fit_id="mcmc_rv_fit_no_period", progress=True)
+    task.fit(x0=rv_initial, nsteps=5000, burn_in=5000, save=True, fit_id="mcmc_rv_fit_no_period", progress=True)
     task.plot.model()
+    task.plot.corner(truths=True)
 
 
 if __name__ == '__main__':

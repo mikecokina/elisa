@@ -39,8 +39,8 @@ def main():
     lc_initial = {
         "system": {
             "semi_major_axis": {
-                "value": 16.515,
-                "constraint": "16.515 / sin(radians(system@inclination))"
+                "value": 16.47,
+                "constraint": "16.47 / sin(radians(system@inclination))"
             },
             "inclination": {
                 "value": 85.0,
@@ -53,7 +53,7 @@ def main():
                 "fixed": True
             },
             "mass_ratio": {
-                "value": 0.5,
+                "value": 0.499,
                 "fixed": True
             },
             "eccentricity": {
@@ -116,6 +116,8 @@ def main():
     task = LCBinaryAnalyticsTask(data=data, method='least_squares', expected_morphology="detached")
     result = task.fit(x0=lc_initial)
     print(json.dumps(result, indent=4))
+
+    task.plot.model()
 
 
 if __name__ == '__main__':
