@@ -1,10 +1,8 @@
 from copy import copy
 
 import numpy as np
-from astropy import units as u
 from numpy.testing import assert_array_equal
-
-from elisa import const as c, units
+from elisa import const as c, units as u, get_default_binary_definition
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from unittests.utils import ElisaTestCase, prepare_binary_system
@@ -12,6 +10,7 @@ from unittests.utils import ElisaTestCase, prepare_binary_system
 
 class BinarySystemInitTestCase(ElisaTestCase):
     def setUp(self):
+        super(BinarySystemInitTestCase, self).setUp()
         self.params_combination = [
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
@@ -28,7 +27,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
              "primary_surface_potential": 100.0, "secondary_surface_potential": 80.0,
              "primary_synchronicity": 400, "secondary_synchronicity": 550,
              "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 3.0,
-             "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -39,7 +38,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
              "primary_surface_potential": 3.5, "secondary_surface_potential": 3.0,
              "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
              "argument_of_periastron": c.HALF_PI, "gamma": 0.0, "period": 1.0,
-             "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -50,7 +49,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
              "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
              "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
              "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-             "eccentricity": 0.3, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+             "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -62,7 +61,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
              "secondary_surface_potential": 2.875844632141054,
              "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
              "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-             "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -74,7 +73,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
              "secondary_surface_potential": 3.229240544834036,
              "primary_synchronicity": 1.5, "secondary_synchronicity": 2.0,
              "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-             "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -85,8 +84,8 @@ class BinarySystemInitTestCase(ElisaTestCase):
              "primary_surface_potential": 2.7,
              "secondary_surface_potential": 2.7,
              "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-             "argument_of_periastron": 90 * units.deg, "gamma": 0.0, "period": 1.0,
-             "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+             "argument_of_periastron": 90 * u.deg, "gamma": 0.0, "period": 1.0,
+             "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -132,18 +131,18 @@ class BinarySystemInitTestCase(ElisaTestCase):
 
         expected = {
             "primary": {
-                "forward_radius": [0.01005, 0.01229, 0.3783, 0.26257, 0.57075, 0.53029, np.nan],
-                "side_radius": [0.01005, 0.01229, 0.35511, 0.24859, 0.43994, 0.41553, 0.48182],
+                "forward_radius": [0.01005, 0.01229, 0.3783, 0.24608, 0.57075, 0.53029, np.nan],
+                "side_radius": [0.01005, 0.01229, 0.35511, 0.23553, 0.43994, 0.41553, 0.48182],
                 "equatorial_radius": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
-                "backward_radius": [0.01005, 0.01229, 0.36723, 0.25608, 0.46794, 0.44207, 0.52573],
-                "polar_radius": [0.01005, 0.01005, 0.33055, 0.24242, 0.41427, 0.37162, 0.44577]
+                "backward_radius": [0.01005, 0.01229, 0.36723, 0.24152, 0.46794, 0.44207, 0.52573],
+                "polar_radius": [0.01005, 0.01005, 0.33055, 0.23053, 0.41427, 0.37162, 0.44577]
             },
             "secondary": {
-                "forward_radius": [0.00506, 0.00763, 0.34966, 0.25693, 0.42925, 0.36743, np.nan],
-                "side_radius": [0.00506, 0.00763, 0.29464, 0.21419, 0.31288, 0.28094, 0.35376],
+                "forward_radius": [0.00506, 0.00763, 0.34966, 0.19564, 0.42925, 0.36743, np.nan],
+                "side_radius": [0.00506, 0.00763, 0.29464, 0.18102, 0.31288, 0.28094, 0.35376],
                 "equatorial_radius": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
-                "backward_radius": [0.00506, 0.00763, 0.32018, 0.23324, 0.34537, 0.30842, 0.41825],
-                "polar_radius": [0.00506, 0.00635, 0.2798, 0.20994, 0.29977, 0.2489, 0.33306]
+                "backward_radius": [0.00506, 0.00763, 0.32018, 0.19011, 0.34537, 0.30842, 0.41825],
+                "polar_radius": [0.00506, 0.00635, 0.2798, 0.17880, 0.29977, 0.2489, 0.33306]
             }
         }
 
@@ -183,15 +182,16 @@ class BinarySystemInitTestCase(ElisaTestCase):
 
 
 class ValidityTestCase(ElisaTestCase):
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron']
+    MANDATORY_KWARGS = ['inclination', 'period', 'eccentricity', 'argument_of_periastron']
 
     def setUp(self):
+        super(ValidityTestCase, self).setUp()
         self._initial_params = {
             "primary_mass": 2.0, "secondary_mass": 1.0,
             "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
             "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
             "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-            "eccentricity": 0.0, "inclination": c.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+            "eccentricity": 0.0, "inclination": c.HALF_PI * u.deg, "primary_minimum_time": 0.0,
             "phase_shift": 0.0,
             "primary_t_eff": 5000, "secondary_t_eff": 5000,
             "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -266,7 +266,6 @@ class ValidityTestCase(ElisaTestCase):
         initial_kwargs = dict(primary=self._primary,
                               secondary=self._secondary,
                               argument_of_periastron=self._initial_params["argument_of_periastron"],
-                              gamma=self._initial_params["gamma"],
                               period=self._initial_params["period"],
                               eccentricity=self._initial_params["eccentricity"],
                               inclination=self._initial_params["inclination"],
@@ -282,12 +281,13 @@ class ValidityTestCase(ElisaTestCase):
 
 class BinarySystemSerializersTestCase(ElisaTestCase):
     def setUp(self):
+        super(BinarySystemSerializersTestCase, self).setUp()
         self.params_combination = [
             {"primary_mass": 2.0, "secondary_mass": 1.0,
              "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
              "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
              "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-             "eccentricity": 0.0, "inclination": c.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+             "eccentricity": 0.0, "inclination": c.HALF_PI * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -299,7 +299,7 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
              "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
              "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
              "argument_of_periastron": c.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
-             "eccentricity": 0.3, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+             "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
              "phase_shift": 0.0,
              "primary_t_eff": 5000, "secondary_t_eff": 5000,
              "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -317,11 +317,11 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
         obtained = bs.kwargs_serializer()
 
         expected = dict(
-            gamma=0.0,
             inclination=c.HALF_PI,
             period=1.0,
             eccentricity=0.3,
             argument_of_periastron=c.HALF_PI,
+            gamma=0.0,
             primary_minimum_time=0.0,
             phase_shift=0.0
         )
@@ -426,7 +426,18 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
         com = self._get_community()
         std = self._get_std()
 
-        com_a1 = np.float64((com.semi_major_axis * units.m).to(units.solRad))
-        com_a2 = np.float64((std.semi_major_axis * units.m).to(units.solRad))
+        com_a1 = np.float64((com.semi_major_axis * u.m).to(u.solRad))
+        com_a2 = np.float64((std.semi_major_axis * u.m).to(u.solRad))
         self.assertTrue(np.round(com_a1, 2) == np.round(com_a2, 2))
         self.assertTrue(np.round(com.mass_ratio, 2) == np.round(std.mass_ratio, 2))
+
+
+class BinarySystemSeparatedAtmospheres(ElisaTestCase):
+    @staticmethod
+    def test_atmospheres_of_components_differs():
+        definition = get_default_binary_definition()
+        definition["primary"].update({**definition["primary"], "atmosphere": "bb"})
+        definition["secondary"].update({**definition["secondary"], "atmosphere": "ck04"})
+        binary = BinarySystem.from_json(definition)
+        assert binary.primary.atmosphere, "bb"
+        assert binary.secondary.atmosphere, "ck04"

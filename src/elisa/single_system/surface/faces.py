@@ -1,10 +1,10 @@
 import numpy as np
 from scipy.spatial.qhull import Delaunay
 
-from elisa.base import spot
-from elisa.base.surface import faces as bfaces
-from elisa.pulse import pulsations
-from elisa.logger import getLogger
+from ... base import spot
+from ... base.surface import faces as bfaces
+from ... logger import getLogger
+from ... base.surface.faces import set_all_surface_centres
 
 logger = getLogger("single_system.surface.faces")
 
@@ -117,12 +117,10 @@ def compute_all_surface_areas(system_container):
 def build_faces_orientation(system_container):
     com_x = 0.0
 
-    star_container = system_container.star
-    bfaces.set_all_surface_centres(star_container)
-    set_all_normals(star_container, com=com_x)
+    star = system_container.star
+    set_all_surface_centres(star)
+    set_all_normals(star, com=com_x)
 
-    if star_container.has_pulsations():
-        pulsations.set_ralp(star_container, com_x=com_x, phase=system_container.position.phase)
     return system_container
 
 
@@ -135,21 +133,7 @@ def set_all_normals(star_container, com):
     :param star_container: instance of container to set normals on;
     """
     points, faces, cntrs = star_container.points, star_container.faces, star_container.face_centres
-    if star_container.symmetry_test():
-        normals1 = bfaces.calculate_normals(points[:star_container.base_symmetry_faces_number],
-                                            faces[:star_container.base_symmetry_faces_number],
-                                            cntrs[:star_container.base_symmetry_faces_number], com)
-        normals2 = normals1[:, [1, 0, 2]] * np.array([-1.0,  1.0, 1.0])
-        normals3 = normals2[:, [1, 0, 2]] * np.array([-1.0,  1.0, 1.0])
-        normals4 = normals3[:, [1, 0, 2]] * np.array([-1.0,  1.0, 1.0])
-        normals5 = normals1 * np.array([ 1.0,  1.0, -1.0])
-        normals6 = normals2 * np.array([ 1.0,  1.0, -1.0])
-        normals7 = normals3 * np.array([ 1.0,  1.0, -1.0])
-        normals8 = normals4 * np.array([ 1.0,  1.0, -1.0])
-        star_container.normals = np.concatenate((normals1, normals2, normals3, normals4,
-                                                 normals5, normals6, normals7, normals8), axis=0)
-    else:
-        star_container.normals = bfaces.calculate_normals(points, faces, cntrs, com)
+    star_container.normals = bfaces.calculate_normals(points, faces, cntrs, com)
 
     if star_container.has_spots():
         for spot_index in star_container.spots:
@@ -159,3 +143,25 @@ def set_all_normals(star_container, com):
                                          star_container.spots[spot_index].face_centres,
                                          com)
     return star_container
+
+
+def build_velocities(system):
+    """
+    Function calculates velocity vector for each face relative to the centre of mass
+
+    :param system: elisa.single_system.container.SystemContainer
+    :return: elisa.single_system.container.SystemContainer
+    """
+    star = system.star
+    omega = np.array([0, 0, system.angular_velocity])
+
+    # rotational velocity
+    p_velocities = np.cross(star.points, omega, axisa=1)
+    star.velocities = np.mean(p_velocities[star.faces], axis=1)
+
+    if star.has_spots():
+        for _spot in star.spots.values():
+            p_velocities = np.cross(_spot.points, omega, axisa=1)
+            _spot.velocities = np.mean(p_velocities[_spot.faces], axis=1)
+
+    return system

@@ -41,7 +41,9 @@ import json
 import os.path as op
 import numpy as np
 
-from elisa.analytics.binary.least_squares import central_rv
+from elisa import units
+from elisa.analytics import RVData, RVBinaryAnalyticsTask
+from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.binary_system import t_layer
 
 
@@ -75,52 +77,59 @@ def main():
     xs["primary"] = t_layer.jd_to_phase(T0, P, xs["primary"])
     xs["secondary"] = t_layer.jd_to_phase(T0, P, xs["secondary"])
 
-    rv_initial = [
-        {
-            'value': 0.15,
-            'param': 'eccentricity',
-            'fixed': False,
-            'min': 0.0,
-            'max': 0.3
-        },
-        {
-            'value': 12.5,
-            'param': 'asini',
-            'fixed': False,
-            'min': 10.0,
-            'max': 15.0
+    data = {comp: RVData(**{
+        "x_data": xs[comp],
+        "y_data": ys[comp],
+        "y_err": yerr[comp],
+        "x_unit": units.dimensionless_unscaled,
+        "y_unit": units.m / units.s
 
-        },
-        {
-            'value': 1.0,
-            'param': 'mass_ratio',
-            'fixed': False,
-            'min': 1.0,
-            'max': 1.5
-        },
-        {
-            'value': 220.0,
-            'param': 'argument_of_periastron',
-            'fixed': False,
-            'min': 180,
-            'max': 360
-        },
-        {
-            'value': 0.0,
-            'param': 'gamma',
-            'fixed': False,
-            'min': -50000,
-            'max': 0.0
-        },
-        {
-            'value': P,
-            'param': 'period',
-            'fixed': True,
+    }) for comp in ["primary", "secondary"]}
+
+    rv_initial = {
+        "system": {
+            "eccentricity": {
+                "value": 0.15,
+                "fixed": False,
+                "min": 0.0,
+                "max": 0.3
+            },
+            "asini": {
+                "value": 12.5,
+                "fixed": False,
+                "min": 10.0,
+                "max": 15.0
+            },
+            "mass_ratio": {
+                "value": 1.0,
+                "fixed": False,
+                "min": 1.0,
+                "max": 1.5
+            },
+            "argument_of_periastron": {
+                "value": 220.0,
+                'fixed': False,
+                'min': 180,
+                'max': 360
+            },
+            "gamma": {
+                "value": 0.0,
+                "fixed": False,
+                'min': -50000,
+                'max': 0.0
+            },
+            "period": {
+                "value": P,
+                "fixed": True
+            }
         }
-    ]
+    }
 
-    result = central_rv.fit(xs=xs, ys=ys, x0=rv_initial, xtol=1e-10, yerrs=yerr)
-    print(json.dumps(result, indent=4))
+    rv_initial = BinaryInitialParameters(**rv_initial)
+    task = RVBinaryAnalyticsTask(data=data, method='least_squares')
+    task.fit(x0=rv_initial)
+
+    task.plot.model()
 
 
 if __name__ == '__main__':

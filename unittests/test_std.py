@@ -1,11 +1,11 @@
 import numpy as np
 
 from unittests import utils
-from elisa.conf import config
+from elisa import settings
 from elisa.binary_system import system
 from elisa.observer import observer
 from importlib import reload
-from elisa.analytics.bvi import pogsons_formula
+from elisa.analytics.tools.bvi import pogsons_formula
 from unittest import skip
 
 
@@ -49,11 +49,11 @@ class SunTestCase(utils.ElisaTestCase):
 
     @staticmethod
     def test_sun():
-        passband = ['Generic.Bessell.B', 'Generic.Bessell.V']
+        _passband = ['Generic.Bessell.B', 'Generic.Bessell.V']
         TS = np.arange(3500, 50000, 500)
 
 #         for ld in ['logarithmic', 'square_root']:
-        config.REFLECTION_EFFECT = False
+        settings.configure(REFLECTION_EFFECT=False)
         reload(observer)
         reload(system)
 
@@ -63,7 +63,7 @@ class SunTestCase(utils.ElisaTestCase):
             try:
                 system_blueprint["primary"]["t_eff"] = t
                 bs = system.BinarySystem.from_json(system_blueprint)
-                o = observer.Observer(passband=passband, system=bs)
+                o = observer.Observer(passband=_passband, system=bs)
                 lc = o.observe.lc(phases=[0.5])
 
                 b_v = pogsons_formula(lc[1]['Generic.Bessell.B'][-1], lc[1]['Generic.Bessell.V'][-1])

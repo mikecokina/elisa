@@ -2,9 +2,10 @@ import gc
 import numpy as np
 
 from copy import copy
-from ..base.transform import SpotProperties
-from ..utils import is_empty
-from ..logger import getLogger
+from .. base.transform import SpotProperties
+from .. import units as u
+from .. utils import is_empty
+from .. logger import getLogger
 from .. import (
     utils,
     umpy as up
@@ -71,6 +72,8 @@ class Spot(object):
         self.faces = np.array([])
         self.face_centres = np.array([])
 
+        self.velocities = np.array([])
+
         self.areas = np.array([])
         self.potential_gradient_magnitudes = np.array([])
         self.temperatures = np.array([])
@@ -105,7 +108,24 @@ class Spot(object):
 
         :return: Dict; { kwarg: value }
         """
-        return {kwarg: getattr(self, kwarg) for kwarg in self.MANDATORY_KWARGS if not is_empty(getattr(self, kwarg))}
+
+        default_units = {
+            "longitude": u.ARC_UNIT,
+            "latitude": u.ARC_UNIT,
+            "angular_radius": u.ARC_UNIT,
+            "discretization_factor": u.ARC_UNIT
+        }
+
+        serialized_kwargs = dict()
+        for kwarg in self.ALL_KWARGS:
+            if kwarg in default_units:
+                value = getattr(self, kwarg)
+                if not isinstance(value, u.Quantity):
+                    value = value * default_units[kwarg]
+                serialized_kwargs[kwarg] = value
+            else:
+                serialized_kwargs[kwarg] = getattr(self, kwarg)
+        return serialized_kwargs
 
 
 def split_points_of_spots_and_component(on_container, points, vertices_map):
@@ -192,7 +212,11 @@ def incorporate_spots_mesh(to_container, component_com):
     vertices_map = [{"enum": -1} for _ in to_container.points]
     # `all_component_points` do not contain points of Any spot
     all_component_points = copy(to_container.points)
+
+    # neck = np.max(np.abs(to_container.points[:, 0] - component_com)) if neck is None else neck - component_com
     neck = np.max(np.abs(to_container.points[:, 0] - component_com))
+    # neck = np.min(all_component_points[:to_container.base_symmetry_points_number, 0])
+    # neck = np.min(all_component_points[:, 0])
 
     for spot_index, spot in to_container.spots.items():
         # average spacing in spot points

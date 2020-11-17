@@ -3,9 +3,9 @@ import numpy as np
 from collections.abc import Sequence
 from matplotlib import pyplot as plt
 
-from ...logger import getLogger
 from ... import umpy as up
-from ...utils import is_empty, polar_to_cartesian
+from ... logger import getLogger
+from ... utils import is_empty, polar_to_cartesian
 
 logger = getLogger("orbit.container")
 

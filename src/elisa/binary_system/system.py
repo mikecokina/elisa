@@ -1,31 +1,36 @@
 import numpy as np
-import scipy
 
+from typing import Union
+from copy import deepcopy
 from scipy import optimize
 
-from elisa.base.error import MorphologyError
-from elisa.binary_system.curves import lc, rv
-from elisa.base.container import SystemPropertiesContainer
-from elisa.base.system import System
-from elisa.base.star import Star
-from elisa.binary_system import graphic
-from elisa.binary_system.surface import mesh
-from elisa.binary_system.transform import BinarySystemProperties
-
-from elisa.conf import config
-from elisa.binary_system.orbit import orbit
-from elisa.logger import getLogger
-from elisa import (
-    umpy as up,
-    utils,
-    const,
-    units
-)
-from elisa.binary_system import (
+from . import graphic
+from . orbit import orbit
+from . curves import lc, rv
+from . surface import mesh
+from . transform import BinarySystemProperties
+from . curves import c_router
+from . import (
     utils as bsutils,
     radius as bsradius,
     model
 )
+
+from .. base.error import MorphologyError
+from .. base.container import SystemPropertiesContainer
+from .. base.system import System
+from .. base.star import Star
+from .. base.curves import rv as rv_base
+
+from .. import settings
+from .. logger import getLogger
+from .. import (
+    umpy as up,
+    units as u,
+    utils,
+    const
+)
+from .. opt.fsolver import fsolve
 
 logger = getLogger('binary_system.system')
 
@@ -58,8 +63,8 @@ class BinarySystem(System):
     :morphology: str; morphology of current system
     """
 
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'period', 'eccentricity', 'argument_of_periastron']
-    OPTIONAL_KWARGS = ['phase_shift', 'additional_light', 'primary_minimum_time']
+    MANDATORY_KWARGS = ['inclination', 'period', 'eccentricity', 'argument_of_periastron']
+    OPTIONAL_KWARGS = ['gamma', 'phase_shift', 'additional_light', 'primary_minimum_time']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     COMPONENT_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'surface_potential', 'synchronicity',
@@ -88,12 +93,13 @@ class BinarySystem(System):
         self._components = dict(primary=self.primary, secondary=self.secondary)
 
         # default values of properties
-        self.orbit = None
+        self.orbit: Union[None, orbit.Orbit] = None
         self.period = np.nan
         self.eccentricity = np.nan
         self.argument_of_periastron = np.nan
         self.primary_minimum_time = 0.0
         self.phase_shift = 0.0
+        self.gamma = 0.0
 
         # set attributes and test whether all parameters were initialized
         # we already ensured that all kwargs are valid and all mandatory kwargs are present so lets set class attributes
@@ -113,7 +119,7 @@ class BinarySystem(System):
         logger.debug("setting up morphological classification of binary system")
         self.morphology = self.compute_morphology()
 
-        self.setup_periastron_components_radii(components_distance=self.orbit.periastron_distance)
+        self.setup_components_radii(components_distance=self.orbit.periastron_distance)
         self.assign_pulsations_amplitudes(normalisation_constant=self.semi_major_axis)
 
         # adjust and setup discretization factor if necessary
@@ -217,15 +223,45 @@ class BinarySystem(System):
 
         :return: elisa.binary_system.system.BinarySystem
         """
+        data_cp = deepcopy(data)
         if _verify:
-            bsutils.validate_binary_json(data)
+            bsutils.validate_binary_json(data_cp)
 
-        kind_of = _kind_of or bsutils.resolve_json_kind(data)
+        kind_of = _kind_of or bsutils.resolve_json_kind(data_cp)
         if kind_of in ["community"]:
-            data = bsutils.transform_json_community_to_std(data)
+            data_cp = bsutils.transform_json_community_to_std(data_cp)
 
-        primary, secondary = Star(**data["primary"]), Star(**data["secondary"])
-        return cls(primary=primary, secondary=secondary, **data["system"])
+        primary, secondary = Star(**data_cp["primary"]), Star(**data_cp["secondary"])
+        return cls(primary=primary, secondary=secondary, **data_cp["system"])
+
+    @classmethod
+    def from_fit_results(cls, results):
+        """
+        Building binary system from standard fit results format.
+
+        :param results: Dict; {'component': {'param_name': {'value': value, fixed: ...}}}
+        :return: BinarySystem;
+        """
+        data = {}
+        for key, component in results.items():
+            if key != 'r_squared':
+                data[key] = {}
+            else:
+                continue
+
+            for param, content in component.items():
+                if param in ['spots', 'pulsations']:
+                    features = []
+                    for ii, feature in enumerate(content):
+                        features.append(dict())
+                        for f_param, f_content in feature.items():
+                            if f_param != 'label':
+                                features[ii][f_param] = f_content['value']
+                    data[key][param] = features
+                else:
+                    data[key][param] = content['value']
+
+        return BinarySystem.from_json(data=data)
 
     def to_json(self):
         """
@@ -236,31 +272,31 @@ class BinarySystem(System):
 
         return {
             "system": {
-                "inclination":  (self.inclination * units.rad).to(units.deg).value,
+                "inclination":  (self.inclination * u.rad).to(u.deg).value,
                 "period": self.period,
-                "argument_of_periastron": (self.argument_of_periastron * units.rad).to(units.deg).value,
+                "argument_of_periastron": (self.argument_of_periastron * u.rad).to(u.deg).value,
                 "gamma": self.gamma,
                 "eccentricity": self.eccentricity,
                 "primary_minimum_time": self.primary_minimum_time,
                 "phase_shift": self.phase_shift
             },
             "primary": {
-                "mass": (self.primary.mass * units.kg).to(units.solMass).value,
+                "mass": (self.primary.mass * u.kg).to(u.solMass).value,
                 "surface_potential": self.primary.surface_potential,
                 "synchronicity": self.primary.synchronicity,
                 "t_eff": self.primary.t_eff,
                 "gravity_darkening": self.primary.gravity_darkening,
-                "discretization_factor": (self.primary.discretization_factor * units.rad).to(units.deg).value,
+                "discretization_factor": (self.primary.discretization_factor * u.rad).to(u.deg).value,
                 "albedo": self.primary.albedo,
                 "metallicity": self.primary.metallicity
             },
             "secondary": {
-                "mass": (self.secondary.mass * units.kg).to(units.solMass).value,
+                "mass": (self.secondary.mass * u.kg).to(u.solMass).value,
                 "surface_potential": self.secondary.surface_potential,
                 "synchronicity": self.secondary.synchronicity,
                 "t_eff": self.secondary.t_eff,
                 "gravity_darkening": self.primary.gravity_darkening,
-                "discretization_factor": (self.secondary.discretization_factor * units.rad).to(units.deg).value,
+                "discretization_factor": (self.secondary.discretization_factor * u.rad).to(u.deg).value,
                 "albedo": self.secondary.albedo,
                 "metallicity": self.secondary.metallicity
             },
@@ -270,6 +306,10 @@ class BinarySystem(System):
         """
         Function to reinitialize BinarySystem class instance after changing parameter(s) of binary system.
         """
+        # reinitialize components (in case when value in component instance was changed)
+        for component in settings.BINARY_COUNTERPARTS:
+            getattr(self, component).init()
+
         self.__init__(primary=self.primary, secondary=self.secondary, **self.kwargs_serializer())
 
     @property
@@ -280,21 +320,6 @@ class BinarySystem(System):
         :return: Dict[str, elisa.base.Star];
         """
         return self._components
-
-    def kwargs_serializer(self):
-        """
-        Creating dictionary of keyword arguments of BinarySystem class in order to be able to reinitialize the class
-        instance in init().
-
-        :return: Dict;
-        """
-        serialized_kwargs = dict()
-        for kwarg in self.ALL_KWARGS:
-            if kwarg in ['argument_of_periastron', 'inclination']:
-                serialized_kwargs[kwarg] = getattr(self, kwarg) * units.ARC_UNIT
-            else:
-                serialized_kwargs[kwarg] = getattr(self, kwarg)
-        return serialized_kwargs
 
     def properties_serializer(self):
         props = BinarySystemProperties.transform_input(**self.kwargs_serializer())
@@ -338,11 +363,11 @@ class BinarySystem(System):
 
     def calculate_semi_major_axis(self):
         """
-        Calculates length semi major axis using 3rd kepler law.
+        Calculates length semi major axis using 3rd kepler default_law.
 
         :return: float;
         """
-        period = np.float64((self.period * units.PERIOD_UNIT).to(units.s))
+        period = np.float64((self.period * u.PERIOD_UNIT).to(u.s))
         return (const.G * (self.primary.mass + self.secondary.mass) * period ** 2 / (4 * const.PI ** 2)) ** (1.0 / 3)
 
     def compute_morphology(self):
@@ -411,18 +436,24 @@ class BinarySystem(System):
         If secondary discretization factor was not set, it will be now with respect to primary component.
         """
         if not self.secondary.kwargs.get('discretization_factor'):
-            self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.polar_radius
-                                                    / self.secondary.polar_radius * units.rad).value
+            self.secondary.discretization_factor = (self.primary.discretization_factor * self.primary.equivalent_radius
+                                                    / self.secondary.equivalent_radius * u.rad).value
 
-            if self.secondary.discretization_factor > np.radians(config.MAX_DISCRETIZATION_FACTOR):
-                self.secondary.discretization_factor = np.radians(config.MAX_DISCRETIZATION_FACTOR)
-            if self.secondary.discretization_factor < np.radians(config.MIN_DISCRETIZATION_FACTOR):
-                self.secondary.discretization_factor = np.radians(config.MIN_DISCRETIZATION_FACTOR)
+            if self.secondary.discretization_factor > np.radians(settings.MAX_DISCRETIZATION_FACTOR):
+                self.secondary.discretization_factor = np.radians(settings.MAX_DISCRETIZATION_FACTOR)
+            if self.secondary.discretization_factor < np.radians(settings.MIN_DISCRETIZATION_FACTOR):
+                self.secondary.discretization_factor = np.radians(settings.MIN_DISCRETIZATION_FACTOR)
 
             logger.info(f"setting discretization factor of secondary component to "
-                        f"{up.degrees(self.secondary.discretization_factor):.2f} as a "
-                        f"according to discretization factor of the primary component and"
-                        f"configuration boundaries")
+                        f"{up.degrees(self.secondary.discretization_factor):.2f} "
+                        f"according to discretization factor of the primary component.")
+
+        for component in settings.BINARY_COUNTERPARTS.keys():
+            instance = getattr(self, component)
+            if instance.has_spots():
+                for spot in instance.spots.values():
+                    if not spot.kwargs.get('discretization_factor'):
+                        spot.discretization_factor = instance.discretization_factor
 
         for component in config.BINARY_COUNTERPARTS:
             instance = getattr(self, component)
@@ -445,7 +476,7 @@ class BinarySystem(System):
         Compute and set critical surface potential for both components.
         Critical surface potential is for component defined as potential when component fill its Roche lobe.
         """
-        for component in config.BINARY_COUNTERPARTS:
+        for component in settings.BINARY_COUNTERPARTS:
             setattr(
                 getattr(self, component), "critical_surface_potential",
                 self.critical_potential(component=component, components_distance=1.0 - self.eccentricity)
@@ -459,28 +490,45 @@ class BinarySystem(System):
         :param components_distance: numpy.float;
         :return: numpy.float;
         """
-        if component == "primary":
-            args = self.primary.synchronicity, self.mass_ratio, components_distance
-            solution = optimize.newton(model.primary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
-        elif component == "secondary":
-            args = self.secondary.synchronicity, self.mass_ratio, components_distance
-            solution = optimize.newton(model.secondary_potential_derivative_x, 0.000001, args=args, tol=1e-12)
+        synchronicity = self.primary.synchronicity if component == 'primary' else self.secondary.synchronicity
+        return self.critical_potential_static(component, components_distance, self.mass_ratio, synchronicity)
+
+    @staticmethod
+    def critical_potential_static(component, components_distance, mass_ratio, synchronicity):
+        """
+        Static method for calculation of critical potential for EB system component.
+
+        :param component: str; define target component to compute critical potential; `primary` or `secondary`
+        :param components_distance: components_distance: numpy.float;
+        :param mass_ratio: float;
+        :param synchronicity: float;
+        :return: numpy.float;
+        """
+        args1 = synchronicity, mass_ratio, components_distance
+        args2 = args1 + (0.0, const.HALF_PI)
+        solver_err = ValueError("Iteration process to solve critical potential seems "
+                                "to lead nowhere (critical potential solver has failed).")
+
+        if component == 'primary':
+            solution = optimize.newton(model.primary_potential_derivative_x, 0.000001, args=args1, tol=1e-12)
+            if not up.isnan(solution):
+                precalc_args = model.pre_calculate_for_potential_value_primary(*args2)
+                args = (mass_ratio,) + precalc_args
+                return abs(model.potential_value_primary(solution, *args))
+            else:
+                raise solver_err
+
+        elif component == 'secondary':
+            solution = optimize.newton(model.secondary_potential_derivative_x, 0.000001, args=args1, tol=1e-12)
+            if not up.isnan(solution):
+                precalc_args = model.pre_calculate_for_potential_value_secondary(*args2)
+                args = (mass_ratio,) + precalc_args
+                return abs(model.potential_value_secondary(components_distance - solution, *args))
+            else:
+                raise solver_err
+
         else:
             raise ValueError("Parameter `component` has incorrect value. Use `primary` or `secondary`.")
-
-        if not up.isnan(solution):
-            args = components_distance, 0.0, const.HALF_PI
-            if component == "primary":
-                args = (self.primary.synchronicity, self.mass_ratio) + args
-                args = (self.mass_ratio, ) + model.pre_calculate_for_potential_value_primary(*args)
-                return abs(model.potential_value_primary(solution, *args))
-            elif component == 'secondary':
-                args = (self.secondary.synchronicity, self.mass_ratio) + args
-                args = (self.mass_ratio, ) + model.pre_calculate_for_potential_value_secondary(*args)
-                return abs(model.potential_value_secondary(components_distance - solution, *args))
-        else:
-            raise ValueError("Iteration process to solve critical potential seems "
-                             "to lead nowhere (critical potential solver has failed).")
 
     def libration_potentials(self):
         """
@@ -488,9 +536,19 @@ class BinarySystem(System):
 
         :return: List; [Omega(L3), Omega(L1), Omega(L2)];
         """
+        return self.libration_potentials_static(self.orbit.periastron_distance, self.mass_ratio)
 
+    @staticmethod
+    def libration_potentials_static(periastron_distance, mass_ratio):
+        """
+        Static version of `libration_potentials` where potentials in L3, L1, L2 are calculated.
+
+        :param periastron_distance: float;
+        :param mass_ratio: float;
+        :return: list
+        """
         def potential(radius):
-            theta, d = const.HALF_PI, self.orbit.periastron_distance
+            theta, d = const.HALF_PI, periastron_distance
             if isinstance(radius, (float, int, np.float, np.int)):
                 radius = [radius]
             elif not isinstance(radius, tuple([list, np.array])):
@@ -501,22 +559,33 @@ class BinarySystem(System):
                 phi, r = (0.0, r) if r >= 0 else (const.PI, abs(r))
 
                 block_a = 1.0 / r
-                block_b = self.mass_ratio / (up.sqrt(up.power(d, 2) + up.power(r, 2) - (
+                block_b = mass_ratio / (up.sqrt(up.power(d, 2) + up.power(r, 2) - (
                         2.0 * r * up.cos(phi) * up.sin(theta) * d)))
-                block_c = (self.mass_ratio * r * up.cos(phi) * up.sin(theta)) / (up.power(d, 2))
-                block_d = 0.5 * (1 + self.mass_ratio) * up.power(r, 2) * (
+                block_c = (mass_ratio * r * up.cos(phi) * up.sin(theta)) / (up.power(d, 2))
+                block_d = 0.5 * (1 + mass_ratio) * up.power(r, 2) * (
                         1 - up.power(up.cos(theta), 2))
 
                 p_values.append(block_a + block_b - block_c + block_d)
             return p_values
 
-        lagrangian_points = self.lagrangian_points()
+        lagrangian_points = BinarySystem.lagrangian_points_static(periastron_distance, mass_ratio)
         return potential(lagrangian_points)
 
     def lagrangian_points(self):
         """
         Compute Lagrangian points for current system parameters.
 
+        :return: List; x-valeus of libration points [L3, L1, L2] respectively
+        """
+        return self.lagrangian_points_static(self.orbit.periastron_distance, self.mass_ratio)
+
+    @staticmethod
+    def lagrangian_points_static(periastron_distance, mass_ratio):
+        """
+        Static version of `lagrangian_points` that returns Lagrangian points for current system parameters.
+
+        :param periastron_distance: float;
+        :param mass_ratio: float;
         :return: List; x-valeus of libration points [L3, L1, L2] respectively
         """
 
@@ -532,10 +601,9 @@ class BinarySystem(System):
             """
             d, = args
             r_sqr, rw_sqr = x ** 2, (d - x) ** 2
-            return - (x / r_sqr ** (3.0 / 2.0)) + ((self.mass_ratio * (d - x)) / rw_sqr ** (
-                    3.0 / 2.0)) + (self.mass_ratio + 1) * x - self.mass_ratio / d ** 2
+            return - (x / r_sqr ** (3.0 / 2.0)) + ((mass_ratio * (d - x)) / rw_sqr ** (
+                    3.0 / 2.0)) + (mass_ratio + 1) * x - mass_ratio / d ** 2
 
-        periastron_distance = self.orbit.periastron_distance
         xs = np.linspace(- periastron_distance * 3.0, periastron_distance * 3.0, 100)
 
         args_val = periastron_distance,
@@ -553,8 +621,7 @@ class BinarySystem(System):
                 continue
 
             try:
-                solution, _, ier, _ = scipy.optimize.fsolve(potential_dx, x_val, full_output=True, args=args_val,
-                                                            xtol=1e-12)
+                solution, _, ier, _ = fsolve(potential_dx, x_val, full_output=True, args=args_val, xtol=1e-12)
                 if ier == 1:
                     if round(solution[0], 5) not in points:
                         try:
@@ -573,7 +640,7 @@ class BinarySystem(System):
                 logger.debug(f"solution for x: {x_val} lead to nowhere, exception: {str(e)}")
                 continue
 
-        return sorted(lagrange) if self.mass_ratio < 1.0 else sorted(lagrange, reverse=True)
+        return sorted(lagrange) if mass_ratio < 1.0 else sorted(lagrange, reverse=True)
 
     def compute_equipotential_boundary(self, components_distance, plane):
         """
@@ -588,7 +655,8 @@ class BinarySystem(System):
         fn_map = {'primary': (model.potential_primary_fn, model.pre_calculate_for_potential_value_primary),
                   'secondary': (model.potential_secondary_fn, model.pre_calculate_for_potential_value_secondary)}
 
-        angles = np.linspace(-3 * const.HALF_PI, const.HALF_PI, 300, endpoint=True)
+        # angles = np.linspace(-3 * const.HALF_PI, const.HALF_PI, 300, endpoint=True)
+        angles = np.linspace(0, const.FULL_ARC, 500, endpoint=True)
         for component in components:
             component_instance = getattr(self, component)
             synchronicity = component_instance.synchronicity
@@ -606,8 +674,8 @@ class BinarySystem(System):
                 scipy_solver_init_value = np.array([components_distance / 10000.0])
                 aux_args = (self.mass_ratio,) + fn_map[component][1](*args)
                 args = (aux_args, component_instance.surface_potential)
-                solution, _, ier, _ = scipy.optimize.fsolve(fn_map[component][0], scipy_solver_init_value,
-                                                            full_output=True, args=args, xtol=1e-12)
+                solution, _, ier, _ = fsolve(fn_map[component][0], scipy_solver_init_value,
+                                             full_output=True, args=args, xtol=1e-12)
 
                 # check for regular solution
                 if ier == 1 and not up.isnan(solution[0]):
@@ -667,16 +735,23 @@ class BinarySystem(System):
         else:
             return [const.Position(*p) for p in positions]
 
-    def setup_periastron_components_radii(self, components_distance):
+    def setup_components_radii(self, components_distance, calculate_equivalent_radius=True):
         """
         Setup component radii.
         Use methods to calculate polar, side, backward and if not W UMa also
         forward radius and assign to component instance.
 
+        :param calculate_equivalent_radius: bool; some application do not require calculation of equivalent radius
         :param components_distance: float;
         """
         fns = [bsradius.calculate_polar_radius, bsradius.calculate_side_radius, bsradius.calculate_backward_radius]
         components = ['primary', 'secondary']
+
+        if self.eccentricity == 0.0:
+            corrected_potential = {component: getattr(self, component).surface_potential for component in components}
+        else:
+            corrected_potential = self.correct_potentials(distances=np.array([components_distance, ]))
+            corrected_potential = {component: corrected_potential[component][0] for component in components}
 
         for component in components:
             component_instance = getattr(self, component)
@@ -688,13 +763,18 @@ class BinarySystem(System):
                 kwargs = dict(synchronicity=component_instance.synchronicity,
                               mass_ratio=self.mass_ratio,
                               components_distance=components_distance,
-                              surface_potential=component_instance.surface_potential,
+                              surface_potential=corrected_potential[component],
                               component=component)
                 r = fn(**kwargs)
                 setattr(component_instance, param, r)
                 if self.morphology != 'over-contact':
                     r = bsradius.calculate_forward_radius(**kwargs)
                     setattr(component_instance, 'forward_radius', r)
+
+            # setting value of equivalent radius
+            if calculate_equivalent_radius:
+                e_rad = self.calculate_equivalent_radius(components=component)[component]
+                setattr(component_instance, 'equivalent_radius', e_rad)
 
     @staticmethod
     def compute_filling_factor(surface_potential, lagrangian_points):
@@ -713,27 +793,35 @@ class BinarySystem(System):
         """
         return (lagrangian_points[1] - surface_potential) / (lagrangian_points[1] - lagrangian_points[2])
 
-    def correct_potentials(self, phases, component="all", iterations=2):
+    def correct_potentials(self, phases=None, component="all", iterations=2, distances=None):
         """
         Function calculates potential for each phase in phases in such way that conserves
-        volume of the component. Volume is approximated by two half elipsoids.
+        volume of the component.
 
-        :param phases: numpy.array;
+        :param phases: numpy.array; if `distances` is not `None`, phases will be not used
         :param component: str; `primary`, `secondary` or None (=both)
         :param iterations: int;
+        :param distances: numpy.array; if not `None`, corrected potentials will be calculated
+                                       for given component distances
         :return: numpy.array;
         """
-        data = self.orbit.orbital_motion(phases)
-        distances = data[:, 0]
+        if distances is None:
+            if phases is None:
+                raise ValueError('Either `phases` or components `distances` have to be supplied.')
+
+            data = self.orbit.orbital_motion(phases)
+            distances = data[:, 0]
+        else:
+            distances = np.array(distances)
 
         retval = {}
         components = bsutils.component_to_list(component)
         for component in components:
             star = getattr(self, component)
-            new_potentials = star.surface_potential * np.ones(phases.shape)
+            new_potentials = star.surface_potential * np.ones(distances.shape)
 
             points_equator, points_meridian = \
-                self.generate_equator_and_meridian_points_in_detached_sys(
+                self.generate_equator_and_meridian_points(
                     components_distance=1.0,
                     component=component,
                     surface_potential=star.surface_potential
@@ -741,15 +829,15 @@ class BinarySystem(System):
             volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
             equiv_r_mean = utils.calculate_equiv_radius(volume)
 
-            side_radii = np.empty(phases.shape)
-            volume = np.empty(phases.shape)
+            side_radii = np.empty(distances.shape)
+            volume = np.empty(distances.shape)
             for _ in range(iterations):
                 for idx, pot in enumerate(new_potentials):
                     radii_args = (star.synchronicity, self.mass_ratio, distances[idx], new_potentials[idx], component)
                     side_radii[idx] = bsradius.calculate_side_radius(*radii_args)
 
                     points_equator, points_meridian = \
-                        self.generate_equator_and_meridian_points_in_detached_sys(
+                        self.generate_equator_and_meridian_points(
                             components_distance=distances[idx],
                             component=component,
                             surface_potential=new_potentials[idx]
@@ -768,7 +856,50 @@ class BinarySystem(System):
             retval[component] = new_potentials
         return retval
 
-    def generate_equator_and_meridian_points_in_detached_sys(self, components_distance, component, surface_potential):
+    def calculate_equivalent_radius(self, components):
+        """
+        Function returns equivalent radius of the given component, i.e. radius of the sphere with the same volume as
+        given component.
+
+        :param components: str; `primary`, `secondary` or None (=both)
+        :return: dict; {'primary': r_equiv, ...}
+        """
+        components = bsutils.component_to_list(components)
+        retval = dict()
+        for component in components:
+            star = getattr(self, component)
+            points_equator, points_meridian = \
+                self.generate_equator_and_meridian_points(
+                    components_distance=1.0,
+                    component=component,
+                    surface_potential=star.surface_potential
+                )
+
+            volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
+            retval[component] = utils.calculate_equiv_radius(volume)
+
+        return retval
+
+    def calculate_bolometric_luminosity(self, components):
+        """
+        Calculates bolometric luminosity of given component based on its effective temperature and equivalent radius
+        using black body approximation.
+
+        :param components: str; `primary`, `secondary` or None (=both)
+        :return: dict; {'primary': L_bol, ...}
+        """
+        components = bsutils.component_to_list(components)
+        r_equiv = {component: getattr(self, component).equivalent_radius for component in components}
+
+        retval = dict()
+        for component in components:
+            star = getattr(self, component)
+            retval[component] = 4 * const.PI * np.power(r_equiv[component] * self.semi_major_axis, 2) * \
+                                const.S_BOLTZMAN * np.power(star.t_eff, 4)
+
+        return retval
+
+    def generate_equator_and_meridian_points(self, components_distance, component, surface_potential):
         """
         Function calculates a two arrays of points contouring equator and meridian calculating for the same x-values.
 
@@ -777,21 +908,56 @@ class BinarySystem(System):
         :param components_distance: float;
         :return: Tuple; (points on equator, points on meridian)
         """
+
+        forward_radius, x, a = None, None, None
         star = getattr(self, component)
         discretization_factor = star.discretization_factor
 
-        # generating equidistant angles
-        num, n = int(const.PI // discretization_factor), 5
-        theta = np.linspace(discretization_factor / n, const.PI - discretization_factor / n, num=num + 1, endpoint=True)
-
         rad_args = (star.synchronicity, self.mass_ratio, components_distance, surface_potential, component)
         backward_radius = bsradius.calculate_backward_radius(*rad_args)
-        forward_radius = bsradius.calculate_forward_radius(*rad_args)
 
-        # generating x coordinates for both meridian and equator
-        a = 0.5 * (forward_radius + backward_radius)
-        c = forward_radius - a
-        x = a * up.cos(theta) + c
+        # generating equidistant angles
+        if self.morphology == 'detached':
+            num = int(const.PI // discretization_factor)
+            theta = np.linspace(discretization_factor, const.PI - discretization_factor, num=num + 1,
+                                endpoint=True)
+
+            forward_radius = bsradius.calculate_forward_radius(*rad_args)
+
+            # generating x coordinates for both meridian and equator
+            a = 0.5 * (forward_radius + backward_radius)
+            c = forward_radius - a
+            x = a * up.cos(theta) + c
+
+        elif self.morphology == 'over-contact':
+            num = int(const.HALF_PI // discretization_factor)
+            theta = np.linspace(const.HALF_PI + discretization_factor, const.PI - discretization_factor, num=num + 1,
+                                endpoint=True)
+
+            forward_radius = mesh.calculate_neck_position(self, return_polynomial=False) \
+                if component == 'primary' else 1 - mesh.calculate_neck_position(self, return_polynomial=False)
+
+            a = 0.5 * (forward_radius + backward_radius)
+            c = forward_radius - a
+            x_back = a * up.cos(theta) + c
+
+            x_front = np.linspace(forward_radius, c, num=num + 1, endpoint=True)
+            x = np.concatenate((x_front, x_back))
+
+        elif self.morphology in ['semi-detached', 'double-contact']:
+            num = int(const.HALF_PI // discretization_factor)
+            theta = np.linspace(const.HALF_PI + discretization_factor, const.PI - discretization_factor, num=num,
+                                endpoint=True)
+
+            forward_radius = bsradius.calculate_forward_radius(*rad_args)
+
+            a = 0.5 * (forward_radius + backward_radius)
+            c = forward_radius - a
+
+            x_front = np.linspace(forward_radius - 0.05 * a, c, num=num + 1, endpoint=True)
+            x_back = a * up.cos(theta) + c
+
+            x = np.concatenate((x_front, x_back))
 
         fn_cylindrical = getattr(model, f"potential_{component}_cylindrical_fn")
         precal_cylindrical = getattr(model, f"pre_calculate_for_potential_value_{component}_cylindrical")
@@ -806,7 +972,23 @@ class BinarySystem(System):
                 cylindrical_potential_derivative_fn, surface_potential, self.mass_ratio, star.synchronicity)
         points = mesh.get_surface_points_cylindrical(*args)
 
-        return points[:points.shape[0] // 2, :], points[points.shape[0] // 2:, :]
+        if self.morphology != 'over-contact':
+            # add forward and backward points to meridians
+            equator_points = np.vstack(([0, 0, forward_radius],
+                                        points[:points.shape[0] // 2, :],
+                                        [0, 0, -backward_radius]))
+            meridian_points = np.vstack(([0, 0, forward_radius],
+                                         points[points.shape[0] // 2:, :],
+                                         [0, 0, -backward_radius]))
+
+            return equator_points, meridian_points
+        else:
+            equator_points = np.vstack((points[:points.shape[0] // 2, :],
+                                        [0, 0, -backward_radius]))
+            meridian_points = np.vstack((points[points.shape[0] // 2:, :],
+                                         [0, 0, -backward_radius]))
+
+            return equator_points, meridian_points
 
     # light curves *****************************************************************************************************
     def compute_lightcurve(self, **kwargs):
@@ -819,29 +1001,17 @@ class BinarySystem(System):
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
             * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
             * ** phases ** * - numpy.array
             * ** position_method ** * - method
         :return: Dict
         """
-        is_circular = self.eccentricity == 0
-        is_eccentric = 1 > self.eccentricity > 0
-        assynchronous_spotty_p = self.primary.synchronicity != 1 and self.primary.has_spots()
-        assynchronous_spotty_s = self.secondary.synchronicity != 1 and self.secondary.has_spots()
-        assynchronous_spotty_test = assynchronous_spotty_p or assynchronous_spotty_s
+        fn_arr = (self._compute_circular_synchronous_lightcurve,
+                  self._compute_circular_spotty_asynchronous_lightcurve,
+                  self._compute_eccentric_spotty_lightcurve,
+                  self._compute_eccentric_lightcurve)
+        curve_fn = c_router.resolve_curve_method(self, fn_arr)
 
-        if is_circular:
-            if assynchronous_spotty_test and not self.has_pulsations():
-                return self._compute_circular_spotty_asynchronous_lightcurve(**kwargs)
-            else:
-                return self._compute_circular_synchronous_lightcurve(**kwargs)
-        elif is_eccentric:
-            if assynchronous_spotty_test:
-                return self._compute_eccentric_spotty_asynchronous_lightcurve(**kwargs)
-            else:
-                return self._compute_eccentric_lightcurve(**kwargs)
-
-        raise NotImplementedError("Orbit type not implemented or invalid")
+        return curve_fn(**kwargs)
 
     def _compute_circular_synchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_synchronous_lightcurve(self, **kwargs)
@@ -849,12 +1019,34 @@ class BinarySystem(System):
     def _compute_circular_spotty_asynchronous_lightcurve(self, **kwargs):
         return lc.compute_circular_spotty_asynchronous_lightcurve(self, **kwargs)
 
-    def _compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs):
-        return lc.compute_eccentric_spotty_asynchronous_lightcurve(self, **kwargs)
+    def _compute_eccentric_spotty_lightcurve(self, **kwargs):
+        return lc.compute_eccentric_spotty_lightcurve(self, **kwargs)
 
     def _compute_eccentric_lightcurve(self, **kwargs):
-        return lc.compute_eccentric_lightcurve(self, **kwargs)
+        return lc.compute_eccentric_lightcurve_no_spots(self, **kwargs)
 
     # radial velocity curves *******************************************************************************************
     def compute_rv(self, **kwargs):
-        return rv.radial_velocity(self, **kwargs)
+        if kwargs['method'] == 'point_mass':
+            return rv.com_radial_velocity(self, **kwargs)
+        if kwargs['method'] == 'radiometric':
+            fn_arr = (self._compute_circular_synchronous_rv_curve,
+                      self._compute_circular_spotty_asynchronous_rv_curve,
+                      self._compute_eccentric_spotty_rv_curve,
+                      self._compute_eccentric_rv_curve_no_spots)
+            curve_fn = c_router.resolve_curve_method(self, fn_arr)
+
+            kwargs = rv_base.include_passband_data_to_kwargs(**kwargs)
+            return curve_fn(**kwargs)
+
+    def _compute_circular_synchronous_rv_curve(self, **kwargs):
+        return rv.compute_circular_synchronous_rv_curve(self, **kwargs)
+
+    def _compute_circular_spotty_asynchronous_rv_curve(self, **kwargs):
+        return rv.compute_circular_spotty_asynchronous_rv_curve(self, **kwargs)
+
+    def _compute_eccentric_spotty_rv_curve(self, **kwargs):
+        return rv.compute_eccentric_spotty_rv_curve(self, **kwargs)
+
+    def _compute_eccentric_rv_curve_no_spots(self, **kwargs):
+        return rv.compute_eccentric_rv_curve_no_spots(self, **kwargs)

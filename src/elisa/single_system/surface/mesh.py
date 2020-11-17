@@ -1,51 +1,53 @@
 import numpy as np
 import elisa.umpy as up
 
-from elisa.logger import getLogger
-from elisa.single_system import model
-from elisa.base.spot import incorporate_spots_mesh
-from elisa.base.error import MaxIterationError
-from elisa.single_system.radius import calculate_radius
-from elisa.conf import config
-from elisa.pulse import pulsations
-
-from elisa import (
-    const,
+from .. import model
+from .. radius import calculate_radius
+from ... logger import getLogger
+from ... base.spot import incorporate_spots_mesh
+from ... base.surface.mesh import correct_component_mesh
+from ... base.error import MaxIterationError
+from ... import settings
+from ... pulse import pulsations
+from ... import (
     opt,
+    const,
     utils
 )
 
-logger = getLogger("single-system-mesh-module")
+logger = getLogger("single_system.surface.mesh")
+SEAM_CONST = 1.08
 
 
-def build_mesh(system_container):
+def build_mesh(system):
     """
     Build points of surface for including spots.
+
+    :param system: elisa.single_system.contaier.PositionContainer; instance
+    :return: elisa.single_system.contaier.PositionContainer; instance
     """
-    star = system_container.star
-    a, b, c, d = mesh(system_container=system_container, symmetry_output=True)
+    a, b, c, d = mesh(system_container=system, symmetry_output=True)
 
-    star.points = a
-    star.point_symmetry_vector = b
-    star.base_symmetry_points_number = c
-    star.inverse_point_symmetry_matrix = d
+    system.star.points = a
+    system.star.point_symmetry_vector = b
+    system.star.base_symmetry_points_number = c
+    system.star.inverse_point_symmetry_matrix = d
 
-    add_spots_to_mesh(system_container)
-    return system_container
+    add_spots_to_mesh(system)
+    return system
 
 
-def build_pulsations_on_mesh(system_container):
+def build_pulsations_on_mesh(system):
     """
-    adds position perturbations to stellar mesh
+    Adds position perturbations to stellar mesh.
 
-    :param system_container: elisa.single_system.contaier.PositionContainer; instance
-    :return:
+    :param system: elisa.single_system.contaier.PositionContainer; instance
+    :return: elisa.single_system.contaier.PositionContainer; instance
     """
-    if system_container.star.has_pulsations():
-        system_container.star = \
-            pulsations.incorporate_pulsations_to_mesh(system_container.star, com_x=0.0,
-                                                      phase=system_container.position.phase,
-                                                      time=system_container.time)
+    if system.star.has_pulsations():
+        system.star = pulsations.generate_harmonics(system.star, com_x=0, phase=system.position.phase, time=system.time)
+        system.star = pulsations.incorporate_pulsations_to_mesh(system.star, com_x=0.0)
+    return system
 
 
 def mesh(system_container, symmetry_output=False):
@@ -89,17 +91,22 @@ def mesh(system_container, symmetry_output=False):
 
     # axial symmetry, therefore calculating latitudes
     thetas = pre_calc_latitudes(discretization_factor, star_container.polar_radius, star_container.equatorial_radius)
+    thetas_meridian = pre_calc_latitudes(SEAM_CONST*discretization_factor, star_container.polar_radius,
+                                         star_container.equatorial_radius)
 
     x0 = 0.5 * (star_container.equatorial_radius + star_container.polar_radius)
     args = thetas, x0, precalc_fn, potential_fn, potential_derivative_fn, star_container.surface_potential, \
         star_container.mass, system_container.angular_velocity
+    args_meridian = thetas_meridian, x0, precalc_fn, potential_fn, potential_derivative_fn, \
+                    star_container.surface_potential, star_container.mass, system_container.angular_velocity
 
     radius = get_surface_points_radii(*args)
+    radius_meridian = get_surface_points_radii(*args_meridian)
 
     # converting this eighth of surface to cartesian coordinates
     quarter_points = calculate_points_on_quarter_surface(radius, thetas, characteristic_distance)
     x_q, y_q, z_q = quarter_points[:, 0], quarter_points[:, 1], quarter_points[:, 2]
-    meridian_points = calculate_points_on_meridian(radius, thetas)
+    meridian_points = calculate_points_on_meridian(radius_meridian, thetas_meridian)
     x_mer, y_mer, z_mer = meridian_points[:, 0], meridian_points[:, 1], meridian_points[:, 2],
 
     x = np.concatenate((np.array([0]), x_mer, x_eq, x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq, -x_q, y_mer, y_eq,
@@ -202,11 +209,16 @@ def pre_calc_latitudes(alpha, polar_radius, equatorial_radius):
     :param alpha: float; angular distance of points
     :return: numpy.array; latitudes for mesh
     """
-    num = int((const.HALF_PI - 2 * alpha) // alpha)
-    thetas = np.linspace(alpha, const.HALF_PI - alpha, num=num, endpoint=True)
+    # alpha_corr = const.POINT_ROW_SEPARATION_FACTOR * alpha
+    alpha_corr = alpha
+    num = int(const.HALF_PI // alpha_corr)
+    thetas = np.linspace(0, const.HALF_PI, num=num, endpoint=True)[1:-1]
     # solving non uniform sampling along theta coordinates for squashed stars
-    thetas = thetas + up.arctan((equatorial_radius - polar_radius) * up.tan(thetas) /
-                                (polar_radius + equatorial_radius * up.tan(thetas)**2))
+    auto_test = settings.MESH_GENERATOR == 'auto' and \
+                (equatorial_radius - polar_radius) / polar_radius > settings.DEFORMATION_TOL
+    if auto_test or settings.MESH_GENERATOR == 'improved_trapezoidal':
+        thetas += up.arctan((equatorial_radius - polar_radius) * up.tan(thetas) /
+                            (polar_radius + equatorial_radius * up.tan(thetas)**2))
     return thetas
 
 
@@ -233,7 +245,7 @@ def get_surface_points_radii(*args):
     precalc_vals = precalc_fn(*(mass, angular_velocity, theta,), return_as_tuple=True)
     x0 = x0 * np.ones(theta.shape)
     radius = opt.newton.newton(potential_fn, x0, fprime=potential_derivative_fn,
-                               maxiter=config.MAX_SOLVER_ITERS, args=(precalc_vals, surface_potential), rtol=1e-10)
+                               maxiter=settings.MAX_SOLVER_ITERS, args=(precalc_vals, surface_potential), rtol=1e-10)
     return radius
 
 
@@ -280,7 +292,7 @@ def calculate_equator_points(characteristic_distance, equatorial_radius):
     :param equatorial_radius: float;
     :return: numpy.array; N * 3 array of x, y, z coordinates
     """
-    num = int(const.HALF_PI * equatorial_radius / characteristic_distance)
+    num = int(const.HALF_PI * equatorial_radius / (SEAM_CONST * characteristic_distance))
     radii = equatorial_radius * np.ones(num)
     thetas = const.HALF_PI * np.ones(num)
     phis = np.linspace(0, const.HALF_PI, num=num, endpoint=False)
@@ -292,10 +304,10 @@ def mesh_spots(system_container):
     Compute points of each spots and assigns values to spot container instance.
     """
 
-    logger.info("Evaluating spots.")
+    logger.info("evaluating spots")
     star_container = system_container.star
     if not star_container.has_spots():
-        logger.info("No spots to evaluate.")
+        logger.info("no spots to evaluate")
         return
 
     potential_fn = model.potential_fn
@@ -393,7 +405,23 @@ def mesh_spots(system_container):
         spot_instance.center = np.array(spot_center)
 
 
-def add_spots_to_mesh(system_container):
-    star_container = system_container.star
-    mesh_spots(system_container)
-    incorporate_spots_mesh(star_container, component_com=0.0)
+def add_spots_to_mesh(system):
+    """
+    Function implements surface points into clean mesh and removes stellar
+    points and other spot points under the given spot if such overlapped spots exists.
+    """
+    mesh_spots(system)
+    incorporate_spots_mesh(system.star, component_com=0.0)
+
+
+def correct_mesh(system):
+    """
+    Correcting the underestimation of the surface due to the discretization.
+
+    :param system: elisa.single_system.container.SystemContainer;
+    :return: elisa.single_system.container.SystemContainer;
+    """
+    star = getattr(system, 'star')
+    correct_component_mesh(star)
+
+    return system

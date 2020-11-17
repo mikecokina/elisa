@@ -2,9 +2,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from elisa.binary_system import t_layer
-from unittests.utils import (
-    ElisaTestCase
-)
+from unittests.utils import ElisaTestCase
 
 
 class SupportMethodTestCase(ElisaTestCase):

@@ -1,7 +1,9 @@
 import numpy as np
-from elisa import utils, const as c
-from elisa.logger import getLogger
-from elisa.pulse.transform import PulsationModeProperties
+
+from . transform import PulsationModeProperties
+from .. import utils, const as c
+from .. logger import getLogger
+from .. import settings
 
 logger = getLogger('pulse.mode')
 
@@ -32,41 +34,37 @@ class PulsationMode(object):
         self.start_phase = 0
         self.mode_axis_theta = 0
         self.mode_axis_phi = 0
+        self.temperature_perturbation_phase_shift = settings.DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT
+        # phase shift in radians between surface geometry
+        # perturbation and temperature perturbations
 
         # here the time-independent, renormalized associated Legendree polynomial is stored
         self.rals = None
-        self.radial_relative_amplitude = None
-        self.horizontal_relative_amplitude = None
+
+        # dimensionless normalized amplitudes
+        self.radial_amplitude = None
+        self.horizontal_amplitude = None
+
+        # surface related aux variables
+        self.points = None
+        self.spot_points = None
+
+        self.point_harmonics = None
+        self.face_harmonics = None
+        self.spot_point_harmonics = None
+        self.spot_face_harmonics = None
+
+        self.point_harmonics_derivatives = None
+        self.face_harmonics_derivatives = None
+        self.spot_point_harmonics_derivatives = None
+        self.spot_face_harmonics_derivatives = None
 
         self.init_properties(**kwargs)
 
-        self.temperature_perturbation_phase_shift = c.HALF_PI  # phase shift in radians between surface geometry
-        # perturbation and temperature perturbations
         self.angular_frequency = c.FULL_ARC * self.frequency
-        self.renorm_const = utils.spherical_harmonics_renormalization_constant(self.l, self.m)
-
+        # spherical harmonics renormalization constant to rms = 1
+        self.renorm_const = 2 * c.PI ** 0.5
         self.validate_mode()
-
-    # @property
-    # def n(self):
-    #     """
-    #     returns radial degree `n` of pulsation mode
-    #     :return: int
-    #     """
-    #     return self._n
-    #
-    # @n.setter
-    # def n(self, radial_degree):
-    #     """
-    #     setter for radial degree of pulsation mode
-    #     :param radial_degree: int
-    #     :return:
-    #     """
-    #     try:
-    #         self._n = np.int(radial_degree)
-    #     except ValueError:
-    #         raise ValueError('Value for radial degree `n`={0} in pulsation mode class instance {1} is not valid.'
-    #                          .format(radial_degree, PulsationMode.__name__))
 
     @staticmethod
     def transform_input(**kwargs):

@@ -98,23 +98,130 @@ v0.2.3_
 -------
 .. v0.2.3_: https://github.com/mikecokina/elisa/commits/release/0.2.3
 
+**Release date:** 2020-05-27
+
 **Fixes**
 
 - fitting light curves of over-contact binaries won't crash with missing `param` error due to invalid constraint setting on backend
 - normalize lightcurves (during fitting procedure) each on its max values instead of normalization on global maximum
 - MCMC penalisation in case of invalid binary system return big negative number instead of value near to 0.0
 - raise `elisa.base.error.AtmosphereError` when atmosphere file not founf instead `FileNotFoundError`
-- least square fitting continue in case of invalid binary parameters
+
+v0.3_
+-----
+
+.. v0.3_: https://github.com/mikecokina/elisa/commits/release/0.3
+
+**Release date:** 2020-06-17
+
+**Features**
+
+* **single system**
+    - light curve calculation of single stars with spots and pulsations
+
+* **analytics api** *
+    - more user frendly analytics api
+    - summary outputs of fitting
+    - extended i/o of fitting
+
+* **computaional** *
+    - TESS passband (limb darkening tables included)
+
+**Fixes**
+
+    - fitting light curves of over-contact binaries won't crash with missing `param` error due to invalid constraint setting on backend
+    - normalize lightcurves (during fitting procedure) each on its max values instead of normalization on global maximum
+    - MCMC penalisation in case of invalid binary system return big negative number instead of value near to 0.0
+    - raise `elisa.base.error.AtmosphereError` when atmosphere file not founf instead `FileNotFoundError`
+    - lc observation atmosphere is not hardcode to `ck04` anymore
+    - small spots do not cause crashes
+    - mcmc chain evaluator often crashed when fitting system with component filling its roche lobe, fixed by snapping
+      surface potential to critical potentials if they are within errors from fitted potential
+
+v0.3.1_
+-------
+
+.. v0.3.1_: https://github.com/mikecokina/elisa/commits/release/0.3.1
+
+**Release date:** 2020-08-19
+
+**Enhancements**
+
+    - fit_summary (result_summary) function now enables full propagation of errors using `propagate_errors` argument
+
+**Fixes**
+
+    - on-demand normalization of light curves
+    - mcmc chain evaluator often crashed when fitting system with component filling its roche lobe, fixed by snapping
+      surface potential to critical potentials if they are within errors from fitted potential
+    - wrong intervals used in corner and trace plot, now fitting confidence intervals instead of fit intervals
+    - more suitable form of cost function for least squares fitting method
+    - correcting secondary potential derivative component
+    - libration motion accounted for in spot position in case of eccetric orbits
+    - fix: volume conserved in eccentric spotty systems
+
+v0.4_
+-----
+
+.. v0.4_: https://github.com/mikecokina/elisa/commits/release/0.4
+
+**Release date:** 2020-10-01
+
+
+**Features**
+
+    - radial velocity curves modelled based on radiometric quantities capable of modelling
+      Rossitter effect and effect of spots
+
+**Enhancements**
+
+    - dependencies updates
+    - support Python 3.6|3.7|3.8
+    - configuration module uses singleton instead of global variables
+      >>> from elisa import settings
+    - ability to display observation stored in DataSet class using DataSet.plot.display_observation()
+
+**Fixes**
+
+    - removed faulty curve points produced by multiprocessing curve integration methods
+    - component's volume conserved for eccentric spotty orbits
+    - surface areas produced by numeric noise when total eclipse is occuring are mitigated
+    - renormalization of temperature (temperatures powered to exponent of 4)
 
 Future plans
 ============
 
-v0.3
+v0.5
 ----
-    - pulsations
-    - single system
 
-v0.4
+**Release date:** ????-??-??
+
+**Features**
+
+    - added `black_body` as one of possibilities for atmospheres
+    - support different atmospheres for celestial objects
+    - `velocity` and `radial_velocity` option for `colormap` argument added to BinarySystem.plot.surface() and
+      SingleSystem.plot.surface()
+
+**Enhancements**
+    - solar constant conserved with different levels of surface discretization
+    - improvements to trapezoidal discretization
+    - additional constraints for approximations used during integration of eccentric light curves,
+      relative change in irradiation is checked when similar orbital positions are evaluated, improves precision
+    - pre-build logging schemas added, that are accessible via LOG_CONFIG parameter with options 'default' or 'fit' or
+      path to custom configuration file. 'fit' schema will suppress all logging messages except for messages from
+      analytics class.
+    - utilizing numba for computationally heavy tasks such as reflection effect (preparation for GPU ready version of
+      ELISa)
+    - function elisa.analytics.tasks.load_results() returns results in form of dict
+    - command set_up_logging() not needed anymore while changing logging schemas
+
+
+**Fixes**
+
+    - <binary_system>.init() reinitialize parameters corretly (require fix for pulsations)
+    - inclination rotation is provided in positive direction instead of negative
+
+v1.0
 ----
-    - genetic algorithm
-    - extended fitting methods
+    - web GUI and API

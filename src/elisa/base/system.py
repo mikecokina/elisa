@@ -1,12 +1,11 @@
 import numpy as np
 
 from abc import ABCMeta, abstractmethod
-from ..base.body import Body
-from ..logger import getLogger
-from .. import (
-    utils
-)
-from elisa.pulse import pulsations
+from .. base.body import Body
+from .. logger import getLogger
+from .. import utils
+from .. pulse import pulsations
+from elisa import units as u
 
 logger = getLogger('base.system')
 
@@ -33,7 +32,6 @@ class System(metaclass=ABCMeta):
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
-
         # default params
         self.inclination = np.nan
         self.period = np.nan
@@ -68,10 +66,9 @@ class System(metaclass=ABCMeta):
 
     def assign_pulsations_amplitudes(self, normalisation_constant=1.0):
         """
-        function assigns amplitudes of displacement to each mode based on radial velocity amplitude
+        Function assigns amplitudes of displacement to each mode based on radial velocity amplitude.
 
         :param normalisation_constant: float;
-        :return:
         """
         for component, component_instance in self._components.items():
             if component_instance.has_pulsations():
@@ -131,3 +128,21 @@ class System(metaclass=ABCMeta):
             if len(missing_kwargs) != 0:
                 raise ValueError(f'Mising argument(s): {", ".join(missing_kwargs)} '
                                  f'in {component} component Star class')
+
+    def kwargs_serializer(self):
+        """
+        Creating dictionary of keyword arguments of System class in order to be able to reinitialize the class
+        instance in init().
+
+        :return: Dict;
+        """
+        serialized_kwargs = dict()
+        for kwarg in self.ALL_KWARGS:
+            if kwarg in ['argument_of_periastron', 'inclination']:
+                value = getattr(self, kwarg)
+                if not isinstance(value, u.Quantity):
+                    value = value * u.ARC_UNIT
+                serialized_kwargs[kwarg] = value
+            else:
+                serialized_kwargs[kwarg] = getattr(self, kwarg)
+        return serialized_kwargs

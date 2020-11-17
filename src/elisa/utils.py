@@ -2,12 +2,12 @@ import re
 import numpy as np
 import pandas as pd
 import scipy as sp
+import os.path as op
 
 from typing import Sized
 from queue import Empty
 from numpy.linalg import norm
 from scipy.spatial import distance_matrix as dstm
-from scipy.optimize import brute, fmin
 from matplotlib.cbook import flatten
 
 from copy import (
@@ -16,11 +16,10 @@ from copy import (
 )
 from . import (
     const,
-    umpy as up
+    umpy as up, settings
 )
 
-# auxiliary variable
-CUMULATIVE_TIME = 0.0
+from elisa.numba_functions import operations
 
 
 def polar_to_cartesian(radius, phi):
@@ -47,6 +46,20 @@ def invalid_kwarg_checker(kwargs, kwarglist, instance):
     if len(invalid_kwargs) > 0:
         raise ValueError(f'Invalid keyword argument(s): {", ".join(invalid_kwargs)} '
                          f'in class instance {instance.__name__}.\n '
+                         f'List of available parameters: {", ".join(kwarglist)}')
+
+
+def invalid_param_checker(kwargs, kwarglist, message):
+    """
+
+    :param kwargs: Dict; kwargs to evaluate if are in kwarg list
+    :param kwarglist: Dict;
+    :param message: Any class
+    """
+    invalid_kwargs = [kwarg for kwarg in kwargs if kwarg not in kwarglist]
+    if len(invalid_kwargs) > 0:
+        raise ValueError(f'Invalid keyword argument(s): {", ".join(invalid_kwargs)} '
+                         f'in {message}.\n '
                          f'List of available parameters: {", ".join(kwarglist)}')
 
 
@@ -125,6 +138,12 @@ def cartesian_to_spherical(points, degrees=False):
     return_val = np.column_stack((r, phi, theta)) if not degrees else np.column_stack((r, up.degrees(phi),
                                                                                        up.degrees(theta)))
     return np.squeeze(return_val, axis=0) if np.shape(return_val)[0] == 1 else return_val
+
+
+def cartesian_to_polar(points, degrees=False):
+    points = np.insert(points, 2, np.zeros(len(points)), axis=1)
+    transform = cartesian_to_spherical(points, degrees=degrees)
+    return transform.T[:2].T
 
 
 def spherical_to_cartesian(spherical_points):
@@ -371,11 +390,16 @@ def calculate_distance_matrix(points1, points2, return_join_vector_matrix=False)
     :return: Tuple[numpy.array, Union[numpy.array, None]]
     """
     # pairwise distance vector matrix
-    distance_vector_matrix = points2[None, :, :] - points1[:, None, :]
-    distance_matrix = np.linalg.norm(distance_vector_matrix, axis=2)
+    distance_vector_matrix = operations.create_distance_vector_matrix(points1, points2)
 
-    return (distance_matrix, distance_vector_matrix / distance_matrix[:, :, None]) if return_join_vector_matrix \
-        else (distance_matrix, None)
+    distance_matrix = operations.calculate_lengths_in_3d_array(distance_vector_matrix)
+
+    if return_join_vector_matrix:
+        normalized_distance_vectors = \
+            operations.divide_points_in_array_by_constants(distance_vector_matrix, distance_matrix)
+        return distance_matrix, normalized_distance_vectors
+    else:
+        return distance_matrix, None
 
 
 def find_face_centres(faces):
@@ -419,6 +443,21 @@ def check_missing_kwargs(mandatory_kwargs, supplied_kwargs, instance_of):
     missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
     if len(missing_kwargs) > 0:
         raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in class instance {instance_of.__name__}')
+
+
+def check_missing_params(mandatory_kwargs, supplied_kwargs, instance):
+    """
+    Checks if all `kwargs` are all in parameter `obj` .
+    If missing raise ValuerError with missing `kwargs`.
+
+    :param mandatory_kwargs: List[str]
+    :param supplied_kwargs: List[str]
+    :param instance: class instance
+    :return:
+    """
+    missing_kwargs = [f"`{kwarg}`" for kwarg in mandatory_kwargs if kwarg not in supplied_kwargs]
+    if len(missing_kwargs) > 0:
+        raise ValueError(f'Missing argument(s): {", ".join(missing_kwargs)} in object {instance}')
 
 
 def numeric_logg_to_string(logg):
@@ -707,43 +746,31 @@ def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     return phi_new, theta_new
 
 
-# todo: write unit test to test_utils
-def spherical_harmonics_renormalization_constant(l, m):
+def derotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     """
-    Spherical harmonic functions are by default normalized using orthogonality of ALS where integral(Y(l,m)**2) over the
-    spherical surface is one. However in our case, it is more useful to renormalise them in such way that maximum of
-    the real part of the spherical harmonics is one. This function returns such renormalization constant.
-    :param l: float; angular degree of the mode
-    :param m: float; azimuthal order of the mode
-    :return: float;
+    backward transformation of spherical coordinates produced by rotation around old
+    z_axis by `phi_rotation` and second rotation around new y axis by value `theta rotation` into original coordinate
+    system
+
+    :param phi: numpy.array; - in radians
+    :param theta: numpy.array; - in radians
+    :param phi_rotation: float; - rotation of old spherical system around z axis, in radians
+    :param theta_rotation: float; - rotation of z axis along new y axis by this value, in radians
+    :return:
     """
+    # TODO: write unit test to test_utils
+    cos_theta = up.cos(theta)
+    sin_theta = up.sin(theta)
+    cos_phi = up.cos(phi)
+    sin_phi = up.sin(phi)
 
-    def alp(xx: float, *args) -> float:
-        """
-        Returns negative value from imaginary part of associated Legendre polynomial (ALP),
-        used in minimizer to find global maximum of real part of spherical harmonics.
+    sin_axis_theta = up.sin(theta_rotation)
+    cos_axis_theta = up.cos(theta_rotation)
 
-        :param xx: float; - argument of function
-        :param args: Tuple;
-
-        ::
-
-            l - angular degree of ALP
-            m - azimuthal order of ALP
-
-        :return: float; negative of absolute value of ALP
-        """
-        l_mode, m_mode = args
-        return -abs(up.lpmv(m_mode, l_mode, xx))
-
-    old_settings = np.seterr(divide='ignore', invalid='ignore', over='ignore')
-    ns = int(up.power(5, up.ceil((l - m) / 23)) * ((l - m) + 1))
-    output = np.array(brute(alp, ranges=((0.0, 1.0),), args=(l, m), Ns=ns, finish=fmin, full_output=True))
-    np.seterr(**old_settings)
-
-    x = output[2][np.argmin(output[3])] if not 0 <= output[0] <= 1 else output[0]
-    result = abs(np.real(up.sph_harm(m, l, 0, up.arccos(x))))
-    return 1.0 / result
+    theta_new = up.arccos(cos_theta * cos_axis_theta - cos_phi * sin_theta * sin_axis_theta)
+    phi_new = up.arctan2(sin_phi * sin_theta, cos_phi * sin_theta * cos_axis_theta +
+                         cos_theta * sin_axis_theta)
+    return (phi_new + phi_rotation) % const.FULL_ARC, theta_new
 
 
 def calculate_equiv_radius(volume):
@@ -784,7 +811,7 @@ def is_even(x):
 
 
 def convert_binary_orbital_motion_arr_to_positions(arr):
-    return [const.Position(*p) for p in arr]
+    return [const.Position(*[int(p[0]) if not np.isnan(p[0]) else p[0]] + list(p[1:])) for p in arr]
 
 
 def nested_dict_values(dictionary):
@@ -800,8 +827,8 @@ def calculate_volume_ellipse_approx(equator_points=None, meridian_points=None):
     Function calculates volume of the object where only equator and meridian points where provided usin elipsoidal
     approximation for the points with the same x-cordinates.
 
-    :param equator_points: numpy array;
-    :param meridian_points: numpy array;
+    :param equator_points: numpy array; (yzx) column-wise
+    :param meridian_points: numpy array; (yzx) column-wise
     :return: float;
     """
     areas = up.abs(const.PI * equator_points[:, 1] * meridian_points[:, 0])
@@ -827,16 +854,49 @@ def plane_projection(points, plane, keep_3d=False):
     return in_plane
 
 
-def split_to_batches(batch_size, array):
+def get_visible_projection(obj):
+    """
+    Returns yz projection of nearside points.
+
+    :param obj: instance;
+    :return: numpy.array
+    """
+    return plane_projection(
+        obj.points[
+            np.unique(obj.faces[obj.indices])
+        ], "yz"
+    )
+
+
+def split_to_batches(array, n_proc):
     """
     Split array to batches with size `batch_size`.
 
-    :param batch_size: int;
+    :param n_proc: int; number of processes
     :param array: Union[List, numpy.array];
     :return: List;
     """
-    chunks = lambda d: (d[i:i + batch_size] for i in range(0, len(d), batch_size))
-    return [chunk for chunk in chunks(array)]
+    indices = np.linspace(0, len(array), num=n_proc+1, endpoint=True, dtype=np.int)
+    indices = [(indices[ii-1], indices[ii]) for ii in range(1, n_proc+1)]
+    return [array[idx[0]: idx[1]] for idx in indices]
+
+
+def renormalize_async_result(result):
+    """
+    Renormalize multiprocessing output to native form.
+    Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
+    computaion require dict in form like::
+
+        [{'passband': [all fluxes]}]
+
+    instead::
+
+        [[{'passband': [fluxes in batch]}], [{'passband': [fluxes in batch]}], ...]
+
+    :param result: List;
+    :return: Dict[str; numpy.array]
+    """
+    return {key: np.concatenate([record[key] for record in result], axis=0) for key in result[-1].keys()}
 
 
 def random_sign():
@@ -860,5 +920,35 @@ def str_repalce(x, old, new):
     new = [new] if isinstance(new, str) else new
 
     for _old, _new in zip(old, new):
-        x = str(x).replace(_old, _new)
+        x = str(x).replace(str(_old), str(_new))
     return x
+
+
+def magnitude_to_flux(data, zero_point):
+    return np.power(10, (zero_point - data) / 2.5)
+
+
+def magnitude_error_to_flux_error(error):
+    return np.power(10, error / 2.5) - 1.0
+
+
+def flux_to_magnitude(data, zero_point):
+    return -2.5*np.log10(data) + zero_point
+
+
+def flux_error_to_magnitude_error(data, error):
+    return 2.5 * np.log10(1 + (error / data))
+
+
+def discretization_correction_factor(discretization_factor):
+    """
+    Correction factor for the surface due to underestimation of the surface by the triangles.
+
+    :param discretization_factor: numpy.float;
+    :return:
+    """
+    # correction for non-equilateral triangles
+    alpha = 1.138 * discretization_factor
+    # correction fro surface underestimation
+    return np.sqrt((alpha * (1 - np.cos(alpha))) /
+                   (2.0 * np.power(np.sin(0.5 * alpha), 2) * np.sin(alpha)))

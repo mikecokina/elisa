@@ -2,17 +2,17 @@ import numpy as np
 
 from copy import copy
 from scipy.spatial.qhull import Delaunay
-from elisa.base import spot
-from elisa.pulse import pulsations
-from elisa.utils import is_empty
-from elisa.binary_system import utils as bsutils
-from elisa.logger import getLogger
-from elisa.binary_system import utils as butils
-
-from elisa import (
-    umpy as up
+from .. import utils as bsutils
+from .. orbit import orbit
+from ... base import spot
+from ... utils import is_empty
+from ... logger import getLogger
+from ... import (
+    const,
+    umpy as up,
+    units as u
 )
-from elisa.base.surface.faces import (
+from ... base.surface.faces import (
     initialize_model_container,
     split_spots_and_component_faces,
     set_all_surface_centres,
@@ -254,47 +254,15 @@ def over_contact_system_surface(system, points=None, component="all", **kwargs):
     del kwargs
 
     component_instance = getattr(system, component)
-    if points is None:
-        points = component_instance.points
     if up.isnan(points).any():
         raise ValueError(f"{component} component, with class instance name {component_instance.name} "
                          f"contain any valid point to triangulate")
     # calculating position of the neck
     neck_x = np.max(points[:, 0]) if component == 'primary' else np.min(points[:, 0])
-    # parameter k is used later to transform inner surface to quasi sphere (convex object) which will be then
-    # triangulated
-    k = neck_x / (neck_x + 0.01) if component == 'primary' else neck_x / ((1 - neck_x) + 0.01)
 
-    # projection of component's far side surface into ``sphere`` with radius r1
-    projected_points = up.zeros(np.shape(points), dtype=float)
-
-    # outside facing points are just inflated to match with transformed inner surface
-    # condition to select outward facing points
-    outside_points_test = points[:, 0] <= 0 if component == 'primary' else points[:, 0] >= 1
-    outside_points = points[outside_points_test]
-    if component == 'secondary':
-        outside_points[:, 0] -= 1
-    projected_points[outside_points_test] = neck_x * outside_points / np.linalg.norm(outside_points, axis=1)[:, None]
-    if component == 'secondary':
-        projected_points[:, 0] += 1
-
-    # condition to select inward facing points
-    inside_points_test = (points[:, 0] > 0)[:-1] if component == 'primary' else (points[:, 0] < 1)[:-1]
-    # if auxiliary point was used than  it is not appended to list of inner points to be transformed
-    # (it would cause division by zero error)
-    inside_points_test = np.append(inside_points_test, False) if \
-        np.array_equal(points[-1], np.array([neck_x, 0, 0])) else np.append(inside_points_test, True)
-    inside_points = points[inside_points_test]
-    # scaling radii for each point in cylindrical coordinates
-    r = (neck_x ** 2 - (k * inside_points[:, 0]) ** 2) ** 0.5 if component == 'primary' else \
-        (neck_x ** 2 - (k * (1 - inside_points[:, 0])) ** 2) ** 0.5
-
-    length = np.linalg.norm(inside_points[:, 1:], axis=1)
-    projected_points[inside_points_test, 0] = inside_points[:, 0]
-    projected_points[inside_points_test, 1:] = r[:, None] * inside_points[:, 1:] / length[:, None]
-    # if auxiliary point was used, than it will be appended to list of transformed points
-    if np.array_equal(points[-1], np.array([neck_x, 0, 0])):
-        projected_points[-1] = points[-1]
+    projected_points = points.copy()
+    projected_points[:, 0] -= 1 if component == 'secondary' else 0
+    projected_points = neck_x * projected_points / np.linalg.norm(projected_points, axis=1)[:, None]
 
     triangulation = Delaunay(projected_points)
     triangles_indices = triangulation.convex_hull
@@ -349,12 +317,6 @@ def build_faces_orientation(system, components_distance, component="all"):
         star = getattr(system, _component)
         set_all_surface_centres(star)
         set_all_normals(star, com=com_x[_component])
-
-        # todo: move it to separate method
-        # here we calculate time independent part of the pulsation modes, renormalized Legendree polynomials for each
-        # pulsation mode
-        # if star.has_pulsations():
-        #     pulsations.set_ralp(star, com_x=com_x[_component], phase=)
     return system
 
 
@@ -387,21 +349,40 @@ def set_all_normals(star_container, com):
     return star_container
 
 
-def build_temperature_perturbations(system_container, components_distance, component):
+def build_velocities(system, components_distance, component='all'):
     """
-    adds position perturbations to container mesh
+    Function calculates velocity vector for each face relative to the centre of mass.
 
-    :param system_container: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param system: elisa.binary_system.container.SystemContainer;
     :param components_distance: float;
-    :param component: Union[str, None];
-    :return:
+    :param component: str;
+    :return: elisa.binary_system.container.SystemContainer;
     """
-    components = bsutils.component_to_list(component)
-    for component in components:
-        star = getattr(system_container, component)
-        if star.has_pulsations():
-            phase = butils.calculate_rotational_phase(system_container, component)
-            com_x = 0 if component == 'primary' else components_distance
-            star = pulsations.incorporate_temperature_perturbations(star, com_x=com_x, phase=phase,
-                                                                    time=system_container.time)
-    return system_container
+    if is_empty(component):
+        logger.debug("no component set to build face orientation")
+        return system
+
+    component = bsutils.component_to_list(component)
+    com_x = {'primary': np.array([0.0, 0.0, 0.0]), 'secondary': np.array([components_distance, 0.0, 0.0])}
+
+    velocities = orbit.create_orb_vel_vectors(system, components_distance)
+
+    orb_period = (system.period * u.PERIOD_UNIT).to(u.s).value
+    omega_orb = np.array([0, 0, const.FULL_ARC / orb_period])
+
+    for _component in component:
+        star = getattr(system, _component)
+        points = (star.points - com_x[_component][None, :]) * system.semi_major_axis
+        omega = star.synchronicity * omega_orb
+
+        # orbital velocity + rotational velocity
+        p_velocities = velocities[_component] + np.cross(points, omega, axisa=1)
+        star.velocities = np.mean(p_velocities[star.faces], axis=1)
+
+        if star.has_spots():
+            for spot_inst in star.spots.values():
+                points = (spot_inst.points - com_x[_component][None, :]) * system.semi_major_axis
+                p_velocities = velocities[_component] + np.cross(points, omega, axisa=1)
+                spot_inst.velocities = np.mean(p_velocities[spot_inst.faces], axis=1)
+
+    return system

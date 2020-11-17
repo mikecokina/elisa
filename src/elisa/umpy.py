@@ -22,6 +22,7 @@ log = np.log
 exp = np.exp
 
 isnan = np.isnan
+NaN = np.NaN
 power = np.power
 matmul = np.matmul
 multiply = np.multiply
@@ -34,6 +35,7 @@ invert = np.invert
 concatenate = np.concatenate
 sqrt = np.sqrt
 sign = np.sign
+sum = np.sum
 
 logical_xor = np.logical_xor
 logical_and = np.logical_and
@@ -41,6 +43,8 @@ logical_or = np.logical_or
 mod = np.mod
 equal = np.equal
 less = np.less
+ones = np.ones
+round = np.round
 
 # scipy
 sph_harm = special.sph_harm

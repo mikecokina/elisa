@@ -1,10 +1,20 @@
 import numpy as np
 
-from elisa import umpy as up
-from scipy.optimize import fsolve
-from elisa.logger import getLogger
+from .. import umpy as up
+from .. logger import getLogger
 
 logger = getLogger('opt.fsolver')
+
+
+def fsolve(func, x0, args=(), fprime=None, full_output=False,
+           col_deriv=False, xtol=1.49012e-8, maxfev=0, band=None,
+           epsfcn=None, factor=100, diag=None):
+    solution, a, ier, b = up.optimize.fsolve(func, x0, args=args, fprime=fprime, full_output=True,
+                                             col_deriv=col_deriv, xtol=xtol, maxfev=maxfev, band=band,
+                                             epsfcn=epsfcn, factor=factor, diag=diag)
+    if not full_output:
+        return solution
+    return solution, a, ier, b
 
 
 def fsolver(fn, condition, *args, **kwargs):

@@ -4,6 +4,30 @@ elisa.binary\_system.curves package
 Submodules
 ----------
 
+elisa.binary\_system.curves.c\_appx\_router module
+--------------------------------------------------
+
+.. automodule:: elisa.binary_system.curves.c_appx_router
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+elisa.binary\_system.curves.c\_managed module
+---------------------------------------------
+
+.. automodule:: elisa.binary_system.curves.c_managed
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+elisa.binary\_system.curves.c\_router module
+--------------------------------------------
+
+.. automodule:: elisa.binary_system.curves.c_router
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.binary\_system.curves.community module
 --------------------------------------------
 
@@ -20,10 +44,10 @@ elisa.binary\_system.curves.lc module
    :undoc-members:
    :show-inheritance:
 
-elisa.binary\_system.curves.lcmp module
----------------------------------------
+elisa.binary\_system.curves.lc\_point module
+--------------------------------------------
 
-.. automodule:: elisa.binary_system.curves.lcmp
+.. automodule:: elisa.binary_system.curves.lc_point
    :members:
    :undoc-members:
    :show-inheritance:
@@ -36,10 +60,18 @@ elisa.binary\_system.curves.rv module
    :undoc-members:
    :show-inheritance:
 
-elisa.binary\_system.curves.shared module
------------------------------------------
+elisa.binary\_system.curves.rv\_point module
+--------------------------------------------
 
-.. automodule:: elisa.binary_system.curves.shared
+.. automodule:: elisa.binary_system.curves.rv_point
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+elisa.binary\_system.curves.utils module
+----------------------------------------
+
+.. automodule:: elisa.binary_system.curves.utils
    :members:
    :undoc-members:
    :show-inheritance:

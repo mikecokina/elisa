@@ -12,14 +12,17 @@ from pandas.testing import assert_frame_equal
 
 from elisa.binary_system.system import BinarySystem
 from elisa.single_system.system import SingleSystem
-from elisa.conf import config
+from elisa import settings
 from elisa import umpy as up
-from elisa.observer.observer import PassbandContainer, Observer
+from elisa.observer.observer import Observer
+from elisa.observer.passband import PassbandContainer
+from elisa.observer.passband import bolometric
 from unittests.utils import ElisaTestCase
 
 
 class TestPassbandContainer(ElisaTestCase):
     def setUp(self):
+        super(TestPassbandContainer, self).setUp()
         self._data_path = pjoin(dirname(os.path.abspath(__file__)), "data", "passband")
         self._bessel_v_df = pd.read_csv(pjoin(self._data_path, 'Generic.Bessell.V.csv'))
         self.pb = PassbandContainer(self._bessel_v_df, 'Generic.Bessell.V')
@@ -47,8 +50,8 @@ class TestPassbandContainer(ElisaTestCase):
 
     def test_bolometric_bandwidth(self):
         df = pd.DataFrame(
-            {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
-             config.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
+            {settings.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
+             settings.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
         self.pb.passband = "bolometric"
         self.pb.table = df
 
@@ -56,8 +59,8 @@ class TestPassbandContainer(ElisaTestCase):
 
     def test_bolometric_akima(self):
         df = pd.DataFrame(
-            {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
-             config.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
+            {settings.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
+             settings.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
         self.pb.passband = "bolometric"
         self.pb.table = df
 
@@ -71,20 +74,21 @@ class TestPassbandContainer(ElisaTestCase):
 
 class TestObserver(ElisaTestCase):
     def setUp(self):
+        super(TestObserver, self).setUp()
         self._data_path = pjoin(dirname(os.path.abspath(__file__)), "data", "passband")
         self._passband = 'Generic.Bessell.V'
         self._bessel_v_df = pd.read_csv(pjoin(self._data_path, f'{self._passband}.csv'))
-        config.PASSBAND_TABLES = self._data_path
+        settings.configure(**{"PASSBAND_TABLES": self._data_path})
 
     def test_bolometric(self):
         r = random.randrange
-        m = sys.float_info.max
+        m = int(sys.float_info.max)
         expected = [1.0, [1.0, 1.0, 1.0], np.array([1.0, 1.0, 1.0])]
         obtained = [
 
-            Observer.bolometric(r(m)),
-            Observer.bolometric([r(m) for _ in range(3)]),
-            Observer.bolometric(np.array([r(m) for _ in range(3)]))
+            bolometric(r(m)),
+            bolometric([r(m) for _ in range(3)]),
+            bolometric(np.array([r(m) for _ in range(3)]))
         ]
 
         for e, o in zip(expected, obtained):
@@ -98,7 +102,7 @@ class TestObserver(ElisaTestCase):
 
     def test_get_passband_df(self):
         obtained = Observer.get_passband_df(self._passband)
-        obtained[config.PASSBAND_DATAFRAME_WAVE] = obtained[config.PASSBAND_DATAFRAME_WAVE] / 10.0
+        obtained[settings.PASSBAND_DATAFRAME_WAVE] = obtained[settings.PASSBAND_DATAFRAME_WAVE] / 10.0
         assert_frame_equal(obtained, self._bessel_v_df)
 
     def test_init_passband_has_table(self):
@@ -106,7 +110,7 @@ class TestObserver(ElisaTestCase):
         o = Observer(self._passband, s)
         expected = self._bessel_v_df
         obtained = o.passband[self._passband].table
-        obtained[config.PASSBAND_DATAFRAME_WAVE] = obtained[config.PASSBAND_DATAFRAME_WAVE] / 10.0
+        obtained[settings.PASSBAND_DATAFRAME_WAVE] = obtained[settings.PASSBAND_DATAFRAME_WAVE] / 10.0
         assert_frame_equal(expected, obtained)
 
     def test_setup_bandwidth(self):

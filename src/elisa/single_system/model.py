@@ -1,5 +1,5 @@
 import numpy as np
-from elisa import const
+from .. import const
 
 
 def surface_potential_from_polar_log_g(polar_log_g, mass):
@@ -72,6 +72,4 @@ def radial_potential_derivative(radius, *args):
     a, b = args[0]
 
     return a / np.power(radius, 2) - 2 * b * radius
-
-
 

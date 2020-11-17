@@ -1,4 +1,5 @@
 import itertools
+import json
 import os
 import sys
 import warnings
@@ -10,8 +11,8 @@ from threading import Thread
 from typing import Iterable
 from copy import deepcopy
 
-from elisa.logger import getLogger
-from elisa.base.error import (
+from .logger import getLogger
+from .base.error import (
     AtmosphereError,
     MetallicityError,
     TemperatureError,
@@ -20,21 +21,59 @@ from scipy import (
     integrate,
     interpolate
 )
-from elisa.conf import config
-from elisa import (
+from . import settings
+from . import (
     umpy as up,
     utils,
-    const
+    const,
+    ld,
 )
+from . buffer import buffer
 
+from time import time
 logger = getLogger(__name__)
 
 
 # * 1e-7 * 1e4 * 1e10 * (1.0/const.PI)
 
+class AtmModel(object):
+    def __init__(self, flux, wavelength):
+        self.flux = flux
+        self.wavelength = wavelength
+
+    def _empty(self):
+        return len(self.wavelength) == 0
+
+    @property
+    def empty(self):
+        return self._empty()
+
+    @classmethod
+    def from_dataframe(cls, df):
+        return cls(flux=np.array(df[settings.ATM_MODEL_DATAFRAME_FLUX], dtype=float),
+                   wavelength=np.array(df[settings.ATM_MODEL_DATAFRAME_WAVE], dtype=float))
+
+    def to_dataframe(self):
+        return pd.DataFrame(
+            {
+                settings.ATM_MODEL_DATAFRAME_FLUX: self.flux,
+                settings.ATM_MODEL_DATAFRAME_WAVE: self.wavelength
+            }
+        )
+
+    def last_valid_index(self):
+        return len(self.flux)
+
+    def __getitem__(self, item):
+        return AtmModel(flux=self.flux[item], wavelength=self.wavelength[item])
+
+    def __len__(self):
+        return len(self.wavelength)
+
+
 class AtmDataContainer(object):
     def __init__(self, model, temperature, log_g, metallicity, fpath=''):
-        self._model = pd.DataFrame([])
+        self._model = AtmModel(flux=None, wavelength=None)
         self.temperature = temperature
         self.log_g = log_g
         self.metallicity = metallicity
@@ -53,15 +92,7 @@ class AtmDataContainer(object):
 
     def is_empty(self):
         """
-        Find out wheter model container which carries DataFrame of atmospheric model::
-
-            pd.DataFrame({
-                <intensity>: numpy.array([float])
-                <wavelength>: numpy.array([float])
-            })
-
-        AmtDatContainer instance is empty when model pandas DataFrame container is empty.
-
+        Find out wheter model container which carries of atmospheric model AmtDatContainer instance is empty.
         :return: bool;
         """
         return self._model.empty
@@ -69,40 +100,29 @@ class AtmDataContainer(object):
     @property
     def model(self):
         """
-        return atmospheric model DataFrame::
-
-            pd.DataFrame({
-                <intensity>: numpy.array([float])
-                <wavelength>: numpy.array([float])
-            })
-
+        Return atmospheric model instance.
         :return: pandas.DataFrame;
         """
         return self._model
 
     @model.setter
-    def model(self, df):
+    def model(self, data):
         """
-        Setup model container which carries DataFrame of atmospheric model::
+        Setup model container which carries DataFrame of atmospheric model
+        and left and right bandwidth of such container as well.
 
-            pd.DataFrame({
-                <intensity>: numpy.array([float])
-                <wavelength>: numpy.array([float])
-            })
-
-        and left and right bandwidth of such container.
-
-        :param df: pandasDataFrame;
+        :param data: Union[pandasDataFrame, elisa.atm.AtmModel];
         """
-        self._model = df
-        self.left_bandwidth = df[config.ATM_MODEL_DATAFRAME_WAVE].min()
-        self.right_bandwidth = df[config.ATM_MODEL_DATAFRAME_WAVE].max()
+        self._model = AtmModel.from_dataframe(data) if isinstance(data, pd.DataFrame) else data
+        self.left_bandwidth = self._model.wavelength.min()
+        self.right_bandwidth = self._model.wavelength.max()
 
 
 class IntensityContainer(object):
     """
     Intended to keep information about integrated radiance for given params.
     """
+
     def __init__(self, intensity, temperature, log_g, metallicity):
         """
         Initialise container with given parametres.
@@ -130,13 +150,63 @@ class NaiveInterpolatedAtm(object):
         :param atlas: str;
         :param kwargs:
         :**kwargs options**:
-            * **left_bandwidth** * -- float; maximal allowed wavelength from left
-            * **right_bandwidth** * -- float; maximal allowed wavelength from right
+            * **left_bandwidth** * -- float; maximal allowed wavelength from left (Angstrom)
+            * **right_bandwidth** * -- float; maximal allowed wavelength from right (Angstrom)
             * **passband** * -- Dict[str, elisa.observer.observer.PassbandContainer]
         :return: List;
         """
-        # fixme: uncomment following line
-        # validate_atm(temperature, log_g, metallicity, atlas)
+        if validated_atlas(atlas) == "bb":
+            return NaiveInterpolatedAtm.black_body_radiance(temperature, **kwargs)
+        return NaiveInterpolatedAtm.atlas_radiance(temperature, log_g, metallicity, atlas, **kwargs)
+
+    @staticmethod
+    def black_body_radiance(temperature, **kwargs):
+        # setup multiplicators to convert quantities to SI
+        flux_mult, wave_mult = const.PI, 1e-10
+        # obtain localized atmospheres in matrix
+        localized_atms = NaiveInterpolatedAtm.arange_black_body_localized_atms(temperature, kwargs["passband"])
+        # integrate flux
+        return compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+
+    @staticmethod
+    def arange_black_body_localized_atms(temperature, passband_containers):
+        localized_atms = dict()
+        standard_wavelength = get_standard_wavelengths()
+
+        # build temperature mask and avoid repeative computation
+        # temperature vaues after decimal points are useless
+        initial_shape = len(temperature)
+        temperature = np.round(temperature, 0)
+        temperature, reverse_map = np.unique(temperature, return_inverse=True)
+
+        for band, pb_container in passband_containers.items():
+            # how manu wavelengths generate based on standard
+            mask = np.logical_and(np.less_equal(standard_wavelength, pb_container.right_bandwidth),
+                                  np.greater_equal(standard_wavelength, pb_container.left_bandwidth))
+            hm_waves = len(standard_wavelength[mask])
+            # wavelenghts in angstrom
+            wavelengths = np.sort(np.unique(
+                np.concatenate(
+                    [np.linspace(pb_container.left_bandwidth, pb_container.right_bandwidth, hm_waves, True),
+                     standard_wavelength[mask]])
+                )
+            )
+
+            # compute flux in flam, apply passband and replace possible NaNs
+            flux = np.nan_to_num([
+                pb_container.akima(wavelengths) *
+                planck_function(wavelengths * pb_container.wave_to_si_mult, _temperature)
+                for _temperature in temperature
+            ])
+            # sometimes, there are small negative values on the boundwidth boundaries due to akima interpolation
+            flux[np.less(flux, 0)] = 0.0
+            # broadcast and fill localized atms
+            localized_atms[band] = {"flux": flux[reverse_map], "wave": wavelengths}
+
+        return localized_atms
+
+    @staticmethod
+    def atlas_radiance(temperature, log_g, metallicity, atlas, **kwargs):
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
         # related atmospheric files for each face (upper and lower)
@@ -160,7 +230,6 @@ class NaiveInterpolatedAtm(object):
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
         localized_atms = NaiveInterpolatedAtm.interpolate_spectra(atm_containers, flux_matrices,
                                                                   temperature=temperature)
-
         return compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
     @staticmethod
@@ -200,8 +269,7 @@ class NaiveInterpolatedAtm(object):
         :return: Tuple[numpy.array, numpy.array]; (flux, wave);
         """
         if bottom_atm_container is None:
-            return top_atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX], \
-                   top_atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]
+            return top_atm_container.model.flux, top_atm_container.model.wavelength
 
         # reset index is neccessary; otherwise add/mult/... method od DataFrame
         # leads to nan if left and right frame differ in indices
@@ -209,11 +277,9 @@ class NaiveInterpolatedAtm(object):
         bottom_atm_container.model.reset_index(drop=True, inplace=True)
 
         intensity = weight * (
-            top_atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX]
-            - bottom_atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX]
-        ) + bottom_atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX]
+                top_atm_container.model.flux - bottom_atm_container.model.flux) + bottom_atm_container.model.flux
 
-        return intensity, top_atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]
+        return intensity, top_atm_container.model.wavelength
 
     @staticmethod
     def compute_unknown_intensity_from_surounded_flux_matrices(weights, top_flux_matrix, bottom_flux_matrix):
@@ -253,13 +319,14 @@ class NaiveInterpolatedAtm(object):
                 interpolation_weights, top_flux, bottom_flux
             )
             interp_band[band] = {
-                config.ATM_MODEL_DATAFRAME_FLUX: flux,
-                config.ATM_MODEL_DATAFRAME_WAVE: find_atm_defined_wavelength(top_atm)
+                settings.ATM_MODEL_DATAFRAME_FLUX: flux,
+                settings.ATM_MODEL_DATAFRAME_WAVE: find_atm_defined_wavelength(top_atm)
             }
         return interp_band
 
     @staticmethod
     def atm_tables(fpaths):
+        # TODO: NOT USED??
         """
         Read atmosphere tables as pandas.DataFrame's.
 
@@ -301,11 +368,12 @@ class NaiveInterpolatedAtm(object):
         })
         directory = get_atm_directory(m, atlas)
         fnames = str(atlas) + \
-            domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
-            domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
-            domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
+                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
+                 domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
+                 domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
 
-        return list(os.path.join(str(config.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
+        return list(
+            os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
 
 
 def arange_atm_to_same_wavelength(atm_containers):
@@ -317,7 +385,7 @@ def arange_atm_to_same_wavelength(atm_containers):
     :return: Iterable[elisa.atm.AtmDataContainer]; wavelength aligned atmospheric containers
     """
 
-    wavelengths = np.unique(np.array([atm.model[config.ATM_MODEL_DATAFRAME_WAVE] for atm in atm_containers]).flatten())
+    wavelengths = np.unique(np.array([atm.model.wavelength for atm in atm_containers]).flatten())
     wavelengths.sort()
     result = list()
 
@@ -332,13 +400,8 @@ def arange_atm_to_same_wavelength(atm_containers):
 
     # otherwise interpolation is utilized
     for atm in atm_containers:
-        i = interpolate.Akima1DInterpolator(atm.model[config.ATM_MODEL_DATAFRAME_WAVE],
-                                            atm.model[config.ATM_MODEL_DATAFRAME_FLUX])
-        df = pd.DataFrame({
-            config.ATM_MODEL_DATAFRAME_WAVE: wavelengths,
-            config.ATM_MODEL_DATAFRAME_FLUX: i(wavelengths),
-        })
-        atm.model = df.fillna(0.0)
+        i = interpolate.Akima1DInterpolator(atm.model.wavelength, atm.model.flux)
+        atm.model = AtmModel(wavelength=wavelengths, flux=np.nan_to_num(i(wavelengths)))
         result.append(atm)
     return result
 
@@ -389,10 +452,9 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
     # evaluate whether use argument bandwidth or global bandwidth
     # use case when use global bandwidth is in case of bolometric `filter`, where bandwidth in observer
     # is set as generic left = 0 and right sys.float.max
-    atm_df = atm_container.model
-    wave_col = config.ATM_MODEL_DATAFRAME_WAVE
+    atm_model = atm_container.model
 
-    if atm_df[wave_col].min() > left_bandwidth or atm_df[wave_col].max() < right_bandwidth:
+    if atm_model.wavelength.min() > left_bandwidth or atm_model.wavelength.max() < right_bandwidth:
         mi, ma = find_global_atm_bandwidth([atm_container])
         left_bandwidth, right_bandwidth = kwargs.get("global_left", mi), kwargs.get("global_right", ma)
         warnings.warn('You attempt to strip an atmosphere model to bandwidth which at least partially outside '
@@ -420,19 +482,15 @@ def strip_to_bandwidth(atm_container, left_bandwidth, right_bandwidth, inplace=F
     :return: elisa.atm.AtmDataContainer;
     """
     # indices in bandwidth
-    valid_indices = list(
-        atm_container.model.index[
-            atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE].between(
-                left_bandwidth, right_bandwidth, inclusive=False)
-        ])
+    valid_indices = list(np.where(np.logical_and(np.greater(atm_container.model.wavelength, left_bandwidth),
+                                                 np.less(atm_container.model.wavelength, right_bandwidth)))[0])
+
     # extend left  and right index (left - 1 and right + 1)
     left_extention_index = valid_indices[0] - 1 if valid_indices[0] >= 1 else 0
     right_extention_index = valid_indices[-1] + 1 \
         if valid_indices[-1] < atm_container.model.last_valid_index() else valid_indices[-1]
     atm_cont = atm_container if inplace else deepcopy(atm_container)
-    atm_cont.model = atm_cont.model.iloc[
-        np.unique([left_extention_index] + valid_indices + [right_extention_index])
-    ]
+    atm_cont.model = atm_cont.model[np.unique([left_extention_index] + valid_indices + [right_extention_index])]
     return extend_atm_container_on_bandwidth_boundary(atm_cont, left_bandwidth, right_bandwidth)
 
 
@@ -443,9 +501,7 @@ def find_global_atm_bandwidth(atm_containers):
     :param atm_containers: elisa.atm.AtmDataContainer;
     :return: Tuple[float, float]; minimum, maximum wavelength of common coverage (in Angstrom)
     """
-    bounds = np.array([
-        [atm.model[config.ATM_MODEL_DATAFRAME_WAVE].min(),
-         atm.model[config.ATM_MODEL_DATAFRAME_WAVE].max()] for atm in atm_containers])
+    bounds = np.array([[atm.model.wavelength.min(), atm.model.wavelength.max()] for atm in atm_containers])
     return bounds[:, 0].max(), bounds[:, 1].min()
 
 
@@ -459,20 +515,19 @@ def extend_atm_container_on_bandwidth_boundary(atm_container, left_bandwidth, ri
     :param right_bandwidth: float;
     :return: elisa.atm.AtmDataContainer;
     """
-    interpolator = interpolate.Akima1DInterpolator(atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE],
-                                                   atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX])
+    interpolator = interpolate.Akima1DInterpolator(atm_container.model.wavelength, atm_container.model.flux)
 
     # interpolating values precisely on the border of the filter(s) coverage
     on_border_flux = interpolator([left_bandwidth, right_bandwidth])
     if np.isnan(on_border_flux).any():
         raise AtmosphereError('Interpolation on bandwidth boundaries leed to NaN value.')
-    df: pd.DataFrame = atm_container.model
+    atm_model: AtmModel = atm_container.model
+    atm_model.wavelength[np.array([0, -1])] = [left_bandwidth, right_bandwidth]
+    atm_model.flux[np.array([0, -1])] = [on_border_flux[0], on_border_flux[1]]
+    atm_model.flux = np.round(atm_model.flux, 10)
 
-    df.values[[0, -1], :] = np.array([[on_border_flux[0], left_bandwidth], [on_border_flux[1], right_bandwidth]])
-    df.values[:, 1] = np.round(df.values[:, 1], 10)
-
-    df.reset_index(drop=True, inplace=True)
-    atm_container.model = df
+    atm_container.model = atm_model
+    # continute here
     return atm_container
 
 
@@ -488,7 +543,6 @@ def apply_passband(atm_containers, passband, **kwargs):
     logger.debug("applying passband functions on given atmospheres")
 
     for band, band_container in passband.items():
-
         if band in ['bolometric']:
             band_container.left_bandwidth = kwargs.get('global_left', band_container.left_bandwidth)
             band_container.right_bandwidth = kwargs.get('global_right', band_container.right_bandwidth)
@@ -503,16 +557,11 @@ def apply_passband(atm_containers, passband, **kwargs):
                 right_bandwidth=band_container.right_bandwidth,
                 inplace=False
             )
+
             # found passband throughput on atm defined wavelength
-            passband_df = pd.DataFrame(
-                {
-                    config.PASSBAND_DATAFRAME_THROUGHPUT:
-                        band_container.akima(atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE].values),
-                    config.PASSBAND_DATAFRAME_WAVE: atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]
-                }
-            )
-            passband_df.fillna(0.0, inplace=True)
-            atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX] *= passband_df[config.PASSBAND_DATAFRAME_THROUGHPUT]
+            passband_throughput = np.nan_to_num(band_container.akima(atm_container.model.wavelength))
+
+            atm_container.model.flux *= passband_throughput
             passbanded_atm_containers[band].append(atm_container)
     logger.debug("passband application finished")
     return passbanded_atm_containers
@@ -671,7 +720,7 @@ def atm_file_prefix_to_quantity_list(qname: str, atlas: str):
     :return: List
     """
     atlas = validated_atlas(atlas)
-    return getattr(const, f"{str(atlas).upper()}_{str(config.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname])}")
+    return getattr(const, f"{str(atlas).upper()}_{str(settings.ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX[qname])}")
 
 
 def validated_atlas(atlas):
@@ -683,9 +732,9 @@ def validated_atlas(atlas):
     :return: str;
     """
     try:
-        return config.ATLAS_TO_ATM_FILE_PREFIX[atlas]
+        return settings.ATM_ATLAS_NORMALIZER[atlas]
     except KeyError:
-        raise KeyError(f'Incorrect atlas. Following are allowed: {", ".join(config.ATLAS_TO_ATM_FILE_PREFIX.keys())}')
+        raise KeyError(f'Incorrect atlas. Following are allowed: {", ".join(settings.ATM_ATLAS_NORMALIZER.keys())}')
 
 
 def parse_domain_quantities_from_atm_table_filename(filename: str):
@@ -773,14 +822,14 @@ def get_atm_table(temperature, log_g, metallicity, atlas):
     :param atlas: str - e.g. `castelli` or `ck04`
     :return: pandas.DataFrame;
     """
+    source = settings.ATLAS_TO_BASE_DIR[atlas]
     directory = get_atm_directory(metallicity, atlas)
     filename = get_atm_table_filename(temperature, log_g, metallicity, atlas)
-    path = os.path.join(config.ATLAS_TO_BASE_DIR[atlas], directory, filename) if directory is not None else \
-        os.path.join(config.ATLAS_TO_BASE_DIR[atlas], filename)
+    path = os.path.join(source, directory, filename) if directory is not None else os.path.join(source, filename)
 
     if not os.path.isfile(path):
         raise FileNotFoundError(f"there is no file like {path}")
-    return pd.read_csv(path, dtype=config.ATM_MODEL_DATAFARME_DTYPES)
+    return pd.read_csv(path, dtype=settings.ATM_MODEL_DATAFARME_DTYPES)
 
 
 def get_list_of_all_atm_tables(atlas):
@@ -790,7 +839,7 @@ def get_list_of_all_atm_tables(atlas):
     :param atlas: str; e.g. `castelli` or `ck04`
     :return: List[str];
     """
-    source = config.ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
+    source = settings.ATLAS_TO_BASE_DIR[validated_atlas(atlas)]
     matches = list()
     for root, dirnames, filenames in os.walk(source):
         for filename in filenames:
@@ -819,8 +868,9 @@ def multithread_atm_tables_reader(path_queue, error_queue, result_queue):
             result_queue.put((index, None))
             continue
         try:
+            types = {'flux': np.float, 'wave': np.float}
             t, l, m = parse_domain_quantities_from_atm_table_filename(os.path.basename(file_path))
-            atm_container = AtmDataContainer(pd.read_csv(file_path), t, l, m, file_path)
+            atm_container = AtmDataContainer(pd.read_csv(file_path, dtype=types), t, l, m, file_path)
             result_queue.put((index, atm_container))
         except Exception as we:
             error_queue.put(we)
@@ -834,7 +884,7 @@ def multithread_atm_tables_reader_runner(fpaths):
     :param fpaths: Iterable[str];
     :return: Queue;
     """
-    n_threads = config.NUMBER_OF_THREADS
+    n_threads = settings.NUMBER_OF_THREADS
 
     path_queue = Queue(maxsize=len(fpaths) + n_threads)
     result_queue = Queue()
@@ -882,8 +932,8 @@ def compute_normal_intensities(matrices_dict, flux_mult=1.0, wave_mult=1.0):
     """
     return {
         band: compute_normal_intensity(
-            spectral_flux=dflux[config.ATM_MODEL_DATAFRAME_FLUX],
-            wavelength=dflux[config.ATM_MODEL_DATAFRAME_WAVE],
+            spectral_flux=dflux[settings.ATM_MODEL_DATAFRAME_FLUX],
+            wavelength=dflux[settings.ATM_MODEL_DATAFRAME_WAVE],
             flux_mult=flux_mult,
             wave_mult=wave_mult
         )
@@ -922,8 +972,8 @@ def compute_integral_si_intensity_from_atm_data_containers(atm_data_containers):
     """
     return [
         IntensityContainer(
-            intensity=const.PI * integrate.simps(adc.model[config.ATM_MODEL_DATAFRAME_FLUX] * adc.flux_to_si_mult,
-                                                 adc.model[config.ATM_MODEL_DATAFRAME_WAVE] * adc.wave_to_si_mult),
+            intensity=const.PI * integrate.simps(adc.model.flux * adc.flux_to_si_mult,
+                                                 adc.model.wavelength * adc.wave_to_si_mult),
             temperature=adc.temperature,
             log_g=adc.log_g,
             metallicity=adc.metallicity
@@ -993,8 +1043,24 @@ def read_unique_atm_tables(fpaths):
         indices where it occures)
     """
     fpaths, fpaths_map = unique_atm_fpaths(fpaths)
-    result_queue = multithread_atm_tables_reader_runner(fpaths)
-    models = [qval[1] for qval in utils.IterableQueue(result_queue) if qval[1] is not None]
+
+    # check if the atm table is in the buffer
+    models, load_fpaths = [], []
+    for fpath in fpaths:
+        if fpath in buffer.ATMOSPHERE_TABLES:
+            models.append(buffer.ATMOSPHERE_TABLES[fpath])
+        else:
+            load_fpaths.append(fpath)
+
+    if len(load_fpaths) > 0:
+        result_queue = multithread_atm_tables_reader_runner(load_fpaths)
+        loaded_models = [qval[1] for qval in utils.IterableQueue(result_queue) if qval[1] is not None]
+        # add loaded atmospheres to atm buffer
+        for ii, fpath in enumerate(load_fpaths):
+            buffer.ATMOSPHERE_TABLES[fpath] = loaded_models[ii]
+        models += loaded_models
+    # clean buffer
+    buffer.reduce_buffer(buffer.ATMOSPHERE_TABLES)
     return models, fpaths_map
 
 
@@ -1025,7 +1091,7 @@ def find_atm_defined_wavelength(atm_containers):
     :return: numpy.array[float];
     """
     for atm_container in atm_containers:
-        return atm_container.model[config.ATM_MODEL_DATAFRAME_WAVE]
+        return atm_container.model.wavelength
     raise AtmosphereError('No valid atmospheric container has been supplied to method.')
 
 
@@ -1054,8 +1120,51 @@ def remap_passbanded_unique_atm_to_matrix(atm_containers, fpaths_map):
     models_matrix = up.zeros((total, wavelengths_length))
 
     for atm_container in atm_containers:
-        models_matrix[fpaths_map[atm_container.fpath]] = atm_container.model[config.ATM_MODEL_DATAFRAME_FLUX]
+        models_matrix[fpaths_map[atm_container.fpath]] = atm_container.model.flux
     return models_matrix
+
+
+def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
+    """
+    Correcting normal radiance values by increment that will correct inacuracy caused by using too shallow optical depth
+    for the middle of the disk. Correction was derived analytically from spherical model.
+
+    :param normal_radiances: dict; dict(component: dict(filter: normal radiances for each face))
+    :param ld_cfs: dict; dict(component: dict(filter: limb darkening coefficients for each face))
+    :return: dict;
+    """
+    for star, component_normal_radiances in normal_radiances.items():
+        ld_coefficients = ld_cfs[star]['bolometric'][settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]].values.T
+
+        coeff = ld.calculate_bolometric_limb_darkening_factor(limb_darkening_law=settings.LIMB_DARKENING_LAW,
+                                                              coefficients=ld_coefficients)
+
+        normal_radiances[star] = {
+            band: normal_radiance / coeff for band, normal_radiance in component_normal_radiances.items()
+        }
+
+    return normal_radiances
+
+
+def planck_function(wavelegth, temperature):
+    """
+    Standard Placnk funcntion.
+    :param wavelegth: Union[float, numpy.array]; wavelengths
+    :param temperature: float; temperature
+    :return: Union[float, numpy.array]
+    """
+    h = (2.0 * const.PLANCK_CONST * const.C ** 2) / np.power(wavelegth, 5)
+    e = (const.PLANCK_CONST * const.C) / (wavelegth * const.BOLTZMAN_CONST * temperature)
+    return h / (np.exp(e) - 1.0)
+
+
+def get_standard_wavelengths():
+    """
+    Obtain standard wavelengths used in Castelli-Kurucz tables.
+    :return: numpy.array
+    """
+    with open(os.path.join(settings.DATA_PATH, "wavelength.json"), "r") as f:
+        return np.array(json.loads(f.read()))
 
 
 if __name__ == "__main__":

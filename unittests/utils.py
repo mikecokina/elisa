@@ -1,28 +1,28 @@
 import json
 import logging
+import os
 import os.path as op
+import tempfile
 import unittest
 import numpy as np
 
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from elisa import const, units
+from elisa import const, units as u, settings
 from elisa import umpy as up
 from elisa.base.container import StarContainer
 from elisa.base.star import Star
 from elisa.binary_system.container import OrbitalPositionContainer
+from elisa.single_system.container import SystemContainer
 from elisa.binary_system.system import BinarySystem
-from elisa.conf import config
-from elisa.const import Position
+from elisa.single_system.system import SingleSystem
+from elisa.const import Position, SinglePosition
 from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
+from collections.abc import Iterable
 
 ax3 = Axes3D
-
-
-def reset_config():
-    config.read_and_update_config(conf_path=None)
 
 
 def plot_points(points_1, points_2, label):
@@ -110,12 +110,14 @@ def prepare_binary_system(params, spots_primary=None, spots_secondary=None):
     primary = Star(mass=params["primary_mass"], surface_potential=params["primary_surface_potential"],
                    synchronicity=params["primary_synchronicity"],
                    t_eff=params["primary_t_eff"], gravity_darkening=params["primary_gravity_darkening"],
-                   albedo=params['primary_albedo'], metallicity=0.0, spots=spots_primary)
+                   albedo=params['primary_albedo'], metallicity=0.0, spots=spots_primary,
+                   discretization_factor=params.get("primary_discretization_factor", 3))
 
     secondary = Star(mass=params["secondary_mass"], surface_potential=params["secondary_surface_potential"],
                      synchronicity=params["secondary_synchronicity"],
                      t_eff=params["secondary_t_eff"], gravity_darkening=params["secondary_gravity_darkening"],
-                     albedo=params['secondary_albedo'], metallicity=0.0, spots=spots_secondary)
+                     albedo=params['secondary_albedo'],
+                     metallicity=0.0, spots=spots_secondary)
 
     return BinarySystem(primary=primary,
                         secondary=secondary,
@@ -133,11 +135,8 @@ def prepare_star(star_params):
 
 
 def prepare_orbital_position_container(system):
-    orbital_position_container = OrbitalPositionContainer(
-        primary=StarContainer.from_properties_container(system.primary.to_properties_container()),
-        secondary=StarContainer.from_properties_container(system.secondary.to_properties_container()),
-        position=Position(*(0, 1.0, 0.0, 0.0, 0.0)),
-        **system.properties_serializer()
+    orbital_position_container = OrbitalPositionContainer.from_binary_system(
+        binary_system=system, position=Position(*(0, 1.0, 0.0, 0.0, 0.0))
     )
     return orbital_position_container
 
@@ -145,12 +144,23 @@ def prepare_orbital_position_container(system):
 def prepare_single_system(params, spots=None, pulsations=None):
     star = Star(mass=params['mass'], t_eff=params['t_eff'],
                 gravity_darkening=params['gravity_darkening'],
-                polar_log_g=params['polar_log_g'], spots=spots, pulsations=pulsations)
+                polar_log_g=params['polar_log_g'],
+                metallicity=0.0,
+                spots=spots, pulsations=pulsations)
 
-    return BinarySystem(star=star,
+    return SingleSystem(star=star,
                         gamma=params["gamma"],
                         inclination=params["inclination"],
                         rotation_period=params['rotation_period'])
+
+
+def prepare_single_system_container(system):
+    system_container = SystemContainer(
+        star=StarContainer.from_properties_container(system.star.to_properties_container()),
+        position=SinglePosition(*(0, 0.0, 0.0)),
+        **system.properties_serializer()
+    )
+    return system_container
 
 
 def normalize_lc_for_unittests(flux_arr):
@@ -158,10 +168,25 @@ def normalize_lc_for_unittests(flux_arr):
 
 
 def normalize_lv_for_unittests(primary, secondary):
-    _max = np.max([primary, secondary])
+    _max = np.max(np.abs([primary, secondary]))
     primary /= _max
     secondary /= _max
     return primary, secondary
+
+
+def dump_lc_observation_to_json(observation, filename):
+    observation = list(observation)
+    observation[0] = observation[0].tolist()
+    observation[1] = {filter: item.tolist() for filter, item in observation[1].items()}
+    with open(filename, 'w') as outfile:
+        json.dump(observation, outfile, indent=4)
+
+
+def dump_rv_observation_to_json(observation, filename):
+    dct = {'phases': list(observation[0]), 'primary': list(observation[1]['primary']),
+           'secondary': list(observation[1]['secondary'])}
+    with open(filename, 'w') as outfile:
+        json.dump(dct, outfile, indent=4)
 
 
 def load_light_curve(filename):
@@ -239,10 +264,36 @@ def surface_closed(faces, points):
 
 
 class ElisaTestCase(unittest.TestCase):
+    CONFIG_FILE = op.join(tempfile.gettempdir(), "elisa.ini")
+
+    def touch_default_config(self):
+        with open(self.CONFIG_FILE, "w") as f:
+            f.write("")
+
+    def write_default_support(self, ld_tables, atm_tables):
+        # because of stupid windows MP implementation
+        content = f'[support]\n' \
+                  f'ld_tables={ld_tables}\n' \
+                  f'castelli_kurucz_04_atm_tables={atm_tables}\n\n'
+        with open(self.CONFIG_FILE, "w") as f:
+            f.write(content)
+
     def setUpClass(*args, **kwargs):
-        reset_config()
         logging.disable(logging.CRITICAL)
         # logging.disable(logging.NOTSET)
+        pass
+
+    def setUp(self):
+        os.environ["ELISA_CONFIG"] = self.CONFIG_FILE
+        settings.configure(**settings.DEFAULT_SETTINGS)
+        settings.configure(MESH_GENERATOR='trapezoidal')
+        self.touch_default_config()
+        settings.configure(**{"CONFIG_FILE": ElisaTestCase.CONFIG_FILE})
+
+    def tearDown(self):
+        settings.configure(**settings.DEFAULT_SETTINGS)
+        if op.isfile(self.CONFIG_FILE):
+            os.remove(self.CONFIG_FILE)
 
 
 BINARY_SYSTEM_PARAMS = {
@@ -250,8 +301,8 @@ BINARY_SYSTEM_PARAMS = {
         "primary_mass": 2.0, "secondary_mass": 1.0,
         "primary_surface_potential": 100.0, "secondary_surface_potential": 100.0,
         "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
-        "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+        "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 8,
+        "eccentricity": 0.0, "inclination": const.HALF_PI * u.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -262,8 +313,8 @@ BINARY_SYSTEM_PARAMS = {
         "primary_mass": 2.0, "secondary_mass": 1.0,
         "primary_surface_potential": 15.0, "secondary_surface_potential": 15.0,
         "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 5.0,
-        "eccentricity": 0.0, "inclination": const.HALF_PI * units.deg, "primary_minimum_time": 0.0,
+        "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 5.0,
+        "eccentricity": 0.0, "inclination": const.HALF_PI * u.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
@@ -274,12 +325,12 @@ BINARY_SYSTEM_PARAMS = {
         "primary_mass": 2.0, "secondary_mass": 1.0,
         "primary_surface_potential": 4.8, "secondary_surface_potential": 4.0,
         "primary_synchronicity": 1.5, "secondary_synchronicity": 1.2,
-        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
-        "eccentricity": 0.3, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+        "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.3, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 0.6, "secondary_albedo": 0.6
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
     },  # close tidally deformed components with asynchronous rotation on eccentric orbit
 
     "over-contact": {
@@ -287,12 +338,12 @@ BINARY_SYSTEM_PARAMS = {
         "primary_surface_potential": 2.7,
         "secondary_surface_potential": 2.7,
         "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-        "argument_of_periastron": 90 * units.deg, "gamma": 0.0, "period": 1.0,
-        "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+        "argument_of_periastron": 90 * u.deg, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
         "primary_t_eff": 5000, "secondary_t_eff": 5000,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 0.6, "secondary_albedo": 0.6
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
     },  # over-contact system
 
     "semi-detached": {
@@ -300,13 +351,45 @@ BINARY_SYSTEM_PARAMS = {
         "primary_surface_potential": 2.875844632141054,
         "secondary_surface_potential": 2.875844632141054,
         "primary_synchronicity": 1.0, "secondary_synchronicity": 1.0,
-        "argument_of_periastron": const.HALF_PI * units.rad, "gamma": 0.0, "period": 1.0,
-        "eccentricity": 0.0, "inclination": 90.0 * units.deg, "primary_minimum_time": 0.0,
+        "argument_of_periastron": const.HALF_PI * u.rad, "gamma": 0.0, "period": 1.0,
+        "eccentricity": 0.0, "inclination": 90.0 * u.deg, "primary_minimum_time": 0.0,
         "phase_shift": 0.0,
-        "primary_t_eff": 5000, "secondary_t_eff": 5000,
+        "primary_t_eff": 5000, "secondary_t_eff": 5100,
         "primary_gravity_darkening": 1.0, "secondary_gravity_darkening": 1.0,
-        "primary_albedo": 0.6, "secondary_albedo": 0.6
+        "primary_albedo": 0.6, "secondary_albedo": 0.6,
     }
+}
+
+SINGLE_SYSTEM_PARAMS = {
+    "spherical": {
+        "mass": 1.0,
+        "t_eff": 5774 * u.K,
+        "gravity_darkening": 0.32,
+        "polar_log_g": 4.1,
+        "gamma": 0.0,
+        "inclination": 90.0 * u.deg,
+        "rotation_period": 30 * u.d,
+    },
+    "squashed": {
+        "mass": 1.0,
+        "t_eff": 5774 * u.K,
+        "gravity_darkening": 0.32,
+        "polar_log_g": 4.1,
+        "gamma": 0.0,
+        "inclination": 90.0 * u.deg,
+        "rotation_period": 0.3818 * u.d,
+    },
+}
+
+SOLAR_MODEL = {
+    "mass": 1.0,
+    "t_eff": 5772 * u.K,
+    "gravity_darkening": 0.32,
+    "polar_log_g": 4.43728 * u.dex(u.cm / u.s ** 2),
+    "gamma": 0.0,
+    # "inclination": 82.5 * u.deg,
+    "inclination": 90.0 * u.deg,
+    "rotation_period": 25.38 * u.d,
 }
 
 SPOTS_META = {
@@ -329,13 +412,13 @@ SPOTS_META = {
 
 SPOTS_OVERLAPPED = [
     {"longitude": 90,
-     "latitude": 58,
+     "latitude": 60,
      "angular_radius": 15,
-     "temperature_factor": 0.95},
+     "temperature_factor": 0.98},
     {"longitude": 90,
      "latitude": 58,
      "angular_radius": 25,
-     "temperature_factor": 0.95},
+     "temperature_factor": 0.99},
 ]
 
 SPOT_TO_RAISE = [
@@ -344,3 +427,50 @@ SPOT_TO_RAISE = [
      "angular_radius": 28,
      "temperature_factor": 0.1},
 ]
+
+IDENTICAL_BINARY = {
+  "system": {
+    "inclination": 80.0,
+    "period": 2.0,
+    "argument_of_periastron": 170,
+    "gamma": 0.0,
+    "eccentricity": 0.00,
+    "primary_minimum_time": 0.0,
+    "phase_shift": 0.0
+  },
+  "primary": {
+    "mass": 2.0,
+    "surface_potential": 7.0,
+    "synchronicity": 1.0,
+    "t_eff": 7000.0,
+    "gravity_darkening": 1.0,
+    "albedo": 1.0,
+    "metallicity": 0.0
+  },
+  "secondary": {
+    "mass": 2.0,
+    "surface_potential": 7.0,
+    "synchronicity": 1.0,
+    "t_eff": 7000.0,
+    "gravity_darkening": 1.0,
+    "albedo": 1.0,
+    "metallicity": 0.0
+  }
+}
+
+APPROX_SETTINGS = \
+    {"no_approx":
+         {"POINTS_ON_ECC_ORBIT": -1, "MAX_RELATIVE_D_R_POINT": 0.0, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.0},
+     "approx_one":
+         {"POINTS_ON_ECC_ORBIT": 1, "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.001},
+     "approx_two":
+         {"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.001},
+     "approx_three":
+         {"POINTS_ON_ECC_ORBIT": int(1e6), "MAX_RELATIVE_D_R_POINT": 0.003, "MAX_SUPPLEMENTAR_D_DISTANCE": 0.0}
+     }
+
+
+def cutoff_float(x, keep_n):
+    if isinstance(x, Iterable):
+        return [float(format(x, f".{keep_n}")) for _x in x]
+    return float(format(x, f".{keep_n}"))

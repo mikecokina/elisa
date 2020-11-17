@@ -1,7 +1,9 @@
 import numpy as np
 
 from abc import abstractmethod
-from ..logger import getLogger
+
+from .. import const
+from .. logger import getLogger
 from copy import (
     deepcopy,
     copy
@@ -39,6 +41,13 @@ class SystemPropertiesContainer(PropertiesContainer):
 
 
 class PositionContainer(object):
+    def __init__(self, position):
+        self._flatten = False
+        self._components = list()
+        self.position = position
+        self.inclination = np.nan
+        self.period = np.nan
+
     @abstractmethod
     def build(self, *args, **kwargs):
         pass
@@ -67,6 +76,113 @@ class PositionContainer(object):
     def build_temperature_distribution(self, *args, **kwargs):
         pass
 
+    def flatt_it(self):
+        # naive implementation of idempotence
+        if self._flatten:
+            return self
+
+        for component in self._components:
+            star_container = getattr(self, component)
+            if star_container.has_spots() or star_container.has_pulsations():
+                star_container.flatt_it()
+
+        self._flatten = True
+        return self
+
+    def apply_rotation(self):
+        """
+        Rotate quantities defined in __PROPERTIES_TO_ROTATE__ in case of
+        components defined in __PROPERTIES_TO_ROTATE__.
+        Rotation is made in orbital plane and inclination direction in respective order.
+        Angle are defined in self.position and self.inclination.
+        :return: elisa.base.PositionContainer;
+        """
+        __PROPERTIES_TO_ROTATE__ = ["points", "normals", "velocities"]
+
+        for component in self._components:
+            star_container = getattr(self, component)
+            for prop in __PROPERTIES_TO_ROTATE__:
+                prop_value = getattr(star_container, prop)
+
+                args = (self.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
+                prop_value = utils.around_axis_rotation(*args)
+
+                args = (const.HALF_PI - self.inclination, prop_value, "y", True, False)
+                prop_value = utils.around_axis_rotation(*args)
+                setattr(star_container, prop, prop_value)
+        return self
+
+    def add_secular_velocity(self):
+        """
+        Addition of secular radial velocity of centre of mass to convert velocieties to reference frame of observer
+        """
+        gamma = getattr(self, "gamma")
+        for component in self._components:
+            star = getattr(self, component)
+            star.velocities[:, 0] += gamma
+        return self
+
+    def apply_darkside_filter(self):
+        """
+        Apply darkside filter on current position defined in container.
+        Function iterates over components and assigns indices of visible points of star_component instance.
+
+        :return: elisa.base.PositionContainer;
+        """
+
+        for component in self._components:
+            star_container = getattr(self, component)
+            cosines = getattr(star_container, "los_cosines")
+            valid_indices = self.darkside_filter(cosines=cosines)
+            setattr(star_container, "indices", valid_indices)
+        return self
+
+    def calculate_face_angles(self, line_of_sight):
+        """
+        Calculates angles between normals and line_of_sight vector for all components of the system.
+
+        :param line_of_sight: np.array;
+        """
+        for component in self._components:
+            star_container = getattr(self, component)
+            normals = getattr(star_container, "normals")
+            los_cosines = self.return_cosines(normals, line_of_sight=line_of_sight)
+            setattr(star_container, "los_cosines", los_cosines)
+
+    @staticmethod
+    def return_cosines(normals, line_of_sight):
+        """
+        returns angles between normals and line_of_sight vector
+
+        :param normals: numpy.array;
+        :param line_of_sight: numpy.array;
+        :return:
+        """
+        if (line_of_sight == np.array([1.0, 0.0, 0.0])).all():
+            return utils.calculate_cos_theta_los_x(normals=normals)
+        else:
+            return utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
+
+    @staticmethod
+    def darkside_filter(cosines):
+        """
+        Return indices for visible faces defined by given normals.
+        Function assumes that `line_of_sight` ([1, 0, 0]) and `normals` are already normalized to one.
+
+        :param cosines: numpy.array;
+        :return: numpy.array;
+        """
+        # todo: require to resolve self shadowing in case of W UMa, but probably not here
+        # recovering indices of points on near-side (from the point of view of observer)
+        return up.arange(np.shape(cosines)[0])[cosines > 0]
+
+    def copy(self):
+        """
+        Return deepcopy of PositionContainer instance.
+        :return: elisa.base.container.PositionContainer;
+        """
+        return deepcopy(self)
+
 
 class StarContainer(object):
     """
@@ -76,10 +192,10 @@ class StarContainer(object):
     Following parameters are gathered from Star object
 
     'mass', 't_eff', 'synchronicity', 'albedo', 'discretization_factor', 'name', 'spots'
-    'polar_radius', 'equatorial_radius', 'gravity_darkening', 'surface_potential',
+    'polar_radius', 'equatorial_radius', 'gravity_darkening', 'surface_potential', 'atmosphere',
     'pulsations', 'metallicity', 'polar_log_g', 'critical_surface_potential', 'side_radius'
 
-    If you are experienced used, you can create instance directly by calling
+    If you are experienced user, you can create instance directly by calling
 
     >>> from elisa.base.container import StarContainer
     >>> kwargs = {}
@@ -102,6 +218,9 @@ class StarContainer(object):
         * **metallicity** * -- float;
         * **areas** * -- numpy.array;
         * **potential_gradient_magnitudes** * -- numpy.array;
+        * **ld_cfs** * -- numpy.array;
+        * **normal_radiance** * -- numpy.array;
+        * **los_cosines** * -- numpy.array;
 
 
     Output parameters (obtained by applying given methods upon container).
@@ -169,11 +288,15 @@ class StarContainer(object):
     :base_symmetry_points: numpy.array;
     :base_symmetry_faces: numpy.array;
     :polar_potential_gradient_magnitude: numpy.array;
+    :ld_cfs: numpy.array;
+    :normal_radiance: numpy.array;
+    :los_cosines: numpy.array;
     """
 
     def __init__(self,
                  points=None,
                  normals=None,
+                 velocities=None,
                  indices=None,
                  faces=None,
                  temperatures=None,
@@ -183,11 +306,15 @@ class StarContainer(object):
                  face_centres=None,
                  metallicity=None,
                  areas=None,
-                 potential_gradient_magnitudes=None):
+                 potential_gradient_magnitudes=None,
+                 ld_cfs=None,
+                 normal_radiance=None,
+                 los_cosines=None):
 
         self.points = points
         self.normals = normals
         self.faces = faces
+        self.velocities = velocities
         self.temperatures = temperatures
         self.log_g = log_g
         self.coverage = coverage
@@ -197,6 +324,9 @@ class StarContainer(object):
         self.metallicity = metallicity
         self.areas = areas
         self.potential_gradient_magnitudes = potential_gradient_magnitudes
+        self.ld_cfs = ld_cfs
+        self.normal_radiance = normal_radiance
+        self.los_cosines = los_cosines
 
         self.point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])
@@ -205,13 +335,25 @@ class StarContainer(object):
         self.face_symmetry_vector = np.array([])
         self.base_symmetry_faces_number = 0
 
-        # those are used only if case of spots are NOT used
+        # those are used only if case of spots are NOT used ------------------------------------------------------------
         self.base_symmetry_points = np.array([])
         self.base_symmetry_faces = np.array([])
+        self.azimuth_args = np.array([])
+        # --------------------------------------------------------------------------------------------------------------
 
         self.spots = dict()
         self.pulsations = dict()
         self.polar_potential_gradient_magnitude = np.nan
+
+        # all star radii in any position (set on fly) ------------------------------------------------------------------
+        # set only via `assign_radii()` method
+        self.polar_radius = None
+        self.forward_radius = None
+        self.side_radius = None
+        self.backward_radius = None
+        self.equatorial_radius = None
+        self.equivalent_radius = None
+        # --------------------------------------------------------------------------------------------------------------
 
         self._flatten = False
 
@@ -224,8 +366,8 @@ class StarContainer(object):
         """
         Create StarContainer from properties container.
 
-        :param properties_container:
-        :return: elisa.base.container.StarContainer
+        :param properties_container: elisa.base.container.StarPropertiesContainer;
+        :return: elisa.base.container.StarContainer;
         """
         container = cls()
         container.__dict__.update(properties_container.__dict__)
@@ -271,7 +413,7 @@ class StarContainer(object):
 
     def get_flatten_points_map(self):
         """
-        Function returns all surface point and faces optionally with corresponding map of vertices.
+        Function returns all surface point and faces with corresponding map of vertices.
 
         :param self: Star instance
         :return: Tuple[numpy.array, Any]: [all surface points including star and surface points, vertices map or None]
@@ -349,17 +491,18 @@ class StarContainer(object):
             spot_instance.areas = np.array([])
             spot_instance.potential_gradient_magnitudes = np.array([])
             spot_instance.temperatures = np.array([])
+            spot_instance.velocities = np.array([])
 
             spot_instance.log_g = np.array([])
 
     def get_flatten_properties(self):
         """
         Return flatten ndarrays of points, faces, etc. from object instance and spot instances for given object.
-        :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, ndarray]
+        :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray]
 
         ::
 
-            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres)
+            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres, areas, velocities, face_centres)
         """
         points = self.points
         normals = self.normals
@@ -369,6 +512,9 @@ class StarContainer(object):
         rals = {mode_idx: None for mode_idx, mode in self.pulsations.items()}
         # rals = {mode_idx: mode.rals[0] for mode_idx, mode in self.pulsations.items()}
         centres = self.face_centres
+        velocities = self.velocities
+        areas = self.areas
+        face_centres = self.face_centres
 
         if isinstance(self.spots, (dict,)):
             for idx, spot in self.spots.items():
@@ -377,15 +523,16 @@ class StarContainer(object):
                 normals = up.concatenate((normals, spot.normals), axis=0)
                 temperatures = up.concatenate((temperatures, spot.temperatures), axis=0)
                 log_g = up.concatenate((log_g, spot.log_g), axis=0)
-                # for mode_idx, mode in self.pulsations.items():
-                #     rals[mode_idx] = up.concatenate((rals[mode_idx], mode.rals[1][idx]), axis=0)
                 centres = up.concatenate((centres, spot.face_centres), axis=0)
+                areas = up.concatenate((areas, spot.areas), axis=0)
+                velocities = up.concatenate((velocities, spot.velocities), axis=0)
+                face_centres = up.concatenate((face_centres, spot.face_centres), axis=0)
 
-        return points, normals, faces, temperatures, log_g, rals, centres
+        return points, normals, faces, temperatures, log_g, rals, centres, areas, velocities, face_centres
 
     def flatt_it(self):
         """
-        Make properties "points", "normals", "faces", "temperatures", "log_g", "rals", "centers"
+        Make properties "points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas"
         of container flatt. It means all properties of start and spots are put together.
 
         :return: self
@@ -394,7 +541,8 @@ class StarContainer(object):
         if self._flatten:
             return self
 
-        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers"]
+        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas", "velocities",
+                      "face_centres"]
         flat_props = self.get_flatten_properties()
         for prop, value in zip(props_list, flat_props):
             setattr(self, prop, value)
@@ -411,7 +559,6 @@ class StarContainer(object):
         :param com_x: float;
         :return: Tuple; spherical coordinates of star variable, dictionary of spherical coordinates of spot variable
         """
-        # fixme: remove from container, make it static in surface.mehs or similar
         # separating variables to convert
         centres_cartesian = copy(getattr(self, kind))
         centres_spot_cartesian = {spot_idx: copy(getattr(spot, kind)) for spot_idx, spot in self.spots.items()}
@@ -427,3 +574,11 @@ class StarContainer(object):
                         centres_spot_cartesian.items()}
 
         return centres, centres_spot
+
+    def assign_radii(self, star):
+        self.polar_radius = getattr(star, 'polar_radius')
+        self.forward_radius = getattr(star, 'forward_radius')
+        self.side_radius = getattr(star, 'side_radius')
+        self.backward_radius = getattr(star, 'backward_radius')
+        self.equatorial_radius = getattr(star, 'equatorial_radius')
+        self.equivalent_radius = getattr(star, 'equivalent_radius')

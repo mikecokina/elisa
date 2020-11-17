@@ -1,8 +1,7 @@
 import numpy as np
-from astropy import units as au
 from numpy.testing import assert_array_equal
 
-from elisa import const, units
+from elisa import const, units as u
 from elisa.base.transform import SystemProperties, BodyProperties, StarProperties, SpotProperties
 from elisa.binary_system.transform import BinarySystemProperties
 from elisa.binary_system.orbit.transform import OrbitProperties
@@ -33,7 +32,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
 
     @staticmethod
     def test_argument_of_periastron():
-        valid_values = [0.0, 180., const.PI * units.rad, 180.0 * units.deg]
+        valid_values = [0.0, 180., const.PI * u.rad, 180.0 * u.deg]
         expected = [0., 3.1416, 3.1416, 3.1416]
         generate_test(valid_values, BinarySystemProperties.argument_of_periastron, expected, 4)
 
@@ -45,7 +44,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
 
     @staticmethod
     def test_primary_minimum_time():
-        valid_values = [1.0, 180. * units.PERIOD_UNIT, 86400.0 * au.s]
+        valid_values = [1.0, 180. * u.PERIOD_UNIT, 86400.0 * u.s]
         expected = [1.0, 180.0, 1.0]
         generate_test(valid_values, BinarySystemProperties.primary_minimum_time, expected)
 
@@ -56,16 +55,16 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
 class TransformSystemPropertiesTestCase(ElisaTestCase):
     @staticmethod
     def test_inclination():
-        valid_values = [0.0, 180., const.PI * units.rad, 180.0 * units.deg]
+        valid_values = [0.0, 180., const.PI * u.rad, 180.0 * u.deg]
         expected = [0., 3.1416, 3.1416, 3.1416]
         generate_test(valid_values, SystemProperties.inclination, expected, 4)
 
     def test_inclination_raise(self):
-        generate_raise_test(self, const.FULL_ARC * units.rad, SystemProperties.inclination, "is out of bounds")
+        generate_raise_test(self, const.FULL_ARC * u.rad, SystemProperties.inclination, "is out of bounds")
 
     @staticmethod
     def test_period():
-        valid_values = [1.0, 180. * units.PERIOD_UNIT, 86400.0 * au.s]
+        valid_values = [1.0, 180. * u.PERIOD_UNIT, 86400.0 * u.s]
         expected = [1.0, 180.0, 1.0]
         generate_test(valid_values, SystemProperties.period, expected)
 
@@ -74,13 +73,13 @@ class TransformSystemPropertiesTestCase(ElisaTestCase):
 
     @staticmethod
     def test_gamma():
-        valid_values = [1.0, 180. * units.VELOCITY_UNIT, 1.0 * units.km / au.s]
+        valid_values = [1.0, 180. * u.VELOCITY_UNIT, 1.0 * u.km / u.s]
         expected = [1.0, 180.0, 1000.0]
         generate_test(valid_values, SystemProperties.gamma, expected)
 
     def test_gamma_raise(self):
         generate_raise_test(self, "98.2", SystemProperties.gamma, "is not")
-        generate_raise_test(self, 1.0 * units.km * au.s, SystemProperties.gamma, "are not convertible")
+        generate_raise_test(self, 1.0 * u.km * u.s, SystemProperties.gamma, "are not convertible")
 
     @staticmethod
     def test_additional_light():
@@ -102,10 +101,13 @@ class TransformBodyPropertiesTestCase(ElisaTestCase):
         generate_raise_test(self, -0.14, BodyProperties.synchronicity, "Invalid synchronicity")
 
     def test_mass(self):
-        valid_values = [1.0, 1.0 * units.solMass, 30. * units.MASS_UNIT]
+        valid_values = [1.0, 1.0 * u.solMass, 30. * u.MASS_UNIT]
         obtained = np.array([BodyProperties.mass(val) for val in valid_values])
         expected = np.array([1.98847542e+30, 1.98847542e+30, 3.00000000e+01])
-        self.assertTrue(np.all(expected - obtained < 1e22))
+        print(obtained)
+        print(expected)
+        print(abs((expected - obtained) / expected))
+        self.assertTrue(np.all(abs((expected - obtained) / expected) < 1e-8))
 
     def test_mass_raise(self):
         generate_raise_test(self, -0.14, BodyProperties.mass, "Invalid mass")
@@ -121,13 +123,13 @@ class TransformBodyPropertiesTestCase(ElisaTestCase):
 
     @staticmethod
     def test_discretization_factor():
-        valid_values = [0.0, 45., 0.25 * units.rad, 45.0 * units.deg]
+        valid_values = [0.0, 45., 0.25 * u.rad, 45.0 * u.deg]
         expected = [0., 0.7854, 0.25, 0.7854]
         generate_test(valid_values, BodyProperties.discretization_factor, expected, 4)
 
     @staticmethod
     def test_t_eff():
-        valid_values = [10.0, 180.0 * units.TEMPERATURE_UNIT]
+        valid_values = [10.0, 180.0 * u.TEMPERATURE_UNIT]
         expected = [10., 180.]
         generate_test(valid_values, BodyProperties.t_eff, expected, 4)
 
@@ -136,7 +138,7 @@ class TransformBodyPropertiesTestCase(ElisaTestCase):
 
     @staticmethod
     def test_polar_radius():
-        valid_values = [10.0, 180.0 * units.DISTANCE_UNIT, 1000 * units.m, 1 * units.km]
+        valid_values = [10.0, 180.0 * u.DISTANCE_UNIT, 1000 * u.m, 1 * u.km]
         expected = [10., 180., 1000., 1000.]
         generate_test(valid_values, BodyProperties.polar_radius, expected, 4)
 
@@ -165,7 +167,7 @@ class TransformStarPropertiesTestCase(ElisaTestCase):
 
     @staticmethod
     def test_polar_log_g():
-        valid_values = [0.0, 1.0, 4.0 * units.LOG_ACCELERATION_UNIT]
+        valid_values = [0.0, 1.0, 4.0 * u.LOG_ACCELERATION_UNIT]
         expected = [0.0, 1.0, 4.0]
         generate_test(valid_values, StarProperties.polar_log_g, expected, 4)
 
@@ -173,19 +175,19 @@ class TransformStarPropertiesTestCase(ElisaTestCase):
 class TransformSpotPropertiesTestCase(ElisaTestCase):
     @staticmethod
     def test_latitude():
-        valid_values = [0.0, 180., const.PI * units.rad, 180.0 * units.deg]
+        valid_values = [0.0, 180., const.PI * u.rad, 180.0 * u.deg]
         expected = [0., 3.1416, 3.1416, 3.1416]
         generate_test(valid_values, SpotProperties.latitude, expected, 4)
 
     @staticmethod
     def test_longitude():
-        valid_values = [0.0, 180., const.PI * units.rad, 180.0 * units.deg]
+        valid_values = [0.0, 180., const.PI * u.rad, 180.0 * u.deg]
         expected = [0., 3.1416, 3.1416, 3.1416]
         generate_test(valid_values, SpotProperties.longitude, expected, 4)
 
     @staticmethod
     def test_angular_radius():
-        valid_values = [0.0, 180., const.PI * units.rad, 180.0 * units.deg]
+        valid_values = [0.0, 180., const.PI * u.rad, 180.0 * u.deg]
         expected = [0., 3.1416, 3.1416, 3.1416]
         generate_test(valid_values, SpotProperties.angular_radius, expected, 4)
 
@@ -198,7 +200,7 @@ class TransformSpotPropertiesTestCase(ElisaTestCase):
 class TransformOrbitProperties(ElisaTestCase):
     @staticmethod
     def test_period():
-        periods = [0.25 * units.d, 0.65, 86400 * units.s]
+        periods = [0.25 * u.d, 0.65, 86400 * u.s]
         expected = [0.25, 0.65, 1.0]
         generate_test(periods, OrbitProperties.period, expected)
 
@@ -209,12 +211,12 @@ class TransformOrbitProperties(ElisaTestCase):
 
     @staticmethod
     def test_argument_of_periastron():
-        periastrons = [135 * units.deg, 0.65, 1.56 * units.rad]
+        periastrons = [135 * u.deg, 0.65, 1.56 * u.rad]
         expected = [2.356, 0.65, 1.56]
         generate_test(periastrons, OrbitProperties.argument_of_periastron, expected, 3)
 
     @staticmethod
     def test_inclination():
-        inclinations = [135 * units.deg, 0.65, 1.56 * units.rad]
+        inclinations = [135 * u.deg, 0.65, 1.56 * u.rad]
         expected = [2.356, 0.65, 1.56]
         generate_test(inclinations, OrbitProperties.inclination, expected, 3)

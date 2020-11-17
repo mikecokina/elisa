@@ -2,18 +2,22 @@
 import numpy as np
 
 from copy import copy
-from elisa.logger import getLogger
-from elisa.binary_system.surface import faces as bsfaces
-from elisa.binary_system import utils as bsutils
-from elisa.conf import config
-from elisa.utils import is_empty
-from elisa import (
+from ..surface import faces as bsfaces
+from .. import utils as bsutils
+from ...logger import getLogger
+from ... import settings
+from ...utils import is_empty
+from ...base.surface import temperature as btemperature
+from ...pulse import pulsations
+from ... import (
     umpy as up,
     ld,
     utils
 )
-from elisa.base.surface import temperature as btemperature
+from elisa.base.surface.temperature import renormalize_temperatures
+from elisa.numba_functions import reflection_effect as re_numba, operations
 
+from time import time
 
 logger = getLogger("binary_system.surface.temperature")
 
@@ -47,7 +51,7 @@ def reflection_effect(system, components_distance, iterations):
     :return: system; elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
 
-    if not config.REFLECTION_EFFECT:
+    if not settings.REFLECTION_EFFECT:
         logger.debug('reflection effect is switched off')
         return system
     if iterations <= 0:
@@ -80,7 +84,7 @@ def reflection_effect(system, components_distance, iterations):
         star = getattr(system, component)
 
         points[component], faces[component], centres[component], normals[component], temperatures[component], \
-            areas[component], log_g[component] = init_surface_variables(star)
+        areas[component], log_g[component] = init_surface_variables(star)
 
         # test for visibility of star faces
         vis_test[component], vis_test_symmetry[component] = bsfaces.get_visibility_tests(centres[component],
@@ -95,7 +99,7 @@ def reflection_effect(system, components_distance, iterations):
 
                 # merge surface and spot face parameters into one variable
                 centres[component], normals[component], temperatures[component], areas[component], \
-                    vis_test[component], log_g[component] = \
+                vis_test[component], log_g[component] = \
                     include_spot_to_surface_variables(centres[component], spot.face_centres,
                                                       normals[component], spot.normals,
                                                       temperatures[component], spot.temperatures,
@@ -108,7 +112,7 @@ def reflection_effect(system, components_distance, iterations):
 
     # calculating C_A = (albedo_A / D_intB) - scalar
     # D_intB - bolometric limb darkening factor
-    d_int = {cmp: ld.calculate_bolometric_limb_darkening_factor(config.LIMB_DARKENING_LAW, ldc[cmp])
+    d_int = {cmp: ld.calculate_bolometric_limb_darkening_factor(settings.LIMB_DARKENING_LAW, ldc[cmp])
              for cmp in components}
     _c = {
         'primary': (system.primary.albedo / d_int['primary']),
@@ -117,7 +121,7 @@ def reflection_effect(system, components_distance, iterations):
 
     # setting reflection factor R = 1 + F_irradiated / F_original, initially equal to one everywhere - vector
     reflection_factor = {cmp: np.ones(np.sum(vis_test[cmp]), dtype=np.float) for cmp in components}
-    counterpart = config.BINARY_COUNTERPARTS
+    counterpart = settings.BINARY_COUNTERPARTS
 
     # for faster convergence, reflection effect is calculated first on cooler component
     components = ['primary', 'secondary'] if system.primary.t_eff <= system.secondary.t_eff else \
@@ -189,9 +193,8 @@ def reflection_effect(system, components_distance, iterations):
 
         # calculating cos of angle gamma between face normal and join vector
         gamma = \
-            {'primary': np.sum(up.multiply(normals['primary'][vis_test['primary']][:, None, :], join_vector), axis=2),
-             'secondary': np.sum(up.multiply(normals['secondary'][vis_test['secondary']][None, :, :], -join_vector),
-                                 axis=2)}
+            {'primary': re_numba.gamma_primary(normals['primary'][vis_test['primary']], join_vector),
+             'secondary': re_numba.gamma_secondary(normals['secondary'][vis_test['secondary']], join_vector)}
         # negative sign is there because of reversed distance vector used for secondary component
 
         # testing mutual visibility of faces by assigning 0 to non visible face combination
@@ -207,10 +210,10 @@ def reflection_effect(system, components_distance, iterations):
         # coefficients_primary = ld.interpolate_on_ld_grid()
         d_gamma = \
             {'primary': ld.limb_darkening_factor(coefficients=ldc['primary'][:, vis_test['primary']].T,
-                                                 limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                 limb_darkening_law=settings.LIMB_DARKENING_LAW,
                                                  cos_theta=gamma['primary']),
              'secondary': ld.limb_darkening_factor(coefficients=ldc['secondary'][:, vis_test['secondary']].T,
-                                                   limb_darkening_law=config.LIMB_DARKENING_LAW,
+                                                   limb_darkening_law=settings.LIMB_DARKENING_LAW,
                                                    cos_theta=gamma['secondary'].T).T
              }
 
@@ -219,7 +222,7 @@ def reflection_effect(system, components_distance, iterations):
 
         for _ in range(iterations):
             for component in components:
-                counterpart = config.BINARY_COUNTERPARTS[component]
+                counterpart = settings.BINARY_COUNTERPARTS[component]
 
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
@@ -242,41 +245,13 @@ def reflection_effect(system, components_distance, iterations):
     return system
 
 
-def renormalize_temperatures(star):
-    """
-    In case of spot presence, renormalize temperatures to fit effective temperature again,
-    since spots disrupt effective temperature of Star as entity.
-    """
-    # no need to calculate surfaces they had to be calculated already, otherwise there is nothing to renormalize
-    total_surface = np.sum(star.areas)
-    if star.has_spots():
-        for spot_index, spot in star.spots.items():
-            total_surface += np.sum(spot.areas)
-    desired_flux_value = total_surface * star.t_eff
-
-    current_flux = np.sum(star.areas * star.temperatures)
-    if star.spots:
-        for spot_index, spot in star.spots.items():
-            current_flux += np.sum(spot.areas * spot.temperatures)
-
-    coefficient = up.power(desired_flux_value / current_flux, 0.25)
-    logger.debug(f'surface temperature map renormalized by a factor {coefficient}')
-    star.temperatures *= coefficient
-    if star.spots:
-        for spot_index, spot in star.spots.items():
-            spot.temperatures *= coefficient
-
-
-def build_temperature_distribution(system, components_distance, component="all", phase=0):
+def build_temperature_distribution(system, components_distance, component="all"):
     """
     Function calculates temperature distribution on across all faces.
-    Value assigned to face is mean of values calculated in corners of given face.
 
     :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param components_distance: str;
     :param component: `primary` or `secondary`
-    :param do_pulsations: bool;
-    :param phase: float;
     :return: system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
     """
     if is_empty(component):
@@ -306,22 +281,10 @@ def build_temperature_distribution(system, components_distance, component="all",
                      f'presence of spots in case of component {component}')
         renormalize_temperatures(star)
 
-    #     if star.has_pulsations() and do_pulsations:
-    #         logger.debug(f'adding pulsations to surface temperature distribution '
-    #                          f'of the component instance: {component}  / name: {star.name}')
-    #
-    #         com_x = 0 if component == 'primary' else components_distance
-    #         pulsations.set_misaligned_ralp(star, phase, com_x=com_x)
-    #         temp_pert, temp_pert_spot = pulsations.calc_temp_pert(star, phase, system.period)
-    #         star.temperatures += temp_pert
-    #         if star.has_spots():
-    #             for spot_idx, spot in star.spots.items():
-    #                 spot.temperatures += temp_pert_spot[spot_idx]
-
     if 'primary' in components and 'secondary' in components:
-        logger.debug(f'calculating reflection effect with {config.REFLECTION_EFFECT_ITERATIONS} '
+        logger.debug(f'calculating reflection effect with {settings.REFLECTION_EFFECT_ITERATIONS} '
                      f'iterations.')
-        reflection_effect(system, components_distance, config.REFLECTION_EFFECT_ITERATIONS)
+        reflection_effect(system, components_distance, settings.REFLECTION_EFFECT_ITERATIONS)
     return system
 
 
@@ -389,15 +352,16 @@ def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis
         distance - distance matrix
         join vector - matrix of unit vectors pointing between each two faces on opposite stars
     """
-    distance = np.empty(shape=shape[:2], dtype=np.float)
-    join_vector = np.empty(shape=shape, dtype=np.float)
-
-    # in case of symmetries, you need to calculate only minority part of distance matrix connected with base
+    # in case of symmetries, you need to calculate only minor part of distance matrix connected with base
     # symmetry part of the both surfaces
+    distance = np.empty(shape=shape[:-1])
+    join_vector = np.empty(shape=shape)
+
     distance[:shape_reduced[0], :], join_vector[:shape_reduced[0], :, :] = \
-        utils.calculate_distance_matrix(points1=centres['primary'][vis_test_symmetry['primary']],
-                                        points2=centres['secondary'][vis_test['secondary']],
-                                        return_join_vector_matrix=True)
+        utils.calculate_distance_matrix(
+            points1=centres['primary'][vis_test_symmetry['primary']],
+            points2=centres['secondary'][vis_test['secondary']],
+            return_join_vector_matrix=True)
 
     aux = centres['primary'][vis_test['primary']]
     distance[shape_reduced[0]:, :shape_reduced[1]], join_vector[shape_reduced[0]:, :shape_reduced[1], :] = \
@@ -424,20 +388,20 @@ def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test,
     gamma = {'primary': np.empty(shape=shape, dtype=np.float),
              'secondary': np.empty(shape=shape, dtype=np.float)}
 
-    # calculating only necessary components of the matrix (near left and upper edge) because of surface symmetry
     gamma['primary'][:, :shape_reduced[1]] = \
-        np.sum(up.multiply(normals['primary'][vis_test['primary']][:, None, :],
-                           join_vector[:, :shape_reduced[1], :]), axis=2)
+        re_numba.gamma_primary(normals['primary'][vis_test['primary']],
+                               join_vector[:, :shape_reduced[1], :])
     gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = \
-        np.sum(up.multiply(normals['primary'][vis_test_symmetry['primary']][:, None, :],
-                           join_vector[:shape_reduced[0], shape_reduced[1]:, :]), axis=2)
+        re_numba.gamma_primary(normals['primary'][vis_test_symmetry['primary']],
+                               join_vector[:shape_reduced[0], shape_reduced[1]:, :])
 
     gamma['secondary'][:shape_reduced[0], :] = \
-        np.sum(up.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
-                           -join_vector[:shape_reduced[0], :, :]), axis=2)
+        re_numba.gamma_secondary(normals['secondary'][vis_test['secondary']],
+                                 join_vector[:shape_reduced[0], :, :])
     gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = \
-        np.sum(up.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
-                           -join_vector[shape_reduced[0]:, :shape_reduced[1], :]), axis=2)
+        re_numba.gamma_secondary(normals['secondary'][vis_test_symmetry['secondary']],
+                                 join_vector[shape_reduced[0]:, :shape_reduced[1], :])
+
     return gamma
 
 
@@ -473,25 +437,25 @@ def get_symmetrical_d_gamma(shape, shape_reduced, ldc, gamma):
     cos_theta = gamma['primary'][:, :shape_reduced[1]]
     d_gamma['primary'][:, :shape_reduced[1]] = ld.limb_darkening_factor(
         coefficients=ldc['primary'][:, :shape[0]].T,
-        limb_darkening_law=config.LIMB_DARKENING_LAW,
+        limb_darkening_law=settings.LIMB_DARKENING_LAW,
         cos_theta=cos_theta)
 
     cos_theta = gamma['primary'][:shape_reduced[0], shape_reduced[1]:]
     d_gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = ld.limb_darkening_factor(
         coefficients=ldc['primary'][:, :shape_reduced[0]].T,
-        limb_darkening_law=config.LIMB_DARKENING_LAW,
+        limb_darkening_law=settings.LIMB_DARKENING_LAW,
         cos_theta=cos_theta)
 
     cos_theta = gamma['secondary'][:shape_reduced[0], :]
     d_gamma['secondary'][:shape_reduced[0], :] = ld.limb_darkening_factor(
         coefficients=ldc['secondary'][:, :shape[1]].T,
-        limb_darkening_law=config.LIMB_DARKENING_LAW,
+        limb_darkening_law=settings.LIMB_DARKENING_LAW,
         cos_theta=cos_theta.T).T
 
     cos_theta = gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]]
     d_gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = ld.limb_darkening_factor(
         coefficients=ldc['secondary'][:, :shape_reduced[1]].T,
-        limb_darkening_law=config.LIMB_DARKENING_LAW,
+        limb_darkening_law=settings.LIMB_DARKENING_LAW,
         cos_theta=cos_theta.T).T
 
     return d_gamma
@@ -537,3 +501,22 @@ def get_distance_matrix_shape(system, vis_test):
     shape_reduced = (np.sum(vis_test['primary'][:system.primary.base_symmetry_faces_number]),
                      np.sum(vis_test['secondary'][:system.secondary.base_symmetry_faces_number]))
     return shape, shape_reduced
+
+
+def build_temperature_perturbations(system, components_distance, component):
+    """
+    adds position perturbations to container mesh
+
+    :param system: elisa.binary_system.contaier.OrbitalPositionContainer; instance
+    :param components_distance: float;
+    :param component: Union[str, None];
+    :return:
+    """
+    components = bsutils.component_to_list(component)
+    for component in components:
+        star = getattr(system, component)
+        if star.has_pulsations():
+            phase = bsutils.calculate_rotational_phase(system, component)
+            com_x = 0 if component == 'primary' else components_distance
+            star = pulsations.incorporate_temperature_perturbations(star, com_x=com_x, phase=phase, time=system.time)
+    return system

@@ -1,11 +1,11 @@
 import numpy as np
-from elisa import umpy as up
+from .. import umpy as up
 
 
 def static_potential_primary_fn(radius, *args):
     """
     Pontetial function which defines surface of primary component of binary system in spherical coordinates.
-    It is exposed for multiprocessing to avoid pickleing of classes, loggers, etc.
+    It is exposed for multiprocessing to avoid pickling of classes, loggers, etc.
 
     :param radius: float;
     :param args: Tuple; (mass_ratio, surface_potential, b, c, d, e)
@@ -25,7 +25,7 @@ def static_potential_primary_fn(radius, *args):
 def static_potential_secondary_fn(radius, *args):
     """
     Pontetial function which defines surface of primary component of binary system in spherical coordinates.
-    It is exposed for multiprocessing to avoid pickleing of classes, loggers, etc.
+    It is exposed for multiprocessing to avoid pickling of classes, loggers, etc.
 
     :param radius: float;
     :param args: Tuple; (mass_ratio, surface_potential, b, c, d, e, f)
@@ -234,12 +234,13 @@ def pre_calculate_for_potential_value_primary(*args, return_as_tuple=False):
     # synchronicity, mass_ratio, distance between components, azimuth angle, latitude angle (0,180)
     synchronicity, mass_ratio, distance, phi, theta = args
 
-    cs = up.cos(phi) * up.sin(theta)
+    sin_theta = up.sin(theta)
+    cs = up.cos(phi) * sin_theta
 
     b = up.power(distance, 2)
     c = 2 * distance * cs
     d = (mass_ratio * cs) / b
-    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(up.sin(theta), 2)
+    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(sin_theta, 2)
 
     if np.isscalar(phi):
         return b, c, d, e
@@ -261,12 +262,13 @@ def pre_calculate_for_potential_value_secondary(*args, return_as_tuple=False):
     # synchronicity, mass_ratio, distance between components, azimuth angle, latitude angle (0,180)
     synchronicity, mass_ratio, distance, phi, theta = args
 
-    cs = up.cos(phi) * up.sin(theta)
+    sin_theta = up.sin(theta)
+    cs = up.cos(phi) * sin_theta
 
     b = up.power(distance, 2)
     c = 2 * distance * cs
     d = cs / b
-    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(up.sin(theta), 2)
+    e = 0.5 * up.power(synchronicity, 2) * (1 + mass_ratio) * up.power(sin_theta, 2)
     f = 0.5 - 0.5 * mass_ratio
 
     if np.isscalar(phi):
@@ -366,7 +368,7 @@ def pre_calculate_for_potential_value_secondary_cylindrical(*args, return_as_tup
 
 def primary_potential_derivative_x(x, *args):
     """
-    Dderivative of potential function perspective of primary component along the x axis.
+    Derivative of potential function perspective of primary component along the x axis.
 
     :param x: (numpy.)float;
     :param args: Tuple (float, float, float); (synchronicity of primary component, mass ratio, components distance)
@@ -380,7 +382,7 @@ def primary_potential_derivative_x(x, *args):
 
 def secondary_potential_derivative_x(x, *args):
     """
-    Dderivative of potential function perspective of secondary component along the x axis.
+    Derivative of potential function perspective of secondary component along the x axis.
 
     :param x: (numpy.)float;
     :param args: Tuple (float, float, float); (synchronicity of secondary component, mass ratio, components distance)

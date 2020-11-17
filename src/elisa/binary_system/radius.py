@@ -1,12 +1,11 @@
 import numpy as np
-import scipy
 
-from scipy import optimize
-from elisa.binary_system import model
-from elisa import (
+from . import model
+from .. import (
     const,
     umpy as up
 )
+from .. opt.fsolver import fsolve
 
 
 def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *args):
@@ -44,7 +43,7 @@ def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *a
     precalc_args = (synchronicity, mass_ratio) + args
     scipy_solver_init_value = np.array([1e-4])
     argss = ((mass_ratio,) + precalc(*precalc_args), surface_potential)
-    solution, a, ier, b = scipy.optimize.fsolve(fn, scipy_solver_init_value, full_output=True, args=argss, xtol=1e-10)
+    solution, _, ier, _ = fsolve(fn, scipy_solver_init_value, full_output=True, args=argss, xtol=1e-10)
 
     # check for regular solution
     if ier == 1 and not up.isnan(solution[0]) and 30 >= solution[0] >= 0:
@@ -88,5 +87,5 @@ def calculate_forward_radii(distances, surface_potential, mass_ratio, synchronic
     :param component: str;
     :return: dict: Dict[str, numpy.array];
     """
-    return [calculate_forward_radius(synchronicity, mass_ratio, d, surface_potential, component) for d in distances]
-
+    return [calculate_forward_radius(synchronicity, mass_ratio, d, surface_potential[ii], component)
+            for ii, d in enumerate(distances)]

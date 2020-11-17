@@ -6,11 +6,11 @@ from abc import (
     abstractmethod
 )
 
-from ..utils import is_empty
-from ..base.spot import Spot
-from ..logger import getLogger
+from .. utils import is_empty
+from .. base.spot import Spot
+from .. logger import getLogger
 from .. import (
-    units,
+    units as u,
     umpy as up
 )
 
@@ -39,6 +39,7 @@ class Body(metaclass=ABCMeta):
     :param polar_radius: Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise
                          TypeError will be raised. If quantity is not specified, default distance unit is assumed.
     :param spots: List[Dict[str, float]]; Spots definitions. Example of defined spots
+    :param atmosphere: str; atmosphere to use for given object instance
 
         ::
 
@@ -60,6 +61,9 @@ class Body(metaclass=ABCMeta):
     """
 
     ID = 1
+    MANDATORY_KWARGS = []
+    OPTIONAL_KWARGS = []
+    ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name, **kwargs):
         """
@@ -84,6 +88,11 @@ class Body(metaclass=ABCMeta):
         self.polar_radius = np.nan
         self._spots = dict()
         self.equatorial_radius = np.nan
+        self.atmosphere = ""
+
+    @abstractmethod
+    def init(self):
+        pass
 
     @abstractmethod
     def transform_input(self, *args, **kwargs):
@@ -100,7 +109,7 @@ class Body(metaclass=ABCMeta):
     def spots(self, spots):
         # todo: update example
         """
-        example of defined spots
+        Example of defined spots
 
         ::
 
@@ -129,7 +138,7 @@ class Body(metaclass=ABCMeta):
         """
         Find whether object has defined spots.
 
-        :return: bool
+        :return: bool;
         """
         return len(self._spots) > 0
 
@@ -137,7 +146,7 @@ class Body(metaclass=ABCMeta):
         """
         Remove n-th spot index of object.
 
-        :param spot_index: int
+        :param spot_index: int;
         """
         del (self._spots[spot_index])
 
@@ -149,18 +158,18 @@ class Body(metaclass=ABCMeta):
             - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
               0.5 * spot_instance.angular_diameter
 
-        :param spot_instance: Spot
+        :param spot_instance: elisa.base.body.Spot;
         :param spot_index: int; spot index (has no affect on process, used for logging)
         :return: elisa.base.spot.Spot;
         """
         if is_empty(spot_instance.discretization_factor):
             logger.debug(f'angular density of the spot {spot_index} on {self.name} component was not supplied '
-                               f'and discretization factor of star {self.discretization_factor} was used.')
-            spot_instance.discretization_factor = (0.9 * self.discretization_factor * units.ARC_UNIT).value
+                         f'and discretization factor of star {self.discretization_factor} was used.')
+            spot_instance.discretization_factor = (0.9 * self.discretization_factor * u.ARC_UNIT).value
         if spot_instance.discretization_factor > spot_instance.angular_radius:
             logger.debug(f'angular density {self.discretization_factor} of the spot {spot_index} on {self.name} '
-                               f'component was larger than its angular radius. Therefore value of angular density was '
-                               f'set to be equal to 0.5 * angular diameter')
+                         f'component was larger than its angular radius. Therefore value of angular density was '
+                         f'set to be equal to 0.5 * angular diameter')
             spot_instance.discretization_factor = spot_instance.angular_radius
 
         return spot_instance

@@ -38,6 +38,9 @@
         },
         "phase_shift": {
           "type": "number"
+        },
+        "additional_light": {
+          "type": "number"
         }
       }
     },
@@ -67,9 +70,7 @@
           "minimum": 0.0
         },
         "t_eff": {
-          "type": "number",
-          "minimum": 3500.0,
-          "maximum": 50000.0
+          "type": "number"
         },
         "gravity_darkening": {
           "type": "number",
@@ -87,6 +88,68 @@
         },
         "metallicity": {
           "type": "number"
+        },
+        "spots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "longitude",
+              "latitude",
+              "angular_radius",
+              "temperature_factor"
+            ],
+            "properties": {
+              "longitude": {
+                "type": "number"
+              },
+              "latitude": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "angular_radius": {
+                "type": "number"
+              },
+              "temperature_factor": {
+                "type": "number",
+                "minimum": 0
+              },
+              "discretization_factor": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "pulsations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "l": {
+                "type": "number"
+              },
+              "m": {
+                "type": "number"
+              },
+              "amplitude": {
+                "type": "number"
+              },
+              "frequency": {
+                "type": "number"
+              },
+              "start_phase": {
+                "type": "number"
+              },
+              "mode_axis_phi": {
+                "type": "number"
+              },
+              "mode_axis_theta": {
+                "type": "number"
+              }
+            }
+          }
         }
       }
     }
@@ -117,9 +180,7 @@
         "minimum": 0.0
       },
       "t_eff": {
-        "type": "number",
-        "minimum": 3500.0,
-        "maximum": 50000.0
+        "type": "number"
       },
       "gravity_darkening": {
         "type": "number",
@@ -137,6 +198,68 @@
       },
       "metallicity": {
         "type": "number"
+      },
+      "spots": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "longitude",
+            "latitude",
+            "angular_radius",
+            "temperature_factor"
+          ],
+          "properties": {
+            "longitude": {
+              "type": "number"
+            },
+            "latitude": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 180
+            },
+            "angular_radius": {
+              "type": "number"
+            },
+            "temperature_factor": {
+              "type": "number",
+              "minimum": 0
+            },
+            "discretization_factor": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "pulsations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "l": {
+              "type": "number"
+            },
+            "m": {
+              "type": "number"
+            },
+            "amplitude": {
+              "type": "number"
+            },
+            "frequency": {
+              "type": "number"
+            },
+            "start_phase": {
+              "type": "number"
+            },
+            "mode_axis_phi": {
+              "type": "number"
+            },
+            "mode_axis_theta": {
+              "type": "number"
+            }
+          }
+        }
       }
     }
   }

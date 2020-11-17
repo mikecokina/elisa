@@ -1,14 +1,21 @@
-|Travis build|  |GitHub version|  |Licence GPLv2|
+|Travis build|  |GitHub version|  |Licence GPLv2| |Python version| |OS|
 
 .. |Travis build| image:: https://travis-ci.org/mikecokina/elisa.svg?branch=dev
     :target: https://travis-ci.org/mikecokina/elisa
 
-.. |GitHub version| image:: https://img.shields.io/badge/version-0.2.3-yellow.svg
+.. |GitHub version| image:: https://img.shields.io/badge/version-0.5.dev0-yellow.svg
    :target: https://github.com/Naereen/StrapDown.js
 
-.. |Licence GPLv2| image:: https://img.shields.io/badge/License-GNU/GPLv2-blue.svg
+.. |Python version| image:: https://img.shields.io/badge/python-3.6|3.7|3.8-orange.svg
    :target: https://github.com/Naereen/StrapDown.js
 
+.. |Licence GPLv2| image:: https://img.shields.io/badge/license-GNU/GPLv2-blue.svg
+   :target: https://github.com/Naereen/StrapDown.js
+
+.. |OS| image:: https://img.shields.io/badge/os-Linux|Windows-magenta.svg
+   :target: https://github.com/Naereen/StrapDown.js
+
+.. _example_scripts: https://github.com/mikecokina/elisa/tree/master/scripts/analytics
 
 Eclipsing binaries Learning Interactive System
 ==============================================
@@ -42,28 +49,23 @@ Requirements
 
 **ELISa** is a python package which requires ``python v3.6+`` and has following dependencies::
 
-    astropy==2.0.2
-    cycler==0.10.0
-    corner==2.0.1
+    astropy>=4.0.1.post1
+    corner>=2.0.1,<=2.1.0
     emcee==3.0.1
-    jsonschema==3.2.0
-    matplotlib==2.1.0
-    numpy==1.16.2
-    pandas==0.24.0
-    py==1.4.34
-    pyparsing==2.2.0
+    jsonschema>=3.2.0
+    matplotlib==3.3.2
+    numpy>=1.16.2,<=1.19.2
+    pandas>=0.24.0,<=1.1.2
     pypex==0.1.0
     pytest==3.2.3
-    python-dateutil==2.6.1
-    pytz==2017.2
-    scipy==1.0.0
-    six==1.11.0
-
+    python-dateutil>=2.6.1,<=2.8.1
+    scipy>=1.0.0,<=1.5.2
+    tqdm==4.43.0
+    parameterized>=0.7.4
 
 and potentially also **python-tk** package or equivalent for matplotlib package to display the figures correctly.
 
 :note: although python distribution and package versions are specified precisely, that does not mean that the package will not work with higher versions, only that it was not tested with higher versions of packages. However we highly recommend to stick with python distribution and package versions listed above.
-
 
 Install
 -------
@@ -112,6 +114,17 @@ When virtual environment is activated, install ``elisa`` package in `dev` versio
 You will probably also need to install::
 
     apt install -y python3-tk
+
+If you would like to have a look at the jupyter notebooks covering the basic usage of this package, you should install
+jupyterlab inside the previously created virtual environment::
+
+    pip3 install jupyterlab
+
+followed by installation of ipython kernel::
+
+    python3 -m pip install ipykernel
+
+Now you should be able to launch jupyter notebooks and run the tutorials stored in <elisa_dir>/jupyter_tutorials/.
 
 
 Windows
@@ -163,18 +176,33 @@ download Atmospheres_ models and Limb-Darkening_ tables.
 .. _Atmospheres: https://github.com/mikecokina/elisa/tree/dev/atmosphere
 .. _Limb-Darkening: https://github.com/mikecokina/elisa/tree/dev/limbdarkening
 
-Models can be stored on your machine in directory of your choosing. Lets say you want ot use ``Castelli-Kurucz 2004``
-models stored in directory ``/home/user/castelli_kurucz/ck04`` and Van Hamme limb darkening models in directory
-``/home/user/van_hamme_ld/vh93``. You have to create configuration ``ini`` file where
+Default tables location
+~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, the Elisa will search for atmosphere and limb darkening tables in:
+
+ - atmospheres: $HOME/.elisa/atmosphere/
+ - limb darkening: $HOME/.elisa/limb_darkening/
+
+therefore, atmosphere and limb darkening tables stored at those locations will be used by elisa by default.
+
+Custom tables location
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Models can be stored on your machine in directory of your choosing as well. Lets say you want ot use ``Castelli-Kurucz 2004``
+models stored in directory ``/home/user/castelli_kurucz/ck04`` and limb darkening models in directory
+``/home/user/ld/``. You have to create configuration ``ini`` file where
 model and directories will be specified. Now assume that name of our configuration file is ``elisa_config.ini`` located
-in path ``/home/user/.elisa/``. Then content of your configuration file should be at least like following::
+in path ``/home/user/.elisa/``. Then content of your configuration file should at least look like this following
+example::
 
     [support]
-    van_hamme_ld_tables = /home/user/van_hamme_ld/vh93
+    ld_tables = /home/user/ld
     castelli_kurucz_04_atm_tables = /home/user/castelli_kurucz/ck04
     atlas = ck04
 
-Full content of configuration file with description might be found here, Elisa-Configuration-File_
+This configuration file is used for adjusting Full content of configuration file with description might be found here,
+Elisa-Configuration-File_
 
 .. _Elisa-Configuration-File: https://github.com/mikecokina/elisa/blob/master/src/elisa/conf/elisa_conf_docs.ini
 
@@ -183,13 +211,14 @@ Full content of configuration file with description might be found here, Elisa-C
           conversion to standard format. Models have been altered to form required for Elisa.
 
 Now, you have to tell ELISa, where to find configuration file. In environment you are using setup environment variable
-`ELISA_CONFIG` to full path to config file. In UNIX like operation systems it is doable by following command::
+`ELISA_CONFIG` to full path to config file. In UNIX like operation systems it is done by following command::
 
     export ELISA_CONFIG=/home/user/.elisa/elisa_config.ini
 
 There is plenty ways how to setup environment variable which vary on operation system and also on tool (IDE)
-that you have in use. Optionally, you can use ``config.ini`` file located in ``ELISa_folder/src/elisa/conf/`` without
-any need for setting the enviromental variable.
+that you have in use. On linux, as an example, you can copy the previous command to #HOME/.bashrc (depends on terminal
+type). Optionally, you can use ``config.ini`` file located in ``ELISa_folder/src/elisa/conf/`` without
+any need for setting an enviromental variable.
 
 Now you are all setup and ready to code.
 
@@ -256,7 +285,7 @@ normalized the time axis according to maximum value in our datasets.
   :alt: detached.ecc.sync.svg
   :align: center
 
-  Paralellization benchmark for ``detached eccentric synchronous`` star system.
+  Paralellization benchmark for ``eccentric synchronous`` star system.
 
 :note: outliers in charts are caused by curve symetrization process
 
@@ -285,21 +314,17 @@ This radial velocity curve was obtained on system with following relevant parame
 
 Each fitted parameter has an input form as follows::
 
-    initial = [
-        {
-            'value': <float>,
-            'param': <str>,
-            'fixed': <bool>,
-            'min': <float>,
-            'max': <float>,
-            'constraint': <str>
-        }, ...
-    ]
+    <param>: {
+        'value': <float>,
+        'fixed': <bool>,
+        'min': <float>,
+        'max': <float>,
+        'constraint': <str> // mutualy inclusive with fixed: True
+    }
 
 and require all params from the following list if you would like to try absolute parameters fitting:
 
-    * ``p__mass`` - mass of primary component (in Solar masses)
-    * ``s__mass`` - mass of secondary component (in Solar masses)
+    * ``mass`` - mass of primary/secondary component (in Solar masses)
     * ``eccentricity`` - eccentricity of binary system, (0, 1)
     * ``inclination`` - inclination of binary system in `degrees`
     * ``argument_of_periastron`` - argument of periastron in `degrees`
@@ -307,7 +332,7 @@ and require all params from the following list if you would like to try absolute
     * ``period`` - period of binary system (in days), usually fixed parameters
     * ``primary_minimum_time`` - numeric time of primary minimum (ny time units); used when exact period is unknown and fitting is required
 
-or otherwise, in "community approach", you can use instead of ``p__mass``, ``s__mass`` and ``inclination`` parameters:
+or otherwise, in "community approach", you can use instead of ``mass`` and ``inclination`` parameters:
 
     * ``asini`` - in Solar radii
     * ``mass_ratio`` - mass ratio (M_2/M_1), also known as `q`
@@ -318,229 +343,55 @@ parameter boundaries which might work better for the particular case.
 Parameter set to be `fixed` will not be fitted and its value will stay fixed during the fitting procedure. User can
 also setup `constraint` for any parameter, e.g.::
 
-    {
+    'semi_major_axis': {
         'value': 16.515,
-        'param': 'semi_major_axis',
-        'constraint': '16.515 / sin(radians({inclination}))'
+        'constraint': '16.515 / sin(radians(system@inclination))'
     },
 
 It is allowed to put bounds (constraints) only on parameter using other free parameters, otherwise the parameter should stay fixed.
 For example, it makes no sense to set bound like this::
 
-    {
-        'value': 5000.0,
-        'param': 'p__temperature',
-        'fixed': True
-    },
-    {
-        'value': 10000.0,
-        'param': 's__temperature',
-        'constraint': '{p__temperature * 0.5}'
-    }
-
-
-In this part you can see minimal example of code providing fitting. Sample radial velocity curve was obtained
-by parameters::
-
-    {
-        'eccentricity': '0.0',
-        'asini': 16.48026197,
-        'mass_ratio': 0.5,
-        'argument_of_periastron': 0.0,
-        'gamma': 20000.0,
-        "period": 4.5,
-
-        "inclination": 85.0,
-        "semi_major_axis": 16.54321389
-    }
-
-.. code:: python
-
-    import numpy as np
-    from elisa.analytics.binary.least_squares import central_rv
-
-    def main():
-        phases = np.arange(-0.6, 0.62, 0.02)
-        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
-        rv = {'primary': [-16302.55206979, -9753.87315904, -2735.95789431, 4640.51700842, ..., 56302.55204598],
-              'secondary': [92605.10413957, 79507.74631807, 65471.91578862, 50718.96598315, ..., -52605.10409197]}
-
-        rv_initial = [
-            {
-                'value': 0.0,
-                'param': 'eccentricity',
+   {
+        ...,
+        "primary": {
+            "t_eff": {
+                'value': 5000.0,
                 'fixed': True
             },
-            {
-                'value': 15.0,
-                'param': 'asini',
-                'fixed': False,
-                'min': 10.0,
-                'max': 20.0
-
+            ...
+        },
+        "secondary": {
+            "t_eff": {
+                'value': 10000.0,
+                'constraint': '{primary@t_eff * 0.5}'
             },
-            {
-                'value': 3,
-                'param': 'mass_ratio',
-                'fixed': False,
-                'min': 0,
-                'max': 10
-            },
-            {
-                'value': 0.0,
-                'param': 'argument_of_periastron',
-                'fixed': True
-            },
-            {
-                'value': 30000.0,
-                'param': 'gamma',
-                'fixed': False,
-                'min': 10000.0,
-                'max': 50000.0
-            },
-            {
-                'value': 4.5,
-                'param': 'period',
-                'fixed': True
-            }
-        ]
-
-        result = central_rv.fit(xs=xs, ys=rv, x0=rv_initial, xtol=1e-10, yerrs=None)
-
-    if __name__ == '__main__':
-        main()
-
-
-Result of fitting procedure is displayed in the following format:
-
-.. code:: python
-
-    [
-        {
-            "param": "asini",
-            "value": 16.515011290521596,
-            "unit": "solRad"
-        },
-        {
-            "param": "mass_ratio",
-            "value": 0.49156922351202637,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "gamma",
-            "value": 19711.784379242825,
-            "unit": "m/s"
-        },
-        {
-            "param": "eccentricity",
-            "value": 0.0,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "argument_of_periastron",
-            "value": 0.0,
-            "unit": "degrees"
-        },
-        {
-            "param": "period",
-            "value": 4.5,
-            "unit": "days"
-        },
-        {
-            "r_squared": 0.998351027628904
+            ...
         }
-    ]
+    }
 
+because you're already aware of value ``primary@t_eff``.
+
+
+Elisa currently implements two fitting approaches, first is based on non-linear least squares method
+and second is based on `Markov Chain Monte Carlo` (MCMC) methd.
+
+Reading data output of MCMC requires an experience with MCMC since output is not simple dictionary but
+a descriptive set of parameters progress during evaluation of method.
+
+Demonstrated result of fitting of radial velocities might seen like following
 
 .. image:: ./docs/source/_static/readme/rv_fit.svg
   :width: 70%
   :alt: rv_fit.svg
   :align: center
 
-Another approach is to use implemented fitting method based on `Markov Chain Monte Carlo`. Reading data output requires
-an experience with MCMC since output is not simple dictionary but a descriptive set of parameters progress during
-evaluation of method.
-
-Following represents minimalistic code which should explain how to use mcmc method and how to read outputs.
-
-.. code:: python
-
-    import numpy as np
-    from elisa.analytics.binary.mcmc import central_rv
-
-
-    def main():
-        phases = np.arange(-0.6, 0.62, 0.02)
-        xs = {comp: phases for comp in BINARY_COUNTERPARTS}
-
-        rv = {'primary': [-16302.55206979, -9753.87315904, -2735.95789431, 4640.51700842, ..., 56302.55204598],
-              'secondary': [92605.10413957, 79507.74631807, 65471.91578862, 50718.96598315, ..., -52605.10409197]}
-
-        rv_initial = [
-            {
-                'value': 0.2,
-                'param': 'eccentricity',
-                'fixed': False,
-                'max': 0.0,
-                'min': 0.5
-            },
-            {
-                'value': 15.0,
-                'param': 'asini',
-                'fixed': False,
-                'min': 10.0,
-                'max': 20.0
-
-            },
-            {
-                'value': 3,
-                'param': 'mass_ratio',
-                'fixed': False,
-                'min': 0,
-                'max': 10
-            },
-            {
-                'value': 0.0,
-                'param': 'argument_of_periastron',
-                'fixed': True
-            },
-            {
-                'value': 30000.0,
-                'param': 'gamma',
-                'fixed': False,
-                'min': 10000.0,
-                'max': 50000.0
-            },
-            {
-                'value': 4.5,
-                'param': 'period',
-                'fixed': True
-            }
-        ]
-
-        central_rv.fit(xs=xs, ys=rv, x0=rv_initial, nwalkers=20, nsteps=10000, nsteps_burn_in=1000, yerrs=None)
-
-        result = central_rv.restore_flat_chain(central_rv.last_fname)
-        central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
-
-    if __name__ == '__main__':
-        main()
-
-Result of code above is corner plot which might looks like this one
-
 .. image:: ./docs/source/_static/readme/mcmc_rv_corner.svg
   :width: 95%
   :alt: mcmc_rv_corner.svg
   :align: center
 
-Object `central_rv` keep track of last executed mcmc "simulation" so you can work with output. It stores::
 
-    last_sampler: emcee.EnsembleSampler; last instance of `sampler`
-    last_normalization: Dict; normalization map used during fitting
-    last_fname: str; filename of last stored flatten emcee `sampler` with metadata
-
-The same information is stored in "elisa home" in json file, so you are able to access each
-previous run.
+An example scripts can be found in example_scripts_
 
 
 Binary Stars Radial Curves Fitting - No Ephemeris
@@ -560,66 +411,14 @@ itself.
 
 :warning: make sure you have reasonable boundaries set for `primary_minimum_time` and `period`
 
-Initial parameters for ``primary_minimum_time`` and ``period`` fitting might looks like following::
-
-    [
-        {
-            'value': 0.0,
-            'param': 'eccentricity',
-            'fixed': True
-        },
-        {
-            'value': 15.0,
-            'param': 'asini',
-            'fixed': False,
-            'min': 10.0,
-            'max': 20.0
-
-        },
-        {
-            'value': 3,
-            'param': 'mass_ratio',
-            'fixed': False,
-            'min': 0,
-            'max': 10
-        },
-        {
-            'value': 0.0,
-            'param': 'argument_of_periastron',
-            'fixed': True
-        },
-        {
-            'value': 30000.0,
-            'param': 'gamma',
-            'fixed': False,
-            'min': 10000.0,
-            'max': 50000.0
-        },
-        {
-            'value': 4.4,
-            'param': 'period',
-            'fixed': False,
-            'min': 4.4,
-            'max': 4.6
-        },
-        {
-            'value': 11.1,
-            'param': 'primary_minimum_time',
-            'fixed': False,
-            'min': 11.1,
-            'max': 12.1
-        }
-    ]
-
-
-:note: values of *primary_minimum_time* are cut off to smaller numbers (toto vysvetli lepsie)
-
 Corner plot of `mcmc` result for such approach is in figure bellow
 
 .. image:: ./docs/source/_static/readme/ mcmc_rv_corner_noperiod.svg
   :width: 95%
   :alt: mcmc_rv_corner_noperiod.svg
   :align: center
+
+An example scripts can be found in example_scripts_
 
 
 Binary Stars Light Curves Fitting
@@ -633,21 +432,26 @@ Following chapter is supposed to give you brief information about capabilities p
 Lets assume that we have a given light curve like shown below generated on parameters::
 
     {
-        'mass_ratio': 0.5,
-        'semi_major_axis': 16.54321389,
-        'p__t_eff': 8000.0,
-        'p__surface_potential': 4.0,
-        's__t_eff': 6000.0,
-        's__surface_potential': 6.0,
-        'inclination': 85.0,
-        'eccentricity': 0.0,
-        'p__beta': 0.32,
-        's__beta': 0.32,
-        'p_albedo': 0.6,
-        's__albedo': 0.6,
-        'period': 4.5
+        "system": {
+            'mass_ratio': 0.5,
+            'semi_major_axis': 16.54321389,
+            'inclination': 85.0,
+            'eccentricity': 0.0,
+            'period': 4.5
+        },
+        "primary": {
+            't_eff': 8000.0,
+            'surface_potential': 4.0,
+            'beta': 0.32,
+            'albedo': 0.6,
+        },
+        "secondary": {
+            't_eff': 8000.0,
+            'surface_potential': 4.0,
+            'beta': 0.32,
+            'albedo': 0.6,
+        }
     }
-
 
 
 .. image:: ./docs/source/_static/readme/lc_example.svg
@@ -656,28 +460,21 @@ Lets assume that we have a given light curve like shown below generated on param
   :align: center
 
 
-Lets apply some fitting algorithm to demonstrate the software capabilities. Fitting modules are stored in module path
-``elisa.analytics.binary.least_squares`` and ``elisa.analytics.binary.mcmc``. It is up to the user what methods
-choose to use. In both cases, there is prepared instances for fitting, called ``binary_detached`` and
-``binary_overcontact``. Difference is that ``binary_overcontact`` fitting module keeps surface potential of both binary
+It is up to the user what methods choose to use (mcmc or least_squares). In both cases, fitting requires provide
+morphology estimation. In case of over-contact morphology, fitting module keeps surface potential of both binary
 components constrained to the same value.
-
-First, we describe the algorithm based on `non-linear least squares` method. Binary system which can generate light
-curve shown above is the most probably the detached system, therefore we will use module ``binary_detached``.
 
 :warning: Non-linear least squares method used in such complex problem as fitting light
           curves of eclipsing binaries, might be insuficient in case of initial parametres being
           too far from real values and also too broad fitting boundaries.
 
-Following minimalistic python snippet will show you, how to use ``binary_detached`` fitting module. System parameter
-definitions are the same as in case of radial velocities fiting. Following guide is appropriate sequence of steps for
-solving the binary system with available radial and photometric data.
 
 First, you should solve radial velocities if available and fix parametres in light curve fitting. Since we were able
 to obtain some basic information about our system, we should fix or efficiently truncate boundaries
 for following parameters::
 
-    {
+    "system": {
+        ...,
         "asini": 16.515,
         "mass_ratio": "0.5",
         "eccentricity": "0.0",
@@ -695,7 +492,6 @@ We can also estimate surface temperature of primary component via formula implem
     b_v = bvi.pogsons_formula(lc['Generic.Bessell.B'][55], lc['Generic.Bessell.V'][55])
     bvi.elisa_bv_temperature(b_v)
 
-
 This approach give us value ~ 8307K.
 
 :note: index `55` is used because we know that such index will give as flux on photometric phase :math:`\Phi=0.5`,
@@ -703,180 +499,7 @@ This approach give us value ~ 8307K.
 
 :note: we recommend you to set boundaries for temperature obtained from `bvi` module at least in range +/-500K.
 
-Lets create an example for code which demonstrates least squares fitting method.
-
-.. code:: python
-
-    import numpy as np
-    from elisa.analytics.binary.least_squares import binary_detached
-
-    phases = {band: np.arange(-0.6, 0.62, 0.02) for band in lc}
-    lc = {
-            'Generic.Bessell.B': np.array([0.9790975 , 0.97725314, 0.97137167, ..., 0.97783875]),
-            'Generic.Bessell.V': np.array([0.84067043, 0.8366796 , ..., 0.8389709 ]),
-            'Generic.Bessell.R': np.array([0.64415833, 0.64173746, 0.63749762, ..., 0.64368843])
-         }
-
-    lc_initial = [
-        {
-            'value': 16.515,
-            'param': 'semi_major_axis',
-            'constraint': '16.515 / sin(radians({inclination}))'
-        },
-        {
-            'value': 8307.0,
-            'param': 'p__t_eff',
-            'fixed': False,
-            'min': 7800.0,
-            'max': 8800.0
-        },
-        {
-            'value': 3.0,
-            'param': 'p__surface_potential',
-            'fixed': False,
-            'min': 3,
-            'max': 5
-        },
-        {
-            'value': 4000.0,
-            'param': 's__t_eff',
-            'fixed': False,
-            'min': 4000.0,
-            'max': 7000.0
-        },
-        {
-            'value': 5.0,
-            'param': 's__surface_potential',
-            'fixed': False,
-            'min': 5.0,
-            'max': 7.0
-        },
-        {
-            'value': 85.0,
-            'param': 'inclination',
-            'fixed': False,
-            'min': 80,
-            'max': 90
-        },
-        {
-            'value': 1.0,
-            'param': 'p__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 0.32,
-            'param': 's__gravity_darkening',
-            'fixed': True
-        },
-        {
-            'value': 1.0,
-            'param': 'p__albedo',
-            'fixed': True
-        },
-        {
-            'value': 0.6,
-            'param': 's__albedo',
-            'fixed': True
-        },
-        {
-            'value': 0.0,
-            'param': 'argument_of_periastron',
-            'fixed': True
-        },
-        {
-            'value': 0.5,
-            'param': 'mass_ratio',
-            'fixed': True
-        },
-        {
-            'value': 0.0,
-            'param': 'eccentricity',
-            'fixed': True
-        }
-    ]
-
-    result = binary_detached.fit(xs=phases, ys=lc, period=4.5, discretization=5.0, x0=lc_initial,
-                                 yerrs=None, xtol=1e-10, diff_step=0.001)
-
-    if __name__ == '__main__':
-        main()
-
-
-Such approach leads to solution shown bellow::
-
-    [
-        {
-            "param": "p__t_eff",
-            "value": 7998.79728848134,
-            "unit": "K"
-        },
-        {
-            "param": "p__surface_potential",
-            "value": 3.967385781004351,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "s__t_eff",
-            "value": 5914.666436423595,
-            "unit": "K"
-        },
-        {
-            "param": "s__surface_potential",
-            "value": 6.066890977326584,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "inclination",
-            "value": 85.84258474614543,
-            "unit": "degrees"
-        },
-        {
-            "param": "p__gravity_darkening",
-            "value": 0.32,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "s__gravity_darkening",
-            "value": 0.32,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "p__albedo",
-            "value": 0.6,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "s__albedo",
-            "value": 0.6,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "argument_of_periastron",
-            "value": 0.0,
-            "unit": "degrees"
-        },
-        {
-            "param": "mass_ratio",
-            "value": 0.5,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "eccentricity",
-            "value": 0.0,
-            "unit": "dimensionless"
-        },
-        {
-            "param": "semi_major_axis",
-            "value": 16.558571635780567,
-            "unit": "solRad"
-        },
-        {
-            "r_squared": 0.9999500530482149
-        }
-    ]
-
-:warning: make sure all your light curve values are normalized using the highest value from whole set of
-          curves supplied to algorithm
+:warning: Use this feature only in case when you are sure about curves offsets to each other.
 
 Visualization of fit is
 
@@ -888,54 +511,11 @@ Visualization of fit is
 ``Elisa`` also provides lightcurve fitting method based on `Markov Chain Monte Carlo`. Read data output requires
 the same level of knowledge as in case of radial velocities fitting.
 
-Bellow you can see minimalistic base code which should demonstrate how to use MCMC method and how to read outputs.
-
-
-.. code:: python
-
-    import numpy as np
-    from elisa.analytics.binary.mcmc import binary_detached
-
-    phases = {band: np.arange(-0.6, 0.62, 0.02) for band in lc}
-    lc = {
-            'Generic.Bessell.B': np.array([0.9790975 , 0.97725314, 0.97137167, ..., 0.97783875]),
-            'Generic.Bessell.V': np.array([0.84067043, 0.8366796 , ..., 0.8389709 ]),
-            'Generic.Bessell.R': np.array([0.64415833, 0.64173746, 0.63749762, ..., 0.64368843])
-         }
-
-    lc_initial = [
-        {
-            'value': 16.515,
-            'param': 'semi_major_axis',
-            'constraint': '16.515 / sin(radians({inclination}))'
-        },
-        {
-            'value': 8307.0,
-            'param': 'p__t_eff',
-            'fixed': False,
-            'min': 7800.0,
-            'max': 8800.0
-        },
-        ...
-    ]
-
-    binary_detached.fit(xs=phases, ys=lc, x0=lc_initial, period=4.5, discretization=5.0,
-                        nwalkers=20, nsteps=10000, nsteps_burn_in=1000, yerrs=None)
-    result = binary_detached.restore_flat_chain(binary_detached.last_fname)
-    binary_detached.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
-
-    if __name__ == '__main__':
-        main()
-
-:note: initial value are same as in case of least squares method base code demonstration
-
 Corner plot of `mcmc` result for such approach is in figure bellow
 
 .. image:: ./docs/source/_static/readme/mcmc_lc_corner.svg
   :width: 95%
   :alt: mcmc_lc_corner.svg
   :align: center
-
-.. _example_scripts: https://github.com/mikecokina/elisa/tree/master/scripts/analytics
 
 All example scripts can be found in example_scripts_

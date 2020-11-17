@@ -62,6 +62,14 @@ elisa.single\_system.transform module
    :undoc-members:
    :show-inheritance:
 
+elisa.single\_system.utils module
+---------------------------------
+
+.. automodule:: elisa.single_system.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------

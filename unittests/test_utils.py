@@ -167,8 +167,8 @@ class TestElisaEngineUtils(ElisaTestCase):
         assert_array_equal(obtained, expected)
 
     def test_calculate_distance_matrix(self):
-        points1 = np.array([[0.0, 0.0], [0.0, 1.5], [1.3, -1.2]])
-        points2 = np.array([[1.5, 0.0], [0.0, 0.3]])
+        points1 = np.array([[0.0, 0.0, 0.0], [0.0, 1.5, 0.0], [1.3, -1.2, 0.0]])
+        points2 = np.array([[1.5, 0.0, 0.0], [0.0, 0.3, 0.0]])
 
         v, d = utils.calculate_distance_matrix(points1, points2, False)
         expected = [[1.5, 0.3],
@@ -181,9 +181,9 @@ class TestElisaEngineUtils(ElisaTestCase):
         _, d = utils.calculate_distance_matrix(points1, points2, True)
         d = np.round(d, 4)
         expected = [
-            [[1., 0.], [0., 1.]],
-            [[0.7071, -0.7071], [0., -1.]],
-            [[0.1644, 0.9864], [-0.6549, 0.7557]]
+            [[1., 0., 0.0], [0., 1., 0.0]],
+            [[0.7071, -0.7071, 0.0], [0., -1., 0.0]],
+            [[0.1644, 0.9864, 0.0], [-0.6549, 0.7557, 0.0]]
         ]
         assert_array_equal(d, expected)
 

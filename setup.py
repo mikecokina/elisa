@@ -16,7 +16,7 @@ here = path.dirname(__file__)
 
 # Get the long description from the README file
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
-    long_description = f.read()
+    long_description = "For more information visit https://github.com/mikecokina/elisa/blob/master/README.rst"
 
 setup(
     name='elisa',
@@ -24,7 +24,7 @@ setup(
     version=get_version(),
 
     description='Eclipsing Binary Modeling Software',
-    long_description='For more information visit https://github.com/mikecokina/elisa/',
+    long_description=long_description,
 
     # The project's main homepage.
     url='https://github.com/mikecokina/elisa',
@@ -41,7 +41,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
 
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
@@ -54,6 +54,8 @@ setup(
         # that you indicate whether you support Python 2, Python 3 or both.
         # 'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
 
     # What does your project relate to?
@@ -73,22 +75,18 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'astropy==2.0.2',
-        'cycler==0.10.0',
-        'corner==2.0.1',
+        'astropy>>=4.0.1.post1',
+        'corner>=2.0.1,<=2.1.0',
         'emcee==3.0.1',
-        'matplotlib==2.1.0',
-        'numpy==1.16.2',
-        'pandas==0.24.0',
-        'py==1.4.34',
-        'pyparsing==2.2.0',
+        'jsonschema>=3.2.0',
+        'matplotlib==3.3.2',
+        'numpy>=1.16.2,<=1.19.2',
+        'pandas>=0.24.0,<=1.1.2',
         'pypex==0.1.0',
-        'pytest==3.2.3',
-        'python-dateutil==2.6.1',
-        'pytz==2017.2',
-        'scipy==1.0.0',
-        'six==1.11.0',
-        'jsonschema==3.2.0',
+        'python-dateutil>=2.6.1,<=2.8.1',
+        'scipy>=1.0.0,<=1.5.2',
+        'tqdm>=4.43.0',
+        'numba==0.51.2'
     ],
 
     # List additional groups of dependencies here (e.g. development
@@ -97,7 +95,7 @@ setup(
     # $ pip install -e .[dev,test]
     extras_require={
         'dev': [],
-        'test': ['coverage'],
+        'test': ['coverage', 'parameterized>=0.7.4', 'pytest==3.2.3'],
     },
 
     # If there are data files included in your packages that need to be
@@ -107,8 +105,10 @@ setup(
         'elisa': [
             'passband/*',
             'conf/*',
+            'conf/logging_schemas/*',
             'schema_registry/*',
-            'schema_registry/schema_files/*'
+            'schema_registry/schema_files/*',
+            'data/*'
         ],
     },
 

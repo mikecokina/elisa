@@ -3,72 +3,21 @@ import sys
 import numpy as np
 import pandas as pd
 
-from multiprocessing.pool import Pool
-from scipy import interpolate
-
-from elisa.binary_system.system import BinarySystem
-from elisa.single_system.system import SingleSystem
-from elisa.observer import mp
-from elisa.observer.plot import Plot
-from elisa.conf import config
-from elisa.utils import is_empty
-from elisa.logger import getLogger
-from elisa.binary_system import utils as bsutils
-from elisa import (
-    units,
-    umpy as up,
-    utils
+from . import utils as outils
+from . plot import Plot
+from . passband import PassbandContainer, init_bolometric_passband
+from .. binary_system.system import BinarySystem
+from .. binary_system.curves.community import RadialVelocitySystem
+from .. single_system.system import SingleSystem
+from .. import settings
+from .. utils import is_empty
+from .. logger import getLogger
+from .. import (
+    units as u,
+    umpy as up
 )
 
 logger = getLogger('observer.observer')
-
-
-class PassbandContainer(object):
-    def __init__(self, table, passband):
-        """
-        Setup PassbandContainier object. It carres dependedncies of throughputs on wavelengths for given passband.
-
-        :param table: pandads.DataFrame;
-        :param passband: str;
-        """
-        self.left_bandwidth = np.nan
-        self.right_bandwidth = np.nan
-        self.akima = None
-        self._table = pd.DataFrame({})
-        self.wave_unit = "angstrom"
-        self.passband = passband
-        # in case this np.pi will stay here, there will be rendundant multiplication in intensity integration
-        self.wave_to_si_mult = 1e-10
-
-        setattr(self, 'table', table)
-
-    @property
-    def table(self):
-        """
-        Return pandas dataframe which represent pasband table as dependecy of throughput on wavelength.
-
-        :return: pandas.DataFrame;
-        """
-        return self._table
-
-    @table.setter
-    def table(self, df):
-        """
-        Setter for passband table.
-        It precompute left and right bandwidth for given table and also interpolation function placeholder.
-        Akima1DInterpolator is used. If `bolometric` passband is used then interpolation function is like::
-
-            lambda x: 1.0
-
-
-        :param df: pandas.DataFrame;
-        """
-        self._table = df
-        self.akima = Observer.bolometric if (self.passband.lower() in ['bolometric']) else \
-            interpolate.Akima1DInterpolator(df[config.PASSBAND_DATAFRAME_WAVE],
-                                            df[config.PASSBAND_DATAFRAME_THROUGHPUT])
-        self.left_bandwidth = min(df[config.PASSBAND_DATAFRAME_WAVE])
-        self.right_bandwidth = max(df[config.PASSBAND_DATAFRAME_WAVE])
 
 
 class Observables(object):
@@ -78,18 +27,20 @@ class Observables(object):
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
         return self.observer.lc(from_phase, to_phase, phase_step, phases, normalize)
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
-        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize)
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None):
+        return self.observer.rv(from_phase, to_phase, phase_step, phases, normalize, method)
 
 
 class Observer(object):
-    def __init__(self, passband, system):
+    def __init__(self, passband=None, system=None):
         """
         Initializer for observer class.
 
-        :param passband: string; for valid filter name see config.py file
+        :param passband: string; for valid filter name see settings.py file
         :param system: system instance (BinarySystem or SingleSystem)
         """
+        if passband is None:
+            passband = list()
         logger.info("initialising Observer instance")
         # specifying what kind of system is observed
         self._system = system
@@ -111,20 +62,13 @@ class Observer(object):
         self.plot = Plot(self)
         self.observe = Observables(self)
 
-    @staticmethod
-    def bolometric(x):
-        """
-        Bolometric passband interpolation function in way of lambda x: 1.0
+    @property
+    def system_cls(self):
+        return self._system_cls
 
-        :param x:
-        :return: float or numpy.array; 1.0s in shape of x
-        """
-        if isinstance(x, (float, int)):
-            return 1.0
-        if isinstance(x, list):
-            return [1.0] * len(x)
-        if isinstance(x, np.ndarray):
-            return np.array([1.0] * len(x))
+    @system_cls.setter
+    def system_cls(self, value):
+        self._system_cls = value
 
     def init_passband(self, passband):
         """
@@ -142,18 +86,15 @@ class Observer(object):
         passband = [passband] if isinstance(passband, str) else passband
         for band in passband:
             if band in ['bolometric']:
-                df = pd.DataFrame(
-                    {config.PASSBAND_DATAFRAME_THROUGHPUT: [1.0, 1.0],
-                     config.PASSBAND_DATAFRAME_WAVE: [0.0, sys.float_info.max]})
-                right_bandwidth = sys.float_info.max
-                left_bandwidth = 0.0
+                psbnd, right_bandwidth, left_bandwidth = init_bolometric_passband()
             else:
                 df = self.get_passband_df(band)
-                left_bandwidth = df[config.PASSBAND_DATAFRAME_WAVE].min()
-                right_bandwidth = df[config.PASSBAND_DATAFRAME_WAVE].max()
+                left_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].min()
+                right_bandwidth = df[settings.PASSBAND_DATAFRAME_WAVE].max()
+                psbnd = PassbandContainer(table=df, passband=band)
 
             self.setup_bandwidth(left_bandwidth=left_bandwidth, right_bandwidth=right_bandwidth)
-            self.passband[band] = PassbandContainer(table=df, passband=band)
+            self.passband[band] = psbnd
 
     def setup_bandwidth(self, left_bandwidth, right_bandwidth):
         """
@@ -178,11 +119,11 @@ class Observer(object):
         :param passband: str;
         :return: pandas.DataFrame;
         """
-        if passband not in config.PASSBANDS:
+        if passband not in settings.PASSBANDS:
             raise ValueError('Invalid or unsupported passband function')
-        file_path = os.path.join(config.PASSBAND_TABLES, str(passband) + '.csv')
+        file_path = os.path.join(settings.PASSBAND_TABLES, str(passband) + '.csv')
         df = pd.read_csv(file_path)
-        df[config.PASSBAND_DATAFRAME_WAVE] = df[config.PASSBAND_DATAFRAME_WAVE] * 10.0
+        df[settings.PASSBAND_DATAFRAME_WAVE] = df[settings.PASSBAND_DATAFRAME_WAVE] * 10.0
         return df
 
     def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
@@ -197,14 +138,13 @@ class Observer(object):
         :param phases: Iterable float;
         :return: Dict;
         """
-
         if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
             phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
 
-        phases = np.array(phases)
+        phases = np.array(phases) - self._system.phase_shift
 
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
@@ -217,26 +157,11 @@ class Observer(object):
             passband=self.passband,
             left_bandwidth=self.left_bandwidth,
             right_bandwidth=self.right_bandwidth,
-            atlas="ck04",
             phases=base_phases,
             position_method=position_method
         )
 
-        if config.NUMBER_OF_PROCESSES > 1 and self._system.is_eccentric():
-            batch_size = int(np.ceil(len(base_phases) / config.NUMBER_OF_PROCESSES))
-            phase_batches = utils.split_to_batches(batch_size=batch_size, array=base_phases)
-            func = self._system.compute_lightcurve
-
-            pool = Pool(processes=config.NUMBER_OF_PROCESSES)
-            result = [pool.apply_async(mp.observe_lc_worker, (func, batch_idx, batch, lc_kwargs))
-                      for batch_idx, batch in enumerate(phase_batches)]
-            pool.close()
-            pool.join()
-            # this will return output in same order as was given on apply_async init
-            result = [r.get() for r in result]
-            curves = bsutils.renormalize_async_result(result)
-        else:
-            curves = self._system.compute_lightcurve(**lc_kwargs)
+        curves = self._system.compute_lightcurve(**lc_kwargs)
 
         # remap unique phases back to original phase interval
         for items in curves:
@@ -246,17 +171,17 @@ class Observer(object):
             correction = np.mean(curves[items]) * self._system.additional_light / (1.0 - self._system.additional_light)
             curves[items] += correction
 
-        self.phases = phases
+        self.phases = phases + self._system.phase_shift
         if normalize:
-            # TODO: here develop lc normalization method
-            self.fluxes_unit = units.dimensionless_unscaled
+            self.fluxes, _ = outils.normalize_light_curve(y_data=curves, kind='maximum', top_fraction_to_average=0.0)
+            self.fluxes_unit = u.dimensionless_unscaled
         else:
             self.fluxes = curves
-            self.fluxes_unit = units.W / units.m**2
+            self.fluxes_unit = u.W / u.m**2
         logger.info("observation finished")
-        return phases, curves
+        return self.phases, self.fluxes
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None):
         """
         Method for simulation of observation radial velocity curves.
 
@@ -265,24 +190,37 @@ class Observer(object):
         :param to_phase: float;
         :param phase_step: float;
         :param phases: Iterable float;
+        :param method: str; method for calculation of radial velocities, `point_mass` or `radiometric`
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
+        method = settings.RV_METHOD if method is None else method
+
         if phases is None and (from_phase is None or to_phase is None or phase_step is None):
             raise ValueError("Missing arguments. Specify phases.")
 
         if is_empty(phases):
             phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
-        phases = np.array(phases)
-        self.phases, self.radial_velocities = self._system.compute_rv(
+        phases = np.array(phases) - self._system.phase_shift
+
+        # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
+        base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
+
+        self.radial_velocities = self._system.compute_rv(
             **dict(
-                phases=phases,
-                position_method=self._system.get_positions_method()
+                phases=base_phases,
+                position_method=self._system.get_positions_method(),
+                method=method
             )
         )
 
-        self.rv_unit = units.m / units.s
+        # remap unique phases back to original phase interval
+        for items in self.radial_velocities:
+            self.radial_velocities[items] = np.array(self.radial_velocities[items])[base_phases_to_origin]
+
+        self.phases = phases + self._system.phase_shift
+        self.rv_unit = u.m / u.s
         if normalize:
-            self.rv_unit = units.dimensionless_unscaled
+            self.rv_unit = u.dimensionless_unscaled
             _max = np.max([np.max(item) for item in self.radial_velocities.values()])
             self.radial_velocities = {key: value/_max for key, value in self.radial_velocities.items()}
 
@@ -301,14 +239,14 @@ class Observer(object):
             reverse_indices: ndarray mask applicable to `base_phases` which will reconstruct original `phases`
         """
         if self._system_cls == BinarySystem or str(self._system_cls) == str(BinarySystem):
-            # function shouldn't search for base phases if system has pulsations or is assynchronous with spots
+            # function shouldn't search for base phases if system has pulsations or is asynchronous with spots
             has_pulsation_test = self._system.primary.has_pulsations() | self._system.secondary.has_pulsations()
 
             test1 = (self._system.primary.synchronicity != 1.0) & self._system.primary.has_spots()
             test2 = (self._system.secondary.synchronicity != 1.0) & self._system.secondary.has_spots()
-            assynchronous_spotty_test = test1 | test2
+            asynchronous_spotty_test = test1 | test2
 
-            if has_pulsation_test | assynchronous_spotty_test:
+            if has_pulsation_test | asynchronous_spotty_test:
                 return phases, up.arange(phases.shape[0])
             else:
                 base_interval = np.round(phases % 1, 9)
@@ -325,8 +263,12 @@ class Observer(object):
             elif has_spot_test and not has_pulsation_test:
                 base_interval = np.round(phases % 1, 9)
                 return np.unique(base_interval, return_inverse=True)
-            # in case of clear surface wo pulsations and spots, only single observation is needed
+            # in case of clear surface no pulsations and spots, only single observation is needed
             else:
                 return np.zeros(1), np.zeros(phases.shape[0], dtype=int)
+
+        elif self._system_cls == RadialVelocitySystem or str(self._system_cls) == str(RadialVelocitySystem):
+            return phases, up.arange(phases.shape[0], dtype=np.int)
+
         else:
             raise NotImplemented("not implemented")

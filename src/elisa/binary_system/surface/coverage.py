@@ -3,36 +3,17 @@ import matplotlib.path as mpltpath
 
 from scipy.spatial.qhull import ConvexHull
 
-from elisa.conf import config
-from elisa.logger import getLogger
-from elisa.binary_system import utils as bsutils
-from elisa import (
+from .. import utils as bsutils
+from ... import settings
+from ... logger import getLogger
+from ... import (
     umpy as up,
     utils,
     const
 )
-from time import time
+from ... base.surface import coverage as bcoverage
 
-logger = getLogger('binary_system.curves.lcmp')
-
-
-def surface_area_coverage(size, visible, visible_coverage, partial=None, partial_coverage=None):
-    """
-    Prepare array with coverage os surface areas.
-
-    :param size: int; size of array
-    :param visible: numpy.array; full visible areas (numpy fancy indexing), array like [False, True, True, False]
-    :param visible_coverage: numpy.array; defines coverage of visible (coverage onTrue positions)
-    :param partial: numpy.array; partial visible areas (numpy fancy indexing)
-    :param partial_coverage: numpy.array; defines coverage of partial visible
-    :return: numpy.array
-    """
-    # initialize zeros, since there is no input for invisible (it means everything what left after is invisible)
-    coverage = up.zeros(size)
-    coverage[visible] = visible_coverage
-    if partial is not None:
-        coverage[partial] = partial_coverage
-    return coverage
+logger = getLogger('binary_system.surface.coverage')
 
 
 def partial_visible_faces_surface_coverage(points, faces, normals, hull):
@@ -54,35 +35,81 @@ def partial_visible_faces_surface_coverage(points, faces, normals, hull):
     # think about surface normalisation like and avoid surface areas like 1e-6 which lead to loss in precission
     pypex_polys_surface_area = np.array(bsutils.pypex_poly_surface_area(pypex_intersection), dtype=np.float)
 
-    inplane_points_3d = up.concatenate((points.T, [[0.0] * len(points)])).T
+    inplane_points_3d = np.column_stack((points, np.zeros(points.shape[0])))
     inplane_surface_area = utils.triangle_areas(triangles=faces, points=inplane_points_3d)
     correction_cosine = utils.calculate_cos_theta_los_x(normals)
     retval = (inplane_surface_area - pypex_polys_surface_area) / correction_cosine
     return retval
 
 
-def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
+def calculate_centre_of_star_projection(system, component):
+    """
+    Returns yz projection of centre of mass of given `component`.
+
+    :param system: elisa.binary_system.container.OrbitalPositionContainer
+    :param component: str; `primary` or `secondary`
+    :return: numpy.array;
+    """
+    if component == 'primary':
+        return np.array([0.0, 0.0])
+    else:
+        centre_vector = np.array([system.position.distance, 0.0, 0.0])
+        args = (system.position.azimuth - const.HALF_PI, centre_vector, "z", False, False)
+        centre_vector = utils.around_axis_rotation(*args)
+
+        args = (const.HALF_PI - system.inclination, centre_vector, "y", False, False)
+        centre_vector = utils.around_axis_rotation(*args)
+
+        return centre_vector[1:]
+
+
+def expand_star_outline(path, system, cover_component):
+    """
+    Function takes outline of the cover star and expands it slightly to compensate for the loss of its area due to
+    surface discretization.
+
+    :param path: Path; outline of the eclipsing star
+    :param system: elisa.binary_system.container.OrbitalPositionContainer
+    :param cover_component: str; `primary` or `secondary`
+    :return: Path; expanded outline of the star
+    """
+    cpm = calculate_centre_of_star_projection(system, cover_component)
+    alpha = const.FULL_ARC / np.shape(path.vertices)[0]
+    corr_factor = np.sqrt(2 - (np.sin(alpha) / alpha))
+    path.vertices = corr_factor * (path.vertices - cpm[None, :]) + cpm[None, :]
+    return path
+
+
+def compute_surface_coverage(system, semi_major_axis, in_eclipse=True, return_values=True, write_to_containers=False):
     # todo: add unittests
     """
     Compute surface coverage of faces for given orbital position
     defined by container/SingleOrbitalPositionContainer.
 
     :param semi_major_axis: float;
-    :param system: elisa.binary_system.container.OrbitalPositionContainer;;
+    :param system: elisa.binary_system.container.OrbitalPositionContainer;
     :param in_eclipse: bool;
+    :param return_values: bool; return coverages
+    :param write_to_containers: bool; calculated values will be assigned to `system` container
     :return: Dict;
     """
     logger.debug(f"computing surface coverage for {system.position}")
     cover_component = 'secondary' if 0.0 < system.position.azimuth < const.PI else 'primary'
     cover_object = getattr(system, cover_component)
-    undercover_object = getattr(system, config.BINARY_COUNTERPARTS[cover_component])
+    undercover_object = getattr(system, settings.BINARY_COUNTERPARTS[cover_component])
     undercover_visible_point_indices = np.unique(undercover_object.faces[undercover_object.indices])
 
-    cover_object_obs_visible_projection = bsutils.get_visible_projection(cover_object)
-    undercover_object_obs_visible_projection = bsutils.get_visible_projection(undercover_object)
+    # all surface values in sma unit which are smaller then following threshold are discarded (set to 0.0)
+    surface_noise_threshold = (2.0 * np.pi * np.power(undercover_object.polar_radius, 2) /
+                               len(undercover_object.faces)) / 1e6
+
+    cover_object_obs_visible_projection = utils.get_visible_projection(cover_object)
+    undercover_object_obs_visible_projection = utils.get_visible_projection(undercover_object)
     # get matplotlib boudary path defined by hull of projection
     if in_eclipse:
         bb_path = get_eclipse_boundary_path(cover_object_obs_visible_projection)
+        # expanding cover star outline to cmpensate for discretization (currently not in use, effect is insignificant)
+        # bb_path = expand_star_outline(bb_path, system, cover_component)
         # obtain points out of eclipse (out of boundary defined by hull of 'infront' object)
         out_of_bound = up.invert(bb_path.contains_points(undercover_object_obs_visible_projection))
         # undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
@@ -90,7 +117,7 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
         out_of_bound = np.ones(undercover_object_obs_visible_projection.shape[0], dtype=np.bool)
 
     undercover_visible_point_indices = undercover_visible_point_indices[out_of_bound]
-    undercover_faces = np.array([const.FALSE_FACE_PLACEHOLDER] * np.shape(undercover_object.normals)[0])
+    undercover_faces = -1 * np.ones(np.shape(undercover_object.normals), dtype=int)
     undercover_faces[undercover_object.indices] = undercover_object.faces[undercover_object.indices]
     eclipse_faces_visibility = np.isin(undercover_faces, undercover_visible_point_indices)
 
@@ -110,28 +137,34 @@ def compute_surface_coverage(system, semi_major_axis, in_eclipse=True):
             normals=partial_visible_normals,
             hull=bb_path.vertices
         )
+        partial_coverage[partial_coverage < surface_noise_threshold] = 0.0
     else:
         partial_coverage = None
 
-    visible_coverage = utils.poly_areas(undercover_object.points[undercover_object.faces[full_visible]])
+    # discard values of surface which are under threshold
+    visible_coverage = undercover_object.areas[full_visible]
 
-    undercover_obj_coverage = surface_area_coverage(
+    undercover_obj_coverage = bcoverage.surface_area_coverage(
         size=np.shape(undercover_object.normals)[0],
         visible=full_visible, visible_coverage=visible_coverage,
         partial=partial_visible, partial_coverage=partial_coverage
     )
 
-    visible_coverage = utils.poly_areas(cover_object.points[cover_object.faces[cover_object.indices]])
-    cover_obj_coverage = surface_area_coverage(len(cover_object.faces), cover_object.indices, visible_coverage)
+    cover_obj_coverage = np.zeros(cover_object.areas.shape)
+    cover_obj_coverage[cover_object.indices] = cover_object.areas[cover_object.indices]
 
     # areas are now in SMA^2, converting to SI
     cover_obj_coverage *= up.power(semi_major_axis, 2)
     undercover_obj_coverage *= up.power(semi_major_axis, 2)
 
+    if write_to_containers:
+        setattr(cover_object, 'coverage', cover_obj_coverage)
+        setattr(undercover_object, 'coverage', undercover_obj_coverage)
+
     return {
         cover_component: cover_obj_coverage,
-        config.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
-    }
+        settings.BINARY_COUNTERPARTS[cover_component]: undercover_obj_coverage
+    } if return_values else None
 
 
 def get_eclipse_boundary_path(hull):

@@ -5,8 +5,8 @@ from ... import (
     const,
     umpy as up
 )
-from ...logger import getLogger
-from ...binary_system.orbit.transform import OrbitProperties
+from ... logger import getLogger
+from ... binary_system.orbit.transform import OrbitProperties
 
 logger = getLogger('binary_system.orbit.orbit')
 
@@ -33,6 +33,81 @@ def angular_velocity(period, eccentricity, distance):
     """
     return ((2.0 * up.pi) / (period * 86400.0 * (distance ** 2))) * up.sqrt(
         (1.0 - eccentricity) * (1.0 + eccentricity))  # $\rad.sec^{-1}$
+
+
+def primary_orbital_speed(m1, m2, a_red, components_distance):
+    """
+    Returns orbital speed of primary component with respect to the system centre of mass.
+
+    :param m1: float; primary mass
+    :param m2: float; secondary mass
+    :param a_red: float; semi major axis of the primary component with respect to the system centre of mass
+    :param components_distance: float;
+    :return: float;
+    """
+    m = m1 + m2
+    return m2 * np.sqrt((const.G / m) * ((2 / components_distance) - (m2 / (a_red * m))))
+
+
+def velocity_vector_angle(eccentricity, true_anomaly):
+    """
+    Returns sine and cosine of angle between velocity vector and join vector.
+
+    :param eccentricity: float;
+    :param true_anomaly: float;
+    :return: Tuple;
+    """
+    den = np.sqrt(1 + eccentricity**2 + 2 * eccentricity * np.cos(true_anomaly))
+    sin = (1 + eccentricity * np.cos(true_anomaly)) / den
+    cos = - (eccentricity * np.sin(true_anomaly)) / den
+    return sin, cos
+
+
+def create_orb_vel_vectors(system, components_distance):
+    """
+    Returns orbital velocity vectors for both components in reference frame of centre of mass.
+
+    :param system: elisa.binary_system.container;
+    :param components_distance: float;
+    :return: float;
+    """
+    a_red = system.semi_major_axis * system.mass_ratio / (1 + system.mass_ratio)
+
+    speed = primary_orbital_speed(system.primary.mass, system.secondary.mass, a_red,
+                                  system.semi_major_axis * components_distance)
+
+    sin, cos = velocity_vector_angle(system.eccentricity, system.position.true_anomaly)
+
+    velocity = {'primary': np.array([-cos * speed, sin * speed, 0])}
+    velocity['secondary'] = - velocity['primary'] / system.mass_ratio
+
+    return velocity
+
+
+def distance_to_center_of_mass(primary_mass, secondary_mass, distance):
+    """
+    Return distance from primary and from secondary component to center of mass.
+
+    :param primary_mass: float
+    :param secondary_mass: float
+    :param distance: Union[float, numpy.array]
+    :return: Tuple[Union[float, numpy.array]];
+    """
+    mass = primary_mass + secondary_mass
+    com_from_primary = (distance * secondary_mass) / mass
+    return com_from_primary, distance - com_from_primary
+
+
+def orbital_semi_major_axes(r, eccentricity, true_anomaly):
+    """
+    Return orbital semi major axis from component distance, eccentricity and true anomaly.
+
+    :param r: float or numpy.array; distance from center of mass to object
+    :param eccentricity: float or numpy.array; orbital eccentricity
+    :param true_anomaly: float or numpy.array; true anomaly of orbital motion
+    :return: Union[float, numpy.array]
+    """
+    return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
 
 
 class Orbit(object):
@@ -73,7 +148,7 @@ class Orbit(object):
 
         self.periastron_distance = np.nan
         self.periastron_phase = np.nan
-        self.semimajor_axis = np.nan
+        self.semi_major_axis = np.nan
         self.phase_shift = 0.0
 
         # values of properties
@@ -247,7 +322,6 @@ class Orbit(object):
             phase = np.array([np.float(phase)])
         # photometric phase to phase measured from periastron
         true_phase = self.true_phase(phase=phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
-        true_phase = self.phase(true_phase=true_phase, phase_shift=self.phase_shift)
 
         mean_anomaly = self.phase_to_mean_anomaly(phase=true_phase)
         eccentric_anomaly = np.array([self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
@@ -264,7 +338,8 @@ class Orbit(object):
         positions of the secondary component in the frame of reference of primary component.
 
         :param azimuth: Union[numpy.array, float];
-        :return: numpy.array: matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
+        :return: numpy.array; matrix consisting of column stacked vectors distance,
+                              azimut angle, true anomaly and phase
 
         ::
 
