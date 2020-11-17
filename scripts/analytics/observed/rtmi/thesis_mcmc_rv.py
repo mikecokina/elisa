@@ -4,9 +4,10 @@ import numpy as np
 import builtins
 
 from matplotlib import pyplot as plt
-from elisa.analytics.binary.mcmc import central_rv
-from elisa.analytics.binary.models import central_rv_synthetic
-from elisa.analytics.binary.shared import rv_r_squared
+
+from elisa import units
+from elisa.analytics import RVData, RVBinaryAnalyticsTask
+from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.binary_system import t_layer
 
 builtins._ASTROPY_SETUP_ = True
@@ -49,62 +50,55 @@ def main():
         plt.scatter(x=xs["secondary"], y=ys["secondary"], c="r")
         plt.show()
 
-    rv_initial = [
-        {
-            'value': 0.0,
-            'param': 'eccentricity',
-            'fixed': True
-        },
-        {
-            'value': 5.0,
-            'param': 'asini',
-            'fixed': False,
-            'min': 1.0,
-            'max': 15.0
+    data = {comp: RVData(**{
+        "x_data": xs[comp],
+        "y_data": ys[comp],
+        "y_err": yerr[comp],
+        "x_unit": units.dimensionless_unscaled,
+        "y_unit": units.m / units.s
 
-        },
-        {
-            'value': 1.0,
-            'param': 'mass_ratio',
-            'fixed': False,
-            'min': 0.0,
-            'max': 1.5
-        },
-        {
-            'value': 0.0,
-            'param': 'argument_of_periastron',
-            'fixed': True
-        },
-        {
-            'value': 0.0,
-            'param': 'gamma',
-            'fixed': False,
-            'min': -50000.0,
-            'max': 50000.0
-        },
-        {
-            'value': P,
-            'param': 'period',
-            'fixed': True
+    }) for comp in ["primary", "secondary"]}
+
+    rv_initial = {
+        "system": {
+            "eccentricity": {
+                "value": 0.0,
+                "fixed": True
+            },
+            "asini": {
+                "value": 5.0,
+                "fixed": False,
+                'min': 1.0,
+                'max': 15.0
+            },
+            "mass_ratio": {
+                "value": 1.0,
+                "fixed": False,
+                'min': 0.1,
+                'max': 1.5
+            },
+            "argument_of_periastron": {
+                'value': 0.0,
+                "fixed": True
+            },
+            "gamma": {
+                "value": 0.0,
+                "fixed": False,
+                'min': -50000.0,
+                'max': 50000.0
+            },
+            "period": {
+                'value': P,
+                'fixed': True
+            }
         }
-    ]
-
-    # central_rv.fit(xs=xs, ys=ys, x0=rv_initial, nwalkers=20, nsteps=50000, nsteps_burn_in=5000, yerrs=yerr)
-    # result = central_rv.restore_flat_chain(central_rv.last_fname)
-    # central_rv.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
-
-    result = {
-        "eccentricity": 0.0,
-        "asini": 2.64,
-        "mass_ratio": 0.35,
-        "argument_of_periastron": 0.0,
-        "gamma": -14717.23,
-        "period": P,
     }
-    r_squared_args = xs["primary"], ys, False, {"primary": np.arange(0, len(xs["primary"]), 1),
-                                                "secondary": np.arange(0, len(xs["secondary"]), 1)}
-    r_squared_result = rv_r_squared(central_rv_synthetic, *r_squared_args, **result)
-    print(r_squared_result)
+
+    rv_initial = BinaryInitialParameters(**rv_initial)
+    task = RVBinaryAnalyticsTask(data=data, method='mcmc')
+    task.fit(x0=rv_initial, nsteps=5000, burn_in=3000, save=True, progress=True)
+    task.plot.model()
+    task.plot.corner(truths=True)
 
 
 if __name__ == '__main__':

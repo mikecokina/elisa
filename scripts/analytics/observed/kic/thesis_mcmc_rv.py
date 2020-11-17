@@ -98,7 +98,7 @@ def main():
 
     rv_initial = BinaryInitialParameters(**rv_initial)
     task = RVBinaryAnalyticsTask(data=data, method='mcmc')
-    task.fit(x0=rv_initial, nsteps=8000, burn_in=4000, save=True, fit_id="mcmc_rv_fit_no_period", progress=True)
+    task.fit(x0=rv_initial, nsteps=8000, burn_in=4000, save=True, progress=True)
     task.plot.model()
     task.plot.corner(truths=True)
 

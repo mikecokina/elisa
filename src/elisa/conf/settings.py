@@ -139,7 +139,7 @@ class Settings(_Const):
     CONFIG_FILE = config_file
     LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging_schemas/default.json')
     SUPPRESS_WARNINGS = False
-    SUPPRESS_LOGGER = None
+    SUPPRESS_LOGGER = True
     HOME = os.path.expanduser(os.path.join("~", '.elisa'))
 
     # physics
