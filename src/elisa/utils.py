@@ -948,7 +948,6 @@ def discretization_correction_factor(discretization_factor):
     :return:
     """
     # correction for non-equilateral triangles
-    alpha = 1.138 * discretization_factor
+    alpha = 1.20 * discretization_factor
     # correction fro surface underestimation
-    return np.sqrt((alpha * (1 - np.cos(alpha))) /
-                   (2.0 * np.power(np.sin(0.5 * alpha), 2) * np.sin(alpha)))
+    return np.sqrt(alpha / np.sin(alpha))
