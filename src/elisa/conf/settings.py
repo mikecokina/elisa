@@ -132,7 +132,7 @@ class Settings(_Const):
 
     # basic app configuration
     CONFIG_FILE = config_file
-    LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging.json')
+    LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging_schemas/default.json')
     SUPPRESS_WARNINGS = False
     SUPPRESS_LOGGER = None
     HOME = os.path.expanduser(os.path.join("~", '.elisa'))
@@ -236,8 +236,18 @@ class Settings(_Const):
             with open(cls.LOG_CONFIG) as f:
                 conf_dict = json.loads(f.read())
             log_conf.dictConfig(conf_dict)
+        elif cls.LOG_CONFIG == 'default':
+            cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
+                                          'logging_schemas/default.json')
+            cls.set_up_logging()
+        elif cls.LOG_CONFIG == 'fit':
+            cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
+                                          'logging_schemas/fit.json')
+            cls.set_up_logging()
         else:
-            logging.basicConfig(level=logging.INFO)
+            cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
+                                          'logging_schemas/default.json')
+            cls.set_up_logging()
 
     @classmethod
     def read_and_update_config(cls, conf_path=None):
@@ -277,10 +287,7 @@ class Settings(_Const):
             cls.SUPPRESS_WARNINGS = c_parse.getboolean('general', 'suppress_warnings', fallback=cls.SUPPRESS_WARNINGS)
             cls.LOG_CONFIG = c_parse.get('general', 'log_config', fallback=cls.LOG_CONFIG)
 
-            if not os.path.isfile(cls.LOG_CONFIG):
-                if not cls.SUPPRESS_WARNINGS:
-                    warnings.warn(f"log config `{cls.LOG_CONFIG}` doesn't exist, rollback to default")
-                cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)), 'logging.json')
+            cls.set_up_logging()
 
             cls.SUPPRESS_LOGGER = c_parse.getboolean('general', 'suppress_logger', fallback=cls.SUPPRESS_LOGGER)
             cls.HOME = c_parse.getboolean('general', 'home', fallback=cls.HOME)
