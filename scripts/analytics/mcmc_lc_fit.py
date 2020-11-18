@@ -39,8 +39,8 @@ def main():
     lc_initial = {
         "system": {
             "semi_major_axis": {
-                "value": 16.515,
-                "constraint": "16.515 / sin(radians(system@inclination))"
+                "value": 16.44,
+                "constraint": "16.44 / sin(radians(system@inclination))"
             },
             "inclination": {
                 "value": 85.0,
@@ -53,7 +53,7 @@ def main():
                 "fixed": True
             },
             "mass_ratio": {
-                "value": 0.5,
+                "value": 0.499,
                 "fixed": True
             },
             "eccentricity": {
@@ -114,7 +114,9 @@ def main():
     }
     lc_initial = BinaryInitialParameters(**lc_initial)
     task = LCBinaryAnalyticsTask(data=data, method='mcmc', expected_morphology="detached")
-    task.fit(x0=lc_initial, nsteps=100, nwalkers=100, save=True, fit_id="mcmc_lc_fit", progress=True)
+    task.fit(x0=lc_initial, nsteps=500, nwalkers=100, save=True, fit_id="mcmc_lc_fit", progress=True)
+    task.plot.model()
+    task.plot.corner(truths=True)
 
 
 if __name__ == '__main__':
