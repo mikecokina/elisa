@@ -231,6 +231,7 @@ def check_for_boundary_surface_potentials(result_dict):
     :param result_dict: dict; flat dict of fit results
     :return: dict; corrected flat dict of fit results
     """
+    return result_dict
     if "primary@surface_potential" not in result_dict.keys() or "secondary@surface_potential" not in result_dict.keys():
         return result_dict
 

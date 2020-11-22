@@ -388,7 +388,8 @@ class BinarySystem(System):
 
             if ((1 > self.secondary.filling_factor > 0) or (1 > self.primary.filling_factor > 0)) and \
                     (abs(self.primary.filling_factor - self.secondary.filling_factor) > __PRECISSION__):
-                msg = "Detected over-contact binary system, but potentials of components are not the same."
+                msg = f"Detected over-contact binary system, but potentials of components are not the same." \
+                      f"primary: {self.primary.surface_potential}, secondary:{self.secondary.surface_potential}"
                 raise MorphologyError(msg)
             if self.primary.filling_factor > 1 or self.secondary.filling_factor > 1:
                 raise MorphologyError("Non-Physical system: primary_filling_factor or "

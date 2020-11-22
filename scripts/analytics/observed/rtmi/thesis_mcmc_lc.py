@@ -159,7 +159,7 @@ def main():
             },
             "albedo": {
                 "value": 0.75,
-                "fixed": True,
+                "fixed": False,
                 "min": 0.5,
                 "max": 1.0
             },
@@ -182,7 +182,7 @@ def main():
             },
             "albedo": {
                 "value": 0.75,
-                "fixed": True,
+                "fixed": False,
                 "min": 0.5,
                 "max": 1.0
             },
@@ -191,7 +191,7 @@ def main():
 
     lc_initial = BinaryInitialParameters(**lc_initial)
     task = LCBinaryAnalyticsTask(data=data, method='mcmc', expected_morphology="over-contact")
-    task.fit(x0=lc_initial, nsteps=3000, nwalkers=1000, save=True, fit_id="thesis_mcmc_synthetic", progress=True)
+    task.fit(x0=lc_initial, nsteps=3000, nwalkers=1000, save=True, fit_id="thesis_mcmc_rtmi", progress=True)
     task.save_result(op.join(settings.HOME, "thesis_mcmc_rtmi.result.json"))
     task.plot.model()
     task.plot.corner(truths=True)
