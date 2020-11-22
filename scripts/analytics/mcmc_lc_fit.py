@@ -5,7 +5,7 @@ import numpy as np
 from elisa.analytics import LCBinaryAnalyticsTask
 from elisa.analytics import LCData
 from elisa.analytics.params.parameters import BinaryInitialParameters
-from elisa import units
+from elisa import units, settings
 
 np.random.seed(1)
 DATA = op.join(op.abspath(op.dirname(__file__)), "data")
@@ -114,7 +114,8 @@ def main():
     }
     lc_initial = BinaryInitialParameters(**lc_initial)
     task = LCBinaryAnalyticsTask(data=data, method='mcmc', expected_morphology="detached")
-    task.fit(x0=lc_initial, nsteps=500, nwalkers=100, save=True, fit_id="mcmc_lc_fit", progress=True)
+    task.fit(x0=lc_initial, nsteps=10, nwalkers=1, save=True, fit_id="thesis_mcmc_synthetic", progress=True)
+    task.save_result(op.join(settings.HOME, "thesis_mcmc_synthetic.result.json"))
     task.plot.model()
     task.plot.corner(truths=True)
 

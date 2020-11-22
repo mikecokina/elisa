@@ -1,14 +1,15 @@
-
-
 import json
 import os.path as op
 import numpy as np
 import builtins
 
 from matplotlib import pyplot as plt
-from elisa.analytics.binary.mcmc import binary_overcontact
+
+from elisa import units, u, settings
+from elisa.analytics import LCData, LCBinaryAnalyticsTask
+from elisa.analytics.params.parameters import BinaryInitialParameters
+from elisa.analytics.tools.bvi import elisa_bv_temperature
 from elisa.binary_system import t_layer
-from elisa.analytics.bvi import elisa_bv_temperature
 from scipy.interpolate import Akima1DInterpolator
 
 builtins._ASTROPY_SETUP_ = True
@@ -52,7 +53,6 @@ def mag_to_flx(ys):
 
 
 def temperature_estimation(xs, ys):
-
     interp_b = Akima1DInterpolator(xs['Generic.Bessell.B'], ys['Generic.Bessell.B'])
     interp_v = Akima1DInterpolator(xs['Generic.Bessell.V'], ys['Generic.Bessell.V'])
 
@@ -73,9 +73,6 @@ def main():
 
     ys_mag = {band: np.array(lc[band]["mag"])[xs_argsort[band]] for band in passbands}
     phase_mask = phase_filter(xs, threshold=0.01)
-
-    temperature = temperature_estimation(xs, ys_mag)
-    print(temperature)
 
     ys_flx = mag_to_flx(ys_mag)
     ys_max = {band: max(np.array(ys_flx[band])) for band in passbands}
@@ -101,139 +98,103 @@ def main():
     ys = {band: ys[band][phase_mask[band]] for band in passbands}
     yerrs = {band: yerrs[band][phase_mask[band]] for band in passbands}
 
-    """
+    data = {passband: LCData(**{
+        "x_data": xs[passband],
+        "y_data": ys[passband],
+        "y_err": yerrs[passband],
+        "x_unit": units.dimensionless_unscaled,
+        "y_unit": units.dimensionless_unscaled,
+        "passband": passband
+    }) for passband in lc}
+
     lc_initial = {
-    'system': {
-        'inclination': {
-            'value': 85,
-            'fixed': False,
-            'min': 80,
-            'max': 90,
-            'unit': u.deg,
+        "system": {
+            "semi_major_axis": {
+                "value": 2.633,
+                "constraint": "2.633 / sin(radians(system@inclination))"
+            },
+            "inclination": {
+                "value": 85.0,
+                "fixed": False,
+                "min": 80,
+                "max": 90
+            },
+            "argument_of_periastron": {
+                "value": 0.0,
+                "fixed": True
+            },
+            "mass_ratio": {
+                "value": 0.353,
+                "fixed": True
+            },
+            "eccentricity": {
+                "value": 0.0,
+                "fixed": True
+            },
+            "period": {
+                "value": P,
+                "fixed": True,
+                "unit": units.d
+            }
         },
-        'mass_ratio': {
-            'value': 0.35,
-            'fixed': True,
-            'min': 0.33,
-            'max': 0.37,
-            'unit': ''
+        "primary": {
+            "t_eff": {
+                "value": 6250.0,
+                "fixed": False,
+                "min": 6000.0,
+                "max": 6500.0,
+                "unit": units.K
+            },
+            "surface_potential": {
+                "value": 2.5,
+                "fixed": False,
+                "min": 2,
+                "max": 3
+            },
+            "gravity_darkening": {
+                "value": 0.5,
+                "fixed": False,
+                "min": 0.3,
+                "max": 1.0
+            },
+            "albedo": {
+                "value": 0.75,
+                "fixed": True,
+                "min": 0.5,
+                "max": 1.0
+            },
         },
-        'argument_of_periastron': {
-            'value': 0,
-            'fixed': True,
-            'unit': u.deg
-        },
-        'period': {
-            'value': 0.374918,
-            'fixed': True,
-        },
-        'additional_light': {
-            'value': 0.0,
-            'fixed': True,
-            'unit': ''
-        },
-        'primary_minimum_time': {
-            'value': 2445002.2180,
-            'fixed': True,
-            'unit': u.d
-        },
-        'semi_major_axis': {
-            'constraint': '2.63 / sin(radians({inclination}))',
-            'unit': u.solRad
-        },
-        'eccentricity': {
-            'value': 0.0,
-            'fixed': True,
-            'unit': ''
-        },
-    },
-    'primary': {
-        't_eff': {
-            'value': 6400,
-            'fixed': False,
-            'min': 6000.0,
-            'max': 6500.0,
-            'unit': u.K
-        },
-        'surface_potential': {
-            'value': 2.55,
-            # 'fixed': True,
-            'fixed': False,
-            'min': 2.0,
-            'max': 3.0,
-            'unit': ''
-        },
-        'gravity_darkening': {
-            'value': 0.32,
-            'fixed': False,
-            'min': 0.3,
-            'max': 1.0,
-            'unit': ''
-        },
-        'albedo': {
-            'value': albedo,
-            # 'fixed': True,
-            'fixed': False,
-            'min': 0.5,
-            'max': 1.0,
-            'unit': ''
-        },
-        'metallicity': {
-            'value': metallicity,
-            'fixed': True,
-            'unit': ''
-        },
-        'synchronicity': {
-            'value': 1.0,
-            'fixed': True,
-            'unit': ''
-        },
-    },
-    'secondary':{
-        't_eff': {
-            'value': 6400,
-            'fixed': False,
-            'min': 6000.0,
-            'max': 6500.0,
-            'unit': u.K
-        },
-        'surface_potential': {
-            'constraint': '{primary.surface_potential}',
-            'unit': ''
-        },
-        'gravity_darkening': {
-            'value': 0.32,
-            'fixed': False,
-            'min': 0.3,
-            'max': 1.0,
-            'unit': ''
-        },
-        'albedo': {
-            'value': albedo,
-            'fixed': False,
-            'min': 0.5,
-            'max': 1.0,
-            'unit': ''
-        },
-        'metallicity': {
-            'value': metallicity,
-            'fixed': True,
-            'unit': ''
-        },
-        'synchronicity': {
-            'value': 1.0,
-            'fixed': True,
-            'unit': ''
-        },
+        "secondary": {
+            "t_eff": {
+                "value": 6250.0,
+                "fixed": False,
+                "min": 6000.0,
+                "max": 6500.0
+            },
+            "surface_potential": {
+                'constraint': 'primary@surface_potential',
+            },
+            "gravity_darkening": {
+                "value": 0.5,
+                "fixed": False,
+                "min": 0.3,
+                "max": 1.0
+            },
+            "albedo": {
+                "value": 0.75,
+                "fixed": True,
+                "min": 0.5,
+                "max": 1.0
+            },
+        }
     }
-}
-    """
 
-    # binary_overcontact.fit(xs=xs, ys=ys, x0=lc_initial, period=P, discretization=5.0,
-    #                        nwalkers=20, nsteps=20000, nsteps_burn_in=3000, yerrs=yerrs)
-
-    result = binary_overcontact.restore_flat_chain("2020-05-11T00.00.00")
-    binary_overcontact.plot.corner(result['flat_chain'], result['labels'], renorm=result['normalization'])
+    lc_initial = BinaryInitialParameters(**lc_initial)
+    task = LCBinaryAnalyticsTask(data=data, method='mcmc', expected_morphology="over-contact")
+    task.fit(x0=lc_initial, nsteps=3000, nwalkers=1000, save=True, fit_id="thesis_mcmc_synthetic", progress=True)
+    task.save_result(op.join(settings.HOME, "thesis_mcmc_rtmi.result.json"))
+    task.plot.model()
+    task.plot.corner(truths=True)
 
 
 if __name__ == '__main__':
