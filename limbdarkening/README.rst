@@ -3,7 +3,7 @@ Limbdarkening models
 
     **url:** https://mega.nz/file/7U0h3RpC#ZxAGflTglX3JGOmTS0C9S8WF64bnibRyGTeNJG0eZyQ
 
-    Contain limb darkening models for given limbdarkening models, passbands and metalicities
+    Limb darkening coefficients for given limbdarkening models, passbands and metalicities
     Extract content of ``limbdarkening.tar`` archive to any directory and setup ``support.ld_tables``
     in ``elisa_config.ini``.
 

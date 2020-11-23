@@ -869,7 +869,8 @@ class BinarySystem(System):
                 )
 
             volume = utils.calculate_volume_ellipse_approx(points_equator, points_meridian)
-            retval[component] = utils.calculate_equiv_radius(volume)
+            retval[component] = utils.discretization_correction_factor(star.discretization_factor) * \
+                                utils.calculate_equiv_radius(volume)
 
         return retval
 
