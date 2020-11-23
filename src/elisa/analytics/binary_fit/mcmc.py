@@ -207,7 +207,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result, "unit": None}
 
-        result_dict = check_for_boundary_surface_potentials(result_dict)
+        result_dict = check_for_boundary_surface_potentials(result_dict, LightCurveFit.MORPHOLOGY)
 
         setattr(self, 'flat_result', result_dict)
         return parameters.serialize_result(result_dict)

@@ -44,7 +44,7 @@ class LCFit(object):
 
         try:
             result_dict: Dict = self.flat_result
-            result_dict = check_for_boundary_surface_potentials(result_dict)
+            result_dict = check_for_boundary_surface_potentials(result_dict, self.morphology)
             b_kwargs = {key: val['value'] for key, val in result_dict.items()}
             binary_instance = lc_model.prepare_binary(_verify=False, **b_kwargs)
 
