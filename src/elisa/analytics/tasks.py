@@ -11,6 +11,7 @@ from . binary_fit.plot import (
 )
 from .. import utils
 from .. logger import getLogger
+from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
 
 logger = getLogger('analytics.tasks')
 
@@ -63,11 +64,13 @@ class AnalyticsTask(metaclass=ABCMeta):
 
     def load_result(self, filename):
         self.fit_cls.load_result(filename)
+        return self.fit_cls.get_result()
 
     def save_result(self, filename):
         self.fit_cls.save_result(filename)
 
     def set_result(self, result):
+        result = eval_constraint_in_dict(result)
         self.fit_cls.set_result(result)
         return self
 

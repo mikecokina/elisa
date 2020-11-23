@@ -104,7 +104,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         # evaluate least squares from scipy
         logger.info("fitting started...")
         result = least_squares(self.model_to_fit, initial_vector, jac=kwargs.get('jac', '2-point'), bounds=(0, 1),
-                               method=kwargs.get('method', 'trf'), ftol=kwargs.get('ftol', 1e-8),
+                               method=kwargs.get('method', 'trf'), ftol=kwargs.get('ftol', 1e-7),
                                xtol=kwargs.get('xtol', 1e-8), gtol=kwargs.get('gtol', 1e-8),
                                x_scale=kwargs.get('x_scale', 1.0), loss=kwargs.get('loss', 'linear'),
                                f_scale=kwargs.get('f_scale', 1.0), diff_step=kwargs.get('diff_step', None),

@@ -16,6 +16,7 @@ from ... import (
 )
 
 logger = getLogger("single_system.surface.mesh")
+SEAM_CONST = 1.08
 
 
 def build_mesh(system):
@@ -90,17 +91,22 @@ def mesh(system_container, symmetry_output=False):
 
     # axial symmetry, therefore calculating latitudes
     thetas = pre_calc_latitudes(discretization_factor, star_container.polar_radius, star_container.equatorial_radius)
+    thetas_meridian = pre_calc_latitudes(SEAM_CONST*discretization_factor, star_container.polar_radius,
+                                         star_container.equatorial_radius)
 
     x0 = 0.5 * (star_container.equatorial_radius + star_container.polar_radius)
     args = thetas, x0, precalc_fn, potential_fn, potential_derivative_fn, star_container.surface_potential, \
         star_container.mass, system_container.angular_velocity
+    args_meridian = thetas_meridian, x0, precalc_fn, potential_fn, potential_derivative_fn, \
+                    star_container.surface_potential, star_container.mass, system_container.angular_velocity
 
     radius = get_surface_points_radii(*args)
+    radius_meridian = get_surface_points_radii(*args_meridian)
 
     # converting this eighth of surface to cartesian coordinates
     quarter_points = calculate_points_on_quarter_surface(radius, thetas, characteristic_distance)
     x_q, y_q, z_q = quarter_points[:, 0], quarter_points[:, 1], quarter_points[:, 2]
-    meridian_points = calculate_points_on_meridian(radius, thetas)
+    meridian_points = calculate_points_on_meridian(radius_meridian, thetas_meridian)
     x_mer, y_mer, z_mer = meridian_points[:, 0], meridian_points[:, 1], meridian_points[:, 2],
 
     x = np.concatenate((np.array([0]), x_mer, x_eq, x_q, -y_mer, -y_eq, -y_q, -x_mer, -x_eq, -x_q, y_mer, y_eq,
@@ -286,7 +292,7 @@ def calculate_equator_points(characteristic_distance, equatorial_radius):
     :param equatorial_radius: float;
     :return: numpy.array; N * 3 array of x, y, z coordinates
     """
-    num = int(const.HALF_PI * equatorial_radius / characteristic_distance)
+    num = int(const.HALF_PI * equatorial_radius / (SEAM_CONST * characteristic_distance))
     radii = equatorial_radius * np.ones(num)
     thetas = const.HALF_PI * np.ones(num)
     phis = np.linspace(0, const.HALF_PI, num=num, endpoint=False)

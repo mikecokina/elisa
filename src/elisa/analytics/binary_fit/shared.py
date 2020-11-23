@@ -16,6 +16,7 @@ from ... import settings
 from ... observer.observer import Observer
 from ... observer.utils import normalize_light_curve
 from ... binary_system.system import BinarySystem
+from elisa.const import PI
 
 
 class AbstractFit(metaclass=ABCMeta):
@@ -49,6 +50,8 @@ class AbstractFit(metaclass=ABCMeta):
         setattr(self, 'initial_vector', [val.value for val in self.fitable.values()])
         setattr(self, 'flat_result', dict())
 
+        setattr(self, 'error_penalization', self.calculate_error_penalization())
+
     @abstractmethod
     def fit(self, *args, **kwargs):
         pass
@@ -76,6 +79,15 @@ class AbstractFit(metaclass=ABCMeta):
                 } for key, val in constrained_values.items()
             })
         return result_dict
+
+    def calculate_error_penalization(self):
+        """
+        Calculates constant component to the likelihood function derived from the errors
+
+        :return: np.float;
+        """
+        return np.sum([np.sum(np.log(2 * PI * np.power(value, 2)))
+                       for value in self.y_err.values()])
 
 
 class AbstractRVFit(AbstractFit):
@@ -211,12 +223,13 @@ def extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_d
     return x_data, y_data, y_err
 
 
-def check_for_boundary_surface_potentials(result_dict):
+def check_for_boundary_surface_potentials(result_dict, morphology=None):
     """
     Function checks if surface potential are within errors below critical potentials (which would break BinarySystem
     initialization). If surface potential are within errors they are snapped to critical values.
 
     :param result_dict: dict; flat dict of fit results
+    :param morphology: str; expected morphology
     :return: dict; corrected flat dict of fit results
     """
     if "primary@surface_potential" not in result_dict.keys() or "secondary@surface_potential" not in result_dict.keys():
@@ -256,4 +269,36 @@ def check_for_boundary_surface_potentials(result_dict):
         if 5 * sigma >= l2 - pot["value"] >= 0.0:
             pot["value"] = l2 - 1e-5 * sigma
 
+    if morphology == 'over-contact':
+        result_dict['secondary@surface_potential']['value'] = result_dict['primary@surface_potential']['value']
+
+    return result_dict
+
+
+def eval_constraint_in_dict(input_dict):
+    """
+    Evaluates constraints defined bt the user in fit json.
+
+    :param input_dict: Dict;
+    :return: Dict; dict with constraints that have values assigned
+    """
+    input_dict1 = parameters.deserialize_result(input_dict)
+    result_dict = {key: val for key, val in input_dict1.items() if 'fixed' in val}
+
+    reduced_dict = {key: val['value'] for key, val in result_dict.items()}
+
+    b_parameters = BinaryInitialParameters(**input_dict)
+    constraints = b_parameters.get_constrained(jsonify=False)
+
+    constrained_values = parameters.constraints_evaluator(reduced_dict, constraints)
+    result_dict.update(
+        {
+            key: {
+                'value': constrained_values[key],
+                'constraint': constraints[key].constraint,
+                'unit': constraints[key].unit
+            } for key, val in constrained_values.items()
+        })
+
+    result_dict = parameters.serialize_result(result_dict)
     return result_dict

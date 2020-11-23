@@ -13,6 +13,7 @@ from .. params import parameters
 from .. params.parameters import BinaryInitialParameters
 from ... binary_system.utils import resolve_json_kind
 from ... logger import getLogger
+from .shared import eval_constraint_in_dict
 
 logger = getLogger('analytics.binary_fit.rv_fit')
 
@@ -40,6 +41,7 @@ class RVFit(object):
         """
         with open(path, 'r') as f:
             loaded_result = json.load(f)
+        loaded_result = eval_constraint_in_dict(loaded_result)
         self.result = loaded_result
         self.flat_result = parameters.deserialize_result(self.result)
 
@@ -53,7 +55,7 @@ class RVFit(object):
             raise IOError("No result to store.")
 
         with open(path, 'w') as f:
-            json.dump(self.result, f, separators=(',\n', ': '))
+            json.dump(self.result, f, separators=(',', ': '), indent=4)
 
 
 class RVFitMCMC(RVFit):
@@ -96,12 +98,12 @@ class RVFitMCMC(RVFit):
         """
         return io_tools.load_chain(self, filename, discard, percentiles)
 
-    def fit_summary(self, path=None, **kwargs):
+    def fit_summary(self, filename=None, **kwargs):
         """
         Function produces detailed summary about the current RV fitting task with the complete error propagation for RV
         parameters if `propagate_errors` is True
 
-        :param path: str; path, where to store summary
+        :param filename: str; path, where to store summary
         :param kwargs: Dict;
         :**kwargs options**:
             * ** propagate_errors ** * - bool -- errors of fitted parameters will be propagated to the rest of EB
@@ -112,15 +114,15 @@ class RVFitMCMC(RVFit):
         propagate_errors = kwargs.get('propagate_errors', False)
         percentiles = kwargs.get('percentiles', [16, 50, 84])
         if not propagate_errors:
-            simple_rv_fit_summary(self, path)
+            simple_rv_fit_summary(self, filename)
             return
 
         kind_of = resolve_json_kind(data=self.result, _sin=True)
 
         if kind_of in ["community"]:
-            fit_rv_summary_with_error_propagation(self, path, percentiles)
+            fit_rv_summary_with_error_propagation(self, filename, percentiles)
         else:
-            fit_lc_summary_with_error_propagation(self, path, percentiles)
+            fit_lc_summary_with_error_propagation(self, filename, percentiles)
 
 
 class RVFitLeastSquares(RVFit):

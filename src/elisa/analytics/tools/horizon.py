@@ -11,6 +11,8 @@ from elisa.const import Position, FULL_ARC, HALF_PI, LINE_OF_SIGHT
 from elisa import utils
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.surface.coverage import get_eclipse_boundary_path
+from pypex import Polygon
+
 
 BINARY_DEFINITION = {
     "system": {
@@ -145,23 +147,35 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
     position = Position(*((0,) + tuple(binary.orbit.orbital_motion(phase=phase)[0])))
 
     # rotate line of sight to simulate phase and inclination
-    r0 = np.array([0.0, 0.0, 1.0])
+    zv = np.array([0.0, 0.0, 1.0])
 
-    v = utils.around_axis_rotation(HALF_PI - binary.inclination, LINE_OF_SIGHT, axis="y", inverse=False)
-    v = utils.around_axis_rotation(position.azimuth - HALF_PI, v, axis="z", inverse=True)
+    xv = utils.around_axis_rotation(HALF_PI - binary.inclination, LINE_OF_SIGHT, axis="y", inverse=False)
+    xv = utils.around_axis_rotation(position.azimuth - HALF_PI, xv, axis="z", inverse=True)
 
-    r0 = utils.around_axis_rotation(HALF_PI - binary.inclination, r0, axis="y", inverse=False)
-    r0 = utils.around_axis_rotation(position.azimuth - HALF_PI, r0, axis="z", inverse=True)
+    zv = utils.around_axis_rotation(HALF_PI - binary.inclination, zv, axis="y", inverse=False)
+    zv = utils.around_axis_rotation(position.azimuth - HALF_PI, zv, axis="z", inverse=True)
+
+    # perpendicular vector to find theta-like rotation
+    yv = np.cross(zv, xv)
 
     potential_fn = potential_primary_fn
     precalc_fn = pre_calculate_for_potential_value_primary
     fprime = radial_primary_potential_derivative
 
-    # prepare suitable radius vectors about positions where horizon should be hidden
-    theta_range = np.linspace(np.radians(-5), np.radians(5), theta_density)
+    # prepare-phi like vector
     phi_range = np.linspace(np.radians(0), np.radians(360), phi_density)
-    vectors = [utils.around_axis_rotation(d_theta, r0, axis="y") for d_theta in theta_range]
-    vectors = [utils.arbitrary_rotation(d_phi, v, vector=r_0) for d_phi in phi_range for r_0 in vectors]
+    theta_range = np.linspace(np.radians(-5), np.radians(5), theta_density)
+
+    # prepare theta-like vectors via rotation around phi and then aroun yv in -/+ range
+    vectors = []
+    for d_phi in phi_range:
+        # girst rotate zv about phi around vector `xv`
+        inner_vectors = []
+        vector = utils.arbitrary_rotation(d_phi, xv, vector=zv)
+        _yv = utils.arbitrary_rotation(d_phi, xv, vector=yv)
+        for d_theta in theta_range:
+            vectors.append(utils.arbitrary_rotation(d_theta, _yv, vector=vector))
+
     vectors = np.array(utils.cartesian_to_spherical(vectors))
 
     phi, theta = vectors[:, 1], vectors[:, 2]
@@ -175,7 +189,7 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
     points = utils.spherical_to_cartesian(np.array([radius, phi, theta]).T)
     normals = calculate_potential_gradient(1.0, "primary", points, star.synchronicity, binary.mass_ratio)
 
-    cosines = np.inner(normals, v)
+    cosines = np.inner(normals, xv)
     cosines = cosines.reshape(phi_density, theta_density)
     cosines_gtz = [up.arange(np.shape(row)[0])[row > 0] for row in cosines]
     # take only smallest values (but greater than zero) in each theta line
@@ -204,6 +218,16 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
     return horizon_points
 
 
+def _cover_horizon_edges(horizon):
+    horizon_polygon = Polygon(horizon)
+    horizon = list()
+    for edge in horizon_polygon.edges(as_line=True):
+        parametrized = edge.parametrized()
+        for t in np.arange(0, 1, 0.01):
+            horizon.append(parametrized(t))
+    return np.array(horizon)
+
+
 def get_discrete_horizon(binary=None, phase=0.0, threshold=-1e-6, polar=False):
     """
     Get discrete horizon of primary component.
@@ -212,18 +236,25 @@ def get_discrete_horizon(binary=None, phase=0.0, threshold=-1e-6, polar=False):
         binary = BinarySystem.from_json(BINARY_DEFINITION)
     position = Position(*((0,) + tuple(binary.orbit.orbital_motion(phase=phase)[0])))
     position_container = _horizon_base_component(binary, position, analytic=False)
+    position_container.correct_mesh(component="primary")
     star = position_container.primary
     visible_projection = utils.get_visible_projection(star)
 
     bb_path = get_eclipse_boundary_path(visible_projection)
     horizon_indices = up.invert(bb_path.contains_points(visible_projection, radius=threshold))
     horizon = visible_projection[horizon_indices]
+    origin_horizon = horizon
+    horizon = _cover_horizon_edges(horizon)
 
     if polar:
         horizon = utils.cartesian_to_polar(horizon)
         horizon_argsort = np.argsort(horizon.T[1])
-        return horizon[horizon_argsort]
-    return horizon
+
+        origin_horizon = utils.cartesian_to_polar(origin_horizon)
+        origin_horizon_argsort = np.argsort(origin_horizon.T[1])
+        return horizon[horizon_argsort], origin_horizon[origin_horizon_argsort]
+
+    return horizon, origin_horizon
 
 
 if __name__ == "__main__":
@@ -231,14 +262,24 @@ if __name__ == "__main__":
 
     _phase = 0.0
 
-    discrete_horizon = get_discrete_horizon(phase=_phase, polar=True)
+    discrete_horizon, origin_discrete_horizon = get_discrete_horizon(phase=_phase, polar=True)
+
+    # show full path of discrete horizon
     phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
     rs, phis = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
     rs, phis = rs[:-1], phis[:-1]
 
-    plt.scatter(phis % FULL_ARC, rs * 10, s=10, c="r")
+    plt.plot(phis % FULL_ARC, rs * 10, c="r")
 
-    analytic_horizon = get_analytics_horizon(phase=_phase, tol=1e-3, polar=True, phi_density=200, theta_density=10000)
+    # show vertex path of discrete horizon
+    phi_argsort = np.argsort(origin_discrete_horizon.T[1] % FULL_ARC)
+    rs, phis = origin_discrete_horizon[phi_argsort].T[0], origin_discrete_horizon[phi_argsort].T[1] % FULL_ARC
+    rs, phis = rs[:-1], phis[:-1]
+
+    plt.scatter(phis % FULL_ARC, rs * 10, c="r")
+
+    # analytic horizon
+    analytic_horizon = get_analytics_horizon(phase=_phase, tol=1e-2, polar=True, phi_density=100, theta_density=1000)
     phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
     rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
     rs, phis = rs[:-1], phis[:-1]

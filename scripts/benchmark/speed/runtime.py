@@ -36,10 +36,10 @@ outfl1 = 'benchmark_circ.dat'
 outfl2 = 'benchmark_ecc.dat'
 
 surface_discredizations = [10, 7, 5, 3]
-n_phases = np.arange(50, 310, 50)
+n_phases = np.arange(50, 410, 50)
 # n_phases = np.arange(50, 60, 50)
 # N = 1
-N = 5
+N = 10
 
 #ecc = False
 ecc = True

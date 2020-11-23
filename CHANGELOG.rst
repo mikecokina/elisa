@@ -163,7 +163,7 @@ v0.3.1_
 v0.4_
 -----
 
-.. v0.4_: https://github.com/mikecokina/elisa/commits/release/0.3.1
+.. v0.4_: https://github.com/mikecokina/elisa/commits/release/0.4
 
 **Release date:** 2020-10-01
 
@@ -180,8 +180,6 @@ v0.4_
     - configuration module uses singleton instead of global variables
       >>> from elisa import settings
     - ability to display observation stored in DataSet class using DataSet.plot.display_observation()
-    - solar constant conserved with different levels of surface discretization
-    - improvements to trapezoidal discretization
 
 **Fixes**
 
@@ -199,23 +197,30 @@ v0.5
 **Release date:** ????-??-??
 
 **Features**
-    Expeceted
-        - genetic algorithm
-        - extended fitting methods
+
+    - added `black_body` as one of possibilities for atmospheres
+    - support different atmospheres for celestial objects
+    - `velocity` and `radial_velocity` option for `colormap` argument added to BinarySystem.plot.surface() and
+      SingleSystem.plot.surface()
 
 **Enhancements**
-
+    - solar constant conserved with different levels of surface discretization
+    - improvements to trapezoidal discretization
     - additional constraints for approximations used during integration of eccentric light curves,
-    relative change in irradiation is checked when similar orbital positions are evaluated, improves precision
-    - pre-build logging schemas added, that are accesible via LOG_CONFIG parameter with options 'default' or 'fit' or
-    path to custom configuration file. 'fit' schema will suppress all logging messages except for messages from
-    analytics class.
+      relative change in irradiation is checked when similar orbital positions are evaluated, improves precision
+    - pre-build logging schemas added, that are accessible via LOG_CONFIG parameter with options 'default' or 'fit' or
+      path to custom configuration file. 'fit' schema will suppress all logging messages except for messages from
+      analytics class.
+    - utilizing numba for computationally heavy tasks such as reflection effect (preparation for GPU ready version of
+      ELISa)
+    - function elisa.analytics.tasks.load_results() returns results in form of dict
+    - command set_up_logging() not needed anymore while changing logging schemas
+
 
 **Fixes**
 
     - <binary_system>.init() reinitialize parameters corretly (require fix for pulsations)
     - inclination rotation is provided in positive direction instead of negative
-
 
 v1.0
 ----

@@ -62,6 +62,7 @@ def main():
     alphas = [1.0, 0.75]
     # clrs = ['blue', 'green']
     clrs = ['gray', 'black']
+    perc = 99
 
     fig, ax = plt.subplots(nrows=1, ncols=2)
     fig.set_size_inches(10, 5)
@@ -82,12 +83,13 @@ def main():
 
             areas = np.concatenate([getattr(container, com).areas for com in component])
             percentiles = np.percentile(areas, [100-68.27, 50, 68.27])
-            percentiles3 = np.percentile(areas, [100-95, 50, 95])
+            percentiles3 = np.percentile(areas, [100-perc, 50, perc])
 
             s1 = sigmas(percentiles)
             s3 = sigmas(percentiles3)
+            print(areas.shape[0])
             print(f'1 sigma deviation in triangle sizes for {discretization_method} method: +{s1[0]}, {s1[1]} %')
-            print(f'95 percentile in triangle sizes for {discretization_method} method: +{s3[0]}, {s3[1]} %')
+            print(f'{perc} percentile in triangle sizes for {discretization_method} method: +{s3[0]}, {s3[1]} %')
             if pot == 2.9 and discretization_method == 'trapezoidal':
                 continue
             hist = ax[jj].hist(areas, bins=bins, label=discretization_method.replace('_', ' '), alpha=alphas[ii],
@@ -97,8 +99,11 @@ def main():
         ax[jj].legend()
 
     # plt.legend()
+    ax[0].text(0.00040, 400, s='a', fontsize=18)
+    ax[1].text(0.00062, 186, s='b', fontsize=18)
+    
     ax[0].set_xlim(0.00037, 0.00083)
-    ax[1].set_xlim(0.00057, 0.00103)
+    ax[1].set_xlim(0.00061, 0.00107)
 
     ax[0].set_ylabel('No. of faces')
     ax[0].set_xlabel('Areas')

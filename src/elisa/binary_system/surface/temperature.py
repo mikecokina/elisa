@@ -2,20 +2,22 @@
 import numpy as np
 
 from copy import copy
-from .. surface import faces as bsfaces
+from ..surface import faces as bsfaces
 from .. import utils as bsutils
-from ... logger import getLogger
+from ...logger import getLogger
 from ... import settings
-from ... utils import is_empty
-from ... base.surface import temperature as btemperature
-from ... pulse import pulsations
+from ...utils import is_empty
+from ...base.surface import temperature as btemperature
+from ...pulse import pulsations
 from ... import (
     umpy as up,
     ld,
     utils
 )
 from elisa.base.surface.temperature import renormalize_temperatures
+from elisa.numba_functions import reflection_effect as re_numba, operations
 
+from time import time
 
 logger = getLogger("binary_system.surface.temperature")
 
@@ -82,7 +84,7 @@ def reflection_effect(system, components_distance, iterations):
         star = getattr(system, component)
 
         points[component], faces[component], centres[component], normals[component], temperatures[component], \
-            areas[component], log_g[component] = init_surface_variables(star)
+        areas[component], log_g[component] = init_surface_variables(star)
 
         # test for visibility of star faces
         vis_test[component], vis_test_symmetry[component] = bsfaces.get_visibility_tests(centres[component],
@@ -97,7 +99,7 @@ def reflection_effect(system, components_distance, iterations):
 
                 # merge surface and spot face parameters into one variable
                 centres[component], normals[component], temperatures[component], areas[component], \
-                    vis_test[component], log_g[component] = \
+                vis_test[component], log_g[component] = \
                     include_spot_to_surface_variables(centres[component], spot.face_centres,
                                                       normals[component], spot.normals,
                                                       temperatures[component], spot.temperatures,
@@ -191,9 +193,8 @@ def reflection_effect(system, components_distance, iterations):
 
         # calculating cos of angle gamma between face normal and join vector
         gamma = \
-            {'primary': np.sum(up.multiply(normals['primary'][vis_test['primary']][:, None, :], join_vector), axis=2),
-             'secondary': np.sum(up.multiply(normals['secondary'][vis_test['secondary']][None, :, :], -join_vector),
-                                 axis=2)}
+            {'primary': re_numba.gamma_primary(normals['primary'][vis_test['primary']], join_vector),
+             'secondary': re_numba.gamma_secondary(normals['secondary'][vis_test['secondary']], join_vector)}
         # negative sign is there because of reversed distance vector used for secondary component
 
         # testing mutual visibility of faces by assigning 0 to non visible face combination
@@ -351,15 +352,16 @@ def get_symmetrical_distance_matrix(shape, shape_reduced, centres, vis_test, vis
         distance - distance matrix
         join vector - matrix of unit vectors pointing between each two faces on opposite stars
     """
-    distance = np.empty(shape=shape[:2], dtype=np.float)
-    join_vector = np.empty(shape=shape, dtype=np.float)
-
-    # in case of symmetries, you need to calculate only minority part of distance matrix connected with base
+    # in case of symmetries, you need to calculate only minor part of distance matrix connected with base
     # symmetry part of the both surfaces
+    distance = np.empty(shape=shape[:-1])
+    join_vector = np.empty(shape=shape)
+
     distance[:shape_reduced[0], :], join_vector[:shape_reduced[0], :, :] = \
-        utils.calculate_distance_matrix(points1=centres['primary'][vis_test_symmetry['primary']],
-                                        points2=centres['secondary'][vis_test['secondary']],
-                                        return_join_vector_matrix=True)
+        utils.calculate_distance_matrix(
+            points1=centres['primary'][vis_test_symmetry['primary']],
+            points2=centres['secondary'][vis_test['secondary']],
+            return_join_vector_matrix=True)
 
     aux = centres['primary'][vis_test['primary']]
     distance[shape_reduced[0]:, :shape_reduced[1]], join_vector[shape_reduced[0]:, :shape_reduced[1], :] = \
@@ -386,20 +388,20 @@ def get_symmetrical_gammma(shape, shape_reduced, normals, join_vector, vis_test,
     gamma = {'primary': np.empty(shape=shape, dtype=np.float),
              'secondary': np.empty(shape=shape, dtype=np.float)}
 
-    # calculating only necessary components of the matrix (near left and upper edge) because of surface symmetry
     gamma['primary'][:, :shape_reduced[1]] = \
-        np.sum(up.multiply(normals['primary'][vis_test['primary']][:, None, :],
-                           join_vector[:, :shape_reduced[1], :]), axis=2)
+        re_numba.gamma_primary(normals['primary'][vis_test['primary']],
+                               join_vector[:, :shape_reduced[1], :])
     gamma['primary'][:shape_reduced[0], shape_reduced[1]:] = \
-        np.sum(up.multiply(normals['primary'][vis_test_symmetry['primary']][:, None, :],
-                           join_vector[:shape_reduced[0], shape_reduced[1]:, :]), axis=2)
+        re_numba.gamma_primary(normals['primary'][vis_test_symmetry['primary']],
+                               join_vector[:shape_reduced[0], shape_reduced[1]:, :])
 
     gamma['secondary'][:shape_reduced[0], :] = \
-        np.sum(up.multiply(normals['secondary'][vis_test['secondary']][None, :, :],
-                           -join_vector[:shape_reduced[0], :, :]), axis=2)
+        re_numba.gamma_secondary(normals['secondary'][vis_test['secondary']],
+                                 join_vector[:shape_reduced[0], :, :])
     gamma['secondary'][shape_reduced[0]:, :shape_reduced[1]] = \
-        np.sum(up.multiply(normals['secondary'][vis_test_symmetry['secondary']][None, :, :],
-                           -join_vector[shape_reduced[0]:, :shape_reduced[1], :]), axis=2)
+        re_numba.gamma_secondary(normals['secondary'][vis_test_symmetry['secondary']],
+                                 join_vector[shape_reduced[0]:, :shape_reduced[1], :])
+
     return gamma
 
 
@@ -518,5 +520,3 @@ def build_temperature_perturbations(system, components_distance, component):
             com_x = 0 if component == 'primary' else components_distance
             star = pulsations.incorporate_temperature_perturbations(star, com_x=com_x, phase=phase, time=system.time)
     return system
-
-

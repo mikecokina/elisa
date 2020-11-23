@@ -29,17 +29,17 @@ class BuildMeshSpotsFreeTestCase(ElisaTestCase):
         assert_array_equal([len(obtained_primary), len(obtained_secondary)], length)
 
     def test_build_mesh_detached_no_spot(self):
-        self.generator_test_mesh(key="detached", d=up.radians(10), length=[426, 426])
+        self.generator_test_mesh(key="detached", d=up.radians(10), length=[418, 418])
 
     def test_build_mesh_overcontact_no_spot(self):
-        self.generator_test_mesh(key="over-contact", d=up.radians(10), length=[389, 373])
+        self.generator_test_mesh(key="over-contact", d=up.radians(10), length=[377, 365])
 
     def test_build_mesh_overcontact_no_spot2(self):
         settings.configure(MESH_GENERATOR="improved_trapezoidal")
-        self.generator_test_mesh(key="over-contact", d=up.radians(10), length=[389, 373])
+        self.generator_test_mesh(key="over-contact", d=up.radians(10), length=[377, 365])
 
     def test_build_mesh_semi_detached_no_spot(self):
-        self.generator_test_mesh(key="semi-detached", d=up.radians(10), length=[426, 426])
+        self.generator_test_mesh(key="semi-detached", d=up.radians(10), length=[418, 418])
 
     def test_mesh_for_duplicate_points_no_spot(self):
         for params in testutils.BINARY_SYSTEM_PARAMS.values():

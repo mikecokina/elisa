@@ -41,8 +41,8 @@ class Star(Body):
     """
 
     MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening']
-    OPTIONAL_KWARGS = ['surface_potential', 'synchronicity', 'albedo', 'pulsations',
-                       'discretization_factor', 'spots', 'metallicity', 'polar_log_g']
+    OPTIONAL_KWARGS = ['surface_potential', 'synchronicity', 'albedo', 'pulsations', 'atmosphere',
+                       'spots', 'metallicity', 'polar_log_g', 'discretization_factor']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     def __init__(self, name=None, **kwargs):
@@ -158,7 +158,7 @@ class Star(Body):
     def properties_serializer(self):
         properties_list = ['mass', 't_eff', 'synchronicity', 'albedo', 'discretization_factor', 'polar_radius',
                            'equatorial_radius', 'gravity_darkening', 'surface_potential', 'pulsations',
-                           'metallicity', 'polar_log_g', 'critical_surface_potential',
+                           'metallicity', 'polar_log_g', 'critical_surface_potential', 'atmosphere',
                            # todo: remove side_radius when figured out starting point for solver
                            'side_radius']
         props = {prop: copy(getattr(self, prop)) for prop in properties_list}

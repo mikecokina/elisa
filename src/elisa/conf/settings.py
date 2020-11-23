@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import warnings
 import numpy as np
@@ -106,6 +105,11 @@ class _Const(object):
         "k93": "k"
     }
 
+    ATM_ATLAS_NORMALIZER = {
+        **ATLAS_TO_ATM_FILE_PREFIX,
+        **{"bb": "bb", "black_body": "bb"}
+    }
+
     ATM_DOMAIN_QUANTITY_TO_VARIABLE_SUFFIX = {
         "temperature": "TEMPERATURE_LIST_ATM",
         "gravity": "GRAVITY_LIST_ATM",
@@ -119,6 +123,7 @@ class _Const(object):
     DATASET_OPTIONAL_KWARGS = ['y_err']
 
     DELIM_WHITESPACE = r'\s+|\t+|\s+\t+|\t+\s+'
+    DATA_PATH = os.path.join(dirname(dirname(__file__)), "data")
 
 
 class Settings(_Const):
@@ -230,24 +235,28 @@ class Settings(_Const):
             "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
         }
 
+    @staticmethod
+    def load_conf(path):
+        with open(path) as f:
+            conf_dict = json.loads(f.read())
+        log_conf.dictConfig(conf_dict)
+
     @classmethod
     def set_up_logging(cls):
         if os.path.isfile(cls.LOG_CONFIG):
-            with open(cls.LOG_CONFIG) as f:
-                conf_dict = json.loads(f.read())
-            log_conf.dictConfig(conf_dict)
+            cls.load_conf(cls.LOG_CONFIG)
+            return
         elif cls.LOG_CONFIG == 'default':
             cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
                                           'logging_schemas/default.json')
-            cls.set_up_logging()
         elif cls.LOG_CONFIG == 'fit':
             cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
                                           'logging_schemas/fit.json')
-            cls.set_up_logging()
         else:
             cls.LOG_CONFIG = os.path.join(dirname(os.path.abspath(__file__)),
                                           'logging_schemas/default.json')
-            cls.set_up_logging()
+
+        cls.load_conf(cls.LOG_CONFIG)
 
     @classmethod
     def read_and_update_config(cls, conf_path=None):
@@ -274,6 +283,8 @@ class Settings(_Const):
             if not hasattr(cls, key):
                 raise ValueError("You are about to set configuration which doesn't exist")
             setattr(cls, key, value)
+            if key == 'LOG_CONFIG':
+                cls.set_up_logging()
         cls._update_atlas_to_base_dir()
 
     @classmethod
@@ -366,14 +377,22 @@ class Settings(_Const):
             if not os.path.isdir(cls.K93_ATM_TABLES):
                 warnings.warn(f"path {cls.K93_ATM_TABLES}\n"
                               "to kurucz 1993 atmosphere atlas doesn't exists\n"
-                              "Specifiy it in elisa_conf.ini file")
+                              "Specifiy it in elisa_conf.ini file", UserWarning)
 
+            if c_parse.get('support', 'atlas', fallback=None):
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    warnings.simplefilter("always", DeprecationWarning)
+                    warnings.warn("Variable `atlas` in configuration section `support` is not "
+                                  "longer supported and will be removed in future version.\n"
+                                  "Use atmosphere definition as initial parameter "
+                                  "for given celestial object", DeprecationWarning)
+                    warnings.simplefilter("ignore", DeprecationWarning)
             cls.ATM_ATLAS = c_parse.get('support', 'atlas', fallback=cls.ATM_ATLAS)
             cls.PASSBAND_TABLES = c_parse.get('support', 'passband_tables', fallback=cls.PASSBAND_TABLES)
 
             if not isdir(cls.PASSBAND_TABLES) and not cls.SUPPRESS_WARNINGS:
                 warnings.warn(f"path {cls.PASSBAND_TABLES} to passband tables doesn't exists\n"
-                              f"Specifiy it in elisa_conf.ini file")
+                              f"Specifiy it in elisa_conf.ini file", UserWarning)
         # ******************************************************************************************************************
 
     @classmethod

@@ -18,7 +18,6 @@ def compute_light_curve_without_pulsations(single, **kwargs):
         * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
         * ** left_bandwidth ** * - float
         * ** right_bandwidth ** * - float
-        * ** atlas ** * - str
         * ** position_method** * - function definition; to evaluate orbital positions
     :return: Dict[str, numpy.array];
     """

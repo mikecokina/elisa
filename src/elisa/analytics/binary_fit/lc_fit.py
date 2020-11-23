@@ -12,7 +12,7 @@ from .. params.parameters import BinaryInitialParameters
 from .. params import parameters
 from .. models import lc as lc_model
 from . summary import fit_lc_summary_with_error_propagation, simple_lc_fit_summary
-from . shared import check_for_boundary_surface_potentials
+from . shared import check_for_boundary_surface_potentials, eval_constraint_in_dict
 from . import least_squares
 from . import mcmc
 from . import io_tools
@@ -44,7 +44,7 @@ class LCFit(object):
 
         try:
             result_dict: Dict = self.flat_result
-            result_dict = check_for_boundary_surface_potentials(result_dict)
+            result_dict = check_for_boundary_surface_potentials(result_dict, self.morphology)
             b_kwargs = {key: val['value'] for key, val in result_dict.items()}
             binary_instance = lc_model.prepare_binary(_verify=False, **b_kwargs)
 
@@ -236,6 +236,7 @@ class LCFit(object):
         """
         with open(path, 'r') as f:
             loaded_result = json.load(f)
+        loaded_result = eval_constraint_in_dict(loaded_result)
         self.result = loaded_result
         self.flat_result = parameters.deserialize_result(self.result)
 
@@ -249,7 +250,7 @@ class LCFit(object):
             raise IOError("No result to store.")
 
         with open(path, 'w') as f:
-            json.dump(self.result, f, separators=(',\n', ': '))
+            json.dump(self.result, f, separators=(',', ': '), indent=4)
 
     @abstractmethod
     def resolve_fit_cls(self, morphology: str):
@@ -300,7 +301,7 @@ class LCFitMCMC(LCFit):
         """
         return io_tools.load_chain(self, filename, discard, percentiles)
 
-    def fit_summary(self, path=None, **kwargs):
+    def fit_summary(self, filename=None, **kwargs):
         """
         Function produces detailed summary about the current LC fitting task with complete error propagation for the LC
         parameters if `propagate_errors` is True.
@@ -316,10 +317,10 @@ class LCFitMCMC(LCFit):
         """
         propagate_errors, percentiles = kwargs.get('propagate_errors', False), kwargs.get('percentiles', [16, 50, 84])
         if not propagate_errors:
-            simple_lc_fit_summary(self, path)
+            simple_lc_fit_summary(self, filename)
             return
 
-        fit_lc_summary_with_error_propagation(self, path, percentiles)
+        fit_lc_summary_with_error_propagation(self, filename, percentiles)
 
 
 class LCFitLeastSquares(LCFit):

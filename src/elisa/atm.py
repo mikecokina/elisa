@@ -1,4 +1,5 @@
 import itertools
+import json
 import os
 import sys
 import warnings
@@ -10,8 +11,8 @@ from threading import Thread
 from typing import Iterable
 from copy import deepcopy
 
-from . logger import getLogger
-from . base.error import (
+from .logger import getLogger
+from .base.error import (
     AtmosphereError,
     MetallicityError,
     TemperatureError,
@@ -25,11 +26,11 @@ from . import (
     umpy as up,
     utils,
     const,
-    ld
+    ld,
 )
+from . buffer import buffer
 
 from time import time
-
 logger = getLogger(__name__)
 
 
@@ -121,6 +122,7 @@ class IntensityContainer(object):
     """
     Intended to keep information about integrated radiance for given params.
     """
+
     def __init__(self, intensity, temperature, log_g, metallicity):
         """
         Initialise container with given parametres.
@@ -153,6 +155,58 @@ class NaiveInterpolatedAtm(object):
             * **passband** * -- Dict[str, elisa.observer.observer.PassbandContainer]
         :return: List;
         """
+        if validated_atlas(atlas) == "bb":
+            return NaiveInterpolatedAtm.black_body_radiance(temperature, **kwargs)
+        return NaiveInterpolatedAtm.atlas_radiance(temperature, log_g, metallicity, atlas, **kwargs)
+
+    @staticmethod
+    def black_body_radiance(temperature, **kwargs):
+        # setup multiplicators to convert quantities to SI
+        flux_mult, wave_mult = const.PI, 1e-10
+        # obtain localized atmospheres in matrix
+        localized_atms = NaiveInterpolatedAtm.arange_black_body_localized_atms(temperature, kwargs["passband"])
+        # integrate flux
+        return compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+
+    @staticmethod
+    def arange_black_body_localized_atms(temperature, passband_containers):
+        localized_atms = dict()
+        standard_wavelength = get_standard_wavelengths()
+
+        # build temperature mask and avoid repeative computation
+        # temperature vaues after decimal points are useless
+        initial_shape = len(temperature)
+        temperature = np.round(temperature, 0)
+        temperature, reverse_map = np.unique(temperature, return_inverse=True)
+
+        for band, pb_container in passband_containers.items():
+            # how manu wavelengths generate based on standard
+            mask = np.logical_and(np.less_equal(standard_wavelength, pb_container.right_bandwidth),
+                                  np.greater_equal(standard_wavelength, pb_container.left_bandwidth))
+            hm_waves = len(standard_wavelength[mask])
+            # wavelenghts in angstrom
+            wavelengths = np.sort(np.unique(
+                np.concatenate(
+                    [np.linspace(pb_container.left_bandwidth, pb_container.right_bandwidth, hm_waves, True),
+                     standard_wavelength[mask]])
+                )
+            )
+
+            # compute flux in flam, apply passband and replace possible NaNs
+            flux = np.nan_to_num([
+                pb_container.akima(wavelengths) *
+                planck_function(wavelengths * pb_container.wave_to_si_mult, _temperature)
+                for _temperature in temperature
+            ])
+            # sometimes, there are small negative values on the boundwidth boundaries due to akima interpolation
+            flux[np.less(flux, 0)] = 0.0
+            # broadcast and fill localized atms
+            localized_atms[band] = {"flux": flux[reverse_map], "wave": wavelengths}
+
+        return localized_atms
+
+    @staticmethod
+    def atlas_radiance(temperature, log_g, metallicity, atlas, **kwargs):
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
         # related atmospheric files for each face (upper and lower)
@@ -176,7 +230,6 @@ class NaiveInterpolatedAtm(object):
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
         localized_atms = NaiveInterpolatedAtm.interpolate_spectra(atm_containers, flux_matrices,
                                                                   temperature=temperature)
-
         return compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
     @staticmethod
@@ -224,7 +277,7 @@ class NaiveInterpolatedAtm(object):
         bottom_atm_container.model.reset_index(drop=True, inplace=True)
 
         intensity = weight * (
-            top_atm_container.model.flux - bottom_atm_container.model.flux) + bottom_atm_container.model.flux
+                top_atm_container.model.flux - bottom_atm_container.model.flux) + bottom_atm_container.model.flux
 
         return intensity, top_atm_container.model.wavelength
 
@@ -273,6 +326,7 @@ class NaiveInterpolatedAtm(object):
 
     @staticmethod
     def atm_tables(fpaths):
+        # TODO: NOT USED??
         """
         Read atmosphere tables as pandas.DataFrame's.
 
@@ -314,11 +368,12 @@ class NaiveInterpolatedAtm(object):
         })
         directory = get_atm_directory(m, atlas)
         fnames = str(atlas) + \
-            domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
-            domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
-            domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
+                 domain_df["mh"].apply(lambda x: utils.numeric_metallicity_to_string(x)) + "_" + \
+                 domain_df["temp"].apply(lambda x: str(int(x))) + "_" + \
+                 domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
 
-        return list(os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
+        return list(
+            os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
 
 
 def arange_atm_to_same_wavelength(atm_containers):
@@ -677,9 +732,9 @@ def validated_atlas(atlas):
     :return: str;
     """
     try:
-        return settings.ATLAS_TO_ATM_FILE_PREFIX[atlas]
+        return settings.ATM_ATLAS_NORMALIZER[atlas]
     except KeyError:
-        raise KeyError(f'Incorrect atlas. Following are allowed: {", ".join(settings.ATLAS_TO_ATM_FILE_PREFIX.keys())}')
+        raise KeyError(f'Incorrect atlas. Following are allowed: {", ".join(settings.ATM_ATLAS_NORMALIZER.keys())}')
 
 
 def parse_domain_quantities_from_atm_table_filename(filename: str):
@@ -988,8 +1043,24 @@ def read_unique_atm_tables(fpaths):
         indices where it occures)
     """
     fpaths, fpaths_map = unique_atm_fpaths(fpaths)
-    result_queue = multithread_atm_tables_reader_runner(fpaths)
-    models = [qval[1] for qval in utils.IterableQueue(result_queue) if qval[1] is not None]
+
+    # check if the atm table is in the buffer
+    models, load_fpaths = [], []
+    for fpath in fpaths:
+        if fpath in buffer.ATMOSPHERE_TABLES:
+            models.append(buffer.ATMOSPHERE_TABLES[fpath])
+        else:
+            load_fpaths.append(fpath)
+
+    if len(load_fpaths) > 0:
+        result_queue = multithread_atm_tables_reader_runner(load_fpaths)
+        loaded_models = [qval[1] for qval in utils.IterableQueue(result_queue) if qval[1] is not None]
+        # add loaded atmospheres to atm buffer
+        for ii, fpath in enumerate(load_fpaths):
+            buffer.ATMOSPHERE_TABLES[fpath] = loaded_models[ii]
+        models += loaded_models
+    # clean buffer
+    buffer.reduce_buffer(buffer.ATMOSPHERE_TABLES)
     return models, fpaths_map
 
 
@@ -1068,10 +1139,32 @@ def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
         coeff = ld.calculate_bolometric_limb_darkening_factor(limb_darkening_law=settings.LIMB_DARKENING_LAW,
                                                               coefficients=ld_coefficients)
 
-        normal_radiances[star] = {filter: normal_radiance / coeff for filter, normal_radiance in
-                                  component_normal_radiances.items()}
+        normal_radiances[star] = {
+            band: normal_radiance / coeff for band, normal_radiance in component_normal_radiances.items()
+        }
 
     return normal_radiances
+
+
+def planck_function(wavelegth, temperature):
+    """
+    Standard Placnk funcntion.
+    :param wavelegth: Union[float, numpy.array]; wavelengths
+    :param temperature: float; temperature
+    :return: Union[float, numpy.array]
+    """
+    h = (2.0 * const.PLANCK_CONST * const.C ** 2) / np.power(wavelegth, 5)
+    e = (const.PLANCK_CONST * const.C) / (wavelegth * const.BOLTZMAN_CONST * temperature)
+    return h / (np.exp(e) - 1.0)
+
+
+def get_standard_wavelengths():
+    """
+    Obtain standard wavelengths used in Castelli-Kurucz tables.
+    :return: numpy.array
+    """
+    with open(os.path.join(settings.DATA_PATH, "wavelength.json"), "r") as f:
+        return np.array(json.loads(f.read()))
 
 
 if __name__ == "__main__":

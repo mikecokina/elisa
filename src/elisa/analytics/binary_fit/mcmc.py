@@ -39,6 +39,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.flat_chain_path = ''
         self.eval_counter = 0
         self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
+        self.error_penalization = 0
 
     @staticmethod
     def ln_prior(xn):
@@ -55,12 +56,10 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         :param synthetic: Dict; {'dataset_name': numpy.array, }
         :return: float;
         """
-        lh = - 0.5 * np.sum(
-            [np.sum(
-                np.power((self.y_data[item] - synthetic[item][self.x_data_reducer[item]]) / self.y_err[item], 2)
-                + np.log(2 * const.PI * np.power(self.y_err[item], 2))
-            )
-                for item, value in synthetic.items()])
+        lh = - 0.5 * (np.sum(
+            [np.sum(np.power((self.y_data[item] - synthetic[item][self.x_data_reducer[item]]) / self.y_err[item], 2))
+             for item, value in synthetic.items()]
+        ) + self.error_penalization)
 
         self._last_known_lhood = lh if lh < self._last_known_lhood else self._last_known_lhood
         return lh
@@ -208,7 +207,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
         result_dict["r_squared"] = {'value': r_squared_result, "unit": None}
 
-        result_dict = check_for_boundary_surface_potentials(result_dict)
+        result_dict = check_for_boundary_surface_potentials(result_dict, LightCurveFit.MORPHOLOGY)
 
         setattr(self, 'flat_result', result_dict)
         return parameters.serialize_result(result_dict)

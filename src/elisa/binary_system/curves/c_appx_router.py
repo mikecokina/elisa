@@ -47,7 +47,6 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
             * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
     :return: lambda;
     """
     params = dict(input_argument=phases, return_nparray=True, calculate_from='phase')
@@ -248,7 +247,6 @@ def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, pote
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
             * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
     :return: Dict[str, numpy.array];
     """
     orbital_positions = np.stack((orbital_supplements.body, orbital_supplements.mirror), axis=1)
@@ -289,7 +287,6 @@ def integrate_eccentric_curve_appx_three(binary, orbital_positions, new_geometry
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
             * ** left_bandwidth ** * - float
             * ** right_bandwidth ** * - float
-            * ** atlas ** * - str
     :return: Dict[str, numpy.array];
     """
     fn_args = (binary, potentials, new_geometry_mask, crv_labels, curve_fn)

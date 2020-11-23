@@ -2,7 +2,7 @@ from copy import copy
 
 import numpy as np
 from numpy.testing import assert_array_equal
-from elisa import const as c, units as u
+from elisa import const as c, units as u, get_default_binary_definition
 from elisa.base.star import Star
 from elisa.binary_system.system import BinarySystem
 from unittests.utils import ElisaTestCase, prepare_binary_system
@@ -430,3 +430,14 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
         com_a2 = np.float64((std.semi_major_axis * u.m).to(u.solRad))
         self.assertTrue(np.round(com_a1, 2) == np.round(com_a2, 2))
         self.assertTrue(np.round(com.mass_ratio, 2) == np.round(std.mass_ratio, 2))
+
+
+class BinarySystemSeparatedAtmospheres(ElisaTestCase):
+    @staticmethod
+    def test_atmospheres_of_components_differs():
+        definition = get_default_binary_definition()
+        definition["primary"].update({**definition["primary"], "atmosphere": "bb"})
+        definition["secondary"].update({**definition["secondary"], "atmosphere": "ck04"})
+        binary = BinarySystem.from_json(definition)
+        assert binary.primary.atmosphere, "bb"
+        assert binary.secondary.atmosphere, "ck04"

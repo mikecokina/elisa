@@ -211,70 +211,109 @@ class Plot(object):
         graphics.binary_wireframe(**binary_wireframe_kwargs)
 
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
-                face_mask_primary=None, face_mask_secondary=None, inclination=None, azimuth=None, units='cgs',
+                face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, units='SI',
                 axis_unit=u.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
-                surface_colors=('g', 'r')):
+                surface_colors=('g', 'r'), separate_colormaps=None):
         """
-        function creates plot of binary system components
+        Function creates plot of binary system components
 
-        :param phase: float -- phase at which plot the system, important for eccentric orbits
+        :param phase: float; phase at which plot the system, important for eccentric orbits
         :param components_to_plot: str; `primary`, `secondary` or `both` (default),
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
-        :param colormap: str; 'gravity_acceleration`, `temperature` or None(default)
+        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity` or None(default)
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask_primary: array[bool]; mask to select which faces to display
         :param face_mask_secondary: array[bool]: mask to select which faces to display
-        :param inclination: Union[float, astropy.Quantity]; in degree - elevation of camera
+        :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
-        :param units: str; units of gravity acceleration colormap  `SI` or `cgs`
+        :param units: str; unit system of colormap  `SI` or `cgs`
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param colorbar_orientation: str; `horizontal` or `vertical` (default)
-        :param colorbar: bool; colorabar on/off switchic
+        :param colorbar: bool; colorbar on/off switch
         :param scale: str; `linear` or `log`
-        :param surface_colors: tuple; tuple of colors for components if colormaps are not specified
+        :param surface_colors: tuple; tuple of colors for components if `colormap` are not specified
+        :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         """
         surface_kwargs = dict()
 
-        inclination = transform.deg_transform(inclination, u.deg, when_float64=transform.WHEN_FLOAT64) \
-            if inclination is not None else up.degrees(self.binary.inclination)
-        components_distance, azim = self.binary.orbit.orbital_motion(phase=phase)[0][:2]
-        azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
-            if azimuth is not None else up.degrees(azim) - 90
+        elevation = transform.deg_transform(elevation, u.deg, when_float64=transform.WHEN_FLOAT64) \
+            if elevation is not None else 0
+        
+        orbital_position = self.binary.orbit.orbital_motion(phase=phase)[0]
+        components_distance, azim = orbital_position[:2]
+        orbital_position = Position(0, orbital_position[0], orbital_position[1],
+                                    orbital_position[2], orbital_position[3])
+        
+        azimuth = azimuth if azimuth is not None else 180
 
+        if separate_colormaps is None:
+            separate_colormaps = self.binary.morphology != 'over-contact' and \
+                                 colormap not in ['velocity', 'radial_velocity'] and components_to_plot == 'both'
+
+        potentials = self.binary.correct_potentials([phase, ], component="all", iterations=2)
+        
         orbital_position_container = OrbitalPositionContainer.from_binary_system(self.binary, self.defpos)
         # recalculating spot latitudes
         spots_longitudes = dynamic.calculate_spot_longitudes(self.binary, phase, component="all")
         dynamic.assign_spot_longitudes(orbital_position_container, spots_longitudes, index=None, component="all")
+        
+        orbital_position_container.set_on_position_params(orbital_position, potentials["primary"][0],
+                                                          potentials["secondary"][0])
+        orbital_position_container.build(components_distance=components_distance, components='both')
 
-        orbital_position_container.build(components_distance=components_distance, components=components_to_plot)
+        distances_to_com = \
+            {'primary': orbital_position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio),
+             'secondary': orbital_position.distance / (1 + self.binary.mass_ratio)}
+        orbital_position_container.flatt_it()
+        orbital_position_container.primary.points[:, 0] -= distances_to_com['primary']
+        orbital_position_container.secondary.points[:, 0] -= distances_to_com['secondary']
+
+        orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
         # this part decides if both components need to be calculated at once (due to reflection effect)
         components = butils.component_to_list(components_to_plot)
 
         com = {'primary': 0.0, 'secondary': components_distance}
+        mult = np.array([-1, -1, 1.0])[None, :]
         for component in components:
-            star = getattr(orbital_position_container, component).flatt_it()
+            star = getattr(orbital_position_container, component)
 
             correct_face_orientation(star, com=com[component])
-            points, faces = star.surface_serializer()
+            points, faces = star.points, star.faces
 
             surface_kwargs.update({
-                f'points_{component}': points,
+                f'points_{component}': mult * points,
                 f'{component}_triangles': faces
             })
 
             if colormap == 'gravity_acceleration':
-                log_g = star.get_flatten_parameter('log_g')
+                log_g = getattr(star, 'log_g')
                 value = log_g if units == 'SI' else log_g + 2
                 surface_kwargs.update({
                     f'{component}_cmap': value if scale == 'log' else up.power(10, value)
                 })
 
             elif colormap == 'temperature':
-                temperatures = star.get_flatten_parameter('temperatures')
+                temperatures = getattr(star, 'temperatures')
                 surface_kwargs.update({
                     f'{component}_cmap': temperatures if scale == 'linear' else up.log10(temperatures)
                 })
+
+            elif colormap == 'velocity':
+                velocities = np.linalg.norm(getattr(star, 'velocities'), axis=1)
+                velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
+                surface_kwargs.update({
+                    f'{component}_cmap': velocities if scale == 'linear' else up.log10(velocities)
+                })
+
+            elif colormap == 'radial_velocity':
+                velocities = getattr(star, 'velocities')[:, 0]
+                velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
+                surface_kwargs.update({
+                    f'{component}_cmap': velocities
+                })
+                if scale == 'log':
+                    raise Warning("`log` scale is not allowed for radial velocity colormap.")
 
             face_mask = locals().get(f'face_mask_{component}')
             if not is_empty(face_mask):
@@ -284,8 +323,8 @@ class Plot(object):
 
             if normals:
                 surface_kwargs.update({
-                    f'{component}_centres': star.face_centres,
-                    f'{component}_arrows': star.normals
+                    f'{component}_centres': mult * star.face_centres,
+                    f'{component}_arrows': mult * star.normals
                 })
 
             if axis_unit != u.dimensionless_unscaled:
@@ -305,7 +344,7 @@ class Plot(object):
             "plot_axis": plot_axis,
             "face_mask_primary": face_mask_primary,
             "face_mask_secondary": face_mask_secondary,
-            "inclination": inclination,
+            "elevation": elevation,
             "azimuth": azimuth,
             "units": units,
             "axis_unit": axis_unit,
@@ -313,7 +352,8 @@ class Plot(object):
             "colorbar": colorbar,
             "scale": scale,
             "morphology": self.binary.morphology,
-            "surface_colors": surface_colors
+            "surface_colors": surface_colors,
+            "separate_colormaps": separate_colormaps
         })
 
         graphics.binary_surface(**surface_kwargs)

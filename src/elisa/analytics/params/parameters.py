@@ -253,7 +253,7 @@ def constraints_evaluator(substitution: Dict, constrained: Dict) -> Dict:
 
     :param substitution: Dict[str, Union[InitialParameter, float]]; non-fixed values
                                                                    (xn vector in dict form {label: param})
-    :param constrained: Dict[str, Union[InitialParameter, float]]; values estimated as constraintes
+    :param constrained: Dict[str, Union[InitialParameter, float]]; constraint parameters
                                                                    in form {label: InitialParameter}
     :return: Dict[str, float];
     """
