@@ -223,12 +223,13 @@ def extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_d
     return x_data, y_data, y_err
 
 
-def check_for_boundary_surface_potentials(result_dict):
+def check_for_boundary_surface_potentials(result_dict, morphology=None):
     """
     Function checks if surface potential are within errors below critical potentials (which would break BinarySystem
     initialization). If surface potential are within errors they are snapped to critical values.
 
     :param result_dict: dict; flat dict of fit results
+    :param morphology: str; expected morphology
     :return: dict; corrected flat dict of fit results
     """
     if "primary@surface_potential" not in result_dict.keys() or "secondary@surface_potential" not in result_dict.keys():
@@ -267,6 +268,9 @@ def check_for_boundary_surface_potentials(result_dict):
         l2 = BinarySystem.libration_potentials_static(periastron_distance, mass_ratio)[2]
         if 5 * sigma >= l2 - pot["value"] >= 0.0:
             pot["value"] = l2 - 1e-5 * sigma
+
+    if morphology == 'over-contact':
+        result_dict['secondary@surface_potential']['value'] = result_dict['primary@surface_potential']['value']
 
     return result_dict
 
