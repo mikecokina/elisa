@@ -217,11 +217,14 @@ def calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives, 
     :param scale: numpy.float; scale of the perturbations
     :return: numpy.array;
     """
-    radial_displacement = calculate_radial_displacement(mode, harmonics) / scale
-    phi_displacement = calculate_phi_displacement(mode, points[:, 2], harmonics_derivatives[0])
-    theta_displacement = calculate_theta_displacement(mode, harmonics_derivatives[1])
+    if settings.PULSATION_MODEL == 'uniform':
+        radial_displacement = calculate_radial_displacement(mode, harmonics) / scale
+        phi_displacement = calculate_phi_displacement(mode, points[:, 2], harmonics_derivatives[0])
+        theta_displacement = calculate_theta_displacement(mode, harmonics_derivatives[1])
 
-    return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
+        return np.column_stack((radial_displacement, phi_displacement, theta_displacement))
+    else:
+        raise NotImplementedError(f'Pulsation model: {settings.PULSATION_MODEL} not implemented.')
 
 
 def calculate_acc_pert(mode, points, harmonics, harmonics_derivatives):

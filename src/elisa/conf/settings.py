@@ -146,6 +146,7 @@ class Settings(_Const):
     REFLECTION_EFFECT = True
     REFLECTION_EFFECT_ITERATIONS = 2
     LIMB_DARKENING_LAW = 'cosine'
+    PULSATION_MODEL = 'uniform'
     DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 2.0
     SURFACE_DISPLACEMENT_TOL = 1e-2
     RV_METHOD = 'point_mass'
@@ -233,6 +234,7 @@ class Settings(_Const):
             "MESH_GENERATOR": cls.MESH_GENERATOR,
             "DEFORMATION_TOL": cls.DEFORMATION_TOL,
             "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
+            "PULSATION_MODEL": cls.PULSATION_MODEL
         }
 
     @staticmethod
@@ -320,6 +322,7 @@ class Settings(_Const):
                 c_parse.getfloat('physics', 'surface_displacement_tol', fallback=cls.SURFACE_DISPLACEMENT_TOL)
             cls.RV_METHOD = c_parse.getfloat('physics', 'rv_method', fallback=cls.RV_METHOD)
             cls.RV_LAMBDA_INTERVAL = c_parse.getfloat('physics', 'rv_lambda_interval', fallback=cls.RV_LAMBDA_INTERVAL)
+            cls.PULSATION_MODEL = c_parse.getfloat('physics', 'pulsation_model', fallback=cls.PULSATION_MODEL)
         # **************************************************************************************************************
         if c_parse.has_section('computational'):
             cls.MAX_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'max_discretization_factor',
