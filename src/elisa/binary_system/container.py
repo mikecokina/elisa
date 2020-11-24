@@ -155,7 +155,7 @@ class OrbitalPositionContainer(PositionContainer):
         :return:
         """
         self.build_temperature_distribution(components_distance, component)
-        self.build_temperature_perturbations(components_distance, component)
+        # self.build_temperature_perturbations(components_distance, component)
 
         return self
 

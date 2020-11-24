@@ -36,11 +36,11 @@ def build_surface_gravity(system_container):
                      calculate_potential_gradient(spot.points, system_container.angular_velocity, star_container.mass)}
             )
 
-    # TODO: here implement pulsations
-    if star_container.has_pulsations():
-        g_acc_vector, g_acc_vector_spot = \
-            pulsations.incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot,
-                                                        phase=system_container.position.phase)
+    # # TODO: here implement pulsations
+    # if star_container.has_pulsations():
+    #     g_acc_vector, g_acc_vector_spot = \
+    #         pulsations.incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot,
+    #                                                     phase=system_container.position.phase)
 
     gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1)
     setattr(star_container, 'potential_gradient_magnitudes', gravity[star_container.face_symmetry_vector]) \

@@ -171,10 +171,10 @@ def build_surface_gravity(system, components_distance, component="all"):
                                                       synchronicity=synchronicity, mass_ratio=mass_ratio)
                 g_acc_vector_spot.update({spot_index: scaling_factor * p_grad})
 
-        if star.has_pulsations():
-            g_acc_vector, g_acc_vector_spot = \
-                pulsations.incorporate_gravity_perturbation(star, g_acc_vector, g_acc_vector_spot,
-                                                            phase=system.position.phase)
+        # if star.has_pulsations():
+        #     g_acc_vector, g_acc_vector_spot = \
+        #         pulsations.incorporate_gravity_perturbation(star, g_acc_vector, g_acc_vector_spot,
+        #                                                     phase=system.position.phase)
 
         gravity = np.mean(np.linalg.norm(g_acc_vector, axis=1)[faces], axis=1) if star.symmetry_test else \
             np.mean(np.linalg.norm(g_acc_vector, axis=1), axis=1)

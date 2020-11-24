@@ -58,12 +58,13 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
     return derivative
 
 
-def incorporate_pulsations_to_mesh(star_container, com_x):
+def incorporate_pulsations_to_mesh(star_container, com_x, scale=1.0):
     """
     Function adds perturbation to the surface mesh due to pulsations.
 
     :param star_container: base.container.StarContainer;
     :param com_x: float;
+    :param scale: numpy.float; scale of the perturbations
     :return: base.container.StarContainer;
     """
     tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
@@ -73,11 +74,12 @@ def incorporate_pulsations_to_mesh(star_container, com_x):
 
     for mode_index, mode in star_container.pulsations.items():
         displacement += calculate_mode_displacement(mode, tilted_points, mode.point_harmonics,
-                                                    mode.point_harmonics_derivatives)
+                                                    mode.point_harmonics_derivatives, scale=scale)
         for spot_idx, spoints in tilted_points_spot.items():
             displacement_spots[spot_idx] += \
                 calculate_mode_displacement(mode, spoints, mode.spot_point_harmonics[spot_idx],
-                                            mode.spot_point_harmonics_derivatives[spot_idx])
+                                            mode.spot_point_harmonics_derivatives[spot_idx],
+                                            scale=scale)
 
     setattr(star_container, 'points', putils.derotate_surface_points(tilted_points + displacement,
                                                                      star_container.pulsations[0].mode_axis_phi,
@@ -204,7 +206,7 @@ def calculate_theta_displacement(mode, harmonics_derivatives):
     return mode.horizontal_amplitude * np.real(harmonics_derivatives)
 
 
-def calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives):
+def calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives, scale=1.0):
     """
     Calculates surface displacement caused by given `mode`.
 
@@ -212,9 +214,10 @@ def calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives):
     :param points: numpy.array;
     :param harmonics: numpy.array; Y_l^m
     :param harmonics_derivatives: numpy.array; [dY/dphi, dY/dtheta]
+    :param scale: numpy.float; scale of the perturbations
     :return: numpy.array;
     """
-    radial_displacement = calculate_radial_displacement(mode, harmonics)
+    radial_displacement = calculate_radial_displacement(mode, harmonics) / scale
     phi_displacement = calculate_phi_displacement(mode, points[:, 2], harmonics_derivatives[0])
     theta_displacement = calculate_theta_displacement(mode, harmonics_derivatives[1])
 
