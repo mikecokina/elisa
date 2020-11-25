@@ -391,7 +391,7 @@ def binary_surface(**kwargs):
                 both_cmaps = up.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                 plot.set_array(both_cmaps)
                 if kwargs['colorbar']:
-                    colorbar = fig.colorbar(plot, shrink=0.7)
+                    colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
                     set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'])
             else:
                 plot1.set_array(kwargs['primary_cmap'])

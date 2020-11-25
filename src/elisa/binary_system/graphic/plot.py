@@ -262,12 +262,10 @@ class Plot(object):
                                                           potentials["secondary"][0])
         orbital_position_container.build(components_distance=components_distance, components='both')
 
-        distances_to_com = \
-            {'primary': orbital_position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio),
-             'secondary': orbital_position.distance / (1 + self.binary.mass_ratio)}
         orbital_position_container.flatt_it()
-        orbital_position_container.primary.points[:, 0] -= distances_to_com['primary']
-        orbital_position_container.secondary.points[:, 0] -= distances_to_com['secondary']
+        distances_to_com = orbital_position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio)
+        orbital_position_container.primary.points[:, 0] -= distances_to_com
+        orbital_position_container.secondary.points[:, 0] -= distances_to_com
 
         orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
         # this part decides if both components need to be calculated at once (due to reflection effect)
