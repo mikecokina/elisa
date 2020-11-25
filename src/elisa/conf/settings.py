@@ -153,7 +153,7 @@ class Settings(_Const):
     RV_LAMBDA_INTERVAL = (5500, 5600)
 
     # computational
-    MAX_DISCRETIZATION_FACTOR = 20
+    MAX_DISCRETIZATION_FACTOR = 12
     MIN_DISCRETIZATION_FACTOR = 3
     NUMBER_OF_THREADS = 1
     NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
@@ -396,7 +396,7 @@ class Settings(_Const):
             if not isdir(cls.PASSBAND_TABLES) and not cls.SUPPRESS_WARNINGS:
                 warnings.warn(f"path {cls.PASSBAND_TABLES} to passband tables doesn't exists\n"
                               f"Specifiy it in elisa_conf.ini file", UserWarning)
-        # ******************************************************************************************************************
+        # **************************************************************************************************************
 
     @classmethod
     def _update_atlas_to_base_dir(cls):
