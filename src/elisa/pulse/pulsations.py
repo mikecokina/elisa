@@ -153,17 +153,17 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
     for mode_index, mode in star_container.pulsations.items():
         mode.radial_amplitude = mode.amplitude / mode.angular_frequency
 
-        # horizontal/radial amplitude
+        # horizontal/radial amplitude (Aerts 2010), p. 198
         ampl_ratio = np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2
         mode.horizontal_amplitude = ampl_ratio * mode.radial_amplitude / r_equiv
 
         surf_ampl = mode.horizontal_amplitude
         if surf_ampl > settings.SURFACE_DISPLACEMENT_TOL:
             prec = int(- np.log10(surf_ampl) + 2)
-            logger.warning(f'Relative surface displacement amplitude ({round(surf_ampl, prec)}) for the mode {mode_index} '
-                           f'exceeded safe tolerances ({settings.SURFACE_DISPLACEMENT_TOL}) given by the use of linear '
-                           f'approximation. This can lead to invalid surface discretization. Use this result with '
-                           f'caution.')
+            logger.warning(f'Relative horizontal surface displacement amplitude ({round(surf_ampl, prec)}) for the mode'
+                           f' {mode_index} exceeded safe tolerances ({settings.SURFACE_DISPLACEMENT_TOL}) given by the'
+                           f' use of linear approximation. This can lead to invalid surface discretization. Use this'
+                           f' result with caution.')
 
 
 def calculate_radial_displacement(mode, harmonics):
@@ -186,12 +186,12 @@ def calculate_phi_displacement(mode, thetas, harmonics_derivatives):
     :param harmonics_derivatives: numpy.array; dY/dphi
     :return: numpy.array;
     """
-    sin_thetas = np.sin(thetas)
-    sin_test = sin_thetas != 0.0
+    sin2_thetas = np.power(np.sin(thetas), 2)
+    sin_test = sin2_thetas != 0.0
     retval = np.zeros(thetas.shape)
     retval[sin_test] = \
         mode.horizontal_amplitude * np.real(harmonics_derivatives[sin_test]) \
-        / sin_thetas[sin_test]
+        / sin2_thetas[sin_test]
     return retval
 
 
