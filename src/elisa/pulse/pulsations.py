@@ -211,7 +211,7 @@ def calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives, 
     Calculates surface displacement caused by given `mode`.
 
     :param mode: elisa.pulse.mode.Mode;
-    :param points: numpy.array;
+    :param points: numpy.array; in spherical coordinates
     :param harmonics: numpy.array; Y_l^m
     :param harmonics_derivatives: numpy.array; [dY/dphi, dY/dtheta]
     :param scale: numpy.float; scale of the perturbations
