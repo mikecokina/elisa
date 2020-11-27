@@ -16,12 +16,17 @@ logger = getPersistentLogger('analytics.binary_fit.mixins')
 
 class MCMCMixin(object):
     @staticmethod
-    def renormalize_flat_chain(flat_chain, labels, normalization):
+    def renormalize_flat_chain(flat_chain, all_lables, labels, normalization):
         """
         Renormalize values in chain if renormalization Dict is supplied.
         """
-        return np.array([[parameters.renormalize_value(val, normalization[key][0], normalization[key][1])
-                          for key, val in zip(labels, sample)] for sample in flat_chain])
+        retval = []
+        for ii, label in enumerate(all_lables):
+            if label in labels:
+                retval.append(parameters.renormalize_value(flat_chain[:, ii], normalization[label][0],
+                                                           normalization[label][1]))
+        retval = np.column_stack(retval)
+        return retval
 
     @staticmethod
     def resolve_mcmc_result(flat_chain, fitable, normalization, percentiles=None):

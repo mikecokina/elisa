@@ -350,7 +350,8 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
         raise ValueError('You can use corner plot after running mcmc method or after loading the flat chain.')
 
     plot_labels = serialize_plot_labels(variable_labels)
-    flat_chain = MCMCMixin.renormalize_flat_chain(flat_chain, variable_labels, normalization)
+    flat_chain = MCMCMixin.renormalize_flat_chain(flat_chain, mcmc_fit_instance.variable_labels, variable_labels,
+                                                  normalization)
 
     # # transforming units
     plot_units = PLOT_UNITS if plot_units is None else plot_units
@@ -460,7 +461,8 @@ def traces(mcmc_fit_instance, traces_to_plot=None, flat_chain=None, variable_lab
         raise ValueError('You can use trace plot only in case of mcmc method '
                          'or for some reason the flat chain was not found.')
 
-    flat_chain = MCMCMixin.renormalize_flat_chain(flat_chain, variable_labels, normalization)
+    flat_chain = MCMCMixin.renormalize_flat_chain(flat_chain, mcmc_fit_instance.variable_labels, variable_labels,
+                                                  normalization)
     labels = serialize_plot_labels(variable_labels)
 
     # transforming units
