@@ -191,7 +191,7 @@ def main():
 
     lc_initial = BinaryInitialParameters(**lc_initial)
     task = LCBinaryAnalyticsTask(data=data, method='mcmc', expected_morphology="over-contact")
-    task.fit(x0=lc_initial, nsteps=3000, nwalkers=1000, save=True, fit_id="thesis_mcmc_rtmi", progress=True)
+    task.fit(x0=lc_initial, nsteps=10, nwalkers=16, save=True, fit_id="thesis_mcmc_rtmi", progress=True)
     task.save_result(op.join(settings.HOME, "thesis_mcmc_rtmi.result.json"))
     task.plot.model()
     task.plot.corner(truths=True)
