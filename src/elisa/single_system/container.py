@@ -128,7 +128,7 @@ class SystemContainer(PositionContainer):
         self.correct_mesh()
         self.build_surface_areas()
         self.build_temperature_distribution()
-        self.build_temperature_perturbations()
+        # self.build_temperature_perturbations()
         return self
 
     def _phase(self, phase):

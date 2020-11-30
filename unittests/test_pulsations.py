@@ -3,12 +3,21 @@ from numpy.testing import assert_array_equal, assert_almost_equal
 
 from elisa import units as u
 from elisa import utils
+from elisa import const
 
 from elisa.base.star import Star
 from elisa.single_system.system import SingleSystem
 from elisa.pulse import pulsations, utils as putils
 from unittests.utils import ElisaTestCase
 from unittests import utils as testutils
+
+PULS_META = [{
+    'l': 1,
+    'm': 1,
+    'amplitude': 1 * u.m / u.s,
+    'frequency': 1 / u.d,
+    'start_phase': 0.0,
+}]
 
 
 class PulsatingStarInitTestCase(ElisaTestCase):
@@ -31,23 +40,23 @@ class PulsatingStarInitTestCase(ElisaTestCase):
         ]
 
         self.star_params = {
-                'mass': 2.15 * u.solMass,
-                't_eff': 10000 * u.K,
-                'gravity_darkening': 1.0,
-                'discretization_factor': 3,
-                'albedo': 0.6,
-                'metallicity': 0.0,
-                'polar_log_g': 4.4 * u.dex(u.cm/u.s**2)
-            }
+            'mass': 2.15 * u.solMass,
+            't_eff': 10000 * u.K,
+            'gravity_darkening': 1.0,
+            'discretization_factor': 3,
+            'albedo': 0.6,
+            'metallicity': 0.0,
+            'polar_log_g': 4.4 * u.dex(u.cm / u.s ** 2)
+        }
 
         self.system_params = {'gamma': 0 * u.km / u.s,
                               'inclination': 80 * u.deg,
                               'rotation_period': 30 * u.d,
                               }
 
-    def prepare_system(self):
-        # self.star_params['pulsations'] = self.pulsation_modes
-        star = Star(pulsations=self.pulsation_modes, **self.star_params)
+    def prepare_system(self, pulsations=None):
+        pulsations = self.pulsation_modes if pulsations is None else pulsations
+        star = Star(pulsations=pulsations, **self.star_params)
         return SingleSystem(star=star, **self.system_params)
 
     def test_mode_initialization_of_parameters(self):
@@ -73,13 +82,7 @@ class PulsatingStarInitTestCase(ElisaTestCase):
         Testing if RMS of pulsation mode gives 1
         :return:
         """
-        puls_meta = [{
-            'l': 1,
-            'm': 1,
-            'amplitude': 1 * u.m / u.s,
-            'frequency': 1 / u.d,
-            'start_phase': 0.75,
-        }]
+        puls_meta = PULS_META
 
         time = 0
 
@@ -90,7 +93,7 @@ class PulsatingStarInitTestCase(ElisaTestCase):
         points = utils.cartesian_to_spherical(system_container.star.points)
 
         for ll in range(0, 10):
-            for mm in range(ll+1):
+            for mm in range(ll + 1):
                 puls_meta[0]['l'] = ll
                 puls_meta[0]['m'] = mm
                 single.star.pulsations = puls_meta
@@ -100,5 +103,28 @@ class PulsatingStarInitTestCase(ElisaTestCase):
                 exponential = putils.generate_time_exponential(mode, time)
                 sph_harm = pulsations.spherical_harmonics(mode, points, exponential)
 
-                test_val = np.sqrt(np.sum(np.abs(sph_harm)**2)/points.shape[0])
+                test_val = np.sqrt(np.sum(np.abs(sph_harm) ** 2) / points.shape[0])
                 assert_almost_equal(test_val, 1.0, 2)
+
+    def test_displacement(self):
+        time = 0
+        # test_points on sphere
+        R = 1
+        pts = np.array([[R, 0, 0],
+                        [R, 0, const.PI],
+                        [R, 0, const.HALF_PI],
+                        [R, const.HALF_PI, const.HALF_PI],
+                        [R, const.PI, const.HALF_PI],
+                        [R, 3*const.HALF_PI, const.HALF_PI]]).T
+
+        single = self.prepare_system(pulsations=PULS_META)
+        system_container = testutils.prepare_single_system_container(single)
+        system_container.build_mesh()
+        pulsations.generate_harmonics(system_container.star, com_x=0.0, phase=0.0, time=time)
+        points = utils.cartesian_to_spherical(system_container.star.points)
+
+        mode = system_container.star.pulsations[0]
+
+        displacement = pulsations.calculate_mode_displacement(mode, points, mode.point_harmonics,
+                                                              mode.point_harmonics_derivatives, scale=1)
+        pass

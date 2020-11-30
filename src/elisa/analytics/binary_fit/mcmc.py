@@ -57,7 +57,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         :return: float;
         """
         lh = - 0.5 * (np.sum(
-            [np.sum(np.power((self.y_data[item] - synthetic[item][self.x_data_reducer[item]]) / self.y_err[item], 2))
+            [np.sum(np.power((self.y_data[item] - synthetic[item]) / self.y_err[item], 2))
              for item, value in synthetic.items()]
         ) + self.error_penalization)
 
@@ -148,7 +148,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
 
         if np.shape(fit_xs) != np.shape(phases):
             synthetic = {
-                band: interpolate.interp1d(fit_xs, curve, kind='cubic')(phases)
+                band: interpolate.interp1d(fit_xs, curve, kind='cubic')(phases[self.x_data_reducer[band]])
                 for band, curve in synthetic.items()
             }
         return self.lhood(synthetic)
@@ -240,6 +240,7 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         xn = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
         kwargs = parameters.prepare_properties_set(xn, self.fitable.keys(), self.constrained, self.fixed)
         synthetic = rv_model.central_rv_synthetic(*(self.x_data_reduced, self.observer), **kwargs)
+        synthetic = {comp: rv[self.x_data_reducer[comp]] for comp, rv in synthetic.items()}
         lhood = self.lhood(synthetic)
 
         self.eval_counter += 1

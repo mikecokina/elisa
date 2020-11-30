@@ -391,7 +391,7 @@ def binary_surface(**kwargs):
                 both_cmaps = up.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                 plot.set_array(both_cmaps)
                 if kwargs['colorbar']:
-                    colorbar = fig.colorbar(plot, shrink=0.7)
+                    colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
                     set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'])
             else:
                 plot1.set_array(kwargs['primary_cmap'])
@@ -406,17 +406,29 @@ def binary_surface(**kwargs):
     if kwargs['components_to_plot'] == 'both':
         x_min = np.min([np.min(kwargs['points_primary'][:, 0]), np.min(kwargs['points_secondary'][:, 0])])
         x_max = np.max([np.max(kwargs['points_primary'][:, 0]), np.max(kwargs['points_secondary'][:, 0])])
+        d = (x_max - x_min) / 2
+        ax.set_ylim3d(-d, d)
+        ax.set_zlim3d(-d, d)
     elif kwargs['components_to_plot'] == 'primary':
         x_min = np.min(kwargs['points_primary'][:, 0])
         x_max = np.max(kwargs['points_primary'][:, 0])
+        y_min = np.min(kwargs['points_primary'][:, 1])
+        y_max = np.max(kwargs['points_primary'][:, 1])
+        z_min = np.min(kwargs['points_primary'][:, 2])
+        z_max = np.max(kwargs['points_primary'][:, 2])
+        ax.set_ylim3d(y_min, y_max)
+        ax.set_zlim3d(z_min, z_max)
     elif kwargs['components_to_plot'] == 'secondary':
         x_min = np.min(kwargs['points_secondary'][:, 0])
         x_max = np.max(kwargs['points_secondary'][:, 0])
+        y_min = np.min(kwargs['points_secondary'][:, 1])
+        y_max = np.max(kwargs['points_secondary'][:, 1])
+        z_min = np.min(kwargs['points_secondary'][:, 2])
+        z_max = np.max(kwargs['points_secondary'][:, 2])
+        ax.set_ylim3d(y_min, y_max)
+        ax.set_zlim3d(z_min, z_max)
 
-    d = (x_max - x_min) / 2
     ax.set_xlim3d(x_min, x_max)
-    ax.set_ylim3d(-d, d)
-    ax.set_zlim3d(-d, d)
 
     if kwargs['plot_axis']:
         unit = str(kwargs['axis_unit'])

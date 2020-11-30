@@ -68,7 +68,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
 
         if np.shape(fit_xs) != np.shape(phases):
             synthetic = {
-                band: interpolate.interp1d(fit_xs, curve, kind='cubic')(phases)
+                band: interpolate.interp1d(fit_xs, curve, kind='cubic')(phases[self.x_data_reducer[band]])
                 for band, curve in synthetic.items()
             }
         else:

@@ -146,13 +146,14 @@ class Settings(_Const):
     REFLECTION_EFFECT = True
     REFLECTION_EFFECT_ITERATIONS = 2
     LIMB_DARKENING_LAW = 'cosine'
+    PULSATION_MODEL = 'uniform'
     DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 2.0
     SURFACE_DISPLACEMENT_TOL = 1e-2
     RV_METHOD = 'point_mass'
     RV_LAMBDA_INTERVAL = (5500, 5600)
 
     # computational
-    MAX_DISCRETIZATION_FACTOR = 20
+    MAX_DISCRETIZATION_FACTOR = 12
     MIN_DISCRETIZATION_FACTOR = 3
     NUMBER_OF_THREADS = 1
     NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
@@ -233,6 +234,7 @@ class Settings(_Const):
             "MESH_GENERATOR": cls.MESH_GENERATOR,
             "DEFORMATION_TOL": cls.DEFORMATION_TOL,
             "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
+            "PULSATION_MODEL": cls.PULSATION_MODEL
         }
 
     @staticmethod
@@ -320,6 +322,7 @@ class Settings(_Const):
                 c_parse.getfloat('physics', 'surface_displacement_tol', fallback=cls.SURFACE_DISPLACEMENT_TOL)
             cls.RV_METHOD = c_parse.getfloat('physics', 'rv_method', fallback=cls.RV_METHOD)
             cls.RV_LAMBDA_INTERVAL = c_parse.getfloat('physics', 'rv_lambda_interval', fallback=cls.RV_LAMBDA_INTERVAL)
+            cls.PULSATION_MODEL = c_parse.getfloat('physics', 'pulsation_model', fallback=cls.PULSATION_MODEL)
         # **************************************************************************************************************
         if c_parse.has_section('computational'):
             cls.MAX_DISCRETIZATION_FACTOR = c_parse.getfloat('computational', 'max_discretization_factor',
@@ -393,7 +396,7 @@ class Settings(_Const):
             if not isdir(cls.PASSBAND_TABLES) and not cls.SUPPRESS_WARNINGS:
                 warnings.warn(f"path {cls.PASSBAND_TABLES} to passband tables doesn't exists\n"
                               f"Specifiy it in elisa_conf.ini file", UserWarning)
-        # ******************************************************************************************************************
+        # **************************************************************************************************************
 
     @classmethod
     def _update_atlas_to_base_dir(cls):
