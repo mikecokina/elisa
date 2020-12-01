@@ -2,6 +2,7 @@ import os
 import json
 import numpy as np
 import os.path as op
+from time import time
 
 from datetime import datetime
 from typing import Dict
@@ -134,12 +135,23 @@ class MCMCMixin(object):
             return json.loads(f.read())
 
     @staticmethod
-    def worker(sampler, p0, nsteps, nsteps_burn_in, progress=False):
+    def worker(sampler, p0, nsteps, nsteps_burn_in,
+               save=False, fit_id=None, fitable=None, normalization=None, progress=False):
         logger.info("running burn-in...")
-        p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in, progress=progress) if nsteps_burn_in > 0 else p0, None, None
+        p0, _, _ = sampler.run_mcmc(p0, nsteps_burn_in, progress=progress, store=False) \
+                       if nsteps_burn_in > 0 else p0, None, None
         sampler.reset()
         logger.info("running production...")
-        _, _, _ = sampler.run_mcmc(p0, nsteps, progress=progress)
+
+        if save:
+            t_between_dumps = time()
+            for _ in sampler.sample(p0, iterations=nsteps, progress=progress):
+                if time() - t_between_dumps > settings.MCMC_SAVE_INTERVAL:
+                    MCMCMixin.save_flat_chain(sampler.get_chain(flat=True), fitable=fitable, norm=normalization,
+                                              fit_id=fit_id)
+                    t_between_dumps = time()
+        else:
+            _, _, _ = sampler.run_mcmc(p0, nsteps, progress=progress)
 
     @staticmethod
     def mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim):

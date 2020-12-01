@@ -167,6 +167,7 @@ class Settings(_Const):
     MESH_GENERATOR = 'auto'
     DEFORMATION_TOL = 0.05
     MAX_RELATIVE_D_IRRADIATION = 0.02
+    MCMC_SAVE_INTERVAL = 1800
 
     TIMER = 0.0
 
@@ -234,7 +235,8 @@ class Settings(_Const):
             "MESH_GENERATOR": cls.MESH_GENERATOR,
             "DEFORMATION_TOL": cls.DEFORMATION_TOL,
             "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
-            "PULSATION_MODEL": cls.PULSATION_MODEL
+            "PULSATION_MODEL": cls.PULSATION_MODEL,
+            "MCMC_SAVE_INTERVAL": cls.MCMC_SAVE_INTERVAL
         }
 
     @staticmethod
@@ -360,6 +362,8 @@ class Settings(_Const):
             cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol', fallback=cls.DEFORMATION_TOL)
             cls.MAX_RELATIVE_D_IRRADIATION = c_parse.getfloat('computational', 'max_relative_d_irradiation',
                                                               fallback=cls.MAX_RELATIVE_D_IRRADIATION)
+            cls.MCMC_SAVE_INTERVAL = c_parse.getfloat('computational', 'mcmc_save_interval',
+                                                      fallback=cls.MCMC_SAVE_INTERVAL)
         # **************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)

@@ -84,11 +84,13 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
             with Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES) as pool:
                 logger.info('starting parallel mcmc')
                 sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf, pool=pool)
-                self.worker(sampler, p0, nsteps, nsteps_burn_in, progress=progress)
+                self.worker(sampler, p0, nsteps, nsteps_burn_in, save=save, fit_id=fit_id, fitable=self.fitable,
+                            normalization=self.normalization, progress=progress)
         else:
             logger.info('starting singlecore mcmc')
             sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf)
-            self.worker(sampler, p0, nsteps, nsteps_burn_in, progress=progress)
+            self.worker(sampler, p0, nsteps, nsteps_burn_in, save=save, fit_id=fit_id, fitable=self.fitable,
+                        normalization=self.normalization, progress=progress)
 
         self.last_sampler = sampler
         self.last_normalization = self.normalization
@@ -177,7 +179,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
         :param progress: bool; visualize progress of the sampling
         :param percentiles: List; [percentile for left side error estimation, percentile of the centre,
                                    percentile for right side error estimation]
-        :param save: bool; wheterher stor chain or not
+        :param save: bool; whether to store the chain or not
         :param fit_id: str; id which identifies fit file (if not specified, current dateime is used)
         :return: emcee.EnsembleSampler; sampler instance
         """
