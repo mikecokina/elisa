@@ -215,6 +215,7 @@ v0.5
       ELISa)
     - function elisa.analytics.tasks.load_results() returns results in form of dict
     - command set_up_logging() not needed anymore while changing logging schemas
+    - adaptive and custom sampling during fitting accessed by 'samples' argument
 
 
 **Fixes**

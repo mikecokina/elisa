@@ -1,5 +1,6 @@
+import os
 import numpy as np
-from numpy.testing import assert_array_equal, assert_almost_equal
+from numpy.testing import assert_array_equal, assert_almost_equal, assert_array_less
 
 from elisa import units as u
 from elisa import utils
@@ -18,6 +19,21 @@ PULS_META = [{
     'frequency': 1 / u.d,
     'start_phase': 0.0,
 }]
+
+STAR_PARAMS = {
+            'mass': 2.15 * u.solMass,
+            't_eff': 10000 * u.K,
+            'gravity_darkening': 1.0,
+            'discretization_factor': 3,
+            'albedo': 0.6,
+            'metallicity': 0.0,
+            'polar_log_g': 4.4 * u.dex(u.cm / u.s ** 2)
+        }
+
+SYSTEM_PARMAS = {'gamma': 0 * u.km / u.s,
+                 'inclination': 80 * u.deg,
+                 'rotation_period': 30 * u.d,
+                 }
 
 
 class PulsatingStarInitTestCase(ElisaTestCase):
@@ -106,17 +122,19 @@ class PulsatingStarInitTestCase(ElisaTestCase):
                 test_val = np.sqrt(np.sum(np.abs(sph_harm) ** 2) / points.shape[0])
                 assert_almost_equal(test_val, 1.0, 2)
 
-    def test_displacement(self):
-        time = 0
-        # test_points on sphere
-        R = 1
-        pts = np.array([[R, 0, 0],
-                        [R, 0, const.PI],
-                        [R, 0, const.HALF_PI],
-                        [R, const.HALF_PI, const.HALF_PI],
-                        [R, const.PI, const.HALF_PI],
-                        [R, 3*const.HALF_PI, const.HALF_PI]]).T
 
+class TestPulsationModule(ElisaTestCase):
+    def setUp(self):
+        super(TestPulsationModule, self).setUp()
+        self.base_path = os.path.dirname(os.path.abspath(__file__))
+
+    def prepare_system(self, pulsations):
+        star = Star(pulsations=pulsations, **STAR_PARAMS)
+        return SingleSystem(star=star, **SYSTEM_PARMAS)
+
+    def test_displacement(self):
+        """Test if mode displacement is within range."""
+        time = 0
         single = self.prepare_system(pulsations=PULS_META)
         system_container = testutils.prepare_single_system_container(single)
         system_container.build_mesh()
@@ -127,4 +145,12 @@ class PulsatingStarInitTestCase(ElisaTestCase):
 
         displacement = pulsations.calculate_mode_displacement(mode, points, mode.point_harmonics,
                                                               mode.point_harmonics_derivatives, scale=1)
-        pass
+        radial_disp = displacement[:, 0]
+        assert_array_less(np.abs(radial_disp), np.full(radial_disp.shape, 17000))
+        self.assertGreater(np.max(radial_disp), 16000)
+        phi_disp = displacement[:, 1]
+        assert_array_less(np.abs(phi_disp), np.full(phi_disp.shape, 0.017))
+        self.assertGreater(np.max(phi_disp), 0.016)
+        theta_disp = displacement[:, 2]
+        assert_array_less(np.abs(theta_disp), np.full(theta_disp.shape, 0.001))
+        self.assertGreater(np.max(phi_disp), 0.00095)

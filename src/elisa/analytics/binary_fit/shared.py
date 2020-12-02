@@ -19,6 +19,10 @@ from ... binary_system.system import BinarySystem
 from elisa.const import PI
 from .. models import lc as lc_model
 
+from ... logger import getLogger
+
+logger = getLogger("analytics.binary_fit.shared")
+
 
 class AbstractFit(metaclass=ABCMeta):
     MEAN_ERROR_FN = None
@@ -141,7 +145,8 @@ class AbstractLCFit(AbstractFit):
             diff = 1.0 / self.interp_treshold
             return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
         elif samples is 'adaptive':
-            samples = self.adaptive_sampling()
+            logger.info('Generating equidistant samples along the light curve using adaptive sampling method')
+            return self.adaptive_sampling()
         elif isinstance(samples, (list, np.ndarray)):
             return np.sort(samples)
         else:
@@ -149,17 +154,30 @@ class AbstractLCFit(AbstractFit):
                              f'array of phases in (0, 1) interval')
 
     def adaptive_sampling(self):
-        diff = 1.0 / (2 * self.interp_treshold)
-        x = np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
+        """
+        Function generates sampling equidistantly along the curve defined by the initial vector.
+        :return: np.array;
+        """
+        n = 3 * settings.MAX_CURVE_DATA_POINTS
+        diff = 1.0 / n
+        x = np.linspace(0.0 - diff, 1.0 + diff, num=n)
 
         kwargs = parameters.prepare_properties_set(self.initial_vector, self.fitable.keys(), self.constrained,
                                                    self.fixed)
-        observer = Observer(passband='bolometric', system=self.observer.system_cls)
+        observer = Observer(passband='bolometric', system=None)
+        setattr(observer, 'system_cls', getattr(self.observer, 'system_cls'))
         try:
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind='average')
         except Exception as e:
             raise RuntimeError('Your initial parameters are invalid and phase sampling could mot be generated.')
+
+        curve = np.column_stack((x, synthetic['bolometric']))
+        lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
+        crv_lengths = np.cumsum(np.concatenate(([0, ], lengths)))
+        segments = np.linspace(0, crv_lengths[-1], num=self.interp_treshold)
+
+        return np.interp(segments, crv_lengths, x)
 
 
 def lc_r_squared(synthetic, *args, **x):

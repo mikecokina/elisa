@@ -457,8 +457,9 @@ def strip_atm_container_by_bandwidth(atm_container, left_bandwidth, right_bandwi
     if atm_model.wavelength.min() > left_bandwidth or atm_model.wavelength.max() < right_bandwidth:
         mi, ma = find_global_atm_bandwidth([atm_container])
         left_bandwidth, right_bandwidth = kwargs.get("global_left", mi), kwargs.get("global_right", ma)
-        warnings.warn('You attempt to strip an atmosphere model to bandwidth which at least partially outside '
-                      'original atmosphere model wavelength coverage. This may cause problems.')
+        # TODO: this is annoying, unecessarily raises warning for bolometric filters
+        # warnings.warn('You attempt to strip an atmosphere model to bandwidth which at least partially outside '
+        #               'original atmosphere model wavelength coverage. This may cause problems.')
 
         if not kwargs.get('global_left') or not kwargs.get('global_right'):
             warnings.warn(f"argument bandwidth is out of bound for supplied atmospheric model\n"
