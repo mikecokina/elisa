@@ -154,8 +154,10 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
         mode.radial_amplitude = mode.amplitude / mode.angular_frequency
 
         # horizontal/radial amplitude (Aerts 2010), p. 198
-        ampl_ratio = np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2
-        mode.horizontal_amplitude = ampl_ratio * mode.radial_amplitude / r_equiv
+        mode.horizontal_to_radial_amplitude_ratio = \
+            np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2 \
+                if mode.horizontal_to_radial_amplitude_ratio is None else mode.horizontal_to_radial_amplitude_ratio
+        mode.horizontal_amplitude = mode.horizontal_to_radial_amplitude_ratio * mode.radial_amplitude / r_equiv
 
         surf_ampl = mode.horizontal_amplitude
         if surf_ampl > settings.SURFACE_DISPLACEMENT_TOL:

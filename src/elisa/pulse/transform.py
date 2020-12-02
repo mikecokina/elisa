@@ -136,3 +136,15 @@ class PulsationModeProperties(SystemProperties):
         if not isinstance(value, (int, np.int, float, np.float)):
             raise TypeError('Start_phase is not (numpy.)int or (numpy.)float')
         return value
+
+    @staticmethod
+    def horizontal_to_radial_amplitude_ratio(value):
+        """
+        Defines amplitude ratio between radial and horizontal displacement.
+
+        :param value: float; phase shift in radians
+        :return:
+        """
+        if not isinstance(value, (int, np.int, float, np.float)):
+            raise TypeError('Parameter is not is not (numpy.)int or (numpy.)float')
+        return value
