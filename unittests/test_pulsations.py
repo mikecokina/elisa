@@ -12,14 +12,6 @@ from elisa.pulse import pulsations, utils as putils
 from unittests.utils import ElisaTestCase
 from unittests import utils as testutils
 
-PULS_META = [{
-    'l': 1,
-    'm': 1,
-    'amplitude': 1 * u.m / u.s,
-    'frequency': 1 / u.d,
-    'start_phase': 0.0,
-}]
-
 STAR_PARAMS = {
             'mass': 2.15 * u.solMass,
             't_eff': 10000 * u.K,
@@ -98,7 +90,13 @@ class PulsatingStarInitTestCase(ElisaTestCase):
         Testing if RMS of pulsation mode gives 1
         :return:
         """
-        puls_meta = PULS_META
+        puls_meta = [{
+            'l': 1,
+            'm': 1,
+            'amplitude': 1 * u.m / u.s,
+            'frequency': 1 / u.d,
+            'start_phase': 0.0,
+        }]
 
         time = 0
 
@@ -134,8 +132,16 @@ class TestPulsationModule(ElisaTestCase):
 
     def test_displacement(self):
         """Test if mode displacement is within range."""
+        pulse_meta = [{
+            'l': 1,
+            'm': 1,
+            'amplitude': 1 * u.m / u.s,
+            'frequency': 1 / u.d,
+            'start_phase': 0.0,
+        }]
+
         time = 0
-        single = self.prepare_system(pulsations=PULS_META)
+        single = self.prepare_system(pulsations=pulse_meta)
         system_container = testutils.prepare_single_system_container(single)
         system_container.build_mesh()
         pulsations.generate_harmonics(system_container.star, com_x=0.0, phase=0.0, time=time)
