@@ -17,6 +17,7 @@ from ... observer.observer import Observer
 from ... observer.utils import normalize_light_curve
 from ... binary_system.system import BinarySystem
 from elisa.const import PI
+from .. models import lc as lc_model
 
 
 class AbstractFit(metaclass=ABCMeta):
@@ -140,12 +141,25 @@ class AbstractLCFit(AbstractFit):
             diff = 1.0 / self.interp_treshold
             return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
         elif samples is 'adaptive':
-            raise NotImplementedError('Soon')
+            samples = self.adaptive_sampling()
         elif isinstance(samples, (list, np.ndarray)):
             return np.sort(samples)
         else:
             raise ValueError(f'Parameter `samples` has to be either string with values `uniform` or `adaptive` or '
                              f'array of phases in (0, 1) interval')
+
+    def adaptive_sampling(self):
+        diff = 1.0 / (2 * self.interp_treshold)
+        x = np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
+
+        kwargs = parameters.prepare_properties_set(self.initial_vector, self.fitable.keys(), self.constrained,
+                                                   self.fixed)
+        observer = Observer(passband='bolometric', system=self.observer.system_cls)
+        try:
+            synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
+            synthetic, _ = normalize_light_curve(synthetic, kind='average')
+        except Exception as e:
+            raise RuntimeError('Your initial parameters are invalid and phase sampling could mot be generated.')
 
 
 def lc_r_squared(synthetic, *args, **x):

@@ -64,7 +64,6 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
 
         try:
             synthetic = logger_decorator()(fn)(*args, **kwargs)
-            synthetic, _ = normalize_light_curve(synthetic, kind='average')
         except Exception as e:
             logger.error(f'your initial parameters lead during fitting to invalid binary system, exectpion: {str(e)}')
             return const.MAX_USABLE_FLOAT
@@ -76,6 +75,8 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
             }
         else:
             synthetic = {band: val[self.x_data_reducer[band]] for band, val in synthetic.items()}
+
+        synthetic, _ = normalize_light_curve(synthetic, kind='average')
 
         residuals = np.sum([np.sum(np.power((synthetic[band] - self.y_data[band]) / self.y_err[band], 2))
                             for band in synthetic])
