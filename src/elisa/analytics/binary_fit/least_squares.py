@@ -54,8 +54,11 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         kwargs = parameters.prepare_properties_set(xn, self.fitable.keys(), self.constrained, self.fixed)
         phases, kwargs = time_layer_resolver(self.x_data_reduced, pop=False, **kwargs)
 
-        fit_xs = np.linspace(np.min(phases) - diff, np.max(phases) + diff, num=self.interp_treshold + 2) \
-            if np.shape(phases)[0] > self.interp_treshold else phases
+        if self.fit_xs is None:
+            fit_xs = np.linspace(np.min(phases) - diff, np.max(phases) + diff, num=self.interp_treshold + 2) \
+                if np.shape(phases)[0] > self.interp_treshold else phases
+        else:
+            fit_xs = self.fit_xs
         args = fit_xs, self.discretization, self.observer
         fn = lc_model.synthetic_binary
 
@@ -83,7 +86,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         return residuals
 
     def fit(self, data: Dict[str, LCData], x0: parameters.BinaryInitialParameters,
-            discretization=5.0, interp_treshold=None, **kwargs):
+            discretization=5.0, interp_treshold=None, samples="uniform", **kwargs):
         """
         Fit method using non-linear least squares.
         Based on https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
@@ -92,13 +95,14 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         :param x0: List[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
         :param interp_treshold: int; data binning treshold
+        :param samples: Union[str, List]; `uniform', 'adaptive' or list with phases in (0, 1) interval
         :param kwargs: optional arguments for least_squares function (see documentation for
                        scipy.optimize.least_squares method)
         :return: Dict;
         """
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
                     interp_treshold=settings.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
-                    observer_system_cls=BinarySystem)
+                    observer_system_cls=BinarySystem, samples=samples)
         initial_vector = parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization)
 
         # evaluate least squares from scipy

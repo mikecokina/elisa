@@ -157,7 +157,7 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
 
     def fit(self, data: Dict[str, LCData], x0: parameters.BinaryInitialParameters, discretization=5.0, nwalkers=None,
             nsteps=1000, initial_state=None, burn_in=None, percentiles=None, interp_treshold=None, progress=False,
-            save=True, fit_id=None):
+            save=True, fit_id=None, samples="uniform"):
         """
         Fit method using Markov Chain Monte Carlo.
         Once simulation is done, following valeus are stored and can be used for further evaluation::
@@ -181,12 +181,13 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
                                    percentile for right side error estimation]
         :param save: bool; whether to store the chain or not
         :param fit_id: str; id which identifies fit file (if not specified, current dateime is used)
+        :param samples: Union[str, List]; `uniform`, `adaptive` or list with phases in (0, 1) interval
         :return: emcee.EnsembleSampler; sampler instance
         """
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
         self.set_up(x0, data, passband=data.keys(), discretization=discretization, morphology=self.MORPHOLOGY,
                     interp_treshold=settings.MAX_CURVE_DATA_POINTS if interp_treshold is None else interp_treshold,
-                    observer_system_cls=BinarySystem)
+                    observer_system_cls=BinarySystem, samples=samples)
 
         ndim = len(self.initial_vector)
         nwalkers = 2 * len(self.initial_vector) if nwalkers is None else nwalkers

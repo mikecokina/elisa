@@ -116,6 +116,8 @@ class AbstractLCFit(AbstractFit):
         super().set_up(x0, data, passband, observer_system_cls=kwargs.get('observer_system_cls'))
         setattr(self, 'discretization', kwargs.pop('discretization'))
         setattr(self, 'interp_treshold', kwargs.pop('interp_treshold'))
+        fit_xs = self.generate_sample_phases(kwargs.pop('samples'))
+        setattr(self, 'fit_xs', fit_xs)
         self.normalize_data(kind='average')
 
     @abstractmethod
@@ -126,6 +128,24 @@ class AbstractLCFit(AbstractFit):
         y_data, y_err = normalize_light_curve(self.y_data, self.y_err, kind, top_fraction_to_average)
         setattr(self, 'y_data', y_data)
         setattr(self, 'y_err', y_err)
+
+    def generate_sample_phases(self, samples):
+        kwargs = parameters.prepare_properties_set(self.initial_vector, self.fitable.keys(), self.constrained,
+                                                   self.fixed)
+        phases, kwargs = time_layer_resolver(self.x_data_reduced, pop=False, **kwargs)
+        if np.shape(phases)[0] < self.interp_treshold:
+            return None
+
+        if samples is 'uniform':
+            diff = 1.0 / self.interp_treshold
+            return np.linspace(0.0 - diff, 1.0 + diff, num=self.interp_treshold + 2)
+        elif samples is 'adaptive':
+            raise NotImplementedError('Soon')
+        elif isinstance(samples, (list, np.ndarray)):
+            return np.sort(samples)
+        else:
+            raise ValueError(f'Parameter `samples` has to be either string with values `uniform` or `adaptive` or '
+                             f'array of phases in (0, 1) interval')
 
 
 def lc_r_squared(synthetic, *args, **x):
