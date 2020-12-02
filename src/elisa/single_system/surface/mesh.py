@@ -8,7 +8,8 @@ from ... base.spot import incorporate_spots_mesh
 from ... base.surface.mesh import correct_component_mesh
 from ... base.error import MaxIterationError
 from ... import settings
-from ... pulse import pulsations
+from ... pulse.container_ops import incorporate_pulsations_to_model
+from ... pulse.pulsations import generate_harmonics
 from ... import (
     opt,
     const,
@@ -45,8 +46,8 @@ def build_pulsations_on_mesh(system):
     :return: elisa.single_system.contaier.PositionContainer; instance
     """
     if system.star.has_pulsations():
-        system.star = pulsations.generate_harmonics(system.star, com_x=0, phase=system.position.phase, time=system.time)
-        system.star = pulsations.incorporate_pulsations_to_mesh(system.star, com_x=0.0)
+        system.star = generate_harmonics(system.star, com_x=0, phase=system.position.phase, time=system.time)
+        system.star = incorporate_pulsations_to_model(system.star, com_x=0.0)
     return system
 
 

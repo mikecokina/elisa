@@ -59,45 +59,6 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
     return derivative
 
 
-def incorporate_pulsations_to_mesh(star_container, com_x, scale=1.0):
-    """
-    Function adds perturbation to the surface mesh due to pulsations.
-
-    :param star_container: base.container.StarContainer;
-    :param com_x: float;
-    :param scale: numpy.float; scale of the perturbations
-    :return: base.container.StarContainer;
-    """
-    tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
-
-    displacement = up.zeros(tilted_points.shape)
-    displacement_spots = {spot_idx: up.zeros(spot.shape) for spot_idx, spot in tilted_points_spot.items()}
-
-    for mode_index, mode in star_container.pulsations.items():
-        displacement += calculate_mode_displacement(mode, tilted_points, mode.point_harmonics,
-                                                    mode.point_harmonics_derivatives, scale=scale)
-        # velocity_displacement =
-        for spot_idx, spoints in tilted_points_spot.items():
-            displacement_spots[spot_idx] += \
-                calculate_mode_displacement(mode, spoints, mode.spot_point_harmonics[spot_idx],
-                                            mode.spot_point_harmonics_derivatives[spot_idx],
-                                            scale=scale)
-
-    setattr(star_container, 'points', putils.derotate_surface_points(tilted_points + displacement,
-                                                                     star_container.pulsations[0].mode_axis_phi,
-                                                                     star_container.pulsations[0].mode_axis_theta,
-                                                                     com_x))
-
-    for spot_idx, spot in star_container.spots.items():
-        setattr(spot, 'points',
-                putils.derotate_surface_points(tilted_points_spot[spot_idx] + displacement_spots[spot_idx],
-                                               star_container.pulsations[0].mode_axis_phi,
-                                               star_container.pulsations[0].mode_axis_theta,
-                                               com_x))
-
-    return star_container
-
-
 def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
     """
 
