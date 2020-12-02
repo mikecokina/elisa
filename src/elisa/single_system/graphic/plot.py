@@ -156,13 +156,12 @@ class Plot(object):
         position_container = SystemContainer.from_single_system(self.single, self.defpos)
         position_container.set_on_position_params(single_position)
         position_container.build(phase=phase)
+        correct_face_orientation(position_container.star, com=0)
 
         position_container = sutils.move_sys_onpos(position_container, single_position)
 
         mult = np.array([-1, -1, 1.0])[None, :]
         star_container = getattr(position_container, 'star')
-
-        correct_face_orientation(star_container, com=0)
         points, faces = star_container.points, star_container.faces
 
         surface_kwargs.update({

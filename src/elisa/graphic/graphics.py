@@ -242,13 +242,13 @@ def single_star_surface(**kwargs):
                   kwargs['arrows'][:, 0], kwargs['arrows'][:, 1], kwargs['arrows'][:, 2], color='black',
                   length=0.1 * kwargs['equatorial_radius'])
 
-    set_colorbar_fns = {'temperature': set_t_colorbar_label,
-                        'gravity_acceleration': set_g_colorbar_label,
-                        'velocity': set_v_colorbar_label,
-                        'radial_velocity': set_vrad_colorbar_label}
-    set_colorbar_fn = set_colorbar_fns[kwargs['colormap']]
-
     if kwargs.get('colormap', False):
+        set_colorbar_fns = {'temperature': set_t_colorbar_label,
+                            'gravity_acceleration': set_g_colorbar_label,
+                            'velocity': set_v_colorbar_label,
+                            'radial_velocity': set_vrad_colorbar_label}
+        set_colorbar_fn = set_colorbar_fns[kwargs['colormap']]
+
         cmap = CMAPS[kwargs['colormap']]
         star_plot.set_cmap(cmap=cmap)
         star_plot.set_array(kwargs['cmap'])
