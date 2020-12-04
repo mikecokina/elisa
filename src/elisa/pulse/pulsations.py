@@ -38,7 +38,9 @@ def diff_spherical_harmonics_by_phi(mode, harmonics):
     :param harmonics: list; [Y_l^m, Y_l^m+1]
     :return: numpy.array;
     """
-    return (0 + 1j) * mode.m * harmonics[0]
+    retval = (0 + 1j) * mode.m * harmonics[0]
+    norm = np.power(np.mean(np.abs(retval)**2), 0.5)
+    return retval/norm
 
 
 def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
@@ -56,7 +58,8 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
     derivative[theta_test] = mode.m * np.real(harmonics[0][theta_test] / np.tan(thetas[theta_test])) + \
                              np.sqrt((mode.l - mode.m) * (mode.l + mode.m + 1)) * \
                              np.real(np.exp((0 - 1j) * phis[theta_test]) * harmonics[1][theta_test])
-    return derivative
+    norm = np.power(np.mean(np.abs(derivative)**2), 0.5)
+    return derivative / norm
 
 
 def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
@@ -260,6 +263,7 @@ def generate_harmonics(star_container, com_x, phase, time):
         mode.face_harmonics_derivatives = np.mean(derivatives[:, star_container.faces], axis=1)
         mode.spot_face_harmonics_derivatives = {
             spot_idx: np.mean(spoth[:, star_container.spots[spot_idx].faces], axis=1)
-            for spot_idx, spoth in spot_harmonics_derivatives.items()}
+            for spot_idx, spoth in spot_harmonics_derivatives.items()
+        }
     return star_container
 
