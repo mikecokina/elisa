@@ -18,14 +18,14 @@ def main():
     # surface_potential = 3.055
     # surface_potential = 3.06
     # surface_potential = 3.065
-    surface_potential = 3.2
+    surface_potential = 25.
     primary = Star(
         mass=2.0 * u.solMass,
         surface_potential=surface_potential,
         synchronicity=1.0,
         t_eff=10000 * u.K,
         gravity_darkening=1.0,
-        discretization_factor=5,  # angular size (in degrees) of the surface elements
+        discretization_factor=3,  # angular size (in degrees) of the surface elements
         albedo=0.6,
         metallicity=0.0,
     )
@@ -68,7 +68,7 @@ def main():
     fig.set_size_inches(10, 5)
 
     bins = 100
-    for jj, pot in enumerate([3.2, 2.9]):
+    for jj, pot in enumerate([4.2]):
         bs.primary.surface_potential = pot
         bs.secondary.surface_potential = pot
         bs.init()
@@ -115,17 +115,17 @@ def main():
 
     # settings.configure(MESH_GENERATOR='trapezoidal')
     # settings.configure(MESH_GENERATOR='improved_trapezoidal')
-    # bs.plot.mesh(components_to_plot=component,)
-    # bs.plot.wireframe(components_to_plot=component,)
-    # bs.plot.surface(
-    #     # components_to_plot='primary',
-    #     components_to_plot='secondary',
-    #     phase=0.8,
-    #     inclination=75,
-    #     edges=True,
-    #     colormap=None,
-    #     surface_colors=('gray', 'gray'),
-    #                 )
+    # bs.plot.mesh(components_to_plot="primary")
+    # bs.plot.wireframe(components_to_plot="primary")
+    bs.plot.surface(
+        phase=0.0,
+
+        # components_to_plot='primary',
+        components_to_plot='secondary',
+        edges=True,
+        colormap=None,
+        surface_colors=('gray', 'gray'),
+        plot_axis=False)
 
 
 if __name__ == '__main__':

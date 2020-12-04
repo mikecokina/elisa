@@ -1,8 +1,8 @@
 import json
 import os.path as op
 import numpy as np
-from matplotlib import pyplot as plt
-from elisa import units, settings
+
+from astropy import units as au
 from elisa.analytics import RVData, RVBinaryAnalyticsTask
 from elisa.analytics.params.parameters import BinaryInitialParameters
 
@@ -21,32 +21,18 @@ def main():
     rv = get_rv()
     u = np.random.normal
     n = len(phases)
-    do_plot = False
 
     sigma = 2000
     _max = np.max(list(rv.values()))
     rv = {comp: u(val, sigma, n) for comp, val in rv.items()}
-
-    if do_plot:
-        colors = ["r", "b"]
-        lstyles = ["-", "--"]
-        for comp, c, linestyle in zip(settings.BINARY_COUNTERPARTS, colors, lstyles):
-            plt.plot(phases, np.array(rv[comp]) / 1000, c=c, linewidth=1.5, label=comp, linestyle=linestyle)
-
-        plt.xlabel(r"Phase [-]")
-        plt.ylabel(r"Radial Velocity [km/s]")
-        plt.grid(True)
-        plt.legend()
-        plt.show()
-
     rv_err = {comp: sigma * np.ones(val.shape) for comp, val in rv.items()}
 
     data = {comp: RVData(**{
         "x_data": phases,
         "y_data": rv[comp],
         "y_err": rv_err[comp],
-        "x_unit": units.dimensionless_unscaled,
-        "y_unit": units.m / units.s
+        "x_unit": au.dimensionless_unscaled,
+        "y_unit": au.m / au.s
 
     }) for comp in rv}
 
@@ -58,17 +44,11 @@ def main():
                 "min": 0.0,
                 "max": 0.5
             },
-            "asini": {
-                "value": 15.0,
+            "inclination": {
+                "value": 86.0,
                 "fixed": False,
-                "min": 10.0,
-                "max": 20.0
-            },
-            "mass_ratio": {
-                "value": 3,
-                "fixed": False,
-                "min": 0.1,
-                "max": 10
+                "min": 80.0,
+                "max": 90.0
             },
             "argument_of_periastron": {
                 "value": 0.0,
@@ -84,14 +64,29 @@ def main():
                 "value": 4.5,
                 "fixed": True
             }
+        },
+        "primary": {
+            "mass": {
+                "value": 2.0,
+                "fixed": False,
+                "min": 0.9,
+                "max": 2.1
+            }
+        },
+        "secondary": {
+            "mass": {
+                "value": 2.0,
+                "fixed": False,
+                "min": 0.9,
+                "max": 2.1
+            }
         }
     }
 
     rv_initial = BinaryInitialParameters(**rv_initial)
-    task = RVBinaryAnalyticsTask(data=data, method='least_squares')
-    task.fit(x0=rv_initial)
-
-    task.plot.model()
+    task = RVBinaryAnalyticsTask(data=data, method='mcmc')
+    task.fit(x0=rv_initial, nsteps=3000, burn_in=500, save=True, fit_id="mcmc_rv_fit")
+    task.plot.corner(truths=True)
 
 
 if __name__ == '__main__':
