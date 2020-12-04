@@ -122,13 +122,14 @@ class SystemContainer(PositionContainer):
 
         :return:
         """
-        self.build_pulsations_on_mesh()
         self.build_surface_gravity()
         self.build_faces_orientation()
         self.correct_mesh()
         self.build_surface_areas()
         self.build_temperature_distribution()
         # self.build_temperature_perturbations()
+
+        self.build_pulsations_on_mesh()
         return self
 
     def _phase(self, phase):
