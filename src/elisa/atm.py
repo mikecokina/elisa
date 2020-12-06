@@ -29,8 +29,8 @@ from . import (
     ld,
 )
 from . buffer import buffer
+from . tensor.etensor import Tensor
 
-from time import time
 logger = getLogger(__name__)
 
 
@@ -252,7 +252,11 @@ class NaiveInterpolatedAtm(object):
         with np.errstate(divide='ignore', invalid='ignore'):
             top_temperatures = np.array([a.temperature for a in top_atm_containers])
             bottom_temperatures = np.array([a.temperature for a in bottom_atm_containers])
+            # top_temperatures = Tensor(top_temperatures)
+            # bottom_temperatures = Tensor(bottom_temperatures)
+            # temperatures = Tensor(temperatures)
             result = (temperatures - bottom_temperatures) / (top_temperatures - bottom_temperatures)
+            # result = result.to_ndarray()
             result[up.isnan(result)] = 1.0
             return result
 
@@ -283,7 +287,17 @@ class NaiveInterpolatedAtm(object):
 
     @staticmethod
     def compute_unknown_intensity_from_surounded_flux_matrices(weights, top_flux_matrix, bottom_flux_matrix):
-        return (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
+        import time
+        import torch
+        t = time.time()
+
+        weights = Tensor(weights)
+        top_flux_matrix = Tensor(top_flux_matrix)
+        bottom_flux_matrix = Tensor(bottom_flux_matrix)
+        result = (weights * (top_flux_matrix.T - bottom_flux_matrix.T) + bottom_flux_matrix.T).T
+
+        print(time.time() - t)
+        return result.to_ndarray()
 
     @staticmethod
     def interpolate_spectra(passbanded_atm_containers, flux_matrices, temperature):
