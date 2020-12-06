@@ -19,6 +19,7 @@ from ... observer.observer import Observer
 from ... graphic import graphics
 from ... logger import getLogger
 from elisa.utils import is_empty
+import matplotlib as mpl
 
 
 logger = getLogger('analytics.binary_fit.plot')
@@ -29,6 +30,10 @@ PLOT_UNITS = {
     'system@gamma': u.km/u.s,
     'system@primary_minimum_time': u.d
 }
+
+# mpl rcParams
+params = {'legend.fontsize': 13, 'legend.handlelength': 1.0, "font.size": 13}
+mpl.rcParams.update(params)
 
 
 class MCMCPlotMixin(object):
@@ -374,6 +379,8 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
             mask = np.logical_and(flat_chain[:, ii] > flat_result[lbl]['value'] - tol,
                                   flat_chain[:, ii] < flat_result[lbl]['value'] + tol)
             flat_chain = flat_chain[mask]
+
+    flat_result = {key: {k: r"$R_\odot$" if k == "unit" and v == "solRad" else v for k, v in val.items()} for key, val in flat_result.items()}
 
     corner_plot_kwargs.update({
         'flat_chain': flat_chain,
