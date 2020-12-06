@@ -30,14 +30,16 @@ class Tensor(object):
         return Tensor(self.value * other.value)
 
     def to_cpu(self):
-        self.value = self.value.to("cpu")
+        if self._is_pytorch:
+            self.value = self.value.to("cpu")
         return self.value
 
     def to_cuda(self):
-        self.value = self.value.to("cuda")
+        if self._is_pytorch:
+            self.value = self.value.to("cuda")
         return self.value
 
-    def to_pytroch(self):
+    def to_pytorch(self):
         pass
 
     def to_ndarray(self):
