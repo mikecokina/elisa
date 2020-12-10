@@ -57,10 +57,10 @@ class AnalyticsTask(metaclass=ABCMeta):
         self.fit_cls = self.__class__.FIT_CLS()
         self.plot = self.__class__.PLOT_CLS(instance=self.fit_cls, data=self.data)
 
-    @staticmethod
-    def validate_method(method):
-        if method not in ['least_squares', 'mcmc']:
-            raise ValueError(f'Invalid fitting method. Use one of: {", ".join(AnalyticsTask.ALLOWED_METHODS)}')
+    @classmethod
+    def validate_method(cls, method):
+        if method not in cls.ALLOWED_METHODS:
+            raise ValueError(f'Invalid fitting method. Use one of: {", ".join(cls.ALLOWED_METHODS)}')
 
     def load_result(self, filename):
         self.fit_cls.load_result(filename)
@@ -185,10 +185,10 @@ class LCBinaryAnalyticsTask(AnalyticsTask):
 
     def __init__(self, method, expected_morphology='detached', name=None, **kwargs):
         self.validate_method(method)
-        if method in 'mcmc':
+        if method in ['mcmc']:
             self.__class__.FIT_CLS = lambda: lc_fit.LCFitMCMC(morphology=expected_morphology)
             self.__class__.PLOT_CLS = LCPlotMCMC
-        elif method in 'least_squares':
+        elif method in ['least_squares']:
             self.__class__.FIT_CLS = lambda: lc_fit.LCFitLeastSquares(morphology=expected_morphology)
             self.__class__.PLOT_CLS = LCPlotLsqr
         super().__init__(method, name, **kwargs)
@@ -215,10 +215,10 @@ class RVBinaryAnalyticsTask(AnalyticsTask):
 
     def __init__(self, method, name=None, **kwargs):
         self.validate_method(method)
-        if method in 'mcmc':
+        if method in ['mcmc']:
             self.__class__.FIT_CLS = rv_fit.RVFitMCMC
             self.__class__.PLOT_CLS = RVPlotMCMC
-        elif method in 'least_squares':
+        elif method in ['least_squares']:
             self.__class__.FIT_CLS = rv_fit.RVFitLeastSquares
             self.__class__.PLOT_CLS = RVPlotLsqr
         super().__init__(method, name, **kwargs)
