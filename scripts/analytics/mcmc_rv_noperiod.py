@@ -19,15 +19,23 @@ def get_rv():
 
 
 def main():
+    np.random.seed(9)
     period, t0, phases = 4.5, 12.0, np.arange(-0.6, 0.62, 0.02)
+    args = np.arange(0, len(phases), dtype=int)
+    indices = np.random.choice(args, int(np.ceil(len(args) / 2)))
+
     jd = t_layer.phase_to_jd(t0, period, phases)
 
     rv = get_rv()
     u = np.random.normal
     n = len(rv["primary"])
 
-    sigma = 2000
+    sigma = 5000
     rv = {comp: u(val, sigma, n) for comp, val in rv.items()}
+
+    rv = {comp: val[indices] for comp, val in rv.items()}
+    jd = jd[indices]
+
     rv_err = {comp: sigma * np.ones(val.shape) for comp, val in rv.items()}
 
     data = {comp: RVData(**{
@@ -39,6 +47,7 @@ def main():
 
     }) for comp in rv}
 
+    print()
     rv_initial = {
         "system": {
             "eccentricity": {
@@ -84,10 +93,14 @@ def main():
     }
 
     rv_initial = BinaryInitialParameters(**rv_initial)
-    task = RVBinaryAnalyticsTask(data=data, method='mcmc')
-    task.fit(x0=rv_initial, nsteps=5000, burn_in=5000, save=True, fit_id="mcmc_rv_fit_no_period", progress=True)
+    # task = RVBinaryAnalyticsTask(data=data, method='mcmc')
+    # task.fit(x0=rv_initial, nsteps=200, nwalkers=200, burn_in=100, save=True, fit_id="mcmc_rv_fit_no_period", progress=True)
+    # task.plot.model()
+    # task.plot.corner(truths=True)
+
+    task = RVBinaryAnalyticsTask(data=data, method='least_squares')
+    task.fit(x0=rv_initial)
     task.plot.model()
-    task.plot.corner(truths=True)
 
 
 if __name__ == '__main__':
