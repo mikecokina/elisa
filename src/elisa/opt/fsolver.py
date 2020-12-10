@@ -1,6 +1,6 @@
 import numpy as np
 
-from .. import umpy as up
+from .. import umpy as up, settings
 from .. logger import getLogger
 
 logger = getLogger('opt.fsolver')
@@ -38,7 +38,8 @@ def fsolver(fn, condition, *args, **kwargs):
             solution = solution[0]
             use = True if 1e15 > solution > 0 else False
         else:
-            logger.warning(f'solution in implicit solver was not found, cause: {msg}')
+            if not settings.SUPPRESS_WARNINGS:
+                logger.warning(f'solution in implicit solver was not found, cause: {msg}')
     except Exception as e:
         logger.debug(f"attempt to solve function {fn.__name__} finished w/ exception: {str(e)}")
         use = False

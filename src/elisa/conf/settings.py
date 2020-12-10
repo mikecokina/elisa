@@ -338,13 +338,15 @@ class Settings(_Const):
             cls.NUMBER_OF_PROCESSES = c_parse.getint('computational', 'number_of_processes',
                                                      fallback=cls.NUMBER_OF_PROCESSES)
             if cls.NUMBER_OF_PROCESSES > os.cpu_count():
-                warnings.warn("argument number_of_processes is too big, fallback to number of machine cores")
+                if not cls.SUPPRESS_WARNINGS:
+                    warnings.warn("argument number_of_processes is too big, fallback to number of machine cores")
                 cls.NUMBER_OF_PROCESSES = int(os.cpu_count())
 
             cls.NUMBER_OF_MCMC_PROCESSES = c_parse.getint('computational', 'number_of_mcmc_processes',
                                                           fallback=cls.NUMBER_OF_MCMC_PROCESSES)
             if cls.NUMBER_OF_MCMC_PROCESSES > os.cpu_count():
-                warnings.warn("argument number_of_mcmc_processes is too big, fallback to number of machine cores")
+                if not cls.SUPPRESS_WARNINGS:
+                    warnings.warn("argument number_of_mcmc_processes is too big, fallback to number of machine cores")
                 cls.NUMBER_OF_MCMC_PROCESSES = int(os.cpu_count())
 
             cls.POINTS_ON_ECC_ORBIT = c_parse.getint('computational', 'points_on_ecc_orbit',
@@ -381,19 +383,20 @@ class Settings(_Const):
 
             cls.K93_ATM_TABLES = c_parse.get('support', 'kurucz_93_atm_tables', fallback=cls.K93_ATM_TABLES)
 
-            if not os.path.isdir(cls.K93_ATM_TABLES):
+            if not os.path.isdir(cls.K93_ATM_TABLES) and not cls.SUPPRESS_WARNINGS:
                 warnings.warn(f"path {cls.K93_ATM_TABLES}\n"
                               "to kurucz 1993 atmosphere atlas doesn't exists\n"
                               "Specifiy it in elisa_conf.ini file", UserWarning)
 
             if c_parse.get('support', 'atlas', fallback=None):
                 with np.errstate(divide='ignore', invalid='ignore'):
-                    warnings.simplefilter("always", DeprecationWarning)
-                    warnings.warn("Variable `atlas` in configuration section `support` is not "
-                                  "longer supported and will be removed in future version.\n"
-                                  "Use atmosphere definition as initial parameter "
-                                  "for given celestial object", DeprecationWarning)
-                    warnings.simplefilter("ignore", DeprecationWarning)
+                    if not cls.SUPPRESS_WARNINGS:
+                        warnings.simplefilter("always", DeprecationWarning)
+                        warnings.warn("Variable `atlas` in configuration section `support` is not "
+                                      "longer supported and will be removed in future version.\n"
+                                      "Use atmosphere definition as initial parameter "
+                                      "for given celestial object", DeprecationWarning)
+                        warnings.simplefilter("ignore", DeprecationWarning)
             cls.ATM_ATLAS = c_parse.get('support', 'atlas', fallback=cls.ATM_ATLAS)
             cls.PASSBAND_TABLES = c_parse.get('support', 'passband_tables', fallback=cls.PASSBAND_TABLES)
 

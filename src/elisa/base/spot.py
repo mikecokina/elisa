@@ -3,7 +3,7 @@ import numpy as np
 
 from copy import copy
 from .. base.transform import SpotProperties
-from .. import units as u
+from .. import units as u, settings
 from .. utils import is_empty
 from .. logger import getLogger
 from .. import (
@@ -341,8 +341,9 @@ def remove_overlaped_spots_by_vertex_map(from_container, vertices_map):
                                        if vertices_map[ix]["enum"] >= 0]))
     for spot_index, _ in list(from_container.spots.items()):
         if spot_index not in spots_instance_indices:
-            logger.warning(f"spot with index {spot_index} doesn't contain Any face "
-                           f"and will be removed from component {from_container.name} spot list")
+            if not settings.SUPPRESS_WARNINGS:
+                logger.warning(f"spot with index {spot_index} doesn't contain Any face "
+                               f"and will be removed from component {from_container.name} spot list")
             from_container.remove_spot(spot_index=spot_index)
     gc.collect()
     return from_container

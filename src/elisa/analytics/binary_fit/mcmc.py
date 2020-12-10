@@ -70,7 +70,8 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         try:
             likelihood = self.likelihood(xn)
         except (ElisaError, ValueError) as e:
-            logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
+            if not settings.SUPPRESS_WARNINGS:
+                logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
             return self._last_known_lhood * 1e3
         return likelihood
 

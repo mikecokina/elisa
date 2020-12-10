@@ -1001,8 +1001,9 @@ def mesh_spots(system, components_distance, component="all"):
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
-                logger.warning(f"center of spot {spot_instance.kwargs_serializer()} "
-                               f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                if not settings.SUPPRESS_WARNINGS:
+                    logger.warning(f"center of spot {spot_instance.kwargs_serializer()} "
+                                   f"doesn't satisfy reasonable conditions and entire spot will be omitted")
 
                 component_instance.remove_spot(spot_index=spot_index)
                 continue
@@ -1020,8 +1021,9 @@ def mesh_spots(system, components_distance, component="all"):
             if not use:
                 # in case of spots, each point should be usefull, otherwise remove spot from
                 # component spot list and skip current spot computation
-                logger.warning(f"first inner ring of spot {spot_instance.kwargs_serializer()} "
-                               f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+                if not settings.SUPPRESS_WARNINGS:
+                    logger.warning(f"first inner ring of spot {spot_instance.kwargs_serializer()} "
+                                   f"doesn't satisfy reasonable conditions and entire spot will be omitted")
 
                 component_instance.remove_spot(spot_index=spot_index)
                 continue

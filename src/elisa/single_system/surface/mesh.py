@@ -392,8 +392,9 @@ def mesh_spots(system_container):
         try:
             spot_points_radii = get_surface_points_radii(*args)
         except MaxIterationError:
-            logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
-                           f"doesn't satisfy reasonable conditions and entire spot will be omitted")
+            if not settings.SUPPRESS_WARNINGS:
+                logger.warning(f"at least 1 point of spot {spot_instance.kwargs_serializer()} "
+                               f"doesn't satisfy reasonable conditions and entire spot will be omitted")
             star_container.remove_spot(spot_index=spot_index)
             continue
 

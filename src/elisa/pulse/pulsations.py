@@ -162,10 +162,12 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
         surf_ampl = mode.horizontal_amplitude
         if surf_ampl > settings.SURFACE_DISPLACEMENT_TOL:
             prec = int(- np.log10(surf_ampl) + 2)
-            logger.warning(f'Relative horizontal surface displacement amplitude ({round(surf_ampl, prec)}) for the mode'
-                           f' {mode_index} exceeded safe tolerances ({settings.SURFACE_DISPLACEMENT_TOL}) given by the'
-                           f' use of linear approximation. This can lead to invalid surface discretization. Use this'
-                           f' result with caution.')
+            if not settings.SUPPRESS_WARNINGS:
+                logger.warning(f'Relative horizontal surface displacement amplitude '
+                               f'({round(surf_ampl, prec)}) for the mode {mode_index} '
+                               f'exceeded safe tolerances ({settings.SURFACE_DISPLACEMENT_TOL}) given by the'
+                               f' use of linear approximation. This can lead to invalid surface '
+                               f'discretization. Use this result with caution.')
 
 
 def calculate_radial_displacement(mode, harmonics):

@@ -114,7 +114,7 @@ def main():
     }
     lc_initial = BinaryInitialParameters(**lc_initial)
     task = LCBinaryAnalyticsTask(data=data, method='mcmc', expected_morphology="detached")
-    task.fit(x0=lc_initial, nsteps=100, mwalkers=100, save=True, fit_id="mcmc_lc_fit", progress=True)
+    task.fit(x0=lc_initial, nsteps=100, save=True, fit_id="mcmc_lc_fit", progress=True)
 
 
 if __name__ == '__main__':
