@@ -5,7 +5,7 @@ from .. umpy import sph_harm
 from .. import settings
 from .. logger import getLogger
 from . import utils as putils
-from . surface.position import calculate_mode_displacement
+from . surface.kinematics import calculate_displacement_coordinates
 
 logger = getLogger('pulse.pulsations')
 
@@ -144,7 +144,7 @@ def calculate_acc_pert(mode, points, harmonics, harmonics_derivatives):
     :param harmonics_derivatives: numpy.array; [dY/dphi, dY/dtheta]
     :return: numpy.array;
     """
-    return - mode.angular_frequency ** 2 * calculate_mode_displacement(mode, points, harmonics, harmonics_derivatives)
+    return - mode.angular_frequency ** 2 * calculate_displacement_coordinates(mode, points, harmonics, harmonics_derivatives)
 
 
 def incorporate_temperature_perturbations(star_container, com_x, phase, time):
