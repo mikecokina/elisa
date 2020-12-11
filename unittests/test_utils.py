@@ -405,3 +405,20 @@ class TestElisaEngineUtils(ElisaTestCase):
         expected = 'Hi there, how are MIKE.'
         obtained = utils.str_repalce(string, ['you', 'Hello'], ['MIKE', 'Hi'])
         self.assertEqual(expected, obtained)
+
+    def test_ret_derot_in_spherical(self):
+        phis = np.linspace(0.001, const.FULL_ARC-0.001)
+        thetas = np.linspace(0.01, const.PI-0.1)
+        phi_rot = 0.3
+        theta_rot = 0.7
+
+        transf_phis, transf_thetas = utils.rotation_in_spherical(
+            phi=phis, theta=thetas, phi_rotation=phi_rot, theta_rotation=theta_rot
+        )
+        new_phis, new_thetas = utils.derotation_in_spherical(
+            phi=transf_phis, theta=transf_thetas, phi_rotation=phi_rot, theta_rotation=theta_rot
+
+        )
+        precision = 10
+        assert_array_equal(np.round(phis, precision), np.round(new_phis, precision))
+        assert_array_equal(np.round(thetas, precision), np.round(new_thetas, precision))
