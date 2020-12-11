@@ -54,10 +54,10 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
     :return: numpy.array;
     """
     theta_test = np.logical_and(thetas != 0.0, thetas != const.PI)
-    derivative = np.zeros(phis.shape)
-    derivative[theta_test] = mode.m * np.real(harmonics[0][theta_test] / np.tan(thetas[theta_test])) + \
+    derivative = np.zeros(phis.shape, dtype=np.complex128)
+    derivative[theta_test] = mode.m * harmonics[0][theta_test] / np.tan(thetas[theta_test]) + \
                              np.sqrt((mode.l - mode.m) * (mode.l + mode.m + 1)) * \
-                             np.real(np.exp((0 - 1j) * phis[theta_test]) * harmonics[1][theta_test])
+                             np.exp((0 - 1j) * phis[theta_test]) * harmonics[1][theta_test]
     norm = np.power(np.mean(np.abs(derivative)**2), 0.5)
     return derivative / norm
 
@@ -210,10 +210,15 @@ def generate_harmonics(star_container, com_x, phase, time):
     :param time: float; time of the observation
     :return: elisa.base.container.StarContainer; Star container with updated harmonics
     """
-    points, points_spot = star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
+    star_container.points_spherical, points_spot = \
+        star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
+    for spot_idx, spot in star_container.spots.items():
+        spot.points_spherical = points_spot[spot_idx]
 
     tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
-    tilted_points, tilted_points_spot = putils.tilt_mode_coordinates(points, points_spot, tilt_phi, tilt_theta)
+    tilted_points, tilted_points_spot = putils.tilt_mode_coordinates(
+        star_container.points_spherical, points_spot, tilt_phi, tilt_theta
+    )
 
     # assigning tilted points in spherical coordinates only to the first mode (the rest will share the same points)
     star_container.pulsations[0].points = tilted_points

@@ -29,6 +29,8 @@ def incorporate_pulsations_to_model(star_container, com_x, scale=1.0):
             mode, tilted_points, mode.point_harmonics, mode.point_harmonics_derivatives, scale=scale
         )
         displacement += np.real(angular_displacement)
+        velocity += kinematics.calculate_mode_angular_derivatives(displacement=angular_displacement,
+                                                                  angular_frequency=mode.angular_frequency)
 
         for spot_idx, spoints in tilted_points_spot.items():
             spot_angular_displacement = kinematics.calculate_displacement_coordinates(
@@ -44,6 +46,9 @@ def incorporate_pulsations_to_model(star_container, com_x, scale=1.0):
         star_container.pulsations[0].mode_axis_theta,
         com_x
     )
+
+    # velocity
+
 
     for spot_idx, spot in star_container.spots.items():
         # displacement
