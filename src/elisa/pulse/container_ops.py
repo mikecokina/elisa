@@ -19,6 +19,9 @@ def incorporate_pulsations_to_model(star_container, com_x, scale=1.0):
     displacement = np.zeros(tilted_points.shape, dtype=np.float64)
     displacement_spots = {spot_idx: np.zeros(spot.shape, dtype=np.float64)
                           for spot_idx, spot in tilted_points_spot.items()}
+    velocity = np.zeros(tilted_points.shape, dtype=np.float64)
+    velocity_spots = {spot_idx: np.zeros(spot.shape, dtype=np.float64)
+                          for spot_idx, spot in tilted_points_spot.items()}
 
     # calculating kinematics quantities
     for mode_index, mode in star_container.pulsations.items():
@@ -35,7 +38,7 @@ def incorporate_pulsations_to_model(star_container, com_x, scale=1.0):
             displacement_spots[spot_idx] += np.real(spot_angular_displacement)
 
     # displacement
-    star_container.points += putils.derotate_surface_points(
+    star_container.points = putils.derotate_surface_points(
         tilted_points + displacement,
         star_container.pulsations[0].mode_axis_phi,
         star_container.pulsations[0].mode_axis_theta,

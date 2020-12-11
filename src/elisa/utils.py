@@ -760,7 +760,6 @@ def derotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     :param theta_rotation: float; - rotation of z axis along new y axis by this value, in radians
     :return:
     """
-    # TODO: write unit test to test_utils
     cos_theta = up.cos(theta)
     sin_theta = up.sin(theta)
     cos_phi = up.cos(phi)
