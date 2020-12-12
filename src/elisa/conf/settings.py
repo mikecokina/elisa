@@ -186,6 +186,7 @@ class Settings(_Const):
         "k": K93_ATM_TABLES,
         "k93": K93_ATM_TABLES
     }
+    CUDA = False
 
     ####################################################################################################################
 
@@ -236,7 +237,8 @@ class Settings(_Const):
             "DEFORMATION_TOL": cls.DEFORMATION_TOL,
             "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
             "PULSATION_MODEL": cls.PULSATION_MODEL,
-            "MCMC_SAVE_INTERVAL": cls.MCMC_SAVE_INTERVAL
+            "MCMC_SAVE_INTERVAL": cls.MCMC_SAVE_INTERVAL,
+            "CUDA": cls.CUDA
         }
 
     @staticmethod
@@ -366,6 +368,21 @@ class Settings(_Const):
                                                               fallback=cls.MAX_RELATIVE_D_IRRADIATION)
             cls.MCMC_SAVE_INTERVAL = c_parse.getfloat('computational', 'mcmc_save_interval',
                                                       fallback=cls.MCMC_SAVE_INTERVAL)
+
+            cls.CUDA = c_parse.getboolean('computational', 'cuda', fallback=cls.CUDA)
+            if cls.CUDA:
+                try:
+                    import torch
+                    if not torch.cuda.is_available():
+                        cls.CUDA = False
+                        warnings.warn("You have no CUDA enabled/available on your device. "
+                                      "Runtime continue with CPU.", UserWarning)
+
+                except ImportError:
+                    warnings.warn("You need to install `pytorch` with cuda to be "
+                                  "able to use CUDA features. Fallback to CPU.", UserWarning)
+                    cls.CUDA = False
+
         # **************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)
