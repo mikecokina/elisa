@@ -59,7 +59,7 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
                              np.sqrt((mode.l - mode.m) * (mode.l + mode.m + 1)) * \
                              np.exp((0 - 1j) * phis[theta_test]) * harmonics[1][theta_test]
     norm = np.power(np.mean(np.abs(derivative)**2), 0.5)
-    return derivative / norm
+    return derivative if norm == 0.0 else derivative / norm
 
 
 def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
