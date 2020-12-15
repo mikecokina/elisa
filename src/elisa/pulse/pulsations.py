@@ -40,7 +40,7 @@ def diff_spherical_harmonics_by_phi(mode, harmonics):
     """
     retval = (0 + 1j) * mode.m * harmonics[0]
     norm = np.power(np.mean(np.abs(retval)**2), 0.5)
-    return retval/norm
+    return retval if norm == 0.0 else retval / norm
 
 
 def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
