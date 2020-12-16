@@ -39,8 +39,7 @@ def diff_spherical_harmonics_by_phi(mode, harmonics):
     :return: numpy.array;
     """
     retval = (0 + 1j) * mode.m * harmonics[0]
-    norm = np.power(np.mean(np.abs(retval)**2), 0.5)
-    return retval if norm == 0.0 else retval / norm
+    return retval
 
 
 def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
@@ -58,8 +57,7 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
     derivative[theta_test] = mode.m * harmonics[0][theta_test] / np.tan(thetas[theta_test]) + \
                              np.sqrt((mode.l - mode.m) * (mode.l + mode.m + 1)) * \
                              np.exp((0 - 1j) * phis[theta_test]) * harmonics[1][theta_test]
-    norm = np.power(np.mean(np.abs(derivative)**2), 0.5)
-    return derivative if norm == 0.0 else derivative / norm
+    return derivative
 
 
 def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
@@ -227,6 +225,7 @@ def generate_harmonics(star_container, com_x, phase, time):
     for mode_index, mode in star_container.pulsations.items():
         exponential = putils.generate_time_exponential(mode, time)
 
+        # generating harmonics Y_m^l and Y_m+1^l for star and spot points
         harmonics = np.zeros((2, tilted_points.shape[0]), dtype=np.complex)
         spot_harmonics = {spot_idx: np.zeros((2, spoints.shape[0]), dtype=np.complex)
                           for spot_idx, spoints in tilted_points_spot.items()}

@@ -85,13 +85,3 @@ def calculate_mode_angular_derivatives(displacement, angular_frequency):
     :return: numpy.array;
     """
     return - angular_frequency * np.imag(displacement)
-
-
-def velocity_in_spherical(velocity, points):
-    """
-    Calculates velocity field from angular derivatives of displacement vectors.
-
-    :param velocity: numpy.array; velocity in tilted spherical coordinates
-    :param points: numpy.array; unperturbed surface points in spherical
-    :return:
-    """

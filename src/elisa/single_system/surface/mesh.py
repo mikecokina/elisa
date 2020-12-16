@@ -47,7 +47,7 @@ def build_pulsations_on_mesh(system):
     """
     if system.star.has_pulsations():
         system.star = generate_harmonics(system.star, com_x=0, phase=system.position.phase, time=system.time)
-        system.star = incorporate_pulsations_to_model(system.star, com_x=0.0)
+        system.star = incorporate_pulsations_to_model(system.star, com_x=0.0, phase=system.position.phase)
     return system
 
 
