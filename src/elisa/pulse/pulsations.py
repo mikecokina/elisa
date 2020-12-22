@@ -39,7 +39,12 @@ def diff_spherical_harmonics_by_phi(mode, harmonics):
     :return: numpy.array;
     """
     retval = (0 + 1j) * mode.m * harmonics[0]
+    # retval = (0 + 1j) * harmonics[0]
     return retval
+
+
+def dy_dphi_norm(mode):
+    return mode.m if mode.m != 0 else 1.0
 
 
 def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
@@ -58,6 +63,26 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
                              np.sqrt((mode.l - mode.m) * (mode.l + mode.m + 1)) * \
                              np.exp((0 - 1j) * phis[theta_test]) * harmonics[1][theta_test]
     return derivative
+
+
+def dy_dtheta_norm(mode):
+    l = mode.l
+    m = mode.m
+
+    # a = (2*l + 1)/(2*l - 3)
+    # lpm = l + m
+    # lmm = l - m
+    # lpmm1 = l + m - 1
+    # lpmp1 = l + m + 1
+    # lmmm1 = l - m - 1
+    #
+    # return np.sqrt(0.25 * (
+    #         a * lpm * lmm * lmmm1 * (l - m - 2) +
+    #         lmmm1**2 * lmm * lpmp1 +
+    #         a * lpmm1 * lpm * (l + m + 2) * lmm +
+    #         lpmm1**2 * (l - m + 1) * lpm
+    # ) / (2*l-1)**2 + lmm * lpmp1)
+    return np.sqrt(0.25*(5*(l-m)*(l+m+1) + (l+m)*(l-m+1)))
 
 
 def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
@@ -245,6 +270,9 @@ def generate_harmonics(star_container, com_x, phase, time):
         derivatives = np.empty((2, tilted_points.shape[0]), dtype=np.complex)
         derivatives[0] = diff_spherical_harmonics_by_phi(mode, harmonics)
         derivatives[1] = diff_spherical_harmonics_by_theta(mode, harmonics, tilted_points[:, 1], tilted_points[:, 2])
+
+        norm_phi = dy_dphi_norm(mode)
+        norm_theta = dy_dtheta_norm(mode)
 
         spot_harmonics_derivatives = {spot_idx: np.zeros((2, spoints.shape[0]), dtype=np.complex)
                                       for spot_idx, spoints in tilted_points_spot.items()}
