@@ -3,7 +3,7 @@ import json
 import numpy as np
 import os.path as op
 
-from elisa import units
+from elisa import units, settings
 from elisa.analytics import LCData, LCBinaryAnalyticsTask
 from elisa.analytics.params.parameters import BinaryInitialParameters
 from elisa.binary_system import t_layer
@@ -96,8 +96,8 @@ def main():
     lc_initial = {
         "system": {
             "semi_major_axis": {
-                "value": 2.69,
-                "constraint": "2.69 / sin(radians(system@inclination))"
+                "value": 2.690,
+                "constraint": "2.690 / sin(radians(system@inclination))"
             },
             "inclination": {
                 "value": 85.0,
@@ -118,67 +118,68 @@ def main():
                 "fixed": True
             },
             "period": {
-                "value": 4.5,
+                "value": P,
                 "fixed": True,
                 "unit": units.d
             }
         },
         "primary": {
             "t_eff": {
-                "value": 6400.0,
+                "value": 6250.0,
                 "fixed": False,
-                'min': 6000.0,
-                'max': 6500.0,
+                "min": 6000.0,
+                "max": 6500.0,
                 "unit": units.K
             },
             "surface_potential": {
-                "value": 2.55,
+                "value": 2.5,
                 "fixed": False,
-                'min': 2.0,
-                'max': 3.0
+                "min": 2,
+                "max": 3
             },
             "gravity_darkening": {
-                "value": 0.32,
+                "value": 0.5,
                 "fixed": False,
-                'min': 0.3,
-                'max': 1.0
+                "min": 0.3,
+                "max": 1.0
             },
             "albedo": {
-                "value": 0.6,
+                "value": 0.75,
                 "fixed": False,
-                'min': 0.5,
-                'max': 1.0
+                "min": 0.5,
+                "max": 1.0
             },
         },
         "secondary": {
             "t_eff": {
-                "value": 6400.0,
+                "value": 6250.0,
                 "fixed": False,
-                'min': 6000.0,
-                'max': 6500.0
+                "min": 6000.0,
+                "max": 6500.0
             },
             "surface_potential": {
-                "value": 2.55,
                 'constraint': 'primary@surface_potential',
             },
             "gravity_darkening": {
-                "value": 0.32,
+                "value": 0.5,
                 "fixed": False,
-                'min': 0.3,
-                'max': 1.0
+                "min": 0.3,
+                "max": 1.0
             },
             "albedo": {
-                "value": 0.6,
-                'fixed': False,
-                'min': 0.5,
-                'max': 1.0
-            }
+                "value": 0.75,
+                "fixed": False,
+                "min": 0.5,
+                "max": 1.0
+            },
         }
     }
 
     lc_initial = BinaryInitialParameters(**lc_initial)
     task = LCBinaryAnalyticsTask(data=data, method='least_squares', expected_morphology="over-contact")
-    result = task.fit(x0=lc_initial)
+    kwargs = dict(ftol=1e-9, xtol=1e-9, gtol=1e-9)
+    result = task.fit(x0=lc_initial, **kwargs)
+    task.save_result(op.join(settings.HOME, "thesis_trra_synthetic.result.json"))
     print(json.dumps(result, indent=4))
 
     task.plot.model()

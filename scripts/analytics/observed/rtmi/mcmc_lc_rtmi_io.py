@@ -3,7 +3,7 @@ import os.path as op
 
 import numpy as np
 
-from elisa import units
+from elisa import units, settings
 from elisa.analytics import LCBinaryAnalyticsTask
 from elisa.analytics import LCData
 from elisa.binary_system import t_layer
@@ -85,10 +85,14 @@ def main():
         "passband": passband
     }) for passband in lc}
 
+    task = LCBinaryAnalyticsTask(data=data, method='least_squares', expected_morphology="over-contact")
+    task.load_result(op.join(settings.HOME, "thesis_trra_synthetic.result.json"))
+    task.plot.model()
+    exit()
     task = LCBinaryAnalyticsTask(data=data, method='mcmc')
     task.load_result("/home/mike/.elisa/thesis_mcmc_rtmi.result.json")
-    task.load_chain("thesis_mcmc_rtmi", discard=10000)
-    # task.plot.model()
+    # task.load_chain("thesis_mcmc_rtmi", discard=30000)
+    task.plot.model()
     task.plot.corner(truths=True)
     # task.plot.traces()
     # task.plot.autocorrelation()
