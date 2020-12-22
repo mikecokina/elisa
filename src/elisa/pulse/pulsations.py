@@ -66,23 +66,16 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
 
 
 def dy_dtheta_norm(mode):
+    # TODO: this is not correct!!!
     l = mode.l
     m = mode.m
 
-    # a = (2*l + 1)/(2*l - 3)
-    # lpm = l + m
-    # lmm = l - m
-    # lpmm1 = l + m - 1
-    # lpmp1 = l + m + 1
-    # lmmm1 = l - m - 1
-    #
-    # return np.sqrt(0.25 * (
-    #         a * lpm * lmm * lmmm1 * (l - m - 2) +
-    #         lmmm1**2 * lmm * lpmp1 +
-    #         a * lpmm1 * lpm * (l + m + 2) * lmm +
-    #         lpmm1**2 * (l - m + 1) * lpm
-    # ) / (2*l-1)**2 + lmm * lpmp1)
     return np.sqrt(0.25*(5*(l-m)*(l+m+1) + (l+m)*(l-m+1)))
+
+
+def horizontal_displacement_normalization(derivatives, harmonics):
+    return np.sqrt(np.sum(np.power(np.abs(harmonics[0]), 2)) /
+                   np.sum(np.power(np.abs(derivatives[0]), 2) + np.power(np.abs(derivatives[1]), 2)))
 
 
 def incorporate_gravity_perturbation(star_container, g_acc_vector, g_acc_vector_spot, phase):
@@ -140,12 +133,14 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
     r_equiv = star_container.equivalent_radius * normalization_constant
     mult = const.G * star_container.mass / r_equiv ** 3
     for mode_index, mode in star_container.pulsations.items():
-        mode.radial_amplitude = mode.amplitude / mode.angular_frequency
 
         # horizontal/radial amplitude (Aerts 2010), p. 198
         mode.horizontal_to_radial_amplitude_ratio = \
             np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2 \
                 if mode.horizontal_to_radial_amplitude_ratio is None else mode.horizontal_to_radial_amplitude_ratio
+
+        mode.radial_amplitude = mode.amplitude / mode.angular_frequency
+
         mode.horizontal_amplitude = mode.horizontal_to_radial_amplitude_ratio * mode.radial_amplitude / r_equiv
 
         surf_ampl = mode.horizontal_amplitude
@@ -271,8 +266,9 @@ def generate_harmonics(star_container, com_x, phase, time):
         derivatives[0] = diff_spherical_harmonics_by_phi(mode, harmonics)
         derivatives[1] = diff_spherical_harmonics_by_theta(mode, harmonics, tilted_points[:, 1], tilted_points[:, 2])
 
-        norm_phi = dy_dphi_norm(mode)
-        norm_theta = dy_dtheta_norm(mode)
+        # renormalizing horizontal amplitude to 1
+        norm_constant = horizontal_displacement_normalization(derivatives, harmonics)
+        derivatives *= norm_constant
 
         spot_harmonics_derivatives = {spot_idx: np.zeros((2, spoints.shape[0]), dtype=np.complex)
                                       for spot_idx, spoints in tilted_points_spot.items()}
@@ -280,6 +276,7 @@ def generate_harmonics(star_container, com_x, phase, time):
             spot_harmonics_derivatives[spot_idx][0] = diff_spherical_harmonics_by_phi(mode, spot_harmonics[spot_idx])
             spot_harmonics_derivatives[spot_idx][1] = \
                 diff_spherical_harmonics_by_theta(mode, spot_harmonics[spot_idx], spotp[:, 1], spotp[:, 2])
+            spot_harmonics_derivatives[spot_idx] *= norm_constant
 
         # assignment of harmonics to mode instance variables
         mode.point_harmonics = harmonics[0]
