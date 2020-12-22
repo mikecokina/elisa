@@ -8,6 +8,8 @@ from ... graphic import graphics
 from ... utils import is_empty
 from ... base.surface.faces import correct_face_orientation
 from .. import utils as sutils
+from .. curves import utils as crv_utils
+from ... observer.observer import Observer
 
 
 class Plot(object):
@@ -131,7 +133,8 @@ class Plot(object):
         :param phase: float; phase at which plot the system, important for eccentric orbits
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
-        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity` or None(default)
+        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity`, 'radiance',
+        `normal_radiance` or None(default)
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask: array[bool]; mask to select which faces to display
         :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera
@@ -150,6 +153,9 @@ class Plot(object):
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else 180
 
+        available_colormaps = ['gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'radiance',
+                               'normal_radiance', None]
+
         single_position = self.single.orbit.rotational_motion(phase=phase)[0]
         single_position = SinglePosition(0, single_position[0], single_position[1])
 
@@ -157,6 +163,18 @@ class Plot(object):
         position_container.set_on_position_params(single_position)
         position_container.build(phase=phase)
         correct_face_orientation(position_container.star, com=0)
+
+        # calculating radiances
+        o = Observer(passband=['bolometric', ], system=self.single)
+        atm_kwargs = dict(
+            passband=o.passband,
+            left_bandwidth=o.left_bandwidth,
+            right_bandwidth=o.right_bandwidth,
+        )
+
+        crv_utils.prep_surface_params(
+            system=position_container, write_to_containers=True, **atm_kwargs
+        )
 
         position_container = sutils.move_sys_onpos(position_container, single_position)
 
@@ -197,6 +215,13 @@ class Plot(object):
             })
             if scale == 'log':
                 raise Warning("`log` scale is not allowed for radial velocity colormap.")
+        elif colormap == 'normal_radiance':
+            normal_radiance = getattr(star_container, 'normal_radiance')['bolometric']
+            surface_kwargs.update({
+                f'cmap': normal_radiance if scale == 'linear' else np.log10(normal_radiance)
+            })
+        else:
+            raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {available_colormaps}')
 
         if not is_empty(face_mask):
             surface_kwargs['triangles'] = surface_kwargs['triangles'][face_mask]
