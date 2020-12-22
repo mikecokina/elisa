@@ -139,8 +139,9 @@ def assign_amplitudes(star_container, normalization_constant=1.0):
             np.sqrt(mode.l * (mode.l + 1)) * mult / mode.angular_frequency ** 2 \
                 if mode.horizontal_to_radial_amplitude_ratio is None else mode.horizontal_to_radial_amplitude_ratio
 
-        mode.radial_amplitude = mode.amplitude / mode.angular_frequency
+        amplitude = mode.amplitude / mode.angular_frequency
 
+        mode.radial_amplitude = amplitude / np.sqrt(mode.horizontal_to_radial_amplitude_ratio**2 + 1)
         mode.horizontal_amplitude = mode.horizontal_to_radial_amplitude_ratio * mode.radial_amplitude / r_equiv
 
         surf_ampl = mode.horizontal_amplitude
