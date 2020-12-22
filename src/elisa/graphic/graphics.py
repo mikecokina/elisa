@@ -19,7 +19,9 @@ CMAPS = {'temperature': cm.jet_r,
          'gravity_acceleration': cm.jet,
          'velocity': cm.jet,
          'radial_velocity': cm.jet,
-         'normal_radiance': cm.hot}
+         'normal_radiance': cm.hot,
+         'radiance': cm.hot,
+         }
 
 
 def orbit(**kwargs):
@@ -248,7 +250,9 @@ def single_star_surface(**kwargs):
                             'gravity_acceleration': set_g_colorbar_label,
                             'velocity': set_v_colorbar_label,
                             'radial_velocity': set_vrad_colorbar_label,
-                            'normal_radiance': set_radiance_colorbar_label}
+                            'normal_radiance': set_radiance_colorbar_label,
+                            'radiance': set_radiance_colorbar_label,
+                            }
         set_colorbar_fn = set_colorbar_fns[kwargs['colormap']]
 
         cmap = CMAPS[kwargs['colormap']]
@@ -368,7 +372,9 @@ def binary_surface(**kwargs):
                         'gravity_acceleration': set_g_colorbar_label,
                         'velocity': set_v_colorbar_label,
                         'radial_velocity': set_vrad_colorbar_label,
-                        'normal_radiance': set_radiance_colorbar_label}
+                        'normal_radiance': set_radiance_colorbar_label,
+                        'radiance': set_radiance_colorbar_label,
+                        }
 
     if kwargs.get('colormap', False):
         cmap = CMAPS[kwargs['colormap']]

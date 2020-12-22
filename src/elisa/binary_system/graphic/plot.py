@@ -16,6 +16,8 @@ from ... import (
     utils,
     const
 )
+from ... import settings
+from ... ld import limb_darkening_factor
 
 
 class Plot(object):
@@ -286,7 +288,6 @@ class Plot(object):
         orbital_position_container.secondary.points[:, 0] -= distances_to_com
 
         orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
-        # this part decides if both components need to be calculated at once (due to reflection effect)
         components = butils.component_to_list(components_to_plot)
 
         com = {'primary': 0.0, 'secondary': components_distance}
@@ -335,6 +336,23 @@ class Plot(object):
                 surface_kwargs.update({
                     f'{component}_cmap': normal_radiance if scale == 'linear' else up.log10(normal_radiance)
                 })
+            elif colormap == 'radiance':
+                normal_radiance = getattr(star, 'normal_radiance')['bolometric']
+                los_cosines = getattr(star, 'los_cosines')
+                indices = getattr(star, 'indices')
+                ld_cfs = getattr(star, 'ld_cfs')['bolometric'][
+                    settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
+                ].values[indices]
+                ld_cors = limb_darkening_factor(coefficients=ld_cfs,
+                                                limb_darkening_law=settings.LIMB_DARKENING_LAW,
+                                                cos_theta=los_cosines[indices])
+                retval = np.zeros(normal_radiance.shape)
+                retval[indices] = normal_radiance[indices] * los_cosines[indices] * ld_cors
+                surface_kwargs.update({
+                    f'{component}_cmap': retval
+                })
+                if scale == 'log':
+                    raise Warning("`log` scale is not allowed for radiance colormap.")
             else:
                 raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {available_colormaps}')
 

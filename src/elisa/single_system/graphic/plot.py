@@ -10,6 +10,8 @@ from ... base.surface.faces import correct_face_orientation
 from .. import utils as sutils
 from .. curves import utils as crv_utils
 from ... observer.observer import Observer
+from ... import settings
+from ... ld import limb_darkening_factor
 
 
 class Plot(object):
@@ -220,6 +222,23 @@ class Plot(object):
             surface_kwargs.update({
                 f'cmap': normal_radiance if scale == 'linear' else np.log10(normal_radiance)
             })
+        elif colormap == 'radiance':
+            normal_radiance = getattr(star_container, 'normal_radiance')['bolometric']
+            los_cosines = getattr(star_container, 'los_cosines')
+            indices = getattr(star_container, 'indices')
+            ld_cfs = getattr(star_container, 'ld_cfs')['bolometric'][
+                settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
+            ].values[indices]
+            ld_cors = limb_darkening_factor(coefficients=ld_cfs,
+                                            limb_darkening_law=settings.LIMB_DARKENING_LAW,
+                                            cos_theta=los_cosines[indices])
+            retval = np.zeros(normal_radiance.shape)
+            retval[indices] = normal_radiance[indices] * los_cosines[indices] * ld_cors
+            surface_kwargs.update({
+                f'cmap': retval
+            })
+            if scale == 'log':
+                raise Warning("`log` scale is not allowed for radiance colormap.")
         else:
             raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {available_colormaps}')
 
