@@ -12,7 +12,8 @@ from ... import settings
 from ... opt.fsolver import fsolver
 from ... utils import is_empty
 from ... logger import getLogger
-from ... pulse import pulsations
+from ... pulse.container_ops import incorporate_pulsations_to_model
+from ... pulse.pulsations import generate_harmonics
 from ... import (
     umpy as up,
     utils,
@@ -88,8 +89,8 @@ def build_pulsations_on_mesh(system, component, components_distance):
         if star.has_pulsations():
             phase = butils.calculate_rotational_phase(system, component)
             com_x = 0 if component == 'primary' else components_distance
-            star = pulsations.generate_harmonics(star, com_x=com_x, phase=phase, time=system.time)
-            pulsations.incorporate_pulsations_to_mesh(star, com_x=com_x, scale=system.semi_major_axis)
+            star = generate_harmonics(star, com_x=com_x, phase=phase, time=system.time)
+            incorporate_pulsations_to_model(star, com_x=com_x, scale=system.semi_major_axis, phase=phase)
     return system
 
 

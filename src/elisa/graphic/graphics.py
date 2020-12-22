@@ -18,7 +18,10 @@ from .. import units as u
 CMAPS = {'temperature': cm.jet_r,
          'gravity_acceleration': cm.jet,
          'velocity': cm.jet,
-         'radial_velocity': cm.jet}
+         'radial_velocity': cm.jet,
+         'normal_radiance': cm.hot,
+         'radiance': cm.hot,
+         }
 
 
 def orbit(**kwargs):
@@ -246,7 +249,10 @@ def single_star_surface(**kwargs):
         set_colorbar_fns = {'temperature': set_t_colorbar_label,
                             'gravity_acceleration': set_g_colorbar_label,
                             'velocity': set_v_colorbar_label,
-                            'radial_velocity': set_vrad_colorbar_label}
+                            'radial_velocity': set_vrad_colorbar_label,
+                            'normal_radiance': set_radiance_colorbar_label,
+                            'radiance': set_radiance_colorbar_label,
+                            }
         set_colorbar_fn = set_colorbar_fns[kwargs['colormap']]
 
         cmap = CMAPS[kwargs['colormap']]
@@ -365,7 +371,10 @@ def binary_surface(**kwargs):
     set_colorbar_fns = {'temperature': set_t_colorbar_label,
                         'gravity_acceleration': set_g_colorbar_label,
                         'velocity': set_v_colorbar_label,
-                        'radial_velocity': set_vrad_colorbar_label}
+                        'radial_velocity': set_vrad_colorbar_label,
+                        'normal_radiance': set_radiance_colorbar_label,
+                        'radiance': set_radiance_colorbar_label,
+                        }
 
     if kwargs.get('colormap', False):
         cmap = CMAPS[kwargs['colormap']]
@@ -503,6 +512,16 @@ def set_vrad_colorbar_label(colorbar, unit, scale, extra=''):
             colorbar.set_label(extra + r' $v_{rad}/[km\,s^{-1}]$')
         elif scale == 'log':
             colorbar.set_label(extra + r' log(v_{rad}/[km\,s^{-1}])')
+
+
+def set_radiance_colorbar_label(colorbar, unit, scale, extra=''):
+    """
+    Function sets label of the colorbar for effective temperature surface function.
+    """
+    if scale == 'linear':
+        colorbar.set_label(extra + r' $L/[W.sr^{-1}.m^{-2}]$')
+    elif scale == 'log':
+        colorbar.set_label(extra + r' $log(L/[W.sr^{-1}.m^{-2}])$')
 
 
 def single_star_wireframe(**kwargs):

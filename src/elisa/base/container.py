@@ -327,6 +327,7 @@ class StarContainer(object):
         self.ld_cfs = ld_cfs
         self.normal_radiance = normal_radiance
         self.los_cosines = los_cosines
+        self.points_spherical = np.array([])
 
         self.point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])

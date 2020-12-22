@@ -7,6 +7,8 @@ from ... const import Position
 from ... utils import is_empty
 from ... graphic import graphics
 from ... base.surface.faces import correct_face_orientation
+from .. curves import utils as crv_utils
+from ... observer.observer import Observer
 
 from ... import (
     umpy as up,
@@ -14,6 +16,8 @@ from ... import (
     utils,
     const
 )
+from ... import settings
+from ... ld import limb_darkening_factor
 
 
 class Plot(object):
@@ -221,7 +225,8 @@ class Plot(object):
         :param components_to_plot: str; `primary`, `secondary` or `both` (default),
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
-        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity` or None(default)
+        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity`, 'radiance',
+        `normal_radiance` or None(default)
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask_primary: array[bool]; mask to select which faces to display
         :param face_mask_secondary: array[bool]: mask to select which faces to display
@@ -247,6 +252,8 @@ class Plot(object):
         
         azimuth = azimuth if azimuth is not None else 180
 
+        available_colormaps = ['gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'radiance',
+                               'normal_radiance', None]
         if separate_colormaps is None:
             separate_colormaps = self.binary.morphology != 'over-contact' and \
                                  colormap not in ['velocity', 'radial_velocity'] and components_to_plot == 'both'
@@ -263,12 +270,24 @@ class Plot(object):
         orbital_position_container.build(components_distance=components_distance, components='both')
 
         orbital_position_container.flatt_it()
+
+        # calculating radiances
+        o = Observer(passband=['bolometric', ], system=self.binary)
+        atm_kwargs = dict(
+            passband=o.passband,
+            left_bandwidth=o.left_bandwidth,
+            right_bandwidth=o.right_bandwidth,
+        )
+
+        crv_utils.prep_surface_params(
+            system=orbital_position_container, write_to_containers=True, **atm_kwargs
+        )
+
         distances_to_com = orbital_position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio)
         orbital_position_container.primary.points[:, 0] -= distances_to_com
         orbital_position_container.secondary.points[:, 0] -= distances_to_com
 
         orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
-        # this part decides if both components need to be calculated at once (due to reflection effect)
         components = butils.component_to_list(components_to_plot)
 
         com = {'primary': 0.0, 'secondary': components_distance}
@@ -312,6 +331,30 @@ class Plot(object):
                 })
                 if scale == 'log':
                     raise Warning("`log` scale is not allowed for radial velocity colormap.")
+            elif colormap == 'normal_radiance':
+                normal_radiance = getattr(star, 'normal_radiance')['bolometric']
+                surface_kwargs.update({
+                    f'{component}_cmap': normal_radiance if scale == 'linear' else up.log10(normal_radiance)
+                })
+            elif colormap == 'radiance':
+                normal_radiance = getattr(star, 'normal_radiance')['bolometric']
+                los_cosines = getattr(star, 'los_cosines')
+                indices = getattr(star, 'indices')
+                ld_cfs = getattr(star, 'ld_cfs')['bolometric'][
+                    settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
+                ].values[indices]
+                ld_cors = limb_darkening_factor(coefficients=ld_cfs,
+                                                limb_darkening_law=settings.LIMB_DARKENING_LAW,
+                                                cos_theta=los_cosines[indices])
+                retval = np.zeros(normal_radiance.shape)
+                retval[indices] = normal_radiance[indices] * los_cosines[indices] * ld_cors
+                surface_kwargs.update({
+                    f'{component}_cmap': retval
+                })
+                if scale == 'log':
+                    raise Warning("`log` scale is not allowed for radiance colormap.")
+            else:
+                raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {available_colormaps}')
 
             face_mask = locals().get(f'face_mask_{component}')
             if not is_empty(face_mask):

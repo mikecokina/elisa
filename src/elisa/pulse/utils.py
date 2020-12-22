@@ -83,3 +83,55 @@ def derotate_surface_points(points_to_derotate, phi, theta, com_x):
     points[:, 0] += com_x
 
     return points
+
+
+def derotate_surface_displacements(velocity, tilted_points, points, axis_phi, axis_theta):
+    """
+    Transform spherical perturbations from tilted coordinates to system alligned with rotation axis.
+
+    :param velocity: numpy.array; velocity in tilted spherical coordinates
+    :param tilted_points: numpy.array; spherical coordinates of surface points (unperturbed) in tilted coordinates
+    :param points: numpy.array; unperturbed surface points in spherical coordinates
+    :param axis_theta: float;
+    :param axis_phi: float;
+    :return: numpy.array;
+    """
+    pert_phis, pert_thetas = utils.derotation_in_spherical(
+        phi=tilted_points[:, 1] + velocity[:, 1],
+        theta=tilted_points[:, 2] + velocity[:, 2],
+        phi_rotation=axis_phi,
+        theta_rotation=axis_theta
+    )
+
+    crit_amplitude = const.PI
+    d_phi = pert_phis - points[:, 1]
+    d_phi[d_phi > crit_amplitude] -= const.FULL_ARC
+    d_theta = (pert_thetas - points[:, 2])
+
+    return np.column_stack((velocity[:, 0], d_phi, d_theta))
+
+
+def transform_spherical_displacement_to_cartesian(sph_displacement, surf_points, com_x):
+    """
+    Transforms displacement d_r, d_phi, d_theta into spherical cartesian displacement d_x, d_y, d_z
+
+    :param sph_displacement: numpy.array; [[d_r1, d_phi1, d_theta1], ...]
+    :param surf_points: numpy.array; surface points in equilibrium in cartesian coordinates (from container)
+    :param com_x: numpy.float; x coordinate of centre of mass, assuming com = [com_x, 0, 0]
+    :return: numpy.array; [[d_x1, d_y1, d_z1], ...]
+    """
+    points = surf_points - np.array([com_x, 0, 0])[None, :]
+    r_xy2 = np.sum(np.power(points[:, :-1], 2), axis=1)
+    r_xy = np.sqrt(r_xy2)
+    r = np.sqrt(r_xy2 + np.power(points[:, 2], 2))
+    # z/(x^2+y^2)^0.5
+    z_rxy = np.zeros(r_xy.shape)
+    non_zero = r_xy != 0
+    z_rxy[non_zero] = points[non_zero, 2] / r_xy[non_zero]
+
+    matrix = np.empty((r.shape[0], 3, 3))
+    matrix[:, 0, 0], matrix[:, 1, 0], matrix[:, 2, 0] = points[:, 0] / r, -points[:, 1], points[:, 0] * z_rxy
+    matrix[:, 0, 1], matrix[:, 1, 1], matrix[:, 2, 1] = points[:, 1] / r,  points[:, 0], points[:, 1] * z_rxy
+    matrix[:, 0, 2], matrix[:, 1, 2], matrix[:, 2, 2] = points[:, 2] / r, 0.0, -r_xy
+
+    return np.sum(matrix * sph_displacement[:, :, None], axis=1)

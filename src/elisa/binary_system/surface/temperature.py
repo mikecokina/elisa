@@ -127,6 +127,11 @@ def reflection_effect(system, components_distance, iterations):
     components = ['primary', 'secondary'] if system.primary.t_eff <= system.secondary.t_eff else \
         ['secondary', 'primary']
 
+    # pre-calculating 4th power of visible teff for visible triangles
+    teff4 = {component: np.empty(temperatures[component].shape) for component in components}
+    for cmp in components:
+        teff4[cmp][vis_test[cmp]] = up.power(temperatures[cmp][vis_test[cmp]], 4)
+
     if use_quarter_star_test:
         # calculating distances and distance vectors between, join vector is already normalized
         shp, shp_reduced = get_distance_matrix_shape(system, vis_test)
@@ -162,13 +167,13 @@ def reflection_effect(system, components_distance, iterations):
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
                 # calculating vector part of reflection effect correction
-                vector_to_sum1 = reflection_factor[counterpart] * up.power(
-                    temperatures[counterpart][vis_test[counterpart]], 4) * areas[counterpart][vis_test[counterpart]]
+                vector_to_sum1 = reflection_factor[counterpart] * teff4[counterpart][vis_test[counterpart]] * \
+                                 areas[counterpart][vis_test[counterpart]]
                 counterpart_to_sum = up.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                     if component == 'secondary' else up.matmul(matrix_to_sum2['primary'], vector_to_sum1)
                 reflection_factor[component][:symmetry_to_use[component]] = \
-                    1 + (_c[component][vis_test_symmetry[component]] / up.power(
-                        temperatures[component][vis_test_symmetry[component]], 4)) * counterpart_to_sum
+                    1 + (_c[component][vis_test_symmetry[component]] / teff4[component][vis_test_symmetry[component]]) \
+                    * counterpart_to_sum
 
                 # using symmetry to redistribute reflection factor R
                 refl_fact_aux = np.empty(shape=np.shape(temperatures[component]))
@@ -227,12 +232,13 @@ def reflection_effect(system, components_distance, iterations):
                 # calculation of reflection effect correction as
                 # 1 + (c / t_effi) * sum_j(r_j * Q_ab * t_effj^4 * D(gamma_j) * areas_j)
                 # calculating vector part of reflection effect correction
-                vector_to_sum1 = reflection_factor[counterpart] * up.power(
-                    temperatures[counterpart][vis_test[counterpart]], 4) * areas[counterpart][vis_test[counterpart]]
+                vector_to_sum1 = reflection_factor[counterpart] * teff4[counterpart][vis_test[counterpart]] * \
+                                 areas[counterpart][vis_test[counterpart]]
                 counterpart_to_sum = up.matmul(vector_to_sum1, matrix_to_sum2['secondary']) \
                     if component == 'secondary' else up.matmul(matrix_to_sum2['primary'], vector_to_sum1)
-                reflection_factor[component] = 1 + (_c[component][vis_test[component]] / up.power(
-                    temperatures[component][vis_test[component]], 4)) * counterpart_to_sum
+                reflection_factor[component] = \
+                    1 + (_c[component][vis_test[component]] / teff4[component][vis_test[component]]) * \
+                    counterpart_to_sum
 
         for component in components:
             # assigning new temperatures according to last iteration as

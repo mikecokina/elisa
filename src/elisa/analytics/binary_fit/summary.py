@@ -213,7 +213,7 @@ def fit_lc_summary_with_error_propagation(fit_instance, path, percentiles):
         io_tools.write_propagated_ln(r_backw, flat_params, f'{component}@backw_radius',
                                      'Backward radius:', write_fn, line_sep, 'sma')
         io_tools.write_propagated_ln(r_side, flat_params, f'{component}@side_radius',
-                                     'Backward radius:', write_fn, line_sep, 'sma')
+                                     'Side radius:', write_fn, line_sep, 'sma')
         if fit_instance.morphology != 'over-contact':
             r_forw = full_chain_results[:, param_columns[f'{component}@forward_radius']]
             io_tools.write_propagated_ln(r_forw, flat_params, f'{component}@forward_radius',

@@ -6,9 +6,7 @@ import pandas as pd
 from . import utils as outils
 from . plot import Plot
 from . passband import PassbandContainer, init_bolometric_passband
-from .. binary_system.system import BinarySystem
 from .. binary_system.curves.community import RadialVelocitySystem
-from .. single_system.system import SingleSystem
 from .. import settings
 from .. utils import is_empty
 from .. logger import getLogger
@@ -238,6 +236,9 @@ class Observer(object):
             base_phases:  ndarray of unique phases between (0, 1)
             reverse_indices: ndarray mask applicable to `base_phases` which will reconstruct original `phases`
         """
+        from ..binary_system.system import BinarySystem
+        from ..single_system.system import SingleSystem
+
         if self._system_cls == BinarySystem or str(self._system_cls) == str(BinarySystem):
             # function shouldn't search for base phases if system has pulsations or is asynchronous with spots
             has_pulsation_test = self._system.primary.has_pulsations() | self._system.secondary.has_pulsations()

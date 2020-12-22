@@ -1,5 +1,5 @@
 import numpy as np
-from copy import copy, deepcopy
+from copy import copy
 
 from . import utils as crv_utils
 from .. surface.mesh import add_spots_to_mesh

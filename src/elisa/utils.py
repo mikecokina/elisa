@@ -723,14 +723,15 @@ def find_idx_of_nearest(array, values):
 def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     """
     transformation of phi, theta spherical coordinates into new spherical coordinates produced by rotation around old
-    z_axis by `phi_rotation` and second rotation around new y axis by value `theta rotation`
+    z_axis (in positive direction) by `phi_rotation` and second rotation (in positive direction) around new y axis by
+    value `theta rotation`.
+
     :param phi: numpy.array; - in radians
     :param theta: numpy.array; - in radians
     :param phi_rotation: float; - rotation of old spherical system around z axis, in radians
     :param theta_rotation: float; - rotation of z axis along new y axis by this value, in radians
-    :return:
+    :return: tuple; transformed angular coordinates
     """
-    # TODO: write unit test to test_utils
     # rotation around Z axis
     phi_rot = (phi - phi_rotation) % const.FULL_ARC
 
@@ -758,7 +759,6 @@ def derotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     :param theta_rotation: float; - rotation of z axis along new y axis by this value, in radians
     :return:
     """
-    # TODO: write unit test to test_utils
     cos_theta = up.cos(theta)
     sin_theta = up.sin(theta)
     cos_phi = up.cos(phi)
