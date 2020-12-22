@@ -20,7 +20,7 @@ BINARY_DEFINITION = {
         "gamma": 0.0,
         "period": 5.0,
         "eccentricity": 0.0,
-        "inclination": 90.0,
+        "inclination": 95.0,
         "primary_minimum_time": 0.0,
         "phase_shift": 0.0
     },
@@ -66,7 +66,7 @@ def _horizon_base_component(binary, position, analytic=True):
             args = (position_container.position.azimuth - HALF_PI, prop_value, "z", False, False)
             prop_value = utils.around_axis_rotation(*args)
 
-            args = (HALF_PI - position_container.inclination, prop_value, "y", True, False)
+            args = (HALF_PI - position_container.inclination, prop_value, "y", False, False)
             prop_value = utils.around_axis_rotation(*args)
             setattr(position_container.primary, prop, prop_value)
 
@@ -149,10 +149,10 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
     # rotate line of sight to simulate phase and inclination
     zv = np.array([0.0, 0.0, 1.0])
 
-    xv = utils.around_axis_rotation(HALF_PI - binary.inclination, LINE_OF_SIGHT, axis="y", inverse=False)
+    xv = utils.around_axis_rotation(HALF_PI - binary.inclination, LINE_OF_SIGHT, axis="y", inverse=True)
     xv = utils.around_axis_rotation(position.azimuth - HALF_PI, xv, axis="z", inverse=True)
 
-    zv = utils.around_axis_rotation(HALF_PI - binary.inclination, zv, axis="y", inverse=False)
+    zv = utils.around_axis_rotation(HALF_PI - binary.inclination, zv, axis="y", inverse=True)
     zv = utils.around_axis_rotation(position.azimuth - HALF_PI, zv, axis="z", inverse=True)
 
     # perpendicular vector to find theta-like rotation
@@ -207,7 +207,7 @@ def get_analytics_horizon(binary=None, phase=0.0, tol=1e-4, polar=False, phi_den
         raise ValueError(f"No horizon points found in given tolerance {tol}. Decrease tolerance.")
 
     horizon_points = utils.around_axis_rotation(position.azimuth - HALF_PI, horizon_points, axis="z", inverse=False)
-    horizon_points = utils.around_axis_rotation(HALF_PI - binary.inclination, horizon_points, axis="y", inverse=True)
+    horizon_points = utils.around_axis_rotation(HALF_PI - binary.inclination, horizon_points, axis="y", inverse=False)
     horizon_points = horizon_points.T[1:3].T
 
     if polar:
@@ -259,33 +259,36 @@ def get_discrete_horizon(binary=None, phase=0.0, threshold=-1e-6, polar=False):
 
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
+    _phase = 0.25
 
-    _phase = 0.0
-
-    discrete_horizon, origin_discrete_horizon = get_discrete_horizon(phase=_phase, polar=True)
+    # discrete_horizon, origin_discrete_horizon = get_discrete_horizon(phase=_phase, polar=False)
 
     # show full path of discrete horizon
-    phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
-    rs, phis = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
-    rs, phis = rs[:-1], phis[:-1]
+    # phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
+    # rs, phis = discrete_horizon[phi_argsort].T[0], discrete_horizon[phi_argsort].T[1] % FULL_ARC
+    # rs, phis = rs[:-1], phis[:-1]
+    # plt.plot(phis % FULL_ARC, rs * 10, c="r")
 
-    plt.plot(phis % FULL_ARC, rs * 10, c="r")
+    # analytic_horizon = get_analytics_horizon(phase=_phase, tol=1e-2, polar=False, phi_density=50, theta_density=1000)
+    #
+    # plt.scatter(analytic_horizon.T[0], analytic_horizon.T[1], c="r")
+    # plt.show()
 
-    # show vertex path of discrete horizon
-    phi_argsort = np.argsort(origin_discrete_horizon.T[1] % FULL_ARC)
-    rs, phis = origin_discrete_horizon[phi_argsort].T[0], origin_discrete_horizon[phi_argsort].T[1] % FULL_ARC
-    rs, phis = rs[:-1], phis[:-1]
-
-    plt.scatter(phis % FULL_ARC, rs * 10, c="r")
-
-    # analytic horizon
-    analytic_horizon = get_analytics_horizon(phase=_phase, tol=1e-2, polar=True, phi_density=100, theta_density=1000)
-    phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
-    rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
-    rs, phis = rs[:-1], phis[:-1]
-
-    plt.plot(phis % FULL_ARC, rs * 10, c="b")
-    plt.xlabel(r"$\theta$")
-    plt.ylabel(r"$\varrho$")
-    plt.legend()
-    plt.show()
+    # # show vertex path of discrete horizon
+    # phi_argsort = np.argsort(origin_discrete_horizon.T[1] % FULL_ARC)
+    # rs, phis = origin_discrete_horizon[phi_argsort].T[0], origin_discrete_horizon[phi_argsort].T[1] % FULL_ARC
+    # rs, phis = rs[:-1], phis[:-1]
+    #
+    # plt.scatter(phis % FULL_ARC, rs * 10, c="r")
+    #
+    # # analytic horizon
+    # analytic_horizon = get_analytics_horizon(phase=_phase, tol=1e-2, polar=True, phi_density=100, theta_density=1000)
+    # phi_argsort = np.argsort(analytic_horizon.T[1] % FULL_ARC)
+    # rs, phis = analytic_horizon[phi_argsort].T[0], analytic_horizon[phi_argsort].T[1] % FULL_ARC
+    # rs, phis = rs[:-1], phis[:-1]
+    #
+    # plt.plot(phis % FULL_ARC, rs * 10, c="b")
+    # plt.xlabel(r"$\theta$")
+    # plt.ylabel(r"$\varrho$")
+    # plt.legend()
+    # plt.show()

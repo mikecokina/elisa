@@ -107,7 +107,7 @@ class PositionContainer(object):
                 args = (self.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
                 prop_value = utils.around_axis_rotation(*args)
 
-                args = (const.HALF_PI - self.inclination, prop_value, "y", True, False)
+                args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
                 prop_value = utils.around_axis_rotation(*args)
                 setattr(star_container, prop, prop_value)
         return self
