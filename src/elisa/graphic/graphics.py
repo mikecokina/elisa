@@ -544,9 +544,9 @@ def set_radiance_colorbar_label(colorbar, unit, scale, extra=''):
     Function sets label of the colorbar for effective temperature surface function.
     """
     if scale == 'linear':
-        colorbar.set_label(extra + r' $L/[W.sr^{-1}.m^{-2}]$')
+        colorbar.set_label(extra + r' $I/[W.sr^{-1}.m^{-2}]$')
     elif scale == 'log':
-        colorbar.set_label(extra + r' $log(L/[W.sr^{-1}.m^{-2}])$')
+        colorbar.set_label(extra + r' $log(I/[W.sr^{-1}.m^{-2}])$')
 
 
 def single_star_wireframe(**kwargs):
