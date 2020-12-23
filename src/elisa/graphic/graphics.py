@@ -219,12 +219,23 @@ def single_star_surface(**kwargs):
 
     :param kwargs: Dict;
     :**kwargs options**:
-        * **axis_unit** * -- astropy.units.solRad; unit in which axis will be displayed, please use
-                                                astropy.units format, default unit is solar radius
-        * **edges** * -- bool; if True edges of surface faces are visible
-        * **normals** * -- bool; if True surface faces outward facing normals are visible
-        * **colormap** * -- str; `temperature` - displays temperature surface colormap
-        * **gravity_acceleration** * -- bool; displays gravity acceleration colormap
+        * **phase** * float -- phase at which plot the system, important for eccentric orbits
+        * **components_to_plot** * -- str; `primary`, `secondary` or `both` (default),
+        * **normals** * -- bool; plot normals of the surface phases as arrows
+        * **edges** * -- bool; highlight edges of surface faces
+        * **colormap** * -- str; `gravity_acceleration`, `temperature` or None(default)
+        * **plot_axis** * -- bool; if False, axis will be hidden
+        * **face_mask_primary** * -- array[bool]; mask to select which faces to display
+        * **face_mask_secondary** * -- array[bool]: mask to select which faces to display
+        * **elevation** * -- float; in degree - elevation of camera
+        * **azimuth** * -- float; camera azimuth
+        * **units** * -- str; units of gravity acceleration colormap  `SI` or `cgs`
+        * **scale** * -- str; `linear` or `log`
+        * **axis_unit** * -- Union[astropy.unit, dimensionless]; - axis units
+        * **colorbar_orientation** * -- str; `horizontal` or `vertical` (default)
+        * **colorbar** * -- bool; colorabar on/off switchic
+        * **colorbar_separation** * -- float; shifting position of the colorbar from its default postition
+        * **colorbar_size** * -- float; relative size of the colorbar, default 0.7
     """
 
     fig = plt.figure(figsize=(7, 7))
@@ -259,7 +270,9 @@ def single_star_surface(**kwargs):
         star_plot.set_cmap(cmap=cmap)
         star_plot.set_array(kwargs['cmap'])
         if kwargs['colorbar']:
-            colorbar = fig.colorbar(star_plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
+            colorbar = fig.colorbar(star_plot, shrink=kwargs['colorbar_size'],
+                                    orientation=kwargs['colorbar_orientation'],
+                                    pad=kwargs['colorbar_separation'])
             set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'])
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
@@ -299,6 +312,8 @@ def binary_surface(**kwargs):
         * **axis_unit** * -- Union[astropy.unit, dimensionless]; - axis units
         * **colorbar_orientation** * -- str; `horizontal` or `vertical` (default)
         * **colorbar** * -- bool; colorabar on/off switchic
+        * **colorbar_separation** * -- float; shifting position of the colorbar from its default postition
+        * **colorbar_size** * -- float; relative size of the colorbar, default 0.7
     """
 
     fig = plt.figure(figsize=(7, 7))
@@ -388,27 +403,37 @@ def binary_surface(**kwargs):
         if kwargs['components_to_plot'] == 'primary':
             plot.set_array(kwargs['primary_cmap'])
             if kwargs['colorbar']:
-                colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
+                colorbar = fig.colorbar(plot, shrink=kwargs['colorbar_size'],
+                                        orientation=kwargs['colorbar_orientation'],
+                                        pad=kwargs['colorbar_separation'])
                 set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'], extra='primary')
         elif kwargs['components_to_plot'] == 'secondary':
             plot.set_array(kwargs['secondary_cmap'])
             if kwargs['colorbar']:
-                colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
+                colorbar = fig.colorbar(plot, shrink=kwargs['colorbar_size'],
+                                        orientation=kwargs['colorbar_orientation'],
+                                        pad=kwargs['colorbar_separation'])
                 set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'], extra='secondary')
         elif kwargs['components_to_plot'] == 'both':
             if not kwargs['separate_colormaps']:
                 both_cmaps = up.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
                 plot.set_array(both_cmaps)
                 if kwargs['colorbar']:
-                    colorbar = fig.colorbar(plot, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
+                    colorbar = fig.colorbar(plot, shrink=kwargs['colorbar_size'],
+                                            orientation=kwargs['colorbar_orientation'],
+                                            pad=kwargs['colorbar_separation'])
                     set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'])
             else:
                 plot1.set_array(kwargs['primary_cmap'])
                 plot2.set_array(kwargs['secondary_cmap'])
                 if kwargs['colorbar']:
-                    colorbar1 = fig.colorbar(plot1, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
+                    colorbar1 = fig.colorbar(plot1, shrink=kwargs['colorbar_size'],
+                                             orientation=kwargs['colorbar_orientation'],
+                                             pad=kwargs['colorbar_separation'])
                     set_colorbar_fn(colorbar1, kwargs['units'], kwargs['scale'], extra='primary')
-                    colorbar2 = fig.colorbar(plot2, shrink=0.7, orientation=kwargs['colorbar_orientation'], pad=0.0)
+                    colorbar2 = fig.colorbar(plot2, shrink=kwargs['colorbar_size'],
+                                             orientation=kwargs['colorbar_orientation'],
+                                             pad=kwargs['colorbar_separation'])
                     set_colorbar_fn(colorbar2, kwargs['units'], kwargs['scale'], extra='secondary')
 
     x_min, x_max = 0, 0
