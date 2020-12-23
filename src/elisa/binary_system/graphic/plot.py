@@ -305,7 +305,9 @@ class Plot(object):
                 f'{component}_triangles': faces
             })
 
-            if colormap == 'gravity_acceleration':
+            if colormap is None:
+                pass
+            elif colormap == 'gravity_acceleration':
                 log_g = getattr(star, 'log_g')
                 value = log_g if units == 'SI' else log_g + 2
                 surface_kwargs.update({
