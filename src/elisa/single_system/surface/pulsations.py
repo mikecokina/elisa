@@ -2,7 +2,7 @@ from ... pulse.container_ops import incorporate_pulsations_to_model
 from ... pulse.pulsations import generate_harmonics
 
 
-def build_pulsations_on_mesh(system):
+def build_pulsations(system):
     """
     Adds pulsations to stellar model.
 

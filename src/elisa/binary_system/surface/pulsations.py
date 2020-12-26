@@ -3,7 +3,7 @@ from ... pulse.container_ops import incorporate_pulsations_to_model
 from ... pulse.pulsations import generate_harmonics
 
 
-def build_pulsations_on_mesh(system, component, components_distance):
+def build_pulsations(system, component, components_distance):
     """
     adds position perturbations to container mesh
 

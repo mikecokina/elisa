@@ -100,7 +100,7 @@ class SystemContainer(PositionContainer):
         self.build_temperature_distribution()
         # self.build_temperature_perturbations()
 
-        self.build_pulsations_on_mesh()
+        self.build_pulsations()
         return self
 
     def build_mesh(self):
@@ -131,8 +131,8 @@ class SystemContainer(PositionContainer):
     def build_temperature_perturbations(self):
         return temperature.build_temperature_perturbations(self)
 
-    def build_pulsations_on_mesh(self):
-        return pulsations.build_pulsations_on_mesh(self)
+    def build_pulsations(self):
+        return pulsations.build_pulsations(self)
 
     def _phase(self, phase):
         return phase if phase is not None else self.position.phase

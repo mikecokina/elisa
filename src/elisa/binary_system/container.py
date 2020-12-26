@@ -96,6 +96,8 @@ class OrbitalPositionContainer(PositionContainer):
         """
         self.build_from_points_to_temperatures(components_distance, component)
         self.build_temperature_distribution(components_distance, component)
+
+        self.build_pulsations(component, components_distance)
         return self
 
     def build_from_points_to_temperatures(self, components_distance=None, component="all"):
@@ -110,7 +112,6 @@ class OrbitalPositionContainer(PositionContainer):
         components_distance = self._components_distance(components_distance)
         self.build_faces(components_distance, component)
         self.build_velocities(components_distance, component)
-        self.build_pulsations_on_mesh(component, components_distance)
         self.build_surface_gravity(components_distance, component)
         self.build_faces_orientation(components_distance, component)
         self.correct_mesh(component)
@@ -156,8 +157,8 @@ class OrbitalPositionContainer(PositionContainer):
     def build_temperature_perturbations(self, components_distance, component):
         return temperature.build_temperature_perturbations(self, components_distance, component)
 
-    def build_pulsations_on_mesh(self, component, components_distance):
-        return pulsations.build_pulsations_on_mesh(self, component, components_distance)
+    def build_pulsations(self, component, components_distance):
+        return pulsations.build_pulsations(self, component, components_distance)
 
     def apply_eclipse_filter(self):
         """
