@@ -2,6 +2,7 @@ import numpy as np
 
 from .. import utils as butils, dynamic
 from ... base import transform
+from ... base.graphics import plot
 from .. container import OrbitalPositionContainer
 from ... const import Position
 from ... utils import is_empty
@@ -16,8 +17,6 @@ from ... import (
     utils,
     const
 )
-from ... import settings
-from ... ld import limb_darkening_factor
 
 
 class Plot(object):
@@ -215,7 +214,7 @@ class Plot(object):
         graphics.binary_wireframe(**binary_wireframe_kwargs)
 
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
-                face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, units='SI',
+                face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, unit='default',
                 axis_unit=u.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
                 surface_colors=('g', 'r'), separate_colormaps=None, colorbar_separation=0.0, colorbar_size=0.7):
         """
@@ -232,7 +231,7 @@ class Plot(object):
         :param face_mask_secondary: array[bool]: mask to select which faces to display
         :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
-        :param units: str; unit system of colormap  `SI` or `cgs`
+        :param unit: str; colorbar unit
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param colorbar_orientation: str; `horizontal` or `vertical` (default)
         :param colorbar: bool; colorbar on/off switch
@@ -254,8 +253,6 @@ class Plot(object):
         
         azimuth = azimuth if azimuth is not None else 180
 
-        available_colormaps = ['gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'radiance',
-                               'normal_radiance', None]
         if separate_colormaps is None:
             separate_colormaps = self.binary.morphology != 'over-contact' and \
                                  colormap not in ['velocity', 'radial_velocity'] and components_to_plot == 'both'
@@ -304,67 +301,14 @@ class Plot(object):
                 f'points_{component}': mult * points,
                 f'{component}_triangles': faces
             })
-
-            if colormap is None:
-                pass
-            elif colormap == 'gravity_acceleration':
-                log_g = getattr(star, 'log_g')
-                value = log_g if units == 'SI' else log_g + 2
-                surface_kwargs.update({
-                    f'{component}_cmap': value if scale == 'log' else up.power(10, value)
-                })
-
-            elif colormap == 'temperature':
-                temperatures = getattr(star, 'temperatures')
-                surface_kwargs.update({
-                    f'{component}_cmap': temperatures if scale == 'linear' else up.log10(temperatures)
-                })
-
-            elif colormap == 'velocity':
-                velocities = np.linalg.norm(getattr(star, 'velocities'), axis=1)
-                velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-                surface_kwargs.update({
-                    f'{component}_cmap': velocities if scale == 'linear' else up.log10(velocities)
-                })
-
-            elif colormap == 'radial_velocity':
-                velocities = getattr(star, 'velocities')[:, 0]
-                velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-                surface_kwargs.update({
-                    f'{component}_cmap': velocities
-                })
-                if scale == 'log':
-                    raise Warning("`log` scale is not allowed for radial velocity colormap.")
-            elif colormap == 'normal_radiance':
-                normal_radiance = getattr(star, 'normal_radiance')['bolometric']
-                surface_kwargs.update({
-                    f'{component}_cmap': normal_radiance if scale == 'linear' else up.log10(normal_radiance)
-                })
-            elif colormap == 'radiance':
-                normal_radiance = getattr(star, 'normal_radiance')['bolometric']
-                los_cosines = getattr(star, 'los_cosines')
-                indices = getattr(star, 'indices')
-                ld_cfs = getattr(star, 'ld_cfs')['bolometric'][
-                    settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
-                ].values[indices]
-                ld_cors = limb_darkening_factor(coefficients=ld_cfs,
-                                                limb_darkening_law=settings.LIMB_DARKENING_LAW,
-                                                cos_theta=los_cosines[indices])
-                retval = np.zeros(normal_radiance.shape)
-                retval[indices] = normal_radiance[indices] * los_cosines[indices] * ld_cors
-                surface_kwargs.update({
-                    f'{component}_cmap': retval
-                })
-                if scale == 'log':
-                    raise Warning("`log` scale is not allowed for radiance colormap.")
-            else:
-                raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {available_colormaps}')
-
+            surface_kwargs = plot.add_colormap_to_plt_kwargs(
+                surface_kwargs,  f'{component}_cmap', colormap, star, scale=scale, unit=unit
+            )
             face_mask = locals().get(f'face_mask_{component}')
             if not is_empty(face_mask):
                 surface_kwargs[f'{component}_triangles'] = surface_kwargs[f'{component}_triangles'][face_mask]
-                # fixme: this is directly related to f'{component}_cmap' but it is not enforced to be set before
-                surface_kwargs[f'{component}_cmap'] = surface_kwargs[f'{component}_cmap'][face_mask]
+                if colormap is not None:
+                    surface_kwargs[f'{component}_cmap'] = surface_kwargs[f'{component}_cmap'][face_mask]
 
             if normals:
                 surface_kwargs.update({
@@ -391,7 +335,7 @@ class Plot(object):
             "face_mask_secondary": face_mask_secondary,
             "elevation": elevation,
             "azimuth": azimuth,
-            "units": units,
+            "unit": unit,
             "axis_unit": axis_unit,
             "colorbar_orientation": colorbar_orientation,
             "colorbar": colorbar,

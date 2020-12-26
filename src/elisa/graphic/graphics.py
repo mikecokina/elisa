@@ -257,15 +257,6 @@ def single_star_surface(**kwargs):
                   length=0.1 * kwargs['equatorial_radius'])
 
     if kwargs.get('colormap', False):
-        set_colorbar_fns = {'temperature': set_t_colorbar_label,
-                            'gravity_acceleration': set_g_colorbar_label,
-                            'velocity': set_v_colorbar_label,
-                            'radial_velocity': set_vrad_colorbar_label,
-                            'normal_radiance': set_radiance_colorbar_label,
-                            'radiance': set_radiance_colorbar_label,
-                            }
-        set_colorbar_fn = set_colorbar_fns[kwargs['colormap']]
-
         cmap = CMAPS[kwargs['colormap']]
         star_plot.set_cmap(cmap=cmap)
         star_plot.set_array(kwargs['cmap'])
@@ -273,7 +264,7 @@ def single_star_surface(**kwargs):
             colorbar = fig.colorbar(star_plot, shrink=kwargs['colorbar_size'],
                                     orientation=kwargs['colorbar_orientation'],
                                     pad=kwargs['colorbar_separation'])
-            set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'])
+            set_colorbar_label(colorbar, kwargs['colormap'], kwargs['unit'], kwargs['scale'])
 
     ax.set_xlim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
     ax.set_ylim3d(-kwargs['equatorial_radius'], kwargs['equatorial_radius'])
@@ -383,14 +374,6 @@ def binary_surface(**kwargs):
         else:
             plot.set_edgecolor('black')
 
-    set_colorbar_fns = {'temperature': set_t_colorbar_label,
-                        'gravity_acceleration': set_g_colorbar_label,
-                        'velocity': set_v_colorbar_label,
-                        'radial_velocity': set_vrad_colorbar_label,
-                        'normal_radiance': set_radiance_colorbar_label,
-                        'radiance': set_radiance_colorbar_label,
-                        }
-
     if kwargs.get('colormap', False):
         cmap = CMAPS[kwargs['colormap']]
         if kwargs['separate_colormaps']:
@@ -399,21 +382,20 @@ def binary_surface(**kwargs):
         else:
             plot.set_cmap(cmap=cmap)
 
-        set_colorbar_fn = set_colorbar_fns[kwargs['colormap']]
         if kwargs['components_to_plot'] == 'primary':
             plot.set_array(kwargs['primary_cmap'])
             if kwargs['colorbar']:
                 colorbar = fig.colorbar(plot, shrink=kwargs['colorbar_size'],
                                         orientation=kwargs['colorbar_orientation'],
                                         pad=kwargs['colorbar_separation'])
-                set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'], extra='primary')
+                set_colorbar_label(colorbar, kwargs['colormap'], kwargs['unit'], kwargs['scale'], extra='primary')
         elif kwargs['components_to_plot'] == 'secondary':
             plot.set_array(kwargs['secondary_cmap'])
             if kwargs['colorbar']:
                 colorbar = fig.colorbar(plot, shrink=kwargs['colorbar_size'],
                                         orientation=kwargs['colorbar_orientation'],
                                         pad=kwargs['colorbar_separation'])
-                set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'], extra='secondary')
+                set_colorbar_label(colorbar, kwargs['colormap'], kwargs['unit'], kwargs['scale'], extra='secondary')
         elif kwargs['components_to_plot'] == 'both':
             if not kwargs['separate_colormaps']:
                 both_cmaps = up.concatenate((kwargs['primary_cmap'], kwargs['secondary_cmap']), axis=0)
@@ -422,7 +404,7 @@ def binary_surface(**kwargs):
                     colorbar = fig.colorbar(plot, shrink=kwargs['colorbar_size'],
                                             orientation=kwargs['colorbar_orientation'],
                                             pad=kwargs['colorbar_separation'])
-                    set_colorbar_fn(colorbar, kwargs['units'], kwargs['scale'])
+                    set_colorbar_label(colorbar, kwargs['colormap'], kwargs['unit'], kwargs['scale'])
             else:
                 plot1.set_array(kwargs['primary_cmap'])
                 plot2.set_array(kwargs['secondary_cmap'])
@@ -430,11 +412,15 @@ def binary_surface(**kwargs):
                     colorbar1 = fig.colorbar(plot1, shrink=kwargs['colorbar_size'],
                                              orientation=kwargs['colorbar_orientation'],
                                              pad=kwargs['colorbar_separation'])
-                    set_colorbar_fn(colorbar1, kwargs['units'], kwargs['scale'], extra='primary')
+                    set_colorbar_label(
+                        colorbar1, kwargs['colormap'], kwargs['unit'], kwargs['scale'], extra='primary'
+                    )
                     colorbar2 = fig.colorbar(plot2, shrink=kwargs['colorbar_size'],
                                              orientation=kwargs['colorbar_orientation'],
                                              pad=kwargs['colorbar_separation'])
-                    set_colorbar_fn(colorbar2, kwargs['units'], kwargs['scale'], extra='secondary')
+                    set_colorbar_label(
+                        colorbar2, kwargs['colormap'], kwargs['unit'], kwargs['scale'], extra='secondary'
+                    )
 
     x_min, x_max = 0, 0
     if kwargs['components_to_plot'] == 'both':
@@ -480,73 +466,28 @@ def binary_surface(**kwargs):
     plt.show()
 
 
-def set_g_colorbar_label(colorbar, unit, scale, extra=''):
-    """
-    Function sets label of the colorbar for gravity acceleration surface function.
-    """
-
-    if unit == 'cgs':
-        if scale == 'linear':
-            colorbar.set_label(extra + r' $g/[cm\,s^{-2}]$')
-        elif scale == 'log':
-            colorbar.set_label(extra + ' log(g/[cgs])')
-    elif unit == 'SI':
-        if scale == 'linear':
-            colorbar.set_label(extra + r' $g/[m\,s^{-2}]$')
-        elif scale == 'log':
-            colorbar.set_label(extra + ' log(g/[SI])')
-
-
-def set_t_colorbar_label(colorbar, unit, scale, extra=''):
-    """
-    Function sets label of the colorbar for effective temperature surface function.
-    """
+def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
+    lbl = {
+        'temperature': 'T',
+        'gravity_acceleration': 'g',
+        'velocity': 'v',
+        'radial_velocity': r'v$_{rad}$',
+        'normal_radiance': r'I$_{norm}$',
+        'radiance': 'I',
+    }
+    def_unit = {
+        'temperature': 'K',
+        'gravity_acceleration': '$m\,s^{-2}$',
+        'velocity': '$m\,s^{-1}$',
+        'radial_velocity': '$m\,s^{-1}$',
+        'normal_radiance': '$W.sr^{-1}.m^{-2}$',
+        'radiance': '$W.sr^{-1}.m^{-2}$',
+    }
+    unt = def_unit[colorbar_name] if unit == 'default' else unit
     if scale == 'linear':
-        colorbar.set_label(extra + r' $T_{eff}/[K]$')
+        colorbar.set_label(extra + f' {lbl[colorbar_name]}/[{unt}]')
     elif scale == 'log':
-        colorbar.set_label(extra + r' $log(T_{eff})$')
-
-
-def set_v_colorbar_label(colorbar, unit, scale, extra=''):
-    """
-    Function sets label of the colorbar for gravity acceleration surface function.
-    """
-    if unit == 'cgs':
-        if scale == 'linear':
-            colorbar.set_label(extra + r' $v/[cm\,s^{-1}]$')
-        elif scale == 'log':
-            colorbar.set_label(extra + ' log(v/[cgs])')
-    elif unit == 'SI':
-        if scale == 'linear':
-            colorbar.set_label(extra + r' $v/[km\,s^{-1}]$')
-        elif scale == 'log':
-            colorbar.set_label(extra + r' log(v/[km\,s^{-1}])')
-
-
-def set_vrad_colorbar_label(colorbar, unit, scale, extra=''):
-    """
-    Function sets label of the colorbar for gravity acceleration surface function.
-    """
-    if unit == 'cgs':
-        if scale == 'linear':
-            colorbar.set_label(extra + r' $v_{rad}/[cm\,s^{-1}]$')
-        elif scale == 'log':
-            colorbar.set_label(extra + ' log(v_{rad}/[cgs])')
-    elif unit == 'SI':
-        if scale == 'linear':
-            colorbar.set_label(extra + r' $v_{rad}/[km\,s^{-1}]$')
-        elif scale == 'log':
-            colorbar.set_label(extra + r' log(v_{rad}/[km\,s^{-1}])')
-
-
-def set_radiance_colorbar_label(colorbar, unit, scale, extra=''):
-    """
-    Function sets label of the colorbar for effective temperature surface function.
-    """
-    if scale == 'linear':
-        colorbar.set_label(extra + r' $I/[W.sr^{-1}.m^{-2}]$')
-    elif scale == 'log':
-        colorbar.set_label(extra + r' $log(I/[W.sr^{-1}.m^{-2}])$')
+        colorbar.set_label(extra + f' log({lbl[colorbar_name]}/[{unt}])')
 
 
 def single_star_wireframe(**kwargs):

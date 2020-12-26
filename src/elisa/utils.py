@@ -559,7 +559,7 @@ def find_surrounded_as_matrix(look_in, look_for):
 
 def find_surrounded(look_in, look_for):
     """
-    Find values from `look_in` which suround `look_for` value.
+    Find values from `look_in` which surround `look_for` value.
     If exact `look_for` value is supplied as exists in `look_for` just this one value is returned
     in array as left and right border.
 
@@ -951,3 +951,15 @@ def discretization_correction_factor(discretization_factor):
     alpha = 1.20 * discretization_factor
     # correction fro surface underestimation
     return np.sqrt(alpha / np.sin(alpha))
+
+
+def transform_values(value, default_unit, unit):
+    """
+    Quick function for transformation to desired units.
+
+    :param value: Union[float, numpy.array]; input values in default unit
+    :param default_unit: astropy.units.Unit; base unit in which `value is stored
+    :param unit: astropy.units.Unit; target unit
+    :return: Union[float, numpy.array]; transformed values
+    """
+    return value if unit == 'default' else (value*default_unit).to(unit).value
