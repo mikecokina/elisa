@@ -133,14 +133,12 @@ def interpolate_on_ld_grid(temperature, log_g, metallicity, passband, author=Non
         uvw_domain = np.column_stack((temperature, log_g))
         uvw_values = interpolate.griddata(xyz_domain, xyz_values, uvw_domain, method="linear")
 
-        result_df = pd.DataFrame({"temperature": temperature, "log_g": log_g})
-
-        for col, vals in zip(settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW], uvw_values.T):
-            if np.any(up.isnan(vals)):
-                raise LimbDarkeningError("Limb darkening interpolation lead to numpy.nan/None value. "
+        if np.any(up.isnan(uvw_values)):
+            raise LimbDarkeningError("Limb darkening interpolation lead to numpy.nan/None value. "
                                          "It might be caused by definition of unphysical object on input.")
-            result_df[col] = vals
-        results[band] = result_df
+
+        results[band] = uvw_values
+
     logger.debug('limb darkening coefficients interpolation finished')
     return results
 
@@ -227,6 +225,5 @@ def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coeffici
 
 
 def get_bolometric_ld_coefficients(temperature, log_g, metallicity):
-    columns = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
-    coeffs = interpolate_on_ld_grid(temperature, log_g, metallicity, passband=["bolometric"])["bolometric"][columns]
-    return np.array(coeffs).T
+    coeffs = interpolate_on_ld_grid(temperature, log_g, metallicity, passband=["bolometric"])["bolometric"]
+    return coeffs.T

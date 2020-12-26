@@ -104,7 +104,8 @@ class TestLimbDarkeningModule(ElisaTestCase):
         expected = np.array([0.7732, 0.76364, 0.76032, 0.70833])
 
         obtained = ld.interpolate_on_ld_grid(temperature, log_g, metallicity, passband)
-        obtained = np.round(obtained["Generic.Bessell.B"].xlin.values, 5)
+        ld_column = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW].index('xlin')
+        obtained = np.round(obtained["Generic.Bessell.B"][:, ld_column], 5)
 
         self.assertTrue(np.all(obtained - expected) < 1e-5)
 
@@ -120,8 +121,10 @@ class TestLimbDarkeningModule(ElisaTestCase):
         expected_ylog = np.round(np.array([0.204200, 0.211724, 0.214276, 0.251288]), 5)
 
         obtained = ld.interpolate_on_ld_grid(temperature, log_g, metallicity, passband)
-        obtained_xlog = np.round(obtained["Generic.Bessell.V"].xlog.values, 5)
-        obtained_ylog = np.round(obtained["Generic.Bessell.V"].ylog.values, 5)
+        ld_column_x = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW].index('xlog')
+        ld_column_y = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW].index('ylog')
+        obtained_xlog = np.round(obtained["Generic.Bessell.V"][:, ld_column_x], 5)
+        obtained_ylog = np.round(obtained["Generic.Bessell.V"][:, ld_column_y], 5)
 
         self.assertTrue(np.all(expected_ylog == obtained_ylog))
         self.assertTrue(np.all(expected_xlog == obtained_xlog))

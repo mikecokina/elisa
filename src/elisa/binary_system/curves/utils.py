@@ -23,15 +23,32 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     """
     components = butils.component_to_list(component)
 
-    retval = {}
-    for cmpnt in components:
-        retval[cmpnt] = ld.interpolate_on_ld_grid(
-            temperature=getattr(system, cmpnt).temperatures,
-            log_g=getattr(system, cmpnt).log_g,
-            metallicity=getattr(system, cmpnt).metallicity,
-            passband=kwargs["passband"]
-        )
+    symmetry_test = not system.has_spots() and not system.has_pulsations()
+    temperatures, log_g = dict(), dict()
 
+    for cmpnt in components:
+        component_instance = getattr(system, cmpnt)
+        if symmetry_test:
+            temperatures[cmpnt] = component_instance.temperatures[:component_instance.base_symmetry_faces_number]
+            log_g[cmpnt] = component_instance.log_g[:component_instance.base_symmetry_faces_number]
+        else:
+            temperatures[cmpnt] = component_instance.temperatures
+            log_g[cmpnt] = component_instance.log_g
+
+    retval = {
+        component:
+            ld.interpolate_on_ld_grid(
+                temperature=temperatures[component],
+                log_g=log_g[component],
+                metallicity=getattr(system, component).metallicity,
+                passband=kwargs["passband"]
+            ) for component in components
+    }
+    # mirroring symmetrical part back to the rest of the surface
+    if symmetry_test:
+        for cpmnt in components:
+            retval[cpmnt] = {fltr: vals[getattr(system, cpmnt).face_symmetry_vector] for
+                             fltr, vals in retval[cpmnt].items()}
     return retval
 
 
