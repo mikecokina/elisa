@@ -8,8 +8,6 @@ from ... base.spot import incorporate_spots_mesh
 from ... base.surface.mesh import correct_component_mesh
 from ... base.error import MaxIterationError
 from ... import settings
-from ... pulse.container_ops import incorporate_pulsations_to_model
-from ... pulse.pulsations import generate_harmonics
 from ... import (
     opt,
     const,
@@ -35,19 +33,6 @@ def build_mesh(system):
     system.star.inverse_point_symmetry_matrix = d
 
     add_spots_to_mesh(system)
-    return system
-
-
-def build_pulsations_on_mesh(system):
-    """
-    Adds position perturbations to stellar mesh.
-
-    :param system: elisa.single_system.contaier.PositionContainer; instance
-    :return: elisa.single_system.contaier.PositionContainer; instance
-    """
-    if system.star.has_pulsations():
-        system.star = generate_harmonics(system.star, com_x=0, phase=system.position.phase, time=system.time)
-        system.star = incorporate_pulsations_to_model(system.star, com_x=0.0, phase=system.position.phase)
     return system
 
 

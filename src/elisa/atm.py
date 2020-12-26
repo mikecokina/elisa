@@ -349,7 +349,7 @@ class NaiveInterpolatedAtm(object):
     @staticmethod
     def atm_files(temperature, log_g, metallicity, atlas):
         """
-        For given parameters will find out related atm csv tables and return list of paths to this csv files.
+        Find out related atmospheric csv tables and return list of paths to them.
 
         :param temperature: Iterable[float];
         :param log_g: Iterable[float];
@@ -1143,7 +1143,7 @@ def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
     :return: dict;
     """
     for star, component_normal_radiances in normal_radiances.items():
-        ld_coefficients = ld_cfs[star]['bolometric'][settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]].values.T
+        ld_coefficients = ld_cfs[star]['bolometric'].T
 
         coeff = ld.calculate_bolometric_limb_darkening_factor(limb_darkening_law=settings.LIMB_DARKENING_LAW,
                                                               coefficients=ld_coefficients)

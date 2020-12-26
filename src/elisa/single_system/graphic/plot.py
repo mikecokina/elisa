@@ -67,7 +67,7 @@ class Plot(object):
 
         position_container = SystemContainer.from_single_system(self.single, self.defpos)
         position_container.build_mesh()
-        position_container.build_pulsations_on_mesh()
+        position_container.build_pulsations()
 
         mesh = position_container.star.get_flatten_parameter('points')
         denominator = (1 * axis_unit.to(u.DISTANCE_UNIT))
@@ -128,7 +128,8 @@ class Plot(object):
 
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
                 elevation=None, azimuth=None, units='SI', axis_unit=u.solRad,
-                colorbar_orientation='vertical', colorbar=True, scale='linear', surface_color='g'):
+                colorbar_orientation='vertical', colorbar=True, scale='linear', surface_color='g',
+                colorbar_separation=0.0, colorbar_size=0.7):
         """
         Function creates plot of single system components.
 
@@ -147,6 +148,8 @@ class Plot(object):
         :param colorbar: bool; colorbar on/off switch
         :param scale: str; `linear` or `log`
         :param surface_color: tuple; tuple of colors for components if `colormap` is not specified
+        :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
+        :param colorbar_size: float; relative size of the colorbar, default 0.7
         """
         surface_kwargs = dict()
 
@@ -189,7 +192,9 @@ class Plot(object):
             'triangles': faces
         })
 
-        if colormap == 'gravity_acceleration':
+        if colormap is None:
+            pass
+        elif colormap == 'gravity_acceleration':
             log_g = getattr(star_container, 'log_g')
             value = log_g if units == 'SI' else log_g + 2
             surface_kwargs.update({
@@ -277,6 +282,8 @@ class Plot(object):
             'colorbar': colorbar,
             'scale': scale,
             'equatorial_radius': (star_container.equatorial_radius*u.DISTANCE_UNIT).to(axis_unit).value,
-            'surface_color': surface_color
+            'surface_color': surface_color,
+            'colorbar_separation': colorbar_separation,
+            'colorbar_size': colorbar_size
         })
         graphics.single_star_surface(**surface_kwargs)

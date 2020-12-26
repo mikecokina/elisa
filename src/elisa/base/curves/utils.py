@@ -9,10 +9,9 @@ def calculate_surface_element_fluxes(band, star):
         :param band: str; name of the photometric band compatibile with supported names in config
         :return: numpy.array
     """
-    ld_law_cfs_columns = settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
     indices = star.indices
     radiance = star.normal_radiance[band][indices]
-    ld_cfs = star.ld_cfs[band][ld_law_cfs_columns].values[indices]
+    ld_cfs = star.ld_cfs[band][indices]
     cosines = star.los_cosines[indices]
     coverage = star.coverage[indices]
 

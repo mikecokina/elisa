@@ -5,7 +5,8 @@ from . surface import (
     mesh,
     faces,
     gravity,
-    temperature
+    temperature,
+    pulsations
 )
 from .. base.container import (
     StarContainer,
@@ -86,36 +87,6 @@ class SystemContainer(PositionContainer):
         self.build_faces()
         self.build_velocities()
 
-    def build_mesh(self):
-        return mesh.build_mesh(self)
-
-    def correct_mesh(self):
-        return mesh.correct_mesh(self)
-
-    def build_faces(self):
-        return faces.build_faces(self)
-
-    def build_velocities(self):
-        return faces.build_velocities(self)
-
-    def build_pulsations_on_mesh(self):
-        return mesh.build_pulsations_on_mesh(self)
-
-    def build_surface_areas(self):
-        return faces.compute_all_surface_areas(self)
-
-    def build_faces_orientation(self):
-        return faces.build_faces_orientation(self)
-
-    def build_surface_gravity(self):
-        return gravity.build_surface_gravity(self)
-
-    def build_temperature_distribution(self):
-        return temperature.build_temperature_distribution(self)
-
-    def build_temperature_perturbations(self):
-        return temperature.build_temperature_perturbations(self)
-
     def build_from_points(self):
         """
         Build single system from present surface points
@@ -129,8 +100,39 @@ class SystemContainer(PositionContainer):
         self.build_temperature_distribution()
         # self.build_temperature_perturbations()
 
-        self.build_pulsations_on_mesh()
+        self.build_pulsations()
         return self
+
+    def build_mesh(self):
+        return mesh.build_mesh(self)
+
+    def correct_mesh(self):
+        return mesh.correct_mesh(self)
+
+    def build_faces(self):
+        return faces.build_faces(self)
+
+    def build_velocities(self):
+        return faces.build_velocities(self)
+
+    def build_surface_areas(self):
+        return faces.compute_all_surface_areas(self)
+
+    def build_faces_orientation(self):
+        return faces.build_faces_orientation(self)
+
+    def build_surface_gravity(self):
+        return gravity.build_surface_gravity(self)
+
+    def build_temperature_distribution(self):
+        return temperature.build_temperature_distribution(self)
+
+    # TODO: soon to be deprecated
+    def build_temperature_perturbations(self):
+        return temperature.build_temperature_perturbations(self)
+
+    def build_pulsations(self):
+        return pulsations.build_pulsations(self)
 
     def _phase(self, phase):
         return phase if phase is not None else self.position.phase

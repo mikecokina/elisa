@@ -121,8 +121,8 @@ def produce_circ_spotty_async_curves_mp(*args):
         # build the rest of the surface based on preset surface points
         initial_system.build_from_points_to_temperatures(components_distance=orbital_position.distance,
                                                          component=require_build)
-        initial_system.build_full_temperature_distribution(components_distance=orbital_position.distance,
-                                                           component='all')
+        initial_system.build_temperature_distribution(components_distance=orbital_position.distance,
+                                                      component='all')
 
         on_pos = bsutils.move_sys_onpos(initial_system, orbital_position, on_copy=True)
 
