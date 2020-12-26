@@ -60,7 +60,6 @@ def get_normal_radiance(system, **kwargs):
     """
     star = system.star
     symmetry_test = not system.has_spots() and not system.has_pulsations()
-    # symmetry_test = False
 
     # utilizing surface symmetry in case of a clear surface
     if symmetry_test:
@@ -101,12 +100,26 @@ def get_limbdarkening_cfs(system, **kwargs):
     :return: Dict[str, numpy.array];
     """
     star_container = system.star
+    symmetry_test = not system.has_spots() and not system.has_pulsations()
 
-    return {
+    # utilizing surface symmetry in case of a clear surface
+    if symmetry_test:
+        temperatures = star_container.temperatures[:star_container.base_symmetry_faces_number]
+        log_g = star_container.log_g[:star_container.base_symmetry_faces_number]
+    else:
+        temperatures = star_container.temperatures
+        log_g = star_container.log_g
+
+    retval = {
         'star': ld.interpolate_on_ld_grid(
-                    temperature=star_container.temperatures,
-                    log_g=star_container.log_g,
+                    temperature=temperatures,
+                    log_g=log_g,
                     metallicity=star_container.metallicity,
                     passband=kwargs["passband"]
                 )
     }
+
+    if symmetry_test:
+        retval['star'] = {band: vals[star_container.face_symmetry_vector] for band, vals in retval['star'].items()}
+
+    return retval
