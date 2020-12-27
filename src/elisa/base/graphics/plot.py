@@ -5,7 +5,17 @@ from elisa.utils import transform_values
 from elisa.ld import limb_darkening_factor
 
 
-def add_colormap_to_plt_kwargs(kwargs, kwarg_name, colormap, star, scale='linear', unit='default'):
+def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default'):
+    """
+    Returns a colormap that can be passed to surface plot kwargs.
+
+    :param colormap: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'normal_radiance',
+    'radiance'
+    :param star: elisa.base.container.StarContainer;
+    :param scale: str; log or linear
+    :param unit: astropy.units.Unit;
+    :return: numpy.array
+    """
     colorbar_fn = {
         'gravity_acceleration': g_cmap,
         'temperature': t_cmap,
@@ -14,14 +24,13 @@ def add_colormap_to_plt_kwargs(kwargs, kwarg_name, colormap, star, scale='linear
         'normal_radiance': norm_radiance_cmap,
         'radiance': radiance_cmap,
     }
+    retval = None
     if colormap is not None:
-        kwargs.update({
-            kwarg_name: colorbar_fn[colormap](star, scale, unit)
-        })
+        retval = colorbar_fn[colormap](star, scale, unit)
         if colormap not in colorbar_fn.keys():
             raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {colorbar_fn.keys()}')
 
-    return kwargs
+    return retval
 
 
 def g_cmap(star, scale, unit):

@@ -301,9 +301,12 @@ class Plot(object):
                 f'points_{component}': mult * points,
                 f'{component}_triangles': faces
             })
-            surface_kwargs = plot.add_colormap_to_plt_kwargs(
-                surface_kwargs,  f'{component}_cmap', colormap, star, scale=scale, unit=unit
-            )
+            surface_kwargs.update({
+                f'{component}_cmap': plot.add_colormap_to_plt_kwargs(
+                    colormap, star, scale=scale, unit=unit
+                )
+            })
+
             face_mask = locals().get(f'face_mask_{component}')
             if not is_empty(face_mask):
                 surface_kwargs[f'{component}_triangles'] = surface_kwargs[f'{component}_triangles'][face_mask]
