@@ -54,7 +54,7 @@ class SystemContainer(PositionContainer):
     def has_pulsations(self):
         return self.star.has_pulsations()
 
-    def build(self, **kwargs):
+    def build(self, build_pulsations=True, **kwargs):
         """
         Main method to build binary star system from parameters given on init of SingleStar.
 
@@ -71,10 +71,14 @@ class SystemContainer(PositionContainer):
             - self.build_temperature_perturbations
 
         :param kwargs:
+        :param build_pulsations: bool; enable/disable incorporation of pulsations
         :return: self;
         """
         self.build_surface()
         self.build_from_points()
+
+        if build_pulsations:
+            self.build_pulsations()
         return self
 
     def build_surface(self):
@@ -98,9 +102,6 @@ class SystemContainer(PositionContainer):
         self.correct_mesh()
         self.build_surface_areas()
         self.build_temperature_distribution()
-        # self.build_temperature_perturbations()
-
-        self.build_pulsations()
         return self
 
     def build_mesh(self):
