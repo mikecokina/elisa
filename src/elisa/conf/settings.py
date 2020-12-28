@@ -239,7 +239,7 @@ class Settings(_Const):
             "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
             "PULSATION_MODEL": cls.PULSATION_MODEL,
             "MCMC_SAVE_INTERVAL": cls.MCMC_SAVE_INTERVAL,
-            "CUDA": cls.CUDA
+            "CUDA": cls.CUDA,
             "CONSTANT_LD_COEFFICIENTS": cls.CONSTANT_LD_COEFFICIENTS
         }
 
