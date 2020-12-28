@@ -21,6 +21,7 @@ LOG_ACCELERATION_UNIT = u.dex(ACCELERATION_UNIT)
 FREQUENCY_UNIT = u.Hz
 ANGULAR_FREQUENCY_UNIT = u.rad / u.s
 LUMINOSITY_UNIT = u.W
+RADIANCE_UNIT = u.W / (u.m**2 * u.sr)
 
 # astropy units to avoid annoying undefined warning accross basecode
 deg = u.deg

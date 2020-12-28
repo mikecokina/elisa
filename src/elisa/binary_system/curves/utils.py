@@ -28,7 +28,10 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
 
     for cmpnt in components:
         component_instance = getattr(system, cmpnt)
-        if symmetry_test:
+        if settings.CONSTANT_LD_COEFFICIENTS:
+            temperatures[cmpnt] = np.array([component_instance.t_eff, ])
+            log_g[cmpnt] = np.array([np.max(component_instance.log_g), ])
+        elif symmetry_test:
             temperatures[cmpnt] = component_instance.temperatures[:component_instance.base_symmetry_faces_number]
             log_g[cmpnt] = component_instance.log_g[:component_instance.base_symmetry_faces_number]
         else:
@@ -47,8 +50,12 @@ def get_limbdarkening_cfs(system, component="all", **kwargs):
     # mirroring symmetrical part back to the rest of the surface
     if symmetry_test:
         for cpmnt in components:
-            retval[cpmnt] = {fltr: vals[getattr(system, cpmnt).face_symmetry_vector] for
-                             fltr, vals in retval[cpmnt].items()}
+            if settings.CONSTANT_LD_COEFFICIENTS:
+                retval[cpmnt] = {fltr: vals[np.zeros(getattr(system, cpmnt).temperatures.shape, dtype=np.int)] for
+                                 fltr, vals in retval[cpmnt].items()}
+            else:
+                retval[cpmnt] = {fltr: vals[getattr(system, cpmnt).face_symmetry_vector] for
+                                 fltr, vals in retval[cpmnt].items()}
     return retval
 
 

@@ -3,6 +3,7 @@ import numpy as np
 from .. container import SystemContainer
 from ... import units as u
 from ... base import transform
+from ... base.graphics import plot
 from ... const import SinglePosition
 from ... graphic import graphics
 from ... utils import is_empty
@@ -127,7 +128,7 @@ class Plot(object):
         graphics.single_star_wireframe(**wireframe_kwargs)
 
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
-                elevation=None, azimuth=None, units='SI', axis_unit=u.solRad,
+                elevation=None, azimuth=None, unit='default', axis_unit=u.solRad,
                 colorbar_orientation='vertical', colorbar=True, scale='linear', surface_color='g',
                 colorbar_separation=0.0, colorbar_size=0.7):
         """
@@ -142,7 +143,7 @@ class Plot(object):
         :param face_mask: array[bool]; mask to select which faces to display
         :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
-        :param units: str; unit system of colormap  `SI` or `cgs`
+        :param unit: str; colormap unit
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param colorbar_orientation: `horizontal` or `vertical` (default)
         :param colorbar: bool; colorbar on/off switch
@@ -158,9 +159,6 @@ class Plot(object):
         azimuth = transform.deg_transform(azimuth, u.deg, when_float64=transform.WHEN_FLOAT64) \
             if azimuth is not None else 180
 
-        available_colormaps = ['gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'radiance',
-                               'normal_radiance', None]
-
         single_position = self.single.orbit.rotational_motion(phase=phase)[0]
         single_position = SinglePosition(0, single_position[0], single_position[1])
 
@@ -168,6 +166,7 @@ class Plot(object):
         position_container.set_on_position_params(single_position)
         position_container.build(phase=phase)
         correct_face_orientation(position_container.star, com=0)
+        position_container.flatt_it()
 
         # calculating radiances
         o = Observer(passband=['bolometric', ], system=self.single)
@@ -192,64 +191,15 @@ class Plot(object):
             'triangles': faces
         })
 
-        if colormap is None:
-            pass
-        elif colormap == 'gravity_acceleration':
-            log_g = getattr(star_container, 'log_g')
-            value = log_g if units == 'SI' else log_g + 2
-            surface_kwargs.update({
-                'cmap': value if scale == 'log' else np.power(10, value)
-            })
-
-        elif colormap == 'temperature':
-            temperatures = getattr(star_container, 'temperatures')
-            surface_kwargs.update({
-                'cmap': temperatures if scale == 'linear' else np.log10(temperatures)
-            })
-
-        elif colormap == 'velocity':
-            velocities = np.linalg.norm(getattr(star_container, 'velocities'), axis=1)
-            velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-            surface_kwargs.update({
-                f'cmap': velocities if scale == 'linear' else np.log10(velocities)
-            })
-
-        elif colormap == 'radial_velocity':
-            velocities = getattr(star_container, 'velocities')[:, 0]
-            velocities = velocities / 1000.0 if units == 'SI' else velocities * 1000.0
-            surface_kwargs.update({
-                f'cmap': velocities
-            })
-            if scale == 'log':
-                raise Warning("`log` scale is not allowed for radial velocity colormap.")
-        elif colormap == 'normal_radiance':
-            normal_radiance = getattr(star_container, 'normal_radiance')['bolometric']
-            surface_kwargs.update({
-                f'cmap': normal_radiance if scale == 'linear' else np.log10(normal_radiance)
-            })
-        elif colormap == 'radiance':
-            normal_radiance = getattr(star_container, 'normal_radiance')['bolometric']
-            los_cosines = getattr(star_container, 'los_cosines')
-            indices = getattr(star_container, 'indices')
-            ld_cfs = getattr(star_container, 'ld_cfs')['bolometric'][
-                settings.LD_LAW_CFS_COLUMNS[settings.LIMB_DARKENING_LAW]
-            ].values[indices]
-            ld_cors = limb_darkening_factor(coefficients=ld_cfs,
-                                            limb_darkening_law=settings.LIMB_DARKENING_LAW,
-                                            cos_theta=los_cosines[indices])
-            retval = np.zeros(normal_radiance.shape)
-            retval[indices] = normal_radiance[indices] * los_cosines[indices] * ld_cors
-            surface_kwargs.update({
-                f'cmap': retval
-            })
-            if scale == 'log':
-                raise Warning("`log` scale is not allowed for radiance colormap.")
-        else:
-            raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {available_colormaps}')
+        surface_kwargs.update({
+            'cmap': plot.add_colormap_to_plt_kwargs(
+                colormap, star_container, scale=scale, unit=unit
+            )
+        })
 
         if not is_empty(face_mask):
             surface_kwargs['triangles'] = surface_kwargs['triangles'][face_mask]
-            if 'cmap' in surface_kwargs.keys():
+            if 'colormap' in surface_kwargs.keys():
                 surface_kwargs['cmap'] = surface_kwargs['cmap'][face_mask]
 
         if normals:
@@ -276,7 +226,7 @@ class Plot(object):
             'face_mask': face_mask,
             "elevation": elevation,
             "azimuth": azimuth,
-            'units': units,
+            'unit': unit,
             'axis_unit': axis_unit,
             'colorbar_orientation': colorbar_orientation,
             'colorbar': colorbar,
