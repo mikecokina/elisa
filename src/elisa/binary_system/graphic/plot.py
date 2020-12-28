@@ -266,7 +266,8 @@ class Plot(object):
         
         orbital_position_container.set_on_position_params(orbital_position, potentials["primary"][0],
                                                           potentials["secondary"][0])
-        orbital_position_container.build(components_distance=components_distance, components='both')
+        orbital_position_container.build(components_distance=components_distance, components='both',
+                                         build_pulsations=True)
 
         orbital_position_container.flatt_it()
 
