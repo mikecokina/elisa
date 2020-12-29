@@ -1,6 +1,6 @@
 import numpy as np
 
-from elisa import settings
+from ... import settings
 
 
 # ________________________complex angular coordinates_______________________

@@ -216,7 +216,8 @@ class Plot(object):
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
                 face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, unit='default',
                 axis_unit=u.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
-                surface_colors=('g', 'r'), separate_colormaps=None, colorbar_separation=0.0, colorbar_size=0.7):
+                surface_colors=('g', 'r'), separate_colormaps=None, colorbar_separation=0.0, colorbar_size=0.7,
+                subtract_equilibrium=False):
         """
         Function creates plot of binary system components
 
@@ -240,6 +241,7 @@ class Plot(object):
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
+        :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
         """
         surface_kwargs = dict()
 
@@ -267,7 +269,7 @@ class Plot(object):
         orbital_position_container.set_on_position_params(orbital_position, potentials["primary"][0],
                                                           potentials["secondary"][0])
         orbital_position_container.build(components_distance=components_distance, components='both',
-                                         build_pulsations=True)
+                                         build_pulsations=~subtract_equilibrium)
 
         orbital_position_container.flatt_it()
 

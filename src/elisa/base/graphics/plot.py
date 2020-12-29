@@ -14,7 +14,7 @@ def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default'):
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
-    :return: numpy.array
+    :return: numpy.array;
     """
     colorbar_fn = {
         'gravity_acceleration': g_cmap,
@@ -40,7 +40,7 @@ def g_cmap(star, scale, unit):
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
-    :return: numpy.array
+    :return: numpy.array;
     """
     log_g = getattr(star, 'log_g')
     g = np.power(10, log_g)
@@ -55,7 +55,7 @@ def t_cmap(star, scale, unit):
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
-    :return: numpy.array
+    :return: numpy.array;
     """
     temperatures = getattr(star, 'temperatures')
     value = transform_values(temperatures, units.TEMPERATURE_UNIT, unit)
@@ -69,7 +69,7 @@ def v_cmap(star, scale, unit):
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
-    :return: numpy.array
+    :return: numpy.array;
     """
     velocities = np.linalg.norm(getattr(star, 'velocities'), axis=1)
     unt = units.km / units.s if unit == 'default' else unit
@@ -84,7 +84,7 @@ def v_rad_cmap(star, scale, unit):
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
-    :return: numpy.array
+    :return: numpy.array;
     """
     velocities = getattr(star, 'velocities')[:, 0]
     unt = units.km / units.s if unit == 'default' else unit
@@ -101,7 +101,7 @@ def norm_radiance_cmap(star, scale, unit):
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
-    :return: numpy.array
+    :return: numpy.array;
     """
     normal_radiance = getattr(star, 'normal_radiance')['bolometric']
     value = transform_values(normal_radiance, units.RADIANCE_UNIT, unit)
@@ -115,7 +115,7 @@ def radiance_cmap(star, scale, unit):
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
-    :return: numpy.array
+    :return: numpy.array;
     """
     normal_radiance = getattr(star, 'normal_radiance')['bolometric']
     los_cosines = getattr(star, 'los_cosines')
@@ -139,6 +139,6 @@ def to_log(value, scale):
 
     :param value: value: Union[float, numpy.array]; input values
     :param scale: str; `log`, `logarithmic`, `linear`
-    :return:
+    :return: numpy.array;
     """
     return np.log10(value) if scale in ['log', 'logarithmic'] else value
