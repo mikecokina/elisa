@@ -166,7 +166,7 @@ class NaiveInterpolatedAtm(object):
         # obtain localized atmospheres in matrix
         localized_atms = NaiveInterpolatedAtm.arange_black_body_localized_atms(temperature, kwargs["passband"])
         # integrate flux
-        return compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+        return compute_normal_radiances(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
     @staticmethod
     def arange_black_body_localized_atms(temperature, passband_containers):
@@ -206,7 +206,18 @@ class NaiveInterpolatedAtm(object):
         return localized_atms
 
     @staticmethod
-    def atlas_radiance(temperature, log_g, metallicity, atlas, **kwargs):
+    def get_atm_profiles(temperature, log_g, metallicity, atlas, **kwargs):
+        """
+        Returns atmosphere profiles for given surface parameters.
+
+        :param temperature: Iterable[float];
+        :param log_g: Iterable[float];
+        :param metallicity: float;
+        :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
+        :param kwargs:
+        :return: Tuple[dict, numpy.float, numpy.float]; atmosphere profiles for each passband, flux multiplicator,
+        wave multiplicator;
+        """
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
         # related atmospheric files for each face (upper and lower)
@@ -229,8 +240,25 @@ class NaiveInterpolatedAtm(object):
         flux_matrices = remap_passbanded_unique_atms_to_matrix(passbanded_atm_containers, containers_map)
         atm_containers = remap_passbanded_unique_atms_to_origin(passbanded_atm_containers, containers_map)
         localized_atms = NaiveInterpolatedAtm.interpolate_spectra(atm_containers, flux_matrices,
-                                                                  temperature=temperature)
-        return compute_normal_intensities(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
+                                                                   temperature=temperature)
+
+        return localized_atms, flux_mult, wave_mult
+
+    @staticmethod
+    def atlas_radiance(temperature, log_g, metallicity, atlas, **kwargs):
+        """
+        Returns normal radiance for given surface parameters.
+
+        :param temperature: Iterable[float];
+        :param log_g: Iterable[float];
+        :param metallicity: float;
+        :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
+        :param kwargs:
+        :return: Dict;
+        """
+        localized_atms, flux_mult, wave_mult = \
+            NaiveInterpolatedAtm.get_atm_profiles(temperature, log_g, metallicity, atlas, **kwargs)
+        return compute_normal_radiances(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
     @staticmethod
     def compute_interpolation_weights(temperatures, top_atm_containers, bottom_atm_containers):
@@ -354,7 +382,7 @@ class NaiveInterpolatedAtm(object):
         :param temperature: Iterable[float];
         :param log_g: Iterable[float];
         :param metallicity: float;
-        :param atlas: str;
+        :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
         :return: List[str];
         """
         atlas = validated_atlas(atlas)
@@ -930,7 +958,7 @@ def multithread_atm_tables_reader_runner(fpaths):
     return result_queue
 
 
-def compute_normal_intensities(matrices_dict, flux_mult=1.0, wave_mult=1.0):
+def compute_normal_radiances(matrices_dict, flux_mult=1.0, wave_mult=1.0):
     """
     Run `compute_normal_intensity` method for each band in `matrices_dict`.
 
