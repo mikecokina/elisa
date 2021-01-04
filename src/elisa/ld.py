@@ -201,9 +201,10 @@ def limb_darkening_factor(normal_vector=None, line_of_sight=None, coefficients=N
     return retval[:, 0] if retval.shape[1] == 1 else retval
 
 
-def calculate_bolometric_limb_darkening_factor(limb_darkening_law=None, coefficients=None):
+def calculate_integrated_limb_darkening_factor(limb_darkening_law=None, coefficients=None):
     """
-    Calculates limb darkening factor D(int)/PI used when calculating flux from given intensity on surface.
+    Calculates integrated limb darkening factor D(int) for calculating normal radiance from radiosity obtained by
+    interpolation in pre-calculated tables.
     D(int) = integral over hemisphere (D(theta)cos(theta)
 
     :param limb_darkening_law: str -  `linear` or `cosine`, `logarithmic`, `square_root`

@@ -1173,7 +1173,7 @@ def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
     for star, component_normal_radiances in normal_radiances.items():
         ld_coefficients = ld_cfs[star]['bolometric'].T
 
-        coeff = ld.calculate_bolometric_limb_darkening_factor(limb_darkening_law=settings.LIMB_DARKENING_LAW,
+        coeff = ld.calculate_integrated_limb_darkening_factor(limb_darkening_law=settings.LIMB_DARKENING_LAW,
                                                               coefficients=ld_coefficients)
 
         normal_radiances[star] = {
