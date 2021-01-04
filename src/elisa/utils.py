@@ -963,3 +963,19 @@ def transform_values(value, default_unit, unit):
     :return: Union[float, numpy.array]; transformed values
     """
     return value if unit == 'default' else (value*default_unit).to(unit).value
+
+
+def jd_to_phase(times, period, t0, centre=0.5):
+    """
+    Converting JD to phase according to supplied ephemeris.
+    Phases will be returned in range ('centre' - 0.5, 'centre' + 0.5).
+
+    :param times: numpy.array;
+    :param period: float;
+    :param t0: float;
+    :param centre: float;
+    :return: numpy.array
+    """
+    start_phase = centre - 0.5
+    t0 += start_phase * period
+    return ((times - t0) / period) % 1.0 + start_phase

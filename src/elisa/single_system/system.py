@@ -81,6 +81,10 @@ class SingleSystem(System):
         self.assign_pulsations_amplitudes()
         self.setup_discretisation_factor()
 
+        # setting common reference to emphemeris
+        self.period = self.rotation_period
+        self.t0 = self.reference_time
+
     @classmethod
     def is_property(cls, kwargs):
         """

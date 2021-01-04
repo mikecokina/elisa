@@ -8,7 +8,7 @@ from . plot import Plot
 from . passband import PassbandContainer, init_bolometric_passband
 from .. binary_system.curves.community import RadialVelocitySystem
 from .. import settings
-from .. utils import is_empty
+from .. utils import is_empty, jd_to_phase
 from .. logger import getLogger
 from .. import (
     units as u,
@@ -124,11 +124,16 @@ class Observer(object):
         df[settings.PASSBAND_DATAFRAME_WAVE] = df[settings.PASSBAND_DATAFRAME_WAVE] * 10.0
         return df
 
-    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False):
+    def lc(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False,
+           from_time=None, to_time=None, time_step=None, times=None):
         """
-        Method for simulated observation. Based on input parmeters and supplied Observer system on initialization
-        will compute lightcurve.
+        Method for simulated observation. Based on input parameters and supplied Observer system on initialization
+        will compute light curve.
 
+        :param from_time: float;
+        :param to_time: float;
+        :param time_step: float;
+        :param times: Iterable float;
         :param normalize: bool;
         :param from_phase: float;
         :param to_phase: float;
@@ -136,13 +141,7 @@ class Observer(object):
         :param phases: Iterable float;
         :return: Dict;
         """
-        if phases is None and (from_phase is None or to_phase is None or phase_step is None):
-            raise ValueError("Missing arguments. Specify phases.")
-
-        if is_empty(phases):
-            phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
-
-        phases = np.array(phases) - self._system.phase_shift
+        phases = self.manage_time_series(from_phase, to_phase, phase_step, phases, from_time, to_time, time_step, times)
 
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
@@ -179,26 +178,26 @@ class Observer(object):
         logger.info("observation finished")
         return self.phases, self.fluxes
 
-    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None):
+    def rv(self, from_phase=None, to_phase=None, phase_step=None, phases=None, normalize=False, method=None,
+           from_time=None, to_time=None, time_step=None, times=None):
         """
-        Method for simulation of observation radial velocity curves.
+        Method for synthetic observations of radial velocity curves.
 
-        :param normalize: bool;
+        :param from_time: float;
+        :param to_time: float;
+        :param time_step: float;
+        :param times: Iterable float;
         :param from_phase: float;
         :param to_phase: float;
         :param phase_step: float;
         :param phases: Iterable float;
+        :param normalize: bool;
         :param method: str; method for calculation of radial velocities, `point_mass` or `radiometric`
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
         method = settings.RV_METHOD if method is None else method
 
-        if phases is None and (from_phase is None or to_phase is None or phase_step is None):
-            raise ValueError("Missing arguments. Specify phases.")
-
-        if is_empty(phases):
-            phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
-        phases = np.array(phases) - self._system.phase_shift
+        phases = self.manage_time_series(from_phase, to_phase, phase_step, phases, from_time, to_time, time_step, times)
 
         # reduce phases to only unique ones from interval (0, 1) in general case without pulsations
         base_phases, base_phases_to_origin = self.phase_interval_reduce(phases)
@@ -273,3 +272,42 @@ class Observer(object):
 
         else:
             raise NotImplemented("not implemented")
+
+    def manage_time_series(self, from_phase=None, to_phase=None, phase_step=None, phases=None,
+                           from_time=None, to_time=None, time_step=None, times=None):
+        """
+        Converts input time series parameters into photometric phases.
+
+        :param from_phase: float;
+        :param to_phase: float;
+        :param phase_step: float;
+        :param phases: numpy.array;
+        :param from_time: float;
+        :param to_time: float;
+        :param time_step: float;
+        :param times: numpy.array;
+        :return: numpy.array;
+        """
+        phases_supplied = not (phases is None and (from_phase is None or to_phase is None or phase_step is None))
+        times_supplied = not (times is None and (from_time is None or to_time is None or time_step is None))
+
+        message = "Please pick arguments from phase-related parameters: `from_phase`, 'to_phase`, " \
+                  "`phase_step` or `phases` or from time-related parameters: `from_time`, `to_time`, " \
+                  "`time_step` or `times`."
+        if not (phases_supplied or times_supplied):
+            raise ValueError("Missing arguments. " + message)
+        if phases_supplied and times_supplied:
+            raise ValueError("You specified time series in phase and time domain at once. " + message)
+
+        if times_supplied:
+            if is_empty(times):
+                times = up.arange(start=from_time, stop=to_time, step=time_step)
+
+            phases = jd_to_phase(times, self._system.period, self._system.t0, centre=0.5)
+        else:
+            if is_empty(phases):
+                phases = up.arange(start=from_phase, stop=to_phase, step=phase_step)
+
+        phases = np.array(phases) - self._system.phase_shift
+
+        return phases

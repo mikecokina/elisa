@@ -35,6 +35,7 @@ class System(metaclass=ABCMeta):
         # default params
         self.inclination = np.nan
         self.period = np.nan
+        self.t0 = np.nan
         self.gamma = np.nan
         self.additional_light = 0.0
 
