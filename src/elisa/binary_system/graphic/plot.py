@@ -287,15 +287,16 @@ class Plot(object):
         orbital_position_container.primary.points[:, 0] -= distances_to_com
         orbital_position_container.secondary.points[:, 0] -= distances_to_com
 
-        orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
         components = butils.component_to_list(components_to_plot)
-
         com = {'primary': 0.0, 'secondary': components_distance}
+        for component in components:
+            correct_face_orientation(getattr(orbital_position_container, component), com=com[component])
+
+        orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
+
         mult = np.array([-1, -1, 1.0])[None, :]
         for component in components:
             star = getattr(orbital_position_container, component)
-
-            correct_face_orientation(star, com=com[component])
             points, faces = star.points, star.faces
 
             surface_kwargs.update({
