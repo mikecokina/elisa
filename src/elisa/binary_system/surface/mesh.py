@@ -382,7 +382,7 @@ def _generate_neck_zs(delta_z, component, neck_position, neck_polynomial):
     :param component: str;
     :param neck_position: numpy.float;
     :param neck_polynomial: numpy.polynomial.Polynomial
-    :return:
+    :return: Tuple
     """
     # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
     # z axis
@@ -1101,8 +1101,7 @@ def calculate_neck_position(system, return_polynomial=False):
     cylindrical_fprime = getattr(model, f"radial_primary_potential_derivative_cylindrical")
 
     phi = np.zeros(n_points)
-    # z = np.linspace(0, 1, num=n_points)
-    z = np.sin(np.linspace(0, const.PI, num=n_points))
+    z = np.linspace(0, 1, num=n_points)
     args = phi, z, components_distance, star.polar_radius, \
            precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
            star.surface_potential, system.mass_ratio, 1.0
