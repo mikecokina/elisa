@@ -16,6 +16,10 @@ from ... import (
 
 logger = getLogger("single_system.surface.mesh")
 SEAM_CONST = 1.08
+CORRECTION_FACTORS = np.array([
+    np.radians([  1,    2,   3,      4,     5,     6,     7,     8,     9,    10,     11,    12]),
+               [1.0, 1.15, 1.2, 1.2279, 1.242, 1.313, 1.348, 1.311, 1.307, 1.337, 1.4125, 1.554]
+])
 
 
 def build_mesh(system):
@@ -409,6 +413,6 @@ def correct_mesh(system):
     :return: elisa.single_system.container.SystemContainer;
     """
     star = getattr(system, 'star')
-    correct_component_mesh(star)
+    correct_component_mesh(star, correction_factors=CORRECTION_FACTORS)
 
     return system

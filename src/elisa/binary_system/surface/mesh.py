@@ -22,6 +22,17 @@ from ... import (
 
 logger = getLogger("binary_system.surface.mesh")
 SEAM_CONST = 1.08
+CORECTION_FACTORS = {
+    'detached': np.array([
+        np.radians([  1,    2,   3,     4,     5,     6,     7,     8,      9,     10,     11,    12]),
+                   [1.0, 1.15, 1.2, 1.211, 1.191, 1.249, 1.239, 1.222, 1.1975, 1.2085, 1.2198, 1.259]
+    ]),
+    'over-contact': np.array([
+        np.radians([  1,    2,    3,     4,      5,     6,     7,     8,     9,     10,    11,    12]),
+                   [1.0,  1.0, 1.005, 1.001, 1.000, 1.020, 1.020, 1.015, 1.007, 1.0200, 1.040, 1.085]
+    ]),
+}
+CORECTION_FACTORS['semi-detached'] = CORECTION_FACTORS['detached']
 
 
 def build_mesh(system, components_distance, component="all"):
@@ -1164,7 +1175,7 @@ def correct_mesh(system, component='all'):
 
     for component in components:
         star = getattr(system, component)
-        correct_component_mesh(star)
+        correct_component_mesh(star, correction_factors=CORECTION_FACTORS[system.morphology])
 
     return system
 

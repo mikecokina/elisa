@@ -118,11 +118,11 @@ class BuildSpottyFacesTestCase(ElisaTestCase):
         self.generator_test_faces('detached', [773, 516, 97, 24])
 
     def test_build_faces_over_contact(self):
-        self.generator_test_faces('over-contact', [683, 434, 97, 24])
+        self.generator_test_faces('over-contact', [685, 434, 97, 24])
 
     def test_build_faces_over_contact2(self):
         settings.configure(MESH_GENERATOR="improved_trapezoidal")
-        self.generator_test_faces('over-contact', [685, 440, 97, 24])
+        self.generator_test_faces('over-contact', [689, 440, 97, 24])
 
     def test_build_faces_semi_detached(self):
         self.generator_test_faces('semi-detached', [773, 516, 97, 24])
