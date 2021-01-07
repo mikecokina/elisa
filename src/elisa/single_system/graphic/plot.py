@@ -130,7 +130,7 @@ class Plot(object):
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
                 elevation=None, azimuth=None, unit='default', axis_unit=u.solRad,
                 colorbar_orientation='vertical', colorbar=True, scale='linear', surface_color='g',
-                colorbar_separation=0.0, colorbar_size=0.7):
+                colorbar_separation=0.0, colorbar_size=0.7, return_figure_instance: bool=False):
         """
         Function creates plot of single system components.
 
@@ -151,6 +151,8 @@ class Plot(object):
         :param surface_color: tuple; tuple of colors for components if `colormap` is not specified
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+        produced figure
         """
         surface_kwargs = dict()
 
@@ -234,6 +236,7 @@ class Plot(object):
             'equatorial_radius': (star_container.equatorial_radius*u.DISTANCE_UNIT).to(axis_unit).value,
             'surface_color': surface_color,
             'colorbar_separation': colorbar_separation,
-            'colorbar_size': colorbar_size
+            'colorbar_size': colorbar_size,
+            'return_figure_instance': return_figure_instance
         })
-        graphics.single_star_surface(**surface_kwargs)
+        return graphics.single_star_surface(**surface_kwargs)

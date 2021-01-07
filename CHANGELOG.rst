@@ -216,6 +216,9 @@ v0.5
     - function elisa.analytics.tasks.load_results() returns results in form of dict
     - command set_up_logging() not needed anymore while changing logging schemas
     - adaptive and custom sampling during fitting accessed by 'samples' argument
+    - ability for surface plot to return figure instance with boolean argument `return_figure_instance`
+    - correction of surface underestimation is separately tuned for each discretization method (single star, detached,
+      over-contact)
 
 
 **Fixes**

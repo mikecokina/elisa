@@ -216,7 +216,8 @@ class Plot(object):
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
                 face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, unit='default',
                 axis_unit=u.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
-                surface_colors=('g', 'r'), separate_colormaps=None, colorbar_separation=0.0, colorbar_size=0.7):
+                surface_colors=('g', 'r'), separate_colormaps=None, colorbar_separation=0.0, colorbar_size=0.7,
+                return_figure_instance: bool=False):
         """
         Function creates plot of binary system components
 
@@ -240,6 +241,8 @@ class Plot(object):
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+        produced figure
         """
         surface_kwargs = dict()
 
@@ -349,7 +352,8 @@ class Plot(object):
             "surface_colors": surface_colors,
             "separate_colormaps": separate_colormaps,
             'colorbar_separation': colorbar_separation,
-            'colorbar_size': colorbar_size
+            'colorbar_size': colorbar_size,
+            'return_figure_instance': return_figure_instance
         })
 
-        graphics.binary_surface(**surface_kwargs)
+        return graphics.binary_surface(**surface_kwargs)
