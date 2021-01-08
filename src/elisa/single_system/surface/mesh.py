@@ -1,5 +1,7 @@
+import os
 import numpy as np
 import elisa.umpy as up
+import json
 
 from .. import model
 from .. radius import calculate_radius
@@ -14,12 +16,11 @@ from ... import (
     utils
 )
 
+
 logger = getLogger("single_system.surface.mesh")
 SEAM_CONST = 1.08
-CORRECTION_FACTORS = np.array([
-    np.radians([  1,    2,   3,      4,     5,     6,     7,     8,     9,    10,     11,    12]),
-               [1.0, 1.15, 1.2, 1.2279, 1.242, 1.313, 1.348, 1.311, 1.307, 1.337, 1.4125, 1.554]
-])
+PATH_TO_CORRECTIONS = os.path.dirname(os.path.abspath(__file__)) + '/mesh_corrections/correction_factors.npy'
+CORRECTION_FACTORS = np.load(PATH_TO_CORRECTIONS, allow_pickle=False)
 
 
 def build_mesh(system):
