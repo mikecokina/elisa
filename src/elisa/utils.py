@@ -950,14 +950,14 @@ def discretization_correction_factor(discretization_factor, correction_factors):
     :return: float;
     """
     # treating edge cases
-    if discretization_factor <= correction_factors["discretization"][0]:
-        correction_factor = correction_factors["correction"][0]
-    elif discretization_factor >= correction_factors["discretization"][-1]:
-        correction_factor = correction_factors["correction"][-1]
+    if discretization_factor <= correction_factors[0, 0]:
+        correction_factor = correction_factors[1, 0]
+    elif discretization_factor >= correction_factors[0, -1]:
+        correction_factor = correction_factors[1, -1]
     else:
         correction_factor = np.interp(discretization_factor,
-                                      correction_factors["discretization"],
-                                      correction_factors["correction"])
+                                      correction_factors[0],
+                                      correction_factors[1])
     # correction for non-equilateral triangles
     alpha = correction_factor * discretization_factor
     # correction for surface underestimation

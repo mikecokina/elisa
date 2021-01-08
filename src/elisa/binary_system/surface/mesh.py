@@ -23,11 +23,12 @@ from ... import (
 logger = getLogger("binary_system.surface.mesh")
 SEAM_CONST = 1.08
 PATH_TO_CORRECTIONS = os.path.dirname(os.path.abspath(__file__)) + '/mesh_corrections/'
-CORRECTION_FACTORS = {}
-with open(PATH_TO_CORRECTIONS + 'correction_factors_detached.json') as json_file:
-    CORRECTION_FACTORS['detached'] = json.load(json_file)['detached']
-with open(PATH_TO_CORRECTIONS + 'correction_factors_over-contact.json') as json_file:
-    CORRECTION_FACTORS['over-contact'] = json.load(json_file)['over-contact']
+
+CORRECTION_FACTORS = dict()
+CORRECTION_FACTORS['detached'] = np.load(PATH_TO_CORRECTIONS + 'correction_factors_detached.npy',
+                                         allow_pickle=False)
+CORRECTION_FACTORS['over-contact'] = np.load(PATH_TO_CORRECTIONS + 'correction_factors_over-contact.npy',
+                                             allow_pickle=False)
 
 CORRECTION_FACTORS['semi-detached'] = CORRECTION_FACTORS['detached']
 
