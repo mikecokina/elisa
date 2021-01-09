@@ -81,6 +81,7 @@ FALSE_FACE_PLACEHOLDER = np.array([-1, -1, -1])
 
 MAX_USABLE_FLOAT = np.finfo(float).max * np.finfo(float).eps
 
-
+# distance - component's distance
+# angle between
 Position = namedtuple('Position', ['idx', 'distance', 'azimuth', 'true_anomaly', 'phase'])
 SinglePosition = namedtuple('SinglePosition', ['idx', 'azimuth', 'phase'])
