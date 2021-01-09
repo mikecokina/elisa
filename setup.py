@@ -108,7 +108,9 @@ setup(
             'conf/logging_schemas/*',
             'schema_registry/*',
             'schema_registry/schema_files/*',
-            'data/*'
+            'data/*',
+            'binary_system/surface/mesh_corrections/*',
+            'single_system/surface/mesh_corrections/*'
         ],
     },
 
