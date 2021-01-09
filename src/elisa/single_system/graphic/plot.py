@@ -4,15 +4,13 @@ from .. container import SystemContainer
 from ... import units as u
 from ... base import transform
 from ... base.graphics import plot
-from ... const import SinglePosition
+from ... const import Position
 from ... graphic import graphics
 from ... utils import is_empty
 from ... base.surface.faces import correct_face_orientation
 from .. import utils as sutils
 from .. curves import utils as crv_utils
 from ... observer.observer import Observer
-from ... import settings
-from ... ld import limb_darkening_factor
 
 
 class Plot(object):
@@ -26,7 +24,7 @@ class Plot(object):
         `surface` - plot stellar surfaces
     """
 
-    defpos = SinglePosition(*(0, 0.0, 0.0))
+    defpos = Position(*(0, np.nan, 0.0, np.nan, 0.0))
 
     def __init__(self, instance):
         self.single = instance
@@ -162,7 +160,7 @@ class Plot(object):
             if azimuth is not None else 180
 
         single_position = self.single.orbit.rotational_motion(phase=phase)[0]
-        single_position = SinglePosition(0, single_position[0], single_position[1])
+        single_position = Position(0, np.nan, single_position[0], single_position[1], single_position[2])
 
         position_container = SystemContainer.from_single_system(self.single, self.defpos)
         position_container.set_on_position_params(single_position)

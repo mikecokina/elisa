@@ -17,7 +17,7 @@ from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.single_system.container import SystemContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.single_system.system import SingleSystem
-from elisa.const import Position, SinglePosition
+from elisa.const import Position
 from elisa.binary_system.orbit import orbit
 from elisa.utils import is_empty
 from collections.abc import Iterable
@@ -157,7 +157,7 @@ def prepare_single_system(params, spots=None, pulsations=None):
 def prepare_single_system_container(system):
     system_container = SystemContainer(
         star=StarContainer.from_properties_container(system.star.to_properties_container()),
-        position=SinglePosition(*(0, 0.0, 0.0)),
+        position=Position(*(0, np.nan, 0.0, np.nan, 0.0)),
         **system.properties_serializer()
     )
     return system_container

@@ -1,3 +1,5 @@
+import numpy as np
+
 from ... logger import getLogger
 from ... import const
 from .. container import SystemContainer
@@ -34,7 +36,7 @@ def prep_initial_system(single):
     :param single: elisa.single_system.system.SingleSystem;
     :return: elisa.single_system.container.SystemContainer;
     """
-    from_this = dict(single_system=single, position=const.SinglePosition(0, 0.0, 0.0))
+    from_this = dict(single_system=single, position=const.Position(0, np.nan, 0.0, np.nan, 0.0))
     initial_system = SystemContainer.from_single_system(**from_this)
     initial_system.build()
     return initial_system

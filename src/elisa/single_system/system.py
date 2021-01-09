@@ -253,19 +253,19 @@ class SingleSystem(System):
         :param calculate_from: str; 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
         :param return_nparray: bool; if True positions in form of numpy arrays will be also returned
         :param input_argument: numpy.array;
-        :return: Tuple[List[NamedTuple: elisa.const.SinglePosition], List[Integer]] or
-                 List[NamedTuple: elisa.const.SinglePosition]
+        :return: Tuple[List[NamedTuple: elisa.const.Position], List[Integer]] or
+                 List[NamedTuple: elisa.const.Position]
         """
         input_argument = np.array([input_argument]) if np.isscalar(input_argument) else input_argument
         rotational_motion = self.orbit.rotational_motion(phase=input_argument) if calculate_from == 'phase' \
             else self.orbit.rotational_motion_from_azimuths(azimuth=input_argument)
-        idx = np.arange(np.shape(input_argument)[0], dtype=np.int)
-        positions = np.hstack((idx[:, np.newaxis], rotational_motion))
+        idx = np.arange(np.shape(input_argument)[0], dtype=np.int)[:, np.newaxis]
+        positions = np.hstack((idx, np.full(idx.shape, np.nan), rotational_motion))
 
         if return_nparray:
             return positions
         else:
-            return [const.SinglePosition(*p) for p in positions]
+            return [const.Position(*p) for p in positions]
 
     def calculate_equivalent_radius(self):
         """

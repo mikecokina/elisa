@@ -2,7 +2,7 @@ import numpy as np
 
 from elisa.logger import getLogger
 
-from ... const import SinglePosition
+from ... const import Position
 from ... graphic import graphics
 from .. container import SystemContainer
 from .. import utils as sutils
@@ -11,7 +11,7 @@ logger = getLogger('single_system.graphic.animation')
 
 
 class Animation(object):
-    defpos = SinglePosition(*(0, 0.0, 0.0))
+    defpos = Position(*(0, np.nan, 0.0, np.nan, 0.0))
 
     def __init__(self, instance):
         self.single = instance

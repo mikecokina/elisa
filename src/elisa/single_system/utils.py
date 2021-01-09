@@ -13,7 +13,7 @@ def move_sys_onpos(system, position, on_copy=True):
         system.apply_rotation()
         system.apply_darkside_filter()
 
-    :param position: collections.namedtuple; elisa.const.SinglePosition;
+    :param position: collections.namedtuple; elisa.const.Position;
     :param system: elisa.single_system.container.PositionContainer;
     :param on_copy: bool;
     :return: container; elisa.sinary_system.container.PositionContainer;
