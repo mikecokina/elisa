@@ -83,7 +83,8 @@ class Orbit(object):
         Function takes photometric phase of the single system as input and calculates azimuths for the observer
 
         :param phase: Union[numpy.array, float];
-        :return: numpy.array; matrix consisting of column stacked vectors azimut angle and phase
+        :return: numpy.array; matrix consisting of column stacked vectors azimut, angle and phase, last 3 columns of
+        const.Position
 
         ::
 
@@ -98,7 +99,7 @@ class Orbit(object):
 
         azimuth_angle = true_phase_to_azimuth(phase=phase)
 
-        return np.column_stack((azimuth_angle, phase))
+        return np.column_stack((azimuth_angle, np.full(phase.shape, np.nan), phase))
 
     @staticmethod
     def rotational_motion_from_azimuths(azimuth):
@@ -118,4 +119,4 @@ class Orbit(object):
 
         """
         true_phase = azimuth_to_true_phase(azimuth)
-        return np.column_stack((azimuth, true_phase))
+        return np.column_stack((azimuth, np.full(azimuth.shape, np.nan), true_phase))

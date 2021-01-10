@@ -217,7 +217,7 @@ class Plot(object):
                 face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, unit='default',
                 axis_unit=u.dimensionless_unscaled, colorbar_orientation='vertical', colorbar=True, scale='linear',
                 surface_colors=('g', 'r'), separate_colormaps=None, colorbar_separation=0.0, colorbar_size=0.7,
-                subtract_equilibrium=False):
+                return_figure_instance: bool=False, subtract_equilibrium=False):
         """
         Function creates plot of binary system components
 
@@ -242,6 +242,8 @@ class Plot(object):
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
         :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+        produced figure
         """
         surface_kwargs = dict()
 
@@ -289,15 +291,16 @@ class Plot(object):
         orbital_position_container.primary.points[:, 0] -= distances_to_com
         orbital_position_container.secondary.points[:, 0] -= distances_to_com
 
-        orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
         components = butils.component_to_list(components_to_plot)
-
         com = {'primary': 0.0, 'secondary': components_distance}
+        for component in components:
+            correct_face_orientation(getattr(orbital_position_container, component), com=com[component])
+
+        orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
+
         mult = np.array([-1, -1, 1.0])[None, :]
         for component in components:
             star = getattr(orbital_position_container, component)
-
-            correct_face_orientation(star, com=com[component])
             points, faces = star.points, star.faces
 
             surface_kwargs.update({
@@ -350,7 +353,8 @@ class Plot(object):
             "surface_colors": surface_colors,
             "separate_colormaps": separate_colormaps,
             'colorbar_separation': colorbar_separation,
-            'colorbar_size': colorbar_size
+            'colorbar_size': colorbar_size,
+            'return_figure_instance': return_figure_instance
         })
 
-        graphics.binary_surface(**surface_kwargs)
+        return graphics.binary_surface(**surface_kwargs)

@@ -125,6 +125,9 @@ class BinarySystem(System):
         # adjust and setup discretization factor if necessary
         self.setup_discretisation_factor()
 
+        # setting common reference to emphemeris
+        self.t0 = self.primary_minimum_time
+
     @classmethod
     def from_json(cls, data, _verify=True, _kind_of=None):
         """

@@ -940,16 +940,27 @@ def flux_error_to_magnitude_error(data, error):
     return 2.5 * np.log10(1 + (error / data))
 
 
-def discretization_correction_factor(discretization_factor):
+def discretization_correction_factor(discretization_factor, correction_factors):
     """
     Correction factor for the surface due to underestimation of the surface by the triangles.
 
+    :param correction_factors: numpy.array; (2*N) [discretization factor, correction factor],
+    sorted according to discretization factor
     :param discretization_factor: numpy.float;
-    :return:
+    :return: float;
     """
+    # treating edge cases
+    if discretization_factor <= correction_factors[0, 0]:
+        correction_factor = correction_factors[1, 0]
+    elif discretization_factor >= correction_factors[0, -1]:
+        correction_factor = correction_factors[1, -1]
+    else:
+        correction_factor = np.interp(discretization_factor,
+                                      correction_factors[0],
+                                      correction_factors[1])
     # correction for non-equilateral triangles
-    alpha = 1.20 * discretization_factor
-    # correction fro surface underestimation
+    alpha = correction_factor * discretization_factor
+    # correction for surface underestimation
     return np.sqrt(alpha / np.sin(alpha))
 
 
@@ -963,3 +974,19 @@ def transform_values(value, default_unit, unit):
     :return: Union[float, numpy.array]; transformed values
     """
     return value if unit == 'default' else (value*default_unit).to(unit).value
+
+
+def jd_to_phase(times, period, t0, centre=0.5):
+    """
+    Converting JD to phase according to supplied ephemeris.
+    Phases will be returned in range ('centre' - 0.5, 'centre' + 0.5).
+
+    :param times: numpy.array;
+    :param period: float;
+    :param t0: float;
+    :param centre: float;
+    :return: numpy.array
+    """
+    start_phase = centre - 0.5
+    t0 += start_phase * period
+    return ((times - t0) / period) % 1.0 + start_phase

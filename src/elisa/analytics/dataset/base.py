@@ -105,9 +105,7 @@ class DataSet(metaclass=ABCMeta):
         :param centre: float; phase curve will be centered around this phase
         :return:
         """
-        start_phase = centre - 0.5
-        t0 += start_phase * period
-        self.x_data = ((self.x_data - t0) / period) % 1.0 + start_phase
+        self.x_data = utils.jd_to_phase(self.x_data, period, t0, centre=centre)
         self.x_unit = u.dimensionless_unscaled
 
     def convert_to_time(self, period, t0, to_unit=u.PERIOD_UNIT):

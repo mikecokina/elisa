@@ -22,12 +22,12 @@ class RotationalMotionTestCase(ElisaTestCase):
     def test_rotational_motion(self):
         phases = np.array([-0.1, 0.0, 0.1, 0.5, 1.0, 1.1])
         obtained = []
-        expected = [np.array([[-0.6283, -0.1],
-                              [0., 0.],
-                              [0.6283, 0.1],
-                              [3.1416, 0.5],
-                              [6.2832, 1.],
-                              [6.9115, 1.1]]), ]
+        expected = [np.array([[-0.6283, np.nan, -0.1],
+                              [0., np.nan, 0.],
+                              [0.6283, np.nan, 0.1],
+                              [3.1416, np.nan, 0.5],
+                              [6.2832, np.nan, 1.],
+                              [6.9115, np.nan, 1.1]]), ]
         for i, combo in enumerate(self.params_combination[np.array([0])]):
             o = orbit.Orbit(**combo)
             obtained.append(np.round(o.rotational_motion(phases), 4))
@@ -36,12 +36,12 @@ class RotationalMotionTestCase(ElisaTestCase):
     def test_rotational_motion_from_azimuths(self):
         azimuths = np.array([-0.1, 0.0, 0.1, 0.5, 1.0, 1.1]) * c.FULL_ARC
         obtained = []
-        expected = [np.array([[-0.6283, -0.1],
-                              [0., 0.],
-                              [0.6283, 0.1],
-                              [3.1416, 0.5],
-                              [6.2832, 1.],
-                              [6.9115, 1.1]]), ]
+        expected = [np.array([[-0.6283, np.nan, -0.1],
+                              [0., np.nan, 0.],
+                              [0.6283, np.nan, 0.1],
+                              [3.1416, np.nan, 0.5],
+                              [6.2832, np.nan, 1.],
+                              [6.9115, np.nan, 1.1]]), ]
         for i, combo in enumerate(self.params_combination[np.array([0])]):
             o = orbit.Orbit(**combo)
             obtained.append(np.round(o.rotational_motion_from_azimuths(azimuths), 4))

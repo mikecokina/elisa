@@ -4,15 +4,13 @@ from .. container import SystemContainer
 from ... import units as u
 from ... base import transform
 from ... base.graphics import plot
-from ... const import SinglePosition
+from ... const import Position
 from ... graphic import graphics
 from ... utils import is_empty
 from ... base.surface.faces import correct_face_orientation
 from .. import utils as sutils
 from .. curves import utils as crv_utils
 from ... observer.observer import Observer
-from ... import settings
-from ... ld import limb_darkening_factor
 
 
 class Plot(object):
@@ -26,7 +24,7 @@ class Plot(object):
         `surface` - plot stellar surfaces
     """
 
-    defpos = SinglePosition(*(0, 0.0, 0.0))
+    defpos = Position(*(0, np.nan, 0.0, np.nan, 0.0))
 
     def __init__(self, instance):
         self.single = instance
@@ -130,7 +128,7 @@ class Plot(object):
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
                 elevation=None, azimuth=None, unit='default', axis_unit=u.solRad,
                 colorbar_orientation='vertical', colorbar=True, scale='linear', surface_color='g',
-                colorbar_separation=0.0, colorbar_size=0.7):
+                colorbar_separation=0.0, colorbar_size=0.7, return_figure_instance: bool=False):
         """
         Function creates plot of single system components.
 
@@ -151,6 +149,8 @@ class Plot(object):
         :param surface_color: tuple; tuple of colors for components if `colormap` is not specified
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+        produced figure
         """
         surface_kwargs = dict()
 
@@ -160,7 +160,7 @@ class Plot(object):
             if azimuth is not None else 180
 
         single_position = self.single.orbit.rotational_motion(phase=phase)[0]
-        single_position = SinglePosition(0, single_position[0], single_position[1])
+        single_position = Position(0, np.nan, single_position[0], single_position[1], single_position[2])
 
         position_container = SystemContainer.from_single_system(self.single, self.defpos)
         position_container.set_on_position_params(single_position)
@@ -234,6 +234,7 @@ class Plot(object):
             'equatorial_radius': (star_container.equatorial_radius*u.DISTANCE_UNIT).to(axis_unit).value,
             'surface_color': surface_color,
             'colorbar_separation': colorbar_separation,
-            'colorbar_size': colorbar_size
+            'colorbar_size': colorbar_size,
+            'return_figure_instance': return_figure_instance
         })
-        graphics.single_star_surface(**surface_kwargs)
+        return graphics.single_star_surface(**surface_kwargs)

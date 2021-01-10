@@ -1,4 +1,6 @@
+import os
 import numpy as np
+import json
 
 from .. import (
     utils as bsutils,
@@ -11,8 +13,6 @@ from ... import settings
 from ... opt.fsolver import fsolver
 from ... utils import is_empty
 from ... logger import getLogger
-from ... pulse.container_ops import incorporate_pulsations_to_model
-from ... pulse.pulsations import generate_harmonics
 from ... import (
     umpy as up,
     utils,
@@ -22,6 +22,15 @@ from ... import (
 
 logger = getLogger("binary_system.surface.mesh")
 SEAM_CONST = 1.08
+PATH_TO_CORRECTIONS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mesh_corrections')
+
+CORRECTION_FACTORS = dict()
+CORRECTION_FACTORS['detached'] = np.load(os.path.join(PATH_TO_CORRECTIONS, 'correction_factors_detached.npy'),
+                                         allow_pickle=False)
+CORRECTION_FACTORS['over-contact'] = np.load(os.path.join(PATH_TO_CORRECTIONS, 'correction_factors_over-contact.npy'),
+                                             allow_pickle=False)
+
+CORRECTION_FACTORS['semi-detached'] = CORRECTION_FACTORS['detached']
 
 
 def build_mesh(system, components_distance, component="all"):
@@ -382,7 +391,7 @@ def _generate_neck_zs(delta_z, component, neck_position, neck_polynomial):
     :param component: str;
     :param neck_position: numpy.float;
     :param neck_polynomial: numpy.polynomial.Polynomial
-    :return:
+    :return: Tuple
     """
     # lets define cylindrical coordinate system r_n, phi_n, z_n for our neck where z_n = x, phi_n = 0 heads along
     # z axis
@@ -1101,8 +1110,7 @@ def calculate_neck_position(system, return_polynomial=False):
     cylindrical_fprime = getattr(model, f"radial_primary_potential_derivative_cylindrical")
 
     phi = np.zeros(n_points)
-    # z = np.linspace(0, 1, num=n_points)
-    z = np.sin(np.linspace(0, const.PI, num=n_points))
+    z = np.linspace(0, 1, num=n_points)
     args = phi, z, components_distance, star.polar_radius, \
            precal_cylindrical, fn_cylindrical, cylindrical_fprime, \
            star.surface_potential, system.mass_ratio, 1.0
@@ -1165,7 +1173,7 @@ def correct_mesh(system, component='all'):
 
     for component in components:
         star = getattr(system, component)
-        correct_component_mesh(star)
+        correct_component_mesh(star, correction_factors=CORRECTION_FACTORS[system.morphology])
 
     return system
 

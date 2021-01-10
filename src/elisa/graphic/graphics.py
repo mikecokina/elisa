@@ -13,6 +13,7 @@ from .. import (
     units
 )
 from .. import units as u
+from . import utils as gutils
 
 
 CMAPS = {'temperature': cm.jet_r,
@@ -279,7 +280,11 @@ def single_star_surface(**kwargs):
     else:
         ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
-    plt.show()
+
+    if kwargs['return_figure_instance']:
+        return fig
+    else:
+        plt.show()
 
 
 def binary_surface(**kwargs):
@@ -422,34 +427,6 @@ def binary_surface(**kwargs):
                         colorbar2, kwargs['colormap'], kwargs['unit'], kwargs['scale'], extra='secondary'
                     )
 
-    x_min, x_max = 0, 0
-    if kwargs['components_to_plot'] == 'both':
-        x_min = np.min([np.min(kwargs['points_primary'][:, 0]), np.min(kwargs['points_secondary'][:, 0])])
-        x_max = np.max([np.max(kwargs['points_primary'][:, 0]), np.max(kwargs['points_secondary'][:, 0])])
-        d = (x_max - x_min) / 2
-        ax.set_ylim3d(-d, d)
-        ax.set_zlim3d(-d, d)
-    elif kwargs['components_to_plot'] == 'primary':
-        x_min = np.min(kwargs['points_primary'][:, 0])
-        x_max = np.max(kwargs['points_primary'][:, 0])
-        y_min = np.min(kwargs['points_primary'][:, 1])
-        y_max = np.max(kwargs['points_primary'][:, 1])
-        z_min = np.min(kwargs['points_primary'][:, 2])
-        z_max = np.max(kwargs['points_primary'][:, 2])
-        ax.set_ylim3d(y_min, y_max)
-        ax.set_zlim3d(z_min, z_max)
-    elif kwargs['components_to_plot'] == 'secondary':
-        x_min = np.min(kwargs['points_secondary'][:, 0])
-        x_max = np.max(kwargs['points_secondary'][:, 0])
-        y_min = np.min(kwargs['points_secondary'][:, 1])
-        y_max = np.max(kwargs['points_secondary'][:, 1])
-        z_min = np.min(kwargs['points_secondary'][:, 2])
-        z_max = np.max(kwargs['points_secondary'][:, 2])
-        ax.set_ylim3d(y_min, y_max)
-        ax.set_zlim3d(z_min, z_max)
-
-    ax.set_xlim3d(x_min, x_max)
-
     if kwargs['plot_axis']:
         unit = str(kwargs['axis_unit'])
         if kwargs['axis_unit'] == units.dimensionless_unscaled:
@@ -463,7 +440,11 @@ def binary_surface(**kwargs):
         ax.set_axis_off()
 
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
-    plt.show()
+    gutils.set_axes_equal(ax)
+    if kwargs['return_figure_instance']:
+        return fig
+    else:
+        plt.show()
 
 
 def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
