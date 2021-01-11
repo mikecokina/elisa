@@ -15,8 +15,8 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     :return: base.container.StarContainer;
     """
     tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
-    # angular coordinate of pulsantion axis
-    tilted_angular_coordinates = putils.generate_tilt_coordinates(star_container, phase)
+    # angular coordinate of pulsation axis
+    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
 
     # initializing cumulative variables for displacement, velocity,
     tilt_displacement_sph = np.zeros(tilted_points.shape, dtype=np.float64)
@@ -28,12 +28,12 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
 
     # calculating kinematics quantities
     for mode_index, mode in star_container.pulsations.items():
-        complex_displacement = kinematics.calculate_displacement_coordinates(
+        mode.complex_displacement = kinematics.calculate_displacement_coordinates(
             mode, tilted_points, mode.point_harmonics, mode.point_harmonics_derivatives, scale=scale
         )
-        tilt_displacement_sph += kinematics.calculate_mode_angular_displacement(complex_displacement)
+        tilt_displacement_sph += kinematics.calculate_mode_angular_displacement(mode.complex_displacement)
         tilt_velocity_sph += kinematics.calculate_mode_angular_derivatives(
-            displacement=complex_displacement, angular_frequency=mode.angular_frequency
+            displacement=mode.complex_displacement, angular_frequency=mode.angular_frequency
         )
 
         for spot_idx, spoints in tilted_points_spot.items():
@@ -42,7 +42,7 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
                 scale=scale
             )
             tilt_displacement_spots_sph[spot_idx] += kinematics.calculate_mode_angular_displacement(
-                spot_complex_displacement
+                mode.spot_complex_displacement
             )
             tilt_velocity_spots_sph[spot_idx] += kinematics.calculate_mode_angular_derivatives(
                 displacement=spot_complex_displacement, angular_frequency=mode.angular_frequency
@@ -71,44 +71,37 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     return star_container
 
 
-def generate_perturbed_quantities(star_container, com_x, phase, scale=1.0):
-    tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
-    # angular coordinate of pulsation axis
-    axis_angular_coordinates = putils.generate_tilt_coordinates(star_container, phase)
+def calculate_displacement(star, com_x, phase, update_container=False, return_displacement=False):
+    # initializing cumulative variables for displacement
+    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star, phase)
 
-    # initializing cumulative variables for displacement, velocity,
-    tilt_displacement_sph = np.zeros(tilted_points.shape, dtype=np.float64)
-    tilt_displacement_spots_sph = {spot_idx: np.zeros(spot.shape, dtype=np.float64)
-                                   for spot_idx, spot in tilted_points_spot.items()}
-    tilt_velocity_sph = np.zeros(tilted_points.shape, dtype=np.float64)
-    tilt_velocity_spots_sph = {spot_idx: np.zeros(spot.shape, dtype=np.float64)
-                               for spot_idx, spot in tilted_points_spot.items()}
+    tilt_displacement_sph = np.zeros(star.pulsations[0].points.shape, dtype=np.float64)
+    tilt_displacement_spots_sph = {spot_idx: np.zeros(star.pulsations[0].spot_points.shape, dtype=np.float64)
+                                   for spot_idx, spot in star.pulsations[0].spot_points.items()}
 
-    # calculating kinematics quantities
-    for mode_index, mode in star_container.pulsations.items():
-        complex_displacement = kinematics.calculate_displacement_coordinates(
-            mode, tilted_points, mode.point_harmonics, mode.point_harmonics_derivatives, scale=scale
-        )
-        tilt_displacement_sph += kinematics.calculate_mode_angular_displacement(complex_displacement)
-        tilt_velocity_sph += kinematics.calculate_mode_angular_derivatives(
-            displacement=complex_displacement, angular_frequency=mode.angular_frequency
-        )
+    for mode_index, mode in star.pulsations.items():
+        tilt_displacement_sph += kinematics.calculate_mode_angular_displacement(mode.complex_displacement)
 
-        for spot_idx, spoints in tilted_points_spot.items():
-            spot_complex_displacement = kinematics.calculate_displacement_coordinates(
-                mode, spoints, mode.spot_point_harmonics[spot_idx], mode.spot_point_harmonics_derivatives[spot_idx],
-                scale=scale
-            )
+        for spot_idx, spoints in star.pulsations[0].spot_points.items():
             tilt_displacement_spots_sph[spot_idx] += kinematics.calculate_mode_angular_displacement(
-                spot_complex_displacement
-            )
-            tilt_velocity_spots_sph[spot_idx] += kinematics.calculate_mode_angular_derivatives(
-                displacement=spot_complex_displacement, angular_frequency=mode.angular_frequency
+                mode.spot_complex_displacement
             )
 
+    points = putils.derotate_surface_points(
+        star.pulsations[0].points + tilt_displacement_sph,
+        tilt_phi, tilt_theta, com_x
+    )
+    if update_container:
+        setattr(star, 'points', points)
 
+    spot_points = dict()
+    for spot_idx, spot in star.spots.items():
+        spoints = putils.derotate_surface_points(
+            star.pulsations[0].spot_points[spot_idx] + tilt_displacement_spots_sph[spot_idx],
+            tilt_phi, tilt_theta, com_x)
 
-
+        if update_container:
+            setattr(spot, 'points', spoints)
 
 
 def incorporate_velocity(tilt_velocity_sph, tilted_points, container, axis_phi, axis_theta, com_x):
