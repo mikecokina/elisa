@@ -277,16 +277,16 @@ class Orbit(object):
 
     def true_anomaly_to_azimuth(self, true_anomaly):
         """
-        Convert true anomaly angle to azimuth angle measured from -y axis in 2D plane.
+        Convert true anomaly angle to azimuth angle measured from y axis in 2D plane.
 
         ::
 
-            azimuth 0 alligns with -y axis
-                     |
-                     |      pi/2
+            azimuth 0 alligns with y axis
+                     | 0
+                pi/2 |
                 -----------
                      |
-                     | 0
+                     |
 
         :param true_anomaly: Union[numpy.array, float];
         :return: Union[numpy.array, float];
@@ -334,7 +334,7 @@ class Orbit(object):
 
     def orbital_motion_from_azimuths(self, azimuth):
         """
-        Function takes azimuths of the binary system (angle between ascending node (-y) as input and calculates
+        Function takes azimuths of the binary system (angle between ascending node (y) as input and calculates
         positions of the secondary component in the frame of reference of primary component.
 
         :param azimuth: Union[numpy.array, float];

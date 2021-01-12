@@ -65,7 +65,7 @@ class Plot(object):
         else:
             radius = ellipse[:, 0]
         azimuth = ellipse[:, 1]
-        x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth - const.PI / 2.0)
+        x, y = utils.polar_to_cartesian(radius=radius, phi=azimuth + const.PI / 2.0)
 
         if frame_of_reference == 'barycentric':
             orbit_kwargs.update({

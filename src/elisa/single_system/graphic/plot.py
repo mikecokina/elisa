@@ -182,12 +182,11 @@ class Plot(object):
 
         position_container = sutils.move_sys_onpos(position_container, single_position)
 
-        mult = np.array([1, 1, 1.0])[None, :]
         star_container = getattr(position_container, 'star')
         points, faces = star_container.points, star_container.faces
 
         surface_kwargs.update({
-            'points': mult * points,
+            'points': points,
             'triangles': faces
         })
 
@@ -206,8 +205,8 @@ class Plot(object):
             face_centres = star_container.get_flatten_parameter('face_centres')
             norm = star_container.get_flatten_parameter('normals')
             surface_kwargs.update({
-                'centres': mult * face_centres,
-                'arrows': mult * norm
+                'centres': face_centres,
+                'arrows': norm
             })
 
         # normals
