@@ -104,10 +104,13 @@ class PositionContainer(object):
             for prop in __PROPERTIES_TO_ROTATE__:
                 prop_value = getattr(star_container, prop)
 
-                args = (self.position.azimuth + const.HALF_PI, prop_value, "z", False, False)
+                correction = np.sign(const.LINE_OF_SIGHT[0]) * const.HALF_PI
+                args = (self.position.azimuth - correction, prop_value, "z", False,
+                        False)
                 prop_value = utils.around_axis_rotation(*args)
 
-                args = (const.HALF_PI - self.inclination, prop_value, "y", True, False)
+                inverse = False if const.LINE_OF_SIGHT[0] == 1 else True
+                args = (const.HALF_PI - self.inclination, prop_value, "y", inverse, False)
                 prop_value = utils.around_axis_rotation(*args)
                 setattr(star_container, prop, prop_value)
         return self
