@@ -290,6 +290,8 @@ class Plot(object):
         distances_to_com = orbital_position.distance * self.binary.mass_ratio / (1 + self.binary.mass_ratio)
         orbital_position_container.primary.points[:, 0] -= distances_to_com
         orbital_position_container.secondary.points[:, 0] -= distances_to_com
+        orbital_position_container.primary.face_centres[:, 0] -= distances_to_com
+        orbital_position_container.secondary.face_centres[:, 0] -= distances_to_com
 
         components = butils.component_to_list(components_to_plot)
         com = {'primary': 0.0, 'secondary': components_distance}
@@ -298,14 +300,13 @@ class Plot(object):
 
         orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
 
-        # mult = np.array([-1, -1, 1])[None, :]
         mult = np.array([1, 1, 1])[None, :]
         for component in components:
             star = getattr(orbital_position_container, component)
             points, faces = star.points, star.faces
 
             surface_kwargs.update({
-                f'points_{component}': mult * points,
+                f'points_{component}': points,
                 f'{component}_triangles': faces
             })
             surface_kwargs.update({
@@ -322,8 +323,8 @@ class Plot(object):
 
             if normals:
                 surface_kwargs.update({
-                    f'{component}_centres': mult * star.face_centres,
-                    f'{component}_arrows': mult * star.normals
+                    f'{component}_centres': star.face_centres,
+                    f'{component}_arrows': star.normals
                 })
 
             if axis_unit != u.dimensionless_unscaled:

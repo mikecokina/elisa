@@ -97,7 +97,7 @@ class PositionContainer(object):
         Angle are defined in self.position and self.inclination.
         :return: elisa.base.PositionContainer;
         """
-        __PROPERTIES_TO_ROTATE__ = ["points", "normals", "velocities"]
+        __PROPERTIES_TO_ROTATE__ = ["points", "normals", "velocities", "face_centres"]
 
         for component in self._components:
             star_container = getattr(self, component)
