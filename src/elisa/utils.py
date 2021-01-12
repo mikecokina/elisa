@@ -626,7 +626,7 @@ def calculate_cos_theta_los_x(normals):
     :param normals: numpy.array
     :return: numpy.array
     """
-    return normals[:, 0]
+    return const.LINE_OF_SIGHT[0] * normals[:, 0]
 
 
 def get_line_of_sight_single_system(phase, inclination):

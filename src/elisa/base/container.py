@@ -104,10 +104,10 @@ class PositionContainer(object):
             for prop in __PROPERTIES_TO_ROTATE__:
                 prop_value = getattr(star_container, prop)
 
-                args = (self.position.azimuth - const.HALF_PI, prop_value, "z", False, False)
+                args = (self.position.azimuth + const.HALF_PI, prop_value, "z", False, False)
                 prop_value = utils.around_axis_rotation(*args)
 
-                args = (const.HALF_PI - self.inclination, prop_value, "y", False, False)
+                args = (const.HALF_PI - self.inclination, prop_value, "y", True, False)
                 prop_value = utils.around_axis_rotation(*args)
                 setattr(star_container, prop, prop_value)
         return self

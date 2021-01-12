@@ -73,7 +73,7 @@ K_GRAVITY_LIST_ATM = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
 LEFT_BANDWIDTH_SHIFT = 100  # nm
 RIGHT_BANDWIDTH_SHIFT = 100  # nm
 
-LINE_OF_SIGHT = np.array([1.0, 0.0, 0.0])
+LINE_OF_SIGHT = np.array([-1.0, 0.0, 0.0])
 
 FALSE_FACE_PLACEHOLDER = np.array([-1, -1, -1])
 
