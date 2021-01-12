@@ -360,7 +360,7 @@ class Orbit(object):
     def get_conjuction(self):
         """
         Compute and return photometric phase of conjunction (eclipses).
-        We assume that primary component is placed in center of coo system and observation unit vector is [-1, 0, 0]
+        We assume that primary component is placed in center of coo system and observation unit vector is [1, 0, 0]
 
         return dictionary is in shape::
 
