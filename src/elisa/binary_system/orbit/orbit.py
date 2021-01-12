@@ -389,7 +389,7 @@ class Orbit(object):
         conjunction_quantities = dict()
         for alpha, idx in list(zip(conjuction_arc_list, ['primary_eclipse', 'secondary_eclipse'])):
             # true anomaly of conjunction (measured from periastron counter-clokwise)
-            true_anomaly_of_conjuction = (alpha - self.argument_of_periastron) % const.FULL_ARC  # \nu_{con}
+            true_anomaly_of_conjuction = self.azimuth_to_true_anomaly(alpha)  # \nu_{con}
 
             # eccentric anomaly of conjunction (measured from apse line)
             eccentric_anomaly_of_conjunction = (2.0 * up.arctan(
