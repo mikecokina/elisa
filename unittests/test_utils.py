@@ -277,11 +277,11 @@ class TestElisaEngineUtils(ElisaTestCase):
 
     def test_calculate_cos_theta_los_x(self):
         vectors = np.array([[1.3, 1.2], [1.1, -0.5]])
-        cos_sim = utils.calculate_cos_theta_los_x(vectors)
+        cos_sim = np.sign(const.LINE_OF_SIGHT[0]) * utils.calculate_cos_theta_los_x(vectors)
         assert_array_equal([1.3, 1.1], cos_sim)
 
         vectors = np.array([[1.3, 1.2, 3.0], [-1.1, -0.5, 1e25]])
-        cos_sim = utils.calculate_cos_theta_los_x(vectors)
+        cos_sim = np.sign(const.LINE_OF_SIGHT[0]) * utils.calculate_cos_theta_los_x(vectors)
         assert_array_equal([1.3, -1.1], cos_sim)
 
     def test_convert_gravity_acceleration_array(self):
