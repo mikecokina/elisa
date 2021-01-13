@@ -101,6 +101,11 @@ class AnalyticsTask(metaclass=ABCMeta):
         self.fit_cls.load_chain(filename, discard, percentiles)
         return self
 
+    def filter_chain(self, **boundaries):
+        if self.method not in ['mcmc']:
+            raise IOError('Filter chain method can be used only with mcmc task.')
+        self.fit_cls.filter_chain(**boundaries)
+
     def fit(self, x0: Union[Dict, parameters.BinaryInitialParameters], **kwargs):
         """
         Function solves an inverse task of inferring parameters of the eclipsing binary from the observed light curve.

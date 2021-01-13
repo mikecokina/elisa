@@ -219,6 +219,8 @@ v0.5
     - ability for surface plot to return figure instance with boolean argument `return_figure_instance`
     - correction of surface underestimation is separately tuned for each discretization method (single star, detached,
       over-contact)
+    - ablility to filter flat chain to be within specific interval of parameters. This method is suitable for examining
+      multiple solutions.
 
 
 **Fixes**

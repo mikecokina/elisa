@@ -322,6 +322,15 @@ class LCFitMCMC(LCFit):
 
         fit_lc_summary_with_error_propagation(self, filename, percentiles)
 
+    def filter_chain(self, **boundaries):
+        """
+        Filtering mcmc chain to given set of intervals.
+
+        :param boundaries: dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
+        :return: numpy.array; filtered flat chain
+        """
+        return io_tools.filter_chain(self, **boundaries)
+
 
 class LCFitLeastSquares(LCFit):
     def __init__(self, morphology):

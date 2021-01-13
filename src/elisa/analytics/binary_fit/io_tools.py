@@ -98,6 +98,36 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
                     values[1], values[2], unit, status, line_sep)
 
 
+def update_solution(mcmc_fit_cls, fitted_params, percentiles):
+    """
+    Updating solutions according to mcmc chain.
+
+    :param mcmc_fit_cls: fitting cls instance based on method (mcmc, lsqr) and type(lc, rv)
+    :param fitted_params: dict; only variable part of flat_result
+    :param percentiles: list; percentiles used for evaluation of confidence intervals
+    :return: Tuple;
+    """
+    fitable = {key: ParameterMeta(**val) for key, val in fitted_params.items()}
+
+    # reproducing results from chain
+    flat_result_update = MCMCMixin.resolve_mcmc_result(mcmc_fit_cls.flat_chain, fitable,
+                                                       mcmc_fit_cls.normalization, percentiles=percentiles)
+
+    if mcmc_fit_cls.result is not None:
+        mcmc_fit_cls.flat_result.update(flat_result_update)
+
+        # evaluating constraints
+        fit_params = parameters.serialize_result(mcmc_fit_cls.flat_result)
+        constrained = BinaryInitialParameters(**fit_params).get_constrained()
+        mcmc_fit_cls.flat_result = AbstractFit.eval_constrained_results(mcmc_fit_cls.flat_result, constrained)
+
+        mcmc_fit_cls.result = parameters.serialize_result(mcmc_fit_cls.flat_result)
+
+    else:
+        msg = 'Load fit parameters before loading the chain. For eg. UPDATE THIS.'
+        raise ValueError(msg)
+
+
 def load_chain(mcmc_fit_cls, fit_id, discard=0, percentiles=None):
     """
     Function loads MCMC chain along with auxiliary data from json file created after each MCMC run.
@@ -116,24 +146,39 @@ def load_chain(mcmc_fit_cls, fit_id, discard=0, percentiles=None):
     mcmc_fit_cls.flat_chain = np.array(data['flat_chain'])[discard:, :]
     mcmc_fit_cls.variable_labels = data['fitable_parameters']
     mcmc_fit_cls.normalization = data['normalization']
-    fitable = {key: ParameterMeta(**val) for key, val in data['fitable'].items()}
 
-    # reproducing results from chain
-    flat_result_update = MCMCMixin.resolve_mcmc_result(mcmc_fit_cls.flat_chain, fitable,
-                                                       mcmc_fit_cls.normalization, percentiles=percentiles)
-
-    if mcmc_fit_cls.result is not None:
-        mcmc_fit_cls.flat_result.update(flat_result_update)
-
-        # evaluating constraints
-        fit_params = parameters.serialize_result(mcmc_fit_cls.flat_result)
-        constrained = BinaryInitialParameters(**fit_params).get_constrained()
-        mcmc_fit_cls.flat_result = AbstractFit.eval_constrained_results(mcmc_fit_cls.flat_result, constrained)
-
-        mcmc_fit_cls.result = parameters.serialize_result(mcmc_fit_cls.flat_result)
-
-    else:
-        msg = 'Load fit parameters before loading the chain. For eg. by UPDATE THIS.'
-        raise ValueError(msg)
+    update_solution(mcmc_fit_cls, data['fitable'], percentiles)
 
     return mcmc_fit_cls.flat_chain, mcmc_fit_cls.variable_labels, mcmc_fit_cls.normalization
+
+
+def filter_chain(mcmc_fit_cls, **boundaries):
+    """
+    Filtering mcmc chain to given intervals.
+
+    :param mcmc_fit_cls: fitting cls instance based on method (mcmc, lstqr) and type(lc, rv)
+    :param boundaries: dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
+    :return: numpy.array; filtered flat chain
+    """
+    for key, boundary in boundaries.items():
+        if not isinstance(boundary, (tuple, list, np.ndarray)):
+            raise TypeError(f'`{key}` boundary is not tuple or list.')
+        if len(boundary) != 2:
+            raise TypeError(f'`{key}` has incorrect length of {len(boundary)}.')
+
+        column_idx = mcmc_fit_cls.variable_labels.index(key)
+        column = mcmc_fit_cls.flat_chain[:, column_idx]
+
+        condition_mask = np.logical_and(
+            column > parameters.normalize_value(boundary[0], *mcmc_fit_cls.normalization[key]),
+            column < parameters.normalize_value(boundary[1], *mcmc_fit_cls.normalization[key])
+        )
+
+        setattr(mcmc_fit_cls, 'flat_chain', mcmc_fit_cls.flat_chain[condition_mask, :])
+
+    fitted_params = {key: mcmc_fit_cls.flat_result[key] for key in mcmc_fit_cls.variable_labels}
+    update_solution(mcmc_fit_cls, fitted_params, percentiles=None)
+
+    return mcmc_fit_cls.flat_chain
+
+
