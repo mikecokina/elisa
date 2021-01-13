@@ -287,7 +287,7 @@ class SupportMethodsTestCase(ElisaTestCase):
     def test_partial_visible_faces_surface_coverage(self):
         points = np.array([[-1, 0.5], [1, 0.5], [0, 1.5]])
         faces = np.array([[0, 1, 2]])
-        normals = const.LINE_OF_SIGHT * np.array([[1, -1, 0]]) / np.linalg.norm(np.array([-1, 1, 0]))
+        normals = const.LINE_OF_SIGHT[0] * np.array([[1, -1, 0]]) / np.linalg.norm(np.array([-1, 1, 0]))
         hull = np.array([[0, 0], [2, 0], [2, 2], [0, 2]])
 
         obtained = np.round(surface.coverage.partial_visible_faces_surface_coverage(points, faces, normals, hull), 10)
