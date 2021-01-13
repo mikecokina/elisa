@@ -275,6 +275,11 @@ class Plot(object):
 
         orbital_position_container.flatt_it()
 
+        components = butils.component_to_list(components_to_plot)
+        com = {'primary': 0.0, 'secondary': components_distance}
+        for component in components:
+            correct_face_orientation(getattr(orbital_position_container, component), com=com[component])
+
         # calculating radiances
         o = Observer(passband=['bolometric', ], system=self.binary)
         atm_kwargs = dict(
@@ -292,11 +297,6 @@ class Plot(object):
         orbital_position_container.secondary.points[:, 0] -= distances_to_com
         orbital_position_container.primary.face_centres[:, 0] -= distances_to_com
         orbital_position_container.secondary.face_centres[:, 0] -= distances_to_com
-
-        components = butils.component_to_list(components_to_plot)
-        com = {'primary': 0.0, 'secondary': components_distance}
-        for component in components:
-            correct_face_orientation(getattr(orbital_position_container, component), com=com[component])
 
         orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
 
