@@ -144,6 +144,9 @@ class AnalyticsTask(metaclass=ABCMeta):
             x0 = parameters.BinaryInitialParameters(**x0)
         return self.fit_cls.fit(x0, data=self.data, **kwargs)
 
+    def coefficient_of_determination(self):
+        self.fit_cls.coefficient_of_determination(self.data)
+
     @classmethod
     def transform_input(cls, **kwargs):
         """
