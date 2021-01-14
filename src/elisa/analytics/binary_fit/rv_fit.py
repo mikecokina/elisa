@@ -57,6 +57,22 @@ class RVFit(object):
         with open(path, 'w') as f:
             json.dump(self.result, f, separators=(',', ': '), indent=4)
 
+    def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
+        """
+        Function returns R^2 for given model parameters and observed data.
+
+        :param model_parameters: dict; serialized form
+        :param data: DataSet; observational data
+        :param discretization: float;
+        :param interp_treshold: int;
+        :return: float;
+        """
+        b_parameters = parameters.BinaryInitialParameters(**model_parameters)
+        b_parameters.validate_rv_parameters()
+        return self.fit_method_instance.coefficient_of_determination(
+            model_parameters, data, discretization, interp_treshold
+        )
+
 
 class RVFitMCMC(RVFit):
     def __init__(self):

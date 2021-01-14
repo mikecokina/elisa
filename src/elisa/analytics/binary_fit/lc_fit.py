@@ -16,7 +16,6 @@ from . shared import check_for_boundary_surface_potentials, eval_constraint_in_d
 from . import least_squares
 from . import mcmc
 from . import io_tools
-from . import shared
 
 
 logger = getLogger('analytics.binary_fit.lc_fit')
@@ -253,8 +252,21 @@ class LCFit(object):
         with open(path, 'w') as f:
             json.dump(self.result, f, separators=(',', ': '), indent=4)
 
-    def coefficient_of_determination(self, data):
-        self.fit_method_instance = shared.AbstractLCFit()
+    def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
+        """
+        Function returns R^2 for given model parameters and observed data.
+
+        :param model_parameters: dict; serialized form
+        :param data: DataSet; observational data
+        :param discretization: float;
+        :param interp_treshold: int;
+        :return: float;
+        """
+        b_parameters = parameters.BinaryInitialParameters(**model_parameters)
+        b_parameters.validate_lc_parameters(morphology=self.morphology)
+        return self.fit_method_instance.coefficient_of_determination(
+            model_parameters, data, discretization, interp_treshold
+        )
 
     @abstractmethod
     def resolve_fit_cls(self, morphology: str):

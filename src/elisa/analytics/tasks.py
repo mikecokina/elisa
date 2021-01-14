@@ -12,6 +12,7 @@ from . binary_fit.plot import (
 from .. import utils
 from .. logger import getLogger
 from elisa.analytics.binary_fit.shared import eval_constraint_in_dict
+from elisa import settings
 
 logger = getLogger('analytics.tasks')
 
@@ -144,8 +145,29 @@ class AnalyticsTask(metaclass=ABCMeta):
             x0 = parameters.BinaryInitialParameters(**x0)
         return self.fit_cls.fit(x0, data=self.data, **kwargs)
 
-    def coefficient_of_determination(self):
-        self.fit_cls.coefficient_of_determination(self.data)
+    def coefficient_of_determination(self, model_parameters=None, discretization=5, interpolation_treshold=None):
+        """
+        Function returns R^2 for given model parameters and observed data.
+
+        :param model_parameters: dict; if None, get_result() is called
+        :param discretization: float;
+        :param interpolation_treshold: int; if None settings.MAX_CURVE_DATA_POINTS is used
+        :return: float;
+        """
+        model_parameters = self.get_result() if model_parameters is None else model_parameters
+        interpolation_treshold = settings.MAX_CURVE_DATA_POINTS \
+            if interpolation_treshold is None else interpolation_treshold
+
+        r2 = self.fit_cls.coefficient_of_determination(
+            model_parameters,
+            self.data,
+            discretization,
+            interpolation_treshold
+        )
+        model_parameters['r_squared'] = r2
+        self.set_result(model_parameters)
+
+        return r2
 
     @classmethod
     def transform_input(cls, **kwargs):

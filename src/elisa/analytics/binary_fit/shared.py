@@ -11,13 +11,16 @@ from .. tools.utils import (
     lightcurves_mean_error,
     time_layer_resolver
 )
+from .. models import lc as lc_model
+from .. models import rv as rv_model
 from ... utils import is_empty
 from ... import settings
 from ... observer.observer import Observer
 from ... observer.utils import normalize_light_curve
 from ... binary_system.system import BinarySystem
+from ... binary_system.curves.community import RadialVelocitySystem
+
 from elisa.const import PI
-from .. models import lc as lc_model
 
 from ... logger import getLogger
 
@@ -109,6 +112,27 @@ class AbstractRVFit(AbstractFit):
     def set_up(self, x0: BinaryInitialParameters, data: Dict, **kwargs):
         super().set_up(x0, data, passband=None, **kwargs)
 
+    def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
+        """
+        Function returns R^2 for given model parameters and observed data.
+
+        :param model_parameters: dict; serialized form
+        :param data: DataSet; observational data
+        :param discretization: float;
+        :param interp_treshold: int;
+        :return: float;
+        """
+        self.set_up(parameters.BinaryInitialParameters(**model_parameters), data,
+                    observer_system_cls=RadialVelocitySystem)
+        r_squared_args = self.x_data_reduced, self.y_data, self.x_data_reducer, self.observer.system_cls
+        flat_result = parameters.deserialize_result(model_parameters)
+        r_dict = {key: value['value'] for key, value in flat_result.items()}
+
+        logger.info("Evaluating light curve for calculation of R^2.")
+        r_squared_result = rv_r_squared(rv_model.central_rv_synthetic, *r_squared_args, **r_dict)
+        logger.info("calculation of R^2 finished.")
+        return r_squared_result
+
 
 class AbstractLCFit(AbstractFit):
     MEAN_ERROR_FN = lightcurves_mean_error
@@ -178,6 +202,30 @@ class AbstractLCFit(AbstractFit):
         segments = np.linspace(0, crv_lengths[-1], num=self.interp_treshold)
 
         return np.interp(segments, crv_lengths, x)
+
+    def coefficient_of_determination(self, model_parameters, data, discretization, interp_treshold):
+        """
+        Function returns R^2 for given model parameters and observed data.
+
+        :param model_parameters: dict; serialized form
+        :param data: DataSet; observational data
+        :param discretization: float;
+        :param interp_treshold: int;
+        :return: float;
+        """
+        self.set_up(x0=parameters.BinaryInitialParameters(**model_parameters), data=data, passband=data.keys(),
+                    discretization=discretization, interp_treshold=interp_treshold, samples='uniform',
+                    observer_system_cls=BinarySystem)
+
+        r_squared_args = (self.x_data_reduced, self.y_data, self.observer.passband, discretization,
+                          self.x_data_reducer, 1.0 / self.interp_treshold, self.interp_treshold,
+                          self.observer.system_cls)
+        flat_result = parameters.deserialize_result(model_parameters)
+        r_dict = {key: value['value'] for key, value in flat_result.items()}
+        logger.info("Evaluating light curve for calcualteinon of R^2.")
+        r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
+        logger.info("calculation of R^2 finished.")
+        return r_squared_result
 
 
 def lc_r_squared(synthetic, *args, **x):

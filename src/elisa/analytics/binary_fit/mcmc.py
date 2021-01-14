@@ -19,7 +19,6 @@ from .. models import rv as rv_model
 from .. params import parameters
 from .. tools.utils import time_layer_resolver
 
-from ... import const
 from ... observer.utils import normalize_light_curve
 from ... base.error import ElisaError
 from ... import settings
