@@ -236,6 +236,100 @@ class McMcLCTestCase(AbstractFitTestCase):
                                          expected_morphology="detached", method='mcmc')
             task.fit(x0=lc_initial, nsteps=10, discretization=5.0)
 
+    def test_coefficient_of_determination(self):
+        dinit = {
+            "system": {
+                'semi_major_axis': {
+                    'value': 11.0,  # 12.62
+                    'fixed': False,
+                    'min': 7.0,
+                    'max': 15.0
+                },
+                'mass_ratio': {
+                    'value': 0.7,  # 0.5
+                    'fixed': False,
+                    'min': 0.3,
+                    'max': 2.0
+                },
+                'inclination': {
+                    'value': 90.0,
+                    'fixed': True
+                },
+                'eccentricity': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'argument_of_periastron': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'period': {
+                    'value': 3.0,
+                    'fixed': True
+                },
+            },
+            "primary": {
+                't_eff': {
+                    'value': 5000.0,
+                    'fixed': True
+                },
+                'surface_potential': {
+                    'value': 5.0,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+            },
+            "secondary": {
+                't_eff': {
+                    'value': 7000.0,
+                    'fixed': True
+                },
+                'surface_potential': {
+                    'value': 5,
+                    'fixed': True
+                },
+                'gravity_darkening': {
+                    'value': 1.0,
+                    'fixed': True
+                },
+                'albedo': {
+                    'value': 1.0,
+                    'fixed': True
+                }
+            }
+        }
+
+        lc_v = LCData(
+            x_data=self.phases['Generic.Bessell.V'],
+            y_data=self.flux['Generic.Bessell.V'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
+
+        )
+
+        lc_b = LCData(
+            x_data=self.phases['Generic.Bessell.B'],
+            y_data=self.flux['Generic.Bessell.B'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.dimensionless_unscaled
+        )
+
+        self.model_generator.keep_out = True
+        with mock.patch("elisa.analytics.models.lc.synthetic_binary", self.model_generator.lc_generator):
+            task = LCBinaryAnalyticsTask(data={'Generic.Bessell.V': lc_v, 'Generic.Bessell.B': lc_b},
+                                         expected_morphology="detached", method='mcmc')
+            r2 = task.coefficient_of_determination(model_parameters=dinit, discretization=10,
+                                                   interpolation_treshold=100)
+
+        self.assertTrue(0.5 <= r2 <= 1.0)
+
 
 class RVTestCase(ElisaTestCase):
     def setUp(self):
@@ -341,6 +435,59 @@ class McMcRVTestCase(RVTestCase):
         task = RVBinaryAnalyticsTask(data={'primary': rv_primary, 'secondary': rv_secondary}, method='mcmc')
         result = task.fit(x0=rv_initial, nsteps=1000, burn_in=100)
         self.assertTrue(1.0 > result["r_squared"]['value'] > 0.9)
+
+    def test_coefficient_of_determination(self):
+        phases = np.arange(-0.6, 0.62, 0.02)
+
+        rv_primary = RVData(
+            x_data=phases,
+            y_data=self.rv['primary'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
+        )
+
+        rv_secondary = RVData(
+            x_data=phases,
+            y_data=self.rv['secondary'],
+            x_unit=u.dimensionless_unscaled,
+            y_unit=u.m / u.s
+        )
+
+        initial_parameters = {
+            "system": {
+                'eccentricity': {
+                    'value': 0.1,
+                    'fixed': True,
+                },
+                'asini': {
+                    'value': 20.0,  # 4.219470628180749
+                    'fixed': False,
+                    'min': 1.0,
+                    'max': 100
+                },
+                'mass_ratio': {
+                    'value': 0.8,  # 1.0 / 1.8
+                    'fixed': False,
+                    'min': 0.1,
+                    'max': 2.0
+                },
+                'argument_of_periastron': {
+                    'value': 0.0,
+                    'fixed': True
+                },
+                'gamma': {
+                    'value': -20000.0,
+                    'fixed': True
+                },
+                'period': {
+                    'value': 0.6,
+                    'fixed': True
+                }
+            }
+        }
+
+        task = RVBinaryAnalyticsTask(data={'primary': rv_primary, 'secondary': rv_secondary}, method='mcmc')
+        task.coefficient_of_determination(initial_parameters)
 
 
 class LeastSqaureRVTestCase(RVTestCase):
