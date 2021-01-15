@@ -165,6 +165,8 @@ def filter_chain(mcmc_fit_cls, **boundaries):
             raise TypeError(f'`{key}` boundary is not tuple or list.')
         if len(boundary) != 2:
             raise TypeError(f'`{key}` has incorrect length of {len(boundary)}.')
+        if key not in mcmc_fit_cls.variable_labels:
+            raise NameError(f'{key} is not valid model parameter.')
 
         column_idx = mcmc_fit_cls.variable_labels.index(key)
         column = mcmc_fit_cls.flat_chain[:, column_idx]
@@ -173,7 +175,8 @@ def filter_chain(mcmc_fit_cls, **boundaries):
             column > parameters.normalize_value(boundary[0], *mcmc_fit_cls.normalization[key]),
             column < parameters.normalize_value(boundary[1], *mcmc_fit_cls.normalization[key])
         )
-
+        if np.sum(condition_mask) == 0:
+            raise ValueError(f'Boundaries for {key} yielded an empty array.')
         setattr(mcmc_fit_cls, 'flat_chain', mcmc_fit_cls.flat_chain[condition_mask, :])
 
     fitted_params = {key: mcmc_fit_cls.flat_result[key] for key in mcmc_fit_cls.variable_labels}
