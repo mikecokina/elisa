@@ -62,7 +62,7 @@ class PulsationMode(object):
         self.spot_face_harmonics_derivatives = None
 
         self.complex_displacement = None
-        self.spot_complex_displacement = None
+        self.spot_complex_displacement = dict()
 
         self.init_properties(**kwargs)
 
