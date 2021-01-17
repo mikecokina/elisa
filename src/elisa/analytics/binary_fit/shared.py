@@ -130,7 +130,7 @@ class AbstractRVFit(AbstractFit):
 
         logger.info("Evaluating light curve for calculation of R^2.")
         r_squared_result = rv_r_squared(rv_model.central_rv_synthetic, *r_squared_args, **r_dict)
-        logger.info("calculation of R^2 finished.")
+        logger.info("Calculation of R^2 finished.")
         return r_squared_result
 
 
@@ -222,9 +222,9 @@ class AbstractLCFit(AbstractFit):
                           self.observer.system_cls)
         flat_result = parameters.deserialize_result(model_parameters)
         r_dict = {key: value['value'] for key, value in flat_result.items()}
-        logger.info("Evaluating light curve for calcualteinon of R^2.")
+        logger.info("Evaluating light curve for calculation of R^2.")
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
-        logger.info("calculation of R^2 finished.")
+        logger.info("Calculation of R^2 finished.")
         return r_squared_result
 
 
