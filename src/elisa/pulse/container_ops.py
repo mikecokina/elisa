@@ -110,19 +110,18 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     :param scale: numpy.float; scale of the perturbations
     :return: base.container.StarContainer;
     """
-    tilted_points, tilted_points_spot = star_container.pulsations[0].points, star_container.pulsations[0].spot_points
-    # angular coordinate of pulsation axis
-
     # calculating kinematics quantities
     for mode_index, mode in star_container.pulsations.items():
         mode.complex_displacement = kinematics.calculate_displacement_coordinates(
-            mode, tilted_points, mode.point_harmonics, mode.point_harmonics_derivatives, scale=scale
+            mode, star_container.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives, scale=scale
         )
-        for spot_idx, spoints in tilted_points_spot.items():
-            mode.spot_complex_displacement[spot_idx] = kinematics.calculate_displacement_coordinates(
-                mode, spoints, mode.spot_point_harmonics[spot_idx], mode.spot_point_harmonics_derivatives[spot_idx],
-                scale=scale
-            )
+
+        if not star_container.is_flat():
+            for spot_idx, spoints in star_container.pulsations[0].spot_points.items():
+                mode.spot_complex_displacement[spot_idx] = kinematics.calculate_displacement_coordinates(
+                    mode, spoints, mode.spot_point_harmonics[spot_idx], mode.spot_point_harmonics_derivatives[spot_idx],
+                    scale=scale
+                )
 
     position_perturbation(star_container, com_x, phase, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, phase, update_container=True, return_perturbation=False)
