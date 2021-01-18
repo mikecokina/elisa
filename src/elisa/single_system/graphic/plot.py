@@ -128,7 +128,8 @@ class Plot(object):
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
                 elevation=None, azimuth=None, unit='default', axis_unit=u.solRad,
                 colorbar_orientation='vertical', colorbar=True, scale='linear', surface_color='g',
-                colorbar_separation=0.0, colorbar_size=0.7, return_figure_instance: bool=False):
+                colorbar_separation=0.0, colorbar_size=0.7, return_figure_instance: bool=False,
+                subtract_equilibrium: bool=False):
         """
         Function creates plot of single system components.
 
@@ -151,6 +152,7 @@ class Plot(object):
         :param colorbar_size: float; relative size of the colorbar, default 0.7
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
         produced figure
+        :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
         """
         surface_kwargs = dict()
 
@@ -192,7 +194,7 @@ class Plot(object):
 
         surface_kwargs.update({
             'cmap': plot.add_colormap_to_plt_kwargs(
-                colormap, star_container, scale=scale, unit=unit
+                colormap, star_container, scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium
             )
         })
 

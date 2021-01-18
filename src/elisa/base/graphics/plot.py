@@ -3,9 +3,10 @@ import numpy as np
 from elisa import units, settings
 from elisa.utils import transform_values
 from elisa.ld import limb_darkening_factor
+from elisa.pulse import container_ops
 
 
-def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default'):
+def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', subtract_equilibrium=False):
     """
     Returns a colormap that can be passed to surface plot kwargs.
 
@@ -26,20 +27,21 @@ def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default'):
     }
     retval = None
     if colormap is not None:
-        retval = colorbar_fn[colormap](star, scale, unit)
+        retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium)
         if colormap not in colorbar_fn.keys():
             raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {colorbar_fn.keys()}')
 
     return retval
 
 
-def g_cmap(star, scale, unit):
+def g_cmap(star, scale, unit, subtract_equilibrium):
     """
     Returning gravity acceleration colormap.
 
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
     :return: numpy.array;
     """
     log_g = getattr(star, 'log_g')
@@ -48,13 +50,14 @@ def g_cmap(star, scale, unit):
     return to_log(value, scale)
 
 
-def t_cmap(star, scale, unit):
+def t_cmap(star, scale, unit, subtract_equilibrium):
     """
     Returning temperature colormap.
 
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
     :return: numpy.array;
     """
     temperatures = getattr(star, 'temperatures')
@@ -62,28 +65,32 @@ def t_cmap(star, scale, unit):
     return to_log(value, scale)
 
 
-def v_cmap(star, scale, unit):
+def v_cmap(star, scale, unit, subtract_equilibrium):
     """
     Returning speed colormap.
 
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
     :return: numpy.array;
     """
-    velocities = np.linalg.norm(getattr(star, 'velocities'), axis=1)
+    phase = 0
+    velocities = container_ops.velocity_perturbation(star, phase, update_container=True, return_perturbation=True) \
+        if subtract_equilibrium else np.linalg.norm(getattr(star, 'velocities'), axis=1)
     unt = units.km / units.s if unit == 'default' else unit
     value = transform_values(velocities, units.VELOCITY_UNIT, unt)
     return to_log(value, scale)
 
 
-def v_rad_cmap(star, scale, unit):
+def v_rad_cmap(star, scale, unit, subtract_equilibrium):
     """
     Returning radial velocity colormap (with respect to the observer).
 
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
     :return: numpy.array;
     """
     velocities = getattr(star, 'velocities')[:, 0]
@@ -94,13 +101,14 @@ def v_rad_cmap(star, scale, unit):
     return value
 
 
-def norm_radiance_cmap(star, scale, unit):
+def norm_radiance_cmap(star, scale, unit, subtract_equilibrium):
     """
     Returning radiance in the direction of surface normal vector.
 
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if true, return only perturbation from equilibrium state
     :return: numpy.array;
     """
     normal_radiance = getattr(star, 'normal_radiance')['bolometric']
@@ -108,7 +116,7 @@ def norm_radiance_cmap(star, scale, unit):
     return to_log(value, scale)
 
 
-def radiance_cmap(star, scale, unit):
+def radiance_cmap(star, scale, unit, subtract_equilibrium):
     """
     Returning radiance in the direction of the observer.
 

@@ -74,6 +74,13 @@ def dy_dtheta_norm(mode):
 
 
 def horizontal_displacement_normalization(derivatives, harmonics):
+    """
+    Normalizes the RMS of horizontal displacement of the given pulsation to 1.
+
+    :param derivatives: numpy.array; 2*N - dY/d_phi, dY/d_theta
+    :param harmonics: numpy.array; 2*N - Y^l_m, Y^l_m+1
+    :return: float;
+    """
     return np.sqrt(np.sum(np.power(np.abs(harmonics[0]), 2)) /
                    np.sum(np.power(np.abs(derivatives[0]), 2) + np.power(np.abs(derivatives[1]), 2)))
 
@@ -219,83 +226,4 @@ def calculate_temperature_perturbation(mode, temperatures, rals, adiabatic_gradi
 
     return ad_g * temperatures * (h * l_val * (l_val + 1) - 4 - (1 / h)) * eps * np.real(rals)
 
-
-def generate_harmonics(star_container, com_x, phase, time):
-    """
-    Generating spherical harmonics Y_l^m in shapes(2, n_points) and (2, n_faces) and its derivatives to be subsequently
-    used for calculation of perturbed properties.
-
-    :param star_container: elisa.base.container.StarContainer;
-    :param com_x: float; centre of mass for the component
-    :param phase: float; rotational/orbital phase
-    :param time: float; time of the observation
-    :return: elisa.base.container.StarContainer; Star container with updated harmonics
-    """
-    star_container.points_spherical, points_spot = \
-        star_container.transform_points_to_spherical_coordinates(kind='points', com_x=com_x)
-    for spot_idx, spot in star_container.spots.items():
-        spot.points_spherical = points_spot[spot_idx]
-
-    tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star_container, phase)
-    tilted_points, tilted_points_spot = putils.tilt_mode_coordinates(
-        star_container.points_spherical, points_spot, tilt_phi, tilt_theta
-    )
-
-    # assigning tilted points in spherical coordinates only to the first mode (the rest will share the same points)
-    star_container.pulsations[0].points = tilted_points
-    star_container.pulsations[0].spot_points = tilted_points_spot
-
-    for mode_index, mode in star_container.pulsations.items():
-        exponential = putils.generate_time_exponential(mode, time)
-
-        # generating harmonics Y_m^l and Y_m+1^l for star and spot points
-        harmonics = np.zeros((2, tilted_points.shape[0]), dtype=np.complex)
-        spot_harmonics = {spot_idx: np.zeros((2, spoints.shape[0]), dtype=np.complex)
-                          for spot_idx, spoints in tilted_points_spot.items()}
-
-        harmonics[0] = spherical_harmonics(mode, tilted_points, exponential)
-        for spot_idx, spotp in tilted_points_spot.items():
-            spot_harmonics[spot_idx][0] = spherical_harmonics(mode, spotp, exponential)
-
-        if mode.m != mode.l:
-            harmonics[1] = spherical_harmonics(mode, tilted_points, exponential,
-                                               order=mode.m + 1, degree=mode.l)
-            for spot_idx, spotp in tilted_points_spot.items():
-                spot_harmonics[spot_idx][1] = spherical_harmonics(mode, spotp, exponential,
-                                                                  order=mode.m + 1, degree=mode.l)
-
-        # generating derivatives of spherical harmonics by phi an theta
-        derivatives = np.empty((2, tilted_points.shape[0]), dtype=np.complex)
-        derivatives[0] = diff_spherical_harmonics_by_phi(mode, harmonics)
-        derivatives[1] = diff_spherical_harmonics_by_theta(mode, harmonics, tilted_points[:, 1], tilted_points[:, 2])
-
-        # renormalizing horizontal amplitude to 1
-        norm_constant = horizontal_displacement_normalization(derivatives, harmonics)
-        derivatives *= norm_constant
-
-        spot_harmonics_derivatives = {spot_idx: np.zeros((2, spoints.shape[0]), dtype=np.complex)
-                                      for spot_idx, spoints in tilted_points_spot.items()}
-        for spot_idx, spotp in tilted_points_spot.items():
-            spot_harmonics_derivatives[spot_idx][0] = diff_spherical_harmonics_by_phi(mode, spot_harmonics[spot_idx])
-            spot_harmonics_derivatives[spot_idx][1] = \
-                diff_spherical_harmonics_by_theta(mode, spot_harmonics[spot_idx], spotp[:, 1], spotp[:, 2])
-            spot_harmonics_derivatives[spot_idx] *= norm_constant
-
-        # assignment of harmonics to mode instance variables
-        mode.point_harmonics = harmonics[0]
-        mode.spot_point_harmonics = {spot_idx: hrm[0] for spot_idx, hrm in spot_harmonics.items()}
-
-        mode.face_harmonics = np.mean(mode.point_harmonics[star_container.faces], axis=1)
-        mode.spot_face_harmonics = {spot_idx: np.mean(spoth[star_container.spots[spot_idx].faces], axis=1)
-                                    for spot_idx, spoth in mode.spot_point_harmonics.items()}
-
-        mode.point_harmonics_derivatives = derivatives
-        mode.spot_point_harmonics_derivatives = spot_harmonics_derivatives
-
-        mode.face_harmonics_derivatives = np.mean(derivatives[:, star_container.faces], axis=1)
-        mode.spot_face_harmonics_derivatives = {
-            spot_idx: np.mean(spoth[:, star_container.spots[spot_idx].faces], axis=1)
-            for spot_idx, spoth in spot_harmonics_derivatives.items()
-        }
-    return star_container
 

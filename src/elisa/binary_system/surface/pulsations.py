@@ -1,6 +1,5 @@
 from .. import utils as bsutils
-from ... pulse.container_ops import incorporate_pulsations_to_model
-from ... pulse.pulsations import generate_harmonics
+from ... pulse.container_ops import incorporate_pulsations_to_model, generate_harmonics
 
 
 def build_pulsations(system, component, components_distance):

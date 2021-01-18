@@ -311,7 +311,7 @@ class Plot(object):
             })
             surface_kwargs.update({
                 f'{component}_cmap': plot.add_colormap_to_plt_kwargs(
-                    colormap, star, scale=scale, unit=unit
+                    colormap, star, scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium
                 )
             })
 

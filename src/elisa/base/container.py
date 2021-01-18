@@ -386,6 +386,9 @@ class StarContainer(object):
     def symmetry_test(self):
         return not self.has_spots() and not self.has_pulsations()
 
+    def is_flat(self):
+        return self._flatten
+
     def copy(self):
         """
         Return deepcopy of StarContainer instance.
@@ -513,8 +516,6 @@ class StarContainer(object):
         faces = self.faces
         temperatures = self.temperatures
         log_g = self.log_g
-        rals = {mode_idx: None for mode_idx, mode in self.pulsations.items()}
-        # rals = {mode_idx: mode.rals[0] for mode_idx, mode in self.pulsations.items()}
         centres = self.face_centres
         velocities = self.velocities
         areas = self.areas
@@ -532,7 +533,7 @@ class StarContainer(object):
                 velocities = up.concatenate((velocities, spot.velocities), axis=0)
                 face_centres = up.concatenate((face_centres, spot.face_centres), axis=0)
 
-        return points, normals, faces, temperatures, log_g, rals, centres, areas, velocities, face_centres
+        return points, normals, faces, temperatures, log_g, centres, areas, velocities, face_centres
 
     def flatt_it(self):
         """
@@ -545,8 +546,8 @@ class StarContainer(object):
         if self._flatten:
             return self
 
-        props_list = ["points", "normals", "faces", "temperatures", "log_g", "rals", "centers", "areas", "velocities",
-                      "face_centres"]
+        props_list = ["points", "normals", "faces", "temperatures", "log_g", "centers", "areas", "velocities",
+                      "face_centres", ""]
         flat_props = self.get_flatten_properties()
         for prop, value in zip(props_list, flat_props):
             setattr(self, prop, value)
@@ -565,17 +566,24 @@ class StarContainer(object):
         """
         # separating variables to convert
         centres_cartesian = copy(getattr(self, kind))
-        centres_spot_cartesian = {spot_idx: copy(getattr(spot, kind)) for spot_idx, spot in self.spots.items()}
 
         # transforming variables
         centres_cartesian[:, 0] -= com_x
-        for spot_index, spot in self.spots.items():
-            centres_spot_cartesian[spot_index][:, 0] -= com_x
 
         # conversion
         centres = utils.cartesian_to_spherical(centres_cartesian)
-        centres_spot = {spot_idx: utils.cartesian_to_spherical(spot_centres) for spot_idx, spot_centres in
-                        centres_spot_cartesian.items()}
+
+        centres_spot = dict()
+        if not self._flatten:
+            # separating variables to convert
+            centres_spot_cartesian = {spot_idx: copy(getattr(spot, kind)) for spot_idx, spot in self.spots.items()}
+
+            for spot_index, spot in self.spots.items():
+                # transforming variables
+                centres_spot_cartesian[spot_index][:, 0] -= com_x
+
+                # conversion
+                centres_spot[spot_index] = utils.cartesian_to_spherical(centres_spot_cartesian[spot_index])
 
         return centres, centres_spot
 
