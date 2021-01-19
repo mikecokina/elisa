@@ -614,6 +614,7 @@ def calculate_cos_theta(normals, line_of_sight_vector):
     :param line_of_sight_vector: numpy.array;
     :return: numpy.array;
     """
+    line_of_sight_vector = np.array(line_of_sight_vector)
     return np.sum(up.multiply(normals, line_of_sight_vector[None, :]), axis=1) \
         if np.ndim(line_of_sight_vector) == 1 \
         else np.sum(up.multiply(normals[:, None, :], line_of_sight_vector[None, :, :]), axis=2)
