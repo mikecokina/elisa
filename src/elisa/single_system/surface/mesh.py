@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import elisa.umpy as up
-import json
 
 from .. import model
 from .. radius import calculate_radius
@@ -18,7 +17,6 @@ from ... import (
 
 
 logger = getLogger("single_system.surface.mesh")
-SEAM_CONST = 1.08
 PATH_TO_CORRECTIONS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mesh_corrections',
                                    'correction_factors.npy')
 CORRECTION_FACTORS = np.load(PATH_TO_CORRECTIONS, allow_pickle=False)
@@ -83,7 +81,7 @@ def mesh(system_container, symmetry_output=False):
 
     # axial symmetry, therefore calculating latitudes
     thetas = pre_calc_latitudes(discretization_factor, star_container.polar_radius, star_container.equatorial_radius)
-    thetas_meridian = pre_calc_latitudes(SEAM_CONST*discretization_factor, star_container.polar_radius,
+    thetas_meridian = pre_calc_latitudes(const.SEAM_CONST*discretization_factor, star_container.polar_radius,
                                          star_container.equatorial_radius)
 
     x0 = 0.5 * (star_container.equatorial_radius + star_container.polar_radius)
@@ -284,7 +282,7 @@ def calculate_equator_points(characteristic_distance, equatorial_radius):
     :param equatorial_radius: float;
     :return: numpy.array; N * 3 array of x, y, z coordinates
     """
-    num = int(const.HALF_PI * equatorial_radius / (SEAM_CONST * characteristic_distance))
+    num = int(const.HALF_PI * equatorial_radius / (const.SEAM_CONST * characteristic_distance))
     radii = equatorial_radius * np.ones(num)
     thetas = const.HALF_PI * np.ones(num)
     phis = np.linspace(0, const.HALF_PI, num=num, endpoint=False)
