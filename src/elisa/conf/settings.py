@@ -168,7 +168,7 @@ class Settings(_Const):
     DEFORMATION_TOL = 0.05
     MAX_RELATIVE_D_IRRADIATION = 0.02
     MCMC_SAVE_INTERVAL = 1800
-    SINGLE_LD_COEFFICIENTS = False
+    USE_SINGLE_LD_COEFFICIENTS = False
 
     TIMER = 0.0
 
@@ -240,7 +240,7 @@ class Settings(_Const):
             "PULSATION_MODEL": cls.PULSATION_MODEL,
             "MCMC_SAVE_INTERVAL": cls.MCMC_SAVE_INTERVAL,
             "CUDA": cls.CUDA,
-            "SINGLE_LD_COEFFICIENTS": cls.SINGLE_LD_COEFFICIENTS
+            "USE_SINGLE_LD_COEFFICIENTS": cls.USE_SINGLE_LD_COEFFICIENTS
         }
 
     @staticmethod
@@ -385,8 +385,8 @@ class Settings(_Const):
                                   "able to use CUDA features. Fallback to CPU.", UserWarning)
                     cls.CUDA = False
 
-            cls.SINGLE_LD_COEFFICIENTS = c_parse.getboolean('computational', 'single_ld_coefficients',
-                                                            fallback=cls.SINGLE_LD_COEFFICIENTS)
+            cls.USE_SINGLE_LD_COEFFICIENTS = c_parse.getboolean('computational', 'use_single_ld_coefficients',
+                                                                fallback=cls.USE_SINGLE_LD_COEFFICIENTS)
         # **************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)
