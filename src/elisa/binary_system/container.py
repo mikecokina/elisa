@@ -71,9 +71,11 @@ class OrbitalPositionContainer(PositionContainer):
 
             - build_mesh
             - build_faces
-            - build_surface_areas
-            - build_faces_orientation
+            - build_velocities
             - build_surface_gravity
+            - build_faces_orientation
+            - correct_mesh
+            - build_surface_areas
             - build_temperature_distribution
 
         :param component: str; `primary` or `secondary`
@@ -92,7 +94,17 @@ class OrbitalPositionContainer(PositionContainer):
 
     def build_from_points(self, components_distance=None, component="all"):
         """
-        Build binary system from present surface points.
+        Function is used on container to build container on which only bulid_mesh was performed. Function builds the
+        rest.
+
+        Order of methods::
+
+            - build_faces
+            - build_velocities
+            - build_surface_gravity
+            - build_faces_orientation
+            - correct_mesh
+            - build_surface_areas
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
@@ -104,8 +116,8 @@ class OrbitalPositionContainer(PositionContainer):
 
     def build_faces_and_kinematic_quantities(self, components_distance=None, component="all"):
         """
-        Function can be used on container with built points and performs
-        surface build without surface temperature distribution.
+        Function is used on container to build container on which only bulid_mesh was performed. Function builds the
+        rest except for build_temperature_distribution.
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
@@ -161,14 +173,6 @@ class OrbitalPositionContainer(PositionContainer):
 
     def build_pulsations(self, component, components_distance):
         return pulsations.build_pulsations(self, component, components_distance)
-
-    def apply_eclipse_filter(self):
-        """
-        Just placeholder. Maybe will be used in future.
-
-        :return: self;
-        """
-        raise NotImplemented("This is not implemented")
 
     def _components_distance(self, components_distance):
         return components_distance if components_distance is not None else self.position.distance
