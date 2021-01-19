@@ -214,9 +214,9 @@ class NaiveInterpolatedAtm(object):
         :param log_g: Iterable[float];
         :param metallicity: float;
         :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
-        :param kwargs:
+        :param kwargs: dict;
         :return: Tuple[dict, numpy.float, numpy.float]; atmosphere profiles for each passband, flux multiplicator,
-        wave multiplicator;
+                                                        wave multiplicator;
         """
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
@@ -256,8 +256,8 @@ class NaiveInterpolatedAtm(object):
         :param kwargs:
         :return: Dict;
         """
-        localized_atms, flux_mult, wave_mult = \
-            NaiveInterpolatedAtm.get_atm_profiles(temperature, log_g, metallicity, atlas, **kwargs)
+        args = temperature, log_g, metallicity, atlas
+        localized_atms, flux_mult, wave_mult = NaiveInterpolatedAtm.get_atm_profiles(*args, **kwargs)
         return compute_normal_radiances(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
     @staticmethod
@@ -409,7 +409,8 @@ class NaiveInterpolatedAtm(object):
                  domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
 
         return list(
-            os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
+            os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv"
+        )
 
 
 def arange_atm_to_same_wavelength(atm_containers):
@@ -831,9 +832,9 @@ def get_atm_table_filename(temperature, log_g, metallicity, atlas):
     :return: str;
     """
     prefix = validated_atlas(atlas)
-    return \
-        f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}_" \
-        f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
+    retval = f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}_" \
+             f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
+    return retval
 
 
 def get_atm_directory(metallicity, atlas):

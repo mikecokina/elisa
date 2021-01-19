@@ -49,10 +49,9 @@ def calculate_radius(synchronicity, mass_ratio, surface_potential, component, *a
     if ier == 1 and not up.isnan(solution[0]) and 30 >= solution[0] >= 0:
         return solution[0]
     else:
-        if 0 < solution[0] < 1.0:
-            return solution[0]
-        else:
+        if not (0 < solution[0] < 1.0):
             raise ValueError(f'Invalid value of radius {solution} was calculated.')
+        return solution[0]
 
 
 def calculate_polar_radius(synchronicity, mass_ratio, components_distance, surface_potential, component):

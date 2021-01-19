@@ -25,8 +25,8 @@ def compute_rv_curve_without_pulsations(single, **kwargs):
     """
     initial_system = c_router.prep_initial_system(single)
     rv_labels = ['star', ]
-    return c_router.produce_curves_wo_pulsations(single, initial_system, kwargs.pop("phases"),
-                                                 rv_point.compute_rv_at_pos, rv_labels, **kwargs)
+    args = single, initial_system, kwargs.pop("phases"), rv_point.compute_rv_at_pos, rv_labels
+    return c_router.produce_curves_wo_pulsations(*args, **kwargs)
 
 
 def compute_rv_curve_with_pulsations(single, **kwargs):

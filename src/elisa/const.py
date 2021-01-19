@@ -82,3 +82,6 @@ MAX_USABLE_FLOAT = np.finfo(float).max * np.finfo(float).eps
 
 # distance - distance between components (if applicable)
 Position = namedtuple('Position', ['idx', 'distance', 'azimuth', 'true_anomaly', 'phase'])
+
+# constant for incrased spacing of points on the seams
+SEAM_CONST = 1.08

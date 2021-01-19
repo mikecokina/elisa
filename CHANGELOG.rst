@@ -228,9 +228,9 @@ v0.5
 
     - <binary_system>.init() reinitialize parameters corretly (require fix for pulsations)
     - inclination rotation is provided in positive direction instead of negative
-    - line of sight vector is switched from [1, 0, 0] to [-1, 0, 0] to make model consistent with radial velocity
+    - line-of-sight vector is switched from [1, 0, 0] to [-1, 0, 0] to make model consistent with radial velocity
       observations where negative value describes velocity of body moving towards the observer. Azimuth of the body is
-      now measured with respect to y-axis.
+      now measured with respect to y-axis. Observer is now located at [-inf, 0, 0]
 
 v1.0
 ----

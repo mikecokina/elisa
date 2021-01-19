@@ -109,8 +109,7 @@ setup(
             'schema_registry/*',
             'schema_registry/schema_files/*',
             'data/*',
-            'binary_system/surface/mesh_corrections/*',
-            'single_system/surface/mesh_corrections/*'
+            'data/mesh_corrections/*'
         ],
     },
 

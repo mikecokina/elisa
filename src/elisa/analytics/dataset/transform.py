@@ -27,10 +27,10 @@ def unit_transform(value, base_units):
     if value is None or value.to_string() == '':
         value = u.dimensionless_unscaled
 
-    if value.is_equivalent(base_units):
-        return value
-    else:
+    if not value.is_equivalent(base_units):
         raise ValueError(f'Input {value} is not NoneType or `astropy.Unit` not convertible into desired base units.')
+
+    return value
 
 
 class DatasetProperties(TransformProperties):

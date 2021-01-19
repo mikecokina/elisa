@@ -264,9 +264,8 @@ class LCFit(object):
         """
         b_parameters = parameters.BinaryInitialParameters(**model_parameters)
         b_parameters.validate_lc_parameters(morphology=self.morphology)
-        return self.fit_method_instance.coefficient_of_determination(
-            model_parameters, data, discretization, interp_treshold
-        )
+        args = model_parameters, data, discretization, interp_treshold
+        return self.fit_method_instance.coefficient_of_determination(*args)
 
     @abstractmethod
     def resolve_fit_cls(self, morphology: str):

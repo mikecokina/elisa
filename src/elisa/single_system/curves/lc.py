@@ -28,8 +28,8 @@ def compute_light_curve_without_pulsations(single, **kwargs):
     lc_labels = list(kwargs["passband"].keys())
     phases = kwargs.pop("phases")
 
-    return c_router.produce_curves_wo_pulsations(single, initial_system, phases, lc_point.compute_lc_on_pos,
-                                                 lc_labels, **kwargs)
+    args = single, initial_system, phases, lc_point.compute_lc_on_pos, lc_labels
+    return c_router.produce_curves_wo_pulsations(*args, **kwargs)
 
 
 def compute_light_curve_with_pulsations(single, **kwargs):

@@ -94,8 +94,7 @@ class AbstractFit(metaclass=ABCMeta):
 
         :return: np.float;
         """
-        return np.sum([np.sum(np.log(2 * PI * np.power(value, 2)))
-                       for value in self.y_err.values()])
+        return np.sum([np.sum(np.log(2 * PI * np.power(value, 2))) for value in self.y_err.values()])
 
 
 class AbstractRVFit(AbstractFit):
@@ -130,7 +129,7 @@ class AbstractRVFit(AbstractFit):
 
         logger.info("Evaluating light curve for calculation of R^2.")
         r_squared_result = rv_r_squared(rv_model.central_rv_synthetic, *r_squared_args, **r_dict)
-        logger.info("calculation of R^2 finished.")
+        logger.info("Calculation of R^2 finished.")
         return r_squared_result
 
 
@@ -222,9 +221,9 @@ class AbstractLCFit(AbstractFit):
                           self.observer.system_cls)
         flat_result = parameters.deserialize_result(model_parameters)
         r_dict = {key: value['value'] for key, value in flat_result.items()}
-        logger.info("Evaluating light curve for calcualteinon of R^2.")
+        logger.info("Evaluating light curve for calculation of R^2.")
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
-        logger.info("calculation of R^2 finished.")
+        logger.info("Calculation of R^2 finished.")
         return r_squared_result
 
 
@@ -309,7 +308,7 @@ def extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_d
     :param x_data: dict;
     :param y_data: dict;
     :param y_err: dict;
-    :return:
+    :return: tuple;
     """
     for item, curve in x_data.items():
         phases_extended = np.concatenate((x_data[item] - 1.0, x_data[item], x_data[item] + 1.0))

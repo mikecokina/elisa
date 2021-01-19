@@ -165,7 +165,8 @@ def calculate_acc_pert(mode, points, harmonics, harmonics_derivatives):
     :param harmonics_derivatives: numpy.array; [dY/dphi, dY/dtheta]
     :return: numpy.array;
     """
-    return - mode.angular_frequency ** 2 * calculate_displacement_coordinates(mode, points, harmonics, harmonics_derivatives)
+    return - mode.angular_frequency ** 2 * \
+           calculate_displacement_coordinates(mode, points, harmonics, harmonics_derivatives)
 
 
 def incorporate_temperature_perturbations(star_container, com_x, phase, time):

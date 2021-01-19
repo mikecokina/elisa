@@ -75,8 +75,8 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
     """
     initial_system = c_router.prep_initial_system(binary)
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
-    return c_router.produce_circular_sync_curves(binary, initial_system, kwargs.pop("phases"),
-                                                 rv_point.compute_rv_at_pos, rv_labels, **kwargs)
+    args = binary, initial_system, kwargs.pop("phases"), rv_point.compute_rv_at_pos, rv_labels
+    return c_router.produce_circular_sync_curves(*args, **kwargs)
 
 
 def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):
