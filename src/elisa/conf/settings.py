@@ -125,6 +125,13 @@ class _Const(object):
     DELIM_WHITESPACE = r'\s+|\t+|\s+\t+|\t+\s+'
     DATA_PATH = os.path.join(dirname(dirname(__file__)), "data")
 
+    # paths to mesh correction factors
+    PATH_TO_SINGLE_CORRECTIONS = os.path.join(DATA_PATH, 'mesh_corrections', 'correction_factors_single.npy')
+    PATH_TO_DETACHED_CORRECTIONS = os.path.join(DATA_PATH, 'mesh_corrections', 'correction_factors_detached.npy')
+    PATH_TO_OVER_CONTACT_CORRECTIONS = os.path.join(
+        DATA_PATH, 'mesh_corrections', 'correction_factors_over-contact.npy'
+    )
+
 
 class Settings(_Const):
     _instance = None

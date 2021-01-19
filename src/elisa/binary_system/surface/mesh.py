@@ -20,14 +20,11 @@ from ... import (
 )
 
 logger = getLogger("binary_system.surface.mesh")
-PATH_TO_CORRECTIONS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mesh_corrections')
 
-CORRECTION_FACTORS = dict()
-CORRECTION_FACTORS['detached'] = np.load(os.path.join(PATH_TO_CORRECTIONS, 'correction_factors_detached.npy'),
-                                         allow_pickle=False)
-CORRECTION_FACTORS['over-contact'] = np.load(os.path.join(PATH_TO_CORRECTIONS, 'correction_factors_over-contact.npy'),
-                                             allow_pickle=False)
-
+CORRECTION_FACTORS = {
+    'detached': np.load(settings.PATH_TO_DETACHED_CORRECTIONS, allow_pickle=False),
+    'over-contact': np.load(settings.PATH_TO_OVER_CONTACT_CORRECTIONS, allow_pickle=False)
+}
 CORRECTION_FACTORS['semi-detached'] = CORRECTION_FACTORS['detached']
 
 
