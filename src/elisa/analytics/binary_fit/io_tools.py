@@ -55,8 +55,8 @@ def write_param_ln(fit_params, param_id, designation, write_fn, line_sep, precis
         status = 'Derived'
 
     unit = str(fit_params[param_id]['unit']) if 'unit' in fit_params[param_id].keys() else '-'
-    return write_ln(write_fn, designation, round(fit_params[param_id]['value'], sig_figures),
-                    bot, top, unit, status, line_sep)
+    args = write_fn, designation, round(fit_params[param_id]['value'], sig_figures), bot, top, unit, status, line_sep
+    return write_ln(*args)
 
 
 def write_propagated_ln(values, fit_params, param_id, designation, write_fn, line_sep, unit):
@@ -94,8 +94,7 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
     else:
         status = 'Unknown'
 
-    return write_ln(write_fn, designation, values[0],
-                    values[1], values[2], unit, status, line_sep)
+    return write_ln(write_fn, designation, values[0], values[1], values[2], unit, status, line_sep)
 
 
 def update_solution(mcmc_fit_cls, fitted_params, percentiles):

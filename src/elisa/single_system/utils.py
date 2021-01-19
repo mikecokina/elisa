@@ -36,5 +36,5 @@ def calculate_volume(system):
     :param system: elisa.SingleSystem;
     :return: float
     """
-    return utils.calculate_ellipsoid_volume(system.star.polar_radius, system.star.equatorial_radius,
-                                            system.star.equatorial_radius)
+    args = system.star.polar_radius, system.star.equatorial_radius, system.star.equatorial_radius
+    return utils.calculate_ellipsoid_volume(*args)

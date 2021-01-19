@@ -64,15 +64,15 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
 
     # APPX ZERO ********************************************************************************************************
     if not try_to_find_appx:
-        return 'zero', lambda: approx_method_list[0](binary, all_orbital_pos, potentials, crv_labels, curve_fn,
-                                                     **kwargs)
+        args = binary, all_orbital_pos, potentials, crv_labels, curve_fn
+        return 'zero', lambda: approx_method_list[0](*args, **kwargs)
 
     # APPX ONE *********************************************************************************************************
     appx_one = eval_approximation_one(phases, phases_span_test)
 
     if appx_one:
-        return 'one', lambda: approx_method_list[1](binary, phases, reduced_orbit_arr, counterpart_postion_arr,
-                                                    potentials, crv_labels, curve_fn, **kwargs)
+        args = binary, phases, reduced_orbit_arr, counterpart_postion_arr, potentials, crv_labels, curve_fn
+        return 'one', lambda: approx_method_list[1](*args, **kwargs)
 
     # APPX TWO *********************************************************************************************************
 
@@ -80,16 +80,17 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
                                                            reduced_orbit_supplement_arr, phases_span_test)
 
     if appx_two:
-        return 'two', lambda: approx_method_list[2](binary, phases, orbital_supplements, potentials, crv_labels,
-                                                    curve_fn, **kwargs)
+        args = binary, phases, orbital_supplements, potentials, crv_labels, curve_fn
+        return 'two', lambda: approx_method_list[2](*args, **kwargs)
 
     # APPX THREE *******************************************************************************************************
     approx_three, new_geometry_mask, sorted_positions = eval_approximation_three(binary, all_orbital_pos_arr)
     if approx_three:
-        return 'three', lambda: approx_method_list[3](binary, sorted_positions, new_geometry_mask, potentials,
-                                                      crv_labels, curve_fn, **kwargs)
+        args = binary, sorted_positions, new_geometry_mask, potentials, crv_labels, curve_fn
+        return 'three', lambda: approx_method_list[3](*args, **kwargs)
 
-    return 'zero', lambda: approx_method_list[0](binary, all_orbital_pos, potentials, crv_labels, curve_fn, **kwargs)
+    args = binary, all_orbital_pos, potentials, crv_labels, curve_fn
+    return 'zero', lambda: approx_method_list[0](*args, **kwargs)
 
 
 # *******************************************evaluate_approximations****************************************************

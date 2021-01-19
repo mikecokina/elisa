@@ -409,7 +409,8 @@ class NaiveInterpolatedAtm(object):
                  domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
 
         return list(
-            os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
+            os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv"
+        )
 
 
 def arange_atm_to_same_wavelength(atm_containers):
@@ -831,9 +832,9 @@ def get_atm_table_filename(temperature, log_g, metallicity, atlas):
     :return: str;
     """
     prefix = validated_atlas(atlas)
-    return \
-        f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}_" \
-        f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
+    retval = f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}_" \
+             f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
+    return retval
 
 
 def get_atm_directory(metallicity, atlas):

@@ -88,8 +88,8 @@ def pre_calc_azimuths_for_detached_points(discretization, star):
     if settings.MESH_GENERATOR in ['auto', 'improved_trapezoidal']:
         rel_radii = (star.forward_radius - star.polar_radius) / star.polar_radius
         if rel_radii > settings.DEFORMATION_TOL or settings.MESH_GENERATOR == 'improved_trapezoidal':
-            return improved_trapezoidal_mesh(discretization, star.forward_radius, star.polar_radius, star.side_radius,
-                                             star.backward_radius)
+            args = discretization, star.forward_radius, star.polar_radius, star.side_radius, star.backward_radius
+            return improved_trapezoidal_mesh(*args)
 
     return trapezoidal_mesh(discretization)
 

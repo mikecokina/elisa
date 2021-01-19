@@ -94,8 +94,7 @@ class AbstractFit(metaclass=ABCMeta):
 
         :return: np.float;
         """
-        return np.sum([np.sum(np.log(2 * PI * np.power(value, 2)))
-                       for value in self.y_err.values()])
+        return np.sum([np.sum(np.log(2 * PI * np.power(value, 2))) for value in self.y_err.values()])
 
 
 class AbstractRVFit(AbstractFit):
@@ -309,7 +308,7 @@ def extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_d
     :param x_data: dict;
     :param y_data: dict;
     :param y_err: dict;
-    :return:
+    :return: tuple;
     """
     for item, curve in x_data.items():
         phases_extended = np.concatenate((x_data[item] - 1.0, x_data[item], x_data[item] + 1.0))

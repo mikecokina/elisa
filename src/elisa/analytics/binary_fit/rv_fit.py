@@ -69,9 +69,8 @@ class RVFit(object):
         """
         b_parameters = parameters.BinaryInitialParameters(**model_parameters)
         b_parameters.validate_rv_parameters()
-        return self.fit_method_instance.coefficient_of_determination(
-            model_parameters, data, discretization, interp_treshold
-        )
+        args = model_parameters, data, discretization, interp_treshold
+        return self.fit_method_instance.coefficient_of_determination(*args)
 
 
 class RVFitMCMC(RVFit):

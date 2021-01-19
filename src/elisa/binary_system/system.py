@@ -726,10 +726,7 @@ class BinarySystem(System):
         idx = up.arange(np.shape(input_argument)[0], dtype=np.int)
         positions = np.hstack((idx[:, np.newaxis], orbital_motion))
         # return retval, positions if return_nparray else retval
-        if return_nparray:
-            return positions
-        else:
-            return [const.Position(*p) for p in positions]
+        return positions if return_nparray else [const.Position(*p) for p in positions]
 
     def setup_components_radii(self, components_distance, calculate_equivalent_radius=True):
         """

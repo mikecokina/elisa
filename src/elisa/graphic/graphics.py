@@ -281,10 +281,7 @@ def single_star_surface(**kwargs):
         ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
 
-    if kwargs['return_figure_instance']:
-        return fig
-    else:
-        plt.show()
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
 
 def binary_surface(**kwargs):
@@ -441,10 +438,7 @@ def binary_surface(**kwargs):
 
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     gutils.set_axes_equal(ax)
-    if kwargs['return_figure_instance']:
-        return fig
-    else:
-        plt.show()
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
 
 def set_colorbar_label(colorbar, colorbar_name, unit, scale, extra=''):
