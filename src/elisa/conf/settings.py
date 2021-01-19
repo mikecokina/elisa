@@ -385,8 +385,8 @@ class Settings(_Const):
                                   "able to use CUDA features. Fallback to CPU.", UserWarning)
                     cls.CUDA = False
 
-            cls.SINGLE_LD_COEFFICIENTS = c_parse.getfloat('computational', 'single_ld_coefficients',
-                                                          fallback=cls.SINGLE_LD_COEFFICIENTS)
+            cls.SINGLE_LD_COEFFICIENTS = c_parse.getboolean('computational', 'single_ld_coefficients',
+                                                            fallback=cls.SINGLE_LD_COEFFICIENTS)
         # **************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)
