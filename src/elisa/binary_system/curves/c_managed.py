@@ -119,8 +119,8 @@ def produce_circ_spotty_async_curves_mp(*args):
         # build the spots points
         add_spots_to_mesh(initial_system, orbital_position.distance, component=require_build)
         # build the rest of the surface based on preset surface points
-        initial_system.build_from_points_to_temperatures(components_distance=orbital_position.distance,
-                                                         component=require_build)
+        initial_system.build_faces_and_kinematic_quantities(components_distance=orbital_position.distance,
+                                                            component=require_build)
         initial_system.build_temperature_distribution(components_distance=orbital_position.distance,
                                                       component='all')
 

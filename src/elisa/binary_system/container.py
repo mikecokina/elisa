@@ -98,11 +98,11 @@ class OrbitalPositionContainer(PositionContainer):
         :param components_distance: float; distance of components is SMA units
         :return: self;
         """
-        self.build_from_points_to_temperatures(components_distance, component)
+        self.build_faces_and_kinematic_quantities(components_distance, component)
         self.build_temperature_distribution(components_distance, component)
         return self
 
-    def build_from_points_to_temperatures(self, components_distance=None, component="all"):
+    def build_faces_and_kinematic_quantities(self, components_distance=None, component="all"):
         """
         Function can be used on container with built points and performs
         surface build without surface temperature distribution.
