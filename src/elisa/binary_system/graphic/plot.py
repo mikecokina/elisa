@@ -316,15 +316,15 @@ class Plot(object):
             })
 
             face_mask = locals().get(f'face_mask_{component}')
-            if not is_empty(face_mask):
-                surface_kwargs[f'{component}_triangles'] = surface_kwargs[f'{component}_triangles'][face_mask]
-                if colormap is not None:
-                    surface_kwargs[f'{component}_cmap'] = surface_kwargs[f'{component}_cmap'][face_mask]
+            face_mask = np.ones(star.faces.shape[0], dtype=bool) if face_mask is None else face_mask
+            surface_kwargs[f'{component}_triangles'] = surface_kwargs[f'{component}_triangles'][face_mask]
+            if colormap is not None:
+                surface_kwargs[f'{component}_cmap'] = surface_kwargs[f'{component}_cmap'][face_mask]
 
             if normals:
                 surface_kwargs.update({
-                    f'{component}_centres': star.face_centres,
-                    f'{component}_arrows': star.normals
+                    f'{component}_centres': star.face_centres[face_mask],
+                    f'{component}_arrows': star.normals[face_mask]
                 })
 
             if axis_unit != u.dimensionless_unscaled:
