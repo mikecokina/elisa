@@ -98,13 +98,13 @@ class AnalyticsTask(metaclass=ABCMeta):
         """
 
         if self.method not in ['mcmc']:
-            raise IOError('Load chain method can be used only with mcmc task.')
+            raise ValueError('Load chain method can be used only with mcmc task.')
         self.fit_cls.load_chain(filename, discard, percentiles)
         return self
 
     def filter_chain(self, **boundaries):
         if self.method not in ['mcmc']:
-            raise IOError('Filter chain method can be used only with mcmc task.')
+            raise ValueError('Filter chain method can be used only with mcmc task.')
         self.fit_cls.filter_chain(**boundaries)
 
     def fit(self, x0: Union[Dict, parameters.BinaryInitialParameters], **kwargs):
