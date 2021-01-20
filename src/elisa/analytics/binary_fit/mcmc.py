@@ -44,7 +44,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
     @staticmethod
     def ln_prior(xn):
         # prior = np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0))).astype(float)
-        prior = np.prod(norm().pdf(2*(xn-0.5)))
+        prior = np.prod(2*norm().pdf(2*(xn-0.5)))
         return -np.inf if prior == 0 else np.log(prior)
 
     @abstractmethod
