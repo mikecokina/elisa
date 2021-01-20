@@ -42,7 +42,8 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
 
     @staticmethod
     def ln_prior(xn):
-        return np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0)))
+        prior = np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0))).astype(float)
+        return -np.inf if prior == 0 else np.log(prior)
 
     @abstractmethod
     def likelihood(self, xn):
@@ -64,10 +65,11 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         return lh
 
     def ln_probability(self, xn):
-        if not self.ln_prior(xn):
+        prior = self.ln_prior(xn)
+        if prior == -np.inf:
             return -np.inf
         try:
-            likelihood = self.likelihood(xn)
+            likelihood = prior + self.likelihood(xn)
         except (ElisaError, ValueError) as e:
             if not settings.SUPPRESS_WARNINGS:
                 logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
