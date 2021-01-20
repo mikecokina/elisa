@@ -5,6 +5,7 @@ from typing import Dict
 import emcee
 import numpy as np
 from scipy import interpolate
+from scipy.stats.distributions import norm
 
 from . shared import check_for_boundary_surface_potentials
 from . mixins import MCMCMixin
@@ -42,7 +43,8 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
 
     @staticmethod
     def ln_prior(xn):
-        prior = np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0))).astype(float)
+        # prior = np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0))).astype(float)
+        prior = np.prod(norm().pdf(2*(xn-0.5)))
         return -np.inf if prior == 0 else np.log(prior)
 
     @abstractmethod
