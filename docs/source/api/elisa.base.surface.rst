@@ -28,6 +28,14 @@ elisa.base.surface.gravity module
    :undoc-members:
    :show-inheritance:
 
+elisa.base.surface.mesh module
+------------------------------
+
+.. automodule:: elisa.base.surface.mesh
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.base.surface.temperature module
 -------------------------------------
 
@@ -35,7 +43,6 @@ elisa.base.surface.temperature module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

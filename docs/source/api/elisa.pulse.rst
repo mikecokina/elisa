@@ -1,8 +1,24 @@
 elisa.pulse package
 ===================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   elisa.pulse.surface
+
 Submodules
 ----------
+
+elisa.pulse.container\_ops module
+---------------------------------
+
+.. automodule:: elisa.pulse.container_ops
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 elisa.pulse.mode module
 -----------------------
@@ -35,7 +51,6 @@ elisa.pulse.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

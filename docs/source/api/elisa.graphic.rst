@@ -28,6 +28,13 @@ elisa.graphic.mcmc\_graphics module
    :undoc-members:
    :show-inheritance:
 
+elisa.graphic.utils module
+--------------------------
+
+.. automodule:: elisa.graphic.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------

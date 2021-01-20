@@ -12,7 +12,6 @@ elisa.schema\_registry.registry module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

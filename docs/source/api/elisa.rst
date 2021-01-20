@@ -5,17 +5,20 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
    elisa.analytics
    elisa.base
    elisa.binary_system
    elisa.conf
    elisa.graphic
+   elisa.numba_functions
    elisa.observer
    elisa.opt
    elisa.pulse
    elisa.schema_registry
    elisa.single_system
+   elisa.tensor
 
 Submodules
 ----------
@@ -24,6 +27,14 @@ elisa.atm module
 ----------------
 
 .. automodule:: elisa.atm
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+elisa.buffer module
+-------------------
+
+.. automodule:: elisa.buffer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -75,7 +86,6 @@ elisa.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

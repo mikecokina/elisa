@@ -945,7 +945,7 @@ def discretization_correction_factor(discretization_factor, correction_factors):
     Correction factor for the surface due to underestimation of the surface by the triangles.
 
     :param correction_factors: numpy.array; (2*N) [discretization factor, correction factor],
-    sorted according to discretization factor
+                                            sorted according to discretization factor
     :param discretization_factor: numpy.float;
     :return: float;
     """
@@ -969,7 +969,7 @@ def transform_values(value, default_unit, unit):
     Quick function for transformation to desired units.
 
     :param value: Union[float, numpy.array]; input values in default unit
-    :param default_unit: astropy.units.Unit; base unit in which `value is stored
+    :param default_unit: astropy.units.Unit; base unit in which `value` is stored
     :param unit: astropy.units.Unit; target unit
     :return: Union[float, numpy.array]; transformed values
     """
@@ -985,7 +985,7 @@ def jd_to_phase(times, period, t0, centre=0.5):
     :param period: float;
     :param t0: float;
     :param centre: float;
-    :return: numpy.array
+    :return: numpy.array; converted phases
     """
     start_phase = centre - 0.5
     t0 += start_phase * period

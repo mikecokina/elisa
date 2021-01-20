@@ -225,8 +225,8 @@ class Plot(object):
         :param components_to_plot: str; `primary`, `secondary` or `both` (default),
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
-        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity`, 'radiance',
-        `normal_radiance` or None(default)
+        :param colormap: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'radiance',
+                              'normal_radiance' or None(default)
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask_primary: array[bool]; mask to select which faces to display
         :param face_mask_secondary: array[bool]: mask to select which faces to display
@@ -234,16 +234,16 @@ class Plot(object):
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
         :param unit: str; colorbar unit
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
-        :param colorbar_orientation: str; `horizontal` or `vertical` (default)
+        :param colorbar_orientation: str; 'horizontal' or 'vertical' (default)
         :param colorbar: bool; colorbar on/off switch
-        :param scale: str; `linear` or `log`
+        :param scale: str; 'linear' or 'log'
         :param surface_colors: tuple; tuple of colors for components if `colormap` are not specified
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
         :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
-        produced figure
+                                             produced figure
         """
         surface_kwargs = dict()
 
