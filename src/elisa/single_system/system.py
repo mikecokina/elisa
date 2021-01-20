@@ -183,7 +183,7 @@ class SingleSystem(System):
         """
         calculates a equipotential boundary of star in zx(yz) plane
 
-        :return: tuple; (np.array, np.array)
+        :return: Tuple; (np.array, np.array)
         """
         points = []
         angles = np.linspace(0, c.FULL_ARC, 300, endpoint=True)

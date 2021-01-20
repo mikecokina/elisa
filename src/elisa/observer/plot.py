@@ -21,7 +21,7 @@ class Plot(object):
         Function plots phase curves calculated in Observer class.
 
         :param phases: numpy.ndarray;
-        :param fluxes: dict; fluxes in each passband
+        :param fluxes: Dict; fluxes in each passband
         :param unit: Union[NoneType, astropy.units]; units of flux
         :param legend: bool;
         :param legend_location: int; wrapper for matplotlib `loc` argument for legend location
@@ -47,7 +47,7 @@ class Plot(object):
         Function plots radial velocity curves calculated in Observer class.
 
         :param phases: numpy.array;
-        :param radial_velocities: dict;
+        :param radial_velocities: Dict;
         :param unit: Union[None, astropy.units.quantity.Quantity]; unit of input 'radial_velocities', if they are not
                      supplied, values calculated in Observer instance are converted to `unit`
         :param legend: bool;

@@ -14,7 +14,7 @@ def resolve_curve_method(system, fn_array):
     Resolves which curve calculating method to use based on the properties of the SingleSystem.
 
     :param system: elisa.single_system.SingleSystem;
-    :param fn_array: tuple; list of curve calculating functions in specific order
+    :param fn_array: Tuple; list of curve calculating functions in specific order
                             (system with pulsations, system without pulsations)
     :return: curve calculating method chosen from `fn_array`
     """

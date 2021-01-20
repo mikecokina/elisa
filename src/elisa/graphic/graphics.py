@@ -754,7 +754,7 @@ def binary_rv_fit_plot(**kwargs):
 
     :param kwargs: Dict;
     :**kwargs options**:
-        * **fit_params** * -- dict; {fit_parameter: {value: float, unit: astropy.unit.Unit}
+        * **fit_params** * -- Dict; {fit_parameter: {value: float, unit: astropy.unit.Unit}
         * **start_phase** * -- float;
         * **stop_phase** * -- float;
         * **number_of_points** * -- int;

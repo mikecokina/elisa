@@ -45,7 +45,7 @@ def tilt_mode_coordinates(points, spot_points, phi, theta):
     Function tilts spherical coordinates to desired position described by `phi`, `theta`.
 
     :param points: numpy.array;
-    :param spot_points: dict;
+    :param spot_points: Dict;
     :param phi: float; azimuthal coordinate of the new polar axis
     :param theta: float; latitude of the new polar axis
     :return: Tuple;

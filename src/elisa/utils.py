@@ -730,7 +730,7 @@ def rotation_in_spherical(phi, theta, phi_rotation, theta_rotation):
     :param theta: numpy.array; - in radians
     :param phi_rotation: float; - rotation of old spherical system around z axis, in radians
     :param theta_rotation: float; - rotation of z axis along new y axis by this value, in radians
-    :return: tuple; transformed angular coordinates
+    :return: Tuple; transformed angular coordinates
     """
     # rotation around Z axis
     phi_rot = (phi - phi_rotation) % const.FULL_ARC
@@ -885,7 +885,7 @@ def renormalize_async_result(result):
     """
     Renormalize multiprocessing output to native form.
     Multiprocessing will return several dicts with same passband (due to supplied batches), but continuous
-    computaion require dict in form like::
+    computaion require Dict in form like::
 
         [{'passband': [all fluxes]}]
 

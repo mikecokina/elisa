@@ -196,7 +196,7 @@ def integrate_eccentric_curve_exactly(binary, orbital_motion, potentials, crv_la
 
     :param binary: elisa.binary_system.system.BinarySystem; instance
     :param orbital_motion: list of all OrbitalPositions at which curve will be calculated
-    :param potentials: dict; corrected potentials
+    :param potentials: Dict; corrected potentials
     :param kwargs: kwargs taken from `produce_eccentric_curve` function
     :param crv_labels: labels of the calculated curves (passbands, components,...)
     :param curve_fn: curve function

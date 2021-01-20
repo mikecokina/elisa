@@ -5,9 +5,9 @@ def likelihood_fn(observed, synthetic, errors, log_underestimation):
     """
     Returns likelihood function taking into account underestimation of errors.
 
-    :param observed: dict;
-    :param synthetic: dict;
-    :param errors: dict;
+    :param observed: Dict;
+    :param synthetic: Dict;
+    :param errors: Dict;
     :param log_underestimation: float;
     :return: float;
     """

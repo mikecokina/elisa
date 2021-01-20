@@ -149,7 +149,7 @@ class AnalyticsTask(metaclass=ABCMeta):
         """
         Function returns R^2 for given model parameters and observed data.
 
-        :param model_parameters: dict; if None, get_result() is called
+        :param model_parameters: Dict; if None, get_result() is called
         :param discretization: float;
         :param interpolation_treshold: int; if None settings.MAX_CURVE_DATA_POINTS is used
         :return: float;

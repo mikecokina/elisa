@@ -97,7 +97,7 @@ class Plot(object):
         :param plane: str; (`xy`, `yz` or `xz`) specifying what plane cross-section to display default is `xy`
         :param phase: float; phase at which to plot cross-section
         :param components_to_plot: str; component to plot `primary`, `secondary` or `both` (default)
-        :param colors: tuple; tuple of colors for primary and secondary component equipotentials
+        :param colors: Tuple; tuple of colors for primary and secondary component equipotentials
         :param legend: bool; legend display on/off
         :param legend_loc: int; location of the legend
         """
@@ -237,7 +237,7 @@ class Plot(object):
         :param colorbar_orientation: str; 'horizontal' or 'vertical' (default)
         :param colorbar: bool; colorbar on/off switch
         :param scale: str; 'linear' or 'log'
-        :param surface_colors: tuple; tuple of colors for components if `colormap` are not specified
+        :param surface_colors: Tuple; tuple of colors for components if `colormap` are not specified
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7

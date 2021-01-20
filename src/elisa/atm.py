@@ -214,8 +214,8 @@ class NaiveInterpolatedAtm(object):
         :param log_g: Iterable[float];
         :param metallicity: float;
         :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
-        :param kwargs: dict;
-        :return: Tuple[dict, numpy.float, numpy.float]; atmosphere profiles for each passband, flux multiplicator,
+        :param kwargs: Dict;
+        :return: Tuple[Dict, numpy.float, numpy.float]; atmosphere profiles for each passband, flux multiplicator,
                                                         wave multiplicator;
         """
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
@@ -1030,7 +1030,7 @@ def unique_atm_fpaths(fpaths):
     ::
 
         (path set - set of unique atmosphere file names,
-         map - dict where every unique atm file has listed indices where it occures)
+         map - Dict where every unique atm file has listed indices where it occures)
     """
     fpaths_set = set(fpaths)
     fpaths_map = {key: list() for key in fpaths_set}
@@ -1167,9 +1167,9 @@ def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
     Correcting normal radiance values by increment that will correct inacuracy caused by using too shallow optical depth
     for the middle of the disk. Correction was derived analytically from spherical model.
 
-    :param normal_radiances: dict; dict(component: dict(filter: normal radiances for each face))
-    :param ld_cfs: dict; dict(component: dict(filter: limb darkening coefficients for each face))
-    :return: dict;
+    :param normal_radiances: Dict; dict(component: dict(filter: normal radiances for each face))
+    :param ld_cfs: Dict; dict(component: dict(filter: limb darkening coefficients for each face))
+    :return: Dict;
     """
     for star, component_normal_radiances in normal_radiances.items():
         ld_coefficients = ld_cfs[star]['bolometric'].T

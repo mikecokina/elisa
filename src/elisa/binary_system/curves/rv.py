@@ -33,7 +33,7 @@ def com_radial_velocity(binary, **kwargs):
     Calculates radial velocity curves of the `binary` system using radial velocities of centres of masses.
 
     :param binary: elisa.binary_system.system.BinarySystem; binary system instance
-    :param kwargs: dict;
+    :param kwargs: Dict;
     :**kwargs options**:
         * **position_method** * -- function that is used to calculate orbital motion
         * **phases** * -- phases in which to calculate

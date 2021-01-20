@@ -146,7 +146,7 @@ class Plot(object):
         :param colorbar_orientation: `horizontal` or `vertical` (default)
         :param colorbar: bool; colorbar on/off switch
         :param scale: str; `linear` or `log`
-        :param surface_color: tuple; tuple of colors for components if `colormap` is not specified
+        :param surface_color: Tuple; tuple of colors for components if `colormap` is not specified
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
