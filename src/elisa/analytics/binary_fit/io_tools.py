@@ -102,8 +102,8 @@ def update_solution(mcmc_fit_cls, fitted_params, percentiles):
     Updating solutions according to mcmc chain.
 
     :param mcmc_fit_cls: fitting cls instance based on method (mcmc, lsqr) and type(lc, rv)
-    :param fitted_params: dict; only variable part of flat_result
-    :param percentiles: list; percentiles used for evaluation of confidence intervals
+    :param fitted_params: Dict; only variable part of flat_result
+    :param percentiles: List; percentiles used for evaluation of confidence intervals
     :return: Tuple;
     """
     fitable = {key: ParameterMeta(**val) for key, val in fitted_params.items()}
@@ -156,7 +156,7 @@ def filter_chain(mcmc_fit_cls, **boundaries):
     Filtering mcmc chain to given intervals.
 
     :param mcmc_fit_cls: fitting cls instance based on method (mcmc, lstqr) and type(lc, rv)
-    :param boundaries: dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
+    :param boundaries: Dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
     :return: numpy.array; filtered flat chain
     """
     for key, boundary in boundaries.items():

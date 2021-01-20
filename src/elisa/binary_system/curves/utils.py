@@ -163,9 +163,9 @@ def update_surface_params(require_rebuild, container, normal_radiance, ld_cfs, *
 
     :param require_rebuild: bool; testing condition for recalculation of surface parameters
     :param container: elisa.binary_system.container.OrbitalPositionContainer;
-    :param normal_radiance: dict; old values of normal radiances
-    :param ld_cfs: dict; old values of limb darkening coefficients
-    :param kwargs: dict;
+    :param normal_radiance: Dict; old values of normal radiances
+    :param ld_cfs: Dict; old values of limb darkening coefficients
+    :param kwargs: Dict;
     :return: Tuple; updated container and updated normal radiances and limb darkening coefficients
     """
     if require_rebuild:

@@ -46,8 +46,8 @@ def unify_unit_string_representation(dictionary):
     """
     transform user units to unified format
 
-    :param dictionary: dict; model parameter
-    :return: dict; model parameter
+    :param dictionary: Dict; model parameter
+    :return: Dict; model parameter
     """
     for key, val in dictionary.items():
         if 'unit' in val.keys():

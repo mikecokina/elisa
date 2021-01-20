@@ -10,7 +10,7 @@ def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default'):
     Returns a colormap that can be passed to surface plot kwargs.
 
     :param colormap: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'normal_radiance',
-    'radiance'
+                          'radiance'
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;

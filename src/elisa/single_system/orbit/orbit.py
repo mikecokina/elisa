@@ -84,7 +84,7 @@ class Orbit(object):
 
         :param phase: Union[numpy.array, float];
         :return: numpy.array; matrix consisting of column stacked vectors azimut, angle and phase, last 3 columns of
-        const.Position
+                              const.Position
 
         ::
 
@@ -108,7 +108,7 @@ class Orbit(object):
 
         :param azimuth: Union[numpy.array, float];
         :return: numpy.array; matrix consisting of column stacked vectors distance,
-                                azimut angle, true anomaly and phase
+                              azimut angle, true anomaly and phase
 
         ::
 

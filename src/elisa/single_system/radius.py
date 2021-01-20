@@ -13,7 +13,7 @@ def calculate_radius(mass, angular_velocity, surface_potential, *args):
     :param mass: float;
     :param angular_velocity: float;
     :param surface_potential: float;
-    :param args: tuple;
+    :param args: Tuple;
 
     ::
 

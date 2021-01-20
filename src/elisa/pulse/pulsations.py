@@ -35,7 +35,7 @@ def diff_spherical_harmonics_by_phi(mode, harmonics):
     Returns d Y_m^l / d phi
 
     :param mode: PulsationMode; mode used to generate sph. harmonics
-    :param harmonics: list; [Y_l^m, Y_l^m+1]
+    :param harmonics: List; [Y_l^m, Y_l^m+1]
     :return: numpy.array;
     """
     retval = (0 + 1j) * mode.m * harmonics[0]
@@ -52,7 +52,7 @@ def diff_spherical_harmonics_by_theta(mode, harmonics, phis, thetas):
     Returns d Y_m^l / d theta
 
     :param mode: PulsationMode; mode used to generate sph. harmonics
-    :param harmonics: list; [Y_l^m, Y_l^m+1]
+    :param harmonics: List; [Y_l^m, Y_l^m+1]
     :param phis: numpy.array;
     :param thetas: numpy.array;
     :return: numpy.array;

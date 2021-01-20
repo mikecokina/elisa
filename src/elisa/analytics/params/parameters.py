@@ -133,8 +133,8 @@ def check_initial_param_validity(x0: Dict[str, 'InitialParameter'], all_fit_para
     no invalid ones.
 
     :param x0: Dict[str, 'InitialParameter']; dictionary of initial parameters
-    :param all_fit_params: list; list of all valid system parameters (spot and pulsation parameters excluded)
-    :param mandatory_fit_params: list; list of mandatory system parameters (spot and pulsation parameters excluded)
+    :param all_fit_params: List; list of all valid system parameters (spot and pulsation parameters excluded)
+    :param mandatory_fit_params: List; list of mandatory system parameters (spot and pulsation parameters excluded)
     :return:
     """
     param_names = {key: val.value for key, val in x0.items() if not re.search(r"|".join(conf.COMPOSITE_FLAT_PARAMS), key)}
@@ -235,9 +235,9 @@ def prepare_properties_set(xn, properties, constrained, fixed):
     This will prepare final kwargs for synthetic model evaluation.
 
     :param xn: numpy.array; initial vector
-    :param properties: list; variable labels
-    :param constrained: dict;
-    :param fixed: dict;
+    :param properties: List; variable labels
+    :param constrained: Dict;
+    :param fixed: Dict;
     :return: Dict[str, float];
     """
     kwargs = dict(zip(properties, xn))

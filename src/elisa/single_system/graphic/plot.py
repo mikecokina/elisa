@@ -135,8 +135,8 @@ class Plot(object):
         :param phase: float; phase at which plot the system, important for eccentric orbits
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
-        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity`, 'radiance',
-        `normal_radiance` or None(default)
+        :param colormap: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'radiance',
+                              'normal_radiance' or None(default)
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask: array[bool]; mask to select which faces to display
         :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera
@@ -146,11 +146,11 @@ class Plot(object):
         :param colorbar_orientation: `horizontal` or `vertical` (default)
         :param colorbar: bool; colorbar on/off switch
         :param scale: str; `linear` or `log`
-        :param surface_color: tuple; tuple of colors for components if `colormap` is not specified
+        :param surface_color: Tuple; tuple of colors for components if `colormap` is not specified
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
-        produced figure
+                                             produced figure
         """
         surface_kwargs = dict()
 

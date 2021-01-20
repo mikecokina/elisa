@@ -541,7 +541,7 @@ class BinarySystem(System):
 
         :param periastron_distance: float;
         :param mass_ratio: float;
-        :return: list
+        :return: List;
         """
         def potential(radius):
             theta, d = const.HALF_PI, periastron_distance
@@ -855,7 +855,7 @@ class BinarySystem(System):
         given component.
 
         :param components: str; `primary`, `secondary` or None (=both)
-        :return: dict; {'primary': r_equiv, ...}
+        :return: Dict; {'primary': r_equiv, ...}
         """
         components = bsutils.component_to_list(components)
         retval = dict()
@@ -879,7 +879,7 @@ class BinarySystem(System):
         using black body approximation.
 
         :param components: str; `primary`, `secondary` or None (=both)
-        :return: dict; {'primary': L_bol, ...}
+        :return: Dict; {'primary': L_bol, ...}
         """
         components = bsutils.component_to_list(components)
         r_equiv = {component: getattr(self, component).equivalent_radius for component in components}

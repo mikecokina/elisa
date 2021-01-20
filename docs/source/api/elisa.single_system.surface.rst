@@ -36,6 +36,14 @@ elisa.single\_system.surface.mesh module
    :undoc-members:
    :show-inheritance:
 
+elisa.single\_system.surface.pulsations module
+----------------------------------------------
+
+.. automodule:: elisa.single_system.surface.pulsations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.single\_system.surface.temperature module
 -----------------------------------------------
 
@@ -43,7 +51,6 @@ elisa.single\_system.surface.temperature module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------
