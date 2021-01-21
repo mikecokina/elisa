@@ -19,5 +19,6 @@ def build_pulsations(system, incorporate_perturbations):
         system.star = generate_harmonics(system.star, com_x=0, phase=system.position.phase, time=system.time)
         system.star = complex_displacement(system.star, scale=1.0)
         if incorporate_perturbations:
-            system.star = incorporate_pulsations_to_model(system.star, com_x=0.0, phase=system.position.phase)
+            args = system.star, 0.0, system.position.phase, 1.0
+            system.star = incorporate_pulsations_to_model(*args)
     return system

@@ -25,7 +25,6 @@ def build_pulsations(system, component, components_distance, incorporate_perturb
             phase = bsutils.calculate_rotational_phase(system, component)
             com_x = 0 if component == 'primary' else components_distance
             star = generate_harmonics(star, com_x=com_x, phase=phase, time=system.time)
-            star = complex_displacement(star, scale=system.semi_major_axis)
             if incorporate_perturbations:
-                incorporate_pulsations_to_model(star, com_x=com_x, phase=phase)
+                star = incorporate_pulsations_to_model(star, com_x=com_x, phase=phase, scale=system.semi_major_axis)
     return system
