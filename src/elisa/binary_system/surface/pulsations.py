@@ -1,8 +1,7 @@
 from .. import utils as bsutils
 from ... pulse.container_ops import (
     incorporate_pulsations_to_model,
-    generate_harmonics,
-    complex_displacement
+    generate_harmonics
 )
 
 
