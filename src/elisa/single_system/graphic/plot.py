@@ -152,6 +152,7 @@ class Plot(object):
         :param colorbar_size: float; relative size of the colorbar, default 0.7
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
                                              produced figure
+        :param subtract_equilibrium: bool; if True, equilibrium values are subtracted from the colormap
         """
         surface_kwargs = dict()
 

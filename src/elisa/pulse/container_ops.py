@@ -111,21 +111,34 @@ def incorporate_pulsations_to_model(star_container, com_x, phase, scale=1.0):
     :return: base.container.StarContainer;
     """
     # calculating kinematics quantities
-    for mode_index, mode in star_container.pulsations.items():
-        mode.complex_displacement = kinematics.calculate_displacement_coordinates(
-            mode, star_container.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives, scale=scale
-        )
-
-        if not star_container.is_flat():
-            for spot_idx, spoints in star_container.pulsations[0].spot_points.items():
-                mode.spot_complex_displacement[spot_idx] = kinematics.calculate_displacement_coordinates(
-                    mode, spoints, mode.spot_point_harmonics[spot_idx], mode.spot_point_harmonics_derivatives[spot_idx],
-                    scale=scale
-                )
+    complex_displacement(star_container, scale)
 
     position_perturbation(star_container, com_x, phase, update_container=True, return_perturbation=False)
     velocity_perturbation(star_container, phase, update_container=True, return_perturbation=False)
     return star_container
+
+
+def complex_displacement(star, scale):
+    """
+    Assigning complex displacement for surface points. Complex displacement is then used to calculate the kinematic
+    quantities (r,v,a).
+
+    :param star: base.container.StarContainer;
+    :param scale: float;
+    :return:
+    """
+    for mode_index, mode in star.pulsations.items():
+        mode.complex_displacement = kinematics.calculate_displacement_coordinates(
+            mode, star.pulsations[0].points, mode.point_harmonics, mode.point_harmonics_derivatives,
+            scale=scale
+        )
+
+        if not star.is_flat():
+            for spot_idx, spoints in star.pulsations[0].spot_points.items():
+                mode.spot_complex_displacement[spot_idx] = kinematics.calculate_displacement_coordinates(
+                    mode, spoints, mode.spot_point_harmonics[spot_idx], mode.spot_point_harmonics_derivatives[spot_idx],
+                    scale=scale
+                )
 
 
 def position_perturbation(star, com_x, phase, update_container=False, return_perturbation=False):
