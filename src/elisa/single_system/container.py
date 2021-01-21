@@ -17,7 +17,7 @@ from .. logger import getLogger
 logger = getLogger("single_system.container")
 
 
-class SystemContainer(PositionContainer):
+class RotationalPositionContainer(PositionContainer):
     def __init__(self, star: StarContainer, position, **properties):
         super().__init__(position=position)
         self._components = ['star']
@@ -54,7 +54,7 @@ class SystemContainer(PositionContainer):
     def has_pulsations(self):
         return self.star.has_pulsations()
 
-    def build(self, build_pulsations=True, **kwargs):
+    def build(self, incorporate_perturbations=True, **kwargs):
         """
         Main method to build binary star system from parameters given on init of SingleStar.
 
@@ -70,14 +70,15 @@ class SystemContainer(PositionContainer):
             - build_temperature_distribution
 
         :param kwargs:
-        :param build_pulsations: bool; enable/disable incorporation of pulsations
+        :param incorporate_perturbations: bool; if True, only necessary pre-requisition quantities for evaluation of
+                                          pulsations are calculated. The actual perturbations of surface quantities is
+                                          then done by `pulse.container_ops.incorporate_pulsations_to_model`
         :return: self;
         """
         self.build_surface()
         self.build_from_points()
 
-        if build_pulsations:
-            self.build_pulsations()
+        self.build_pulsations(incorporate_perturbations)
         return self
 
     def build_surface(self):
@@ -131,8 +132,8 @@ class SystemContainer(PositionContainer):
     def build_temperature_perturbations(self):
         return temperature.build_temperature_perturbations(self)
 
-    def build_pulsations(self):
-        return pulsations.build_pulsations(self)
+    def build_pulsations(self, incorporate_perturbations):
+        return pulsations.build_pulsations(self, incorporate_perturbations)
 
     def _phase(self, phase):
         return phase if phase is not None else self.position.phase

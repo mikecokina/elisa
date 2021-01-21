@@ -14,7 +14,7 @@ from elisa import umpy as up
 from elisa.base.container import StarContainer
 from elisa.base.star import Star
 from elisa.binary_system.container import OrbitalPositionContainer
-from elisa.single_system.container import SystemContainer
+from elisa.single_system.container import RotationalPositionContainer
 from elisa.binary_system.system import BinarySystem
 from elisa.single_system.system import SingleSystem
 from elisa.const import Position
@@ -155,7 +155,7 @@ def prepare_single_system(params, spots=None, pulsations=None):
 
 
 def prepare_single_system_container(system):
-    system_container = SystemContainer(
+    system_container = RotationalPositionContainer(
         star=StarContainer.from_properties_container(system.star.to_properties_container()),
         position=Position(*(0, np.nan, 0.0, np.nan, 0.0)),
         **system.properties_serializer()

@@ -1,7 +1,7 @@
 import numpy as np
 
 from . import c_managed
-from .. container import SystemContainer
+from .. container import RotationalPositionContainer
 from ... import const
 from ... logger import getLogger
 from ... observer.mp_manager import manage_observations
@@ -34,7 +34,7 @@ def compute_light_curve_without_pulsations(single, **kwargs):
 
 def compute_light_curve_with_pulsations(single, **kwargs):
     from_this = dict(single_system=single, position=const.Position(0, np.nan, 0.0, np.nan, 0.0))
-    initial_system = SystemContainer.from_single_system(**from_this)
+    initial_system = RotationalPositionContainer.from_single_system(**from_this)
     initial_system.build_surface()
 
     phases = kwargs.pop("phases")
