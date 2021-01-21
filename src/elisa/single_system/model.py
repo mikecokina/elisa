@@ -30,7 +30,7 @@ def potential(radius, *args):
     function calculates potential on the given point of the star
 
     :param radius: (np.)float; spherical variable
-    :param args: tuple; (A, B) - such that: Psi = -a/r - b*r**2
+    :param args: Tuple; (A, B) - such that: Psi = -a/r - b*r**2
     :return: (np.)float
     """
     a, b = args
@@ -45,8 +45,8 @@ def pre_calculate_for_potential_value(*args, return_as_tuple=False):
 
     :param return_as_tuple: return coefficients as a tuple of numpy vectors instead of numpy matrix
     :type return_as_tuple: bool
-    :param args: tuple; (mass, angular velocity of rotation, latitude angle (0, pi))
-    :return: tuple: (a, b) such that: Psi = -a/r - b*r**2
+    :param args: Tuple; (mass, angular velocity of rotation, latitude angle (0, pi))
+    :return: Tuple; (a, b) such that: Psi = -a/r - b*r**2
     """
     mass, angular_velocity, theta, = args
 
@@ -65,8 +65,8 @@ def radial_potential_derivative(radius, *args):
     function calculate radial derivative of potential function in spherical coordinates
 
     :param radius: float; radius of given point(s) in spherical coordinates
-    :param args: tuple; (A, B) - such that: Psi = -a/r**2 - 2*b*r
-    :type args: tuple
+    :param args: Tuple; (A, B) - such that: Psi = -a/r**2 - 2*b*r
+    :type args: Tuple;
     :return:
     """
     a, b = args[0]

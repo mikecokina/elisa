@@ -4,6 +4,14 @@ elisa.analytics.models package
 Submodules
 ----------
 
+elisa.analytics.models.cost\_fns module
+---------------------------------------
+
+.. automodule:: elisa.analytics.models.cost_fns
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.analytics.models.lc module
 --------------------------------
 
@@ -27,7 +35,6 @@ elisa.analytics.models.serializers module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

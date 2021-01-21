@@ -62,13 +62,12 @@ class SystemContainer(PositionContainer):
 
             - build_mesh
             - build_faces
-            - self.build_velocities
-            - self.build_pulsations_on_mesh
-            - self.build_surface_areas
-            - self.build_faces_orientation
-            - self.build_surface_gravity
-            - self.build_temperature_distribution
-            - self.build_temperature_perturbations
+            - build_velocities
+            - build_surface_gravity
+            - build_faces_orientation
+            - correct_mesh
+            - build_surface_areas
+            - build_temperature_distribution
 
         :param kwargs:
         :param build_pulsations: bool; enable/disable incorporation of pulsations

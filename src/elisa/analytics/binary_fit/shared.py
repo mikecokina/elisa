@@ -94,8 +94,7 @@ class AbstractFit(metaclass=ABCMeta):
 
         :return: np.float;
         """
-        return np.sum([np.sum(np.log(2 * PI * np.power(value, 2)))
-                       for value in self.y_err.values()])
+        return np.sum([np.sum(np.log(2 * PI * np.power(value, 2))) for value in self.y_err.values()])
 
 
 class AbstractRVFit(AbstractFit):
@@ -116,7 +115,7 @@ class AbstractRVFit(AbstractFit):
         """
         Function returns R^2 for given model parameters and observed data.
 
-        :param model_parameters: dict; serialized form
+        :param model_parameters: Dict; serialized form
         :param data: DataSet; observational data
         :param discretization: float;
         :param interp_treshold: int;
@@ -130,7 +129,7 @@ class AbstractRVFit(AbstractFit):
 
         logger.info("Evaluating light curve for calculation of R^2.")
         r_squared_result = rv_r_squared(rv_model.central_rv_synthetic, *r_squared_args, **r_dict)
-        logger.info("calculation of R^2 finished.")
+        logger.info("Calculation of R^2 finished.")
         return r_squared_result
 
 
@@ -194,7 +193,7 @@ class AbstractLCFit(AbstractFit):
             synthetic = lc_model.synthetic_binary(x, self.discretization, observer, **kwargs)
             synthetic, _ = normalize_light_curve(synthetic, kind='average')
         except Exception as e:
-            raise RuntimeError('Your initial parameters are invalid and phase sampling could mot be generated.')
+            raise RuntimeError('Your initial parameters are invalid and phase sampling could not be generated.')
 
         curve = np.column_stack((x, synthetic['bolometric']))
         lengths = np.sqrt(np.sum(np.diff(curve, axis=0) ** 2, axis=1))
@@ -207,7 +206,7 @@ class AbstractLCFit(AbstractFit):
         """
         Function returns R^2 for given model parameters and observed data.
 
-        :param model_parameters: dict; serialized form
+        :param model_parameters: Dict; serialized form
         :param data: DataSet; observational data
         :param discretization: float;
         :param interp_treshold: int;
@@ -222,9 +221,9 @@ class AbstractLCFit(AbstractFit):
                           self.observer.system_cls)
         flat_result = parameters.deserialize_result(model_parameters)
         r_dict = {key: value['value'] for key, value in flat_result.items()}
-        logger.info("Evaluating light curve for calcualteinon of R^2.")
+        logger.info("Evaluating light curve for calculation of R^2.")
         r_squared_result = lc_r_squared(lc_model.synthetic_binary, *r_squared_args, **r_dict)
-        logger.info("calculation of R^2 finished.")
+        logger.info("Calculation of R^2 finished.")
         return r_squared_result
 
 
@@ -306,10 +305,10 @@ def extend_observations_to_desired_interval(start_phase, stop_phase, x_data, y_d
 
     :param start_phase: float;
     :param stop_phase: float;
-    :param x_data: dict;
-    :param y_data: dict;
-    :param y_err: dict;
-    :return:
+    :param x_data: Dict;
+    :param y_data: Dict;
+    :param y_err: Dict;
+    :return: Tuple;
     """
     for item, curve in x_data.items():
         phases_extended = np.concatenate((x_data[item] - 1.0, x_data[item], x_data[item] + 1.0))
@@ -328,9 +327,9 @@ def check_for_boundary_surface_potentials(result_dict, morphology=None):
     Function checks if surface potential are within errors below critical potentials (which would break BinarySystem
     initialization). If surface potential are within errors they are snapped to critical values.
 
-    :param result_dict: dict; flat dict of fit results
+    :param result_dict: Dict; flat dict of fit results
     :param morphology: str; expected morphology
-    :return: dict; corrected flat dict of fit results
+    :return: Dict; corrected flat dict of fit results
     """
     if "primary@surface_potential" not in result_dict.keys() or "secondary@surface_potential" not in result_dict.keys():
         return result_dict

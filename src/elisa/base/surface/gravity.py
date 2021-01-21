@@ -4,7 +4,7 @@ def eval_args_for_magnitude_gradient(star_container):
     in case of clean surface
 
     :param star_container: StarContainer;
-    :return: tuple;
+    :return: Tuple;
     """
     if star_container.symmetry_test():
         points = star_container.points[:star_container.base_symmetry_points_number]

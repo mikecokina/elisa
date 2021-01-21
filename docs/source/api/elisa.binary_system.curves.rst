@@ -60,14 +60,6 @@ elisa.binary\_system.curves.rv module
    :undoc-members:
    :show-inheritance:
 
-elisa.binary\_system.curves.rv\_point module
---------------------------------------------
-
-.. automodule:: elisa.binary_system.curves.rv_point
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 elisa.binary\_system.curves.utils module
 ----------------------------------------
 
@@ -75,7 +67,6 @@ elisa.binary\_system.curves.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

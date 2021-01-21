@@ -85,7 +85,7 @@ def potential_value_primary(radius, *args):
     Calculates modified Kopal's potential from point of view of primary component.
 
     :param radius: (numpy.)float; spherical variable
-    :param args: tuple: (mass_ratio, B, C, D, E) such that: Psi1 = 1/r + q/sqrt(B+r^2+Cr) - D*r + E*r^2
+    :param args: Tuple; (mass_ratio, B, C, D, E) such that: Psi1 = 1/r + q/sqrt(B+r^2+Cr) - D*r + E*r^2
     :return: (numpy.)float;
     """
     mass_ratio, b, c, d, e = args
@@ -97,7 +97,7 @@ def potential_value_secondary(radius, *args):
     """
     Calculates modified Kopal's potential from point of view of secondary component.
     :param radius: up.float; spherical variable
-    :param args: tuple: (mass_ratio, b, c, d, e, f) such that: Psi2 = q/r + 1/sqrt(b+r^2-Cr) - d*r + e*r^2 + f
+    :param args: Tuple; (mass_ratio, b, c, d, e, f) such that: Psi2 = q/r + 1/sqrt(b+r^2-Cr) - d*r + e*r^2 + f
     :return: float;
     """
     mass_ratio, b, c, d, e, f = args
@@ -110,7 +110,7 @@ def potential_primary_fn(radius, *args):
     Implicit potential function from perspective of primary component.
 
     :param radius: float; spherical variable
-    :param args: tuple; pre calculated values for potential function and desired value of potential
+    :param args: Tuple; pre calculated values for potential function and desired value of potential
     :return: float;
     """
     return potential_value_primary(radius, *args[0]) - args[1]
@@ -137,7 +137,7 @@ def potential_value_primary_cylindrical(radius, *args):
     of W UMa systems, therefore components distance = 1 an synchronicity = 1 is assumed.
 
     :param radius: float;
-    :param args: tuple: (a, b, c, d, e) such that: Psi1 = 1/sqrt(a+r^2) + q/sqrt(b + r^2) - c + d*(a+e*r^2)
+    :param args: Tuple; (a, b, c, d, e) such that: Psi1 = 1/sqrt(a+r^2) + q/sqrt(b + r^2) - c + d*(a+e*r^2)
     :return: float;
     """
     mass_ratio, a, b, c, d, e = args
@@ -152,7 +152,7 @@ def potential_value_secondary_cylindrical(radius, *args):
     component in cylindrical coordinates r_n, phi_n, z_n, where z_n = x and heads along z axis.
 
     :param radius: float;
-    :param args: tuple: (a, b, c, d, e, f) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(a+e*r^2)
+    :param args: Tuple; (a, b, c, d, e, f) such that: Psi2 = q/sqrt(a+r^2) + 1/sqrt(b + r^2) - c + d*(a+e*r^2)
     :return: float;
     """
     mass_ratio, a, b, c, d, e, f = args

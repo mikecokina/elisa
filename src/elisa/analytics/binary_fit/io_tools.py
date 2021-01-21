@@ -55,8 +55,8 @@ def write_param_ln(fit_params, param_id, designation, write_fn, line_sep, precis
         status = 'Derived'
 
     unit = str(fit_params[param_id]['unit']) if 'unit' in fit_params[param_id].keys() else '-'
-    return write_ln(write_fn, designation, round(fit_params[param_id]['value'], sig_figures),
-                    bot, top, unit, status, line_sep)
+    args = write_fn, designation, round(fit_params[param_id]['value'], sig_figures), bot, top, unit, status, line_sep
+    return write_ln(*args)
 
 
 def write_propagated_ln(values, fit_params, param_id, designation, write_fn, line_sep, unit):
@@ -94,8 +94,7 @@ def write_propagated_ln(values, fit_params, param_id, designation, write_fn, lin
     else:
         status = 'Unknown'
 
-    return write_ln(write_fn, designation, values[0],
-                    values[1], values[2], unit, status, line_sep)
+    return write_ln(write_fn, designation, values[0], values[1], values[2], unit, status, line_sep)
 
 
 def update_solution(mcmc_fit_cls, fitted_params, percentiles):
@@ -103,8 +102,8 @@ def update_solution(mcmc_fit_cls, fitted_params, percentiles):
     Updating solutions according to mcmc chain.
 
     :param mcmc_fit_cls: fitting cls instance based on method (mcmc, lsqr) and type(lc, rv)
-    :param fitted_params: dict; only variable part of flat_result
-    :param percentiles: list; percentiles used for evaluation of confidence intervals
+    :param fitted_params: Dict; only variable part of flat_result
+    :param percentiles: List; percentiles used for evaluation of confidence intervals
     :return: Tuple;
     """
     fitable = {key: ParameterMeta(**val) for key, val in fitted_params.items()}
@@ -157,7 +156,7 @@ def filter_chain(mcmc_fit_cls, **boundaries):
     Filtering mcmc chain to given intervals.
 
     :param mcmc_fit_cls: fitting cls instance based on method (mcmc, lstqr) and type(lc, rv)
-    :param boundaries: dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
+    :param boundaries: Dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
     :return: numpy.array; filtered flat chain
     """
     for key, boundary in boundaries.items():

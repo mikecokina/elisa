@@ -119,8 +119,8 @@ def produce_circ_spotty_async_curves_mp(*args):
         # build the spots points
         add_spots_to_mesh(initial_system, orbital_position.distance, component=require_build)
         # build the rest of the surface based on preset surface points
-        initial_system.build_from_points_to_temperatures(components_distance=orbital_position.distance,
-                                                         component=require_build)
+        initial_system.build_faces_and_kinematic_quantities(components_distance=orbital_position.distance,
+                                                            component=require_build)
         initial_system.build_temperature_distribution(components_distance=orbital_position.distance,
                                                       component='all')
 
@@ -149,7 +149,7 @@ def integrate_eccentric_curve_exactly(*args):
 
         Tuple[
                 binary: elisa.binary_system.BinarySystem,
-                potentials: dict; corrected surface potentials
+                potentials: Dict; corrected surface potentials
                 phase_batch: numpy.array; phases at which to calculate curves,
                 spots_longitudes: longitudes of each spots for each orbital position
                 crv_labels: List;
@@ -214,8 +214,8 @@ def _update_ldc_and_radiance_on_orb_pair(new_geometry_test, base_container, mirr
                                     to new geometry, otherwise they will be copied
     :param base_container: elisa.binary_system.container.OrbitalPositionContainer;
     :param mirror_container: elisa.binary_system.container.OrbitalPositionContainer;
-    :param old_normal_radiance: dict; normal radiances to be copied if `new_geometry_test` is False
-    :param old_ld_cfs: dict; normal radiances to be copied if `new_geometry_test` is False
+    :param old_normal_radiance: Dict; normal radiances to be copied if `new_geometry_test` is False
+    :param old_ld_cfs: Dict; normal radiances to be copied if `new_geometry_test` is False
     :param kwargs: kwargs;
     :return: Tuple;
     """
@@ -329,11 +329,11 @@ def integrate_eccentric_curve_approx_three(*args):
 
         Tuple[
                 binary: elisa.binary_system.BinarySystem,
-                potentials: dict; corrected surface potentials
+                potentials: Dict; corrected surface potentials
                 motion_batch: numpy.array; orbital positions sorted by components distance
                 new_geometry_mask: bool; mask to `orbital_positions` which determines which surface
                                          geometry should be fully recalculated
-                crv_labels: list; curve_labels
+                crv_labels: List; curve_labels
                 curves_fn: function to calculate curve points at given orbital positions,
                 kwargs: Dict,
             ]

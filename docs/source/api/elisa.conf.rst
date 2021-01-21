@@ -1,6 +1,14 @@
 elisa.conf package
 ==================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   elisa.conf.logging_schemas
+
 Submodules
 ----------
 
@@ -11,7 +19,6 @@ elisa.conf.settings module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

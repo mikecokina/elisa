@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import json
 
 from .. import (
     utils as bsutils,
@@ -21,15 +20,11 @@ from ... import (
 )
 
 logger = getLogger("binary_system.surface.mesh")
-SEAM_CONST = 1.08
-PATH_TO_CORRECTIONS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mesh_corrections')
 
-CORRECTION_FACTORS = dict()
-CORRECTION_FACTORS['detached'] = np.load(os.path.join(PATH_TO_CORRECTIONS, 'correction_factors_detached.npy'),
-                                         allow_pickle=False)
-CORRECTION_FACTORS['over-contact'] = np.load(os.path.join(PATH_TO_CORRECTIONS, 'correction_factors_over-contact.npy'),
-                                             allow_pickle=False)
-
+CORRECTION_FACTORS = {
+    'detached': np.load(settings.PATH_TO_DETACHED_CORRECTIONS, allow_pickle=False),
+    'over-contact': np.load(settings.PATH_TO_OVER_CONTACT_CORRECTIONS, allow_pickle=False)
+}
 CORRECTION_FACTORS['semi-detached'] = CORRECTION_FACTORS['detached']
 
 
@@ -93,8 +88,8 @@ def pre_calc_azimuths_for_detached_points(discretization, star):
     if settings.MESH_GENERATOR in ['auto', 'improved_trapezoidal']:
         rel_radii = (star.forward_radius - star.polar_radius) / star.polar_radius
         if rel_radii > settings.DEFORMATION_TOL or settings.MESH_GENERATOR == 'improved_trapezoidal':
-            return improved_trapezoidal_mesh(discretization, star.forward_radius, star.polar_radius, star.side_radius,
-                                             star.backward_radius)
+            args = discretization, star.forward_radius, star.polar_radius, star.side_radius, star.backward_radius
+            return improved_trapezoidal_mesh(*args)
 
     return trapezoidal_mesh(discretization)
 
@@ -113,13 +108,13 @@ def trapezoidal_mesh(discretization):
     separator = []
 
     # azimuths for points on equator
-    num = int(const.PI // (SEAM_CONST * discretization))
+    num = int(const.PI // (const.SEAM_CONST * discretization))
     phi = np.linspace(0., const.PI, num=num + 1)
     theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
 
     # azimuths for points on meridian
-    v_num = int(const.HALF_PI // (SEAM_CONST * vertical_alpha))
+    v_num = int(const.HALF_PI // (const.SEAM_CONST * vertical_alpha))
     # v_num = int(const.HALF_PI // discretization)
     phi_meridian = np.concatenate((const.PI * np.ones(v_num - 1), np.zeros(v_num)))
     theta_meridian = up.concatenate((np.linspace(const.HALF_PI, 0, num=v_num + 1)[1:-1],
@@ -162,7 +157,7 @@ def improved_trapezoidal_mesh(discretization, forward_radius, polar_radius, side
     separator = []
 
     # azimuths for points on equator
-    num = int(const.PI // (SEAM_CONST * discretization))
+    num = int(const.PI // (const.SEAM_CONST * discretization))
     phi = np.linspace(0., const.PI, num=num + 1)
     theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
@@ -273,13 +268,13 @@ def trapezoidal_overcontact_farside_points(discretization):
     separator = []
 
     # calculating points on farside equator
-    num = int(const.HALF_PI // (SEAM_CONST * discretization))
+    num = int(const.HALF_PI // (const.SEAM_CONST * discretization))
     phi = np.linspace(const.HALF_PI, const.PI, num=num + 2)
     theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
 
     # calculating points on phi = pi meridian
-    v_num = int(const.HALF_PI / (SEAM_CONST * vertical_alpha))
+    v_num = int(const.HALF_PI / (const.SEAM_CONST * vertical_alpha))
     phi_meridian1 = np.full(v_num - 1, const.PI)
     theta_meridian1 = np.linspace(0., const.HALF_PI, num=v_num - 1, endpoint=False)
     phi = up.concatenate((phi, phi_meridian1))
@@ -326,7 +321,7 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     separator = []
 
     # calculating points on farside equator
-    num = int(const.HALF_PI / (SEAM_CONST * discretization))
+    num = int(const.HALF_PI / (const.SEAM_CONST * discretization))
     phi = np.linspace(const.HALF_PI, const.PI, num=num + 2)
     theta = np.full(phi.shape, const.HALF_PI)
     separator.append(np.shape(theta)[0])
@@ -337,7 +332,7 @@ def improved_trapezoidal_overcontact_farside_points(discretization, polar_radius
     phi += corr
 
     # calculating points on phi = pi meridian
-    v_num = int(const.HALF_PI / (SEAM_CONST * vertical_alpha))
+    v_num = int(const.HALF_PI / (const.SEAM_CONST * vertical_alpha))
     phi_meridian1 = np.full(v_num - 1, const.PI)
     theta_meridian1 = np.linspace(0., const.HALF_PI, num=v_num - 1, endpoint=False)
     # obliqueness correction
@@ -399,7 +394,7 @@ def _generate_neck_zs(delta_z, component, neck_position, neck_polynomial):
     # alpha along cylindrical axis z needs to be corrected to maintain similar sizes of triangle sizes
     # delta_z = const.POINT_ROW_SEPARATION_FACTOR * delta_z
     delta_z = delta_z
-    delta_z_polar = SEAM_CONST * delta_z
+    delta_z_polar = const.SEAM_CONST * delta_z
     # test radii on neck_position
     separator = []
 

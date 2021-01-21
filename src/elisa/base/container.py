@@ -161,10 +161,8 @@ class PositionContainer(object):
         :param line_of_sight: numpy.array;
         :return:
         """
-        if (line_of_sight == const.LINE_OF_SIGHT).all():
-            return utils.calculate_cos_theta_los_x(normals=normals)
-        else:
-            return utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
+        return utils.calculate_cos_theta_los_x(normals=normals) if (line_of_sight == const.LINE_OF_SIGHT).all() \
+            else utils.calculate_cos_theta(normals=normals, line_of_sight_vector=line_of_sight)
 
     @staticmethod
     def darkside_filter(cosines):
@@ -453,8 +451,7 @@ class StarContainer(object):
             base_areas = utils.triangle_areas(self.faces[:self.base_symmetry_faces_number],
                                               self.points[:self.base_symmetry_points_number])
             return base_areas[self.face_symmetry_vector]
-        else:
-            return utils.triangle_areas(self.faces, self.points)
+        return utils.triangle_areas(self.faces, self.points)
 
     def calculate_all_areas(self):
         """

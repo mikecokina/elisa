@@ -21,7 +21,7 @@ def manage_observations(fn, fn_args, position, **kwargs):
     Function decides whether curve will be calculated using single or multi-process approach.
 
     :param fn: function used for curve integration
-    :param fn_args: tuple; some of the argument in `fn`
+    :param fn_args: Tuple; some of the argument in `fn`
     :param position: List;
     :param kwargs: Dict;
     :return: Dict; calculated curves (in each passbands)

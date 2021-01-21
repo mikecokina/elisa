@@ -322,11 +322,11 @@ def evaluate_binary_params(*args):
     ::
 
         Tuple[
-                param_columns: dict; name of the column: index of the column,
-                stop_idx: dict; indices of endpoints for certain parameter groups eg. system, primary parameters,
+                param_columns: Dict; name of the column: index of the column,
+                stop_idx: Dict; indices of endpoints for certain parameter groups eg. system, primary parameters,
                                 primary spots etc...,
-                spot_numbers: dict; number of spots for each components,
-                pulsation_numbers: dict; number of pulsation modes for each components,
+                spot_numbers: Dict; number of spots for each components,
+                pulsation_numbers: Dict; number of pulsation modes for each components,
                 cpl: int; component parameter
                 renormalized_chain: numpy.array; mcmc chain with renormalized (actual) values
             ]

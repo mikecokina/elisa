@@ -12,6 +12,14 @@ elisa.analytics.tools.bvi module
    :undoc-members:
    :show-inheritance:
 
+elisa.analytics.tools.horizon module
+------------------------------------
+
+.. automodule:: elisa.analytics.tools.horizon
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 elisa.analytics.tools.utils module
 ----------------------------------
 
@@ -19,7 +27,6 @@ elisa.analytics.tools.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 Module contents
 ---------------

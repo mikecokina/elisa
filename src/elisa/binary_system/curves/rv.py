@@ -33,7 +33,7 @@ def com_radial_velocity(binary, **kwargs):
     Calculates radial velocity curves of the `binary` system using radial velocities of centres of masses.
 
     :param binary: elisa.binary_system.system.BinarySystem; binary system instance
-    :param kwargs: dict;
+    :param kwargs: Dict;
     :**kwargs options**:
         * **position_method** * -- function that is used to calculate orbital motion
         * **phases** * -- phases in which to calculate
@@ -75,8 +75,8 @@ def compute_circular_synchronous_rv_curve(binary, **kwargs):
     """
     initial_system = c_router.prep_initial_system(binary)
     rv_labels = list(settings.BINARY_COUNTERPARTS.keys())
-    return c_router.produce_circular_sync_curves(binary, initial_system, kwargs.pop("phases"),
-                                                 rv_point.compute_rv_at_pos, rv_labels, **kwargs)
+    args = binary, initial_system, kwargs.pop("phases"), rv_point.compute_rv_at_pos, rv_labels
+    return c_router.produce_circular_sync_curves(*args, **kwargs)
 
 
 def compute_circular_spotty_asynchronous_rv_curve(binary, **kwargs):

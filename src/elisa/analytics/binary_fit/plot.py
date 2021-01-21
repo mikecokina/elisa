@@ -335,7 +335,7 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
                                       the same as in corner.corner function.
     :param show_titles: bool; If True, labels above histogram with name of the variable, value,
                               errors and units are displayed
-    :param plot_units: dict; Units in which to display the output {variable_name: unit, ...}
+    :param plot_units: Dict; Units in which to display the output {variable_name: unit, ...}
     :param n_bins: int; positive, number of bins in each histogram
     """
     logger.debug('Producing/retrieving data for corner plot.')

@@ -28,8 +28,8 @@ class Buffer(object):
         """
         If buffer exceeds allowed size, the first items are deleted.
 
-        :param storage: dict; buffer
-        :return: dict; reduced buffer
+        :param storage: Dict; buffer
+        :return: Dict; reduced buffer
         """
         if len(storage) > cls.MAX_STORAGE:
             for key in storage.keys()[:len(storage)-cls.MAX_STORAGE]:

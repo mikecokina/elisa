@@ -96,7 +96,7 @@ class LightCurveFit(AbstractLCFit, metaclass=ABCMeta):
         :param x0: List[Dict]; initial state (metadata included)
         :param discretization: float; discretization of objects
         :param interp_treshold: int; data binning treshold
-        :param samples: Union[str, List]; `uniform', 'adaptive' or list with phases in (0, 1) interval
+        :param samples: Union[str, List]; 'uniform', 'adaptive' or list with phases in (0, 1) interval
         :param kwargs: optional arguments for least_squares function (see documentation for
                        scipy.optimize.least_squares method)
         :return: Dict;

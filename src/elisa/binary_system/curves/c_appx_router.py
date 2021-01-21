@@ -37,7 +37,7 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
     :param position_method: function;
     :param try_to_find_appx: bool;
     :param phases_span_test: bool; test if phases coverage is sufiicient for phases mirroring along apsidal line
-    :param approx_method_list: list; curve generator functions [exact curve integrator,
+    :param approx_method_list: List; curve generator functions [exact curve integrator,
                                                            interpolation on apsidaly symmetrical points,
                                                            copying geometry from apsidaly symmetrical points,
                                                            geometry similarity]
@@ -64,15 +64,15 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
 
     # APPX ZERO ********************************************************************************************************
     if not try_to_find_appx:
-        return 'zero', lambda: approx_method_list[0](binary, all_orbital_pos, potentials, crv_labels, curve_fn,
-                                                     **kwargs)
+        args = binary, all_orbital_pos, potentials, crv_labels, curve_fn
+        return 'zero', lambda: approx_method_list[0](*args, **kwargs)
 
     # APPX ONE *********************************************************************************************************
     appx_one = eval_approximation_one(phases, phases_span_test)
 
     if appx_one:
-        return 'one', lambda: approx_method_list[1](binary, phases, reduced_orbit_arr, counterpart_postion_arr,
-                                                    potentials, crv_labels, curve_fn, **kwargs)
+        args = binary, phases, reduced_orbit_arr, counterpart_postion_arr, potentials, crv_labels, curve_fn
+        return 'one', lambda: approx_method_list[1](*args, **kwargs)
 
     # APPX TWO *********************************************************************************************************
 
@@ -80,16 +80,17 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
                                                            reduced_orbit_supplement_arr, phases_span_test)
 
     if appx_two:
-        return 'two', lambda: approx_method_list[2](binary, phases, orbital_supplements, potentials, crv_labels,
-                                                    curve_fn, **kwargs)
+        args = binary, phases, orbital_supplements, potentials, crv_labels, curve_fn
+        return 'two', lambda: approx_method_list[2](*args, **kwargs)
 
     # APPX THREE *******************************************************************************************************
     approx_three, new_geometry_mask, sorted_positions = eval_approximation_three(binary, all_orbital_pos_arr)
     if approx_three:
-        return 'three', lambda: approx_method_list[3](binary, sorted_positions, new_geometry_mask, potentials,
-                                                      crv_labels, curve_fn, **kwargs)
+        args = binary, sorted_positions, new_geometry_mask, potentials, crv_labels, curve_fn
+        return 'three', lambda: approx_method_list[3](*args, **kwargs)
 
-    return 'zero', lambda: approx_method_list[0](binary, all_orbital_pos, potentials, crv_labels, curve_fn, **kwargs)
+    args = binary, all_orbital_pos, potentials, crv_labels, curve_fn
+    return 'zero', lambda: approx_method_list[0](*args, **kwargs)
 
 
 # *******************************************evaluate_approximations****************************************************
@@ -189,8 +190,8 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     :param phases: numpy.array;
     :param reduced_orbit_arr: numpy.array; base orbital positions
     :param counterpart_postion_arr: numpy.array; orbital positions symmetric to the `base_orbit_arr`
-    :param potentials: dict; corrected potentials
-    :param crv_labels: list; curve_labels
+    :param potentials: Dict; corrected potentials
+    :param crv_labels: List; curve_labels
     :param curve_fn: curve integrator function
     :param kwargs: Dict;
     :**kwargs options**:
@@ -240,8 +241,8 @@ def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, pote
     :param binary: elisa.binary_system.system.BinarySystem;
     :param phases: numpy.array;
     :param orbital_supplements: elisa.binary_system.orbit.container.OrbitalSupplements;
-    :param potentials: dict; corrected potentials
-    :param crv_labels: list; curve_labels
+    :param potentials: Dict; corrected potentials
+    :param crv_labels: List; curve_labels
     :param curve_fn: curve integrator function
     :param kwargs: Dict;
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]
@@ -280,8 +281,8 @@ def integrate_eccentric_curve_appx_three(binary, orbital_positions, new_geometry
     :param orbital_positions: numpy.array; orbital positions sorted by components distance
     :param new_geometry_mask: bool; mask to `orbital_positions` which determines which surface
                                     geometry should be fully recalculated
-    :param potentials: dict; corrected surface potentials
-    :param crv_labels: list; curve_labels
+    :param potentials: Dict; corrected surface potentials
+    :param crv_labels: List; curve_labels
     :param curve_fn: curve integrator function
     :param kwargs: kwargs: Dict;
             * ** passband ** * - Dict[str, elisa.observer.PassbandContainer]

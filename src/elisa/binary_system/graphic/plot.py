@@ -97,7 +97,7 @@ class Plot(object):
         :param plane: str; (`xy`, `yz` or `xz`) specifying what plane cross-section to display default is `xy`
         :param phase: float; phase at which to plot cross-section
         :param components_to_plot: str; component to plot `primary`, `secondary` or `both` (default)
-        :param colors: tuple; tuple of colors for primary and secondary component equipotentials
+        :param colors: Tuple; tuple of colors for primary and secondary component equipotentials
         :param legend: bool; legend display on/off
         :param legend_loc: int; location of the legend
         """
@@ -225,8 +225,8 @@ class Plot(object):
         :param components_to_plot: str; `primary`, `secondary` or `both` (default),
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
-        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity`, 'radiance',
-        `normal_radiance` or None(default)
+        :param colormap: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'radiance',
+                              'normal_radiance' or None(default)
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask_primary: array[bool]; mask to select which faces to display
         :param face_mask_secondary: array[bool]: mask to select which faces to display
@@ -234,16 +234,16 @@ class Plot(object):
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
         :param unit: str; colorbar unit
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
-        :param colorbar_orientation: str; `horizontal` or `vertical` (default)
+        :param colorbar_orientation: str; 'horizontal' or 'vertical' (default)
         :param colorbar: bool; colorbar on/off switch
-        :param scale: str; `linear` or `log`
-        :param surface_colors: tuple; tuple of colors for components if `colormap` are not specified
+        :param scale: str; 'linear' or 'log'
+        :param surface_colors: Tuple; tuple of colors for components if `colormap` are not specified
         :param separate_colormaps: bool; if True, figure will contain separate colormap for each component
         :param colorbar_separation: float; shifting position of the colorbar from its default postition, default is 0.0
         :param colorbar_size: float; relative size of the colorbar, default 0.7
         :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
         :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
-        produced figure
+                                             produced figure
         """
         surface_kwargs = dict()
 
@@ -316,15 +316,15 @@ class Plot(object):
             })
 
             face_mask = locals().get(f'face_mask_{component}')
-            if not is_empty(face_mask):
-                surface_kwargs[f'{component}_triangles'] = surface_kwargs[f'{component}_triangles'][face_mask]
-                if colormap is not None:
-                    surface_kwargs[f'{component}_cmap'] = surface_kwargs[f'{component}_cmap'][face_mask]
+            face_mask = np.ones(star.faces.shape[0], dtype=bool) if face_mask is None else face_mask
+            surface_kwargs[f'{component}_triangles'] = surface_kwargs[f'{component}_triangles'][face_mask]
+            if colormap is not None:
+                surface_kwargs[f'{component}_cmap'] = surface_kwargs[f'{component}_cmap'][face_mask]
 
             if normals:
                 surface_kwargs.update({
-                    f'{component}_centres': star.face_centres,
-                    f'{component}_arrows': star.normals
+                    f'{component}_centres': star.face_centres[face_mask],
+                    f'{component}_arrows': star.normals[face_mask]
                 })
 
             if axis_unit != u.dimensionless_unscaled:

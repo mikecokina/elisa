@@ -256,7 +256,7 @@ class LCFit(object):
         """
         Function returns R^2 for given model parameters and observed data.
 
-        :param model_parameters: dict; serialized form
+        :param model_parameters: Dict; serialized form
         :param data: DataSet; observational data
         :param discretization: float;
         :param interp_treshold: int;
@@ -264,9 +264,8 @@ class LCFit(object):
         """
         b_parameters = parameters.BinaryInitialParameters(**model_parameters)
         b_parameters.validate_lc_parameters(morphology=self.morphology)
-        return self.fit_method_instance.coefficient_of_determination(
-            model_parameters, data, discretization, interp_treshold
-        )
+        args = model_parameters, data, discretization, interp_treshold
+        return self.fit_method_instance.coefficient_of_determination(*args)
 
     @abstractmethod
     def resolve_fit_cls(self, morphology: str):
@@ -342,7 +341,7 @@ class LCFitMCMC(LCFit):
         """
         Filtering mcmc chain to given set of intervals.
 
-        :param boundaries: dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
+        :param boundaries: Dict; dictionary of boundaries e.g. {'primary@te_ff': (5000, 6000), other parameters ...}
         :return: numpy.array; filtered flat chain
         """
         return io_tools.filter_chain(self, **boundaries)

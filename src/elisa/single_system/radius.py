@@ -13,7 +13,7 @@ def calculate_radius(mass, angular_velocity, surface_potential, *args):
     :param mass: float;
     :param angular_velocity: float;
     :param surface_potential: float;
-    :param args: tuple;
+    :param args: Tuple;
 
     ::
 
@@ -35,10 +35,9 @@ def calculate_radius(mass, angular_velocity, surface_potential, *args):
     if ier == 1 and not np.isnan(solution[0]) and 5 * init_val >= solution[0] >= 0:
         return solution[0]
     else:
-        if 0 < solution[0] < 5 * init_val:
-            return solution[0]
-        else:
+        if not (0 < solution[0] < 5 * init_val):
             raise ValueError(f'Invalid value of radius {solution} was calculated.')
+        return solution[0]
 
 
 def calculate_polar_radius(mass, angular_velocity, surface_potential):

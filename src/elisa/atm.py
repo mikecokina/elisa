@@ -214,9 +214,9 @@ class NaiveInterpolatedAtm(object):
         :param log_g: Iterable[float];
         :param metallicity: float;
         :param atlas: str; atmosphere model identificator (see settings.ATLAS_TO_ATM_FILE_PREFIX.keys())
-        :param kwargs:
-        :return: Tuple[dict, numpy.float, numpy.float]; atmosphere profiles for each passband, flux multiplicator,
-        wave multiplicator;
+        :param kwargs: Dict;
+        :return: Tuple[Dict, numpy.float, numpy.float]; atmosphere profiles for each passband, flux multiplicator,
+                                                        wave multiplicator;
         """
         l_bandw, r_bandw = kwargs["left_bandwidth"], kwargs["right_bandwidth"]
         passband_containers = kwargs["passband"]
@@ -256,8 +256,8 @@ class NaiveInterpolatedAtm(object):
         :param kwargs:
         :return: Dict;
         """
-        localized_atms, flux_mult, wave_mult = \
-            NaiveInterpolatedAtm.get_atm_profiles(temperature, log_g, metallicity, atlas, **kwargs)
+        args = temperature, log_g, metallicity, atlas
+        localized_atms, flux_mult, wave_mult = NaiveInterpolatedAtm.get_atm_profiles(*args, **kwargs)
         return compute_normal_radiances(localized_atms, flux_mult=flux_mult, wave_mult=wave_mult)
 
     @staticmethod
@@ -409,7 +409,8 @@ class NaiveInterpolatedAtm(object):
                  domain_df["log_g"].apply(lambda x: utils.numeric_logg_to_string(x))
 
         return list(
-            os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv")
+            os.path.join(str(settings.ATLAS_TO_BASE_DIR[atlas]), str(directory)) + os.path.sep + fnames + ".csv"
+        )
 
 
 def arange_atm_to_same_wavelength(atm_containers):
@@ -831,9 +832,9 @@ def get_atm_table_filename(temperature, log_g, metallicity, atlas):
     :return: str;
     """
     prefix = validated_atlas(atlas)
-    return \
-        f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}_" \
-        f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
+    retval = f"{prefix}{utils.numeric_metallicity_to_string(metallicity)}_" \
+             f"{int(temperature)}_{utils.numeric_logg_to_string(log_g)}.csv"
+    return retval
 
 
 def get_atm_directory(metallicity, atlas):
@@ -1029,7 +1030,7 @@ def unique_atm_fpaths(fpaths):
     ::
 
         (path set - set of unique atmosphere file names,
-         map - dict where every unique atm file has listed indices where it occures)
+         map - Dict where every unique atm file has listed indices where it occures)
     """
     fpaths_set = set(fpaths)
     fpaths_map = {key: list() for key in fpaths_set}
@@ -1166,9 +1167,9 @@ def correct_normal_radiance_to_optical_depth(normal_radiances, ld_cfs):
     Correcting normal radiance values by increment that will correct inacuracy caused by using too shallow optical depth
     for the middle of the disk. Correction was derived analytically from spherical model.
 
-    :param normal_radiances: dict; dict(component: dict(filter: normal radiances for each face))
-    :param ld_cfs: dict; dict(component: dict(filter: limb darkening coefficients for each face))
-    :return: dict;
+    :param normal_radiances: Dict; dict(component: dict(filter: normal radiances for each face))
+    :param ld_cfs: Dict; dict(component: dict(filter: limb darkening coefficients for each face))
+    :return: Dict;
     """
     for star, component_normal_radiances in normal_radiances.items():
         ld_coefficients = ld_cfs[star]['bolometric'].T

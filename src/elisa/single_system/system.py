@@ -183,7 +183,7 @@ class SingleSystem(System):
         """
         calculates a equipotential boundary of star in zx(yz) plane
 
-        :return: tuple; (np.array, np.array)
+        :return: Tuple; (np.array, np.array)
         """
         points = []
         angles = np.linspace(0, c.FULL_ARC, 300, endpoint=True)
@@ -230,11 +230,10 @@ class SingleSystem(System):
 
         x0 = - c.G * self.star.mass / self.star.surface_potential
         solution = optimize.newton(model.radial_potential_derivative, x0, args=args, tol=1e-12)
-        if not np.isnan(solution):
-            return model.potential_fn(solution, *args)
-        else:
+        if np.isnan(solution):
             raise ValueError("Iteration process to solve critical potential seems "
                              "to lead nowhere (critical potential solver has failed).")
+        return model.potential_fn(solution, *args)
 
     def check_stability(self):
         """
@@ -262,10 +261,7 @@ class SingleSystem(System):
         idx = np.arange(np.shape(input_argument)[0], dtype=np.int)[:, np.newaxis]
         positions = np.hstack((idx, np.full(idx.shape, np.nan), rotational_motion))
 
-        if return_nparray:
-            return positions
-        else:
-            return [const.Position(*p) for p in positions]
+        return positions if return_nparray else [const.Position(*p) for p in positions]
 
     def calculate_equivalent_radius(self):
         """
