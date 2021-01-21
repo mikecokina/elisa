@@ -388,10 +388,10 @@ class InitialParameters(object):
             if not isinstance(prop, InitialParameter):
                 continue
 
-            if prop.constraint is None and not prop.fixed:
-                if not (prop.min <= prop.value <= prop.max):
-                    raise InitialParamsError(f'Initial parameters in parameter `{prop.param}` are not valid. '
-                                             f'Invalid bounds: {prop.min} <= {prop.value} <= {prop.max}')
+            # if prop.constraint is None and not prop.fixed:
+            #     if not (prop.min <= prop.value <= prop.max):
+            #         raise InitialParamsError(f'Initial parameters in parameter `{prop.param}` are not valid. '
+            #                                  f'Invalid bounds: {prop.min} <= {prop.value} <= {prop.max}')
             if prop.fixed is not None and prop.constraint is not None:
                 raise InitialParamsError(f'It is not allowed for `{prop.param}` to contain '
                                          f'`fixed` and `constraint` parameter.')
