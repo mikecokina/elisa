@@ -395,19 +395,6 @@ class StarContainer(object):
         """
         return deepcopy(self)
 
-    def get_flatten_parameter(self, parameter):
-        """
-        returns flatten parameter
-        :param parameter: str; name of the parameter to flatten (do not use for faces)
-        """
-        if parameter in ['faces']:
-            raise ValueError(f'Function is not applicable to flatten `{parameter}` attribute.')
-        retval = getattr(self, parameter)
-        if self.has_spots():
-            for spot in self.spots.values():
-                retval = up.concatenate((retval, getattr(spot, parameter)), axis=0)
-        return retval
-
     def remove_spot(self, spot_index: int):
         """
         Remove n-th spot index of object.
@@ -499,38 +486,22 @@ class StarContainer(object):
 
             spot_instance.log_g = np.array([])
 
-    def get_flatten_properties(self):
+    def get_flatten_parameter(self, prop):
         """
-        Return flatten ndarrays of points, faces, etc. from object instance and spot instances for given object.
-        :return: Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, ndarray, ndarray]
+        Returns flattened property of the container.
 
-        ::
-
-            Tuple(points, normals, faces, temperatures, log_g, rals, face_centres, areas, velocities, face_centres)
+        :param prop: str; property identifier (e.g. 'points')
+        :return: numpy.array; flattened property
         """
-        points = self.points
-        normals = self.normals
-        faces = self.faces
-        temperatures = self.temperatures
-        log_g = self.log_g
-        centres = self.face_centres
-        velocities = self.velocities
-        areas = self.areas
-        face_centres = self.face_centres
+        list_to_concat = [getattr(self, prop), ]
+        if not self.has_spots() or self._flatten:
+            return list_to_concat[0]
 
-        if isinstance(self.spots, (dict,)):
-            for idx, spot in self.spots.items():
-                faces = up.concatenate((faces, spot.faces + len(points)), axis=0)
-                points = up.concatenate((points, spot.points), axis=0)
-                normals = up.concatenate((normals, spot.normals), axis=0)
-                temperatures = up.concatenate((temperatures, spot.temperatures), axis=0)
-                log_g = up.concatenate((log_g, spot.log_g), axis=0)
-                centres = up.concatenate((centres, spot.face_centres), axis=0)
-                areas = up.concatenate((areas, spot.areas), axis=0)
-                velocities = up.concatenate((velocities, spot.velocities), axis=0)
-                face_centres = up.concatenate((face_centres, spot.face_centres), axis=0)
-
-        return points, normals, faces, temperatures, log_g, centres, areas, velocities, face_centres
+        list_to_concat += [getattr(spot, prop) for spot in self.spots.values()]
+        if prop == 'faces':
+            lengths = np.cumsum([np.max(item) + 1 for item in list_to_concat])
+            list_to_concat[1:] = [list_to_concat[index+1] + lengths[index] for index in self.spots]
+        return np.concatenate(list_to_concat, axis=0)
 
     def flatt_it(self):
         """
@@ -543,11 +514,16 @@ class StarContainer(object):
         if self._flatten:
             return self
 
-        props_list = ["points", "normals", "faces", "temperatures", "log_g", "centers", "areas", "velocities",
-                      "face_centres", ""]
-        flat_props = self.get_flatten_properties()
-        for prop, value in zip(props_list, flat_props):
-            setattr(self, prop, value)
+        props_list = ["points", "normals", "faces", "temperatures", "log_g", "face_centres", "areas", "velocities"]
+
+        for prop in props_list:
+            setattr(self, prop, self.get_flatten_parameter(prop))
+
+        # if self.has_pulsations():
+        #     setattr(self, 'points_spherical', self.get_flatten_parameter('points_spherical'))
+        #     mode = self.pulsations[0]
+        #     to_concat = [mode.points, ] + [s_points for s_points in mode.spot_points.values()]
+        #     setattr(mode, 'points', np.concatenate(to_concat, axis=0))
 
         self._flatten = True
         return self

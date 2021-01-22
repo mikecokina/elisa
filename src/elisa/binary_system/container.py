@@ -63,7 +63,7 @@ class OrbitalPositionContainer(PositionContainer):
     def has_pulsations(self):
         return self.primary.has_pulsations() or self.secondary.has_pulsations()
 
-    def build(self, components_distance=None, component="all", incorporate_perturbations=True, **kwargs):
+    def build(self, components_distance=None, component="all", build_pulsations=True, **kwargs):
         """
         Main method to build binary star system from parameters given on init of BinaryStar.
 
@@ -80,9 +80,7 @@ class OrbitalPositionContainer(PositionContainer):
 
         :param component: str; `primary` or `secondary`
         :param components_distance: float; distance of components is SMA units
-        :param incorporate_perturbations: bool; if True, only necessary pre-requisition quantities for evaluation of
-                                          pulsations are calculated. The actual perturbations of surface quantities is
-                                          then done by `pulse.container_ops.incorporate_pulsations_to_model`
+        :param build_pulsations: bool; if True, only equilibrium model is build
         :return: OrbitalPositionContainer;
         """
 
@@ -90,7 +88,8 @@ class OrbitalPositionContainer(PositionContainer):
         self.build_mesh(components_distance, component)
         self.build_from_points(components_distance, component)
 
-        self.build_pulsations(component, components_distance, incorporate_perturbations)
+        if build_pulsations:
+            self.build_pulsations(component, components_distance)
         return self
 
     def build_from_points(self, components_distance=None, component="all"):
@@ -172,8 +171,8 @@ class OrbitalPositionContainer(PositionContainer):
     def build_temperature_perturbations(self, components_distance, component):
         return temperature.build_temperature_perturbations(self, components_distance, component)
 
-    def build_pulsations(self, component, components_distance, incorporate_perturbations):
-        return pulsations.build_pulsations(self, component, components_distance, incorporate_perturbations)
+    def build_pulsations(self, component, components_distance):
+        return pulsations.build_pulsations(self, component, components_distance)
 
     def _components_distance(self, components_distance):
         return components_distance if components_distance is not None else self.position.distance
