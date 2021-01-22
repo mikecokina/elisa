@@ -133,32 +133,36 @@ def complex_displacement(star, scale):
             scale=scale
         )
 
-        if not star.is_flat():
-            for spot_idx, spoints in star.pulsations[0].spot_points.items():
-                mode.spot_complex_displacement[spot_idx] = kinematics.calculate_displacement_coordinates(
-                    mode, spoints, mode.spot_point_harmonics[spot_idx], mode.spot_point_harmonics_derivatives[spot_idx],
-                    scale=scale
-                )
+        if star.is_flat():
+            continue
+
+        for spot_idx, spoints in star.pulsations[0].spot_points.items():
+            mode.spot_complex_displacement[spot_idx] = kinematics.calculate_displacement_coordinates(
+                mode, spoints, mode.spot_point_harmonics[spot_idx], mode.spot_point_harmonics_derivatives[spot_idx],
+                scale=scale
+            )
 
     return star
 
 
-def position_perturbation(star, com_x, phase, update_container=False, return_perturbation=False):
+def position_perturbation(star, com_x, phase, update_container=True, return_perturbation=False):
+    """
+    Calculates the deformation of the surface mesh due to the pulsations.
+
+    :param star: base.container.StarContainer;
+    :param com_x: float; x-component of system's centre of mass
+    :param phase: float;
+    :param update_container: bool; if True, perturbation is incorporated into star.points
+    :param return_perturbation: bool; if True, calculated displacement (in cartesian coordinates) is returned
+    :return: Union[Tuple[numpy.array, dict], None];
+    """
     # initializing cumulative variables for displacement
     tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star, phase)
-    displacement, spot_displacement = None, dict()
+    displacement = None
 
-    tilt_displacement_sph = np.zeros(star.pulsations[0].points.shape, dtype=np.float64)
-    tilt_displacement_spots_sph = {spot_idx: np.zeros(spot.shape, dtype=np.float64)
-                                   for spot_idx, spot in star.pulsations[0].spot_points.items()}
-
-    for mode_index, mode in star.pulsations.items():
-        tilt_displacement_sph += kinematics.calculate_mode_angular_displacement(mode.complex_displacement)
-
-        for spot_idx, spoints in star.pulsations[0].spot_points.items():
-            tilt_displacement_spots_sph[spot_idx] += kinematics.calculate_mode_angular_displacement(
-                mode.spot_complex_displacement[spot_idx]
-            )
+    tilt_displacement_sph = np.sum([
+        kinematics.calculate_mode_angular_displacement(mode.complex_displacement) for mode in star.pulsations.values()
+    ], axis=0)
 
     points = putils.derotate_surface_points(
         star.pulsations[0].points + tilt_displacement_sph,
@@ -168,6 +172,20 @@ def position_perturbation(star, com_x, phase, update_container=False, return_per
         displacement = points - getattr(star, 'points')
     if update_container:
         setattr(star, 'points', points)
+
+    # function will terminate here if the container is flat
+    if star.is_flat():
+        return displacement, dict() if return_perturbation else None
+
+    spot_displacement = dict()
+    tilt_displacement_spots_sph = {spot_idx: np.zeros(spot.shape, dtype=np.float64)
+                                   for spot_idx, spot in star.pulsations[0].spot_points.items()}
+
+    for mode_index, mode in star.pulsations.items():
+        for spot_idx, spoints in star.pulsations[0].spot_points.items():
+            tilt_displacement_spots_sph[spot_idx] += kinematics.calculate_mode_angular_displacement(
+                mode.spot_complex_displacement[spot_idx]
+            )
 
     spot_points = dict()
     for spot_idx, spot in star.spots.items():
@@ -185,21 +203,13 @@ def position_perturbation(star, com_x, phase, update_container=False, return_per
 
 def velocity_perturbation(star, phase, update_container=False, return_perturbation=False):
     tilt_phi, tilt_theta = putils.generate_tilt_coordinates(star, phase)
-    spot_velocity_pert = dict()
 
-    tilt_velocity_sph = np.zeros(star.pulsations[0].points.shape, dtype=np.float64)
-    tilt_velocity_spots_sph = {spot_idx: np.zeros(spot.shape, dtype=np.float64)
-                               for spot_idx, spot in star.pulsations[0].spot_points.items()}
-
-    # calculating kinematics quantities
-    for mode_index, mode in star.pulsations.items():
-        tilt_velocity_sph += kinematics.calculate_mode_angular_derivatives(
+    # calculating perturbed velocity in spherical coordinates
+    tilt_velocity_sph = np.sum([
+        kinematics.calculate_mode_angular_derivatives(
             displacement=mode.complex_displacement, angular_frequency=mode.angular_frequency
-        )
-        for spot_idx, spoints in star.pulsations[0].spot_points.items():
-            tilt_velocity_spots_sph[spot_idx] += kinematics.calculate_mode_angular_derivatives(
-                displacement=mode.spot_complex_displacement[spot_idx], angular_frequency=mode.angular_frequency
-            )
+        ) for mode in star.pulsations.values()
+    ], axis=0)
 
     velocity_pert = putils.derotate_surface_displacements(
         tilt_velocity_sph, star.pulsations[0].points, star.points_spherical, tilt_phi, tilt_theta
@@ -209,6 +219,19 @@ def velocity_perturbation(star, phase, update_container=False, return_perturbati
     if update_container:
         star.velocities += velocity_pert
 
+    # function will terminate here if the container is flat
+    if star.is_flat():
+        return velocity_pert, dict() if return_perturbation else None
+
+    # calculating perturbed velocity in spherical coordinates
+    tilt_velocity_spots_sph = {
+        spot_idx: np.sum([kinematics.calculate_mode_angular_derivatives(
+                displacement=mode.spot_complex_displacement[spot_idx], angular_frequency=mode.angular_frequency
+            ) for mode in star.pulsations.values()], axis=0)
+        for spot_idx in star.pulsations[0].spot_points
+    }
+
+    spot_velocity_pert = dict()
     for spot_idx, spot in star.spots.items():
         spot_velocity_pert[spot_idx] = putils.derotate_surface_displacements(
             tilt_velocity_spots_sph[spot_idx], star.pulsations[0].spot_points[spot_idx],

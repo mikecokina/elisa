@@ -80,6 +80,7 @@ def derotate_surface_points(points_to_derotate, phi, theta, com_x):
                                       phi, theta)
     derot_points = np.column_stack((points_to_derotate[:, 0], derot_phi, derot_theta))
     points = utils.spherical_to_cartesian(derot_points)
+    # TODO: this will not always work!!! container can be already rotated, solve it
     points[:, 0] += com_x
 
     return points

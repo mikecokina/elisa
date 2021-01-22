@@ -54,7 +54,7 @@ class RotationalPositionContainer(PositionContainer):
     def has_pulsations(self):
         return self.star.has_pulsations()
 
-    def build(self, incorporate_perturbations=True, **kwargs):
+    def build(self, build_pulsations=True, **kwargs):
         """
         Main method to build binary star system from parameters given on init of SingleStar.
 
@@ -70,15 +70,14 @@ class RotationalPositionContainer(PositionContainer):
             - build_temperature_distribution
 
         :param kwargs:
-        :param incorporate_perturbations: bool; if True, only necessary pre-requisition quantities for evaluation of
-                                          pulsations are calculated. The actual perturbations of surface quantities is
-                                          then done by `pulse.container_ops.incorporate_pulsations_to_model`
+        :param build_pulsations: bool;  if True, only equilibrium model is build
         :return: self;
         """
         self.build_surface()
         self.build_from_points()
 
-        self.build_pulsations(incorporate_perturbations)
+        if build_pulsations:
+            self.build_pulsations()
         return self
 
     def build_surface(self):
@@ -132,8 +131,8 @@ class RotationalPositionContainer(PositionContainer):
     def build_temperature_perturbations(self):
         return temperature.build_temperature_perturbations(self)
 
-    def build_pulsations(self, incorporate_perturbations):
-        return pulsations.build_pulsations(self, incorporate_perturbations)
+    def build_pulsations(self):
+        return pulsations.build_pulsations(self)
 
     def _phase(self, phase):
         return phase if phase is not None else self.position.phase
