@@ -32,9 +32,15 @@ class RotationalPositionContainer(PositionContainer):
         # calculating a time that elapsed since t0
         self.time = self.set_time()
 
+        # setting centre of mass
+        self.set_com()
+
     def set_on_position_params(self, position):
         setattr(self, "position", position)
         return self
+
+    def set_com(self):
+        setattr(self.star, 'com', np.array([0, 0, 0]))
 
     def set_time(self):
         return 86400 * self.rotation_period * self.position.phase

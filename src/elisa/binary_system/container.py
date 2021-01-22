@@ -34,13 +34,25 @@ class OrbitalPositionContainer(PositionContainer):
         # calculating a time that elapsed since t0
         self.time = self.set_time()
 
+        # setting centre of mass
+        self.set_com(self.position)
+
     def set_on_position_params(self, position, primary_potential=None, secondary_potential=None):
         setattr(self, "position", position)
+        # TODO: make a setter for position where com will be recalculated
+        self.set_com(position)
         if not utils.is_empty(primary_potential):
             setattr(self.primary, "surface_potential", primary_potential)
         if not utils.is_empty(secondary_potential):
             setattr(self.secondary, "surface_potential", secondary_potential)
         return self
+
+    def set_com(self, position):
+        setattr(self.primary, 'com', np.array([0, 0, 0]))
+        setattr(self.secondary, 'com', np.array([position.distance, 0, 0]))
+        self.rotate_property(self.primary, 'com')
+        self.rotate_property(self.secondary, 'com')
+        pass
 
     def set_time(self):
         return 86400 * self.period * self.position.phase

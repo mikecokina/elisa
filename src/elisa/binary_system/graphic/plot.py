@@ -300,7 +300,6 @@ class Plot(object):
 
         orbital_position_container = butils.move_sys_onpos(orbital_position_container, orbital_position, on_copy=True)
 
-        mult = np.array([1, 1, 1])[None, :]
         for component in components:
             star = getattr(orbital_position_container, component)
             points, faces = star.points, star.faces

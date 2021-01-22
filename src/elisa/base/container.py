@@ -102,18 +102,28 @@ class PositionContainer(object):
         for component in self._components:
             star_container = getattr(self, component)
             for prop in __PROPERTIES_TO_ROTATE__:
-                prop_value = getattr(star_container, prop)
-
-                correction = np.sign(const.LINE_OF_SIGHT[0]) * const.HALF_PI
-                args = (self.position.azimuth - correction, prop_value, "z", False,
-                        False)
-                prop_value = utils.around_axis_rotation(*args)
-
-                inverse = False if const.LINE_OF_SIGHT[0] == 1 else True
-                args = (const.HALF_PI - self.inclination, prop_value, "y", inverse, False)
-                prop_value = utils.around_axis_rotation(*args)
-                setattr(star_container, prop, prop_value)
+                self.rotate_property(star_container, prop)
         return self
+
+    def rotate_property(self, container, prop):
+        """
+        Rotating property of StarContainer from co-rotating frame to observer's frame of reference.
+
+        :param container: base.StarContainer;
+        :param prop: str; name of the property (e.g. 'points')
+        :return:
+        """
+        prop_value = getattr(container, prop)
+
+        correction = np.sign(const.LINE_OF_SIGHT[0]) * const.HALF_PI
+        args = (self.position.azimuth - correction, prop_value, "z", False,
+                False)
+        prop_value = utils.around_axis_rotation(*args)
+
+        inverse = False if const.LINE_OF_SIGHT[0] == 1 else True
+        args = (const.HALF_PI - self.inclination, prop_value, "y", inverse, False)
+        prop_value = utils.around_axis_rotation(*args)
+        setattr(container, prop, prop_value)
 
     def add_secular_velocity(self):
         """
@@ -329,6 +339,7 @@ class StarContainer(object):
         self.normal_radiance = normal_radiance
         self.los_cosines = los_cosines
         self.points_spherical = np.array([])
+        self.com = np.array([])
 
         self.point_symmetry_vector = np.array([])
         self.inverse_point_symmetry_matrix = np.array([])
