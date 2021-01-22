@@ -271,7 +271,7 @@ class Plot(object):
         orbital_position_container.set_on_position_params(orbital_position, potentials["primary"][0],
                                                           potentials["secondary"][0])
         orbital_position_container.build(components_distance=components_distance, components='both',
-                                         build_pulsations=~subtract_equilibrium)
+                                         build_pulsations=not subtract_equilibrium)
 
         orbital_position_container.flatt_it()
 
@@ -311,7 +311,8 @@ class Plot(object):
             })
             surface_kwargs.update({
                 f'{component}_cmap': plot.add_colormap_to_plt_kwargs(
-                    colormap, star, scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium
+                    colormap, star, scale=scale, unit=unit, subtract_equilibrium=subtract_equilibrium,
+                    model_scale=self.binary.semi_major_axis
                 )
             })
 

@@ -6,7 +6,8 @@ from elisa.ld import limb_darkening_factor
 from elisa.pulse import container_ops
 
 
-def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', subtract_equilibrium=False):
+def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', subtract_equilibrium=False,
+                               model_scale=1.0):
     """
     Returns a colormap that can be passed to surface plot kwargs.
 
@@ -15,6 +16,7 @@ def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', s
     :param star: elisa.base.container.StarContainer;
     :param scale: str; log or linear
     :param unit: astropy.units.Unit;
+    :param subtract_equilibrium: bool; if True; equilibrium values are subtracted from surface colormap
     :return: numpy.array;
     """
     colorbar_fn = {
@@ -26,10 +28,19 @@ def add_colormap_to_plt_kwargs(colormap, star, scale='linear', unit='default', s
         'radiance': radiance_cmap,
     }
     retval = None
-    if colormap is not None:
-        retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium)
-        if colormap not in colorbar_fn.keys():
-            raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {colorbar_fn.keys()}')
+    if colormap is None:
+        return retval
+
+    if colormap not in colorbar_fn.keys():
+        raise KeyError(f'Unknown `colormap` argument {colormap}. Options: {colorbar_fn.keys()}')
+    if subtract_equilibrium:
+        if not star.has_pulsations():
+            raise ZeroDivisionError('You are trying to display surface colormap with `subtract_equilibrium`=True but '
+                                    'surface of the star does not pulsate.')
+        # container_ops.generate_harmonics(star, com_x=com_x, phase=phase, time=system.time)
+        # container_ops.complex_displacement(star, scale=model_scale)
+        star.build_pulsations()
+    retval = colorbar_fn[colormap](star, scale, unit, subtract_equilibrium)
 
     return retval
 
@@ -76,8 +87,9 @@ def v_cmap(star, scale, unit, subtract_equilibrium):
     :return: numpy.array;
     """
     phase = 0
-    velocities = container_ops.velocity_perturbation(star, phase, update_container=True, return_perturbation=True) \
-        if subtract_equilibrium else np.linalg.norm(getattr(star, 'velocities'), axis=1)
+    velocities = container_ops.velocity_perturbation(star, phase, update_container=True, return_perturbation=True)[0] \
+        if subtract_equilibrium else getattr(star, 'velocities')
+    velocities = np.linalg.norm(velocities, axis=1)
     unt = units.km / units.s if unit == 'default' else unit
     value = transform_values(velocities, units.VELOCITY_UNIT, unt)
     return to_log(value, scale)
