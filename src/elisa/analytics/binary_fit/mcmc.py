@@ -22,6 +22,7 @@ from .. tools.utils import time_layer_resolver
 from ... observer.utils import normalize_light_curve
 from ... base.error import ElisaError
 from ... import settings
+from ... const import PI
 from ... graphic.mcmc_graphics import Plot
 from ... logger import getPersistentLogger
 from ... binary_system.system import BinarySystem
@@ -38,7 +39,15 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.flat_chain_path = ''
         self.eval_counter = 0
         self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
-        self.error_penalization = 0
+        self._ln_f = [0.0]
+
+    def s_squared(self, synthetic, ln_f):
+        """
+        Calculates constant component to the likelihood function derived from the errors.
+        :return: numpy.float;
+        """
+        return {key: np.power(self.y_err[key], 2) + np.power(values, 2) * np.exp(2 * ln_f)
+                for key, values in synthetic.items()}
 
     @staticmethod
     def ln_prior(xn):
@@ -48,18 +57,20 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
     def likelihood(self, xn):
         pass
 
-    def lhood(self, synthetic):
+    def lhood(self, synthetic, ln_f):
         """
         Calculates likelihood function value for a synthetic model to be a correct model for given observational data.
 
+        :param ln_f: List; marninalization parameters (currently supported single parameter for error penalization)
         :param synthetic: Dict; {'dataset_name': numpy.array, }
         :return: float;
         """
+        sigma2 = self.s_squared(synthetic, ln_f)
+        # print(ln_f)
         lh = - 0.5 * (np.sum(
-            [np.sum(np.power((self.y_data[item] - synthetic[item]) / self.y_err[item], 2))
-             for item, value in synthetic.items()]
-        ) + self.error_penalization)
-
+            [np.sum((np.power((self.y_data[key] - synthetic[key]), 2) / sigma2[key]) + np.log(2.0 * PI * sigma2[key]))
+             for key, value in synthetic.items()])
+        )
         self._last_known_lhood = lh if lh < self._last_known_lhood else self._last_known_lhood
         return lh
 
@@ -76,6 +87,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
 
     def _fit(self, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False, save=False, fit_id=None):
         vector = parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization)
+        vector += self._ln_f
         p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=vector)
         lnf = self.ln_probability
 
@@ -240,11 +252,14 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         :param xn: Iterable[float]; vector of parameters we are looking for
         :return: float;
         """
+        xn, ln_f = xn[:-len(self._ln_f)], xn[-len(self._ln_f):]
         xn = parameters.vector_renormalizer(xn, self.fitable.keys(), self.normalization)
         kwargs = parameters.prepare_properties_set(xn, self.fitable.keys(), self.constrained, self.fixed)
         synthetic = rv_model.central_rv_synthetic(*(self.x_data_reduced, self.observer), **kwargs)
         synthetic = {comp: rv[self.x_data_reducer[comp]] for comp, rv in synthetic.items()}
-        lhood = self.lhood(synthetic)
+
+        margin = parameters.vector_renormalizer(ln_f, ["ln_f"], {"ln_f": (-10, -9)})[0]
+        lhood = self.lhood(synthetic, margin)
 
         self.eval_counter += 1
         logger.debug(f'eval counter = {self.eval_counter}, likehood = {lhood}')
@@ -277,8 +292,12 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         burn_in = int(nsteps / 10) if burn_in is None else burn_in
         self.set_up(x0, data, observer_system_cls=RadialVelocitySystem)
 
-        ndim = len(self.initial_vector)
-        nwalkers = 2 * len(self.initial_vector) if nwalkers is None else nwalkers
+        # fixme: when all will work find better solution for marginalization param;
+        # fixme: put initialization to single place and avoid future issues
+        # +1 to add marginalization parameter
+        margin_dim = len(self._ln_f)
+        ndim = len(self.initial_vector) + margin_dim
+        nwalkers = 2 * (len(self.initial_vector) + margin_dim) if nwalkers is None else nwalkers
         self.mcmc_nwalkers_vs_ndim_validity_check(nwalkers, ndim)
 
         sampler = self._fit(nwalkers, ndim, nsteps, burn_in, initial_state, progress, save, fit_id)

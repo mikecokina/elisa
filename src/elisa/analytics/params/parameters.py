@@ -467,7 +467,7 @@ class StarInitialParameters(InitialParameters):
 class BinaryInitialParameters(InitialParameters):
     __slots__ = ["primary", "secondary", "eccentricity", "argument_of_periastron",
                  "inclination", "gamma", "period", "mass_ratio", "asini", "semi_major_axis",
-                 "additional_light", "phase_shift", "primary_minimum_time"]
+                 "additional_light", "phase_shift", "primary_minimum_time", "nuisance"]
 
     TRANSFORM_PROPERTIES_CLS = BinaryInitialProperties
     DEFAULT_NORMALIZATION = conf.DEFAULT_NORMALIZATION_SYSTEM
