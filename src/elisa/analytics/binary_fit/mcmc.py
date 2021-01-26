@@ -52,8 +52,8 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
 
     @staticmethod
     def ln_prior(xn):
-        # prior = np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0))).astype(float)
-        prior = np.prod(2*norm().pdf(2*(xn-0.5)))
+        prior = np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0))).astype(float)
+        # prior = np.prod(2*norm().pdf(2*(xn-0.5)))
         return -np.inf if prior == 0 else np.log(prior)
 
     @abstractmethod
@@ -168,7 +168,11 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
                 band: interpolate.interp1d(fit_xs, curve, kind='cubic')(phases[self.x_data_reducer[band]])
                 for band, curve in synthetic.items()
             }
-        return self.lhood(synthetic)
+
+        ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
+        ln_f = parameters.prepare_nuisance_properties_set(xn, self.fitable, self.fixed)[ln_f_key]
+
+        return self.lhood(synthetic, ln_f)
 
     def fit(self, data: Dict[str, LCData], x0: parameters.BinaryInitialParameters, discretization=5.0, nwalkers=None,
             nsteps=1000, initial_state=None, burn_in=None, percentiles=None, interp_treshold=None, progress=False,

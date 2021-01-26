@@ -55,7 +55,13 @@ def deserialize_result(result_dict: Dict) -> Dict:
 
         if system_slot in result_dict['system']:
             system_prop = result_dict['system'][system_slot]
-            data.update({f'system@{system_slot}': system_prop})
+            data.update({f'system{conf.PARAM_PARSER}{system_slot}': system_prop})
+
+        if system_slot == conf.NUISANCE_PARSER and system_slot in result_dict:
+            for nuisance_slot in NuisanceInitialPrameters.__slots__:
+                if nuisance_slot in result_dict[conf.NUISANCE_PARSER] and conf.NUISANCE_PARSER in result_dict:
+                    nuisance_prop = result_dict[conf.NUISANCE_PARSER][nuisance_slot]
+                    data.update({f'{conf.NUISANCE_PARSER}{conf.PARAM_PARSER}{nuisance_slot}': nuisance_prop})
 
         if system_slot in ['primary', 'secondary'] and system_slot in result_dict:
             component_prop = result_dict[system_slot]
@@ -259,7 +265,8 @@ def prepare_nuisance_properties_set(xn, properties, fixed):
     :return: Dict[str, float];
     """
     kwargs = {key: item for item, key in zip(xn, properties) if conf.NUISANCE_PARSER in key}
-    kwargs.update({key: item for item, key in zip(xn, fixed) if conf.NUISANCE_PARSER in key})
+    kwargs.update({key: val.value if isinstance(val, InitialParameter) else val for key, val in fixed.items()
+                   if conf.NUISANCE_PARSER in key})
     return kwargs
 
 
@@ -659,7 +666,7 @@ class BinaryInitialParameters(InitialParameters):
                                 for component in settings.BINARY_COUNTERPARTS]
 
         optional_fit_params = ['system@semi_major_axis', 'system@primary_minimum_time', 'system@phase_shift',
-                               'system@asini', 'system@mass_ratio', 'system@additional_light'] + \
+                               'system@asini', 'system@mass_ratio', 'system@additional_light', 'nuisance@ln_f'] + \
                               [f'{component}@{param}'
                                for param in ['mass', 'synchronicity', 'metallicity', 'spots', 'pulsations']
                                for component in settings.BINARY_COUNTERPARTS]
