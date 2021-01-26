@@ -162,7 +162,7 @@ class PositionContainer(object):
         :return:
         """
         return utils.calculate_cos_theta_los_x(normals=normals) if (line_of_sight == const.LINE_OF_SIGHT).all() \
-            else utils.calculate_cos_theta(normals=normals, line_of_sight_vector=np.array([1, 0, 0]))
+            else utils.calculate_cos_theta(normals=normals, line_of_sight_vector=line_of_sight)
 
     @staticmethod
     def darkside_filter(cosines):

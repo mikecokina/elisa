@@ -195,18 +195,17 @@ class Plot(object):
                 colormap, star_container, scale=scale, unit=unit
             )
         })
-
-        if not is_empty(face_mask):
-            surface_kwargs['triangles'] = surface_kwargs['triangles'][face_mask]
-            if 'colormap' in surface_kwargs.keys():
-                surface_kwargs['cmap'] = surface_kwargs['cmap'][face_mask]
+        face_mask = np.ones(star_container.faces.shape[0], dtype=bool) if face_mask is None else face_mask
+        surface_kwargs['triangles'] = surface_kwargs['triangles'][face_mask]
+        if 'colormap' in surface_kwargs.keys():
+            surface_kwargs['cmap'] = surface_kwargs['cmap'][face_mask]
 
         if normals:
             face_centres = star_container.get_flatten_parameter('face_centres')
             norm = star_container.get_flatten_parameter('normals')
             surface_kwargs.update({
-                'centres': face_centres,
-                'arrows': norm
+                'centres': face_centres[face_mask],
+                'arrows': norm[face_mask]
             })
 
         # normals

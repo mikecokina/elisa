@@ -7,6 +7,7 @@ from ... import settings
 
 
 PARAM_PARSER = '@'
+NUISANCE_PARSER = 'nuisance'
 
 TEMPERATURES = atm_file_prefix_to_quantity_list("temperature", settings.ATM_ATLAS)
 METALLICITY = atm_file_prefix_to_quantity_list("metallicity", settings.ATM_ATLAS)
@@ -22,6 +23,10 @@ DEFAULT_NORMALIZATION_SPOT = {
     "latitude": (0, 180),
     "angular_radius": (0, 90),
     "temperature_factor": (0.1, 3),
+}
+
+DEFAULT_NORMALIZATION_NUISANCE = {
+    "ln_f": (-20, -10),
 }
 
 DEFAULT_NORMALIZATION_PULSATION = {
@@ -96,6 +101,8 @@ DEFAULT_FLOAT_UNITS = {
     'start_phase': u.deg,
     'mode_axis_theta': u.deg,
     'mode_axis_phi': u.deg,
+    # NUISANCE
+    'ln_f': None
 }
 
 PARAMS_KEY_TEX_MAP = {
@@ -139,4 +146,6 @@ PARAMS_KEY_TEX_MAP = {
     'start_phase': '$\\Phi_0$',
     'mode_axis_phi': '$\\phi_{mode}$',
     'mode_axis_theta': '$\\theta_{mode}$',
+    # NUISANCE
+    'nuisance@ln_f': "$ln(f)$"
 }

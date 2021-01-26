@@ -7,13 +7,14 @@ from elisa.binary_system.model import (
     radial_primary_potential_derivative,
     potential_primary_fn)
 from elisa.binary_system.surface.gravity import calculate_potential_gradient
-from elisa.const import Position, FULL_ARC, HALF_PI, LINE_OF_SIGHT
+from elisa.const import Position, HALF_PI, FULL_ARC
 from elisa import utils
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.surface.coverage import get_eclipse_boundary_path
 from pypex import Polygon
 
 
+LINE_OF_SIGHT = np.array([1, 0, 0])
 BINARY_DEFINITION = {
     "system": {
         "argument_of_periastron": 90.0,
@@ -72,7 +73,7 @@ def _horizon_base_component(binary, position, analytic=True):
 
         # compute los cosines
         normals = getattr(position_container.primary, "normals")
-        los_cosines = position_container.return_cosines(normals, line_of_sight=LINE_OF_SIGHT)
+        los_cosines = normals[:, 0]
         setattr(position_container.primary, "los_cosines", los_cosines)
 
         # apply darkside filter (horizon)
@@ -234,6 +235,7 @@ def get_discrete_horizon(binary=None, phase=0.0, threshold=-1e-6, polar=False):
     """
     if binary is None:
         binary = BinarySystem.from_json(BINARY_DEFINITION)
+
     position = Position(*((0,) + tuple(binary.orbit.orbital_motion(phase=phase)[0])))
     position_container = _horizon_base_component(binary, position, analytic=False)
     position_container.correct_mesh(component="primary")
@@ -261,7 +263,7 @@ if __name__ == "__main__":
     from matplotlib import pyplot as plt
     _phase = 0.25
 
-    # discrete_horizon, origin_discrete_horizon = get_discrete_horizon(phase=_phase, polar=False)
+    discrete_horizon, origin_discrete_horizon = get_discrete_horizon(phase=_phase, polar=False)
 
     # show full path of discrete horizon
     # phi_argsort = np.argsort(discrete_horizon.T[1] % FULL_ARC)
