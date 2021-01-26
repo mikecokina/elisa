@@ -192,7 +192,7 @@ class Observer(object):
         :param phase_step: float;
         :param phases: Iterable float;
         :param normalize: bool;
-        :param method: str; method for calculation of radial velocities, `point_mass` or `radiometric`
+        :param method: str; method for calculation of radial velocities, `kinematic` or `radiometric`
         :return: Tuple[numpy.array, numpy.array, numpy.array]; phases, primary rv, secondary rv
         """
         method = settings.RV_METHOD if method is None else method

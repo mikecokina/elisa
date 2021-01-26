@@ -1020,7 +1020,7 @@ class BinarySystem(System):
 
     # radial velocity curves *******************************************************************************************
     def compute_rv(self, **kwargs):
-        if kwargs['method'] == 'point_mass':
+        if kwargs['method'] == 'kinematic':
             return rv.com_radial_velocity(self, **kwargs)
         if kwargs['method'] == 'radiometric':
             fn_arr = (self._compute_circular_synchronous_rv_curve,

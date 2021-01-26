@@ -156,7 +156,7 @@ class Settings(_Const):
     PULSATION_MODEL = 'uniform'
     DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 2.0
     SURFACE_DISPLACEMENT_TOL = 1e-2
-    RV_METHOD = 'point_mass'
+    RV_METHOD = 'kinematic'
     RV_LAMBDA_INTERVAL = (5500, 5600)
 
     # computational

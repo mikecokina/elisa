@@ -129,7 +129,7 @@ class BinaryRadialCurvesConsistencyTestCase(ElisaTestCase):
 
         o = Observer(system=system)
         _, rvdict1 = o.rv(phases=phases, method='radiometric')
-        _, rvdict2 = o.rv(phases=phases, method='point_mass')
+        _, rvdict2 = o.rv(phases=phases, method='kinematic')
 
         rvdict1['primary'], rvdict1['secondary'] = normalize_lv_for_unittests(rvdict1['primary'], rvdict1['secondary'])
         rvdict2['primary'], rvdict2['secondary'] = normalize_lv_for_unittests(rvdict2['primary'], rvdict2['secondary'])
