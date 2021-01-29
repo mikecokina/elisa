@@ -369,11 +369,12 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
     truths = [flat_result[lbl]['value'] for lbl in variable_labels] if truths is True else None
 
     if sigma_clip:
-        for ii, lbl in enumerate(variable_labels):
+        for lbl in variable_labels:
+            idx = mcmc_fit_instance.variable_labels.index(lbl)
             tol = 0.5 * sigma * np.abs(flat_result[lbl]["confidence_interval"]['max'] -
                                        flat_result[lbl]["confidence_interval"]['min'])
-            mask = np.logical_and(flat_chain[:, ii] > flat_result[lbl]['value'] - tol,
-                                  flat_chain[:, ii] < flat_result[lbl]['value'] + tol)
+            mask = np.logical_and(flat_chain[:, idx] > flat_result[lbl]['value'] - tol,
+                                  flat_chain[:, idx] < flat_result[lbl]['value'] + tol)
             flat_chain = flat_chain[mask]
 
     corner_plot_kwargs.update({
