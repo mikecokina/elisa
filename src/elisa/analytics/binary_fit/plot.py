@@ -353,32 +353,35 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
     flat_chain = MCMCMixin.renormalize_flat_chain(flat_chain, mcmc_fit_instance.variable_labels, variable_labels,
                                                   normalization)
 
-    # # transforming units
+    # # transforming units and rearanging them into the correct order
+    flat_chain_reduced = np.empty((flat_chain.shape[0], len(variable_labels)))
     plot_units = PLOT_UNITS if plot_units is None else plot_units
     for ii, lbl in enumerate(variable_labels):
+        idx = mcmc_fit_instance.variable_labels.index(lbl)
         if lbl in plot_units.keys():
             unt = u.Unit(flat_result[lbl]['unit'])
-            flat_chain[:, ii] = (flat_chain[:, ii] * unt).to(plot_units[lbl]).value
+            flat_chain_reduced[:, ii] = (flat_chain[:, idx] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['value'] = (flat_result[lbl]['value'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]["confidence_interval"]['min'] = \
                 (flat_result[lbl]["confidence_interval"]['min'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]["confidence_interval"]['max'] = \
                 (flat_result[lbl]["confidence_interval"]['max'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['unit'] = plot_units[lbl].to_string()
+        else:
+            flat_chain_reduced[:, ii] = flat_chain[:, idx]
 
     truths = [flat_result[lbl]['value'] for lbl in variable_labels] if truths is True else None
 
     if sigma_clip:
-        for lbl in variable_labels:
-            idx = mcmc_fit_instance.variable_labels.index(lbl)
+        for ii, lbl in enumerate(variable_labels):
             tol = 0.5 * sigma * np.abs(flat_result[lbl]["confidence_interval"]['max'] -
                                        flat_result[lbl]["confidence_interval"]['min'])
-            mask = np.logical_and(flat_chain[:, idx] > flat_result[lbl]['value'] - tol,
-                                  flat_chain[:, idx] < flat_result[lbl]['value'] + tol)
-            flat_chain = flat_chain[mask]
+            mask = np.logical_and(flat_chain_reduced[:, ii] > flat_result[lbl]['value'] - tol,
+                                  flat_chain_reduced[:, ii] < flat_result[lbl]['value'] + tol)
+            flat_chain_reduced = flat_chain_reduced[mask]
 
     corner_plot_kwargs.update({
-        'flat_chain': flat_chain,
+        'flat_chain': flat_chain_reduced,
         'truths': truths,
         'variable_labels': variable_labels,
         'labels': plot_labels,
