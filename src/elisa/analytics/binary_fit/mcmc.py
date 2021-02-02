@@ -5,6 +5,7 @@ from typing import Dict
 import emcee
 import numpy as np
 from scipy import interpolate
+from scipy.stats.distributions import norm
 
 from . shared import check_for_boundary_surface_potentials
 from . mixins import MCMCMixin
@@ -17,11 +18,13 @@ from .. import RVData, LCData
 from .. models import lc as lc_model
 from .. models import rv as rv_model
 from .. params import parameters
+from ..params.conf import NUISANCE_PARSER, PARAM_PARSER
 from .. tools.utils import time_layer_resolver
 
 from ... observer.utils import normalize_light_curve
 from ... base.error import ElisaError
 from ... import settings
+from ... const import PI
 from ... graphic.mcmc_graphics import Plot
 from ... logger import getPersistentLogger
 from ... binary_system.system import BinarySystem
@@ -38,36 +41,48 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.flat_chain_path = ''
         self.eval_counter = 0
         self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
-        self.error_penalization = 0
+
+    def s_squared(self, synthetic, ln_f):
+        """
+        Calculates constant component to the likelihood function derived from the errors.
+        :return: numpy.float;
+        """
+        return {key: np.power(self.y_err[key], 2) + np.power(values, 2) * np.exp(2 * ln_f)
+                for key, values in synthetic.items()}
 
     @staticmethod
     def ln_prior(xn):
-        return np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0)))
+        prior = np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0))).astype(float)
+        # prior = np.prod(2*norm().pdf(2*(xn-0.5)))
+        return -np.inf if prior == 0 else np.log(prior)
 
     @abstractmethod
     def likelihood(self, xn):
         pass
 
-    def lhood(self, synthetic):
+    def lhood(self, synthetic, ln_f):
         """
         Calculates likelihood function value for a synthetic model to be a correct model for given observational data.
 
+        :param ln_f: List; marninalization parameters (currently supported single parameter for error penalization)
         :param synthetic: Dict; {'dataset_name': numpy.array, }
         :return: float;
         """
+        sigma2 = self.s_squared(synthetic, ln_f)
+        # print(ln_f)
         lh = - 0.5 * (np.sum(
-            [np.sum(np.power((self.y_data[item] - synthetic[item]) / self.y_err[item], 2))
-             for item, value in synthetic.items()]
-        ) + self.error_penalization)
-
+            [np.sum((np.power((self.y_data[key] - synthetic[key]), 2) / sigma2[key]) + np.log(2.0 * PI * sigma2[key]))
+             for key, value in synthetic.items()])
+        )
         self._last_known_lhood = lh if lh < self._last_known_lhood else self._last_known_lhood
         return lh
 
     def ln_probability(self, xn):
-        if not self.ln_prior(xn):
+        prior = self.ln_prior(xn)
+        if prior == -np.inf:
             return -np.inf
         try:
-            likelihood = self.likelihood(xn)
+            likelihood = prior + self.likelihood(xn)
         except (ElisaError, ValueError) as e:
             if not settings.SUPPRESS_WARNINGS:
                 logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
@@ -153,7 +168,11 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
                 band: interpolate.interp1d(fit_xs, curve, kind='cubic')(phases[self.x_data_reducer[band]])
                 for band, curve in synthetic.items()
             }
-        return self.lhood(synthetic)
+
+        ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
+        ln_f = parameters.prepare_nuisance_properties_set(xn, self.fitable, self.fixed)[ln_f_key]
+
+        return self.lhood(synthetic, ln_f)
 
     def fit(self, data: Dict[str, LCData], x0: parameters.BinaryInitialParameters, discretization=5.0, nwalkers=None,
             nsteps=1000, initial_state=None, burn_in=None, percentiles=None, interp_treshold=None, progress=False,
@@ -244,7 +263,10 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         kwargs = parameters.prepare_properties_set(xn, self.fitable.keys(), self.constrained, self.fixed)
         synthetic = rv_model.central_rv_synthetic(*(self.x_data_reduced, self.observer), **kwargs)
         synthetic = {comp: rv[self.x_data_reducer[comp]] for comp, rv in synthetic.items()}
-        lhood = self.lhood(synthetic)
+
+        ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
+        ln_f = parameters.prepare_nuisance_properties_set(xn, self.fitable, self.fixed)[ln_f_key]
+        lhood = self.lhood(synthetic, ln_f)
 
         self.eval_counter += 1
         logger.debug(f'eval counter = {self.eval_counter}, likehood = {lhood}')

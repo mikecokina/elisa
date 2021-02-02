@@ -84,6 +84,10 @@ class SpotInitialProperties(SpotProperties):
     angular_radius = angular
 
 
+class NuisanceInitialProperties(TransformProperties):
+    ln_f = lambda x: x
+
+
 class PulsationModeInitialProperties(PulsationModeProperties):
     mode_axis_theta = angular
     mode_axis_phi = angular

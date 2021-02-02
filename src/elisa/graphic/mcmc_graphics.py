@@ -30,7 +30,12 @@ class Plot(object):
 
             unit = fit_params[label]['unit']
             unit = '' if unit == 'dimensionless' or unit is None else unit
-            title = r'{0}=${1:.2f}^{{{2:+.2f}}}_{{{3:+.2f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom, unit)
+            if any(x in label for x in ['t_eff', 'argument_of_periastron']):
+                title = r'{0}=${1:.0f}^{{{2:+.0f}}}_{{{3:+.0f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom,
+                                                                              unit)
+            else:
+                title = r'{0}=${1:.2f}^{{{2:+.2f}}}_{{{3:+.2f}}}$ {4}'.format(kwargs['labels'][i], value, top, bottom,
+                                                                              unit)
             ax.set_title(title)
 
         plt.show()
