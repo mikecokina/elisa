@@ -111,6 +111,7 @@ def eval_approximation_one(binary, phases, phases_span_test):
     eclipses = binary.orbit.get_conjuction()
     p_radii = binary.primary.side_radius
     s_radii = binary.secondary.side_radius
+
     return False
 
 
