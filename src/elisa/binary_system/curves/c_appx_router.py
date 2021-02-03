@@ -68,7 +68,7 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
         return 'zero', lambda: approx_method_list[0](*args, **kwargs)
 
     # APPX ONE *********************************************************************************************************
-    appx_one = eval_approximation_one(phases, phases_span_test)
+    appx_one = eval_approximation_one(binary, phases, phases_span_test)
 
     if appx_one:
         args = binary, phases, reduced_orbit_arr, counterpart_postion_arr, potentials, crv_labels, curve_fn
@@ -94,16 +94,23 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
 
 
 # *******************************************evaluate_approximations****************************************************
-def eval_approximation_one(phases, phases_span_test):
+def eval_approximation_one(binary, phases, phases_span_test):
     """
     Test if it is possible to compute eccentric binary system with approximation approximation one.
 
+    :param binary: elisa.binary_system.system.BinarySystem;
     :param phases_span_test: bool; test for sufficient phase span of observations
     :param phases: numpy.array;
     :return: bool;
     """
-    if len(phases) > settings.POINTS_ON_ECC_ORBIT > 0 and phases_span_test:
+    # base test to establish, if curve contains enough points
+    base_test = len(phases) > settings.POINTS_ON_ECC_ORBIT > 0 and phases_span_test
+    if base_test:
         return True
+
+    eclipses = binary.orbit.get_conjuction()
+    p_radii = binary.primary.side_radius
+    s_radii = binary.secondary.side_radius
     return False
 
 
