@@ -65,6 +65,7 @@ def orbit(**kwargs):
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
 
+    plt.subplots_adjust(top=0.98, right=0.98)
     return f if kwargs['return_figure_instance'] else plt.show()
 
 
