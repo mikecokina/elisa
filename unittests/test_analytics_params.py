@@ -47,6 +47,8 @@ class ConfTestCase(ElisaTestCase):
             'start_phase': u.deg,
             'mode_axis_theta': u.deg,
             'mode_axis_phi': u.deg,
+            # NUISANCE
+            'ln_f': None,
         }
         # in python3.6 >= order is maintain
         assert_array_equal(list(conf.DEFAULT_FLOAT_UNITS.values()), list(expected.values()))
@@ -891,7 +893,15 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "max": None,
                 "unit": "solRad",
                 "constraint": "16.515 / sin(radians(system@inclination))"
-            }
+            },
+            "nuisance@ln_f": {
+                'value': -20,
+                'param': "ln_f",
+                "min": None,
+                "max": None,
+                "unit": None,
+                "fixed": True
+            },
         }
 
         serialized_in_dicts = {key: val.to_dict() for key, val in self.initial_parametres.data.items()}
@@ -900,7 +910,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
 
     def test_get_fixed(self):
         fixed = self.initial_parametres.get_fixed()
-        expected = ['primary@albedo', 'primary@gravity_darkening', 'primary@pulsation@bionic@l',
+        expected = ['nuisance@ln_f', 'primary@albedo', 'primary@gravity_darkening', 'primary@pulsation@bionic@l',
                     'primary@pulsation@bionic@mode_axis_phi', 'primary@pulsation@bionic@mode_axis_theta',
                     'secondary@albedo', 'secondary@gravity_darkening', 'secondary@spot@utopic@angular_radius',
                     'secondary@spot@utopic@temperature_factor', 'system@argument_of_periastron', 'system@eccentricity',
@@ -945,7 +955,8 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
             "system@argument_of_periastron": 0.0,
             "system@inclination": 85.0,
             "system@period": 4.5,
-            "system@mass_ratio": 0.5
+            "system@mass_ratio": 0.5,
+            "nuisance@ln_f": -20
         }
         self.assertDictEqual(expected, substitution_dict)
 

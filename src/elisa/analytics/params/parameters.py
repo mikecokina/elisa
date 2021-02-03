@@ -1,3 +1,4 @@
+import abc
 import json
 import re
 from copy import deepcopy
@@ -14,11 +15,12 @@ from .. params.bonds import (
     ALLOWED_CONSTRAINT_METHODS,
     ALLOWED_CONSTRAINT_CHARS,
     TRANSFORM_TO_METHODS)
-from .. params.transform import (
+from ..params.transform import (
     BinaryInitialProperties,
     StarInitialProperties,
     SpotInitialProperties,
-    PulsationModeInitialProperties
+    PulsationModeInitialProperties,
+    NuisanceInitialProperties
 )
 from ... import units as u
 from ... import utils
@@ -53,7 +55,13 @@ def deserialize_result(result_dict: Dict) -> Dict:
 
         if system_slot in result_dict['system']:
             system_prop = result_dict['system'][system_slot]
-            data.update({f'system@{system_slot}': system_prop})
+            data.update({f'system{conf.PARAM_PARSER}{system_slot}': system_prop})
+
+        if system_slot == conf.NUISANCE_PARSER and system_slot in result_dict:
+            for nuisance_slot in NuisanceInitialPrameters.__slots__:
+                if nuisance_slot in result_dict[conf.NUISANCE_PARSER] and conf.NUISANCE_PARSER in result_dict:
+                    nuisance_prop = result_dict[conf.NUISANCE_PARSER][nuisance_slot]
+                    data.update({f'{conf.NUISANCE_PARSER}{conf.PARAM_PARSER}{nuisance_slot}': nuisance_prop})
 
         if system_slot in ['primary', 'secondary'] and system_slot in result_dict:
             component_prop = result_dict[system_slot]
@@ -247,6 +255,21 @@ def prepare_properties_set(xn, properties, constrained, fixed):
     return kwargs
 
 
+def prepare_nuisance_properties_set(xn, properties, fixed):
+    """
+    This will prepare final kwargs for synthetic model evaluation.
+
+    :param xn: numpy.array; initial vector
+    :param properties: List; variable labels
+    :param fixed: Dict;
+    :return: Dict[str, float];
+    """
+    kwargs = {key: item for item, key in zip(xn, properties) if conf.NUISANCE_PARSER in key}
+    kwargs.update({key: val.value if isinstance(val, InitialParameter) else val for key, val in fixed.items()
+                   if conf.NUISANCE_PARSER in key})
+    return kwargs
+
+
 def constraints_evaluator(substitution: Dict, constrained: Dict) -> Dict:
     """
     Substitute variables in constraint with values and evaluate to number.
@@ -375,7 +398,7 @@ class InitialParameter(object):
     __str__ = __repr__
 
 
-class InitialParameters(object):
+class InitialParameters(object, metaclass=abc.ABCMeta):
     TRANSFORM_PROPERTIES_CLS = None
     DEFAULT_NORMALIZATION = None
 
@@ -388,10 +411,10 @@ class InitialParameters(object):
             if not isinstance(prop, InitialParameter):
                 continue
 
-            if prop.constraint is None and not prop.fixed:
-                if not (prop.min <= prop.value <= prop.max):
-                    raise InitialParamsError(f'Initial parameters in parameter `{prop.param}` are not valid. '
-                                             f'Invalid bounds: {prop.min} <= {prop.value} <= {prop.max}')
+            # if prop.constraint is None and not prop.fixed:
+            #     if not (prop.min <= prop.value <= prop.max):
+            #         raise InitialParamsError(f'Initial parameters in parameter `{prop.param}` are not valid. '
+            #                                  f'Invalid bounds: {prop.min} <= {prop.value} <= {prop.max}')
             if prop.fixed is not None and prop.constraint is not None:
                 raise InitialParamsError(f'It is not allowed for `{prop.param}` to contain '
                                          f'`fixed` and `constraint` parameter.')
@@ -464,10 +487,23 @@ class StarInitialParameters(InitialParameters):
         self.validity_check()
 
 
+class NuisanceInitialPrameters(InitialParameters):
+    __slots__ = ["ln_f"]
+
+    TRANSFORM_PROPERTIES_CLS = NuisanceInitialProperties
+    DEFAULT_NORMALIZATION = conf.DEFAULT_NORMALIZATION_NUISANCE
+
+    def __init__(self, **kwargs):
+        for parameter, items in kwargs.items():
+            value = self.init_parameter(parameter, items)
+            setattr(self, parameter, value)
+        self.validity_check()
+
+
 class BinaryInitialParameters(InitialParameters):
     __slots__ = ["primary", "secondary", "eccentricity", "argument_of_periastron",
                  "inclination", "gamma", "period", "mass_ratio", "asini", "semi_major_axis",
-                 "additional_light", "phase_shift", "primary_minimum_time"]
+                 "additional_light", "phase_shift", "primary_minimum_time", conf.NUISANCE_PARSER]
 
     TRANSFORM_PROPERTIES_CLS = BinaryInitialProperties
     DEFAULT_NORMALIZATION = conf.DEFAULT_NORMALIZATION_SYSTEM
@@ -475,12 +511,20 @@ class BinaryInitialParameters(InitialParameters):
     def __init__(self, **kwargs):
         self._primary = kwargs.pop('primary', None)
         self._secondary = kwargs.pop('secondary', None)
+        self._nuisance = kwargs.pop(conf.NUISANCE_PARSER, None)
         system = kwargs.pop('system')
 
+        # nuisance params
+        if self._nuisance is None:
+            self._nuisance = {"ln_f": {"value": -20, "fixed": True}}
+        self.nuisance = NuisanceInitialPrameters(**self._nuisance)
+
+        # system params
         for parameter, items in system.items():
             value = self.init_parameter(parameter, items)
             setattr(self, parameter, value)
 
+        # components params
         for component in settings.BINARY_COUNTERPARTS:
             props = getattr(self, f'_{component}')
             if is_empty(props):
@@ -531,6 +575,10 @@ class BinaryInitialParameters(InitialParameters):
             system_prop = getattr(self, str(system_slot))
             if isinstance(system_prop, InitialParameter):
                 data.update({f'system{conf.PARAM_PARSER}{system_slot}': system_prop})
+            elif isinstance(system_prop, NuisanceInitialPrameters):
+                for nuisance_slot in system_prop.__slots__:
+                    key = f'{conf.NUISANCE_PARSER}{conf.PARAM_PARSER}{nuisance_slot}'
+                    data.update({key: getattr(system_prop, nuisance_slot)})
             elif isinstance(system_prop, StarInitialParameters):
 
                 for component_slot in system_prop.__slots__:
@@ -618,7 +666,7 @@ class BinaryInitialParameters(InitialParameters):
                                 for component in settings.BINARY_COUNTERPARTS]
 
         optional_fit_params = ['system@semi_major_axis', 'system@primary_minimum_time', 'system@phase_shift',
-                               'system@asini', 'system@mass_ratio', 'system@additional_light'] + \
+                               'system@asini', 'system@mass_ratio', 'system@additional_light', 'nuisance@ln_f'] + \
                               [f'{component}@{param}'
                                for param in ['mass', 'synchronicity', 'metallicity', 'spots', 'pulsations']
                                for component in settings.BINARY_COUNTERPARTS]
@@ -654,7 +702,7 @@ class BinaryInitialParameters(InitialParameters):
         """
         mandatory_fit_params = ['system@eccentricity', 'system@argument_of_periastron', 'system@gamma']
         optional_fit_params = ['system@period', 'system@primary_minimum_time', 'primary@mass', 'secondary@mass',
-                               'system@inclination', 'system@asini', 'system@mass_ratio']
+                               'system@inclination', 'system@asini', 'system@mass_ratio', 'nuisance@ln_f']
         all_fit_params = mandatory_fit_params + optional_fit_params
         utils.check_missing_kwargs(mandatory_fit_params, self.data, instance_of=self.__class__)
         check_initial_param_validity(self.data, all_fit_params, mandatory_fit_params)

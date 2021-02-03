@@ -5,7 +5,6 @@ from ... base import transform
 from ... base.graphics import plot
 from .. container import OrbitalPositionContainer
 from ... const import Position
-from ... utils import is_empty
 from ... graphic import graphics
 from ... base.surface.faces import correct_face_orientation
 from .. curves import utils as crv_utils
@@ -38,7 +37,7 @@ class Plot(object):
         self.binary = instance
 
     def orbit(self, start_phase=0.0, stop_phase=1.0, number_of_points=300,
-              axis_units=u.solRad, frame_of_reference='primary', legend=True):
+              axis_units=u.solRad, frame_of_reference='primary', legend=True, return_figure_instance=False):
         """
         Function for quick 2D plot of the orbital motion in the orbital plane.
 
@@ -48,6 +47,8 @@ class Plot(object):
         :param axis_units: Union[astropy.unit, str]; specifying axis unit, use astropy
                            units or `dimensionless` or `SMA` (semi-major axis) units for axis scale
         :param frame_of_reference: str; `barycentric` or `primary`
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+                                             produced figure
         :param legend: bool;
         """
         orbit_kwargs = dict()
@@ -80,6 +81,7 @@ class Plot(object):
                 'y_data': y
             })
         orbit_kwargs.update({
+            "return_figure_instance": return_figure_instance,
             "axis_units": axis_units,
             "start_phase": start_phase,
             "stop_phase": stop_phase,
@@ -87,10 +89,10 @@ class Plot(object):
             "frame_of_reference": frame_of_reference,
             "legend": legend
         })
-        graphics.orbit(**orbit_kwargs)
+        return graphics.orbit(**orbit_kwargs)
 
     def equipotential(self, plane='xy', phase=0.0, components_to_plot='both', colors=('b', 'r'), legend=True,
-                      legend_loc=1):
+                      legend_loc=1, return_figure_instance=False):
         """
         Function for quick 2D plot of equipotential cross-section.
 
@@ -100,6 +102,8 @@ class Plot(object):
         :param colors: Tuple; tuple of colors for primary and secondary component equipotentials
         :param legend: bool; legend display on/off
         :param legend_loc: int; location of the legend
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+                                             produced figure
         """
         equipotential_kwargs = dict()
         # relative distance between components (a = 1)
@@ -110,18 +114,20 @@ class Plot(object):
             raise ValueError('Invalid choice of crossection plane, use only: `xy`, `yz`, `zx`.')
 
         equipotential_kwargs.update({
-            'plane': plane,
-            'phase': phase,
-            'points_primary': points_primary,
-            'points_secondary': points_secondary,
-            'components_to_plot': components_to_plot,
-            'colors': colors,
-            'legend': legend,
+            "return_figure_instance": return_figure_instance,
+            "plane": plane,
+            "phase": phase,
+            "points_primary": points_primary,
+            "points_secondary": points_secondary,
+            "components_to_plot": components_to_plot,
+            "colors": colors,
+            "legend": legend,
             "legend_loc": legend_loc
         })
-        graphics.equipotential(**equipotential_kwargs)
+        return graphics.equipotential(**equipotential_kwargs)
 
-    def mesh(self, phase=0.0, components_to_plot='both', plot_axis=True, inclination=None, azimuth=None):
+    def mesh(self, phase=0.0, components_to_plot='both', plot_axis=True, inclination=None, azimuth=None,
+             return_figure_instance=False):
         """
         Function plots 3D scatter plot of the surface points.
 
@@ -129,8 +135,9 @@ class Plot(object):
         :param inclination: Union[float, astropy.Quantity]; elevation of the camera (in degrees if float)
         :param azimuth: Union[float, astropy.Quantity]; azimuth of the camera (in degrees if float)
         :param components_to_plot: str; component to plot `primary`, `secondary` or `both` (default)
-
         :param phase: float; phase at which to construct plot
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+                                             produced figure
         """
 
         binary_mesh_kwargs = dict()
@@ -157,15 +164,17 @@ class Plot(object):
             })
 
         binary_mesh_kwargs.update({
+            "return_figure_instance": return_figure_instance,
             "phase": phase,
             "components_to_plot": components_to_plot,
             "plot_axis": plot_axis,
             "inclination": inclination,
             "azimuth": azimuth,
         })
-        graphics.binary_mesh(**binary_mesh_kwargs)
+        return graphics.binary_mesh(**binary_mesh_kwargs)
 
-    def wireframe(self, phase=0.0, components_to_plot='both', plot_axis=True, inclination=None, azimuth=None):
+    def wireframe(self, phase=0.0, components_to_plot='both', plot_axis=True, inclination=None, azimuth=None,
+                  return_figure_instance=False):
         """
         Function displays wireframe model of the stellar surface.
 
@@ -174,6 +183,8 @@ class Plot(object):
         :param plot_axis: bool; switch the plot axis on/off
         :param inclination: Union[float, astropy.Quantity]; elevation of the camera (in degrees if float)
         :param azimuth: Union[float, astropy.Quantity]; azimuth of the camera (in degrees if float)
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+                                             produced figure
         """
 
         binary_wireframe_kwargs = dict()
@@ -205,13 +216,14 @@ class Plot(object):
                 "secondary_triangles": faces
             })
         binary_wireframe_kwargs.update({
+            "return_figure_instance": return_figure_instance,
             "phase": phase,
             "components_to_plot": components_to_plot,
             "plot_axis": plot_axis,
             "inclination": inclination,
             "azimuth": azimuth
         })
-        graphics.binary_wireframe(**binary_wireframe_kwargs)
+        return graphics.binary_wireframe(**binary_wireframe_kwargs)
 
     def surface(self, phase=0.0, components_to_plot='both', normals=False, edges=False, colormap=None, plot_axis=True,
                 face_mask_primary=None, face_mask_secondary=None, elevation=None, azimuth=None, unit='default',
