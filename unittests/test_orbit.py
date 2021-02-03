@@ -7,6 +7,20 @@ from elisa import units as u
 from unittests.utils import ElisaTestCase
 
 
+def test_get_approx_ecl_angular_width():
+    r1 = [0.01, 0.01, 0.25, 0.25, 0.5]
+    r2 = [0.01, 0.01, 0.25, 0.25, 0.5]
+    d = [1.0, 1.0, 1.0, 1.0, 2.0]
+    i = np.radians([90, 70, 60, 61, 60])
+    expected = [0.02,    0.,      0.,      0.12262, 0.]
+
+    result = []
+    for ii in range(len(d)):
+        result.append(orbit.get_approx_ecl_angular_width(r1[ii], r2[ii], d[ii], i[ii]))
+    result = np.round(result, 5)
+    assert_array_equal(expected, result)
+
+
 class OrbitTestCase(ElisaTestCase):
 
     def setUp(self):

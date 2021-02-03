@@ -110,6 +110,30 @@ def orbital_semi_major_axes(r, eccentricity, true_anomaly):
     return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
 
 
+def get_approx_ecl_angular_width(forward_radius1, forward_radius2, components_distance, inclination):
+    """
+    Returns angular width of the eclipse assuming spherical components.
+
+    :param forward_radius1: float;
+    :param forward_radius2: float;
+    :param components_distance: float;
+    :param inclination: float;
+    :return: float; angular half-
+    """
+    # tilt of the orbital plane and z-axis in the observer reference frame
+    tilt = np.abs(const.HALF_PI - inclination)
+    # maximum apparent distance between components where eclipse is possible
+    r_total = forward_radius1 + forward_radius2
+    # closest aparent distances of component centres
+    r_close = components_distance * np.sin(tilt)
+
+    # checking if eclipses occur
+    return 0.0 if r_close >= r_total else \
+        np.arcsin(np.sqrt(
+            np.power(r_total/components_distance, 2) - np.power(np.sin(tilt), 2)
+        ))
+
+
 class Orbit(object):
     """
     Model which represents orbit of binary system.
