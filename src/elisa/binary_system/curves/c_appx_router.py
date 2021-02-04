@@ -6,10 +6,14 @@ from .. curves import (
     utils as crv_utils,
     c_managed
 )
-from ... import utils
-from ... import settings
+from ... logger import getLogger
+from ... import utils, settings, const
 from ... binary_system.orbit.container import OrbitalSupplements
+from ... binary_system.orbit.orbit import component_distance_from_mean_anomaly, get_approx_ecl_angular_width
 from ... observer.mp_manager import manage_observations
+
+
+logger = getLogger("binary_system.curves.c_appx_router")
 
 
 def look_for_approximation(not_pulsations_test):
@@ -68,7 +72,7 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
         return 'zero', lambda: approx_method_list[0](*args, **kwargs)
 
     # APPX ONE *********************************************************************************************************
-    appx_one = eval_approximation_one(binary, phases, phases_span_test)
+    appx_one = eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_arr)
 
     if appx_one:
         args = binary, phases, reduced_orbit_arr, counterpart_postion_arr, potentials, crv_labels, curve_fn
@@ -94,25 +98,49 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
 
 
 # *******************************************evaluate_approximations****************************************************
-def eval_approximation_one(binary, phases, phases_span_test):
+def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array):
     """
     Test if it is possible to compute eccentric binary system with approximation approximation one.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param phases_span_test: bool; test for sufficient phase span of observations
-    :param phases: numpy.array;
+    :param phases: numpy.array; photometric phases
+    :param reduced_orbit_array: numpy.array;
     :return: bool;
     """
     # base test to establish, if curve contains enough points
     base_test = len(phases) > settings.POINTS_ON_ECC_ORBIT > 0 and phases_span_test
-    if base_test:
-        return True
+    if not base_test:
+        return False
 
-    eclipses = binary.orbit.get_conjuction()
-    p_radii = binary.primary.forward_radius
-    s_radii = binary.secondary.forward_radius
+    # true anomalies of orbital positions modelled by approximation 1
+    base_nu = reduced_orbit_array[:, 3]
+    true_anomalies = np.concatenate((base_nu, const.FULL_ARC - base_nu))
+    mask = true_anomalies < const.PI
+    true_anomalies = np.concatenate((true_anomalies[~mask]-const.FULL_ARC, true_anomalies,
+                                     true_anomalies[mask]+const.FULL_ARC))
 
-    return False
+    # component distance during eclipses
+    ecl_true_anomalies = np.array([binary.orbit.conjunctions[f'{component}_eclipse']['true_anomaly']
+                                  for component in settings.BINARY_COUNTERPARTS])
+    distances_at_ecl = component_distance_from_mean_anomaly(binary.eccentricity, ecl_true_anomalies)
+
+    # angular width of each eclipse
+    angular_ecl_widths = [get_approx_ecl_angular_width(binary.primary.forward_radius, binary.secondary.forward_radius,
+                                                       distance, binary.inclination)
+                          for distance in distances_at_ecl]
+
+    # counting if eclipse contains sufficient amount of points
+    enough_points = True
+    for ii, ecl_nu in enumerate(ecl_true_anomalies):
+        points_in_ecl = true_anomalies[np.logical_and(true_anomalies > ecl_nu - angular_ecl_widths[ii],
+                                                      true_anomalies < ecl_nu + angular_ecl_widths[ii])].size
+        if points_in_ecl < settings.MIN_POINTS_IN_ECLIPSE:
+            enough_points = False
+            logger.debug('Approximation 1 will not be utilized due to the insufficient amount of '
+                         'points inside the eclipses')
+            break
+    return enough_points
 
 
 def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_arr, phases_span_test):

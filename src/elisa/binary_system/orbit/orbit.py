@@ -110,15 +110,27 @@ def orbital_semi_major_axes(r, eccentricity, true_anomaly):
     return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
 
 
+def component_distance_from_mean_anomaly(eccentricity, true_anomaly):
+    """
+    Return component distance in SMA from semi-major axis, eccentricity and true anomaly.
+
+    :param r: float or numpy.array; distance from center of mass to object
+    :param eccentricity: float or numpy.array; orbital eccentricity
+    :param true_anomaly: float or numpy.array; true anomaly of orbital motion
+    :return: Union[float, numpy.array]
+    """
+    return (1.0 - up.power(eccentricity, 2)) / (1.0 + eccentricity * up.cos(true_anomaly))
+
+
 def get_approx_ecl_angular_width(forward_radius1, forward_radius2, components_distance, inclination):
     """
     Returns angular width of the eclipse assuming spherical components.
 
     :param forward_radius1: float;
     :param forward_radius2: float;
-    :param components_distance: float;
-    :param inclination: float;
-    :return: float; angular half-
+    :param components_distance: float; in SMA
+    :param inclination: float; in radians
+    :return: float; angular half-width of the eclipse
     """
     # tilt of the orbital plane and z-axis in the observer reference frame
     tilt = np.abs(const.HALF_PI - inclination)
@@ -181,7 +193,8 @@ class Orbit(object):
             setattr(self, kwarg, kwargs[kwarg])
 
         self.periastron_distance = self.compute_periastron_distance()
-        self.periastron_phase = - self.get_conjuction()["primary_eclipse"]["true_phase"] % 1
+        self.conjunctions = self.get_conjuction()
+        self.periastron_phase = - self.conjunctions["primary_eclipse"]["true_phase"] % 1
 
     @classmethod
     def true_phase(cls, phase, phase_shift):
@@ -345,7 +358,7 @@ class Orbit(object):
         if isinstance(phase, (int, np.int, float, np.float)):
             phase = np.array([np.float(phase)])
         # photometric phase to phase measured from periastron
-        true_phase = self.true_phase(phase=phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
+        true_phase = self.true_phase(phase=phase, phase_shift=self.conjunctions['primary_eclipse']['true_phase'])
 
         mean_anomaly = self.phase_to_mean_anomaly(phase=true_phase)
         eccentric_anomaly = np.array([self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
@@ -378,7 +391,7 @@ class Orbit(object):
         eccentric_anomaly = self.true_anomaly_to_eccentric_anomaly(true_anomaly)
         mean_anomaly = self.eccentric_anomaly_to_mean_anomaly(eccentric_anomaly)
         true_phase = self.mean_anomaly_to_phase(mean_anomaly)
-        phase = self.phase(true_phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
+        phase = self.phase(true_phase, phase_shift=self.conjunctions['primary_eclipse']['true_phase'])
         return np.column_stack((distance, azimuth, true_anomaly, phase))
 
     def get_conjuction(self):
