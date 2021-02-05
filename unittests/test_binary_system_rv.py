@@ -274,7 +274,7 @@ class ComputeRadiometricRVTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         settings.configure(**APPROX_SETTINGS["approx_one"])
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, "detached.ecc.appx_one.json")
+        self.do_comparison(bs, "detached.ecc.appx_one.json", start_phs=-0.2, stop_phs=1.2, step=0.007)
 
     def test_eccentric_system_approximation_two(self):
         settings.configure(**APPROX_SETTINGS["approx_two"])
@@ -415,7 +415,7 @@ class CompareApproxVsExact(ElisaTestCase):
     def test_approximation_one(self):
         bs = prepare_binary_system(PARAMS["eccentric"])
 
-        phase_step = 1.0/120
+        phase_step = 1.0/150
         settings.configure(**APPROX_SETTINGS["approx_one"])
         settings.configure(**{"NUMBER_OF_PROCESSES": 4})
         o = Observer(system=bs)

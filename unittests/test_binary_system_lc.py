@@ -399,7 +399,7 @@ class ComputeLightCurvesTestCase(ElisaTestCase):
     def test_eccentric_system_approximation_one(self):
         settings.configure(**APPROX_SETTINGS["approx_one"])
         bs = prepare_binary_system(PARAMS["eccentric"])
-        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_one.json", TOL, -0.2, 1.2, 0.1)
+        self.do_comparison(bs, "detached.ecc.sync.generic.bessell.v.appx_one.json", TOL, 0.0, 1.0, 0.007)
 
     def test_eccentric_system_approximation_two(self):
         settings.configure(**APPROX_SETTINGS["approx_two"])
@@ -546,7 +546,7 @@ class CompareApproxVsExact(ElisaTestCase):
     def test_approximation_one(self):
         bs = prepare_binary_system(PARAMS["eccentric"])
 
-        phase_step = 1.0/120
+        phase_step = 1.0/150
         settings.configure(**APPROX_SETTINGS["approx_one"])
         settings.configure(**{"NUMBER_OF_PROCESSES": 4})
         o = Observer(passband=['Generic.Bessell.V'], system=bs)
@@ -560,12 +560,12 @@ class CompareApproxVsExact(ElisaTestCase):
         ex_flux = normalize_lc_for_unittests(ex_res[1]["Generic.Bessell.V"])
         # ex_flux = ex_res[1]["Generic.Bessell.V"]
 
-        # import matplotlib.pyplot as plt
-        # plt.plot(ex_res[0], ex_flux, label='exact')
-        # plt.plot(ap_res[0], ap_flux, label='approx')
-        # plt.plot(ap_res[0], ex_flux-ap_flux+1, label='diff')
-        # plt.legend()
-        # plt.show()
+        import matplotlib.pyplot as plt
+        plt.plot(ex_res[0], ex_flux, label='exact')
+        plt.plot(ap_res[0], ap_flux, label='approx')
+        plt.plot(ap_res[0], ex_flux-ap_flux+1, label='diff')
+        plt.legend()
+        plt.show()
 
         self.assertTrue(np.all(ex_flux - ap_flux < 3e-3))
 
