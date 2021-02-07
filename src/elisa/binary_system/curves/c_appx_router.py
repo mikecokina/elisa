@@ -133,6 +133,8 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
     # counting if eclipse contains sufficient amount of points
     enough_points = True
     for ii, ecl_nu in enumerate(ecl_true_anomalies):
+        if angular_ecl_widths[ii] == 0.0:
+            continue
         points_in_ecl = true_anomalies[np.logical_and(true_anomalies > ecl_nu - angular_ecl_widths[ii],
                                                       true_anomalies < ecl_nu + angular_ecl_widths[ii])].size
         if points_in_ecl < settings.MIN_POINTS_IN_ECLIPSE:
