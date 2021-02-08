@@ -72,7 +72,8 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
         return 'zero', lambda: approx_method_list[0](*args, **kwargs)
 
     # APPX ONE *********************************************************************************************************
-    appx_one = eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_arr)
+    args = (binary, phases, phases_span_test, reduced_orbit_arr, counterpart_postion_arr, reduced_orbit_supplement_arr)
+    appx_one, reduced_orbit_arr, counterpart_postion_arr = eval_approximation_one(*args)
 
     if appx_one:
         args = binary, phases, reduced_orbit_arr, counterpart_postion_arr, potentials, crv_labels, curve_fn
@@ -98,7 +99,8 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
 
 
 # *******************************************evaluate_approximations****************************************************
-def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array):
+def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array, counterpart_position_array,
+                           reduced_orbit_supplement_arr):
     """
     Test if it is possible to compute eccentric binary system with approximation approximation one.
 
@@ -111,14 +113,11 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
     # base test to establish, if curve contains enough points
     base_test = len(phases) > settings.POINTS_ON_ECC_ORBIT > 0 and phases_span_test
     if not base_test:
-        return False
+        return False, reduced_orbit_array, counterpart_position_array
 
     # true anomalies of orbital positions modelled by approximation 1
-    base_nu = reduced_orbit_array[:, 3]
-    true_anomalies = np.concatenate((base_nu, const.FULL_ARC - base_nu))
-    mask = true_anomalies < const.PI
-    true_anomalies = np.concatenate((true_anomalies[~mask]-const.FULL_ARC, true_anomalies,
-                                     true_anomalies[mask]+const.FULL_ARC))
+    true_anomalies_supplements = reduced_orbit_supplement_arr[:, 3]
+    true_anomalies_counterparts = counterpart_position_array[:, 3]
 
     # component distance during eclipses
     ecl_true_anomalies = np.array([binary.orbit.conjunctions[f'{component}_eclipse']['true_anomaly']
@@ -130,19 +129,28 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
                                                        distance, binary.inclination)
                           for distance in distances_at_ecl]
 
+    s_nu = np.sort(true_anomalies_supplements)
+    d_nu = np.max(s_nu[1:] - s_nu[:-1])
     # counting if eclipse contains sufficient amount of points
-    enough_points = True
     for ii, ecl_nu in enumerate(ecl_true_anomalies):
         if angular_ecl_widths[ii] == 0.0:
             continue
-        points_in_ecl = true_anomalies[np.logical_and(true_anomalies > ecl_nu - angular_ecl_widths[ii],
-                                                      true_anomalies < ecl_nu + angular_ecl_widths[ii])].size
-        if points_in_ecl < settings.MIN_POINTS_IN_ECLIPSE:
-            enough_points = False
-            logger.debug('Approximation 1 will not be utilized due to the insufficient amount of '
-                         'points inside the eclipses')
-            break
-    return enough_points
+        width = angular_ecl_widths[ii] + d_nu
+        points_ecl_mask_suplements = np.logical_and(true_anomalies_supplements > ecl_nu - width,
+                                                    true_anomalies_supplements < ecl_nu + width)
+        points_ecl_mask_counterparts = np.logical_and(true_anomalies_counterparts > ecl_nu - width,
+                                                      true_anomalies_counterparts < ecl_nu + width)
+        points_in_ecl_suplements = np.sum(points_ecl_mask_suplements)
+        points_in_ecl_counterparts = np.sum(points_ecl_mask_counterparts)
+
+        if points_in_ecl_suplements < settings.MIN_POINTS_IN_ECLIPSE:
+            reduced_orbit_array =\
+                np.row_stack((reduced_orbit_array, reduced_orbit_supplement_arr[points_ecl_mask_suplements]))
+            counterpart_position_array[points_ecl_mask_counterparts] = np.full((points_in_ecl_counterparts, 5), np.nan)
+            counterpart_position_array = np.row_stack((counterpart_position_array,
+                                                       np.full((points_in_ecl_suplements, 5), np.nan)))
+
+    return True, reduced_orbit_array, counterpart_position_array
 
 
 def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_arr, phases_span_test):
@@ -251,7 +259,9 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
                                               **kwargs)
 
     # interpolation of the points in the second half of the light curves using splines
-    x = np.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4] % 1))
+    x = np.concatenate((orbital_supplements.body[:, 4], orbital_supplements.mirror[:, 4]))
+    not_nan_test = ~np.isnan(x)
+    x = x[not_nan_test] % 1
     sort_idx = np.argsort(x)
     x = x[sort_idx]
     x = np.concatenate((x[-5:] - 1, x, x[:5] + 1))
@@ -259,7 +269,7 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     band_curves = dict()
     for curve in crv_labels:
         y = np.concatenate((stacked_band_curves[curve][:, 0], stacked_band_curves[curve][:, 1]))
-        y = y[sort_idx]
+        y = y[not_nan_test][sort_idx]
         y = np.concatenate((y[-5:], y, y[:5]))
 
         i = Akima1DInterpolator(x, y)
@@ -302,8 +312,7 @@ def integrate_eccentric_curve_appx_two(binary, phases, orbital_supplements, pote
         base_idxs = np.array(orbital_supplements.body[:, 0], dtype=np.int)
         band_curves[lbl][base_idxs] = stacked_band_curves[lbl][:, 0]
         not_nan_test = ~np.isnan(orbital_supplements.mirror[:, 0])
-        mirror_idxs = np.array(orbital_supplements.mirror[not_nan_test, 0],
-                               dtype=np.int)
+        mirror_idxs = np.array(orbital_supplements.mirror[not_nan_test, 0], dtype=np.int)
         band_curves[lbl][mirror_idxs] = stacked_band_curves[lbl][not_nan_test, 1]
 
     return band_curves

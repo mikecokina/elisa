@@ -293,8 +293,8 @@ def compute_rel_d_radii_from_counterparts(binary, base_distances, counterpart_di
 
 def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
     """
-    Prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
-    mirrored via apsidal line in order to reduce time for generating the light curve.
+    Prepare set of orbital positions that are symmetrical in therms of surface geometry. For each couple,the orbital
+    position is mirrored using apsidal line in order to reduce time for generating the light curve.
 
     :param binary: elisa.binary_star.system.BinarySystem;
     :param azimuths: numpy.array; orbital azimuths of positions in which LC will be calculated
