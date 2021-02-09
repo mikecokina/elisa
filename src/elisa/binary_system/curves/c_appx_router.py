@@ -141,7 +141,7 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
         points_ecl_mask_counterparts = np.logical_and(true_anomalies_counterparts > ecl_nu - width,
                                                       true_anomalies_counterparts < ecl_nu + width)
         points_in_ecl_suplements = np.sum(points_ecl_mask_suplements)
-        points_in_ecl_counterparts = np.sum(points_ecl_mask_counterparts)
+        # points_in_ecl_counterparts = np.sum(points_ecl_mask_counterparts)
 
         if points_in_ecl_suplements < settings.MIN_POINTS_IN_ECLIPSE:
             reduced_orbit_array =\
