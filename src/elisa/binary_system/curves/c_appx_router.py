@@ -138,8 +138,8 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
         width = angular_ecl_widths[ii] + d_nu
         points_ecl_mask_suplements = np.logical_and(true_anomalies_supplements > ecl_nu - width,
                                                     true_anomalies_supplements < ecl_nu + width)
-        points_ecl_mask_counterparts = np.logical_and(true_anomalies_counterparts > ecl_nu - width,
-                                                      true_anomalies_counterparts < ecl_nu + width)
+        # points_ecl_mask_counterparts = np.logical_and(true_anomalies_counterparts > ecl_nu - width,
+        #                                               true_anomalies_counterparts < ecl_nu + width)
         points_in_ecl_suplements = np.sum(points_ecl_mask_suplements)
         # points_in_ecl_counterparts = np.sum(points_ecl_mask_counterparts)
 
