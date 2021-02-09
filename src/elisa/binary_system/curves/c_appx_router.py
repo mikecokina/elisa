@@ -146,7 +146,7 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
         if points_in_ecl_suplements < settings.MIN_POINTS_IN_ECLIPSE:
             reduced_orbit_array =\
                 np.row_stack((reduced_orbit_array, reduced_orbit_supplement_arr[points_ecl_mask_suplements]))
-            counterpart_position_array[points_ecl_mask_counterparts] = np.full((points_in_ecl_counterparts, 5), np.nan)
+            # counterpart_position_array[points_ecl_mask_counterparts] = np.full((points_in_ecl_counterparts, 5), np.nan)
             counterpart_position_array = np.row_stack((counterpart_position_array,
                                                        np.full((points_in_ecl_suplements, 5), np.nan)))
 
