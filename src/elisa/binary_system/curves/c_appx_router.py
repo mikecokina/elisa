@@ -117,7 +117,6 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
 
     # true anomalies of orbital positions modelled by approximation 1
     true_anomalies_supplements = reduced_orbit_supplement_arr[:, 3]
-    true_anomalies_counterparts = counterpart_position_array[:, 3]
 
     # component distance during eclipses
     ecl_true_anomalies = np.array([binary.orbit.conjunctions[f'{component}_eclipse']['true_anomaly']
@@ -129,24 +128,23 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
                                                        distance, binary.inclination)
                           for distance in distances_at_ecl]
 
-    s_nu = np.sort(true_anomalies_supplements)
-    d_nu = np.max(s_nu[1:] - s_nu[:-1])
-    # counting if eclipse contains sufficient amount of points
     for ii, ecl_nu in enumerate(ecl_true_anomalies):
         if angular_ecl_widths[ii] == 0.0:
             continue
-        width = angular_ecl_widths[ii] + d_nu
-        points_ecl_mask_suplements = np.logical_and(true_anomalies_supplements > ecl_nu - width,
-                                                    true_anomalies_supplements < ecl_nu + width)
-        # points_ecl_mask_counterparts = np.logical_and(true_anomalies_counterparts > ecl_nu - width,
-        #                                               true_anomalies_counterparts < ecl_nu + width)
+        bottom, top = ecl_nu - angular_ecl_widths[ii], ecl_nu + angular_ecl_widths[ii]
+        points_ecl_mask_suplements = np.logical_and(true_anomalies_supplements > bottom,
+                                                    true_anomalies_supplements < top)
+        if bottom < 0.0:
+            points_ecl_mask_suplements = np.logical_or(points_ecl_mask_suplements,
+                                                       true_anomalies_supplements > bottom + const.FULL_ARC)
+        elif top > const.FULL_ARC:
+            points_ecl_mask_suplements = np.logical_or(points_ecl_mask_suplements,
+                                                       true_anomalies_supplements < top - const.FULL_ARC)
         points_in_ecl_suplements = np.sum(points_ecl_mask_suplements)
-        # points_in_ecl_counterparts = np.sum(points_ecl_mask_counterparts)
 
         if points_in_ecl_suplements < settings.MIN_POINTS_IN_ECLIPSE:
             reduced_orbit_array =\
                 np.row_stack((reduced_orbit_array, reduced_orbit_supplement_arr[points_ecl_mask_suplements]))
-            # counterpart_position_array[points_ecl_mask_counterparts] = np.full((points_in_ecl_counterparts, 5), np.nan)
             counterpart_position_array = np.row_stack((counterpart_position_array,
                                                        np.full((points_in_ecl_suplements, 5), np.nan)))
 
@@ -247,6 +245,7 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
         * ** atlas ** - str
     :return: Dict[str, numpy.array];
     """
+    N = 5
     orbital_supplements = OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
     orbital_supplements.sort(by='distance')
 
@@ -264,13 +263,13 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     x = x[not_nan_test] % 1
     sort_idx = np.argsort(x)
     x = x[sort_idx]
-    x = np.concatenate((x[-5:] - 1, x, x[:5] + 1))
+    x = np.concatenate((x[-N:] - 1, x, x[:N] + 1))
 
     band_curves = dict()
     for curve in crv_labels:
         y = np.concatenate((stacked_band_curves[curve][:, 0], stacked_band_curves[curve][:, 1]))
-        y = y[not_nan_test][sort_idx]
-        y = np.concatenate((y[-5:], y, y[:5]))
+        y = (y[not_nan_test])[sort_idx]
+        y = np.concatenate((y[-N:], y, y[:N]))
 
         i = Akima1DInterpolator(x, y)
         f = i(phases)

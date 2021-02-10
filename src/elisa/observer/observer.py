@@ -249,7 +249,7 @@ class Observer(object):
             if has_pulsation_test | asynchronous_spotty_test:
                 return phases, up.arange(phases.shape[0])
             else:
-                base_interval = np.round(phases % 1, 9)
+                base_interval = np.round(phases, 9) % 1
                 return np.unique(base_interval, return_inverse=True)
 
         elif self._system_cls == SingleSystem or str(self._system_cls) == str(SingleSystem):
@@ -261,7 +261,7 @@ class Observer(object):
                 return phases, up.arange(phases.shape[0])
             # in case of just spots on surface, unique (0.1) phases are only needed
             elif has_spot_test and not has_pulsation_test:
-                base_interval = np.round(phases % 1, 9)
+                base_interval = np.round(phases, 9) % 1
                 return np.unique(base_interval, return_inverse=True)
             # in case of clear surface no pulsations and spots, only single observation is needed
             else:
