@@ -313,6 +313,7 @@ class ParameterMeta(object):
         self.value = kwargs.get("value")
         self.min = kwargs.get("min")
         self.max = kwargs.get("max")
+        self.sigma = kwargs.get("sigma")
 
     def to_dict(self):
         return dict(
@@ -323,7 +324,8 @@ class ParameterMeta(object):
                 "max": self.max,
                 "unit": str(self.unit) if self.unit is not None else None,
                 "fixed": self.fixed,
-                "constraint": self.constraint
+                "constraint": self.constraint,
+                "sigma": self.sigma
             }
         )
 
@@ -336,7 +338,8 @@ class InitialParameter(object):
         "constraint": None,
         "min": None,
         "max": None,
-        "unit": None
+        "unit": None,
+        "sigma": None
     }
 
     def __init__(self, transform_cls, **kwargs):
@@ -348,6 +351,7 @@ class InitialParameter(object):
         self.value = None
         self.min = None
         self.max = None
+        self.sigma = None
 
         # units transformaton
         self.unit = u.Unit(self.unit) if self.unit is not None else self.unit
@@ -355,7 +359,7 @@ class InitialParameter(object):
             kwargs.update({
                 "value": kwargs.get("value") * self.unit,
                 "min": kwargs.get("min") * self.unit,
-                "max": kwargs.get("max") * self.unit
+                "max": kwargs.get("max") * self.unit,
             })
 
         if self.constraint is None:
@@ -363,8 +367,12 @@ class InitialParameter(object):
             self.min = transform_cls.transform_input(**{self.param: kwargs.get("min")})[self.param]
             self.max = transform_cls.transform_input(**{self.param: kwargs.get("max")})[self.param]
 
+        if kwargs.get("sigma") is not None:
+            kwargs.update({"sigma": kwargs.get("sigma") * self.unit})
+            self.sigma = transform_cls.transform_input(**{self.param: kwargs.get("sigma")})[self.param]
+
         if self.fixed:
-            self.min, self.max = None, None
+            self.min, self.max, self.sigma = None, None, None
 
         self.unit = conf.DEFAULT_FLOAT_UNITS[self.property]
 
@@ -378,7 +386,8 @@ class InitialParameter(object):
                 "param": self.param,
                 "min": self.min,
                 "max": self.max,
-                "unit": str(self.unit) if self.unit is not None else None
+                "unit": str(self.unit) if self.unit is not None else None,
+                "sigma": self.sigma
             },
             **{"fixed": self.fixed} if self.fixed is not None else {},
             **{"constraint": self.constraint} if self.constraint is not None else {},
@@ -392,6 +401,7 @@ class InitialParameter(object):
             "constraint": self.constraint,
             "min": self.min,
             "max": self.max,
+            "sigma": self.sigma,
             "unit": str(self.unit) if self.unit is not None else None
         }, indent=4)
 
@@ -411,10 +421,10 @@ class InitialParameters(object, metaclass=abc.ABCMeta):
             if not isinstance(prop, InitialParameter):
                 continue
 
-            # if prop.constraint is None and not prop.fixed:
-            #     if not (prop.min <= prop.value <= prop.max):
-            #         raise InitialParamsError(f'Initial parameters in parameter `{prop.param}` are not valid. '
-            #                                  f'Invalid bounds: {prop.min} <= {prop.value} <= {prop.max}')
+            if prop.constraint is None and not prop.fixed:
+                if not (prop.min <= prop.value <= prop.max):
+                    raise InitialParamsError(f'Initial parameters in parameter `{prop.param}` are not valid. '
+                                             f'Invalid bounds: {prop.min} <= {prop.value} <= {prop.max}')
             if prop.fixed is not None and prop.constraint is not None:
                 raise InitialParamsError(f'It is not allowed for `{prop.param}` to contain '
                                          f'`fixed` and `constraint` parameter.')
@@ -423,9 +433,7 @@ class InitialParameters(object, metaclass=abc.ABCMeta):
         _kwarg = InitialParameter.DEFAULT.copy()
         _kwarg.update(dict(param=parameter, **items))
         _kwarg.update(dict(min=items.get("min", self.DEFAULT_NORMALIZATION[parameter][0]),
-                           max=items.get("max", self.DEFAULT_NORMALIZATION[parameter][1])
-                           )
-                      )
+                           max=items.get("max", self.DEFAULT_NORMALIZATION[parameter][1])))
         return InitialParameter(transform_cls=self.__class__.TRANSFORM_PROPERTIES_CLS, **_kwarg)
 
 

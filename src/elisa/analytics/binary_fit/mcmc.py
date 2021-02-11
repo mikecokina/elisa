@@ -41,6 +41,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.flat_chain_path = ''
         self.eval_counter = 0
         self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
+        self.sigmas = list()
 
     def s_squared(self, synthetic, ln_f):
         """
@@ -51,9 +52,9 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
                 for key, values in synthetic.items()}
 
     @staticmethod
-    def ln_prior(xn):
+    def ln_prior(xn, sigmas):
         prior = np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0))).astype(float)
-        # prior = np.prod(2*norm().pdf(2*(xn-0.5)))
+        # prior = np.prod(2*norm().pdf(2*(xn/sigma)))
         return -np.inf if prior == 0 else np.log(prior)
 
     @abstractmethod
@@ -78,7 +79,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         return lh
 
     def ln_probability(self, xn):
-        prior = self.ln_prior(xn)
+        prior = self.ln_prior(xn, self.sigmas)
         if prior == -np.inf:
             return -np.inf
         try:
@@ -90,20 +91,20 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         return likelihood
 
     def _fit(self, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False, save=False, fit_id=None):
+        self.sigmas = np.array([val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()])
         vector = parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization)
         p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=vector)
-        lnf = self.ln_probability
 
         logger.info('starting mcmc')
         if settings.NUMBER_OF_MCMC_PROCESSES > 1:
             with Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES) as pool:
                 logger.info('starting parallel mcmc')
-                sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf, pool=pool)
+                sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=self.ln_probability, pool=pool)
                 self.worker(sampler, p0, nsteps, nsteps_burn_in, save=save, fit_id=fit_id, fitable=self.fitable,
                             normalization=self.normalization, progress=progress)
         else:
             logger.info('starting singlecore mcmc')
-            sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf)
+            sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=self.ln_probability)
             self.worker(sampler, p0, nsteps, nsteps_burn_in, save=save, fit_id=fit_id, fitable=self.fitable,
                         normalization=self.normalization, progress=progress)
 
