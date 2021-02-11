@@ -134,6 +134,7 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
         bottom, top = ecl_nu - angular_ecl_widths[ii], ecl_nu + angular_ecl_widths[ii]
         points_ecl_mask_suplements = np.logical_and(true_anomalies_supplements > bottom,
                                                     true_anomalies_supplements < top)
+        # treating eclipses on boundaries of 0, 2pi interval
         if bottom < 0.0:
             points_ecl_mask_suplements = np.logical_or(points_ecl_mask_suplements,
                                                        true_anomalies_supplements > bottom + const.FULL_ARC)

@@ -4,12 +4,12 @@ import numpy as np
 import pandas as pd
 
 from . import utils as outils
-from . plot import Plot
-from . passband import PassbandContainer, init_bolometric_passband
-from .. binary_system.curves.community import RadialVelocitySystem
+from .plot import Plot
+from .passband import PassbandContainer, init_bolometric_passband
+from ..binary_system.curves.community import RadialVelocitySystem
 from .. import settings
-from .. utils import is_empty, jd_to_phase
-from .. logger import getLogger
+from ..utils import is_empty, jd_to_phase
+from ..logger import getLogger
 from .. import (
     units as u,
     umpy as up
@@ -174,7 +174,7 @@ class Observer(object):
             self.fluxes_unit = u.dimensionless_unscaled
         else:
             self.fluxes = curves
-            self.fluxes_unit = u.W / u.m**2
+            self.fluxes_unit = u.W / u.m ** 2
         logger.info("observation finished")
         return self.phases, self.fluxes
 
@@ -219,7 +219,7 @@ class Observer(object):
         if normalize:
             self.rv_unit = u.dimensionless_unscaled
             _max = np.max([np.max(item) for item in self.radial_velocities.values()])
-            self.radial_velocities = {key: value/_max for key, value in self.radial_velocities.items()}
+            self.radial_velocities = {key: value / _max for key, value in self.radial_velocities.items()}
 
         return self.phases, self.radial_velocities
 
@@ -249,7 +249,7 @@ class Observer(object):
             if has_pulsation_test | asynchronous_spotty_test:
                 return phases, up.arange(phases.shape[0])
             else:
-                base_interval = np.round(phases, 9) % 1
+                base_interval = np.round(phases % 1, 9)
                 return np.unique(base_interval, return_inverse=True)
 
         elif self._system_cls == SingleSystem or str(self._system_cls) == str(SingleSystem):
@@ -261,7 +261,7 @@ class Observer(object):
                 return phases, up.arange(phases.shape[0])
             # in case of just spots on surface, unique (0.1) phases are only needed
             elif has_spot_test and not has_pulsation_test:
-                base_interval = np.round(phases, 9) % 1
+                base_interval = np.round(phases % 1, 9)
                 return np.unique(base_interval, return_inverse=True)
             # in case of clear surface no pulsations and spots, only single observation is needed
             else:
