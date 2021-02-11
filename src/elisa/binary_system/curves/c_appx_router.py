@@ -9,7 +9,7 @@ from .. curves import (
 from ... logger import getLogger
 from ... import utils, settings, const
 from ... binary_system.orbit.container import OrbitalSupplements
-from ... binary_system.orbit.orbit import component_distance_from_mean_anomaly, get_approx_ecl_angular_width
+from ... binary_system.orbit.orbit import component_distance_from_mean_anomaly, get_approx_ecl_angular_width, Orbit
 from ... observer.mp_manager import manage_observations
 
 
@@ -128,10 +128,12 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
                                                        distance, binary.inclination)
                           for distance in distances_at_ecl]
 
+    pericentre_idxs = np.argsort(reduced_orbit_supplement_arr[:, 1])[:2]
+    d_nu = true_anomalies_supplements[pericentre_idxs[1]] - true_anomalies_supplements[pericentre_idxs[0]]
     for ii, ecl_nu in enumerate(ecl_true_anomalies):
         if angular_ecl_widths[ii] == 0.0:
             continue
-        bottom, top = ecl_nu - angular_ecl_widths[ii], ecl_nu + angular_ecl_widths[ii]
+        bottom, top = ecl_nu - angular_ecl_widths[ii] - d_nu, ecl_nu + angular_ecl_widths[ii] + d_nu
         points_ecl_mask_suplements = np.logical_and(true_anomalies_supplements > bottom,
                                                     true_anomalies_supplements < top)
         # treating eclipses on boundaries of 0, 2pi interval
