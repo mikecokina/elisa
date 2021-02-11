@@ -129,7 +129,7 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
                           for distance in distances_at_ecl]
 
     pericentre_idxs = np.argsort(reduced_orbit_supplement_arr[:, 1])[:2]
-    d_nu = true_anomalies_supplements[pericentre_idxs[1]] - true_anomalies_supplements[pericentre_idxs[0]]
+    d_nu = np.abs(true_anomalies_supplements[pericentre_idxs[1]] - true_anomalies_supplements[pericentre_idxs[0]])
     for ii, ecl_nu in enumerate(ecl_true_anomalies):
         if angular_ecl_widths[ii] == 0.0:
             continue
