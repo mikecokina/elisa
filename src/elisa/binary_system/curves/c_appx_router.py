@@ -112,7 +112,7 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
     """
     # base test to establish, if curve contains enough points
     base_test = len(phases) > settings.POINTS_ON_ECC_ORBIT > 0 and phases_span_test
-    if not base_test:
+    if not base_test or binary.eccentricity > 0.9:
         return False, reduced_orbit_array, counterpart_position_array
 
     # true anomalies of orbital positions modelled by approximation 1
