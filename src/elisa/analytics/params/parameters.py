@@ -238,6 +238,11 @@ def vector_normalizer(vector, properties, normalization):
     return [normalize_value(value, *normalization[prop]) for value, prop in zip(vector, properties)]
 
 
+# def sigma_normalizer(x0, x0_normalized, sigma):
+#
+#     return perturbed - x0_normalized
+
+
 def prepare_properties_set(xn, properties, constrained, fixed):
     """
     This will prepare final kwargs for synthetic model evaluation.
