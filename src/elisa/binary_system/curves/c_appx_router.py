@@ -107,7 +107,10 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
     :param binary: elisa.binary_system.system.BinarySystem;
     :param phases_span_test: bool; test for sufficient phase span of observations
     :param phases: numpy.array; photometric phases
-    :param reduced_orbit_array: numpy.array;
+    :param reduced_orbit_array: numpy.array; orbital positions defined by user on one side of the apsidal line
+    :param counterpart_position_array: numpy.array; symmetrical counterparts to the 'reduced_orbit_array'
+    :param reduced_orbit_supplement_arr: numpy.array; orbital positions defined by user on the opposite side as
+                                         'reduced_orbit_array' side of the apsidal line
     :return: bool;
     """
     # base test to establish, if curve contains enough points
@@ -131,9 +134,9 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
     pericentre_idxs = np.argsort(reduced_orbit_supplement_arr[:, 1])[:2]
     d_nu = np.abs(true_anomalies_supplements[pericentre_idxs[1]] - true_anomalies_supplements[pericentre_idxs[0]])
     for ii, ecl_nu in enumerate(ecl_true_anomalies):
-        if angular_ecl_widths[ii] == 0.0:
+        if angular_ecl_widths[ii][0] == 0.0:
             continue
-        bottom, top = ecl_nu - angular_ecl_widths[ii] - d_nu, ecl_nu + angular_ecl_widths[ii] + d_nu
+        bottom, top = ecl_nu - angular_ecl_widths[ii][0] - d_nu, ecl_nu + angular_ecl_widths[ii][0] + d_nu
         points_ecl_mask_suplements = np.logical_and(true_anomalies_supplements > bottom,
                                                     true_anomalies_supplements < top)
         # treating eclipses on boundaries of 0, 2pi interval
@@ -143,9 +146,14 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
         elif top > const.FULL_ARC:
             points_ecl_mask_suplements = np.logical_or(points_ecl_mask_suplements,
                                                        true_anomalies_supplements < top - const.FULL_ARC)
+
+        # number of points in eclipse
         points_in_ecl_suplements = np.sum(points_ecl_mask_suplements)
 
-        if points_in_ecl_suplements < settings.MIN_POINTS_IN_ECLIPSE:
+        # subtraction of the central plateau (taking into account only descent and ascent part)
+        plateau_factor = (1 - angular_ecl_widths[ii][1] / angular_ecl_widths[ii][0])
+
+        if plateau_factor * points_in_ecl_suplements < settings.MIN_POINTS_IN_ECLIPSE:
             reduced_orbit_array =\
                 np.row_stack((reduced_orbit_array, reduced_orbit_supplement_arr[points_ecl_mask_suplements]))
             counterpart_position_array = np.row_stack((counterpart_position_array,

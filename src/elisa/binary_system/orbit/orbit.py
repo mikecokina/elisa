@@ -130,20 +130,28 @@ def get_approx_ecl_angular_width(forward_radius1, forward_radius2, components_di
     :param forward_radius2: float;
     :param components_distance: float; in SMA
     :param inclination: float; in radians
-    :return: float; angular half-width of the eclipse
+    :return: tuple; angular half-width of the eclipse and the inner plateau
     """
     # tilt of the orbital plane and z-axis in the observer reference frame
     tilt = np.abs(const.HALF_PI - inclination)
     # maximum apparent distance between components where eclipse is possible
-    r_total = forward_radius1 + forward_radius2
+    r_outer = forward_radius1 + forward_radius2
+    r_inner = np.abs(forward_radius1 - forward_radius2)
     # closest aparent distances of component centres
     r_close = components_distance * np.sin(tilt)
 
     # checking if eclipses occur
-    return 0.0 if r_close >= r_total else \
+
+    nu_outer = 0.0 if r_close >= r_outer else \
         np.arcsin(np.sqrt(
-            np.power(r_total/components_distance, 2) - np.power(np.sin(tilt), 2)
+            np.power(r_outer/components_distance, 2) - np.power(np.sin(tilt), 2)
         ))
+    nu_inner = 0.0 if r_close >= r_inner else \
+        np.arcsin(np.sqrt(
+            np.power(r_inner / components_distance, 2) - np.power(np.sin(tilt), 2)
+        ))
+
+    return nu_outer, nu_inner
 
 
 class Orbit(object):
