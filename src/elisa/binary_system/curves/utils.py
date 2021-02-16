@@ -327,3 +327,19 @@ def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
                                         calculate_from='azimuth')
 
     return unique_phase_indices, orbital_motion_array_counterpart, unique_geometry
+
+
+def adjust_eclipse_width(true_anomalies, true_anomaly_of_eclipse):
+    """
+    Extends the angular width of the eclipse by the separation of the true anomalies near the eclipse to smooth out 
+    the transition before/after the eclipse.
+    
+    :param true_anomalies: numpy.array; true anomalies of the orbital positions
+    :param true_anomaly_of_eclipse: float; true anomaly of the eclipse
+    :return: 
+    """
+    distances = np.abs(true_anomalies - true_anomaly_of_eclipse)
+    inverse_points_mask = distances > const.PI
+    distances[inverse_points_mask] = const.FULL_ARC - distances[inverse_points_mask]
+    idxs = np.argsort(distances)[:2]
+    return 1.5 * np.abs(true_anomalies[idxs[1]] - true_anomalies[idxs[0]])
