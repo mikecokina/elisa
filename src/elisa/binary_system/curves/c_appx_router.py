@@ -131,11 +131,14 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
                                                        distance, binary.inclination)
                           for distance in distances_at_ecl]
 
-    pericentre_idxs = np.argsort(reduced_orbit_supplement_arr[:, 1])[:2]
-    d_nu = np.abs(true_anomalies_supplements[pericentre_idxs[1]] - true_anomalies_supplements[pericentre_idxs[0]])
     for ii, ecl_nu in enumerate(ecl_true_anomalies):
         if angular_ecl_widths[ii][0] == 0.0:
             continue
+
+        # including adjacent points to the eclipse to ensure smoothness
+        idxs = np.argsort(np.abs(true_anomalies_supplements - ecl_nu))[:2]
+        d_nu = 1.5 * np.abs(true_anomalies_supplements[idxs[1]] - true_anomalies_supplements[idxs[0]])
+
         bottom, top = ecl_nu - angular_ecl_widths[ii][0] - d_nu, ecl_nu + angular_ecl_widths[ii][0] + d_nu
         points_ecl_mask_suplements = np.logical_and(true_anomalies_supplements > bottom,
                                                     true_anomalies_supplements < top)
@@ -151,7 +154,7 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
         points_in_ecl_suplements = np.sum(points_ecl_mask_suplements)
 
         # subtraction of the central plateau (taking into account only descent and ascent part)
-        plateau_factor = (1 - angular_ecl_widths[ii][1] / angular_ecl_widths[ii][0])
+        plateau_factor = 1 - angular_ecl_widths[ii][1] / angular_ecl_widths[ii][0]
 
         if plateau_factor * points_in_ecl_suplements < settings.MIN_POINTS_IN_ECLIPSE:
             reduced_orbit_array =\
