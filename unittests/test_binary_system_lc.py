@@ -460,7 +460,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         mp_flux = normalize_lc_for_unittests(mp_res[1]["Generic.Bessell.V"])
 
         # print(np.max(sp_flux - mp_flux))
-        #
+
         # import matplotlib.pyplot as plt
         # plt.plot(sp_res[0], sp_flux, label='single')
         # plt.plot(mp_res[0], mp_flux, label='multi')

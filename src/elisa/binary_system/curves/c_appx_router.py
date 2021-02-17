@@ -161,6 +161,11 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
             counterpart_position_array = np.row_stack((counterpart_position_array,
                                                        np.full((points_in_ecl_suplements, 5), np.nan)))
 
+    # removing duplicite entries
+    _, idx = np.unique(reduced_orbit_array[:, 0], return_index=True)
+    reduced_orbit_array = reduced_orbit_array[idx]
+    counterpart_position_array = counterpart_position_array[idx]
+
     return True, reduced_orbit_array, counterpart_position_array
 
 
@@ -258,7 +263,7 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
         * ** atlas ** - str
     :return: Dict[str, numpy.array];
     """
-    N = 5
+    n = 5 if phases.shape[0] > 10 else int(phases.shape[0] / 2) - 1
     orbital_supplements = OrbitalSupplements(body=reduced_orbit_arr, mirror=counterpart_postion_arr)
     orbital_supplements.sort(by='distance')
 
@@ -276,13 +281,13 @@ def integrate_eccentric_curve_appx_one(binary, phases, reduced_orbit_arr, counte
     x = x[not_nan_test] % 1
     sort_idx = np.argsort(x)
     x = x[sort_idx]
-    x = np.concatenate((x[-N:] - 1, x, x[:N] + 1))
+    x = np.concatenate((x[-n:] - 1, x, x[:n] + 1))
 
     band_curves = dict()
     for curve in crv_labels:
         y = np.concatenate((stacked_band_curves[curve][:, 0], stacked_band_curves[curve][:, 1]))
         y = (y[not_nan_test])[sort_idx]
-        y = np.concatenate((y[-N:], y, y[:N]))
+        y = np.concatenate((y[-n:], y, y[:n]))
 
         i = Akima1DInterpolator(x, y)
         f = i(phases)
