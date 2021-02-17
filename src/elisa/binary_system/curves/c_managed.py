@@ -268,8 +268,9 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
                   all_potentials.items()}
 
     rel_d_radii = crv_utils.compute_rel_d_radii(binary, orbital_positions[:, 0, 1], potentials=potentials)
-    new_geometry_mask = dynamic.resolve_object_geometry_update(binary.has_spots(), orbital_positions.shape[0],
-                                                               rel_d_radii)
+    args = (binary.has_spots(), orbital_positions.shape[0], rel_d_radii)
+    new_geometry_mask = dynamic.resolve_object_geometry_update(*args)
+
     rel_irrad = crv_utils.compute_rel_d_irradiation(binary, orbital_positions[:, 0, 1])
     new_irrad_mask = dynamic.resolve_irrad_update(rel_irrad, orbital_positions.shape[0])
 

@@ -219,14 +219,14 @@ def compute_rel_d_irradiation(binary, distances):
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param distances: numpy.array; orbital distances (sorted)
-    :return: numpy.array
+    :return: numpy.array;
     """
-    temp_ratio2 = np.power(binary.primary.t_eff / binary.secondary.t_eff, 2)
-    irrad1 = temp_ratio2 * binary.primary.equivalent_radius / (2 * distances)
-    irrad2 = binary.secondary.equivalent_radius / (2 * distances * temp_ratio2)
+    temp_ratio4 = np.power(binary.primary.t_eff / binary.secondary.t_eff, 4)
+    irrad1 = temp_ratio4 * np.power(binary.primary.equivalent_radius / distances, 2)
+    irrad2 = np.power(binary.secondary.equivalent_radius / distances, 2) / temp_ratio4
 
     irrad = np.vstack((irrad1, irrad2))
-    return np.abs(irrad[:, 1:] - irrad[:, :-1]) / irrad.mean(axis=1)[:, np.newaxis]
+    return np.abs(irrad[:, 1:] - irrad[:, :-1])
 
 
 def compute_rel_d_radii_from_counterparts(binary, base_distances, counterpart_distances, base_potentials=None,
