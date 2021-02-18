@@ -210,7 +210,19 @@ def compute_rel_d_radii(binary, distances, potentials=None):
     sargs = (distances, corrected_potentials['secondary'], binary.mass_ratio, binary.secondary.synchronicity,
              "secondary")
     fwd_radii = np.vstack((bsradius.calculate_forward_radii(*pargs), bsradius.calculate_forward_radii(*sargs)))
-    return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii.mean(axis=1)[:, np.newaxis]
+    fwd_r_diff = - np.diff(fwd_radii, axis=1)
+
+    eq_radii = np.array([binary.primary.equivalent_radius, binary.secondary.equivalent_radius])
+    temp4 = np.power(np.array([binary.primary.t_eff, binary.secondary.t_eff]), 4)
+
+    d_flux = (2 * eq_radii[:, np.newaxis] * fwd_r_diff + fwd_r_diff**2) * temp4[:, np.newaxis]
+    total_flux = eq_radii**2 * temp4
+
+    return d_flux / total_flux[:, None]
+    # d_area =
+    # fwd_radii = fwd_radii / fwd_radii.mean(axis=1)[:, np.newaxis]
+    # # return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii.mean(axis=1)[:, np.newaxis]
+    # return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1])
 
 
 def compute_rel_d_irradiation(binary, distances):
@@ -222,8 +234,11 @@ def compute_rel_d_irradiation(binary, distances):
     :return: numpy.array;
     """
     temp_ratio4 = np.power(binary.primary.t_eff / binary.secondary.t_eff, 4)
-    irrad1 = temp_ratio4 * np.power(binary.primary.equivalent_radius / distances, 2)
-    irrad2 = np.power(binary.secondary.equivalent_radius / distances, 2) / temp_ratio4
+    r_ratio2 = np.power(binary.primary.equivalent_radius / binary.secondary.equivalent_radius, 2)
+    irrad1 = np.power(binary.primary.equivalent_radius / distances, 2) / (1 + r_ratio2 * temp_ratio4)
+    irrad2 = np.power(binary.secondary.equivalent_radius / distances, 2) / (1 + 1 / (r_ratio2 * temp_ratio4))
+    # irrad1 = temp_ratio4 * np.power(binary.primary.equivalent_radius / distances, 2)
+    # irrad2 = np.power(binary.secondary.equivalent_radius / distances, 2) / temp_ratio4
 
     irrad = np.vstack((irrad1, irrad2))
     return np.abs(irrad[:, 1:] - irrad[:, :-1])
