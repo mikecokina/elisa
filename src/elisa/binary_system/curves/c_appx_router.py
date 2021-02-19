@@ -136,9 +136,10 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
             continue
 
         # including adjacent points to the eclipse to ensure smoothness
-        d_nu = crv_utils.adjust_eclipse_width(true_anomalies_supplements, ecl_nu)
+        d_nu1 = crv_utils.adjust_eclipse_width(true_anomalies_supplements, ecl_nu - angular_ecl_widths[ii][0])
+        d_nu2 = crv_utils.adjust_eclipse_width(true_anomalies_supplements, ecl_nu + angular_ecl_widths[ii][0])
 
-        bottom, top = ecl_nu - angular_ecl_widths[ii][0] - d_nu, ecl_nu + angular_ecl_widths[ii][0] + d_nu
+        bottom, top = ecl_nu - angular_ecl_widths[ii][0] - d_nu1, ecl_nu + angular_ecl_widths[ii][0] + d_nu2
         points_ecl_mask_suplements = np.logical_and(true_anomalies_supplements > bottom,
                                                     true_anomalies_supplements < top)
         # treating eclipses on boundaries of 0, 2pi interval
