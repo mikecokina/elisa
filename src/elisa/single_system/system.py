@@ -85,6 +85,8 @@ class SingleSystem(System):
         self.period = self.rotation_period
         self.t0 = self.reference_time
 
+    # TODO include from_json method
+
     @classmethod
     def is_property(cls, kwargs):
         """

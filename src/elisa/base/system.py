@@ -13,7 +13,7 @@ logger = getLogger('base.system')
 class System(metaclass=ABCMeta):
     """
     Abstract class defining System.
-    It implements following input arguments (system properties) which can be set on input of child instance.
+    Following arguments are implemented as common any of child instances.
 
     :param name: str; arbitrary name of instance
     :param inclination: Union[float, astropy.unit.quantity.Quantity]; Inclination of the system.
@@ -21,9 +21,9 @@ class System(metaclass=ABCMeta):
     :param period: Union[float, astropy.unit.quantity.Quantity];
     :param gamma: Union[float, astropy.unit.quantity.Quantity]; Center of mass velocity.
                   Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int
-                  othervise TypeError will be raised.
+                  otherwise TypeError will be raised.
                   If unit is not specified, default velocity unit is assumed.
-    :param additional_light: float; Light that does not originate from any member of system.
+    :param additional_light: float; fraction of light that does not originate from any member of the System.
     """
 
     ID = 1
@@ -64,6 +64,8 @@ class System(metaclass=ABCMeta):
     @abstractmethod
     def transform_input(self, *args, **kwargs):
         pass
+
+    # TODO include from_json as abstract method
 
     def assign_pulsations_amplitudes(self, normalisation_constant=1.0):
         """
@@ -110,7 +112,7 @@ class System(metaclass=ABCMeta):
     @staticmethod
     def object_params_validity_check(components, mandatory_kwargs):
         """
-        Checking if star instances have all additional atributes set properly.
+        Checking if star instances have all additional attributes set properly.
 
         :param components: str;
         :param mandatory_kwargs: List;

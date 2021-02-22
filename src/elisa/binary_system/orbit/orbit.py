@@ -7,6 +7,7 @@ from ... import (
 )
 from ... logger import getLogger
 from ... binary_system.orbit.transform import OrbitProperties
+from ... base.orbit.orbit import AbstractOrbit
 
 logger = getLogger('binary_system.orbit.orbit')
 
@@ -154,9 +155,9 @@ def get_approx_ecl_angular_width(forward_radius1, forward_radius2, components_di
     return nu_outer, nu_inner
 
 
-class Orbit(object):
+class Orbit(AbstractOrbit):
     """
-    Model which represents orbit of binary system.
+    Object representing orbit of a binary system. Accessible as an attribute of an BinarySystem object
 
     Input parameters:
 
@@ -184,6 +185,8 @@ class Orbit(object):
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
         kwargs = OrbitProperties.transform_input(**kwargs)
 
+        super(Orbit, self).__init__(**kwargs)
+
         # default valeus of properties
         self.period = np.nan
         self.eccentricity = np.nan
@@ -203,28 +206,6 @@ class Orbit(object):
         self.periastron_distance = self.compute_periastron_distance()
         self.conjunctions = self.get_conjuction()
         self.periastron_phase = - self.conjunctions["primary_eclipse"]["true_phase"] % 1
-
-    @classmethod
-    def true_phase(cls, phase, phase_shift):
-        """
-        Returns shifted phase of the orbit by the amount phase_shift.
-
-        :param phase: Union[numpy.array, float];
-        :param phase_shift: float;
-        :return: Union[numpy.array, float];
-        """
-        return phase + phase_shift
-
-    @staticmethod
-    def phase(true_phase, phase_shift):
-        """
-        reverts the phase shift introduced in function true phase
-
-        :param true_phase: Union[numpy.array, float];
-        :param phase_shift: numpy.float;
-        :return: Union[numpy.array, float];
-        """
-        return true_phase - phase_shift
 
     @classmethod
     def phase_to_mean_anomaly(cls, phase):
