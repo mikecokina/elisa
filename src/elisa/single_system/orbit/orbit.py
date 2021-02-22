@@ -69,6 +69,9 @@ class Orbit(AbstractOrbit):
 
         self.period = self.rotational_period
 
+    def orbital_motion(self, phase):
+        return self.rotational_motion(phase)
+
     @staticmethod
     def rotational_motion(phase):
         """
@@ -80,10 +83,10 @@ class Orbit(AbstractOrbit):
 
         ::
 
-            numpy.array((az1, phs1),
-                        (az2, phs2),
+            numpy.array((az1, np.nan, np.nan, phs1),
+                        (az2, np.nan, np.nan, phs2),
                          ...
-                        (azN, phsN))
+                        (azN, np.nan, np.nan, phsN))
         """
         # ability to accept scalar as input
         if isinstance(phase, (int, np.int, float, np.float)):
