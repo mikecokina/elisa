@@ -23,7 +23,7 @@ def look_for_approximation(not_pulsations_test):
     :param not_pulsations_test: bool;
     :return: bool;
     """
-    appx_one = settings.POINTS_ON_ECC_ORBIT > 0 and settings.POINTS_ON_ECC_ORBIT is not None
+    appx_one = settings.MAX_NU_SEPARATION > 0 and settings.MAX_NU_SEPARATION is not None
     appx_two = settings.MAX_SUPPLEMENTAR_D_DISTANCE > 0 and settings.MAX_SUPPLEMENTAR_D_DISTANCE is not None
     appx_three = settings.MAX_RELATIVE_D_R_POINT > 0 and settings.MAX_RELATIVE_D_R_POINT is not None
     appx = appx_one or appx_two or appx_three
@@ -113,13 +113,14 @@ def eval_approximation_one(binary, phases, phases_span_test, reduced_orbit_array
                                          'reduced_orbit_array' side of the apsidal line
     :return: bool;
     """
-    # base test to establish, if curve contains enough points
-    base_test = len(phases) > settings.POINTS_ON_ECC_ORBIT > 0 and phases_span_test
-    if not base_test or binary.eccentricity > 0.9:
-        return False, reduced_orbit_array, counterpart_position_array
-
     # true anomalies of orbital positions modelled by approximation 1
     true_anomalies_supplements = reduced_orbit_supplement_arr[:, 3]
+
+    # base test to establish, if curve contains enough points
+    max_nu_sep = np.max(np.diff(np.sort(true_anomalies_supplements)))
+    if max_nu_sep > settings.MAX_NU_SEPARATION or 0 > settings.MAX_NU_SEPARATION or not phases_span_test:
+        logger.debug('Orbit is not sufficiently populated to implement interpolation approximation 1')
+        return False, reduced_orbit_array, counterpart_position_array
 
     # component distance during eclipses
     ecl_true_anomalies = np.array([binary.orbit.conjunctions[f'{component}_eclipse']['true_anomaly']
@@ -182,6 +183,7 @@ def eval_approximation_two(binary, potentials, base_orbit_arr, orbit_supplement_
     :return: Tuple; approximation test, orbital supplements
     """
     if not phases_span_test:
+        logger.debug('Phase span of the observation is not sufficient to utilize approximation 2.')
         return False, None
 
     # create object of separated objects and supplements to bodies
