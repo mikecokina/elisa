@@ -79,7 +79,7 @@ class Body(metaclass=ABCMeta):
         else:
             self.name = str(name)
 
-        # initializing parmas to default values
+        # initializing paramas to default values
         self.synchronicity = np.nan
         self.mass = np.nan
         self.albedo = np.nan
