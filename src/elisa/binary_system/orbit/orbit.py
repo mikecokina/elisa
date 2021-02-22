@@ -156,7 +156,7 @@ def get_approx_ecl_angular_width(forward_radius1, forward_radius2, components_di
 
 class Orbit(object):
     """
-    Model which represents orbit of binary system.
+    Object representing orbit of a binary system. Accessible as an attribute of an BinarySystem object
 
     Input parameters:
 
