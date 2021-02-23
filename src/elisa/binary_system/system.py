@@ -131,7 +131,7 @@ class BinarySystem(System):
     @classmethod
     def from_json(cls, data, _verify=True, _kind_of=None):
         """
-        Create instance of BinarySystem from JSON in form like::
+        Create instance of BinarySystem from JSON in form such as::
 
             {
               "system": {
@@ -199,7 +199,7 @@ class BinarySystem(System):
               }
             }
             
-        Currently, this approach require values in default units used in app.
+        Currently, this approach require values in default units.
 
         Default units::
 
@@ -209,7 +209,7 @@ class BinarySystem(System):
                 "argument_of_periastron": [degrees],
                 "gamma": [m/s],
                 "eccentricity": [dimensionless],
-                "primary_minimum_time": ,
+                "primary_minimum_time": [d],
                 "phase_shift": [dimensionless],
                 "mass": [solMass],
                 "surface_potential": [dimensionless],
