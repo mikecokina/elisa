@@ -165,7 +165,6 @@ class Settings(_Const):
     NUMBER_OF_THREADS = 1
     NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
     NUMBER_OF_MCMC_PROCESSES = -1
-    POINTS_ON_ECC_ORBIT = 118
     MAX_NU_SEPARATION = 0.05
     MAX_RELATIVE_D_R_POINT = 2e-4
     MAX_SUPPLEMENTAR_D_DISTANCE = 1e-2
@@ -231,7 +230,6 @@ class Settings(_Const):
             "NUMBER_OF_THREADS": cls.NUMBER_OF_THREADS,
             "NUMBER_OF_PROCESSES": cls.NUMBER_OF_PROCESSES,
             "NUMBER_OF_MCMC_PROCESSES": cls.NUMBER_OF_MCMC_PROCESSES,
-            "POINTS_ON_ECC_ORBIT": cls.POINTS_ON_ECC_ORBIT,
             "MAX_NU_SEPARATION": cls.MAX_NU_SEPARATION,
             "MAX_RELATIVE_D_R_POINT": cls.MAX_RELATIVE_D_R_POINT,
             "MAX_SUPPLEMENTAR_D_DISTANCE": cls.MAX_SUPPLEMENTAR_D_DISTANCE,
@@ -364,8 +362,6 @@ class Settings(_Const):
                     warnings.warn("argument number_of_mcmc_processes is too big, fallback to number of machine cores")
                 cls.NUMBER_OF_MCMC_PROCESSES = int(os.cpu_count())
 
-            cls.POINTS_ON_ECC_ORBIT = c_parse.getint('computational', 'points_on_ecc_orbit',
-                                                     fallback=cls.POINTS_ON_ECC_ORBIT)
             cls.MAX_NU_SEPARATION = c_parse.getfloat('computational', 'max_nu_separation',
                                                      fallback=cls.MAX_NU_SEPARATION)
             cls.MAX_RELATIVE_D_R_POINT = c_parse.getfloat('computational', 'max_relative_d_r_point',
