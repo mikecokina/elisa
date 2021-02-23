@@ -167,7 +167,6 @@ class Settings(_Const):
     NUMBER_OF_MCMC_PROCESSES = -1
     MAX_NU_SEPARATION = 0.08
     MAX_RELATIVE_D_R_POINT = 2e-4
-    MAX_SUPPLEMENTAR_D_DISTANCE = 1e-2
     MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
     MIN_POINTS_IN_ECLIPSE = 35
     MAX_SOLVER_ITERS = 100
@@ -232,7 +231,6 @@ class Settings(_Const):
             "NUMBER_OF_MCMC_PROCESSES": cls.NUMBER_OF_MCMC_PROCESSES,
             "MAX_NU_SEPARATION": cls.MAX_NU_SEPARATION,
             "MAX_RELATIVE_D_R_POINT": cls.MAX_RELATIVE_D_R_POINT,
-            "MAX_SUPPLEMENTAR_D_DISTANCE": cls.MAX_SUPPLEMENTAR_D_DISTANCE,
             "MAX_SPOT_D_LONGITUDE": cls.MAX_SPOT_D_LONGITUDE,
             "MAX_SOLVER_ITERS": cls.MAX_SOLVER_ITERS,
             "MAX_CURVE_DATA_POINTS": cls.MAX_CURVE_DATA_POINTS,
@@ -366,8 +364,6 @@ class Settings(_Const):
                                                      fallback=cls.MAX_NU_SEPARATION)
             cls.MAX_RELATIVE_D_R_POINT = c_parse.getfloat('computational', 'max_relative_d_r_point',
                                                           fallback=cls.MAX_RELATIVE_D_R_POINT)
-            cls.MAX_SUPPLEMENTAR_D_DISTANCE = c_parse.getfloat('computational', 'max_supplementar_d_distance',
-                                                               fallback=cls.MAX_SUPPLEMENTAR_D_DISTANCE)
             cls.MAX_SPOT_D_LONGITUDE = c_parse.getfloat('computational', 'max_spot_d_longitude',
                                                         fallback=cls.MAX_SPOT_D_LONGITUDE)
             cls.MAX_SOLVER_ITERS = c_parse.getfloat('computational', 'max_solver_iters', fallback=cls.MAX_SOLVER_ITERS)

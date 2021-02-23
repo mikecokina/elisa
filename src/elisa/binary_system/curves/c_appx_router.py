@@ -24,9 +24,8 @@ def look_for_approximation(not_pulsations_test):
     :return: bool;
     """
     appx_one = settings.MAX_NU_SEPARATION > 0 and settings.MAX_NU_SEPARATION is not None
-    appx_two = settings.MAX_SUPPLEMENTAR_D_DISTANCE > 0 and settings.MAX_SUPPLEMENTAR_D_DISTANCE is not None
     appx_three = settings.MAX_RELATIVE_D_R_POINT > 0 and settings.MAX_RELATIVE_D_R_POINT is not None
-    appx = appx_one or appx_two or appx_three
+    appx = appx_one or appx_three
     return appx and not_pulsations_test
 
 
@@ -91,7 +90,7 @@ def resolve_ecc_approximation_method(binary, phases, position_method, try_to_fin
         return 'two', lambda: approx_method_list[2](*args, **kwargs)
 
     # APPX THREE *******************************************************************************************************
-    approx_three, new_geometry_mask, sorted_positions = eval_approximation_three(binary, all_orbital_pos_arr)
+    approx_three, new_geometry_mask, sorted_positions = eval_approximation_three(binary, radii, all_orbital_pos_arr)
     if approx_three:
         args = binary, sorted_positions, new_geometry_mask, potentials, crv_labels, curve_fn
         return 'three', lambda: approx_method_list[3](*args, **kwargs)
