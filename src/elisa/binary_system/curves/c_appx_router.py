@@ -188,8 +188,8 @@ def eval_approximation_two(binary, radii, base_orbit_arr, orbit_supplement_arr, 
         return False, None
 
     # create object of separated objects and supplements to bodies
-    orbital_supplements = dynamic.find_apsidally_corresponding_positions(binary, radii, base_orbit_arr,
-                                                                         orbit_supplement_arr)
+    args = (binary, radii, base_orbit_arr, orbit_supplement_arr)
+    orbital_supplements = dynamic.find_apsidally_corresponding_positions(*args)
 
     orbital_supplements.sort(by='distance')
 
