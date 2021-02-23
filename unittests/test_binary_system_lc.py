@@ -207,15 +207,6 @@ class SupportMethodsTestCase(ElisaTestCase):
         obtained = bsutils.hull_to_pypex_poly(hull)
         self.assertTrue(isinstance(obtained, polygon.Polygon))
 
-    def test__compute_rel_d_radii(self):
-        mock_supplements = OrbitalSupplements([[1., 10.]], [[1., 10.]])
-        corrected_potentials = {'primary': [], 'secondary': []}
-        expected = np.array([[0.1101, 0.0661, 0.3084, 0.5727], [0.0746, 0.1119, 0.7836, 0.2612]])
-        with mock.patch('elisa.binary_system.radius.calculate_forward_radii', MockSelf.calculate_forward_radii):
-            obtained = \
-                np.round(crv_utils.compute_rel_d_radii(MockSelf, mock_supplements.body[:, 1], corrected_potentials), 4)
-        self.assertTrue(np.all(expected == obtained))
-
     def _test_find_apsidally_corresponding_positions(self, arr1, arr2, expected, tol=1e-10):
         obtained = dynamic.find_apsidally_corresponding_positions(arr1[:, 0], arr1, arr2[:, 0], arr2, tol, [np.nan] * 2)
         self.assertTrue(expected == obtained)

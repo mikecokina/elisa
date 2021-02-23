@@ -251,23 +251,24 @@ def integrate_eccentric_curve_w_orbital_symmetry(*args):
 
         Tuple[
                 binary: elisa.binary_system.BinarySystem,
-                crv_labels: List;
                 initial_system: elisa.
                 orbital_positions: numpy.array; (N*2*5) stacked couples of orbital positions
+                radii: numpy.array; forward radii
+                crv_labels: List;
                 curves_fn: function to calculate curve points at given orbital positions,
                 kwargs: Dict,
             ]
 
     :return: Dict; curves
     """
-    binary, all_potentials, orbital_positions, crv_labels, curve_fn, kwargs = args
+    binary, all_potentials, orbital_positions, radii, crv_labels, curve_fn, kwargs = args
 
     # surface potentials with constant volume of components
-    # potentials = binary.correct_potentials(orbital_positions[:, 0, 4], component="all", iterations=2)
-    potentials = {component: pot[np.array(orbital_positions[:, 0, 0], dtype=np.int)] for component, pot in
+    potentials = {component: pot[orbital_positions[:, 0, 0].astype(np.int)] for component, pot in
                   all_potentials.items()}
 
-    rel_d_radii = crv_utils.compute_rel_d_radii(binary, orbital_positions[:, 0, 1], potentials=potentials)
+    base_radii = radii[:, orbital_positions[:, 0, 0].astype(np.int)]
+    rel_d_radii = crv_utils.compute_rel_d_geometry(binary, base_radii[:, 1:], base_radii[:, :-1])
     args = (binary.has_spots(), orbital_positions.shape[0], rel_d_radii)
     new_geometry_mask = dynamic.resolve_object_geometry_update(*args)
 
