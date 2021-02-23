@@ -104,7 +104,7 @@ class BinarySystemInitTestCase(ElisaTestCase):
             obtained.append(np.round(bs.semi_major_axis, 0))
         assert_array_equal(expected, obtained)
 
-    def test_setup_periastron_components_radii(self):
+    def test_critical_surface_potential(self):
         expected_potentials = np.round(np.array([
             [2.875844632141054, 2.875844632141054],
             [93.717106763853593, 73.862399105365014],
@@ -216,7 +216,7 @@ class ValidityTestCase(ElisaTestCase):
 
     def test__star_params_validity_check(self):
         with self.assertRaises(Exception) as context:
-            BinarySystem(primary=69,
+            BinarySystem(primary=42,
                          secondary=self._secondary,
                          argument_of_periastron=self._initial_params["argument_of_periastron"],
                          gamma=self._initial_params["gamma"],

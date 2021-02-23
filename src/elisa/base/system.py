@@ -65,7 +65,10 @@ class System(metaclass=ABCMeta):
     def transform_input(self, *args, **kwargs):
         pass
 
-    # TODO include from_json as abstract method
+    @classmethod
+    @abstractmethod
+    def from_json(cls, data, _verify, _kind_of):
+        pass
 
     def assign_pulsations_amplitudes(self, normalisation_constant=1.0):
         """

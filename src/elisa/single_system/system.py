@@ -1,6 +1,8 @@
 import numpy as np
 
 from scipy import optimize
+from copy import deepcopy
+
 from . orbit import orbit
 from . curves import lc, rv, c_router
 from . transform import SingleSystemProperties
@@ -19,6 +21,7 @@ from .. import (
 from .. base.system import System
 from .. base.curves import rv as rv_base
 from .. opt.fsolver import fsolve
+from .. base.star import Star
 
 logger = getLogger('single_system.system')
 
@@ -28,8 +31,8 @@ class SingleSystem(System):
     Compute and initialise minmal necessary attributes to be used in light curves computation.
     """
 
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'rotation_period']
-    OPTIONAL_KWARGS = ['reference_time', 'phase_shift']
+    MANDATORY_KWARGS = ['inclination', 'rotation_period']
+    OPTIONAL_KWARGS = ['reference_time', 'phase_shift', 'additional_light', 'gamma']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g', 'metallicity']
@@ -85,7 +88,59 @@ class SingleSystem(System):
         self.period = self.rotation_period
         self.t0 = self.reference_time
 
-    # TODO include from_json method
+    @classmethod
+    def from_json(cls, data, _verify=True, _kind_of=None):
+        """
+        Create instance of BinarySystem from JSON in form such as::
+
+            {
+                "system": {
+                "inclination": 90.0,
+                "rotation_period": 10.1,
+                "gamma": 10000,
+                "reference_time": 0.5,
+                "phase_shift": 0.0
+            },
+            "star": {
+                "mass": 1.0,
+                "t_eff": 5772.0,
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_log_g": 2.43775
+            }
+            }
+
+        Currently, this approach require values in default units.
+
+        Default units::
+
+             {
+                "inclination": [degrees],
+                "rotational_period": [days],
+                "gamma": [m/s],
+                "reference_time": [d],
+                "phase_shift": [dimensionless],
+                "mass": [solMass],
+                "surface_potential": [dimensionless],
+                "synchronicity": [dimensionless],
+                "t_eff": [K],
+                "gravity_darkening": [dimensionless],
+                "discretization_factor": [degrees],
+                "metallicity": [dimensionless],
+                "semi_major_axis": [solRad],
+                "mass_ratio": [dimensionless]
+                "polar_log_g": [dex(m*s-2)]
+            }
+
+        :return: elisa.single_system.system.SingleSystem
+        """
+        data_cp = deepcopy(data)
+        if _verify:
+            sys_utils.validate_single_json(data_cp)
+
+        star = Star(**data_cp["star"])
+        return cls(star=star, **data_cp["system"])
 
     @classmethod
     def is_property(cls, kwargs):
