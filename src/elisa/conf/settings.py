@@ -165,11 +165,11 @@ class Settings(_Const):
     NUMBER_OF_THREADS = 1
     NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
     NUMBER_OF_MCMC_PROCESSES = -1
-    MAX_NU_SEPARATION = 0.05
+    MAX_NU_SEPARATION = 0.08
     MAX_RELATIVE_D_R_POINT = 2e-4
     MAX_SUPPLEMENTAR_D_DISTANCE = 1e-2
     MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
-    MIN_POINTS_IN_ECLIPSE = 30
+    MIN_POINTS_IN_ECLIPSE = 35
     MAX_SOLVER_ITERS = 100
     MAX_CURVE_DATA_POINTS = 300
     MESH_GENERATOR = 'auto'
@@ -374,7 +374,7 @@ class Settings(_Const):
             cls.MAX_CURVE_DATA_POINTS = c_parse.getfloat('computational', 'max_curve_datapoints',
                                                          fallback=cls.MAX_CURVE_DATA_POINTS)
             cls.MIN_POINTS_IN_ECLIPSE = c_parse.getint('computational', 'min_points_in_eclipse',
-                                                         fallback=cls.MIN_POINTS_IN_ECLIPSE)
+                                                       fallback=cls.MIN_POINTS_IN_ECLIPSE)
             cls.MESH_GENERATOR = c_parse.getfloat('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
             cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol', fallback=cls.DEFORMATION_TOL)
             cls.MAX_RELATIVE_D_IRRADIATION = c_parse.getfloat('computational', 'max_relative_d_irradiation',

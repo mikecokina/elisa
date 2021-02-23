@@ -68,7 +68,8 @@ def find_apsidally_corresponding_positions(base_constraint, base_arr, supplement
     ids_of_closest_reduced_values = utils.find_idx_of_nearest(base_constraint, supplement_constraint)
 
     # making sure that found orbital positions are close enough to satisfy tolerance
-    is_supplement = up.abs(base_constraint[ids_of_closest_reduced_values] - supplement_constraint) <= tol
+    is_supplement = up.abs(base_constraint[ids_of_closest_reduced_values] - supplement_constraint) / \
+                    base_constraint[ids_of_closest_reduced_values] <= tol
 
     # crating array which crates valid orbital position couples
     twin_in_reduced = -1 * np.ones(ids_of_closest_reduced_values.shape, dtype=np.int)
