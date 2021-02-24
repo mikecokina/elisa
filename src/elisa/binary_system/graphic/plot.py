@@ -28,6 +28,7 @@ class Plot(object):
         `orbit` - plots orbit in orbital plane
         `equipotential` - plots crossections of surface Hill planes in xy,yz,zx planes
         `mesh` - plot surface points
+        `wireframe` - wire frame model of the binary
         `surface` - plot stellar surfaces
     """
 
@@ -233,7 +234,7 @@ class Plot(object):
         """
         Function creates plot of binary system components
 
-        :param phase: float; phase at which plot the system, important for eccentric orbits
+        :param phase: float; phase at which plot the system
         :param components_to_plot: str; `primary`, `secondary` or `both` (default),
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
@@ -242,7 +243,7 @@ class Plot(object):
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask_primary: array[bool]; mask to select which faces to display
         :param face_mask_secondary: array[bool]: mask to select which faces to display
-        :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera
+        :param elevation: Union[float, astropy.Quantity]; in degrees - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
         :param unit: str; colorbar unit
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units

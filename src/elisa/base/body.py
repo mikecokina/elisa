@@ -19,7 +19,7 @@ logger = getLogger('base.body')
 
 class Body(metaclass=ABCMeta):
     """
-    Abstract class that defines bodies that can be modelled by this software.
+    Abstract class that defines bodies be modelled by this software.
     Following arguments are implemented as common for any of child instances.
 
     :param name: str; arbitrary name of instance
@@ -57,7 +57,7 @@ class Body(metaclass=ABCMeta):
 
 
     :param atmosphere: str; atmosphere to use for given object instance
-    :param equatorial_radius: float
+    :param equatorial_radius: float;
     """
 
     ID = 1

@@ -37,30 +37,168 @@ logger = getLogger('binary_system.system')
 
 class BinarySystem(System):
     """
-    Compute and initialise minimal necessary attributes to be used in light curves computation.
-    Child class of elisa.base.system.System representing BinarySystem.
-    Class intherit parameters from elisa.base.system.System and add following
+    Class to store and calculate necessary properties of the binary system based on the user provided parameters.
+    Child class of elisa.base.system.System.
 
-    Input parameters:
+    Class can be imported directly:
+    ::
+
+        from elisa import BinarySystem
+
+    After initialization, apart from the attributes already defined by the user with the arguments, user has access to
+    the following attributes:
+
+        :mass_ratio: float; secondary mass / primary mass
+        :semi_major_axis: float; semi major axis of system in physical units
+        :morphology: str; morphology of the system (`detached`, `semi-detached`, `over-contact`)
+
+    `BinarySystem' requires instances of elisa.base.star.Star in `primary` and `secondary` argument with following
+    mandatory arguments:
+
+        :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
+                            If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
+        :param t_eff: float; Accepts value in any temperature unit. If your input is without unit,
+                             function assumes that supplied value is in K.
+        :param surface_potential: float; generalized surface potential (Wilson 79)
+        :param synchronicity: float; synchronicity F (omega_rot / omega_orb), equals 1 for synchronous rotation
+        :param albedo: float; surface albedo, value from <0, 1> interval
+        :param gravity_darkening: float; gravity darkening factor
+        :param metallicity: float; log[M/H]
+
+    Each component instance will after initialization contain following attributes:
+
+        :critical_potential: float; potential of the star required to fill its Roche lobe
+        :equivalent_radius: float; radius of a sphere with the same volume as a component (in SMA units)
+        
+        Radii at periastron (in SMA units)  
+            :polar_radius: float; radius of a star towards the pole of the star
+            :side_radius: float; radius of a star in the direction perpendicular to the pole and direction of a 
+                                 companion
+            :backward_radius: float; radius of a star in the opposite direction as the binary companion
+            :forward_radius: float; radius of a star towards the binary companion, returns numpy.nan if the system is 
+                                    over-contact
+
+    The BinarySystem ca be initialized either by using valid class arguments, e.g.: 
+    ::
+    
+        from elisa import BinarySystem
+        from elisa import Star
+        
+        from astropy import units as u
+        
+        primary = Star(
+            mass=2.15 * u.solMass,
+            surface_potential=3.6,
+            synchronicity=1.0,
+            t_eff=10000 * u.K,
+            gravity_darkening=1.0,
+            discretization_factor=5,  # angular size (in degrees) of the surface elements
+            albedo=0.6,
+            metallicity=0.0,
+        )
+        
+        secondary = Star(
+            mass=0.45 * u.solMass,
+            surface_potential=5.39,
+            synchronicity=1.0,
+            t_eff=8000 * u.K,
+            gravity_darkening=1.0,
+            albedo=0.6,
+            metallicity=0,
+        )
+        
+        bs = BinarySystem(
+            primary=primary,
+            secondary=secondary,
+            argument_of_periastron=58 * u.deg,
+            gamma=-30.7 * u.km / u.s,
+            period=2.5 * u.d,
+            eccentricity=0.0,
+            inclination=85 * u.deg,
+            primary_minimum_time=2440000.00000 * u.d,
+            phase_shift=0.0,
+        )
+    
+    or using BinarySystem.from_json(dict) function that accepts various parameter combination in form of dictionary 
+    such as:
+    ::
+    
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "period": 10.1,
+                "argument_of_periastron": 90.0,
+                "gamma": 0.0,
+                "eccentricity": 0.3,
+                "primary_minimum_time": 0.0,
+                "phase_shift": 0.0
+            },
+            "primary": {
+                "mass": 2.15,
+                "surface_potential": 3.6,
+                "synchronicity": 1.0,
+                "t_eff": 10000.0,
+                "gravity_darkening": 1.0,
+                "discretization_factor": 5,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            },
+            "secondary": {
+                "mass": 0.45,
+                "surface_potential": 5.39,
+                "synchronicity": 1.0,
+                "t_eff": 8000.0,
+                "gravity_darkening": 1.0,
+                "albedo": 1.0,
+                "metallicity": 0.0
+            }
+        }
+        
+        binary = BinarySystem.from_json(data)
+    
+    See documentation for from_json method for details.
+                                    
+    The orbit of the binary system can be modelled using BinarySystem.orbit module with its function
+    `orbital_motion(phases)`. E.g.:
+    ::
+    
+        binary_instance.orbit.orbital_motion(phases=np.linspace(0, 1)) 
+    
+    The class contains substantial plotting capability in the BinarySystem.plot module that contains following
+    functions (further info in: see elisa.binary_system.graphics.plot):
+
+        - orbit(args): plots an orbit of the binary system
+        - equipotential(args): xy, yz, zx cross-sections of equipotential surface
+        - mesh(args): 3D mesh (scatter) plot of the surface points
+        - wireframe(args): wire frame model of the selected system components
+        - surface(args): plot models of the binary components with various surface colormaps (gravity_acceleration,
+          temperature, radiance, ...)
+          
+    Plot function can be called as function of the plot module. E.g.:
+    ::
+    
+        binary_instance.plot.surface(phase=0.1, colormap='temperature))
+         
+    Similarly, an animation of the orbital motion can be produced using BinarySystem.animation module and its function 
+    `orbital_motion(*args)`.
+
+    List of valid arguments:
 
     :param primary: elisa.base.star.Star; instance of primary component
     :param secondary: elisa.base.star.Star; instance of secondary component
-    :param eccentricity: Union[(numpy.)int, (numpy.)float];
-    :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
+    :param inclination: Union[float, astropy.unit.quantity.Quantity]; Inclination of the system.
+                        If unit is not supplied, value in degrees is assumed.
     :param period: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; Orbital period of binary
                    star system. If unit is not specified, default period unit is assumed (days).
-    :param phase_shift: float; Phase shift of the primary eclipse minimum with respect to ephemeris
+    :param eccentricity: Union[(numpy.)int, (numpy.)float]; from <0, 1> interval
+    :param argument_of_periastron: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
+    :param gamma: Union[float, astropy.unit.quantity.Quantity]; Center of mass velocity.
+                  Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int
+                  otherwise TypeError will be raised. If unit is not specified, default velocity unit is assumed (m/s).
+    :param phase_shift: float; Phase shift of the primary eclipse with respect to the ephemeris.
                                true_phase is used during calculations, where: true_phase = phase + phase_shift.;
     :param primary_minimum_time: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
-
-    Output parameters (computed on init):
-
-    :mass_ratio: float; secondary mass / primary mass
-    :orbit: elisa.orbit.orbit.Orbit; instance of orbit
-    :plot: elisa.binary_system.graphic.plot.Plot;
-    :animation: elisa.binary_system.graphic.animation.Animation;
-    :semi_major_axis: float; semi major axis of system in physical units
-    :morphology: str; morphology of current system
+    :param additional_light: float; fraction of light that does not originate from the `BinarySystem`
     """
 
     MANDATORY_KWARGS = ['inclination', 'period', 'eccentricity', 'argument_of_periastron']

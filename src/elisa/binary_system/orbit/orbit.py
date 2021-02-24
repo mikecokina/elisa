@@ -333,15 +333,15 @@ class Orbit(AbstractOrbit):
         Function takes photometric phase of the binary system as input and calculates positions of the secondary
         component in the frame of reference of primary component.
 
-        :param phase: Union[numpy.array, float];
+        :param phase: Union[numpy.array, float]; photometric phases
         :return: numpy.array; matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
 
         ::
 
-            numpy.array((r1, az1, ni1, phs1),
-                    (r2, az2, ni2, phs2),
-                     ...
-                    (rN, azN, niN, phsN))
+            numpy.array((r1, az1, nu1, phs1),
+                        (r2, az2, nu2, phs2),
+                         ...       
+                        (rN, azN, nuN, phsN))
         """
         # ability to accept scalar as input
         if isinstance(phase, (int, np.int, float, np.float)):
