@@ -56,8 +56,7 @@ def find_apsidally_corresponding_positions(binary, radii, base_arr, supplement_a
     :param binary: elisa.binary_system.system.BinarySystem;
     :param radii: numpy.array; forward_radii
     :param base_arr: numpy.array; base orbital positions
-    :param supplement_arr: numpy.array; orbital positionf from the opposite side
-    :param tol: float;
+    :param supplement_arr: numpy.array; orbital position from the opposite side
     :param as_empty: numpy.array; e.g. [np.nan, np.nan] depends on shape of base_arr item
     :return: elisa.binary_system.container.OrbitalSupplements;
     """
