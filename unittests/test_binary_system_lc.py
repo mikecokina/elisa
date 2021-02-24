@@ -2,8 +2,9 @@ import os.path as op
 import numpy as np
 
 from unittest import mock, skip
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_allclose
 from pypex.poly2d import polygon
+from copy import deepcopy
 
 from elisa.binary_system.container import OrbitalPositionContainer
 from elisa.binary_system.system import BinarySystem
@@ -207,52 +208,82 @@ class SupportMethodsTestCase(ElisaTestCase):
         obtained = bsutils.hull_to_pypex_poly(hull)
         self.assertTrue(isinstance(obtained, polygon.Polygon))
 
-    def _test_find_apsidally_corresponding_positions(self, arr1, arr2, expected, tol=1e-10):
-        obtained = dynamic.find_apsidally_corresponding_positions(arr1[:, 0], arr1, arr2[:, 0], arr2, tol, [np.nan] * 2)
-        self.assertTrue(expected == obtained)
+    def _test_find_apsidally_corresponding_positions(self, args, expected, tol=1e-5):
+        obtained = dynamic.find_apsidally_corresponding_positions(*args)
+        assert_allclose(expected.body, obtained.body, atol=tol)
+        assert_allclose(expected.mirror, obtained.mirror, atol=tol)
+
+    def prep_for_test(self, eccentricity, num=20, omega=90):
+        params = deepcopy(PARAMS["eccentric"])
+        params['eccentricity'] = eccentricity
+        params['argument_of_periastron'] = omega
+        phases = np.linspace(0, 1, num=num, endpoint=False)
+
+        bs = prepare_binary_system(params)
+        positions = bs.calculate_orbital_motion(phases, return_nparray=True, calculate_from='phase')
+        potentials = bs.correct_potentials(phases, component="all", iterations=2)
+        # calculating components radii for each orbital position
+        radii = crv_utils.forward_radii_from_distances(bs, positions[:, 1], potentials)
+
+        _, _, reduced_phase_mask = \
+            crv_utils.prepare_apsidaly_symmetric_orbit(bs, positions[:, 2], phases)
+
+        base_arr, supplement_arr = crv_utils.split_orbit_by_apse_line(positions, reduced_phase_mask)
+        return bs, radii, base_arr, supplement_arr
 
     def test_find_apsidally_corresponding_positions_full_match(self):
-        arr1 = np.array([[1, 10], [2, 20], [3, 30], [4, 40], [5.0, 50]])
-        arr2 = np.array([[1, 10], [3, 30], [2, 20], [4, 40], [5.0, 50]])
-        expected = OrbitalSupplements([[1, 10], [3, 30], [2, 20], [4, 40], [5.0, 50]],
-                                      [[1, 10], [3, 30], [2, 20], [4, 40], [5.0, 50]])
+        args = self.prep_for_test(eccentricity=0.001, num=6, omega=110)
 
-        self._test_find_apsidally_corresponding_positions(arr1, arr2, expected)
+        expected = OrbitalSupplements(
+            np.array(
+            [[1.0, 0.99923481, 2.61996529, 0.70010311, 0.16666667],
+             [3.0, 1.00094004, 4.71375449, 2.79389232, 0.5],
+             [2.0, 1.00017529, 3.66784394, 1.74798176, 0.33333333]]
+        ),
+            np.array(
+                [[0., 0.99906019, 1.57079633, 5.93411946, 0.],
+                 [4., 1.00076602, 5.7589847, 3.83912252, 0.66666667],
+                 [5., 0.99982665, 0.52231253, 4.88563566, 0.83333333]]
+        ))
+
+        self._test_find_apsidally_corresponding_positions(args, expected)
 
     def test_find_apsidally_corresponding_positions_mixed_first_longer(self):
-        arr1 = np.array([[1, 10], [2, 20], [5, 50], [6, 60], [7, 70]])
-        arr2 = np.array([[1, 10], [2, 20], [5.5, 50.50], [7, 70]])
-        nan = [np.nan, np.nan]
-        expected = OrbitalSupplements([[1.0, 10.], [2.0, 20.0], [5.5, 50.5], [7.0, 70], [5, 50], [6, 60]],
-                                      [[1, 10], [2, 20], nan, [7.0, 70], nan, nan])
-        self._test_find_apsidally_corresponding_positions(arr1, arr2, expected)
+        args = self.prep_for_test(eccentricity=0.001, num=6, omega=90)
 
-    def test_find_apsidally_corresponding_positions_mixed_second_longer(self):
-        arr1 = np.array([[1, 10], [2, 20], [5.5, 50.50], [7, 70]])
-        arr2 = np.array([[1, 10], [2, 20], [5, 50], [6, 60], [7, 70]])
-        nan = [np.nan, np.nan]
-        expected = OrbitalSupplements([[1., 10.], [2., 20.], [5., 50.], [6., 60.], [7., 70.], [5.5, 50.5]],
-                                      [[1., 10.], [2., 20.], nan, nan, [7., 70.], nan])
-        self._test_find_apsidally_corresponding_positions(arr1, arr2, expected)
+        expected = OrbitalSupplements(
+            np.array(
+                [[2.0, 1.00050075e+00, 3.66692240e+00, 2.09612607e+00, 3.33333333e-01],
+                 [2.0, 1.00050075e+00, 3.66692240e+00, 2.09612607e+00, 3.33333333e-01],
+                 [1.0, 9.99500751e-01, 2.61972701e+00, 1.04893068e+00, 1.66666667e-01],
+                 [0.0, 9.99000000e-01, 1.57079633e+00, 9.63928419e-35, 0.00000000e+00]]
+            ),
+            np.array(
+                [[3.0, 1.00100000, 4.71238898, 3.14159265, 0.5],
+                 [4.0, 1.00050075, 5.75785556, 4.18705924, 0.66666667],
+                 [5.0, 0.99950075, 0.52186564, 5.23425462, 0.83333333],
+                 [np.nan, np.nan, np.nan, np.nan, np.nan]]
+            ))
 
-    def test_find_apsidally_corresponding_positions_mixed_under_tolerance(self):
-        arr1 = np.array([[1, 10], [2, 20], [3, 30], [4, 40]])
-        arr2 = np.array([[1, 10], [1.01, 10.10], [2, 20], [2.02, 20.02], [4, 40]])
-        expected = OrbitalSupplements([[1, 10], [1, 10], [2, 20], [2, 20], [4, 40], [3, 30]],
-                                      [[1, 10], [1.01, 10.1], [2, 20], [2.02, 20.02], [4, 40], [np.nan, np.nan]])
-        self._test_find_apsidally_corresponding_positions(arr1, arr2, expected, tol=0.1)
+        self._test_find_apsidally_corresponding_positions(args, expected)
 
     def test_find_apsidally_corresponding_positions_total_mixed(self):
-        arr1 = np.array([[1, 10], [2, 20]])
-        arr2 = np.array([[3, 30], [4, 40]])
-        nan = [np.nan, np.nan]
-        expected = OrbitalSupplements([[3, 30], [4, 40], [1, 10], [2, 20]], [nan, nan, nan, nan])
-        self._test_find_apsidally_corresponding_positions(arr1, arr2, expected)
+        args = self.prep_for_test(eccentricity=0.1, num=2, omega=90)
+        expected = OrbitalSupplements(
+            np.array(
+                [[1.0, 1.1, 4.71238898, 3.14159265, 0.5],
+                 [0.0, 0.9, 1.57079633, 0.00000000, 0.0]]
+            ),
+            np.array(
+                [[np.nan, np.nan, np.nan, np.nan, np.nan],
+                 [np.nan, np.nan, np.nan, np.nan, np.nan]]
+            ))
+        self._test_find_apsidally_corresponding_positions(args, expected)
 
     def test_find_apsidally_corresponding_positions_body_not_empty(self):
-        arr1 = np.array([[1, 10], [2, 20]])
-        arr2 = np.array([[3, 30], [4, 40]])
-        obtained = dynamic.find_apsidally_corresponding_positions(arr1[:, 0], arr1, arr2[:, 0], arr2, as_empty=[np.nan] * 2)
+        args = self.prep_for_test(eccentricity=0.001)
+
+        obtained = dynamic.find_apsidally_corresponding_positions(*args)
         self.assertTrue(np.all(~up.isnan(obtained.body)))
 
     def test_resolve_object_geometry_update(self):
@@ -480,7 +511,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         settings.configure(**APPROX_SETTINGS["no_approx"])
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
-                    f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
+                    f"\nmax_nu_separation={settings.MAX_NU_SEPARATION}"
                     f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
                     f"\n")
         bs = prepare_binary_system(PARAMS["eccentric"])
@@ -490,7 +521,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         settings.configure(**APPROX_SETTINGS["approx_one"])
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
-                    f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
+                    f"\nmax_nu_separation={settings.MAX_NU_SEPARATION}"
                     f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
                     f"\n")
         bs = prepare_binary_system(PARAMS["eccentric"])
@@ -502,8 +533,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
-                    f"\nmax_supplementar_d_distance={settings.MAX_SUPPLEMENTAR_D_DISTANCE}"
-                    f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
+                    f"\nmax_nu_separation={settings.MAX_NU_SEPARATION}"
                     f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
                     f"\n")
         bs = prepare_binary_system(PARAMS["eccentric"])
@@ -514,7 +544,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
-                    f"\npoints_on_ecc_orbit={settings.POINTS_ON_ECC_ORBIT}"
+                    f"\nmax_nu_separation={settings.MAX_NU_SEPARATION}"
                     f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}")
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, 0.0, 0.01, 0.002, tol=1e-4)

@@ -284,9 +284,9 @@ def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
         - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
     """
     azimuth_boundaries = [binary.argument_of_periastron, (binary.argument_of_periastron + const.PI) % const.FULL_ARC]
-    unique_geometry = np.logical_and(azimuths > azimuth_boundaries[0],
+    unique_geometry = np.logical_and(azimuths >= azimuth_boundaries[0],
                                      azimuths < azimuth_boundaries[1]) \
-        if azimuth_boundaries[0] < azimuth_boundaries[1] else np.logical_xor(azimuths < azimuth_boundaries[0],
+        if azimuth_boundaries[0] < azimuth_boundaries[1] else np.logical_xor(azimuths <= azimuth_boundaries[0],
                                                                              azimuths > azimuth_boundaries[1])
     unique_phase_indices = np.arange(phases.shape[0])[unique_geometry]
     unique_geometry_azimuths = azimuths[unique_geometry]
