@@ -9,6 +9,7 @@ from .. import (
     const,
     umpy as up
 )
+from .curves.utils import compute_rel_d_geometry
 
 
 def get_eclipse_boundaries(binary, components_distance):
@@ -47,31 +48,38 @@ def get_eclipse_boundaries(binary, components_distance):
         return np.array([0, const.PI, const.PI, const.FULL_ARC])
 
 
-def find_apsidally_corresponding_positions(base_constraint, base_arr, supplement_constraint, supplement_arr,
-                                           tol=1e-10, as_empty=None):
+def find_apsidally_corresponding_positions(binary, radii, base_arr, supplement_arr, as_empty=None):
     """
     Function is intended to look for the couples of orbital positions from both sides of apsidal line that are most
-    similar in terms of surface geometry (eg.: components_distance_1 \approx components_distance_2).
+    similar in terms of surface geometry (eg.: forward radius \approx forward radius).
 
-    :param base_constraint: numpy.array;
-    :param base_arr: numpy.array;
-    :param supplement_constraint: numpy.array;
-    :param supplement_arr: numpy.array;
-    :param tol: float;
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param radii: numpy.array; forward_radii
+    :param base_arr: numpy.array; base orbital positions
+    :param supplement_arr: numpy.array; orbital position from the opposite side
     :param as_empty: numpy.array; e.g. [np.nan, np.nan] depends on shape of base_arr item
     :return: elisa.binary_system.container.OrbitalSupplements;
     """
     if as_empty is None:
         as_empty = np.empty(5) * np.nan
 
-    # finding indices of supplements_array closest to the base_array by comparing constraint parameters
-    ids_of_closest_reduced_values = utils.find_idx_of_nearest(base_constraint, supplement_constraint)
+    mean_r = np.mean(radii, axis=1)
+    bigger_comp = np.argmax(mean_r)
+    r_body = radii[:, base_arr[:, 0].astype(np.int)]
+    r_supplement = radii[:, supplement_arr[:, 0].astype(np.int)]
+
+    # finding indices of supplements_array closest to the base_array by comparing radius of larger component
+    ids_of_closest_reduced_values = utils.find_idx_of_nearest(r_body[bigger_comp], r_supplement[bigger_comp])
 
     # making sure that found orbital positions are close enough to satisfy tolerance
-    is_supplement = up.abs(base_constraint[ids_of_closest_reduced_values] - supplement_constraint) <= tol
+    rel_geometry = compute_rel_d_geometry(binary, r_body[:, ids_of_closest_reduced_values], r_supplement)
+    rel_geometry = np.max(rel_geometry, axis=0)
+
+    # making sure that found orbital positions are close enough to satisfy tolerance
+    is_supplement = rel_geometry < settings.MAX_RELATIVE_D_R_POINT
 
     # crating array which crates valid orbital position couples
-    twin_in_reduced = -1 * np.ones(ids_of_closest_reduced_values.shape, dtype=np.int)
+    twin_in_reduced = np.full(ids_of_closest_reduced_values.shape, -1, dtype=np.int)
     twin_in_reduced[is_supplement] = ids_of_closest_reduced_values[is_supplement]
 
     supplements = OrbitalSupplements()
@@ -84,10 +92,11 @@ def find_apsidally_corresponding_positions(base_constraint, base_arr, supplement
         if not utils.is_empty(args):
             supplements.append(*args)
 
-    reduced_all_ids = up.arange(0, len(base_arr))
-    is_not_in = ~np.isin(reduced_all_ids, twin_in_reduced)
+    # treating a case of unmatched item in base array
+    base_all_ids = up.arange(0, len(base_arr))
+    is_not_in = ~np.isin(base_all_ids, twin_in_reduced)
 
-    for is_not_in_id in reduced_all_ids[is_not_in]:
+    for is_not_in_id in base_all_ids[is_not_in]:
         if base_arr[is_not_in_id] not in supplement_arr:
             supplements.append(*(base_arr[is_not_in_id], as_empty))
 
