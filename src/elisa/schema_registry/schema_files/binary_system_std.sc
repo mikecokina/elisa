@@ -16,26 +16,31 @@
         "eccentricity"
       ],
       "properties": {
-        "inclination": {
-          "type": "number"
-        },
-        "period": {
-          "type": "number"
-        },
-        "argument_of_periastron": {
-          "type": "number"
-        },
-        "gamma": {
-          "type": "number"
-        },
+        "inclination": {"anyOf": [
+          {"type": "number"},
+          {"type": "string"}
+        ]},
+        "period": {"anyOf": [
+          {"type": "number", "minimum": 0.0},
+          {"type": "string"}
+        ]},
+        "argument_of_periastron": {"anyOf": [
+          {"type": "number"},
+          {"type": "string"}
+        ]},
+        "gamma": {"anyOf": [
+          {"type": "number"},
+          {"type": "string"}
+        ]},
         "eccentricity": {
           "type": "number",
           "minimum": 0.0,
           "maximum": 1.0
         },
-        "primary_minimum_time": {
-          "type": "number"
-        },
+        "primary_minimum_time": {"anyOf": [
+          {"type": "number"},
+          {"type": "string"}
+        ]},
         "phase_shift": {
           "type": "number"
         },
@@ -56,11 +61,10 @@
         "metallicity"
       ],
       "properties": {
-        "mass": {
-          "type": "number",
-          "minimum": 0.0,
-          "maximum": 100.0
-        },
+        "mass": {"anyOf": [
+          {"type": "number", "minimum": 0.0, "maximum": 150.0},
+          {"type": "string"}
+        ]},
         "surface_potential": {
           "type": "number",
           "minimum": 0.0
@@ -69,9 +73,10 @@
           "type": "number",
           "minimum": 0.0
         },
-        "t_eff": {
-          "type": "number"
-        },
+        "t_eff": {"anyOf": [
+          {"type": "number"},
+          {"type": "string"}
+        ]},
         "gravity_darkening": {
           "type": "number",
           "minimum": 0.0,
@@ -100,17 +105,18 @@
               "temperature_factor"
             ],
             "properties": {
-              "longitude": {
-                "type": "number"
-              },
-              "latitude": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 180
-              },
-              "angular_radius": {
-                "type": "number"
-              },
+              "longitude": {"anyOf": [
+                {"type": "number"},
+                {"type": "string"}
+              ]},
+              "latitude": {"anyOf": [
+                {"type": "number", "minimum": 0.0, "maximum": 180.0},
+                {"type": "string"}
+              ]},
+              "angular_radius": {"anyOf": [
+                {"type": "number"},
+                {"type": "string"}
+              ]},
               "temperature_factor": {
                 "type": "number",
                 "minimum": 0
@@ -137,16 +143,37 @@
                 "type": "number"
               },
               "frequency": {
-                "type": "number"
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
               },
               "start_phase": {
                 "type": "number"
               },
               "mode_axis_phi": {
-                "type": "number"
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
               },
               "mode_axis_theta": {
-                "type": "number"
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
               }
             }
           }
@@ -166,11 +193,10 @@
       "metallicity"
     ],
     "properties": {
-      "mass": {
-        "type": "number",
-        "minimum": 0.0,
-        "maximum": 100.0
-      },
+      "mass": {"anyOf": [
+        {"type": "number", "minimum": 0.0, "maximum": 150.0},
+        {"type": "string"}
+      ]},
       "surface_potential": {
         "type": "number",
         "minimum": 0.0
@@ -179,9 +205,10 @@
         "type": "number",
         "minimum": 0.0
       },
-      "t_eff": {
-        "type": "number"
-      },
+      "t_eff": {"anyOf": [
+        {"type": "number"},
+        {"type": "string"}
+      ]},
       "gravity_darkening": {
         "type": "number",
         "minimum": 0.0,
@@ -210,17 +237,18 @@
             "temperature_factor"
           ],
           "properties": {
-            "longitude": {
-              "type": "number"
-            },
-            "latitude": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 180
-            },
-            "angular_radius": {
-              "type": "number"
-            },
+            "longitude": {"anyOf": [
+              {"type": "number"},
+              {"type": "string"}
+            ]},
+            "latitude": {"anyOf": [
+              {"type": "number", "minimum": 0.0, "maximum": 180.0},
+              {"type": "string"}
+            ]},
+            "angular_radius": {"anyOf": [
+              {"type": "number"},
+              {"type": "string"}
+            ]},
             "temperature_factor": {
               "type": "number",
               "minimum": 0
@@ -247,16 +275,37 @@
               "type": "number"
             },
             "frequency": {
-              "type": "number"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             },
             "start_phase": {
               "type": "number"
             },
             "mode_axis_phi": {
-              "type": "number"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             },
             "mode_axis_theta": {
-              "type": "number"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             }
           }
         }

@@ -6,7 +6,6 @@ from ... base import transform
 from ... base.graphics import plot
 from ... const import Position
 from ... graphic import graphics
-from ... utils import is_empty
 from ... base.surface.faces import correct_face_orientation
 from .. import utils as sutils
 from .. curves import utils as crv_utils
@@ -18,8 +17,8 @@ class Plot(object):
     Universal plot interface for binary system class, more detailed documentation for each value of descriptor is
     available in graphics library::
 
-        `orbit` - plots orbit in orbital plane
         `equipotential` - plots crossection of surface Hill planes in xz plane
+        `wireframe` - wire frame model of the star
         `mesh` - plot surface points
         `surface` - plot stellar surfaces
     """

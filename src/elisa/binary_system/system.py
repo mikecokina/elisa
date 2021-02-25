@@ -119,8 +119,8 @@ class BinarySystem(System):
             phase_shift=0.0,
         )
     
-    or using BinarySystem.from_json(dict) function that accepts various parameter combination in form of dictionary 
-    such as:
+    or by using the BinarySystem.from_json(dict) function that accepts various parameter combination in form of
+    dictionary such as:
     ::
     
         data = {
@@ -128,7 +128,7 @@ class BinarySystem(System):
                 "inclination": 90.0,
                 "period": 10.1,
                 "argument_of_periastron": 90.0,
-                "gamma": 0.0,
+                "gamma": "0.0 m / s",  # you can define quantity using string representation of the astropy units
                 "eccentricity": 0.3,
                 "primary_minimum_time": 0.0,
                 "phase_shift": 0.0
@@ -156,14 +156,14 @@ class BinarySystem(System):
         
         binary = BinarySystem.from_json(data)
     
-    See documentation for from_json method for details.
+    See documentation for `from_json` method for details.
                                     
-    The orbit of the binary system can be modelled using BinarySystem.orbit module with its function
-    `orbital_motion(phases)`. E.g.:
+    The orbit of the binary system can be modelled using function
+    `calculate_orbital_motion(phases)`. E.g.:
     ::
-    
-        binary_instance.orbit.orbital_motion(phases=np.linspace(0, 1)) 
-    
+
+        binary_instance.calculate_orbital_motion(np.linspace(0, 1))
+
     The class contains substantial plotting capability in the BinarySystem.plot module that contains following
     functions (further info in: see elisa.binary_system.graphics.plot):
 
@@ -182,7 +182,7 @@ class BinarySystem(System):
     Similarly, an animation of the orbital motion can be produced using BinarySystem.animation module and its function 
     `orbital_motion(*args)`.
 
-    List of valid arguments:
+    List of valid system arguments:
 
     :param primary: elisa.base.star.Star; instance of primary component
     :param secondary: elisa.base.star.Star; instance of secondary component
@@ -275,7 +275,7 @@ class BinarySystem(System):
               "system": {
                 "inclination": 90.0,
                 "period": 10.1,
-                "argument_of_periastron": 90.0,
+                "argument_of_periastron": "90.0 deg",  # string representation of astropy quntity is also valid
                 "gamma": 0.0,
                 "eccentricity": 0.3,
                 "primary_minimum_time": 0.0,

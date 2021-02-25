@@ -205,7 +205,11 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
             self.assertTrue(e in obtained)
 
     @staticmethod
-    def _get_std():
+    def _get_std(data):
+        return SingleSystem.from_json(data)
+
+    @classmethod
+    def test_init_from_json_std(cls):
         data = {
             "system": {
                 "inclination": 90.0,
@@ -223,8 +227,25 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
                 "polar_log_g": 2.43775
             }
         }
-        return SingleSystem.from_json(data)
+        cls._get_std(data)
 
     @classmethod
-    def test_init_from_json_std(cls):
-        cls._get_std()
+    def test_init_string_repr(cls):
+        data = {
+            "system": {
+                "inclination": "90.0 deg",
+                "rotation_period": "10.1 d",
+                "gamma": "10 km / s",
+                "reference_time": "0. d",
+                "phase_shift": 0.0
+            },
+            "star": {
+                "mass": "1.0 solMass",
+                "t_eff": "5772.0 K",
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_log_g": "4.43775 dex(cm / s2)"
+            }
+        }
+        cls._get_std(data)

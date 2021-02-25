@@ -44,3 +44,4 @@ mag = u.mag
 
 Unit = u.Unit
 Quantity = u.quantity.Quantity
+Dex = u.Dex
