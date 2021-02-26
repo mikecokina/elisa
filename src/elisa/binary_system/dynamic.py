@@ -77,7 +77,8 @@ def find_apsidally_corresponding_positions(binary, radii, base_arr, supplement_a
     is_supplement_geom = rel_geometry < settings.MAX_RELATIVE_D_R_POINT
 
     # making sure that found orbital positions are close enough to satisfy tolerance in relative irradiation
-    rel_irrad = compute_counterparts_rel_d_irrad(binary, base_arr[:, 1], supplement_arr[:, 1])
+    args = (binary, base_arr[ids_of_closest_reduced_values, 1], supplement_arr[:, 1])
+    rel_irrad = compute_counterparts_rel_d_irrad(*args)
     rel_irrad = np.max(rel_irrad, axis=0)
     is_supplement_irrad = rel_irrad < settings.MAX_RELATIVE_D_IRRADIATION
 
