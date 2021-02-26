@@ -125,6 +125,20 @@ class SystemProperties(TransformProperties):
             raise ValueError('Invalid value of additional light. Valid values are between 0 and 1.')
         return np.float64(value)
 
+    @staticmethod
+    def semi_major_axis(value):
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
+            value = np.float64(value.to(u.DISTANCE_UNIT))
+        elif isinstance(value, WHEN_FLOAT64):
+            value = np.float64(value * u.solRad.to(u.MASS_UNIT))
+        else:
+            raise TypeError('User input is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
+        if value <= 0:
+            raise ValueError("Invalid value of semi_major_axis, use value > 0!")
+        return value
+
 
 class BodyProperties(TransformProperties):
     @staticmethod
