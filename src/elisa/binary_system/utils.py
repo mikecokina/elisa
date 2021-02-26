@@ -237,7 +237,7 @@ def transform_json_community_to_std(data):
     """
     q = data["system"].pop("mass_ratio")
     a = SystemProperties.semi_major_axis(data["system"].pop("semi_major_axis"))
-    period = (SystemProperties.period(copy(data["system"]["period"])) * units.PERIOD_UNIT).to(units.s)
+    period = (SystemProperties.period(copy(data["system"]["period"])) * units.PERIOD_UNIT).to(units.s).value
     m1 = ((4.0 * const.PI ** 2 * a ** 3) / (const.G * (1.0 + q) * period ** 2))
     m1 = np.float64((m1 * units.kg).to(units.solMass))
     m2 = q * m1
