@@ -348,7 +348,7 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
         data = {
             "system": {
                 "inclination": "90.0 deg",
-                "period": 10.1,
+                "period": "10.1 d",
                 "argument_of_periastron": 90.0,
                 "gamma": 0.0,
                 "eccentricity": 0.3,
@@ -383,14 +383,14 @@ class BinarySystemSerializersTestCase(ElisaTestCase):
         data = {
             "system": {
                 "inclination": 90.0,
-                "period": "10.1 d",
+                "period": 10.1,
                 "argument_of_periastron": 90.0,
                 "gamma": 0.0,
                 "eccentricity": 0.3,
                 "primary_minimum_time": "0.0 d",
                 "phase_shift": 0.0,
                 "mass_ratio": 0.75,
-                "semi_major_axis": "29.854 solRad"
+                "semi_major_axis": 29.854
             },
             "primary": {
                 "surface_potential": 7.1,
