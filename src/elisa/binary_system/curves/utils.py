@@ -231,20 +231,46 @@ def compute_rel_d_geometry(binary, radii, radii_counterpart):
     return d_flux / np.sum(total_flux)
 
 
-def compute_rel_d_irradiation(binary, distances):
+def relative_irradiation(binary, distances):
+    """
+    Returns an estimate of how much of the component flux comes from the reflected light of the companion
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param distances: numpy.array; orbital distances
+    :return: numpy.array;
+    """
+    temp_ratio4 = np.power(binary.primary.t_eff / binary.secondary.t_eff, 4)
+    r_ratio2 = np.power(binary.primary.equivalent_radius / binary.secondary.equivalent_radius, 2)
+    coeff = r_ratio2 * temp_ratio4
+    irrad1 = np.power(binary.primary.equivalent_radius / distances, 2) / (1 + coeff)
+    irrad2 = np.power(binary.secondary.equivalent_radius / distances, 2) / (1 + 1 / coeff)
+    return np.vstack((irrad1, irrad2))
+
+
+def compute_counterparts_rel_d_irrad(binary, distances, distances_counterpart):
     """
     Estimates a relative change in recieved irradiation from a companion.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param distances: numpy.array; orbital distances
+    :param distances_counterpart: numpy.array; orbital distances
+    :return: numpy.array;
+    """
+    irrad = relative_irradiation(binary, distances)
+    irrad_c = relative_irradiation(binary, distances_counterpart)
+
+    return np.abs(irrad - irrad_c)
+
+
+def compute_rel_d_irradiation(binary, distances):
+    """
+    Estimates a relative change in recieved irradiation from a companion between the most similar orbital positions.
 
     :param binary: elisa.binary_system.system.BinarySystem;
     :param distances: numpy.array; orbital distances (sorted)
     :return: numpy.array;
     """
-    temp_ratio4 = np.power(binary.primary.t_eff / binary.secondary.t_eff, 4)
-    r_ratio2 = np.power(binary.primary.equivalent_radius / binary.secondary.equivalent_radius, 2)
-    irrad1 = np.power(binary.primary.equivalent_radius / distances, 2) / (1 + r_ratio2 * temp_ratio4)
-    irrad2 = np.power(binary.secondary.equivalent_radius / distances, 2) / (1 + 1 / (r_ratio2 * temp_ratio4))
-
-    irrad = np.vstack((irrad1, irrad2))
+    irrad = relative_irradiation(binary, distances)
     return np.abs(irrad[:, 1:] - irrad[:, :-1])
 
 

@@ -9,7 +9,7 @@ from .. import (
     const,
     umpy as up
 )
-from .curves.utils import compute_rel_d_geometry
+from .curves.utils import compute_rel_d_geometry, compute_counterparts_rel_d_irrad
 
 
 def get_eclipse_boundaries(binary, components_distance):
@@ -74,9 +74,14 @@ def find_apsidally_corresponding_positions(binary, radii, base_arr, supplement_a
     # making sure that found orbital positions are close enough to satisfy tolerance
     rel_geometry = compute_rel_d_geometry(binary, r_body[:, ids_of_closest_reduced_values], r_supplement)
     rel_geometry = np.max(rel_geometry, axis=0)
+    is_supplement_geom = rel_geometry < settings.MAX_RELATIVE_D_R_POINT
 
-    # making sure that found orbital positions are close enough to satisfy tolerance
-    is_supplement = rel_geometry < settings.MAX_RELATIVE_D_R_POINT
+    # making sure that found orbital positions are close enough to satisfy tolerance in relative irradiation
+    rel_irrad = compute_counterparts_rel_d_irrad(binary, base_arr[:, 1], supplement_arr[:, 1])
+    rel_irrad = np.max(rel_irrad, axis=0)
+    is_supplement_irrad = rel_irrad < settings.MAX_RELATIVE_D_IRRADIATION
+
+    is_supplement = np.logical_and(is_supplement_geom, is_supplement_irrad)
 
     # crating array which crates valid orbital position couples
     twin_in_reduced = np.full(ids_of_closest_reduced_values.shape, -1, dtype=np.int)
