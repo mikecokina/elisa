@@ -13,7 +13,7 @@ from .. import umpy as up
 from .. base.error import YouHaveNoIdeaError
 from .. binary_system import model
 from .. utils import is_empty
-from .. base.transform import quantity_transform
+from .. base.transform import SystemProperties
 
 
 def potential_from_radius(component, radius, phi, theta, component_distance, mass_ratio, synchronicity):
@@ -236,8 +236,8 @@ def transform_json_community_to_std(data):
     :return: Dict;
     """
     q = data["system"].pop("mass_ratio")
-    a = quantity_transform(data["system"].pop("semi_major_axis"), units.m)
-    period = quantity_transform(copy(data["system"]["period"]), units.s)
+    a = SystemProperties.semi_major_axis(data["system"].pop("semi_major_axis"))
+    period = (SystemProperties.period(copy(data["system"]["period"])) * units.PERIOD_UNIT).to(units.s)
     m1 = ((4.0 * const.PI ** 2 * a ** 3) / (const.G * (1.0 + q) * period ** 2))
     m1 = np.float64((m1 * units.kg).to(units.solMass))
     m2 = q * m1
