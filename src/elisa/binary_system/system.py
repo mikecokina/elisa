@@ -50,7 +50,12 @@ class BinarySystem(System):
 
         :mass_ratio: float; secondary mass / primary mass
         :semi_major_axis: float; semi major axis of system in physical units
-        :morphology: str; morphology of the system (`detached`, `semi-detached`, `over-contact`)
+        :morphology: str; morphology of the system:
+
+                      :`detached`: both components are not filling their respective Roche lobes,
+                      :`semi-detached`: one of the components is filling its Roche lobe,
+                      :`double-contact`: both components fill their Roche lobes,
+                      :`over-contact`: components are physically connected with a ''neck'')
 
     `BinarySystem' requires instances of elisa.base.star.Star in `primary` and `secondary` argument with following
     mandatory arguments:
@@ -69,6 +74,13 @@ class BinarySystem(System):
 
         :critical_potential: float; potential of the star required to fill its Roche lobe
         :equivalent_radius: float; radius of a sphere with the same volume as a component (in SMA units)
+        :filling_factor: float: calculated as (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})
+
+                            :filling factor < 0: component does not fill its Roche lobe
+                            :filling factor = 0: component fills preciselly its Roche lobe
+                            :1 > filling factor > 0: component overflows its Roche lobe
+                            :filling factor = 1: upper boundary of the filling factor, higher value would lead to
+                                                 the mass loss trough Lagrange point L2
         
         Radii at periastron (in SMA units)  
             :polar_radius: float; radius of a star towards the pole of the star
@@ -514,10 +526,10 @@ class BinarySystem(System):
     def compute_morphology(self):
         """
         Setup binary star class property `morphology`.
-        It find out morphology based on current system parameters
+        Determines the morphology based on current system parameters
         and setup `morphology` parameter of `self` system instance.
 
-        :return: str;
+        :return: str; morphology of the system (`detached`, `semi-detached`, `double-contact`, `over-contact`)
         """
         __PRECISSION__ = 1e-8
         __MORPHOLOGY__ = None

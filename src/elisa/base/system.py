@@ -14,16 +14,6 @@ class System(metaclass=ABCMeta):
     """
     Abstract class defining System.
     Following arguments are implemented as common any of child instances.
-
-    :param name: str; arbitrary name of instance
-    :param inclination: Union[float, astropy.unit.quantity.Quantity]; Inclination of the system.
-                        If unit is not supplied, value in degrees is assumed.
-    :param period: Union[float, astropy.unit.quantity.Quantity];
-    :param gamma: Union[float, astropy.unit.quantity.Quantity]; Center of mass velocity.
-                  Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int
-                  otherwise TypeError will be raised.
-                  If unit is not specified, default velocity unit is assumed.
-    :param additional_light: float; fraction of light that does not originate from any member of the System.
     """
 
     ID = 1

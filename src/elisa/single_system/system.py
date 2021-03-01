@@ -55,7 +55,7 @@ class SingleSystem(System):
     Each component instance will after initialization contain following attributes:
 
         :critical_potential: float; potential of the star required to fill its Roche lobe
-        :equivalent_radius: float; radius of a sphere with the same volume as a component (in SMA units)
+        :equivalent_radius: float; radius of a sphere with the same volume as a component
         :polar_radius: float; radius of a star towards the pole of the star
         :equatorial_radius: float; radius of a star towards the pole of the star
 
@@ -128,7 +128,7 @@ class SingleSystem(System):
     Plot function can be called as function of the plot module. E.g.:
     ::
 
-        single_instance.plot.surface(phase=0.1, colormap='temperature))
+        single_instance.plot.surface(phase=0.1, colormap='temperature)
 
     Similarly, an animation of the orbital motion can be produced using SingleSystem.animation module and its function
     `rotational_motion(*args)`.
