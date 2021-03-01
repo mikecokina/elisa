@@ -162,6 +162,9 @@ def eval_approximation_one(binary, phases_span_test, reduced_orbit_array, counte
                 np.row_stack((reduced_orbit_array, reduced_orbit_supplement_arr[points_ecl_mask_suplements]))
             counterpart_position_array = np.row_stack((counterpart_position_array,
                                                        np.full((points_in_ecl_suplements, 5), np.nan)))
+        else:
+            # approx 1 causes artifacts in case of the very flat plateaus in the bottom of the eclipse
+            return False, reduced_orbit_array, counterpart_position_array
 
     # removing duplicite entries
     _, idx = np.unique(reduced_orbit_array[:, 0], return_index=True)
