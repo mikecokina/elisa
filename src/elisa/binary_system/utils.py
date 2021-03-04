@@ -5,6 +5,7 @@ from jsonschema import (
     validate,
     ValidationError
 )
+from copy import copy
 
 from .. import units, const
 from .. import settings
@@ -12,6 +13,7 @@ from .. import umpy as up
 from .. base.error import YouHaveNoIdeaError
 from .. binary_system import model
 from .. utils import is_empty
+from .. base.transform import SystemProperties
 
 
 def potential_from_radius(component, radius, phi, theta, component_distance, mass_ratio, synchronicity):
@@ -234,8 +236,8 @@ def transform_json_community_to_std(data):
     :return: Dict;
     """
     q = data["system"].pop("mass_ratio")
-    a = np.float64((data["system"].pop("semi_major_axis") * units.solRad).to(units.m))
-    period = np.float64((data["system"]["period"] * units.PERIOD_UNIT).to(units.s))
+    a = SystemProperties.semi_major_axis(data["system"].pop("semi_major_axis"))
+    period = (SystemProperties.period(copy(data["system"]["period"])) * units.PERIOD_UNIT).to(units.s).value
     m1 = ((4.0 * const.PI ** 2 * a ** 3) / (const.G * (1.0 + q) * period ** 2))
     m1 = np.float64((m1 * units.kg).to(units.solMass))
     m2 = q * m1

@@ -194,14 +194,14 @@ def split_orbit_by_apse_line(orbital_motion, orbital_mask):
     return reduced_orbit_arr, supplement_to_reduced_arr
 
 
-def compute_rel_d_radii(binary, distances, potentials=None):
+def forward_radii_from_distances(binary, distances, potentials=None):
     """
-    Requires `orbital_supplements` sorted by distance.
+    Returns forward radii for each components distance.
 
     :param binary: elisa.binary_system.system.BinarySystem;
-    :param distances: array; component distances of templates
-    :param potentials: array; corrected potentials, if None, they will be calculated from `distances`
-    :return: numpy.array;
+    :param distances: numpy.array;
+    :param potentials: numpy.array; if None, they will be calculated
+    :return: numpy.array; 2*N array of forward radii for each component
     """
     corrected_potentials = binary.correct_potentials(distances=distances, component="all", iterations=2) \
         if potentials is None else potentials
@@ -209,92 +209,89 @@ def compute_rel_d_radii(binary, distances, potentials=None):
     pargs = (distances, corrected_potentials['primary'], binary.mass_ratio, binary.primary.synchronicity, "primary")
     sargs = (distances, corrected_potentials['secondary'], binary.mass_ratio, binary.secondary.synchronicity,
              "secondary")
-    fwd_radii = np.vstack((bsradius.calculate_forward_radii(*pargs), bsradius.calculate_forward_radii(*sargs)))
-    return np.abs(fwd_radii[:, 1:] - fwd_radii[:, :-1]) / fwd_radii.mean(axis=1)[:, np.newaxis]
+
+    return np.vstack((bsradius.calculate_forward_radii(*pargs), bsradius.calculate_forward_radii(*sargs)))
 
 
-def compute_rel_d_irradiation(binary, distances):
+def compute_rel_d_geometry(binary, radii, radii_counterpart):
+    """
+    Function estimates the maximum change in flux due to the change in the geometry estimated by the change in the
+    forward radius.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param radii: numpy.array;
+    :param radii_counterpart: numpy.array;
+    :return: numpy.array;
+    """
+    eq_radii = np.array([binary.primary.equivalent_radius, binary.secondary.equivalent_radius])
+    fwd_r_diff = np.abs(radii_counterpart - radii)
+
+    d_flux = (2 * eq_radii[:, np.newaxis] * fwd_r_diff + fwd_r_diff ** 2)
+    total_flux = eq_radii ** 2
+    return d_flux / np.sum(total_flux)
+
+
+def relative_irradiation(binary, distances):
+    """
+    Returns an estimate of how much of the component flux comes from the reflected light of the companion
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param distances: numpy.array; orbital distances
+    :return: numpy.array;
+    """
+    temp_ratio4 = np.power(binary.primary.t_eff / binary.secondary.t_eff, 4)
+    r_ratio2 = np.power(binary.primary.equivalent_radius / binary.secondary.equivalent_radius, 2)
+    coeff = r_ratio2 * temp_ratio4
+    irrad1 = np.power(binary.primary.equivalent_radius / distances, 2) / (1 + coeff)
+    irrad2 = np.power(binary.secondary.equivalent_radius / distances, 2) / (1 + 1 / coeff)
+    return np.vstack((irrad1, irrad2))
+
+
+def compute_counterparts_rel_d_irrad(binary, distances, distances_counterpart):
     """
     Estimates a relative change in recieved irradiation from a companion.
 
     :param binary: elisa.binary_system.system.BinarySystem;
-    :param distances: numpy.array; orbital distances (sorted)
-    :return: numpy.array
+    :param distances: numpy.array; orbital distances
+    :param distances_counterpart: numpy.array; orbital distances
+    :return: numpy.array;
     """
-    temp_ratio2 = np.power(binary.primary.t_eff / binary.secondary.t_eff, 2)
-    irrad1 = temp_ratio2 * binary.primary.equivalent_radius / (2 * distances)
-    irrad2 = binary.secondary.equivalent_radius / (2 * distances * temp_ratio2)
+    irrad = relative_irradiation(binary, distances)
+    irrad_c = relative_irradiation(binary, distances_counterpart)
 
-    irrad = np.vstack((irrad1, irrad2))
-    return np.abs(irrad[:, 1:] - irrad[:, :-1]) / irrad.mean(axis=1)[:, np.newaxis]
+    return np.abs(irrad - irrad_c)
 
 
-def compute_rel_d_radii_from_counterparts(binary, base_distances, counterpart_distances, base_potentials=None,
-                                          counterpart_potentials=None):
+def compute_rel_d_irradiation(binary, distances):
+    """
+    Estimates a relative change in recieved irradiation from a companion between the most similar orbital positions.
+
+    :param binary: elisa.binary_system.system.BinarySystem;
+    :param distances: numpy.array; orbital distances (sorted)
+    :return: numpy.array;
+    """
+    irrad = relative_irradiation(binary, distances)
+    return np.abs(irrad[:, 1:] - irrad[:, :-1])
+
+
+def compute_rel_d_radii_from_counterparts(radii, base_positions, mirrors):
     """
     Returns relative differences between forward radii between two orbital counterparts.
 
-    :param binary:  elisa.binary_system.system.BinarySystem;
-    :param base_distances: array; component distances of templates
-    :param counterpart_distances: array; component distances of counterparts
-    :param base_potentials: array; corrected base potentials, if None, they will be calculated from `base_distances`
-    :param counterpart_potentials: array;
-    :return: np.array; (2 * N)
+    :param radii: numpy.array; forward radii
+    :param base_positions: numpy.array; base orbital position array
+    :param mirrors: numpy.array; orbital counterposition array
+    :return: np.array; (2 * N) of relative changes in relative distances
     """
-    # removing nans from arrays
-    base_distances = copy(base_distances)
-    base_distances_nans = np.argwhere(np.isnan(base_distances))
-    base_distances[base_distances_nans] = counterpart_distances[base_distances_nans]
-    counterpart_distances = copy(counterpart_distances)
-    counterpart_distances_nans = np.argwhere(np.isnan(counterpart_distances))
-    counterpart_distances[counterpart_distances_nans] = base_distances[counterpart_distances_nans]
-
-    base_potentials = binary.correct_potentials(distances=base_distances, component="all", iterations=2) \
-        if base_potentials is None else base_potentials
-    counterpart_potentials = binary.correct_potentials(distances=counterpart_distances, component="all", iterations=2) \
-        if counterpart_potentials is None else counterpart_potentials
-
-    pargs_base = (
-        base_distances,
-        base_potentials['primary'],
-        binary.mass_ratio,
-        binary.primary.synchronicity,
-        "primary"
-    )
-    sargs_base = (
-        base_distances,
-        base_potentials['secondary'],
-        binary.mass_ratio,
-        binary.secondary.synchronicity,
-        "secondary")
-
-    pargs_counterpart = (
-        counterpart_distances,
-        counterpart_potentials['primary'],
-        binary.mass_ratio,
-        binary.primary.synchronicity,
-        "primary"
-    )
-    sargs_counterpart = (
-        counterpart_distances,
-        counterpart_potentials['secondary'],
-        binary.mass_ratio,
-        binary.secondary.synchronicity,
-        "secondary")
-
-    fwd_radii_base = \
-        np.vstack((bsradius.calculate_forward_radii(*pargs_base), bsradius.calculate_forward_radii(*sargs_base)))
-
-    fwd_radii_counterpart = np.vstack((bsradius.calculate_forward_radii(*pargs_counterpart),
-                                       bsradius.calculate_forward_radii(*sargs_counterpart)))
-
+    fwd_radii_base = radii[base_positions[:, 0]]
+    fwd_radii_counterpart = radii[mirrors[:, 0]]
     return np.abs(fwd_radii_base - fwd_radii_counterpart) / fwd_radii_base.mean(axis=1)[:, np.newaxis]
 
 
 def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
     """
-    Prepare set of orbital positions that are symmetrical in therms of surface geometry, where orbital position is
-    mirrored via apsidal line in order to reduce time for generating the light curve.
+    Prepare set of orbital positions that are symmetrical in therms of surface geometry. For each couple,the orbital
+    position is mirrored using apsidal line in order to reduce time for generating the light curve.
 
     :param binary: elisa.binary_star.system.BinarySystem;
     :param azimuths: numpy.array; orbital azimuths of positions in which LC will be calculated
@@ -313,9 +310,9 @@ def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
         - orbital_motion_array_counterpart - numpy.array - sa as `orbital_motion_counterpart` but in numpy.array form
     """
     azimuth_boundaries = [binary.argument_of_periastron, (binary.argument_of_periastron + const.PI) % const.FULL_ARC]
-    unique_geometry = np.logical_and(azimuths > azimuth_boundaries[0],
+    unique_geometry = np.logical_and(azimuths >= azimuth_boundaries[0],
                                      azimuths < azimuth_boundaries[1]) \
-        if azimuth_boundaries[0] < azimuth_boundaries[1] else np.logical_xor(azimuths < azimuth_boundaries[0],
+        if azimuth_boundaries[0] < azimuth_boundaries[1] else np.logical_xor(azimuths <= azimuth_boundaries[0],
                                                                              azimuths > azimuth_boundaries[1])
     unique_phase_indices = np.arange(phases.shape[0])[unique_geometry]
     unique_geometry_azimuths = azimuths[unique_geometry]
@@ -327,3 +324,19 @@ def prepare_apsidaly_symmetric_orbit(binary, azimuths, phases):
                                         calculate_from='azimuth')
 
     return unique_phase_indices, orbital_motion_array_counterpart, unique_geometry
+
+
+def adjust_eclipse_width(true_anomalies, true_anomaly_of_eclipse):
+    """
+    Extends the angular width of the eclipse by the separation of the true anomalies near the eclipse to smooth out 
+    the transition before/after the eclipse.
+    
+    :param true_anomalies: numpy.array; true anomalies of the orbital positions
+    :param true_anomaly_of_eclipse: float; true anomaly of the eclipse
+    :return: 
+    """
+    distances = np.abs(true_anomalies - true_anomaly_of_eclipse)
+    inverse_points_mask = distances > const.PI
+    distances[inverse_points_mask] = const.FULL_ARC - distances[inverse_points_mask]
+    idxs = np.argsort(distances)[:2]
+    return 1.5 * np.abs(true_anomalies[idxs[1]] - true_anomalies[idxs[0]])

@@ -15,9 +15,9 @@ def generate_test(values, transform, expected, _round=None):
     assert_array_equal(expected, obtained)
 
 
-def generate_raise_test(self, value, transofrm, in_exception):
+def generate_raise_test(self, value, transform, in_exception):
     with self.assertRaises(Exception) as context:
-        transofrm(value)
+        transform(value)
     self.assertTrue(in_exception in str(context.exception))
 
 
@@ -49,7 +49,7 @@ class TransformBinarySystemPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, BinarySystemProperties.primary_minimum_time, expected)
 
     def test_primary_minimum_time_raise(self):
-        generate_raise_test(self, "98.2", BinarySystemProperties.primary_minimum_time, "is not")
+        generate_raise_test(self, "98.2", BinarySystemProperties.primary_minimum_time, "not convertible")
 
 
 class TransformSystemPropertiesTestCase(ElisaTestCase):
@@ -69,7 +69,7 @@ class TransformSystemPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, SystemProperties.period, expected)
 
     def test_period_raise(self):
-        generate_raise_test(self, "98.2", SystemProperties.period, "is not")
+        generate_raise_test(self, "98.2", SystemProperties.period, "not convertible")
 
     @staticmethod
     def test_gamma():
@@ -78,7 +78,7 @@ class TransformSystemPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, SystemProperties.gamma, expected)
 
     def test_gamma_raise(self):
-        generate_raise_test(self, "98.2", SystemProperties.gamma, "is not")
+        generate_raise_test(self, "98.2", SystemProperties.gamma, "not convertible")
         generate_raise_test(self, 1.0 * u.km * u.s, SystemProperties.gamma, "are not convertible")
 
     @staticmethod
@@ -134,7 +134,7 @@ class TransformBodyPropertiesTestCase(ElisaTestCase):
         generate_test(valid_values, BodyProperties.t_eff, expected, 4)
 
     def test_t_eff_raise(self):
-        generate_raise_test(self, "10", BodyProperties.t_eff, "is not")
+        generate_raise_test(self, "hakuna matata", BodyProperties.t_eff, "Cannot parse")
 
     @staticmethod
     def test_polar_radius():

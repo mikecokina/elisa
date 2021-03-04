@@ -9,33 +9,47 @@ WHEN_FLOAT64 = (int, np.int, np.int32, np.int64, float, np.float, np.float32, np
 WHEN_ARRAY = (list, np.ndarray, tuple)
 
 
-def quantity_transform(value, unit, when_float64):
+def quantity_transform(value, unit, when_float64=WHEN_FLOAT64):
     """
     General transform function for quantities which fit such interface.
 
-    :param value: Any
-    :param unit: astropy.units.Quantity
+    :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity, str]; string accepts the string
+                                                                                           representation of the astropy
+                                                                                           units
+    :param unit: astropy.units.Quantity; unit of the output
     :param when_float64: Tuple(Types)
     :return: float
     """
-    if isinstance(value, u.Quantity):
+    if isinstance(value, (u.Quantity, str)):
+        value = u.Quantity(value) if isinstance(value, str) else value
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
         value = np.float64(value)
     else:
         raise TypeError('Input of variable is not (numpy.)int or (numpy.)float '
-                        'nor astropy.unit.quantity.Quantity instance.')
+                        'nor astropy.unit.quantity.Quantity instance (or its string representation).')
     return value
 
 
 def deg_transform(value, unit, when_float64):
-    if isinstance(value, u.Quantity):
+    """
+    General transform function for angular quantities which fit such interface.
+
+    :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity, str]; string accepts the string
+                                                                                           representation of the astropy
+                                                                                           units
+    :param unit: astropy.units.Quantity; unit of the output
+    :param when_float64:
+    :return: float;
+    """
+    if isinstance(value, (u.Quantity, str)):
+        value = u.Quantity(value) if isinstance(value, str) else value
         value = np.float64(value.to(unit))
     elif isinstance(value, when_float64):
         value = np.float64(value)*u.deg.to(unit)
     else:
-        raise TypeError('Input of variable `longitude` is not (numpy.)int or (numpy.)float '
-                        'nor astropy.unit.quantity.Quantity instance.')
+        raise TypeError('Input of the angular variable is not (numpy.)int or (numpy.)float '
+                        'nor astropy.unit.quantity.Quantity instance (or its string representation).')
     return value
 
 
@@ -60,16 +74,17 @@ class SystemProperties(TransformProperties):
         Transform and validity check for inclination of the system.
         If unit is not supplied, value in degrees is assumed.
 
-        :param value:
-        :return: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]
+        :param value: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity, str]
+        :return:
         """
-        if isinstance(value, u.Quantity):
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(u.ARC_UNIT))
         elif isinstance(value, (int, np.int, float, np.float)):
             value = np.float64((value * u.deg).to(u.ARC_UNIT))
         else:
             raise TypeError('Input of variable `inclination` is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
 
         if not 0 <= value <= const.PI:
             raise ValueError(f'Inclination value of {value} is out of bounds (0, pi).')
@@ -110,6 +125,26 @@ class SystemProperties(TransformProperties):
             raise ValueError('Invalid value of additional light. Valid values are between 0 and 1.')
         return np.float64(value)
 
+    @staticmethod
+    def semi_major_axis(value):
+        """
+        Validate and transform for semi major axis.
+
+        :param value:
+        :return:
+        """
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
+            value = np.float64(value.to(u.DISTANCE_UNIT))
+        elif isinstance(value, WHEN_FLOAT64):
+            value = np.float64(value * u.solRad.to(u.DISTANCE_UNIT))
+        else:
+            raise TypeError('User input is not (numpy.)int or (numpy.)float '
+                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
+        if value <= 0:
+            raise ValueError("Invalid value of semi_major_axis, use value > 0!")
+        return value
+
 
 class BodyProperties(TransformProperties):
     @staticmethod
@@ -131,16 +166,17 @@ class BodyProperties(TransformProperties):
        If mass astropy.unit.quantity.Quantity instance, program converts it to default units and stores it's value in
        attribute _mass.
 
-       :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity]
+       :param value: Union[int, numpy.int, float, numpy.float, astropy.unit.quantity.Quantity, str];
        :return: float
        """
-        if isinstance(value, u.Quantity):
+        if isinstance(value, (u.Quantity, str)):
+            value = u.Quantity(value) if isinstance(value, str) else value
             value = np.float64(value.to(u.MASS_UNIT))
         elif isinstance(value, WHEN_FLOAT64):
             value = np.float64(value * u.solMass.to(u.MASS_UNIT))
         else:
             raise TypeError('User input is not (numpy.)int or (numpy.)float '
-                            'nor astropy.unit.quantity.Quantity instance.')
+                            'nor astropy.unit.quantity.Quantity instance (or its string representation).')
         if value <= 0:
             raise ValueError("Invalid mass, use value > 0!")
         return value
@@ -151,8 +187,8 @@ class BodyProperties(TransformProperties):
         Validate and transform bolometric albedo (reradiated energy/ irradiance energy).
         Accepts value of albedo in range (0, 1).
 
-        :param value: float
-        :return: float
+        :param value: float;
+        :return: float;
         """
         if value < 0 or value > 1:
             raise ValueError(f'Parameter albedo = {value} is out of range <0, 1>')
@@ -222,6 +258,7 @@ class StarProperties(BodyProperties):
         :param value: float or astropy.unit.quantity.Quantity
         :return: float
         """
+        value = u.Dex(value, unit=u.Unit(' '.join(value.split()[1:]))) if isinstance(value, str) else value
         return quantity_transform(value, u.LOG_ACCELERATION_UNIT, WHEN_FLOAT64)
 
     @staticmethod

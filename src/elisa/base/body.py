@@ -19,27 +19,24 @@ logger = getLogger('base.body')
 
 class Body(metaclass=ABCMeta):
     """
-    Abstract class that defines bodies that can be modelled by this software.
-    Units are imported from astropy.units module::
-
-        see documentation http://docs.astropy.org/en/stable/units/
-
-    It implements following input arguments (body properties) which can be set on input of child instance.
+    Abstract class that defines bodies be modelled by this software.
+    Following arguments are implemented as common for any of child instances.
 
     :param name: str; arbitrary name of instance
     :param synchronicity: float; Object synchronicity (F = omega_rot/omega_orb) setter.
                                  Expects number input convertible to numpy float64 / float.
     :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
                         If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
-    :param albeo: float; Bolometric albedo (reradiated energy/ irradiance energy).
+    :param albedo: float; Bolometric albedo (reradiated energy/ irradiance energy).
                          Accepts value of albedo in range (0, 1).
     :param discretization_factor: float;
     :param t_eff: float; Accepts value in Any temperature unit. If your input is without unit,
                          function assumes that supplied value is in Kelvins.
     :param polar_radius: Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise
                          TypeError will be raised. If quantity is not specified, default distance unit is assumed.
-    :param spots: List[Dict[str, float]]; Spots definitions. Example of defined spots
-    :param atmosphere: str; atmosphere to use for given object instance
+    :param spots: List[Dict[str, float]]; Spots definitions. Order in which the spots are defined will determine the
+                                          layering of the spots (spot defined as first will lay bellow any subsequently
+                                          defined overlapping spot). Example of spots definition:
 
         ::
 
@@ -57,7 +54,10 @@ class Body(metaclass=ABCMeta):
                   "angular_radius": 30,
                   "temperature_factor": 0.95},
              ]
-    :param equatorial_radius: float
+
+
+    :param atmosphere: str; atmosphere to use for given object instance
+    :param equatorial_radius: float;
     """
 
     ID = 1
@@ -79,11 +79,11 @@ class Body(metaclass=ABCMeta):
         else:
             self.name = str(name)
 
-        # initializing parmas to default values
+        # initializing paramas to default values
         self.synchronicity = np.nan
         self.mass = np.nan
         self.albedo = np.nan
-        self.discretization_factor = up.radians(3)
+        self.discretization_factor = up.radians(5)
         self.t_eff = np.nan
         self.polar_radius = np.nan
         self._spots = dict()
@@ -109,7 +109,8 @@ class Body(metaclass=ABCMeta):
     def spots(self, spots):
         # todo: update example
         """
-        Example of defined spots
+        Order in which the spots are defined will determine the layering of the spots (spot defined as first will lay
+        bellow any subsequently defined overlapping spot). Example of defined spots
 
         ::
 
@@ -152,11 +153,11 @@ class Body(metaclass=ABCMeta):
 
     def setup_spot_instance_discretization_factor(self, spot_instance, spot_index):
         """
-        Setup discretization factor for given spot instance based on defined rules::
+        Setup discretization factor for given spot instance based on defined rules
 
-            - used Star discretization factor if not specified in spot
-            - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
-              0.5 * spot_instance.angular_diameter
+        - use value of the parent star if the spot discretization factor is not defined
+        - if spot_instance.discretization_factor > 0.5 * spot_instance.angular_diameter then factor is set to
+                      0.5 * spot_instance.angular_diameter
 
         :param spot_instance: elisa.base.body.Spot;
         :param spot_index: int; spot index (has no affect on process, used for logging)
