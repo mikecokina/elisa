@@ -20,44 +20,6 @@ logger = getLogger('base.body')
 class Body(metaclass=ABCMeta):
     """
     Abstract class that defines bodies modelled by this package.
-    Following arguments are implemented as common for any of child instances.
-
-    :param name: str; arbitrary name of instance
-    :param synchronicity: float; Object synchronicity (F = omega_rot/omega_orb) setter.
-                                 Expects number input convertible to numpy float64 / float.
-    :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
-                        If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
-    :param albedo: float; Bolometric albedo (reradiated energy/ irradiance energy).
-                         Accepts value of albedo in range (0, 1).
-    :param discretization_factor: float;
-    :param t_eff: float; Accepts value in Any temperature unit. If your input is without unit,
-                         function assumes that supplied value is in Kelvins.
-    :param polar_radius: Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int othervise
-                         TypeError will be raised. If quantity is not specified, default distance unit is assumed.
-    :param spots: List[Dict[str, float]]; Spots definitions. Order in which the spots are defined will determine the
-                                          layering of the spots (spot defined as first will lay bellow any subsequently
-                                          defined overlapping spot). Example of spots definition:
-
-        ::
-
-            [
-                 {"longitude": 90,
-                  "latitude": 58,
-                  "angular_radius": 15,
-                  "temperature_factor": 0.9},
-                 {"longitude": 85,
-                  "latitude": 80,
-                  "angular_radius": 30,
-                  "temperature_factor": 1.05},
-                 {"longitude": 45,
-                  "latitude": 90,
-                  "angular_radius": 30,
-                  "temperature_factor": 0.95},
-             ]
-
-
-    :param atmosphere: str; atmosphere to use for given object instance
-    :param equatorial_radius: float;
     """
 
     ID = 1

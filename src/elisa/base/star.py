@@ -103,6 +103,9 @@ class Star(Body):
             - `castelli`, `castelli-kurucz`, `ck` or `ck04`: atmosphere models in Castelli-Kurucz, 2004
             - `kurucz`, `k` or `k93`: atmosphere models in Kurucz, 1993
 
+    After initialization, `Star` instance after initialization within the given `System` has its spot initialized in a
+    `star_instance.spots` attribute as a list containing elisa.base.spot.Spot containers.
+
     """
 
     MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening']
