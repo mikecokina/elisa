@@ -52,10 +52,25 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
                 for key, values in synthetic.items()}
 
     @staticmethod
-    def ln_prior(xn, sigmas):
-        prior = np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0))).astype(float)
-        # prior = np.prod(2*norm().pdf(2*(xn/sigma)))
-        return -np.inf if prior == 0 else np.log(prior)
+    def ln_prior(xn, x0, sigmas):
+        """
+        Logarithmic value of prior (uniform, normal or combined).
+
+        :param xn: numpy.array;
+        :param x0: numpy.array;
+        :param sigmas: numpy.array;
+        :return: numpy.array;
+        """
+        retval = np.empty(sigmas.shape)
+
+        nan_mask = np.isnan(sigmas)
+        uni_prior = np.all(np.bitwise_and(np.greater_equal(xn[nan_mask], 0.0),
+                                          np.less_equal(xn[nan_mask], 1.0))).astype(float)
+        retval[nan_mask] = -np.inf if uni_prior == 0 else np.log(uni_prior)
+
+        retval[~nan_mask] = np.log(norm().pdf(((xn[~nan_mask]-x0[~nan_mask])/sigmas[~nan_mask]))) \
+            if 0.0 <= xn[~nan_mask].all() <= 1.0 else -np.inf
+        return np.sum(retval)
 
     @abstractmethod
     def likelihood(self, xn):
@@ -79,7 +94,7 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         return lh
 
     def ln_probability(self, xn):
-        prior = self.ln_prior(xn, self.sigmas)
+        prior = self.ln_prior(xn, self.norm_init_vector, self.sigmas)
         if prior == -np.inf:
             return -np.inf
         try:
@@ -104,14 +119,14 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.sigmas = np.array(perturbed_norm) - vector
 
     def _fit(self, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False, save=False, fit_id=None):
-        vector = np.array(parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization))
+        self.norm_init_vector = np.array(parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization))
 
         sigmas = np.array([val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()])
-        perturbed = np.array(self.initial_vector) + sigmas
-        perturbed_norm = parameters.vector_normalizer(perturbed, self.fitable.keys(), self.normalization)
-        self.sigmas = np.array(perturbed_norm) - vector
+        args = (np.array(self.initial_vector) + sigmas, self.fitable.keys(), self.normalization)
+        perturbed_norm = parameters.vector_normalizer(*args)
+        self.sigmas = np.array(perturbed_norm) - self.norm_init_vector
 
-        p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=vector)
+        p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=self.norm_init_vector)
 
         logger.info('starting mcmc')
         kwargs = dict(nwalkers=nwalkers, ndim=ndim, log_prob_fn=self.ln_probability)

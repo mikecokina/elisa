@@ -588,7 +588,8 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "value": 8307.0,
                 "fixed": False,
                 "min": 7800.0,
-                "max": 8800.0
+                "max": 8800.0,
+                "sigma": 200
             },
             "surface_potential": {
                 "value": 3.0,
@@ -700,7 +701,8 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": None,
-                "fixed": True
+                "sigma": None,
+                "fixed": True,
             },
             "primary@pulsation@bionic@m": {
                 "value": 0,
@@ -708,6 +710,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": -10,
                 "max": 10,
                 "unit": None,
+                "sigma": None,
                 "fixed": False
             },
             "primary@pulsation@bionic@amplitude": {
@@ -716,6 +719,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": 0.0,
                 "max": 5000.0,
                 "unit": "m / s",
+                "sigma": None,
                 "fixed": False
             },
             "primary@pulsation@bionic@frequency": {
@@ -724,6 +728,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": 1.0,
                 "max": 20.0,
                 "unit": "Hz",
+                "sigma": None,
                 "fixed": False
             },
             "primary@pulsation@bionic@start_phase": {
@@ -732,6 +737,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": "deg",
+                "sigma": None,
                 "constraint": "2.0 * primary@pulsation@bionic@frequency"
             },
             "primary@pulsation@bionic@mode_axis_theta": {
@@ -740,6 +746,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": "deg",
+                "sigma": None,
                 "fixed": True
             },
             "primary@pulsation@bionic@mode_axis_phi": {
@@ -748,6 +755,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": "deg",
+                "sigma": None,
                 "fixed": True
             },
             "primary@t_eff": {
@@ -756,6 +764,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": 7800.0,
                 "max": 8800.0,
                 "unit": "K",
+                "sigma": 200,
                 "fixed": False
             },
             "primary@surface_potential": {
@@ -764,6 +773,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": 3.0,
                 "max": 5.0,
                 "unit": None,
+                "sigma": None,
                 "fixed": False
             },
             "primary@albedo": {
@@ -772,6 +782,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": None,
+                "sigma": None,
                 "fixed": True
             },
             "primary@gravity_darkening": {
@@ -780,6 +791,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": None,
+                "sigma": None,
                 "fixed": True
             },
             "secondary@spot@utopic@longitude": {
@@ -788,6 +800,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": 0.0,
                 "max": 30.0,
                 "unit": "deg",
+                "sigma": None,
                 "fixed": False
             },
             "secondary@spot@utopic@latitude": {
@@ -796,6 +809,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": 0.0,
                 "max": 15.0,
                 "unit": "deg",
+                "sigma": None,
                 "fixed": False
             },
             "secondary@spot@utopic@angular_radius": {
@@ -804,6 +818,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": "deg",
+                "sigma": None,
                 "fixed": True
             },
             "secondary@spot@utopic@temperature_factor": {
@@ -812,6 +827,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": None,
+                "sigma": None,
                 "fixed": True
             },
             "secondary@t_eff": {
@@ -820,6 +836,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": 4000.0,
                 "max": 7000.0,
                 "unit": "K",
+                "sigma": None,
                 "fixed": False
             },
             "secondary@surface_potential": {
@@ -828,6 +845,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": 5.0,
                 "max": 7.0,
                 "unit": None,
+                "sigma": None,
                 "fixed": False
             },
             "secondary@albedo": {
@@ -836,6 +854,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": None,
+                "sigma": None,
                 "fixed": True
             },
             "secondary@gravity_darkening": {
@@ -844,6 +863,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": None,
+                "sigma": None,
                 "fixed": True
             },
             "system@eccentricity": {
@@ -852,6 +872,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": None,
+                "sigma": None,
                 "fixed": True
             },
             "system@argument_of_periastron": {
@@ -860,6 +881,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": "deg",
+                "sigma": None,
                 "fixed": True
             },
             "system@inclination": {
@@ -868,6 +890,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": 80.0,
                 "max": 90.0,
                 "unit": "deg",
+                "sigma": None,
                 "fixed": False
             },
             "system@period": {
@@ -876,6 +899,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": "d",
+                "sigma": None,
                 "fixed": True
             },
             "system@mass_ratio": {
@@ -884,6 +908,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": None,
+                "sigma": None,
                 "fixed": True
             },
             "system@semi_major_axis": {
@@ -892,6 +917,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": "solRad",
+                "sigma": None,
                 "constraint": "16.515 / sin(radians(system@inclination))"
             },
             "nuisance@ln_f": {
@@ -900,6 +926,7 @@ class BinaryInitialParametersTestCase(ElisaTestCase):
                 "min": None,
                 "max": None,
                 "unit": None,
+                "sigma": None,
                 "fixed": True
             },
         }

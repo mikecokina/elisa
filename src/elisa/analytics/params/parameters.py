@@ -366,15 +366,15 @@ class InitialParameter(object):
                 "min": kwargs.get("min") * self.unit,
                 "max": kwargs.get("max") * self.unit,
             })
+            if kwargs.get("sigma") is not None:
+                kwargs.update({"sigma": kwargs.get("sigma") * self.unit})
 
         if self.constraint is None:
             self.value = transform_cls.transform_input(**{self.param: kwargs.get("value")})[self.param]
             self.min = transform_cls.transform_input(**{self.param: kwargs.get("min")})[self.param]
             self.max = transform_cls.transform_input(**{self.param: kwargs.get("max")})[self.param]
-
-        if kwargs.get("sigma") is not None:
-            kwargs.update({"sigma": kwargs.get("sigma") * self.unit})
-            self.sigma = transform_cls.transform_input(**{self.param: kwargs.get("sigma")})[self.param]
+            if kwargs.get("sigma") is not None:
+                self.sigma = transform_cls.transform_input(**{self.param: kwargs.get("sigma")})[self.param]
 
         if self.fixed:
             self.min, self.max, self.sigma = None, None, None
