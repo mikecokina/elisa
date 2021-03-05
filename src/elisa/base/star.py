@@ -25,7 +25,7 @@ class Star(Body):
 
         from elisa import Star
     
-    Mandatory `Star` parameters if the instance is a component of the `SingleSystem`:
+    Mandatory `Star` arguments if the instance is a component of the `SingleSystem`:
 
         :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
                         If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
@@ -42,7 +42,7 @@ class Star(Body):
         :polar_radius: float; radius of a star towards the pole of the star
         :equatorial_radius: float; radius of a star towards the pole of the star
     
-    Mandatory `Star` parameters if the instance is a component of the `BinarySystem`:
+    Mandatory `Star` arguments if the instance is a component of the `BinarySystem`:
 
         :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
                             If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
@@ -53,6 +53,7 @@ class Star(Body):
         :param albedo: float; surface albedo, value from <0, 1> interval
         :param gravity_darkening: float; gravity darkening factor
         :param metallicity: float; log[M/H]
+
 
     After initialization of the `BinarySystem`, following additional attributes of the `Star` instance are available:
 
@@ -73,6 +74,37 @@ class Star(Body):
             :backward_radius: float; radius of a star in the opposite direction as the binary companion
             :forward_radius: float; radius of a star towards the binary companion, returns numpy.nan if the system is
                                     over-contact
+
+    Optional parameters of `Star` instances can be defined with the following arguments:
+        :param spots: List[Dict[str, float]]; Spots definitions. Order in which the spots are defined will determine the
+                                          layering of the spots (spot defined as first will lay bellow any subsequently
+                                          defined overlapping spot). Example of spots definition:
+
+        ::
+
+            [
+                 {"longitude": 90,
+                  "latitude": 58,
+                  "angular_radius": 15,
+                  "temperature_factor": 0.9},
+                 {"longitude": 85,
+                  "latitude": 80,
+                  "angular_radius": 30,
+                  "temperature_factor": 1.05},
+                 {"longitude": 45,
+                  "latitude": 90,
+                  "angular_radius": 30,
+                  "temperature_factor": 0.95},
+             ]
+
+        :param pulsations: List[Dict[str, float]]; to be added soon
+        :param atmosphere: str; atmosphere to use for given object instance, available atmosphere models:
+
+            - `castelli`, `castelli-kurucz`, `ck` or `ck04`: atmosphere models in Castelli-Kurucz, 2004
+            - `kurucz`, `k` or `k93`: atmosphere models in Kurucz, 1993
+
+    After initialization, `Star` instance after initialization within the given `System` has its spot initialized in a
+    `star_instance.spots` attribute as a list containing elisa.base.spot.Spot containers.
 
     """
 
