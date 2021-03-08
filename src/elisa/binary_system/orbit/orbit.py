@@ -7,6 +7,7 @@ from ... import (
 )
 from ... logger import getLogger
 from ... binary_system.orbit.transform import OrbitProperties
+from ... base.orbit.orbit import AbstractOrbit
 
 logger = getLogger('binary_system.orbit.orbit')
 
@@ -110,9 +111,53 @@ def orbital_semi_major_axes(r, eccentricity, true_anomaly):
     return r * (1.0 + eccentricity * up.cos(true_anomaly)) / (1.0 - up.power(eccentricity, 2))
 
 
-class Orbit(object):
+def component_distance_from_mean_anomaly(eccentricity, true_anomaly):
     """
-    Model which represents orbit of binary system.
+    Return component distance in SMA from semi-major axis, eccentricity and true anomaly.
+
+    :param r: float or numpy.array; distance from center of mass to object
+    :param eccentricity: float or numpy.array; orbital eccentricity
+    :param true_anomaly: float or numpy.array; true anomaly of orbital motion
+    :return: Union[float, numpy.array]
+    """
+    return (1.0 - up.power(eccentricity, 2)) / (1.0 + eccentricity * up.cos(true_anomaly))
+
+
+def get_approx_ecl_angular_width(forward_radius1, forward_radius2, components_distance, inclination):
+    """
+    Returns angular width of the eclipse assuming spherical components.
+
+    :param forward_radius1: float;
+    :param forward_radius2: float;
+    :param components_distance: float; in SMA
+    :param inclination: float; in radians
+    :return: tuple; angular half-width of the eclipse and the inner plateau
+    """
+    # tilt of the orbital plane and z-axis in the observer reference frame
+    tilt = np.abs(const.HALF_PI - inclination)
+    # maximum apparent distance between components where eclipse is possible
+    r_outer = forward_radius1 + forward_radius2
+    r_inner = np.abs(forward_radius1 - forward_radius2)
+    # closest aparent distances of component centres
+    r_close = components_distance * np.sin(tilt)
+
+    # checking if eclipses occur
+
+    nu_outer = 0.0 if r_close >= r_outer else \
+        np.arcsin(np.sqrt(
+            np.power(r_outer/components_distance, 2) - np.power(np.sin(tilt), 2)
+        ))
+    nu_inner = 0.0 if r_close >= r_inner else \
+        np.arcsin(np.sqrt(
+            np.power(r_inner / components_distance, 2) - np.power(np.sin(tilt), 2)
+        ))
+
+    return nu_outer, nu_inner
+
+
+class Orbit(AbstractOrbit):
+    """
+    Object representing orbit of a binary system. Accessible as an attribute of an BinarySystem object
 
     Input parameters:
 
@@ -140,6 +185,8 @@ class Orbit(object):
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
         kwargs = OrbitProperties.transform_input(**kwargs)
 
+        super(Orbit, self).__init__(**kwargs)
+
         # default valeus of properties
         self.period = np.nan
         self.eccentricity = np.nan
@@ -157,29 +204,8 @@ class Orbit(object):
             setattr(self, kwarg, kwargs[kwarg])
 
         self.periastron_distance = self.compute_periastron_distance()
-        self.periastron_phase = - self.get_conjuction()["primary_eclipse"]["true_phase"] % 1
-
-    @classmethod
-    def true_phase(cls, phase, phase_shift):
-        """
-        Returns shifted phase of the orbit by the amount phase_shift.
-
-        :param phase: Union[numpy.array, float];
-        :param phase_shift: float;
-        :return: Union[numpy.array, float];
-        """
-        return phase + phase_shift
-
-    @staticmethod
-    def phase(true_phase, phase_shift):
-        """
-        reverts the phase shift introduced in function true phase
-
-        :param true_phase: Union[numpy.array, float];
-        :param phase_shift: numpy.float;
-        :return: Union[numpy.array, float];
-        """
-        return true_phase - phase_shift
+        self.conjunctions = self.get_conjuction()
+        self.periastron_phase = - self.conjunctions["primary_eclipse"]["true_phase"] % 1
 
     @classmethod
     def phase_to_mean_anomaly(cls, phase):
@@ -307,21 +333,21 @@ class Orbit(object):
         Function takes photometric phase of the binary system as input and calculates positions of the secondary
         component in the frame of reference of primary component.
 
-        :param phase: Union[numpy.array, float];
+        :param phase: Union[numpy.array, float]; photometric phases
         :return: numpy.array; matrix consisting of column stacked vectors distance, azimut angle, true anomaly and phase
 
         ::
 
-            numpy.array((r1, az1, ni1, phs1),
-                    (r2, az2, ni2, phs2),
-                     ...
-                    (rN, azN, niN, phsN))
+            numpy.array((r1, az1, nu1, phs1),
+                        (r2, az2, nu2, phs2),
+                         ...       
+                        (rN, azN, nuN, phsN))
         """
         # ability to accept scalar as input
         if isinstance(phase, (int, np.int, float, np.float)):
             phase = np.array([np.float(phase)])
         # photometric phase to phase measured from periastron
-        true_phase = self.true_phase(phase=phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
+        true_phase = self.true_phase(phase=phase, phase_shift=self.conjunctions['primary_eclipse']['true_phase'])
 
         mean_anomaly = self.phase_to_mean_anomaly(phase=true_phase)
         eccentric_anomaly = np.array([self.mean_anomaly_to_eccentric_anomaly(mean_anomaly=xx)
@@ -354,7 +380,7 @@ class Orbit(object):
         eccentric_anomaly = self.true_anomaly_to_eccentric_anomaly(true_anomaly)
         mean_anomaly = self.eccentric_anomaly_to_mean_anomaly(eccentric_anomaly)
         true_phase = self.mean_anomaly_to_phase(mean_anomaly)
-        phase = self.phase(true_phase, phase_shift=self.get_conjuction()['primary_eclipse']['true_phase'])
+        phase = self.phase(true_phase, phase_shift=self.conjunctions['primary_eclipse']['true_phase'])
         return np.column_stack((distance, azimuth, true_anomaly, phase))
 
     def get_conjuction(self):

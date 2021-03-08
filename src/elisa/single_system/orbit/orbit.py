@@ -6,6 +6,7 @@ from ... import (
     units as u,
     utils
 )
+from ...base.orbit.orbit import AbstractOrbit
 from ... logger import getLogger
 
 logger = getLogger('single_system.orbit.orbit')
@@ -39,7 +40,7 @@ def azimuth_to_true_phase(azimuth):
     return azimuth / c.FULL_ARC
 
 
-class Orbit(object):
+class Orbit(AbstractOrbit):
     """
     Model which represents rotational motion of the single system as apparent orbital motion of the observer.
 
@@ -56,26 +57,20 @@ class Orbit(object):
         utils.check_missing_kwargs(self.__class__.MANDATORY_KWARGS, kwargs, instance_of=self.__class__)
         kwargs = OrbitProperties.transform_input(**kwargs)
 
+        super(Orbit, self).__init__(**kwargs)
+
         # default valeus of properties
         self.rotational_period = np.nan
-        self.inclination = np.nan
-        self.phase_shift = 0.0
 
         # values of properties
         logger.debug(f"setting properties of orbit")
         for kwarg in kwargs:
             setattr(self, kwarg, kwargs[kwarg])
 
-    @staticmethod
-    def phase(true_phase, phase_shift):
-        """
-        correction in phase
+        self.period = self.rotational_period
 
-        :param true_phase: Union[numpy.array, float];
-        :param phase_shift: numpy.float;
-        :return: Union[numpy.array, float];
-        """
-        return true_phase - phase_shift
+    def orbital_motion(self, phase):
+        return self.rotational_motion(phase)
 
     @staticmethod
     def rotational_motion(phase):
@@ -88,10 +83,10 @@ class Orbit(object):
 
         ::
 
-            numpy.array((az1, phs1),
-                        (az2, phs2),
+            numpy.array((az1, np.nan, np.nan, phs1),
+                        (az2, np.nan, np.nan, phs2),
                          ...
-                        (azN, phsN))
+                        (azN, np.nan, np.nan, phsN))
         """
         # ability to accept scalar as input
         if isinstance(phase, (int, np.int, float, np.float)):

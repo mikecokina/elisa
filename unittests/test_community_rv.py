@@ -54,7 +54,7 @@ class RadialVelocityObserverTestCase(ElisaTestCase):
                                          gamma=s.gamma)
         o = Observer(passband='bolometric', system=rv_system)
 
-        phases, com_rv_dict = o.observe.rv(phases=self.phases, method='point_mass')
+        phases, com_rv_dict = o.observe.rv(phases=self.phases, method='kinematic')
 
         self.assertTrue(np.all(np.abs(std_rvdict['primary'] - com_rv_dict['primary']) < TOL))
         self.assertTrue(np.all(np.abs(std_rvdict['secondary'] - com_rv_dict['secondary']) < TOL))

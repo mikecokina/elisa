@@ -1,6 +1,8 @@
 import numpy as np
 
 from scipy import optimize
+from copy import deepcopy
+
 from . orbit import orbit
 from . curves import lc, rv, c_router
 from . transform import SingleSystemProperties
@@ -19,17 +21,136 @@ from .. import (
 from .. base.system import System
 from .. base.curves import rv as rv_base
 from .. opt.fsolver import fsolve
+from .. base.star import Star
 
 logger = getLogger('single_system.system')
 
 
 class SingleSystem(System):
     """
-    Compute and initialise minmal necessary attributes to be used in light curves computation.
+    Class to store and calculate necessary properties of the single star system based on the user provided parameters.
+    Child class of elisa.base.system.System.
+
+    Class can be imported directly:
+    ::
+
+        from elisa import SingleSystem
+
+    After initialization, apart from the attributes already defined by the user with the arguments, user has access to
+    the following attributes:
+
+        :angular_velocity: float; angular velocity of the stellar rotation
+
+    `SingleSystem' requires instance of elisa.base.star.Star in `star` argument with the following
+    mandatory arguments:
+
+        :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
+                            If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
+        :param t_eff: float; Accepts value in any temperature unit. If your input is without unit,
+                             function assumes that supplied value is in K.
+        :param polar_log_g: float; log_10 of the polar surface gravity
+        :param gravity_darkening: float; gravity darkening factor
+        :param metallicity: float; log[M/H]
+
+    Each component instance will after initialization contain following attributes:
+
+        :critical_potential: float; potential of the star required to fill its Roche lobe
+        :equivalent_radius: float; radius of a sphere with the same volume as a component
+        :polar_radius: float; radius of a star towards the pole of the star
+        :equatorial_radius: float; radius of a star towards the pole of the star
+
+    The SingleSystem can be initialized either by using valid class arguments, e.g.:
+    ::
+
+        from astropy import units as u
+
+        from elisa.single_system.system import SingleSystem
+        from elisa.base.star import Star
+
+        star = Star(
+            mass=1.0*u.solMass,
+            t_eff=5772*u.K,
+            gravity_darkening=0.32,
+            polar_log_g=4.43775*u.dex(u.cm/u.s**2),
+            metallicity=0.0,
+            discretization_factor=2
+        )
+        
+        system = SingleSystem(
+            star=star,
+            gamma=0*u.km/u.s,
+            inclination=90*u.deg,
+            rotation_period=25.380*u.d,
+            reference_time=0.0*u.d
+        )
+
+    or by using the SingleSystem.from_json(dict) function that accepts various parameter combination in form of
+    dictionary such as:
+    ::
+
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "rotation_period": 10.1,
+                "gamma": '10000 K',  # you can define quantity using a string representation of the astropy quantities
+                "reference_time": 0.5,
+                "phase_shift": 0.0
+            },
+            "star": {
+                "mass": 1.0,
+                "t_eff": 5772.0,
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_log_g": "4.43775 dex(cm.s-2)"   # you can use logarithmic units using json/dict input
+            }
+        }
+
+        single = SingleSystem.from_json(data)
+
+    See documentation for `from_json` method for details.
+
+    The rotation of the binary system can be modelled using function
+    `calculate_lines_of_sight(phases)`. E.g.:
+    ::
+
+        single_instance.calculate_lines_of_sight(np.linspace(0, 1))
+
+    The class contains substantial plotting capability in the SingleSystem.plot module that contains following
+    functions (further info in: see elisa.single_system.graphics.plot):
+
+        - equipotential(args): zx cross-sections of equipotential surface
+        - mesh(args): 3D mesh (scatter) plot of the surface points
+        - wireframe(args): wire frame model of the star
+        - surface(args): plot model of the star with various surface colormaps (gravity_acceleration,
+          temperature, radiance, ...)
+
+    Plot function can be called as function of the plot module. E.g.:
+    ::
+
+        single_instance.plot.surface(phase=0.1, colormap='temperature)
+
+    Similarly, an animation of the orbital motion can be produced using SingleSystem.animation module and its function
+    `rotational_motion(*args)`.
+
+    List of valid system arguments:
+
+    :param star: elisa.base.star.Star; instance of the single star
+    :param inclination: Union[float, astropy.unit.quantity.Quantity]; Inclination of the system.
+                        If unit is not supplied, value in degrees is assumed.
+    :param rotational_period: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity]; Orbital period of
+                              binary star system. If unit is not specified, default period unit is assumed (days).
+    :param reference_time: Union[(numpy.)float, (numpy.)int, astropy.units.quantity.Quantity];
+    :param phase_shift: float; Phase shift of the primary eclipse with respect to the ephemeris.
+                               true_phase is used during calculations, where: true_phase = phase + phase_shift.
+    :param additional_light: float; fraction of light that does not originate from the `BinarySystem`
+    :param gamma: Union[float, astropy.unit.quantity.Quantity]; Center of mass velocity.
+                  Expected type is astropy.units.quantity.Quantity, numpy.float or numpy.int
+                  otherwise TypeError will be raised. If unit is not specified, default velocity unit is assumed (m/s).
     """
 
-    MANDATORY_KWARGS = ['gamma', 'inclination', 'rotation_period']
-    OPTIONAL_KWARGS = ['reference_time', 'phase_shift']
+    MANDATORY_KWARGS = ['inclination', 'rotation_period']
+    OPTIONAL_KWARGS = ['reference_time', 'phase_shift', 'additional_light', 'gamma']
     ALL_KWARGS = MANDATORY_KWARGS + OPTIONAL_KWARGS
 
     STAR_MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening', 'polar_log_g', 'metallicity']
@@ -84,6 +205,60 @@ class SingleSystem(System):
         # setting common reference to emphemeris
         self.period = self.rotation_period
         self.t0 = self.reference_time
+
+    @classmethod
+    def from_json(cls, data, _verify=True, _kind_of=None):
+        """
+        Create instance of BinarySystem from JSON in form such as::
+
+            {
+                "system": {
+                    "inclination": 90.0,
+                    "rotation_period": 10.1,
+                    "gamma": 10000,
+                    "reference_time": 0.5,
+                    "phase_shift": 0.0
+                },
+                "star": {
+                    "mass": 1.0,
+                    "t_eff": 5772.0,
+                    "gravity_darkening": 0.32,
+                    "discretization_factor": 5,
+                    "metallicity": 0.0,
+                    "polar_log_g": "4.43775 dex(cm.s-2)"   # you can also use logarithmic units using json/dict input
+                }
+            }
+
+        Currently, this approach require values in default units.
+
+        Default units::
+
+             {
+                "inclination": [degrees],
+                "rotational_period": [days],
+                "gamma": [m/s],
+                "reference_time": [d],
+                "phase_shift": [dimensionless],
+                "mass": [solMass],
+                "surface_potential": [dimensionless],
+                "synchronicity": [dimensionless],
+                "t_eff": [K],
+                "gravity_darkening": [dimensionless],
+                "discretization_factor": [degrees],
+                "metallicity": [dimensionless],
+                "semi_major_axis": [solRad],
+                "mass_ratio": [dimensionless]
+                "polar_log_g": [dex(m*s-2)]
+            }
+
+        :return: elisa.single_system.system.SingleSystem
+        """
+        data_cp = deepcopy(data)
+        if _verify:
+            sys_utils.validate_single_json(data_cp)
+
+        star = Star(**data_cp["star"])
+        return cls(star=star, **data_cp["system"])
 
     @classmethod
     def is_property(cls, kwargs):
@@ -247,9 +422,10 @@ class SingleSystem(System):
 
     def calculate_lines_of_sight(self, input_argument=None, return_nparray=False, calculate_from='phase'):
         """
-        Returns vector oriented in direction star - observer.
+        Returns vectors oriented in direction star -> observer for given set of phases or azimuths.
 
-        :param calculate_from: str; 'phase' or 'azimuths' parameter based on which orbital motion should be calculated
+        :param calculate_from: str; 'phase' or 'azimuths' parameter based on which the orbital motion should be
+                                    calculated
         :param return_nparray: bool; if True positions in form of numpy arrays will be also returned
         :param input_argument: numpy.array;
         :return: Tuple[List[NamedTuple: elisa.const.Position], List[Integer]] or
@@ -301,7 +477,7 @@ class SingleSystem(System):
 
     # radial velocity curves *******************************************************************************************
     def compute_rv(self, **kwargs):
-        if kwargs['method'] == 'point_mass':
+        if kwargs['method'] == 'kinematic':
             return rv.com_radial_velocity(self, **kwargs)
         if kwargs['method'] == 'radiometric':
             fn_arr = (self._compute_rv_curve_without_pulsations,

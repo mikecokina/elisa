@@ -156,7 +156,7 @@ class Settings(_Const):
     PULSATION_MODEL = 'uniform'
     DEFAULT_TEMPERATURE_PERTURBATION_PHASE_SHIFT = np.pi / 2.0
     SURFACE_DISPLACEMENT_TOL = 1e-2
-    RV_METHOD = 'point_mass'
+    RV_METHOD = 'kinematic'
     RV_LAMBDA_INTERVAL = (5500, 5600)
 
     # computational
@@ -165,15 +165,15 @@ class Settings(_Const):
     NUMBER_OF_THREADS = 1
     NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
     NUMBER_OF_MCMC_PROCESSES = -1
-    POINTS_ON_ECC_ORBIT = 118
-    MAX_RELATIVE_D_R_POINT = 3e-3
-    MAX_SUPPLEMENTAR_D_DISTANCE = 1e-1
+    MAX_NU_SEPARATION = 0.08
+    MAX_RELATIVE_D_R_POINT = 2e-4
     MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
+    MIN_POINTS_IN_ECLIPSE = 35
     MAX_SOLVER_ITERS = 100
     MAX_CURVE_DATA_POINTS = 300
     MESH_GENERATOR = 'auto'
     DEFORMATION_TOL = 0.05
-    MAX_RELATIVE_D_IRRADIATION = 0.02
+    MAX_RELATIVE_D_IRRADIATION = 2e-4
     MCMC_SAVE_INTERVAL = 1800
     USE_SINGLE_LD_COEFFICIENTS = False
 
@@ -229,12 +229,12 @@ class Settings(_Const):
             "NUMBER_OF_THREADS": cls.NUMBER_OF_THREADS,
             "NUMBER_OF_PROCESSES": cls.NUMBER_OF_PROCESSES,
             "NUMBER_OF_MCMC_PROCESSES": cls.NUMBER_OF_MCMC_PROCESSES,
-            "POINTS_ON_ECC_ORBIT": cls.POINTS_ON_ECC_ORBIT,
+            "MAX_NU_SEPARATION": cls.MAX_NU_SEPARATION,
             "MAX_RELATIVE_D_R_POINT": cls.MAX_RELATIVE_D_R_POINT,
-            "MAX_SUPPLEMENTAR_D_DISTANCE": cls.MAX_SUPPLEMENTAR_D_DISTANCE,
             "MAX_SPOT_D_LONGITUDE": cls.MAX_SPOT_D_LONGITUDE,
             "MAX_SOLVER_ITERS": cls.MAX_SOLVER_ITERS,
             "MAX_CURVE_DATA_POINTS": cls.MAX_CURVE_DATA_POINTS,
+            "MIN_POINTS_IN_ECLIPSE": cls.MIN_POINTS_IN_ECLIPSE,
             "TIMER": cls.TIMER,
             "PASSBAND_TABLES": cls.PASSBAND_TABLES,
             "LD_TABLES": cls.LD_TABLES,
@@ -360,17 +360,17 @@ class Settings(_Const):
                     warnings.warn("argument number_of_mcmc_processes is too big, fallback to number of machine cores")
                 cls.NUMBER_OF_MCMC_PROCESSES = int(os.cpu_count())
 
-            cls.POINTS_ON_ECC_ORBIT = c_parse.getint('computational', 'points_on_ecc_orbit',
-                                                     fallback=cls.POINTS_ON_ECC_ORBIT)
+            cls.MAX_NU_SEPARATION = c_parse.getfloat('computational', 'max_nu_separation',
+                                                     fallback=cls.MAX_NU_SEPARATION)
             cls.MAX_RELATIVE_D_R_POINT = c_parse.getfloat('computational', 'max_relative_d_r_point',
                                                           fallback=cls.MAX_RELATIVE_D_R_POINT)
-            cls.MAX_SUPPLEMENTAR_D_DISTANCE = c_parse.getfloat('computational', 'max_supplementar_d_distance',
-                                                               fallback=cls.MAX_SUPPLEMENTAR_D_DISTANCE)
             cls.MAX_SPOT_D_LONGITUDE = c_parse.getfloat('computational', 'max_spot_d_longitude',
                                                         fallback=cls.MAX_SPOT_D_LONGITUDE)
             cls.MAX_SOLVER_ITERS = c_parse.getfloat('computational', 'max_solver_iters', fallback=cls.MAX_SOLVER_ITERS)
             cls.MAX_CURVE_DATA_POINTS = c_parse.getfloat('computational', 'max_curve_datapoints',
                                                          fallback=cls.MAX_CURVE_DATA_POINTS)
+            cls.MIN_POINTS_IN_ECLIPSE = c_parse.getint('computational', 'min_points_in_eclipse',
+                                                       fallback=cls.MIN_POINTS_IN_ECLIPSE)
             cls.MESH_GENERATOR = c_parse.getfloat('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
             cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol', fallback=cls.DEFORMATION_TOL)
             cls.MAX_RELATIVE_D_IRRADIATION = c_parse.getfloat('computational', 'max_relative_d_irradiation',

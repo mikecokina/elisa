@@ -16,7 +16,10 @@ logger = getLogger("base.spots")
 
 class Spot(object):
     """
-    Spot data container.
+    Spot data container. It is available as a list item of a `Star.spots` attribute after the initialization of the host
+    system. This spot class is producing a circular spot at a specified coordinates with a temperature difference with
+    respect to the effective temperature of the host star described by the `temperature_factor` defined as
+    t_eff,spot/t_eff,star.
 
     Input parameters:
 
@@ -31,7 +34,7 @@ class Spot(object):
                                   Spot discretization_factor (mean angular size of spot face).
                                   Expecting value in degrees or as astropy units instance.
 
-    Output parameters (parameters set on call of related methods):
+    Output parameters that describing the spot:
     
     :boundary: numpy.array;
     :boundary_center: float;

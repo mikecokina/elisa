@@ -18,26 +18,94 @@ logger = getLogger('base.star')
 
 class Star(Body):
     """
-    Child class of elisa.base.body.Body representing Star.
-    Class intherit parameters from elisa.base.body.Body and add following
+    Child class of elisa.base.body.Body representing `Star`.
+    
+    Class can be imported directly:
+    ::
 
-    Input parameters:
+        from elisa import Star
+    
+    Mandatory `Star` arguments if the instance is a component of the `SingleSystem`:
 
-    :param surface_potential: float;
-    :param synchronicity: float;
-    :param pulsations: List;
-    :param metallicity: float;
-    :param polar_log_g: float;
-    :param gravity_darkening: float;
+        :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
+                        If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
+        :param t_eff: float; Accepts value in any temperature unit. If your input is without unit,
+                         function assumes that supplied value is in K.
+        :param polar_log_g: float; log_10 of the polar surface gravity
+        :param gravity_darkening: float; gravity darkening factor
+        :param metallicity: float; log[M/H]
 
-    Output parameters:
+    After initialization of the SingleSystem, following additional attributes of the Star instance are available:
 
-    :filling_factor: float;
-    :critical_surface_potential: float;
-    :pulsations: Dict[int, PulsationMode];
-    :side_radius: float; Computed in periastron
-    :forward_radius: float; Computed in periastron
-    :backward_radius: float; Computed in periastron
+        :critical_potential: float; potential of the star required to fill its Roche lobe
+        :equivalent_radius: float; radius of a sphere with the same volume as a component (in SMA units)
+        :polar_radius: float; radius of a star towards the pole of the star
+        :equatorial_radius: float; radius of a star towards the pole of the star
+    
+    Mandatory `Star` arguments if the instance is a component of the `BinarySystem`:
+
+        :param mass: float; If mass is int, np.int, float, np.float, program assumes solar mass as it's unit.
+                            If mass astropy.unit.quantity.Quantity instance, program converts it to default units.
+        :param t_eff: float; Accepts value in any temperature unit. If your input is without unit,
+                             function assumes that supplied value is in K.
+        :param surface_potential: float; generalized surface potential (Wilson 79)
+        :param synchronicity: float; synchronicity F (omega_rot / omega_orb), equals 1 for synchronous rotation
+        :param albedo: float; surface albedo, value from <0, 1> interval
+        :param gravity_darkening: float; gravity darkening factor
+        :param metallicity: float; log[M/H]
+
+
+    After initialization of the `BinarySystem`, following additional attributes of the `Star` instance are available:
+
+        :critical_potential: float; potential of the star required to fill its Roche lobe
+        :equivalent_radius: float; radius of a sphere with the same volume as a component (in SMA units)
+        :filling_factor: float: calculated as (Omega_{inner} - Omega) / (Omega_{inner} - Omega_{outter})
+
+                            :filling factor < 0: component does not fill its Roche lobe
+                            :filling factor = 0: component fills preciselly its Roche lobe
+                            :1 > filling factor > 0: component overflows its Roche lobe
+                            :filling factor = 1: upper boundary of the filling factor, higher value would lead to 
+                                                 the mass loss trough Lagrange point L2
+                                                 
+        Radii at periastron (in SMA units)
+            :polar_radius: float; radius of a star towards the pole of the star
+            :side_radius: float; radius of a star in the direction perpendicular to the pole and direction of a
+                                 companion
+            :backward_radius: float; radius of a star in the opposite direction as the binary companion
+            :forward_radius: float; radius of a star towards the binary companion, returns numpy.nan if the system is
+                                    over-contact
+
+    Optional parameters of `Star` instances can be defined with the following arguments:
+        :param spots: List[Dict[str, float]]; Spots definitions. Order in which the spots are defined will determine the
+                                          layering of the spots (spot defined as first will lay bellow any subsequently
+                                          defined overlapping spot). Example of spots definition:
+
+        ::
+
+            [
+                 {"longitude": 90,
+                  "latitude": 58,
+                  "angular_radius": 15,
+                  "temperature_factor": 0.9},
+                 {"longitude": 85,
+                  "latitude": 80,
+                  "angular_radius": 30,
+                  "temperature_factor": 1.05},
+                 {"longitude": 45,
+                  "latitude": 90,
+                  "angular_radius": 30,
+                  "temperature_factor": 0.95},
+             ]
+
+        :param pulsations: List[Dict[str, float]]; to be added soon
+        :param atmosphere: str; atmosphere to use for given object instance, available atmosphere models:
+
+            - `castelli`, `castelli-kurucz`, `ck` or `ck04`: atmosphere models in Castelli-Kurucz, 2004
+            - `kurucz`, `k` or `k93`: atmosphere models in Kurucz, 1993
+
+    After initialization, `Star` instance after initialization within the given `System` has its spot initialized in a
+    `star_instance.spots` attribute as a list containing elisa.base.spot.Spot containers.
+
     """
 
     MANDATORY_KWARGS = ['mass', 't_eff', 'gravity_darkening']

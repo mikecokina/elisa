@@ -202,6 +202,8 @@ v0.5
     - support different atmospheres for celestial objects
     - `velocity` and `radial_velocity` option for `colormap` argument added to BinarySystem.plot.surface() and
       SingleSystem.plot.surface()
+    - ability to select priors from uniform or normal distribution, standard deviation of the normal distribution is
+      defined with the `sigma` fit parameter attribute
 
 **Enhancements**
     - solar constant conserved with different levels of surface discretization

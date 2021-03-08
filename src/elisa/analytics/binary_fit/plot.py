@@ -100,7 +100,8 @@ class RVPlot(object):
         self.fit = instance
         self.data = data
 
-    def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, y_axis_unit=u.km / u.s, **kwargs):
+    def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, y_axis_unit=u.km / u.s,
+              return_figure_instance=False, **kwargs):
         """
         Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
@@ -108,6 +109,8 @@ class RVPlot(object):
         :param stop_phase: float;
         :param number_of_points: int;
         :param y_axis_unit: astropy.unit.Unit;
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+                                             produced figure
         :param kwargs: Dict;
         :**kwargs options for mcmc**:
             * **fit_result** * - Dict - {result_parameter: {value: float, unit: astropy.unit.Unit,
@@ -160,6 +163,7 @@ class RVPlot(object):
                      for component in self.data.keys()}
 
         plot_result_kwargs.update({
+            'return_figure_instance': return_figure_instance,
             'synth_phases': synth_phases,
             'rv_fit': rv_fit,
             'residuals': residuals,
@@ -167,7 +171,7 @@ class RVPlot(object):
         })
 
         logger.debug('Sending data to matplotlib interface.')
-        graphics.binary_rv_fit_plot(**plot_result_kwargs)
+        return graphics.binary_rv_fit_plot(**plot_result_kwargs)
 
 
 class RVPlotLsqr(RVPlot):
@@ -187,7 +191,7 @@ class LCPlot(object):
 
     def model(self, start_phase=-0.6, stop_phase=0.6, number_of_points=300, discretization=3,
               separation=0.1, data_frac_to_normalize=0.1, normalization_kind='maximum', plot_legend=True, loc=1,
-              **kwargs):
+              return_figure_instance=False, **kwargs):
         """
         Prepares data for plotting the model described by fit params or calculated by last run of fitting procedure.
 
@@ -201,6 +205,8 @@ class LCPlot(object):
         :param normalization_kind: str; `average` or `maximum`
         :param loc: int; location of the legend
         :param plot_legend: bool; display legend
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+                                             produced figure
         :param kwargs: Dict;
         :**kwargs options for mcmc**:
             * **fit_result** * - Dict - {result_parameter: {value: float, unit: astropy.unit.Unit,
@@ -279,6 +285,7 @@ class LCPlot(object):
                            np.mean(interp_fn[band](x_data[band])) for band in self.data.keys()}
 
         plot_result_kwargs.update({
+            'return_figure_instance': return_figure_instance,
             'synth_phases': synth_phases,
             'lcs': lc_fit,
             'residuals': residuals,
@@ -287,7 +294,7 @@ class LCPlot(object):
         })
 
         logger.debug('Sending data to matplotlib interface.')
-        graphics.binary_lc_fit_plot(**plot_result_kwargs)
+        return graphics.binary_lc_fit_plot(**plot_result_kwargs)
 
 
 class LCPlotLsqr(LCPlot):
@@ -353,18 +360,22 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
     flat_chain = MCMCMixin.renormalize_flat_chain(flat_chain, mcmc_fit_instance.variable_labels, variable_labels,
                                                   normalization)
 
-    # # transforming units
+    # # transforming units and rearanging them into the correct order
+    flat_chain_reduced = np.empty((flat_chain.shape[0], len(variable_labels)))
     plot_units = PLOT_UNITS if plot_units is None else plot_units
     for ii, lbl in enumerate(variable_labels):
+        idx = mcmc_fit_instance.variable_labels.index(lbl)
         if lbl in plot_units.keys():
             unt = u.Unit(flat_result[lbl]['unit'])
-            flat_chain[:, ii] = (flat_chain[:, ii] * unt).to(plot_units[lbl]).value
+            flat_chain_reduced[:, ii] = (flat_chain[:, idx] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['value'] = (flat_result[lbl]['value'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]["confidence_interval"]['min'] = \
                 (flat_result[lbl]["confidence_interval"]['min'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]["confidence_interval"]['max'] = \
                 (flat_result[lbl]["confidence_interval"]['max'] * unt).to(plot_units[lbl]).value
             flat_result[lbl]['unit'] = plot_units[lbl].to_string()
+        else:
+            flat_chain_reduced[:, ii] = flat_chain[:, idx]
 
     truths = [flat_result[lbl]['value'] for lbl in variable_labels] if truths is True else None
 
@@ -372,12 +383,12 @@ def corner(mcmc_fit_instance, flat_chain=None, variable_labels=None, normalizati
         for ii, lbl in enumerate(variable_labels):
             tol = 0.5 * sigma * np.abs(flat_result[lbl]["confidence_interval"]['max'] -
                                        flat_result[lbl]["confidence_interval"]['min'])
-            mask = np.logical_and(flat_chain[:, ii] > flat_result[lbl]['value'] - tol,
-                                  flat_chain[:, ii] < flat_result[lbl]['value'] + tol)
-            flat_chain = flat_chain[mask]
+            mask = np.logical_and(flat_chain_reduced[:, ii] > flat_result[lbl]['value'] - tol,
+                                  flat_chain_reduced[:, ii] < flat_result[lbl]['value'] + tol)
+            flat_chain_reduced = flat_chain_reduced[mask]
 
     corner_plot_kwargs.update({
-        'flat_chain': flat_chain,
+        'flat_chain': flat_chain_reduced,
         'truths': truths,
         'variable_labels': variable_labels,
         'labels': plot_labels,

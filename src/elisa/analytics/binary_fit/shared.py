@@ -58,8 +58,6 @@ class AbstractFit(metaclass=ABCMeta):
         setattr(self, 'initial_vector', [val.value for val in self.fitable.values()])
         setattr(self, 'flat_result', dict())
 
-        setattr(self, 'error_penalization', self.calculate_error_penalization())
-
     @abstractmethod
     def fit(self, *args, **kwargs):
         pass
@@ -87,14 +85,6 @@ class AbstractFit(metaclass=ABCMeta):
                 } for key, val in constrained_values.items()
             })
         return result_dict
-
-    def calculate_error_penalization(self):
-        """
-        Calculates constant component to the likelihood function derived from the errors
-
-        :return: np.float;
-        """
-        return np.sum([np.sum(np.log(2 * PI * np.power(value, 2))) for value in self.y_err.values()])
 
 
 class AbstractRVFit(AbstractFit):

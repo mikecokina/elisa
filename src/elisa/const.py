@@ -2,6 +2,8 @@ import numpy as np
 from collections import namedtuple
 
 
+# DO NOT CHANGE ANYTHING
+
 FULL_ARC = np.pi * 2
 PI = np.pi
 HALF_PI = np.pi / 2

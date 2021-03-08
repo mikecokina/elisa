@@ -5,6 +5,7 @@ from typing import Dict
 import emcee
 import numpy as np
 from scipy import interpolate
+from scipy.stats.distributions import norm
 
 from . shared import check_for_boundary_surface_potentials
 from . mixins import MCMCMixin
@@ -17,11 +18,13 @@ from .. import RVData, LCData
 from .. models import lc as lc_model
 from .. models import rv as rv_model
 from .. params import parameters
+from ..params.conf import NUISANCE_PARSER, PARAM_PARSER
 from .. tools.utils import time_layer_resolver
 
 from ... observer.utils import normalize_light_curve
 from ... base.error import ElisaError
 from ... import settings
+from ... const import PI
 from ... graphic.mcmc_graphics import Plot
 from ... logger import getPersistentLogger
 from ... binary_system.system import BinarySystem
@@ -38,57 +41,104 @@ class MCMCFit(AbstractFit, MCMCMixin, metaclass=ABCMeta):
         self.flat_chain_path = ''
         self.eval_counter = 0
         self._last_known_lhood = -np.finfo(float).max * np.finfo(float).eps
-        self.error_penalization = 0
+        self.sigmas = list()
+
+    def s_squared(self, synthetic, ln_f):
+        """
+        Calculates constant component to the likelihood function derived from the errors.
+        :return: numpy.float;
+        """
+        return {key: np.power(self.y_err[key], 2) + np.power(values, 2) * np.exp(2 * ln_f)
+                for key, values in synthetic.items()}
 
     @staticmethod
-    def ln_prior(xn):
-        return np.all(np.bitwise_and(np.greater_equal(xn, 0.0), np.less_equal(xn, 1.0)))
+    def ln_prior(xn, x0, sigmas):
+        """
+        Logarithmic value of prior (uniform, normal or combined).
+
+        :param xn: numpy.array;
+        :param x0: numpy.array;
+        :param sigmas: numpy.array;
+        :return: numpy.array;
+        """
+        retval = np.empty(sigmas.shape)
+
+        nan_mask = np.isnan(sigmas)
+        uni_prior = np.all(np.bitwise_and(np.greater_equal(xn[nan_mask], 0.0),
+                                          np.less_equal(xn[nan_mask], 1.0))).astype(float)
+        retval[nan_mask] = -np.inf if uni_prior == 0 else np.log(uni_prior)
+
+        retval[~nan_mask] = np.log(norm().pdf(((xn[~nan_mask]-x0[~nan_mask])/sigmas[~nan_mask]))) \
+            if 0.0 <= xn[~nan_mask].all() <= 1.0 else -np.inf
+        return np.sum(retval)
 
     @abstractmethod
     def likelihood(self, xn):
         pass
 
-    def lhood(self, synthetic):
+    def lhood(self, synthetic, ln_f):
         """
         Calculates likelihood function value for a synthetic model to be a correct model for given observational data.
 
+        :param ln_f: List; marninalization parameters (currently supported single parameter for error penalization)
         :param synthetic: Dict; {'dataset_name': numpy.array, }
         :return: float;
         """
+        sigma2 = self.s_squared(synthetic, ln_f)
+        # print(ln_f)
         lh = - 0.5 * (np.sum(
-            [np.sum(np.power((self.y_data[item] - synthetic[item]) / self.y_err[item], 2))
-             for item, value in synthetic.items()]
-        ) + self.error_penalization)
-
+            [np.sum((np.power((self.y_data[key] - synthetic[key]), 2) / sigma2[key]) + np.log(2.0 * PI * sigma2[key]))
+             for key, value in synthetic.items()])
+        )
         self._last_known_lhood = lh if lh < self._last_known_lhood else self._last_known_lhood
         return lh
 
     def ln_probability(self, xn):
-        if not self.ln_prior(xn):
+        prior = self.ln_prior(xn, self.norm_init_vector, self.sigmas)
+        if prior == -np.inf:
             return -np.inf
         try:
-            likelihood = self.likelihood(xn)
+            likelihood = prior + self.likelihood(xn)
         except (ElisaError, ValueError) as e:
             if not settings.SUPPRESS_WARNINGS:
                 logger.warning(f'mcmc hit invalid parameters, exception: {str(e)}')
             return self._last_known_lhood * 1e3
         return likelihood
 
+    def normalized_sigma(self, vector):
+        """
+        Calculates normalized standard deviation for each variable parameter. If sigma is not suplied for the
+        parameter, np.nan is used instead.
+
+        :param vector: List; normalized starting vector
+        :return:
+        """
+        sigmas = np.array([val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()])
+        perturbed = np.array(self.initial_vector) + sigmas
+        perturbed_norm = parameters.vector_normalizer(perturbed, self.fitable.keys(), self.normalization)
+        self.sigmas = np.array(perturbed_norm) - vector
+
     def _fit(self, nwalkers, ndim, nsteps, nsteps_burn_in, p0=None, progress=False, save=False, fit_id=None):
-        vector = parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization)
-        p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=vector)
-        lnf = self.ln_probability
+        self.norm_init_vector = np.array(parameters.vector_normalizer(self.initial_vector, self.fitable.keys(), self.normalization))
+
+        sigmas = np.array([val.sigma if val.sigma is not None else np.nan for val in self.fitable.values()])
+        args = (np.array(self.initial_vector) + sigmas, self.fitable.keys(), self.normalization)
+        perturbed_norm = parameters.vector_normalizer(*args)
+        self.sigmas = np.array(perturbed_norm) - self.norm_init_vector
+
+        p0 = self.generate_initial_states(p0, nwalkers, ndim, x0_vector=self.norm_init_vector)
 
         logger.info('starting mcmc')
+        kwargs = dict(nwalkers=nwalkers, ndim=ndim, log_prob_fn=self.ln_probability)
         if settings.NUMBER_OF_MCMC_PROCESSES > 1:
             with Pool(processes=settings.NUMBER_OF_MCMC_PROCESSES) as pool:
                 logger.info('starting parallel mcmc')
-                sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf, pool=pool)
+                sampler = emcee.EnsembleSampler(pool=pool, **kwargs)
                 self.worker(sampler, p0, nsteps, nsteps_burn_in, save=save, fit_id=fit_id, fitable=self.fitable,
                             normalization=self.normalization, progress=progress)
         else:
             logger.info('starting singlecore mcmc')
-            sampler = emcee.EnsembleSampler(nwalkers=nwalkers, ndim=ndim, log_prob_fn=lnf)
+            sampler = emcee.EnsembleSampler(**kwargs)
             self.worker(sampler, p0, nsteps, nsteps_burn_in, save=save, fit_id=fit_id, fitable=self.fitable,
                         normalization=self.normalization, progress=progress)
 
@@ -153,7 +203,11 @@ class LightCurveFit(MCMCFit, AbstractLCFit):
                 band: interpolate.interp1d(fit_xs, curve, kind='cubic')(phases[self.x_data_reducer[band]])
                 for band, curve in synthetic.items()
             }
-        return self.lhood(synthetic)
+
+        ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
+        ln_f = parameters.prepare_nuisance_properties_set(xn, self.fitable, self.fixed)[ln_f_key]
+
+        return self.lhood(synthetic, ln_f)
 
     def fit(self, data: Dict[str, LCData], x0: parameters.BinaryInitialParameters, discretization=5.0, nwalkers=None,
             nsteps=1000, initial_state=None, burn_in=None, percentiles=None, interp_treshold=None, progress=False,
@@ -244,7 +298,10 @@ class CentralRadialVelocity(MCMCFit, AbstractRVFit):
         kwargs = parameters.prepare_properties_set(xn, self.fitable.keys(), self.constrained, self.fixed)
         synthetic = rv_model.central_rv_synthetic(*(self.x_data_reduced, self.observer), **kwargs)
         synthetic = {comp: rv[self.x_data_reducer[comp]] for comp, rv in synthetic.items()}
-        lhood = self.lhood(synthetic)
+
+        ln_f_key = f"{NUISANCE_PARSER}{PARAM_PARSER}ln_f"
+        ln_f = parameters.prepare_nuisance_properties_set(xn, self.fitable, self.fixed)[ln_f_key]
+        lhood = self.lhood(synthetic, ln_f)
 
         self.eval_counter += 1
         logger.debug(f'eval counter = {self.eval_counter}, likehood = {lhood}')

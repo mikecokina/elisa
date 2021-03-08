@@ -6,7 +6,6 @@ from ... base import transform
 from ... base.graphics import plot
 from ... const import Position
 from ... graphic import graphics
-from ... utils import is_empty
 from ... base.surface.faces import correct_face_orientation
 from .. import utils as sutils
 from .. curves import utils as crv_utils
@@ -18,8 +17,8 @@ class Plot(object):
     Universal plot interface for binary system class, more detailed documentation for each value of descriptor is
     available in graphics library::
 
-        `orbit` - plots orbit in orbital plane
         `equipotential` - plots crossection of surface Hill planes in xz plane
+        `wireframe` - wire frame model of the star
         `mesh` - plot surface points
         `surface` - plot stellar surfaces
     """
@@ -29,11 +28,13 @@ class Plot(object):
     def __init__(self, instance):
         self.single = instance
 
-    def equipotential(self, axis_unit=u.solRad):
+    def equipotential(self, axis_unit=u.solRad, return_figure_instance=False):
         """
         Function for quick 2D plot of equipotential cross-section in xz plane.
 
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+                                             produced figure
         """
         equipotential_kwargs = dict()
 
@@ -41,12 +42,14 @@ class Plot(object):
         points = (points * u.DISTANCE_UNIT).to(axis_unit)
 
         equipotential_kwargs.update({
+            'return_figure_instance': return_figure_instance,
             'points': points,
             'axis_unit': axis_unit,
         })
-        graphics.equipotential_single_star(**equipotential_kwargs)
+        return graphics.equipotential_single_star(**equipotential_kwargs)
 
-    def mesh(self, phase=0.0, plot_axis=True, axis_unit=u.solRad, inclination=None, azimuth=None):
+    def mesh(self, phase=0.0, plot_axis=True, axis_unit=u.solRad, inclination=None, azimuth=None,
+             return_figure_instance=False):
         """
         Function plots 3D scatter plot of the surface points.
 
@@ -55,6 +58,8 @@ class Plot(object):
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param inclination: Union[float, astropy.Quantity]; in degree - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+                                             produced figure
         """
         single_mesh_kwargs = dict()
 
@@ -74,6 +79,7 @@ class Plot(object):
         equatorial_radius = position_container.star.equatorial_radius * u.DISTANCE_UNIT.to(axis_unit)
 
         single_mesh_kwargs.update({
+            'return_figure_instance': return_figure_instance,
             'phase': phase,
             'axis_unit': axis_unit,
             'plot_axis': plot_axis,
@@ -83,9 +89,10 @@ class Plot(object):
             'equatorial_radius': equatorial_radius,
         })
 
-        graphics.single_star_mesh(**single_mesh_kwargs)
+        return graphics.single_star_mesh(**single_mesh_kwargs)
 
-    def wireframe(self, phase=0.0, plot_axis=True, axis_unit=u.solRad, inclination=None, azimuth=None):
+    def wireframe(self, phase=0.0, plot_axis=True, axis_unit=u.solRad, inclination=None, azimuth=None,
+                  return_figure_instance=False):
         """
         Returns 3D wireframe of the object.
 
@@ -94,6 +101,8 @@ class Plot(object):
         :param axis_unit: Union[astropy.unit, dimensionless]; - axis units
         :param inclination: Union[float, astropy.Quantity]; in degree - elevation of camera
         :param azimuth: Union[float, astropy.Quantity]; camera azimuth
+        :param return_figure_instance: bool; if True, the Figure instance is returned instead of displaying the
+                                             produced figure
         """
         wireframe_kwargs = dict()
 
@@ -113,6 +122,7 @@ class Plot(object):
         equatorial_radius = position_container.star.equatorial_radius * u.DISTANCE_UNIT.to(axis_unit)
 
         wireframe_kwargs.update({
+            'return_figure_instance': return_figure_instance,
             'phase': phase,
             'axis_unit': axis_unit,
             'plot_axis': plot_axis,
@@ -123,7 +133,7 @@ class Plot(object):
             'equatorial_radius': equatorial_radius,
         })
 
-        graphics.single_star_wireframe(**wireframe_kwargs)
+        return graphics.single_star_wireframe(**wireframe_kwargs)
 
     def surface(self, phase=0.0, normals=False, edges=False, colormap=None, plot_axis=True, face_mask=None,
                 elevation=None, azimuth=None, unit='default', axis_unit=u.solRad,
@@ -136,8 +146,8 @@ class Plot(object):
         :param phase: float; phase at which plot the system, important for eccentric orbits
         :param normals: bool; plot normals of the surface phases as arrows
         :param edges: bool; highlight edges of surface faces
-        :param colormap: str; 'gravity_acceleration', 'temperature', 'velocity', 'radial_velocity', 'radiance',
-                              'normal_radiance' or None(default)
+        :param colormap: str; 'gravity_acceleration`, `temperature`, `velocity`, `radial_velocity`, 'radiance',
+                              `normal_radiance` or None(default)
         :param plot_axis: bool; if False, axis will be hidden
         :param face_mask: array[bool]; mask to select which faces to display
         :param elevation: Union[float, astropy.Quantity]; in degree - elevation of camera

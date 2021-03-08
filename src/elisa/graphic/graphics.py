@@ -64,7 +64,9 @@ def orbit(**kwargs):
     ax.set_aspect('equal')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
-    plt.show()
+
+    plt.subplots_adjust(top=0.98, right=0.98)
+    return f if kwargs['return_figure_instance'] else plt.show()
 
 
 def equipotential(**kwargs):
@@ -102,7 +104,8 @@ def equipotential(**kwargs):
     if kwargs['legend']:
         ax.legend(loc=kwargs['legend_loc'])
     ax.grid()
-    plt.show()
+
+    return f if kwargs['return_figure_instance'] else plt.show()
 
 
 def equipotential_single_star(**kwargs):
@@ -128,7 +131,8 @@ def equipotential_single_star(**kwargs):
     ax.set_aspect('equal', 'box')
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
-    plt.show()
+
+    return f if kwargs['return_figure_instance'] else plt.show()
 
 
 def single_star_mesh(**kwargs):
@@ -159,7 +163,8 @@ def single_star_mesh(**kwargs):
     else:
         ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
-    plt.show()
+
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
 
 def binary_mesh(**kwargs):
@@ -211,7 +216,8 @@ def binary_mesh(**kwargs):
     else:
         ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
-    plt.show()
+
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
 
 def single_star_surface(**kwargs):
@@ -438,6 +444,7 @@ def binary_surface(**kwargs):
 
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
     gutils.set_axes_equal(ax)
+
     return fig if kwargs['return_figure_instance'] else plt.show()
 
 
@@ -496,7 +503,8 @@ def single_star_wireframe(**kwargs):
     else:
         ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
-    plt.show()
+
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
 
 def binary_wireframe(**kwargs):
@@ -565,7 +573,8 @@ def binary_wireframe(**kwargs):
     else:
         ax.set_axis_off()
     plt.subplots_adjust(left=0.0, right=1.0, top=1.0, bottom=0.0)
-    plt.show()
+
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
 
 def binary_surface_anim(**kwargs):
@@ -710,7 +719,7 @@ def single_surface_anim(**kwargs):
 
 
 def phase_curve(**kwargs):
-    plt.figure(figsize=(8, 6))
+    fig = plt.figure(figsize=(8, 6))
     if kwargs['unit'] in ['normalized', 'normalised']:
         C = np.max([kwargs['fluxes'][item] for item in kwargs['fluxes']])
     else:
@@ -727,11 +736,12 @@ def phase_curve(**kwargs):
         plt.ylabel('Flux')
     if kwargs['legend']:
         plt.legend(loc=kwargs['legend_location'])
-    plt.show()
+
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
 
 def rv_curve(**kwargs):
-    plt.figure(figsize=(8, 6))
+    fig = plt.figure(figsize=(8, 6))
     phases, rvs = kwargs["phases"], kwargs["rvs"]
     for component in rvs.keys():
         plt.plot(phases, rvs[component], label=component)
@@ -745,7 +755,8 @@ def rv_curve(**kwargs):
         plt.ylabel('Radial velocity')
     if kwargs['legend']:
         plt.legend(loc=kwargs['legend_location'])
-    plt.show()
+
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
 
 def binary_rv_fit_plot(**kwargs):
@@ -804,7 +815,7 @@ def binary_rv_fit_plot(**kwargs):
     ax2.set_ylabel('Residuals')
 
     plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
-    plt.show()
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
 
 def binary_lc_fit_plot(**kwargs):
@@ -887,5 +898,5 @@ def binary_lc_fit_plot(**kwargs):
     ax2.set_ylabel('Residuals')
 
     plt.subplots_adjust(hspace=0.0, top=0.98, right=0.97)
-    plt.show()
+    return fig if kwargs['return_figure_instance'] else plt.show()
 
