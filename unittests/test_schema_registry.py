@@ -354,6 +354,49 @@ class StdSingleSystemmSchemaRegistryTestCase(utils.ElisaTestCase):
         }
         self.assertTrue(validate_single_json(props))
 
+    def test_valid_schema2(self):
+        props = {
+            "system": {
+                "inclination": 90.0,
+                "rotation_period": 10.1,
+                "gamma": 10000,
+                "reference_time": 0.5,
+                "phase_shift": 0.0
+            },
+            "star": {
+                "mass": 1.0,
+                "t_eff": 5772.0,
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_radius": 6.96340e8
+            }
+        }
+        self.assertTrue(validate_single_json(props))
+
+    def test_invalid_schema3(self):
+        props = {
+            "system": {
+                "inclination": 90.0,
+                "rotation_period": 10.1,
+                "gamma": 10000,
+                "reference_time": 0.5,
+                "phase_shift": 0.0
+            },
+            "star": {
+                "mass": 1.0,
+                "t_eff": 5772.0,
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_radius": 6.96340e8,
+                "polar_log_g": 2.43775
+            }
+        }
+        with self.assertRaises(Exception) as context:
+            self.assertTrue(validate_single_json(props))
+        self.assertTrue('`polar_log_g` or `equivalent_radius`' in str(context.exception))
+
     def test_valid_schema_with_spots_in_secondary(self):
         props = {
             "system": {
@@ -404,7 +447,7 @@ class StdSingleSystemmSchemaRegistryTestCase(utils.ElisaTestCase):
                 "gravity_darkening": 0.32,
                 "discretization_factor": 5,
                 "metallicity": 0.0,
-                "polar_log_g": 2.43775,
+                "polar_radius": 6.96340e8,
                 "spots": [
                     {
                         "longitude": 10,
