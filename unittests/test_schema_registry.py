@@ -395,7 +395,7 @@ class StdSingleSystemmSchemaRegistryTestCase(utils.ElisaTestCase):
         }
         with self.assertRaises(Exception) as context:
             self.assertTrue(validate_single_json(props))
-        self.assertTrue('`polar_log_g` or `equivalent_radius`' in str(context.exception))
+        self.assertTrue('`polar_log_g` or `polar_radius`' in str(context.exception))
 
     def test_valid_schema_with_spots_in_secondary(self):
         props = {
