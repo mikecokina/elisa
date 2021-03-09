@@ -99,11 +99,11 @@ def resolve_json_kind(data):
     if polar_g:
         return "std"
     elif polar_radius:
-        return "community"
+        return "radius"
     raise LookupError("It seems your JSON is invalid.")
 
 
-def transform_json_community_to_std(data):
+def transform_json_radius_to_std(data):
     """
     Transform `radius` input format json to `std` json.
     Compute polar_log_g form equivalent radius.
@@ -112,7 +112,8 @@ def transform_json_community_to_std(data):
     :return: Dict;
     """
     mass = (BodyProperties.mass(data['star']['mass']) * units.MASS_UNIT).to(units.kg).value
-    radius = (SystemProperties.semi_major_axis(data['star'].pop('polar_radius')) * units.solRad).to(units.m).value
+    radius = (SystemProperties.semi_major_axis(data['star'].pop('polar_radius'))
+              * units.DISTANCE_UNIT).to(units.m).value
 
     data['star']['polar_log_g'] = np.log10(const.G * mass / np.power(radius, 2))
 

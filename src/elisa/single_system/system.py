@@ -259,7 +259,7 @@ class SingleSystem(System):
 
         kind_of = _kind_of or sys_utils.resolve_json_kind(data_cp)
         if kind_of in ["radius"]:
-            data_cp = sys_utils.transform_json_community_to_std(data_cp)
+            data_cp = sys_utils.transform_json_radius_to_std(data_cp)
 
         star = Star(**data_cp["star"])
         return cls(star=star, **data_cp["system"])
