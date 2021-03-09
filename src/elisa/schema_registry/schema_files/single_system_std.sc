@@ -13,28 +13,54 @@
         "gamma"
       ],
       "properties": {
-        "inclination": {"anyOf": [
-          {"type": "number"},
-          {"type": "string"}
-        ]},
-        "rotation_period": {"anyOf": [
-          {"type": "number", "minimum": 0.0},
-          {"type": "string"}
-        ]},
-        "gamma": {"anyOf": [
-          {"type": "number"},
-          {"type": "string"}
-        ]},
-        "reference_time": {"anyOf": [
-          {"type": "number"},
-          {"type": "string"}
-        ]},
+        "inclination": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "rotation_period": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "gamma": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "reference_time": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
         "phase_shift": {
           "type": "number"
         },
         "additional_light": {
           "type": "number"
         }
+      }
     },
     "star": {
       "type": "object",
@@ -156,7 +182,6 @@
                   }
                 ]
               }
-            }
             }
           }
         }
