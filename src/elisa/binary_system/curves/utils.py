@@ -226,7 +226,7 @@ def compute_rel_d_geometry(binary, radii, radii_counterpart):
     eq_radii = np.array([binary.primary.equivalent_radius, binary.secondary.equivalent_radius])
     fwd_r_diff = np.abs(radii_counterpart - radii)
 
-    d_flux = (2 * eq_radii[:, np.newaxis] * fwd_r_diff + fwd_r_diff ** 2)
+    d_flux = 2 * eq_radii[:, np.newaxis] * fwd_r_diff + fwd_r_diff ** 2
     total_flux = eq_radii ** 2
     return d_flux / np.sum(total_flux)
 

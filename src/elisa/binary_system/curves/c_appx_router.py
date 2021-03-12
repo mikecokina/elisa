@@ -24,7 +24,7 @@ def look_for_approximation(not_pulsations_test):
     :return: bool;
     """
     appx_one = settings.MAX_NU_SEPARATION > 0 and settings.MAX_NU_SEPARATION is not None
-    appx_three = settings.MAX_RELATIVE_D_R_POINT > 0 and settings.MAX_RELATIVE_D_R_POINT is not None
+    appx_three = settings.MAX_D_FLUX > 0 and settings.MAX_D_FLUX is not None
     appx = appx_one or appx_three
     return appx and not_pulsations_test
 

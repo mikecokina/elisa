@@ -460,13 +460,13 @@ IDENTICAL_BINARY = {
 
 APPROX_SETTINGS = \
     {"no_approx":
-         {"MAX_RELATIVE_D_R_POINT": 0.0, "MAX_NU_SEPARATION": 0.08},
+         {"MAX_D_FLUX": 0.0, "MAX_NU_SEPARATION": 0.08},
      "approx_one":
          {"MAX_NU_SEPARATION": 1.0, "MIN_POINTS_IN_ECLIPSE": 30},
      "approx_two":
-         {"MAX_NU_SEPARATION": 0.00, "MAX_RELATIVE_D_R_POINT": 0.001},
+         {"MAX_NU_SEPARATION": 0.00, "MAX_D_FLUX": 0.001},
      "approx_three":
-         {"MAX_NU_SEPARATION": 0.00, "MAX_RELATIVE_D_R_POINT": 0.001}
+         {"MAX_NU_SEPARATION": 0.00, "MAX_D_FLUX": 0.001}
      }
 
 

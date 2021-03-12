@@ -287,7 +287,7 @@ class SupportMethodsTestCase(ElisaTestCase):
         self.assertTrue(np.all(~up.isnan(obtained.body)))
 
     def test_resolve_object_geometry_update(self):
-        settings.configure(**{"MAX_RELATIVE_D_R_POINT": 0.1})
+        settings.configure(**{"MAX_D_FLUX": 0.1})
         rel_d_radii = np.array([
             [0.05, 0.04, 0.02, 0.01, 0.1, 1.1, 98, 0.00001],
             [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.12]
@@ -512,7 +512,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
                     f"\nmax_nu_separation={settings.MAX_NU_SEPARATION}"
-                    f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
+                    f"\nmax_d_flux={settings.MAX_D_FLUX}"
                     f"\n")
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs)
@@ -522,19 +522,19 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
                     f"\nmax_nu_separation={settings.MAX_NU_SEPARATION}"
-                    f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
+                    f"\nmax_d_flux={settings.MAX_D_FLUX}"
                     f"\n")
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, start_phs=-0.2, stop_phs=1.2, step=0.1)
 
     def test_eccentric_system_approximation_two(self):
         settings.configure(**APPROX_SETTINGS["approx_two"])
-        settings.configure(**{"MAX_RELATIVE_D_R_POINT": 0.0})
+        settings.configure(**{"MAX_D_FLUX": 0.0})
 
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
                     f"\nmax_nu_separation={settings.MAX_NU_SEPARATION}"
-                    f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}"
+                    f"\nmax_d_flux={settings.MAX_D_FLUX}"
                     f"\n")
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, start_phs=-0.2, stop_phs=1.2, step=0.1)
@@ -545,7 +545,7 @@ class CompareSingleVsMultiprocess(ElisaTestCase):
         with open(self.CONFIG_FILE, "a") as f:
             f.write(f"[computational]"
                     f"\nmax_nu_separation={settings.MAX_NU_SEPARATION}"
-                    f"\nmax_relative_d_r_point={settings.MAX_RELATIVE_D_R_POINT}")
+                    f"\nmax_d_flux={settings.MAX_D_FLUX}")
         bs = prepare_binary_system(PARAMS["eccentric"])
         self.do_comparison(bs, 0.0, 0.01, 0.002, tol=1e-4)
 
