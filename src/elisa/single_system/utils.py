@@ -1,10 +1,13 @@
+import numpy as np
+
 from jsonschema import (
     validate,
     ValidationError
 )
 
 from .. base.error import YouHaveNoIdeaError
-from .. import const, utils, settings
+from .. import const, utils, settings, units
+from .. base.transform import BodyProperties, SystemProperties
 
 
 def move_sys_onpos(system, position, on_copy=True):
@@ -51,11 +54,12 @@ def validate_single_json(data):
     Validate input json to create SingleSystem instance from.
 
     :param data: Dict; json like object
-    :return: ; return True if valid schema, othervise raise error
+    :return: ; return True if valid schema, otherwise raise error
     :raise: ValidationError;
     """
     schema_std = settings.SCHEMA_REGISTRY.get_schema("single_system_std")
-    std_valid = False
+    schema_radius = settings.SCHEMA_REGISTRY.get_schema("single_system_radius")
+    std_valid, radius_valid = False, False
 
     try:
         validate(instance=data, schema=schema_std)
@@ -63,7 +67,54 @@ def validate_single_json(data):
     except ValidationError:
         pass
 
-    if not std_valid:
+    try:
+        validate(instance=data, schema=schema_radius)
+        radius_valid = True
+    except ValidationError:
+        pass
+
+    if not std_valid and not radius_valid:
         raise YouHaveNoIdeaError("Make sure that list of parameters is consistent with the used schema.")
 
+    if radius_valid & std_valid:
+        raise YouHaveNoIdeaError("Make sure that list of fitted parameters contain only `standard` or `radius` "
+                                 "combination of parameter (containing either `polar_log_g` or `polar_radius`).")
+
     return True
+
+
+def resolve_json_kind(data):
+    """
+    Resolve if json is in `standard` or `radius` format.
+
+    std - size of the star defined by the polar surface gravity `polar_log_g` parameter
+    community - size of the star defined by the `equivalent_radius` parameter
+
+    :param data: Dict; json like
+    :return: str; `std` or `radius`
+    """
+    polar_g = data['star'].get('polar_log_g')
+    polar_radius = data['star'].get('polar_radius')
+
+    if polar_g:
+        return "std"
+    elif polar_radius:
+        return "radius"
+    raise LookupError("It seems your JSON is invalid.")
+
+
+def transform_json_radius_to_std(data):
+    """
+    Transform `radius` input format json to `std` json.
+    Compute polar_log_g form equivalent radius.
+
+    :param data: Dict;
+    :return: Dict;
+    """
+    mass = (BodyProperties.mass(data['star']['mass']) * units.MASS_UNIT).to(units.kg).value
+    radius = (SystemProperties.semi_major_axis(data['star'].pop('polar_radius'))
+              * units.DISTANCE_UNIT).to(units.m).value
+
+    data['star']['polar_log_g'] = np.log10(const.G * mass / np.power(radius, 2))
+
+    return data

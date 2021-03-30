@@ -68,7 +68,7 @@
         "mass",
         "t_eff",
         "gravity_darkening",
-        "polar_log_g",
+        "polar_radius",
         "metallicity"
       ],
       "properties": {
@@ -97,7 +97,7 @@
         "metallicity": {
           "type": "number"
         },
-        "polar_log_g": {"anyOf": [
+        "polar_radius": {"anyOf": [
           {"type": "number"},
           {"type": "string"}
         ]},

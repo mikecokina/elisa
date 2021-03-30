@@ -23,9 +23,10 @@ def look_for_approximation(not_pulsations_test):
     :param not_pulsations_test: bool;
     :return: bool;
     """
-    appx_one = settings.MAX_NU_SEPARATION > 0 and settings.MAX_NU_SEPARATION is not None
-    appx_three = settings.MAX_RELATIVE_D_R_POINT > 0 and settings.MAX_RELATIVE_D_R_POINT is not None
-    appx = appx_one or appx_three
+    appx_one = settings.MAX_NU_SEPARATION > 0 and settings.MAX_NU_SEPARATION is not None and settings.USE_APPROX1
+    appx_two = settings.USE_APPROX2
+    appx_three = settings.MAX_D_FLUX > 0 and settings.MAX_D_FLUX is not None and settings.USE_APPROX3
+    appx = appx_one or appx_three or appx_two
     return appx and not_pulsations_test
 
 
@@ -118,7 +119,8 @@ def eval_approximation_one(binary, phases_span_test, reduced_orbit_array, counte
 
     # base test to establish, if curve contains enough points
     max_nu_sep = np.max(np.diff(np.sort(true_anomalies_supplements)))
-    if max_nu_sep > settings.MAX_NU_SEPARATION or 0 > settings.MAX_NU_SEPARATION or not phases_span_test:
+    if max_nu_sep > settings.MAX_NU_SEPARATION or 0 > settings.MAX_NU_SEPARATION or not phases_span_test or \
+            not settings.USE_APPROX1:
         logger.debug('Orbit is not sufficiently populated to implement interpolation approximation 1')
         return False, reduced_orbit_array, counterpart_position_array
 
@@ -185,7 +187,7 @@ def eval_approximation_two(binary, radii, base_orbit_arr, orbit_supplement_arr, 
     :param phases_span_test: bool;
     :return: Tuple; approximation test, orbital supplements
     """
-    if not phases_span_test:
+    if not phases_span_test or not settings.USE_APPROX2:
         logger.debug('Phase span of the observation is not sufficient to utilize approximation 2.')
         return False, None
 
@@ -212,6 +214,9 @@ def eval_approximation_three(binary, radii, all_orbital_pos_arr):
     :param all_orbital_pos_arr: numpy.array; array of all orbital positions
     :return: Tuple; (bool, numpy.array), approximation test, new_geometry_test
     """
+    if not settings.USE_APPROX3:
+        return False, None, None
+
     sort_idxs = all_orbital_pos_arr[:, 1].argsort()
     sorted_all_orbital_pos_arr = all_orbital_pos_arr[sort_idxs]
     sorted_radii = radii[:, sort_idxs]

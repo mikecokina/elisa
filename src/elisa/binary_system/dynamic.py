@@ -74,13 +74,13 @@ def find_apsidally_corresponding_positions(binary, radii, base_arr, supplement_a
     # making sure that found orbital positions are close enough to satisfy tolerance
     rel_geometry = compute_rel_d_geometry(binary, r_body[:, ids_of_closest_reduced_values], r_supplement)
     rel_geometry = np.max(rel_geometry, axis=0)
-    is_supplement_geom = rel_geometry < settings.MAX_RELATIVE_D_R_POINT
+    is_supplement_geom = rel_geometry < settings.MAX_D_FLUX
 
     # making sure that found orbital positions are close enough to satisfy tolerance in relative irradiation
     args = (binary, base_arr[ids_of_closest_reduced_values, 1], supplement_arr[:, 1])
     rel_irrad = compute_counterparts_rel_d_irrad(*args)
     rel_irrad = np.max(rel_irrad, axis=0)
-    is_supplement_irrad = rel_irrad < settings.MAX_RELATIVE_D_IRRADIATION
+    is_supplement_irrad = rel_irrad < settings.MAX_D_FLUX
 
     is_supplement = np.logical_and(is_supplement_geom, is_supplement_irrad)
 
@@ -115,7 +115,7 @@ def resolve_object_geometry_update(has_spots, size, rel_d, max_allowed_differenc
     Evaluation depends on difference of relative radii between upcomming orbital positions.
     """
     return _resolve_geometry_update(has_spots=has_spots, size=size, rel_d=rel_d, resolve="object",
-                                    max_allowed_difference=max_allowed_difference or settings.MAX_RELATIVE_D_R_POINT)
+                                    max_allowed_difference=max_allowed_difference or settings.MAX_D_FLUX)
 
 
 def resolve_spots_geometry_update(spots_longitudes, size, pulsations_tests,
@@ -200,7 +200,7 @@ def resolve_irrad_update(rel_d_irrad, size):
     cumulative_sum = np.array([0.0, 0.0])
     for i in range(1, size):
         cumulative_sum += rel_d_irrad[:, i - 1]
-        if (cumulative_sum <= settings.MAX_RELATIVE_D_IRRADIATION).all():
+        if (cumulative_sum <= settings.MAX_D_FLUX).all():
             require_new_build[i] = False
         else:
             require_new_build[i] = True

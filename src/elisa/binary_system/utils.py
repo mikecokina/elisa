@@ -230,8 +230,6 @@ def transform_json_community_to_std(data):
     Transform `community` input json to `std` json.
     Compute `M1` and `M2` from `q` and `a`.
 
-    All units of values are expected to be default.
-
     :param data: Dict;
     :return: Dict;
     """

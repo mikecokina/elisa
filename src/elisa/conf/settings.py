@@ -166,16 +166,18 @@ class Settings(_Const):
     NUMBER_OF_PROCESSES = -1  # int(os.cpu_count())
     NUMBER_OF_MCMC_PROCESSES = -1
     MAX_NU_SEPARATION = 0.08
-    MAX_RELATIVE_D_R_POINT = 2e-4
+    MAX_D_FLUX = 2e-4
     MAX_SPOT_D_LONGITUDE = np.pi / 180.0  # in radians
     MIN_POINTS_IN_ECLIPSE = 35
     MAX_SOLVER_ITERS = 100
     MAX_CURVE_DATA_POINTS = 300
     MESH_GENERATOR = 'auto'
     DEFORMATION_TOL = 0.05
-    MAX_RELATIVE_D_IRRADIATION = 2e-4
     MCMC_SAVE_INTERVAL = 1800
     USE_SINGLE_LD_COEFFICIENTS = False
+    USE_APPROX1 = True
+    USE_APPROX2 = True
+    USE_APPROX3 = True
 
     TIMER = 0.0
 
@@ -230,7 +232,7 @@ class Settings(_Const):
             "NUMBER_OF_PROCESSES": cls.NUMBER_OF_PROCESSES,
             "NUMBER_OF_MCMC_PROCESSES": cls.NUMBER_OF_MCMC_PROCESSES,
             "MAX_NU_SEPARATION": cls.MAX_NU_SEPARATION,
-            "MAX_RELATIVE_D_R_POINT": cls.MAX_RELATIVE_D_R_POINT,
+            "MAX_D_FLUX": cls.MAX_D_FLUX,
             "MAX_SPOT_D_LONGITUDE": cls.MAX_SPOT_D_LONGITUDE,
             "MAX_SOLVER_ITERS": cls.MAX_SOLVER_ITERS,
             "MAX_CURVE_DATA_POINTS": cls.MAX_CURVE_DATA_POINTS,
@@ -243,11 +245,13 @@ class Settings(_Const):
             "ATM_ATLAS": cls.ATM_ATLAS,
             "MESH_GENERATOR": cls.MESH_GENERATOR,
             "DEFORMATION_TOL": cls.DEFORMATION_TOL,
-            "MAX_RELATIVE_D_IRRADIATION": cls.MAX_RELATIVE_D_IRRADIATION,
             "PULSATION_MODEL": cls.PULSATION_MODEL,
             "MCMC_SAVE_INTERVAL": cls.MCMC_SAVE_INTERVAL,
             "CUDA": cls.CUDA,
-            "USE_SINGLE_LD_COEFFICIENTS": cls.USE_SINGLE_LD_COEFFICIENTS
+            "USE_SINGLE_LD_COEFFICIENTS": cls.USE_SINGLE_LD_COEFFICIENTS,
+            "USE_APPROX1": cls.USE_APPROX1,
+            "USE_APPROX2": cls.USE_APPROX2,
+            "USE_APPROX3": cls.USE_APPROX3,
         }
 
     @staticmethod
@@ -362,8 +366,7 @@ class Settings(_Const):
 
             cls.MAX_NU_SEPARATION = c_parse.getfloat('computational', 'max_nu_separation',
                                                      fallback=cls.MAX_NU_SEPARATION)
-            cls.MAX_RELATIVE_D_R_POINT = c_parse.getfloat('computational', 'max_relative_d_r_point',
-                                                          fallback=cls.MAX_RELATIVE_D_R_POINT)
+            cls.MAX_D_FLUX = c_parse.getfloat('computational', 'max_d_flux', fallback=cls.MAX_D_FLUX)
             cls.MAX_SPOT_D_LONGITUDE = c_parse.getfloat('computational', 'max_spot_d_longitude',
                                                         fallback=cls.MAX_SPOT_D_LONGITUDE)
             cls.MAX_SOLVER_ITERS = c_parse.getfloat('computational', 'max_solver_iters', fallback=cls.MAX_SOLVER_ITERS)
@@ -373,8 +376,6 @@ class Settings(_Const):
                                                        fallback=cls.MIN_POINTS_IN_ECLIPSE)
             cls.MESH_GENERATOR = c_parse.getfloat('computational', 'mesh_generator', fallback=cls.MESH_GENERATOR)
             cls.DEFORMATION_TOL = c_parse.getfloat('computational', 'deformation_tol', fallback=cls.DEFORMATION_TOL)
-            cls.MAX_RELATIVE_D_IRRADIATION = c_parse.getfloat('computational', 'max_relative_d_irradiation',
-                                                              fallback=cls.MAX_RELATIVE_D_IRRADIATION)
             cls.MCMC_SAVE_INTERVAL = c_parse.getfloat('computational', 'mcmc_save_interval',
                                                       fallback=cls.MCMC_SAVE_INTERVAL)
 
@@ -394,6 +395,9 @@ class Settings(_Const):
 
             cls.USE_SINGLE_LD_COEFFICIENTS = c_parse.getboolean('computational', 'use_single_ld_coefficients',
                                                                 fallback=cls.USE_SINGLE_LD_COEFFICIENTS)
+            cls.USE_APPROX1 = c_parse.getboolean('computational', 'use_approx1', fallback=cls.USE_APPROX1)
+            cls.USE_APPROX2 = c_parse.getboolean('computational', 'use_approx2', fallback=cls.USE_APPROX2)
+            cls.USE_APPROX3 = c_parse.getboolean('computational', 'use_approx3', fallback=cls.USE_APPROX3)
         # **************************************************************************************************************
         if c_parse.has_section('support'):
             cls.LD_TABLES = c_parse.get('support', 'ld_tables', fallback=cls.LD_TABLES)

@@ -230,6 +230,27 @@ class SingleSystemSerializersTestCase(ElisaTestCase):
         cls._get_std(data)
 
     @classmethod
+    def test_init_from_json_radius(cls):
+        data = {
+            "system": {
+                "inclination": 90.0,
+                "rotation_period": 10.1,
+                "gamma": 10000,
+                "reference_time": 0.5,
+                "phase_shift": 0.0
+            },
+            "star": {
+                "mass": 1.0,
+                "t_eff": 5772.0,
+                "gravity_darkening": 0.32,
+                "discretization_factor": 5,
+                "metallicity": 0.0,
+                "polar_radius": 1.0
+            }
+        }
+        cls._get_std(data)
+
+    @classmethod
     def test_init_string_repr(cls):
         data = {
             "system": {
